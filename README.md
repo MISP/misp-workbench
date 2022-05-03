@@ -33,6 +33,21 @@ This repository is a kind of [RiiR](http://web.archive.org/web/20220201102732/ht
 *  `dependencies.py`: Global stuff here, could be refactored.
 *  `main.py`: FastAPI entrypoint, routers for all resources are included here.
 
+### Testing
+```
+$ docker-compose --env-file=".env.test" up -d
+...
+$ docker-compose exec backend pytest
+=========================================================================================== test session starts ===========================================================================================
+platform linux -- Python 3.9.12, pytest-7.1.2, pluggy-1.0.0
+rootdir: /code
+collected 1 item                                                                                                                                                                                          
+
+app/test_main.py .                                                                                                                                                                                  [100%]
+
+============================================================================================ 1 passed in 0.33s ============================================================================================
+```
+
 ## Frontend
 * Vue.js 3
 * Bootstrap 5
@@ -57,6 +72,7 @@ $ docker-compose up -d
 * https://fastapi.tiangolo.com/deployment/docker/#container-images
 * https://fastapi.tiangolo.com/tutorial/sql-databases/
 * https://fastapi.tiangolo.com/tutorial/bigger-applications/
+* https://sqlmodel.tiangolo.com/tutorial/fastapi/tests/
 * https://fastapi.tiangolo.com/tutorial/security/
 
 
