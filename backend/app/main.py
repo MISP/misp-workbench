@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from .database import Base, engine
-from .routers import users, events
+from .routers import users, events, attributes
 
 # Bootstrap database
 Base.metadata.create_all(bind=engine)
@@ -12,3 +12,6 @@ app.include_router(users.router, tags=["Users"])
 
 # Events
 app.include_router(events.router, tags=["Events"])
+
+# Attributes
+app.include_router(attributes.router, tags=["Attributes"])

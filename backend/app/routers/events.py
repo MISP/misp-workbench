@@ -40,3 +40,8 @@ def get_event_by_id(event_id: int, db: Session = Depends(get_db)):
     if db_event is None:
         raise HTTPException(status_code=404, detail="Event not found")
     return db_event
+
+
+@router.post("/events/", response_model=event_schemas.Event)
+def create_event(event: event_schemas.EventCreate, db: Session = Depends(get_db)):
+    return events_repository.create_event(db=db, event=event)

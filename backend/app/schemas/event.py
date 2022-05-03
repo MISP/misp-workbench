@@ -1,33 +1,40 @@
-from typing import Optional
+from typing import List, Optional
 from pydantic import BaseModel
 from uuid import UUID
 from datetime import date
+from .attribute import Attribute
 
 
 class EventBase(BaseModel):
-    id: int
     org_id: int
-    date: date
+    date: Optional[date]
     info: str
     user_id: int
-    uuid: UUID
-    published: bool
-    analysis: int
-    attribute_count: int
-    orgc_id: int
-    timestamp: int
-    distribution: int
-    sharing_group_id: int
-    proposal_email_lock: bool
-    locked: bool
-    threat_level_id: int
-    publish_timestamp: int
-    sighting_timestamp: int
-    disable_correlation: bool
+    uuid: Optional[UUID]
+    published: Optional[bool]
+    analysis: Optional[int]
+    attribute_count: Optional[int]
+    orgc_id: Optional[int]
+    timestamp: Optional[int]
+    distribution: Optional[int]
+    sharing_group_id: Optional[int]
+    proposal_email_lock: Optional[bool]
+    locked: Optional[bool]
+    threat_level_id: Optional[int]
+    publish_timestamp: Optional[int]
+    sighting_timestamp: Optional[int]
+    disable_correlation: Optional[bool]
     extends_uuid: Optional[UUID]
-    protected: bool
+    protected: Optional[bool]
 
 
 class Event(EventBase):
+    id: int
     class Config:
         orm_mode = True
+
+    attributes: List[Attribute] = []
+
+
+class EventCreate(EventBase):
+    pass

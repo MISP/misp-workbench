@@ -25,11 +25,10 @@ This repository is a kind of [RiiR](http://web.archive.org/web/20220201102732/ht
 └─ frontend/
 ```
 
-#### Backend
 * `models/`: Where the SQLAlchemy models are defined, these models are used for creating the SQL tables, each file represents a table.
 * `repositories/`: Where the methods that interact directly with the database via SQLAlchmy ORM live, each file clusters the methods related to a given model.
 *  `routers/`: Where the FastAPI endpoints are defined, each file represents a resource.
-*  `schemas/`: FastAPI models lie, these define the API contracts and are used in OpenAPI spec generation.
+*  `schemas/`: FastAPI models lie, these define the API contracts that are used in OpenAPI spec generation and `Pydantic` validation rules.
 *  `database.py`: Database and SQLAchemy bootstraping.
 *  `dependencies.py`: Global stuff here, could be refactored.
 *  `main.py`: FastAPI entrypoint, routers for all resources are included here.
