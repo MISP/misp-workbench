@@ -4,7 +4,7 @@ This repository is a kind of [RiiR](http://web.archive.org/web/20220201102732/ht
 ## Backend
 * **FastAPI**: API
 * **PostgreSQL**: Data persistance (with use of JSONB)
-* **SQlAlchemy+Alembic+Pydantic**: ORM/Migrations/Data validation
+* **SQLAlchemy+Alembic+Pydantic**: ORM/Migrations/Data validation
 * **Redis**: Cache
 * **Celery**: Task Queue / Background Jobs
 * **ZeroMQ**: Message queue

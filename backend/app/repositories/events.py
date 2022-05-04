@@ -23,6 +23,10 @@ def get_event_by_id(db: Session, event_id: int):
     return db.query(event_models.Event).filter(event_models.Event.id == event_id).first()
 
 
+def get_user_by_info(db: Session, info: str):
+    return db.query(event_models.Event).filter(event_models.Event.info == info).first()
+
+
 def create_event(db: Session, event: event_schemas.EventCreate):
     db_event = event_models.Event(
         org_id=event.org_id,

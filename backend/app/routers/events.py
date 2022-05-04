@@ -2,7 +2,7 @@ from ..schemas import event as event_schemas
 from ..repositories import events as events_repository
 from ..dependencies import get_db
 from typing import Optional
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 router = APIRouter()
@@ -44,4 +44,8 @@ def get_event_by_id(event_id: int, db: Session = Depends(get_db)):
 
 @router.post("/events/", response_model=event_schemas.Event)
 def create_event(event: event_schemas.EventCreate, db: Session = Depends(get_db)):
+    db_event = events_repository.get_user_by_info(db, info=event.info)
+    if db_event:
+        raise HTTPException(
+            status_code=400, detail="An event with this info already exists")
     return events_repository.create_event(db=db, event=event)
