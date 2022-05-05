@@ -1,5 +1,5 @@
 # MISP3
-This repository is a kind of [RiiR](http://web.archive.org/web/20220201102732/https://transitiontech.ca/random/RIIR) exercise to implement MISP core components in a modern tech stack.
+This repository is a kind of [RiiR](https://transitiontech.ca/random/RIIR) exercise to implement MISP core components in a modern tech stack.
 
 ## Backend
 * **FastAPI**: API
