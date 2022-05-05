@@ -87,7 +87,7 @@ class ApiTest:
             event_id=event_1.id,
             category="Network activity",
             type="ip-src",
-            value1="127.0.0.1"
+            value="127.0.0.1"
         )
         db.add(attribute_1)
         db.commit()

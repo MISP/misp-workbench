@@ -20,7 +20,7 @@ class TestAttributesResource(ApiTest):
         assert data[0]["id"] == attribute_1.id
         assert data[0]["category"] == attribute_1.category
         assert data[0]["type"] == attribute_1.type
-        assert data[0]["value1"] == attribute_1.value1
+        assert data[0]["value"] == attribute_1.value
 
     def test_create_attribute(self, client: TestClient, event_1: event_models.Event):
         response = client.post(
@@ -28,7 +28,7 @@ class TestAttributesResource(ApiTest):
                 "event_id": event_1.id,
                 "category": "Network activity",
                 "type": "ip-dst",
-                "value1": "127.0.0.1"
+                "value": "127.0.0.1"
             }
         )
         data = response.json()
@@ -38,10 +38,10 @@ class TestAttributesResource(ApiTest):
         assert data["event_id"] == event_1.id
         assert data["category"] == "Network activity"
         assert data["type"] == "ip-dst"
-        assert data["value1"] == "127.0.0.1"
+        assert data["value"] == "127.0.0.1"
 
     def test_create_attribute_incomplete(self, client: TestClient, event_1: event_models.Event):
-        # missing value1
+        # missing value
         response = client.post(
             "/attributes/", json={
                 "event_id": event_1.id,

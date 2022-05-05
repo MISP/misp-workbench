@@ -9,8 +9,7 @@ class AttributeBase(BaseModel):
     object_relation: Optional[str]
     category: str
     type: str
-    value1: str
-    value2: Optional[str]
+    value: str
     to_ids: Optional[bool]
     uuid: Optional[UUID]
     timestamp: Optional[int]

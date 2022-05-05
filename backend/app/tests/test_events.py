@@ -1,11 +1,12 @@
 from fastapi.testclient import TestClient
 from ..models import event as event_models
 from ..models import user as user_models
+from ..models import attribute as attribute_models
 from .api_test import ApiTest
 
 
 class TestEventsResource(ApiTest):
-    def test_get_events(self, client: TestClient, user_1: user_models.User,  event_1: event_models.Event):
+    def test_get_events(self, client: TestClient, user_1: user_models.User,  event_1: event_models.Event, attribute_1: attribute_models.Attribute):
         response = client.get("/events/")
         data = response.json()
 
@@ -17,6 +18,10 @@ class TestEventsResource(ApiTest):
         assert data[0]["org_id"] == event_1.org_id
         assert data[0]["orgc_id"] == event_1.orgc_id
         assert data[0]["user_id"] == user_1.id
+        assert data[0]["attributes"][0]["event_id"] == attribute_1.event_id
+        assert data[0]["attributes"][0]["value"] == attribute_1.value
+        assert data[0]["attributes"][0]["category"] == attribute_1.category
+        assert data[0]["attributes"][0]["type"] == attribute_1.type
 
     def test_create_event(self, client: TestClient, user_1: user_models.User):
         response = client.post(
