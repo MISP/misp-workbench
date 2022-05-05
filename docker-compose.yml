@@ -15,7 +15,7 @@ services:
       timeout: 5s
       retries: 5
     volumes:
-      - "./database/scripts/init-db.sh:/docker-entrypoint-initdb.d/init-db.sh"
+      - "./scripts/init-db.sh:/docker-entrypoint-initdb.d/init-db.sh"
 
   backend:
     build:
@@ -29,7 +29,8 @@ services:
       - POSTGRES_USER=${POSTGRES_USER}
       - DATABASE=${DATABASE}
     volumes:
-      - "./backend/app:/code/app"
+      - "./backend:/code"
+    entrypoint: [ "bash", "-c", "./entrypoint.sh" ]
     depends_on:
       database:
         condition: service_healthy

@@ -33,6 +33,30 @@ This repository is a kind of [RiiR](http://web.archive.org/web/20220201102732/ht
 *  `dependencies.py`: Global stuff here, could be refactored.
 *  `main.py`: FastAPI entrypoint, routers for all resources are included here.
 
+### Migrations
+Migrations are managed by [Alembic](https://alembic.sqlalchemy.org).
+
+#### Show migrations history
+```
+docker-compose exec backend alembic history
+```
+#### Upgrade to lastest
+```
+$ docker-compose exec alembic upgrade head
+```
+#### Downgrade to revision
+```
+$ docker-compose exec alembic downgrade [revision]
+```
+#### Create new revision
+```
+$ docker-compose exec alembic revision -m "reason of the migration" 
+```
+#### Help
+```
+$ docker-compose exec alembic help 
+```
+
 ### Testing
 ```
 $ docker-compose --env-file=".env.test" up -d

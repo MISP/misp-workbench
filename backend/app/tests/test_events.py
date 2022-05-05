@@ -18,11 +18,11 @@ class TestEventsResource(ApiTest):
         assert data[0]["orgc_id"] == event_1.orgc_id
         assert data[0]["user_id"] == user_1.id
 
-    def test_create_event(self, client: TestClient):
+    def test_create_event(self, client: TestClient, user_1: user_models.User):
         response = client.post(
             "/events/", json={
                 "info": "test create event",
-                "user_id": 1,
+                "user_id": user_1.id,
                 "orgc_id": 1,
                 "org_id": 1,
                 "date": "2020-01-01"
@@ -33,7 +33,7 @@ class TestEventsResource(ApiTest):
         assert response.status_code == 200
         assert data["id"] is not None
         assert data["info"] == "test create event"
-        assert data["user_id"] == 1
+        assert data["user_id"] == user_1.id
         assert data["org_id"] == 1
         assert data["orgc_id"] == 1
 

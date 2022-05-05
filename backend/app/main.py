@@ -1,17 +1,15 @@
 from fastapi import FastAPI
-from .database import Base, engine
+from .models.database import Base, engine
 from .routers import users, events, attributes
 
-# Bootstrap database
-Base.metadata.create_all(bind=engine)
+# Bootstrap application
+app = FastAPI(title="MISP3 API", version="0.1.0")
 
-app = FastAPI(title="MISP API", description="MISP API", version="0.1.0")
-
-# Users
+# Users resource
 app.include_router(users.router, tags=["Users"])
 
-# Events
+# Events resource
 app.include_router(events.router, tags=["Events"])
 
-# Attributes
+# Attributes resource
 app.include_router(attributes.router, tags=["Attributes"])

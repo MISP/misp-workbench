@@ -1,5 +1,5 @@
 from email.policy import default
-from ..database import Base
+from .database import Base
 from sqlalchemy import BigInteger, Boolean, Column, ForeignKey, Integer, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship

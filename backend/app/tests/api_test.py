@@ -10,7 +10,6 @@ from ..models import event as event_models
 from ..models import attribute as attribute_models
 from ..dependencies import get_db
 from ..main import app
-from ..database import Base, engine
 
 
 class ApiTest:
@@ -45,9 +44,8 @@ class ApiTest:
         app.dependency_overrides.clear()
 
     @pytest.fixture(scope="class", autouse=True)
-    def setup_cleanup(self, db: Session):
+    def cleanup(self, db: Session):
         try:
-            # setup
             pass
         finally:
             # teardown
@@ -61,7 +59,6 @@ class ApiTest:
     @pytest.fixture(scope="class")
     def user_1(self, db: Session):
         user_1 = user_models.User(
-            id=1,
             email="foo@bar.com",
             hashed_password="secret"
         )
@@ -73,7 +70,6 @@ class ApiTest:
     @pytest.fixture(scope="class")
     def event_1(self, db: Session, user_1: user_models.User):
         event_1 = event_models.Event(
-            id=1,
             info="test event",
             user_id=user_1.id,
             orgc_id=1,
@@ -88,7 +84,6 @@ class ApiTest:
     @pytest.fixture(scope="class")
     def attribute_1(self, db: Session, event_1: event_models.Event):
         attribute_1 = attribute_models.Attribute(
-            id=1,
             event_id=event_1.id,
             category="Network activity",
             type="ip-src",
