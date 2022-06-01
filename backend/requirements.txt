@@ -4,6 +4,7 @@ uvicorn>=0.15.0,<0.16.0
 sqlalchemy>=1.4.35,<1.5.0
 psycopg2-binary>=2.9.3,<2.10.0
 alembic>=1.7.7,<1.8.0
+pymisp>=2.4.157,<2.5.0
 
 # test
 pytest>=7.1.2,<7.2.0

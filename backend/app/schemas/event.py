@@ -3,6 +3,7 @@ from pydantic import BaseModel
 from uuid import UUID
 from datetime import date
 from .attribute import Attribute
+from ..models.event import DistributionLevel
 
 
 class EventBase(BaseModel):
@@ -16,7 +17,7 @@ class EventBase(BaseModel):
     attribute_count: Optional[int]
     orgc_id: Optional[int]
     timestamp: Optional[int]
-    distribution: Optional[int]
+    distribution: Optional[DistributionLevel]
     sharing_group_id: Optional[int]
     proposal_email_lock: Optional[bool]
     locked: Optional[bool]
@@ -27,6 +28,8 @@ class EventBase(BaseModel):
     extends_uuid: Optional[UUID]
     protected: Optional[bool]
 
+    class Config:
+        use_enum_values = True
 
 class Event(EventBase):
     id: int

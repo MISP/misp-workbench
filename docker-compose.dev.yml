@@ -1,0 +1,10 @@
+version: '3.1'
+
+services:
+  backend:
+    ports:
+      - "8080:80"
+      - "5678:5678"
+    entrypoint: [ "bash", "-c", "./entrypoint.dev.sh" ]
+    extra_hosts:
+      - "host.docker.internal:host-gateway"

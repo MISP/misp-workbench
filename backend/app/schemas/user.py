@@ -3,6 +3,8 @@ from pydantic import BaseModel
 
 class UserBase(BaseModel):
     email: str
+    org_id: int
+    role_id: int
 
 
 class User(UserBase):
