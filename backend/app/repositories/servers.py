@@ -1,7 +1,7 @@
 import logging
 from hashlib import sha1
 from sqlalchemy.orm import Session
-from fastapi import HTTPException
+from fastapi import HTTPException, Depends
 from pymisp import PyMISP, MISPEvent
 from ..models.event import DistributionLevel, Event
 from ..models import server as server_models
@@ -13,6 +13,7 @@ from ..repositories import attributes as attributes_repository
 from ..config import Settings, get_settings
 
 logger = logging.getLogger(__name__)
+
 
 def get_servers(db: Session, skip: int = 0, limit: int = 100):
     return db.query(server_models.Server).offset(skip).limit(limit).all()
@@ -188,7 +189,7 @@ def pull_event_by_id(db: Session, server: server_schemas.Server, event_uuid: str
     return True
 
 
-def update_pulled_event_before_insert(db: Session, event: MISPEvent, server: server_schemas.Server, user: user_models.User, config: Settings = get_settings()):
+def update_pulled_event_before_insert(db: Session, event: MISPEvent, server: server_schemas.Server, user: user_models.User, config: Settings = Depends(get_settings)):
     """
     see: app/Model/Server.php::__updatePulledEventBeforeInsert()
     see: app/Model/Event::_add()

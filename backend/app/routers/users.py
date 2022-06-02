@@ -1,29 +1,37 @@
 from ..schemas import user as user_schemas
 from ..repositories import users as users_repository
 from ..dependencies import get_db
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Security, status
 from sqlalchemy.orm import Session
+from ..auth.auth import get_current_active_user
 
 router = APIRouter()
 
 
 @router.get("/users/", response_model=list[user_schemas.User])
-def get_users(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+def get_users(skip: int = 0, limit: int = 100, db: Session = Depends(get_db), user: user_schemas.User = Security(get_current_active_user, scopes=["users:read"])):
     users = users_repository.get_users(db, skip=skip, limit=limit)
     return users
 
 
+@router.get("/users/me", response_model=user_schemas.User)
+def get_current_user(db: Session = Depends(get_db), user: user_schemas.User = Security(get_current_active_user, scopes=["users:me"])):
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not enough permissions")
+    return user
+
+
 @router.get("/users/{user_id}", response_model=user_schemas.User)
-def get_user_by_id(user_id: int, db: Session = Depends(get_db)):
+def get_user_by_id(user_id: int, db: Session = Depends(get_db), user: user_schemas.User = Security(get_current_active_user, scopes=["users:read"])):
     db_user = users_repository.get_user_by_id(db, user_id=user_id)
     if db_user is None:
-        raise HTTPException(status_code=404, detail="User not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
     return db_user
 
 
 @router.post("/users/", response_model=user_schemas.User)
-def create_user(user: user_schemas.UserCreate, db: Session = Depends(get_db)):
-    db_user = users_repository.get_user_by_email(db, email=user.email)
+def create_user(user_request: user_schemas.UserCreate, db: Session = Depends(get_db), user: user_schemas.User = Security(get_current_active_user, scopes=["users:create"])):
+    db_user = users_repository.get_user_by_email(db, email=user_request.email)
     if db_user:
-        raise HTTPException(status_code=400, detail="Email already registered")
-    return users_repository.create_user(db=db, user=user)
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered")
+    return users_repository.create_user(db=db, user=user_request)

@@ -1,6 +1,7 @@
 from typing import Optional
 from pydantic import BaseModel
 from uuid import UUID
+from ..models.event import DistributionLevel
 
 
 class AttributeBase(BaseModel):
@@ -13,7 +14,7 @@ class AttributeBase(BaseModel):
     to_ids: Optional[bool]
     uuid: Optional[UUID]
     timestamp: Optional[int]
-    distribution: Optional[int]
+    distribution: Optional[DistributionLevel]
     sharing_group_id: Optional[int]
     comment: Optional[str]
     deleted: Optional[bool]

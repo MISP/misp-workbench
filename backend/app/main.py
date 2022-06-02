@@ -1,13 +1,17 @@
 import logging
 from fastapi import FastAPI
 from .models.database import Base, engine
-from .routers import users, events, attributes, servers, roles
+from .routers import users, events, attributes, servers, roles, auth
+
 
 # setup loggers
-logging.config.fileConfig('/code/app/logging.conf', disable_existing_loggers=False)
+logging.config.fileConfig('logging.conf', disable_existing_loggers=False)
 
 # Bootstrap application
 app = FastAPI(title="misp-lite API", version="0.1.0")
+
+# OAuth2 resource
+app.include_router(auth.router, tags=["OAuth2"])
 
 # Users resource
 app.include_router(users.router, tags=["Users"])

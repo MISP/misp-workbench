@@ -105,7 +105,7 @@ First make sure Make sure the [Python VS Code extension](https://marketplace) is
 3. Press **F5** on VS Code and start adding breakpoints.
 
 ### TODO
-- api auth
+- get oauth2 scopes from user role
 - background celery jobs
 - users ~~cr~~ud
 - events ~~c~~r~~ud~~
@@ -149,7 +149,7 @@ $ docker-compose up -d
 * https://fastapi.tiangolo.com/tutorial/sql-databases/
 * https://fastapi.tiangolo.com/tutorial/bigger-applications/
 * https://sqlmodel.tiangolo.com/tutorial/fastapi/tests/
-* https://fastapi.tiangolo.com/tutorial/security/
+* https://fastapi.tiangolo.com/advanced/security/
 * https://fastapi.tiangolo.com/advanced/settings/
 
 

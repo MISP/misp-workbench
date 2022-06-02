@@ -1,5 +1,5 @@
 from pymisp import MISPEvent
-from sqlalchemy import Column, Integer, String, ForeignKey
+from sqlalchemy import Column, Integer, String, ForeignKey, Boolean
 from sqlalchemy.orm import relationship
 
 from .database import Base
@@ -14,6 +14,7 @@ class User(Base):
     role_id = Column(Integer, ForeignKey("roles.id"), nullable=False)
     email = Column(String, unique=True, index=True)
     hashed_password = Column(String)
+    disabled = Column(Boolean, default=False)
 
     role = relationship("Role")
 

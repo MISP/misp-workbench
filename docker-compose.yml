@@ -28,6 +28,9 @@ services:
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - POSTGRES_USER=${POSTGRES_USER}
       - DATABASE=${DATABASE}
+      - OAUTH2_SECRET_KEY=${OAUTH2_SECRET_KEY}
+      - OAUTH2_ALGORITHM=${OAUTH2_ALGORITHM}
+      - OAUTH2_ACCESS_TOKEN_EXPIRE_MINUTES=${OAUTH2_ACCESS_TOKEN_EXPIRE_MINUTES}
     volumes:
       - "./backend:/code"
     entrypoint: [ "bash", "-c", "./entrypoint.sh" ]
