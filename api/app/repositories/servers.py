@@ -3,6 +3,8 @@ from hashlib import sha1
 from sqlalchemy.orm import Session
 from fastapi import HTTPException, Depends
 from pymisp import PyMISP, MISPEvent
+
+from ..dependencies import get_db
 from ..models.event import DistributionLevel, Event
 from ..models import server as server_models
 from ..models import user as user_models
@@ -10,7 +12,7 @@ from ..schemas import server as server_schemas
 from ..repositories import events as events_repository
 from ..repositories import users as users_repository
 from ..repositories import attributes as attributes_repository
-from ..config import Settings, get_settings
+from ..settings import Settings, get_settings
 
 logger = logging.getLogger(__name__)
 
@@ -57,7 +59,7 @@ def create_server(db: Session, server: server_schemas.ServerCreate):
     return db_server
 
 
-def pull_server_by_id(db: Session, server_id: int, technique: str = "full"):
+async def pull_server_by_id(server_id: int, technique: str = "full", db: Session = Depends(get_db)):
     """
     see: app/Model/Server.php::pull()
     """

@@ -10,7 +10,7 @@ from datetime import datetime, timedelta
 from ..repositories import users as users_repository
 from ..dependencies import get_db
 from ..schemas import user as user_schemas
-from ..config import Settings, get_settings
+from ..settings import Settings, get_settings
 
 
 # see: https://fastapi.tiangolo.com/tutorial/security/oauth2-jwt/
@@ -66,18 +66,18 @@ def get_password_hash(password):
     return pwd_context.hash(password)
 
 
-def create_access_token(data: dict, expires_delta: Union[timedelta, None] = None, config: Settings = Depends(get_settings)):
+def create_access_token(data: dict, expires_delta: Union[timedelta, None] = None, settings: Settings = get_settings()):
     to_encode = data.copy()
     if expires_delta:
         expire = datetime.utcnow() + expires_delta
     else:
         expire = datetime.utcnow() + timedelta(minutes=15)
     to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, config.OAuth2.secret_key, algorithm=config.OAuth2.algorithm)
+    encoded_jwt = jwt.encode(to_encode, settings.OAuth2.secret_key, algorithm=settings.OAuth2.algorithm)
     return encoded_jwt
 
 
-async def get_current_user(security_scopes: SecurityScopes, token: str = Depends(oauth2_scheme), db: Session = Depends(get_db), config: Settings = Depends(get_settings)):
+async def get_current_user(security_scopes: SecurityScopes, token: str = Depends(oauth2_scheme), db: Session = Depends(get_db), settings: Settings = Depends(get_settings)):
     if security_scopes.scopes:
         authenticate_value = f'Bearer scope="{security_scopes.scope_str}"'
     else:
@@ -88,7 +88,7 @@ async def get_current_user(security_scopes: SecurityScopes, token: str = Depends
         headers={"WWW-Authenticate": authenticate_value},
     )
     try:
-        payload = jwt.decode(token, config.OAuth2.secret_key, algorithms=[config.OAuth2.algorithm])
+        payload = jwt.decode(token, settings.OAuth2.secret_key, algorithms=[settings.OAuth2.algorithm])
         username: str = payload.get("sub")
         if username is None:
             raise credentials_exception

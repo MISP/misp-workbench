@@ -20,7 +20,7 @@ config.set_main_option("sqlalchemy.url", "postgresql://%s:%s@%s/%s" % (
     os.environ['POSTGRES_USER'],
     os.environ['POSTGRES_PASSWORD'],
     os.environ['POSTGRES_HOSTNAME'],
-    os.environ['DATABASE']
+    os.environ['POSTGRES_DATABASE']
 ))
 
 # Interpret the config file for Python logging.

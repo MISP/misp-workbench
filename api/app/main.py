@@ -1,8 +1,6 @@
 import logging
 from fastapi import FastAPI
-from .models.database import Base, engine
 from .routers import users, events, attributes, servers, roles, auth
-
 
 # setup loggers
 logging.config.fileConfig('logging.conf', disable_existing_loggers=False)

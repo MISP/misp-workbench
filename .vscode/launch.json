@@ -12,7 +12,7 @@
             "host": "localhost",
             "pathMappings": [
                 {
-                    "localRoot": "${workspaceFolder}/backend",
+                    "localRoot": "${workspaceFolder}/api",
                     "remoteRoot": "/code"
                 }
             ]
