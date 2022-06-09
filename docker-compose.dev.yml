@@ -8,3 +8,15 @@ services:
     entrypoint: [ "bash", "-c", "./entrypoint.dev.sh" ]
     extra_hosts:
       - "host.docker.internal:host-gateway"
+
+  worker:
+    ports:
+      - "5679:5679"
+    command:
+      [
+        "sh",
+        "-c",
+        "pip install debugpy -t /tmp && python /tmp/debugpy --listen 0.0.0.0:5679 -m celery -A app.worker.worker worker --loglevel=info",
+      ]
+    extra_hosts:
+      - "host.docker.internal:host-gateway"

@@ -1,6 +1,7 @@
 from pymisp import MISPEvent
 from sqlalchemy import Column, Integer, String, ForeignKey, Boolean
 from sqlalchemy.orm import relationship
+from .role import Role
 
 from .database import Base
 

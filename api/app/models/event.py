@@ -1,9 +1,19 @@
 from .database import Base
-from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, Date
+from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, Date, Enum
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
-from enum import Enum
 import uuid
+import enum
+
+class DistributionLevel(enum.Enum):
+    """
+    Enum for the Event distribution level
+    """
+    ORGANISATION_ONLY = 0
+    COMMUNITY_ONLY = 1
+    CONNECTED_COMMUNITIES = 2
+    ALL_COMMUNITIES = 3
+    SHARING_GROUP = 4
 
 
 class Event(Base):
@@ -22,7 +32,7 @@ class Event(Base):
     # TODO: ForeignKey("organisations.id"),
     orgc_id = Column(Integer, index=True, nullable=False)
     timestamp = Column(Integer, nullable=False, default=0)
-    distribution = Column(Integer, nullable=False, default=0)
+    distribution = Column(Enum(DistributionLevel), nullable=False, default=DistributionLevel.ORGANISATION_ONLY)
     # TODO: ForeignKey("sharing_groups.id"),
     sharing_group_id = Column(Integer, index=True, nullable=True)
     proposal_email_lock = Column(Boolean, nullable=False, default=False)
@@ -36,14 +46,3 @@ class Event(Base):
     protected = Column(Boolean, nullable=False, default=False)
 
     attributes = relationship("Attribute")
-
-
-class DistributionLevel(int, Enum):
-    """
-    Enum for the Event distribution level
-    """
-    ORGANISATION_ONLY = 0
-    COMMUNITY_ONLY = 1
-    CONNECTED_COMMUNITIES = 2
-    ALL_COMMUNITIES = 3
-    SHARING_GROUP = 4

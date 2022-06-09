@@ -4,7 +4,6 @@ from sqlalchemy.orm import Session
 from fastapi import HTTPException, Depends
 from pymisp import PyMISP, MISPEvent
 
-from ..dependencies import get_db
 from ..models.event import DistributionLevel, Event
 from ..models import server as server_models
 from ..models import user as user_models
@@ -59,7 +58,7 @@ def create_server(db: Session, server: server_schemas.ServerCreate):
     return db_server
 
 
-async def pull_server_by_id(server_id: int, technique: str = "full", db: Session = Depends(get_db)):
+def pull_server_by_id(db: Session, settings: Settings, server_id: int, technique: str = "full"):
     """
     see: app/Model/Server.php::pull()
     """
@@ -97,12 +96,12 @@ async def pull_server_by_id(server_id: int, technique: str = "full", db: Session
         raise HTTPException(status_code=501, detail="Server pull technique `update` not implemented yet.")
 
     if technique == "full":
-        return pull_server_by_id_full(db, server, remote_misp)
+        return pull_server_by_id_full(db, settings, server, remote_misp)
 
     raise HTTPException(status_code=400, detail="Unknown server pull technique `%s` not implemented yet." % technique)
 
 
-def pull_server_by_id_full(db: Session, server: server_schemas.Server, remote_misp: PyMISP):
+def pull_server_by_id_full(db: Session, settings: Settings, server: server_schemas.Server, remote_misp: PyMISP):
 
     # get a list of the event_ids on the server
     event_ids = get_event_ids_from_server(server, remote_misp)
@@ -112,7 +111,7 @@ def pull_server_by_id_full(db: Session, server: server_schemas.Server, remote_mi
 
     # pull each of the events sequentially
     for event_id in event_ids:
-        pull_event_by_id(db, server, event_id, remote_misp)
+        pull_event_by_id(db, settings, server, event_id, remote_misp)
 
     return {
         'message': 'Pulling server ID: %s' % server.id,
@@ -134,7 +133,7 @@ def get_event_ids_from_server(server:  server_schemas.Server, remote_misp: PyMIS
     return event_ids
 
 
-def pull_event_by_id(db: Session, server: server_schemas.Server, event_uuid: str, remote_misp: PyMISP):
+def pull_event_by_id(db: Session, settings: Settings, server: server_schemas.Server, event_uuid: str, remote_misp: PyMISP):
     """
     see: app/Model/Server.php::__pullEvent()
     """
@@ -167,7 +166,7 @@ def pull_event_by_id(db: Session, server: server_schemas.Server, event_uuid: str
     # TODO: get user from auth
     user = users_repository.get_users(db, limit=1)[0]
 
-    event = update_pulled_event_before_insert(db, event, server, user)
+    event = update_pulled_event_before_insert(db, settings, event, server, user)
 
     if not check_if_event_is_not_empty:
         logger.info("Event %s is empty, skipping" % event_uuid)
@@ -191,7 +190,7 @@ def pull_event_by_id(db: Session, server: server_schemas.Server, event_uuid: str
     return True
 
 
-def update_pulled_event_before_insert(db: Session, event: MISPEvent, server: server_schemas.Server, user: user_models.User, config: Settings = Depends(get_settings)):
+def update_pulled_event_before_insert(db: Session, settings: Settings, event: MISPEvent, server: server_schemas.Server, user: user_models.User):
     """
     see: app/Model/Server.php::__updatePulledEventBeforeInsert()
     see: app/Model/Event::_add()
@@ -199,7 +198,7 @@ def update_pulled_event_before_insert(db: Session, event: MISPEvent, server: ser
 
     event.locked = True
 
-    if config.MISP.host_org_id is None or not server.internal or config.MISP.host_org_id != server.org_id:
+    if settings.MISP.host_org_id is None or not server.internal or settings.MISP.host_org_id != server.org_id:
         # update event distribution level
         event.distribution = downgrade_distribution(event.distribution)
 

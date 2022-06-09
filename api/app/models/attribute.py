@@ -17,7 +17,7 @@ class Attribute(Base):
     object_relation = Column(String(255), index=True)
     category = Column(String(255), index=True)
     type = Column(String(100), index=True)
-    value = Column(String(), index=True)
+    value = Column(String())
     to_ids = Column(Boolean, default=True)
     uuid = Column(UUID(as_uuid=True), unique=True, default=uuid.uuid4)
     timestamp = Column(Integer, nullable=False, default=0)

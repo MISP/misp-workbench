@@ -40,7 +40,7 @@ def upgrade():
     sa.Column('attribute_count', sa.Integer(), nullable=True),
     sa.Column('orgc_id', sa.Integer(), nullable=False),
     sa.Column('timestamp', sa.Integer(), nullable=False),
-    sa.Column('distribution', sa.Integer(), nullable=False),
+    sa.Column('distribution', postgresql.ENUM('ORGANISATION_ONLY', 'COMMUNITY_ONLY', 'CONNECTED_COMMUNITIES', 'ALL_COMMUNITIES', 'SHARING_GROUP', name='distribution_level'), nullable=False),
     sa.Column('sharing_group_id', sa.Integer(), nullable=True),
     sa.Column('proposal_email_lock', sa.Boolean(), nullable=False),
     sa.Column('locked', sa.Boolean(), nullable=False),
@@ -71,7 +71,7 @@ def upgrade():
     sa.Column('to_ids', sa.Boolean(), nullable=True),
     sa.Column('uuid', postgresql.UUID(as_uuid=True), nullable=True),
     sa.Column('timestamp', sa.Integer(), nullable=False),
-    sa.Column('distribution', sa.Integer(), nullable=False),
+    sa.Column('distribution', postgresql.ENUM('ORGANISATION_ONLY', 'COMMUNITY_ONLY', 'CONNECTED_COMMUNITIES', 'ALL_COMMUNITIES', 'SHARING_GROUP', name='distribution_level'), nullable=False),
     sa.Column('sharing_group_id', sa.Integer(), nullable=True),
     sa.Column('comment', sa.String(), nullable=True),
     sa.Column('deleted', sa.Boolean(), nullable=True),
@@ -91,7 +91,6 @@ def upgrade():
     op.create_index(op.f('ix_attributes_object_relation'), 'attributes', ['object_relation'], unique=False)
     op.create_index(op.f('ix_attributes_sharing_group_id'), 'attributes', ['sharing_group_id'], unique=False)
     op.create_index(op.f('ix_attributes_type'), 'attributes', ['type'], unique=False)
-    op.create_index(op.f('ix_attributes_value'), 'attributes', ['value'], unique=False)
     # ### end Alembic commands ###
 
 

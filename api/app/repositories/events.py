@@ -73,7 +73,7 @@ def create_event_from_pulled_event(db: Session, pulled_event: MISPEvent):
         attribute_count=pulled_event.attribute_count,
         orgc_id=pulled_event.orgc_id,
         timestamp=pulled_event.timestamp.timestamp(),
-        distribution=pulled_event.distribution,
+        distribution=event_models.DistributionLevel(pulled_event.distribution),
         sharing_group_id=pulled_event.sharing_group_id,
         proposal_email_lock=pulled_event.proposal_email_lock,
         locked=pulled_event.locked,
@@ -98,7 +98,7 @@ def update_event_from_pulled_event(db: Session, existing_event: event_models.Eve
     existing_event.published = pulled_event.published
     existing_event.analysis = pulled_event.analysis
     existing_event.timestamp = pulled_event.timestamp.timestamp()
-    existing_event.distribution = pulled_event.distribution
+    existing_event.distribution = event_models.DistributionLevel(pulled_event.distribution)
     existing_event.sharing_group_id = pulled_event.sharing_group_id
     existing_event.threat_level_id = pulled_event.threat_level_id
     existing_event.disable_correlation = pulled_event.disable_correlation

@@ -17,7 +17,7 @@ class EventBase(BaseModel):
     attribute_count: Optional[int]
     orgc_id: Optional[int]
     timestamp: Optional[int]
-    distribution: Optional[DistributionLevel]
+    distribution: DistributionLevel
     sharing_group_id: Optional[int]
     proposal_email_lock: Optional[bool]
     locked: Optional[bool]
