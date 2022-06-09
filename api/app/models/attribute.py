@@ -1,11 +1,11 @@
 from email.policy import default
 
 from .database import Base
-from sqlalchemy import BigInteger, Boolean, Column, ForeignKey, Integer, String
+from sqlalchemy import BigInteger, Boolean, Column, ForeignKey, Integer, String, Enum
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
+from .event import DistributionLevel
 import uuid
-
 
 class Attribute(Base):
     __tablename__ = "attributes"
@@ -21,7 +21,7 @@ class Attribute(Base):
     to_ids = Column(Boolean, default=True)
     uuid = Column(UUID(as_uuid=True), unique=True, default=uuid.uuid4)
     timestamp = Column(Integer, nullable=False, default=0)
-    distribution = Column(Integer, nullable=False, default=0)
+    distribution = Column(Enum(DistributionLevel), nullable=False, default=DistributionLevel.INHERIT_EVENT)
     # TODO: ForeignKey("sharing_groups.id"),
     sharing_group_id = Column(Integer, index=True, nullable=True)
     comment = Column(String())

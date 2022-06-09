@@ -14,7 +14,7 @@ class AttributeBase(BaseModel):
     to_ids: Optional[bool]
     uuid: Optional[UUID]
     timestamp: Optional[int]
-    distribution: Optional[DistributionLevel]
+    distribution: DistributionLevel
     sharing_group_id: Optional[int]
     comment: Optional[str]
     deleted: Optional[bool]

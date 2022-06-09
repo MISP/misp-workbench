@@ -14,6 +14,7 @@ class DistributionLevel(enum.Enum):
     CONNECTED_COMMUNITIES = 2
     ALL_COMMUNITIES = 3
     SHARING_GROUP = 4
+    INHERIT_EVENT = 5
 
 
 class Event(Base):

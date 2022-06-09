@@ -1,6 +1,7 @@
 from pymisp import MISPAttribute
 from ..models import attribute as attribute_models
 from ..schemas import attribute as attribute_schemas
+from ..schemas import event as event_schemas
 from sqlalchemy.orm import Session
 import time
 
@@ -24,7 +25,7 @@ def create_attribute(db: Session, attribute: attribute_schemas.AttributeCreate):
         to_ids=attribute.to_ids,
         uuid=attribute.uuid,
         timestamp=attribute.timestamp or time.time(),
-        distribution=attribute.distribution,
+        distribution=event_schemas.DistributionLevel(attribute.distribution),
         sharing_group_id=attribute.sharing_group_id,
         comment=attribute.comment,
         deleted=attribute.deleted,
@@ -53,7 +54,7 @@ def create_attribute_from_pulled_attribute(db: Session, pulled_attribute: MISPAt
         to_ids=pulled_attribute.to_ids,
         uuid=pulled_attribute.uuid,
         timestamp=pulled_attribute.timestamp.timestamp(),
-        distribution=pulled_attribute.distribution,
+        distribution=event_schemas.DistributionLevel(pulled_attribute.distribution),
         comment=pulled_attribute.comment,
         sharing_group_id=pulled_attribute.sharing_group_id,
         deleted=pulled_attribute.deleted,
