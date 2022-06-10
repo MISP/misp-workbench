@@ -26,6 +26,12 @@ class TestAttributesResource(ApiTest):
         assert data[0]["type"] == attribute_1.type
         assert data[0]["value"] == attribute_1.value
 
+    @pytest.mark.parametrize('scopes', [[]])
+    def test_get_attributes_unauthorized(self, client: TestClient, auth_token: auth.Token):
+        response = client.get("/attributes/", headers={"Authorization": "Bearer " + auth_token})
+
+        assert response.status_code == 401
+
     @pytest.mark.parametrize('scopes', [["attributes:create"]])
     def test_create_attribute(self, client: TestClient, event_1: event_models.Event, auth_token: auth.Token):
         response = client.post(
@@ -46,6 +52,20 @@ class TestAttributesResource(ApiTest):
         assert data["category"] == "Network activity"
         assert data["type"] == "ip-dst"
         assert data["value"] == "127.0.0.1"
+
+    @pytest.mark.parametrize('scopes', [["attributes:read"]])
+    def test_create_unauthorized(self, client: TestClient, event_1: event_models.Event, auth_token: auth.Token):
+        response = client.post(
+            "/attributes/",
+            json={
+                "event_id": event_1.id,
+                "category": "Network activity",
+                "type": "ip-dst",
+                "value": "127.0.0.1"
+            },
+            headers={"Authorization": "Bearer " + auth_token}
+        )
+        assert response.status_code == 401
 
     @pytest.mark.parametrize('scopes', [["attributes:create"]])
     def test_create_attribute_incomplete(self, client: TestClient, event_1: event_models.Event, auth_token: auth.Token):

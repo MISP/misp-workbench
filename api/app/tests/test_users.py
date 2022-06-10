@@ -18,9 +18,17 @@ class TestUsersResource(ApiTest):
         assert data[0]["email"] == user_1.email
         assert data[0]["id"] == user_1.id
 
+    @pytest.mark.parametrize('scopes', [[]])
+    def test_get_users_unauthorized(self, client: TestClient, auth_token: auth.Token):
+        response = client.get("/users/", headers={"Authorization": "Bearer " + auth_token})
+
+        assert response.status_code == 401
+
+    # TODO: add auth token to this test
     def test_create_user(self, client: TestClient):
         response = client.post(
-            "/users/", json={
+            "/users/",
+            json={
                 "org_id": 1,
                 "role_id": 1,
                 "email": "foobar@example.local",

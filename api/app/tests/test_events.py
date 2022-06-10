@@ -26,6 +26,13 @@ class TestEventsResource(ApiTest):
         assert data[0]["attributes"][0]["category"] == attribute_1.category
         assert data[0]["attributes"][0]["type"] == attribute_1.type
 
+    @pytest.mark.parametrize('scopes', [[]])
+    def test_get_events(self, client: TestClient, user_1: user_models.User, auth_token: auth.Token):
+        response = client.get("/events/", headers={"Authorization": "Bearer " + auth_token})
+        data = response.json()
+
+        assert response.status_code == 401
+
     @pytest.mark.parametrize('scopes', [["events:create"]])
     def test_create_event(self, client: TestClient, user_1: user_models.User, auth_token: auth.Token):
         response = client.post(
@@ -47,6 +54,22 @@ class TestEventsResource(ApiTest):
         assert data["user_id"] == user_1.id
         assert data["org_id"] == 1
         assert data["orgc_id"] == 1
+
+
+    @pytest.mark.parametrize('scopes', [["events:read"]])
+    def test_create_event_unauthorized(self, client: TestClient, user_1: user_models.User, auth_token: auth.Token):
+        response = client.post(
+            "/events/",
+            json={
+                "info": "test create event",
+                "user_id": user_1.id,
+                "orgc_id": 1,
+                "org_id": 1,
+                "date": "2020-01-01"
+            },
+            headers={"Authorization": "Bearer " + auth_token}
+        )
+        assert response.status_code == 401
 
     @pytest.mark.parametrize('scopes', [["events:create"]])
     def test_create_event_incomplete(self, client: TestClient, auth_token: auth.Token):
