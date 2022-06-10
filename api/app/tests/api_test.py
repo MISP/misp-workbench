@@ -5,10 +5,12 @@ from sqlalchemy.orm import Session
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
+from datetime import timedelta
 from ..models import user as user_models
 from ..models import event as event_models
 from ..models import attribute as attribute_models
 from ..dependencies import get_db
+from ..auth import auth
 from ..main import app
 
 
@@ -54,11 +56,41 @@ class ApiTest:
             db.execute("DELETE FROM users")
             db.commit()
 
-    # MISP data model fixtures
+    ####################################################
+    #####         MISP data model fixtures         #####
+    ####################################################
+
+    @pytest.fixture(scope="class")
+    def api_tester_user(self, db: Session):
+        api_tester_user = user_models.User(
+            org_id=1,
+            role_id=1,
+            email="api@tester.local",
+            hashed_password="secret"
+        )
+        db.add(api_tester_user)
+        db.commit()
+
+        return api_tester_user
 
     @pytest.fixture(scope="class")
     def user_1(self, db: Session):
         user_1 = user_models.User(
+            org_id=1,
+            role_id=1,
+            email="foo@bar.com",
+            hashed_password="secret"
+        )
+        db.add(user_1)
+        db.commit()
+
+        return user_1
+
+    @pytest.fixture(scope="class")
+    def user_1(self, db: Session):
+        user_1 = user_models.User(
+            org_id=1,
+            role_id=1,
             email="foo@bar.com",
             hashed_password="secret"
         )
@@ -93,3 +125,14 @@ class ApiTest:
         db.commit()
 
         return attribute_1
+
+    @pytest.fixture(scope="function")
+    def auth_token(self, api_tester_user: user_models.User, scopes: list, expires_in: int = 3600):
+
+        access_token_expires = timedelta(seconds=expires_in)
+        auth_token = auth.create_access_token(
+            data={"sub": api_tester_user.email, "scopes": scopes},
+            expires_delta=access_token_expires
+        )
+
+        return auth_token

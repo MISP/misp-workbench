@@ -1,24 +1,31 @@
+import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy.orm import Session
 from ..models import user as user_models
 from .api_test import ApiTest
+from ..auth import auth
 
 
 class TestUsersResource(ApiTest):
 
-    def test_get_users(self, client: TestClient, user_1: user_models.User):
-        response = client.get("/users/")
+    @pytest.mark.parametrize('scopes', [["users:read"]])
+    def test_get_users(self, client: TestClient, user_1: user_models.User, auth_token: auth.Token):
+        response = client.get("/users/", headers={"Authorization": "Bearer " + auth_token})
         data = response.json()
 
         assert response.status_code == 200
 
-        assert len(data) == 1
+        assert data not in [None, []]
         assert data[0]["email"] == user_1.email
         assert data[0]["id"] == user_1.id
 
     def test_create_user(self, client: TestClient):
         response = client.post(
-            "/users/", json={"email": "foobar@example.local", "password": "secret"}
+            "/users/", json={
+                "org_id": 1,
+                "role_id": 1,
+                "email": "foobar@example.local",
+                "password": "secret"
+            }
         )
         data = response.json()
 
@@ -37,6 +44,8 @@ class TestUsersResource(ApiTest):
         response = client.post(
             "/users/",
             json={
+                "org_id": 1,
+                "role_id": 1,
                 "email": "foo@bar.com",
                 "password": "secret"
             },
