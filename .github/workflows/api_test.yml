@@ -42,13 +42,15 @@ jobs:
           virtualenvs-create: true
           virtualenvs-in-project: true
           installer-parallel: true
+          virtualenvs-path: ~/.virtualenvs
+
 
       - name: Load cached venv
         id: cached-poetry-dependencies
         uses: actions/cache@v2
         with:
-          path: .venv
-          key: venv-${{ runner.os }}-${{ matrix.python-version }}-${{ matrix.poetry-version }}-${{ hashFiles('api/poetry.lock') }}
+          virtualenvs-path: ~/.virtualenvs
+          key: venv1-${{ runner.os }}-${{ matrix.python-version }}-${{ matrix.poetry-version }}-${{ hashFiles('api/poetry.lock') }}
 
       - name: Install dependencies
         working-directory: api
@@ -58,8 +60,7 @@ jobs:
       - name: Run DB migrations
         working-directory: api
         run: |
-          source ../.venv/bin/activate
-          alembic upgrade head
+          poetry run alembic upgrade head
         env:
           POSTGRES_HOSTNAME: localhost
           POSTGRES_PORT: 5432
@@ -70,8 +71,7 @@ jobs:
       - name: Run tests
         working-directory: api
         run: |
-          source ../.venv/bin/activate
-          pytest
+          poetry run pytest
         env:
           POSTGRES_HOSTNAME: localhost
           POSTGRES_PORT: 5432
