@@ -3,10 +3,11 @@ from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
-SQLALCHEMY_DATABASE_URL = "postgresql://%s:%s@%s/%s" % (
+SQLALCHEMY_DATABASE_URL = "postgresql://%s:%s@%s:%s/%s" % (
     os.environ['POSTGRES_USER'],
     os.environ['POSTGRES_PASSWORD'],
     os.environ['POSTGRES_HOSTNAME'],
+    os.environ['POSTGRES_PORT'],
     os.environ['POSTGRES_DATABASE']
 )
 

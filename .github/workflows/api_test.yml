@@ -1,0 +1,62 @@
+name: Python CI
+on: ["pull_request", "push"]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        python-version: ["3.9", "3.10"]
+        poetry-version: [1.1.13]
+
+    services:
+      postgres:
+        image: postgres
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DATABASE: misp
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+        ports:
+          - 5432:5432
+
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Run image
+        uses: abatilo/actions-poetry@v2.1.4
+        with:
+          poetry-version: ${{ matrix.poetry-version }}
+
+      - name: Install
+        working-directory: api
+        run: |
+          poetry install
+
+      - name: Run DB migrations
+        working-directory: api
+        run: |
+          poetry run alembic upgrade head
+        env:
+          POSTGRES_HOSTNAME: postgres
+          POSTGRES_PORT: ${{ job.services.postgres.ports[5432] }}
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_USER: postgres
+          POSTGRES_DATABASE: misp
+
+      - name: Run tests
+        working-directory: localhost
+        run: poetry run pytest
+        env:
+          POSTGRES_HOSTNAME: localhost
+          POSTGRES_PORT: ${{ job.services.postgres.ports[5432] }}
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_USER: postgres
+          POSTGRES_DATABASE: misp

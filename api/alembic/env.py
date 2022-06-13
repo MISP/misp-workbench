@@ -16,10 +16,11 @@ import os
 # access to the values within the .ini file in use.
 config = context.config
 
-config.set_main_option("sqlalchemy.url", "postgresql://%s:%s@%s/%s" % (
+config.set_main_option("sqlalchemy.url", "postgresql://%s:%s@%s:%s/%s" % (
     os.environ['POSTGRES_USER'],
     os.environ['POSTGRES_PASSWORD'],
     os.environ['POSTGRES_HOSTNAME'],
+    os.environ['POSTGRES_PORT'],
     os.environ['POSTGRES_DATABASE']
 ))
 
