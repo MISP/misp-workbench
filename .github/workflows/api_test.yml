@@ -48,7 +48,7 @@ jobs:
         id: cached-poetry-dependencies
         uses: actions/cache@v2
         with:
-          path: ~/.virtualenvs
+          path: api
           key: venv1-${{ runner.os }}-${{ matrix.python-version }}-${{ matrix.poetry-version }}-${{ hashFiles('api/poetry.lock') }}
           restore-keys: |
             venv1-${{ runner.os }}-${{ matrix.python-version }}-${{ matrix.poetry-version }}-${{ hashFiles('api/poetry.lock') }}
