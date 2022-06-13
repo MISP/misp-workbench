@@ -52,7 +52,7 @@ jobs:
           POSTGRES_DATABASE: misp
 
       - name: Run tests
-        working-directory: localhost
+        working-directory: api
         run: poetry run pytest
         env:
           POSTGRES_HOSTNAME: localhost
