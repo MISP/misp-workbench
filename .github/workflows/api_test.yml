@@ -15,6 +15,7 @@ jobs:
         image: postgres
         env:
           POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: misp
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
@@ -22,7 +23,7 @@ jobs:
           --health-retries 5
         ports:
           - 5432:5432
-  
+
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-python@v2
@@ -44,7 +45,7 @@ jobs:
         run: |
           poetry run alembic upgrade head
         env:
-          POSTGRES_HOSTNAME: postgres
+          POSTGRES_HOSTNAME: localhost
           POSTGRES_PORT: 5432
           POSTGRES_PASSWORD: postgres
           POSTGRES_USER: postgres
