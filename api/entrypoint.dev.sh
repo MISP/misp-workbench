@@ -2,10 +2,7 @@
 set -e
 
 # run migrations
-alembic upgrade head
-
-# installd debug tools
-pip install debugpy 
+poetry run alembic upgrade head
 
 # start API
-python -m debugpy --listen 0.0.0.0:5678 -m uvicorn app.main:app --reload --host 0.0.0.0 --port 80
+poetry run python -m debugpy --listen 0.0.0.0:5678 -m uvicorn app.main:app --reload --host 0.0.0.0 --port 80

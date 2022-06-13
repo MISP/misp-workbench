@@ -38,27 +38,27 @@ Migrations are managed by [Alembic](https://alembic.sqlalchemy.org).
 
 #### Show migrations history
 ```
-docker-compose exec api alembic history
+docker-compose exec api poetry run alembic history
 ```
 #### Upgrade to lastest
 ```
-$ docker-compose exec alembic upgrade head
+$ docker-compose exec api poetry run alembic upgrade head
 ```
 #### Downgrade to revision
 ```
-$ docker-compose exec alembic downgrade [revision]
+$ docker-compose exec api poetry run alembic downgrade [revision]
 ```
 
 #### Help
 ```
-$ docker-compose exec alembic help 
+$ docker-compose exec api poetry run alembic help 
 ```
 
 ### Testing
 ```
 $ docker-compose --env-file=".env.test" up -d
 ...
-$ docker-compose exec api pytest
+$ docker-compose exec api poetry run pytest
 =========================================================================================== test session starts ===========================================================================================
 platform linux -- Python 3.9.12, pytest-7.1.2, pluggy-1.0.0
 rootdir: /code

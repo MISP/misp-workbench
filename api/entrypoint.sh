@@ -2,7 +2,7 @@
 set -e
 
 # run migrations
-alembic upgrade head
+poetry run alembic upgrade head
 
 # start API
-uvicorn app.main:app --host 0.0.0.0 --port 80
+poetry run uvicorn app.main:app --host 0.0.0.0 --port 80

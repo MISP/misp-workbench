@@ -46,7 +46,7 @@ services:
     build:
       context: ./api
       dockerfile: Dockerfile
-    command: celery -A app.worker.worker worker --loglevel=info
+    command: poetry run celery -A app.worker.worker worker --loglevel=info
     volumes:
       - "./api:/code"
     environment:
@@ -67,7 +67,7 @@ services:
     build:
       context: ./api
       dockerfile: Dockerfile
-    command: celery -A app.worker.worker flower --loglevel=info
+    command: poetry run celery -A app.worker.worker flower --loglevel=info
     volumes:
       - ./api:/code
     working_dir: /code
