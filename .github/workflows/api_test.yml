@@ -58,7 +58,7 @@ jobs:
       - name: Run DB migrations
         working-directory: api
         run: |
-          source ../venv/bin/activate
+          source ../.venv/bin/activate
           alembic upgrade head
         env:
           POSTGRES_HOSTNAME: localhost
@@ -70,7 +70,7 @@ jobs:
       - name: Run tests
         working-directory: api
         run: |
-          source ../venv/bin/activate
+          source ../.venv/bin/activate
           pytest
         env:
           POSTGRES_HOSTNAME: localhost
