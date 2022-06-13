@@ -58,7 +58,8 @@ jobs:
       - name: Run DB migrations
         working-directory: api
         run: |
-          poetry run alembic upgrade head
+          source .venv/bin/activate
+          alembic upgrade head
         env:
           POSTGRES_HOSTNAME: localhost
           POSTGRES_PORT: 5432
@@ -68,7 +69,9 @@ jobs:
 
       - name: Run tests
         working-directory: api
-        run: poetry run pytest
+        run: |
+          source .venv/bin/activate
+          pytest
         env:
           POSTGRES_HOSTNAME: localhost
           POSTGRES_PORT: 5432
