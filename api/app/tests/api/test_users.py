@@ -1,8 +1,8 @@
 import pytest
 from fastapi.testclient import TestClient
 
-from ..auth import auth
-from ..models import user as user_models
+from ...auth import auth
+from ...models import user as user_models
 from .api_test import ApiTest
 
 
@@ -30,10 +30,11 @@ class TestUsersResource(ApiTest):
 
         assert response.status_code == 401
 
-    # TODO: add auth token to this test
-    def test_create_user(self, client: TestClient):
+    @pytest.mark.parametrize("scopes", [["users:create"]])
+    def test_create_user(self, client: TestClient, auth_token: auth.Token):
         response = client.post(
             "/users/",
+            headers={"Authorization": "Bearer " + auth_token},
             json={
                 "org_id": 1,
                 "role_id": 1,
@@ -47,15 +48,39 @@ class TestUsersResource(ApiTest):
         assert data["email"] == "foobar@example.local"
         assert data["id"] is not None
 
-    def test_create_user_incomplete(self, client: TestClient):
+    @pytest.mark.parametrize("scopes", [[]])
+    def test_create_user_unauthorized(self, client: TestClient, auth_token: auth.Token):
+        response = client.post(
+            "/users/",
+            headers={"Authorization": "Bearer " + auth_token},
+            json={
+                "org_id": 1,
+                "role_id": 1,
+                "email": "foobar@example.local",
+                "password": "secret",
+            },
+        )
+
+        assert response.status_code == 401
+
+    @pytest.mark.parametrize("scopes", [["users:create"]])
+    def test_create_user_incomplete(self, client: TestClient, auth_token: auth.Token):
         # missing password
-        response = client.post("/users/", json={"email": "nopass@example.local"})
+        response = client.post(
+            "/users/",
+            json={"email": "nopass@example.local"},
+            headers={"Authorization": "Bearer " + auth_token},
+        )
         assert response.status_code == 422
 
-    def test_create_user_invalid_exists(self, client: TestClient):
+    @pytest.mark.parametrize("scopes", [["users:create"]])
+    def test_create_user_invalid_exists(
+        self, client: TestClient, auth_token: auth.Token
+    ):
         # user with this email already exists
         response = client.post(
             "/users/",
+            headers={"Authorization": "Bearer " + auth_token},
             json={
                 "org_id": 1,
                 "role_id": 1,

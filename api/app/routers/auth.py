@@ -27,20 +27,10 @@ async def login_for_access_token(
     access_token_expires = timedelta(
         minutes=int(settings.OAuth2.access_token_expire_minutes)
     )
+
+    scopes = auth.get_scopes_for_user(user)
     access_token = auth.create_access_token(
-        # TODO: get scopes from db based on role
-        data={
-            "sub": user.email,
-            "scopes": [
-                "users:me",
-                "users:read",
-                "servers:read",
-                "servers:create",
-                "servers:pull",
-                "events:read",
-                "events:create",
-            ],
-        },
+        data={"sub": user.email, "scopes": scopes},
         expires_delta=access_token_expires,
     )
     return {"access_token": access_token, "token_type": "bearer"}

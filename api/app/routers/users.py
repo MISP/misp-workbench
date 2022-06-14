@@ -46,10 +46,14 @@ def get_user_by_id(
     return db_user
 
 
-# TODO: add auth security check with scope "users:create"
 @router.post("/users/", response_model=user_schemas.User)
-# def create_user(user_request: user_schemas.UserCreate, db: Session = Depends(get_db), user: user_schemas.User = Security(get_current_active_user, scopes=["users:create"])):
-def create_user(user_request: user_schemas.UserCreate, db: Session = Depends(get_db)):
+def create_user(
+    user_request: user_schemas.UserCreate,
+    db: Session = Depends(get_db),
+    user: user_schemas.User = Security(
+        get_current_active_user, scopes=["users:create"]
+    ),
+):
     db_user = users_repository.get_user_by_email(db, email=user_request.email)
     if db_user:
         raise HTTPException(

@@ -1,10 +1,10 @@
 import pytest
 from fastapi.testclient import TestClient
 
-from ..auth import auth
-from ..models import attribute as attribute_models
-from ..models import event as event_models
-from ..models import user as user_models
+from ...auth import auth
+from ...models import attribute as attribute_models
+from ...models import event as event_models
+from ...models import user as user_models
 from .api_test import ApiTest
 
 

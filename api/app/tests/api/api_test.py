@@ -7,12 +7,12 @@ from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import Session, sessionmaker
 
-from ..auth import auth
-from ..dependencies import get_db
-from ..main import app
-from ..models import attribute as attribute_models
-from ..models import event as event_models
-from ..models import user as user_models
+from ...auth import auth
+from ...dependencies import get_db
+from ...main import app
+from ...models import attribute as attribute_models
+from ...models import event as event_models
+from ...models import user as user_models
 
 
 class ApiTest:
@@ -54,13 +54,14 @@ class ApiTest:
             db.execute("DELETE FROM attributes")
             db.execute("DELETE FROM events")
             db.execute("DELETE FROM users")
+            db.execute("DELETE FROM servers")
             db.commit()
 
     # MISP data model fixtures
     @pytest.fixture(scope="class")
     def api_tester_user(self, db: Session):
         api_tester_user = user_models.User(
-            org_id=1, role_id=1, email="api@tester.local", hashed_password="secret"
+            org_id=1, role_id=3, email="api@tester.local", hashed_password="secret"
         )
         db.add(api_tester_user)
         db.commit()

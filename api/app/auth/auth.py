@@ -113,8 +113,15 @@ async def get_current_user(
     user = users_repository.get_user_by_email(db, email=token_data.username)
     if user is None:
         raise credentials_exception
+
+    if "*" in token_data.scopes:
+        # "*" scope is superadmin, so it can access everything
+        return user
+
     for scope in security_scopes.scopes:
-        if scope not in token_data.scopes:
+        # check if the user has access to the requested scope
+        resource = scope.split(":")[0]
+        if scope not in token_data.scopes and f"{resource}:*" not in token_data.scopes:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Not enough permissions",
@@ -140,3 +147,119 @@ def authenticate_user(db: Session, username: str, password: str):
     if not verify_password(password, user.hashed_password):
         return False
     return user
+
+
+def get_scopes_for_user(user: user_schemas.User):
+    scopes = set()
+
+    # TODO: review and move these mappings to a config file or database
+    # TODO: remove redudant scopes, e.g. ["users:read", "users:*"] -> ["users:*"]
+
+    if user.role.perm_full:
+        return ["*"]
+
+    if user.role.perm_admin:
+        scopes.add("users:*")
+        scopes.add("events:*")
+        scopes.add("attributes:*")
+        scopes.add("servers:*")
+        scopes.add("roles:*")
+
+    if user.role.perm_auth:
+        scopes.add("auth:login")
+
+    if user.role.perm_add:
+        scopes.add("events:create")
+        scopes.add("attributes:create")
+        # TODO
+
+    if user.role.perm_modify:
+        scopes.add("events:update")
+        scopes.add("attributes:update")
+        # TODO
+
+    if user.role.perm_modify_org:
+        # TODO
+        pass
+
+    if user.role.perm_publish:
+        # TODO
+        pass
+
+    if user.role.perm_delegate:
+        # TODO
+        pass
+
+    if user.role.perm_sync:
+        # TODO
+        pass
+
+    if user.role.perm_admin:
+        # TODO
+        pass
+
+    if user.role.perm_audit:
+        # TODO
+        pass
+
+    if user.role.perm_full:
+        # TODO
+        pass
+
+    if user.role.perm_auth:
+        # TODO
+        pass
+
+    if user.role.perm_site_admin:
+        # TODO
+        pass
+
+    if user.role.perm_regexp_access:
+        # TODO
+        pass
+
+    if user.role.perm_tagger:
+        # TODO
+        pass
+
+    if user.role.perm_template:
+        # TODO
+        pass
+
+    if user.role.perm_sharing_group:
+        # TODO
+        pass
+
+    if user.role.perm_tag_editor:
+        # TODO
+        pass
+
+    if user.role.perm_sighting:
+        # TODO
+        pass
+
+    if user.role.perm_object_template:
+        # TODO
+        pass
+
+    if user.role.perm_galaxy_editor:
+        # TODO
+        pass
+
+    if user.role.perm_warninglist:
+        # TODO
+        pass
+
+    if user.role.perm_publish_zmq:
+        # TODO
+        pass
+
+    if user.role.perm_publish_kafka:
+        # TODO
+        pass
+
+    if user.role.perm_decaying:
+        # TODO
+        pass
+
+    return list(scopes)
