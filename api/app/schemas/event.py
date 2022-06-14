@@ -1,9 +1,11 @@
-from typing import List, Optional
-from pydantic import BaseModel
-from uuid import UUID
 from datetime import date
-from .attribute import Attribute
+from typing import Optional
+from uuid import UUID
+
+from pydantic import BaseModel
+
 from ..models.event import DistributionLevel
+from .attribute import Attribute
 
 
 class EventBase(BaseModel):
@@ -31,12 +33,14 @@ class EventBase(BaseModel):
     class Config:
         use_enum_values = True
 
+
 class Event(EventBase):
     id: int
+
     class Config:
         orm_mode = True
 
-    attributes: List[Attribute] = []
+    attributes: list[Attribute] = []
 
 
 class EventCreate(EventBase):

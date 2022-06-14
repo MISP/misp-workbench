@@ -1,9 +1,11 @@
+import time
+
 from pymisp import MISPAttribute
+from sqlalchemy.orm import Session
+
 from ..models import attribute as attribute_models
 from ..schemas import attribute as attribute_schemas
 from ..schemas import event as event_schemas
-from sqlalchemy.orm import Session
-import time
 
 
 def get_attributes(db: Session, skip: int = 0, limit: int = 100):
@@ -11,7 +13,11 @@ def get_attributes(db: Session, skip: int = 0, limit: int = 100):
 
 
 def get_attribute_by_id(db: Session, attribute_id: int):
-    return db.query(attribute_models.Attribute).filter(attribute_models.Attribute.id == attribute_id).first()
+    return (
+        db.query(attribute_models.Attribute)
+        .filter(attribute_models.Attribute.id == attribute_id)
+        .first()
+    )
 
 
 def create_attribute(db: Session, attribute: attribute_schemas.AttributeCreate):
@@ -31,7 +37,7 @@ def create_attribute(db: Session, attribute: attribute_schemas.AttributeCreate):
         deleted=attribute.deleted,
         disable_correlation=attribute.disable_correlation,
         first_seen=attribute.first_seen,
-        last_seen=attribute.last_seen
+        last_seen=attribute.last_seen,
     )
     db.add(db_attribute)
     db.commit()
@@ -40,34 +46,39 @@ def create_attribute(db: Session, attribute: attribute_schemas.AttributeCreate):
     return db_attribute
 
 
-def create_attribute_from_pulled_attribute(db: Session, pulled_attribute: MISPAttribute, local_event_id: int):
+def create_attribute_from_pulled_attribute(
+    db: Session, pulled_attribute: MISPAttribute, local_event_id: int
+):
 
     # TODO: process sharing group // captureSG
 
     # TODO: enforce warninglist
 
-    db_attribute = create_attribute(db, attribute_models.Attribute(
-        event_id=local_event_id,
-        category=pulled_attribute.category,
-        type=pulled_attribute.type,
-        value=pulled_attribute.value,
-        to_ids=pulled_attribute.to_ids,
-        uuid=pulled_attribute.uuid,
-        timestamp=pulled_attribute.timestamp.timestamp(),
-        distribution=event_schemas.DistributionLevel(pulled_attribute.distribution),
-        comment=pulled_attribute.comment,
-        sharing_group_id=pulled_attribute.sharing_group_id,
-        deleted=pulled_attribute.deleted,
-        disable_correlation=pulled_attribute.disable_correlation,
-        object_id=pulled_attribute.object_id,
-        # object_relation=pulled_attribute.object_relation, # TODO: object_relation
-        # first_seen=pulled_attribute.first_seen.timestamp(), # TODO: first_seen
-        # last_seen=pulled_attribute.last_seen.timestamp() # TODO: last_seen
-    ))
+    db_attribute = create_attribute(
+        db,
+        attribute_models.Attribute(
+            event_id=local_event_id,
+            category=pulled_attribute.category,
+            type=pulled_attribute.type,
+            value=pulled_attribute.value,
+            to_ids=pulled_attribute.to_ids,
+            uuid=pulled_attribute.uuid,
+            timestamp=pulled_attribute.timestamp.timestamp(),
+            distribution=event_schemas.DistributionLevel(pulled_attribute.distribution),
+            comment=pulled_attribute.comment,
+            sharing_group_id=pulled_attribute.sharing_group_id,
+            deleted=pulled_attribute.deleted,
+            disable_correlation=pulled_attribute.disable_correlation,
+            object_id=pulled_attribute.object_id,
+            # object_relation=pulled_attribute.object_relation, # TODO: object_relation
+            # first_seen=pulled_attribute.first_seen.timestamp(), # TODO: first_seen
+            # last_seen=pulled_attribute.last_seen.timestamp() # TODO: last_seen
+        ),
+    )
 
-   # TODO: process attribute tags
+    # TODO: process attribute tags
 
-   # TODO: process sigthings
+    # TODO: process sigthings
 
     db.add(db_attribute)
     db.commit()

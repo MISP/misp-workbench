@@ -1,15 +1,19 @@
 import pytest
 from fastapi.testclient import TestClient
+
+from ..auth import auth
 from ..models import user as user_models
 from .api_test import ApiTest
-from ..auth import auth
 
 
 class TestUsersResource(ApiTest):
-
-    @pytest.mark.parametrize('scopes', [["users:read"]])
-    def test_get_users(self, client: TestClient, user_1: user_models.User, auth_token: auth.Token):
-        response = client.get("/users/", headers={"Authorization": "Bearer " + auth_token})
+    @pytest.mark.parametrize("scopes", [["users:read"]])
+    def test_get_users(
+        self, client: TestClient, user_1: user_models.User, auth_token: auth.Token
+    ):
+        response = client.get(
+            "/users/", headers={"Authorization": "Bearer " + auth_token}
+        )
         data = response.json()
 
         assert response.status_code == 200
@@ -18,9 +22,11 @@ class TestUsersResource(ApiTest):
         assert data[0]["email"] == user_1.email
         assert data[0]["id"] == user_1.id
 
-    @pytest.mark.parametrize('scopes', [[]])
+    @pytest.mark.parametrize("scopes", [[]])
     def test_get_users_unauthorized(self, client: TestClient, auth_token: auth.Token):
-        response = client.get("/users/", headers={"Authorization": "Bearer " + auth_token})
+        response = client.get(
+            "/users/", headers={"Authorization": "Bearer " + auth_token}
+        )
 
         assert response.status_code == 401
 
@@ -32,8 +38,8 @@ class TestUsersResource(ApiTest):
                 "org_id": 1,
                 "role_id": 1,
                 "email": "foobar@example.local",
-                "password": "secret"
-            }
+                "password": "secret",
+            },
         )
         data = response.json()
 
@@ -43,8 +49,7 @@ class TestUsersResource(ApiTest):
 
     def test_create_user_incomplete(self, client: TestClient):
         # missing password
-        response = client.post(
-            "/users/", json={"email": "nopass@example.local"})
+        response = client.post("/users/", json={"email": "nopass@example.local"})
         assert response.status_code == 422
 
     def test_create_user_invalid_exists(self, client: TestClient):
@@ -55,7 +60,7 @@ class TestUsersResource(ApiTest):
                 "org_id": 1,
                 "role_id": 1,
                 "email": "foo@bar.com",
-                "password": "secret"
+                "password": "secret",
             },
         )
         data = response.json()

@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, Boolean
+from sqlalchemy import Boolean, Column, DateTime, Integer, String
 
 from .database import Base
 
@@ -37,5 +37,5 @@ class Role(Base):
     restricted_to_site_admin = Column(Boolean, nullable=False, default=False)
     enforce_rate_limit = Column(Boolean, nullable=False, default=False)
     rate_limit_count = Column(Integer, nullable=False, default=0)
-    memory_limit = Column(String, nullable=False, default='')
-    max_execution_time = Column(String, nullable=False, default='')
+    memory_limit = Column(String, nullable=False, default="")
+    max_execution_time = Column(String, nullable=False, default="")

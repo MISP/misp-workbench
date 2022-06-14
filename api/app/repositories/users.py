@@ -1,9 +1,10 @@
 import logging
+
+from sqlalchemy.orm import Session
+
+from ..auth import auth
 from ..models import user as user_models
 from ..schemas import user as user_schemas
-from sqlalchemy.orm import Session
-from hashlib import sha256
-from ..auth import auth
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +32,8 @@ def create_user(db: Session, user: user_schemas.UserCreate):
         org_id=user.org_id,
         role_id=user.role_id,
         email=user.email,
-        hashed_password=hashed_password)
+        hashed_password=hashed_password,
+    )
     db.add(db_user)
     db.commit()
     db.refresh(db_user)

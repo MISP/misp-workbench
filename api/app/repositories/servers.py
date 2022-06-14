@@ -1,17 +1,18 @@
 import logging
 from hashlib import sha1
-from sqlalchemy.orm import Session
-from fastapi import HTTPException, Depends
-from pymisp import PyMISP, MISPEvent
 
-from ..models.event import DistributionLevel, Event
+from fastapi import HTTPException
+from pymisp import MISPEvent, PyMISP
+from sqlalchemy.orm import Session
+
 from ..models import server as server_models
 from ..models import user as user_models
-from ..schemas import server as server_schemas
+from ..models.event import DistributionLevel, Event
+from ..repositories import attributes as attributes_repository
 from ..repositories import events as events_repository
 from ..repositories import users as users_repository
-from ..repositories import attributes as attributes_repository
-from ..settings import Settings, get_settings
+from ..schemas import server as server_schemas
+from ..settings import Settings
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +22,11 @@ def get_servers(db: Session, skip: int = 0, limit: int = 100):
 
 
 def get_server_by_id(db: Session, server_id: int):
-    return db.query(server_models.Server).filter(server_models.Server.id == server_id).first()
+    return (
+        db.query(server_models.Server)
+        .filter(server_models.Server.id == server_id)
+        .first()
+    )
 
 
 def create_server(db: Session, server: server_schemas.ServerCreate):
@@ -49,7 +54,8 @@ def create_server(db: Session, server: server_schemas.ServerCreate):
         internal=server.internal,
         skip_proxy=server.skip_proxy,
         caching_enabled=server.caching_enabled,
-        priority=server.priority)
+        priority=server.priority,
+    )
 
     db.add(db_server)
     db.commit()
@@ -58,7 +64,9 @@ def create_server(db: Session, server: server_schemas.ServerCreate):
     return db_server
 
 
-def pull_server_by_id(db: Session, settings: Settings, server_id: int, technique: str = "full"):
+def pull_server_by_id(
+    db: Session, settings: Settings, server_id: int, technique: str = "full"
+):
     """
     see: app/Model/Server.php::pull()
     """
@@ -71,37 +79,45 @@ def pull_server_by_id(db: Session, settings: Settings, server_id: int, technique
 
     # get remote instance version
     try:
-        remote_misp = PyMISP(
-            url=server.url,
-            key=server.authkey,
-            ssl=verify_cert
-        )
+        remote_misp = PyMISP(url=server.url, key=server.authkey, ssl=verify_cert)
         remote_misp_version = remote_misp.misp_instance_version
-    except Exception as ex:
-        raise HTTPException(status_code=500, detail="Remote MISP instance not reachable")
+    except Exception:
+        raise HTTPException(
+            status_code=500, detail="Remote MISP instance not reachable"
+        )
 
     # check sync permissions
-    if not remote_misp_version['perm_sync']:
-        raise HTTPException(status_code=401, detail="Not authorized to sync from remote MISP instance")
+    if not remote_misp_version["perm_sync"]:
+        raise HTTPException(
+            status_code=401, detail="Not authorized to sync from remote MISP instance"
+        )
 
     if technique == "pull_relevant_clusters":
         # TODO implement pull_relevant_clusters server pull technique
         raise HTTPException(
             status_code=501,
-            detail="Server pull technique `pull_relevant_clusters` not implemented yet."
+            detail="Server pull technique `pull_relevant_clusters` not implemented yet.",
         )
 
     if technique == "update":
         # TODO implement update server pull technique
-        raise HTTPException(status_code=501, detail="Server pull technique `update` not implemented yet.")
+        raise HTTPException(
+            status_code=501,
+            detail="Server pull technique `update` not implemented yet.",
+        )
 
     if technique == "full":
         return pull_server_by_id_full(db, settings, server, remote_misp)
 
-    raise HTTPException(status_code=400, detail="Unknown server pull technique `%s` not implemented yet." % technique)
+    raise HTTPException(
+        status_code=400,
+        detail="Unknown server pull technique `%s` not implemented yet." % technique,
+    )
 
 
-def pull_server_by_id_full(db: Session, settings: Settings, server: server_schemas.Server, remote_misp: PyMISP):
+def pull_server_by_id_full(
+    db: Session, settings: Settings, server: server_schemas.Server, remote_misp: PyMISP
+):
 
     # get a list of the event_ids on the server
     event_ids = get_event_ids_from_server(server, remote_misp)
@@ -114,13 +130,13 @@ def pull_server_by_id_full(db: Session, settings: Settings, server: server_schem
         pull_event_by_id(db, settings, server, event_id, remote_misp)
 
     return {
-        'message': 'Pulling server ID: %s' % server.id,
-        'technique': "full",
-        'event_ids': event_ids
+        "message": "Pulling server ID: %s" % server.id,
+        "technique": "full",
+        "event_ids": event_ids,
     }
 
 
-def get_event_ids_from_server(server:  server_schemas.Server, remote_misp: PyMISP):
+def get_event_ids_from_server(server: server_schemas.Server, remote_misp: PyMISP):
     """
     see: app/Model/Server.php::getEventIndexFromServer()
     """
@@ -128,39 +144,56 @@ def get_event_ids_from_server(server:  server_schemas.Server, remote_misp: PyMIS
     # TODO: apply filter rules / ignoreFilterRules
     # TODO: use restSearch and pagination
     events = remote_misp.search_index(minimal=True, published=True)
-    event_ids = [event['uuid'] for event in events]
+    event_ids = [event["uuid"] for event in events]
 
     return event_ids
 
 
-def pull_event_by_id(db: Session, settings: Settings, server: server_schemas.Server, event_uuid: str, remote_misp: PyMISP):
+def pull_event_by_id(
+    db: Session,
+    settings: Settings,
+    server: server_schemas.Server,
+    event_uuid: str,
+    remote_misp: PyMISP,
+):
     """
     see: app/Model/Server.php::__pullEvent()
     """
 
     # fetch event from remote server
     data = {
-        'deleted': [0, 1],
-        'excludeGalaxy': 1,
-        'includeEventCorrelations': 0,
-        'includeFeedCorrelations': 0,
-        'includeWarninglistHits': 0
+        "deleted": [0, 1],
+        "excludeGalaxy": 1,
+        "includeEventCorrelations": 0,
+        "includeFeedCorrelations": 0,
+        "includeWarninglistHits": 0,
     }
 
     if server.internal:
-        data['excludeLocalTags'] = 1
+        data["excludeLocalTags"] = 1
 
     try:
-        response = remote_misp._prepare_request('POST', f'events/view/{event_uuid}', data=data)
+        response = remote_misp._prepare_request(
+            "POST", f"events/view/{event_uuid}", data=data
+        )
         event_raw = remote_misp._check_json_response(response)
         event = MISPEvent()
         event.load(event_raw)
     except Exception as ex:
-        logger.error("Failed downloading the event %s from remote server %s" % (event_uuid, server.id), ex)
+        logger.error(
+            "Failed downloading the event {} from remote server {}".format(
+                event_uuid, server.id
+            ),
+            ex,
+        )
         return False
 
     if event is None:
-        logger.error("Empty event returned from the event %s from remote server %s" % (event_uuid, server.id))
+        logger.error(
+            "Empty event returned from the event {} from remote server {}".format(
+                event_uuid, server.id
+            )
+        )
         return False
 
     # TODO: get user from auth
@@ -190,7 +223,13 @@ def pull_event_by_id(db: Session, settings: Settings, server: server_schemas.Ser
     return True
 
 
-def update_pulled_event_before_insert(db: Session, settings: Settings, event: MISPEvent, server: server_schemas.Server, user: user_models.User):
+def update_pulled_event_before_insert(
+    db: Session,
+    settings: Settings,
+    event: MISPEvent,
+    server: server_schemas.Server,
+    user: user_models.User,
+):
     """
     see: app/Model/Server.php::__updatePulledEventBeforeInsert()
     see: app/Model/Event::_add()
@@ -198,7 +237,11 @@ def update_pulled_event_before_insert(db: Session, settings: Settings, event: MI
 
     event.locked = True
 
-    if settings.MISP.host_org_id is None or not server.internal or settings.MISP.host_org_id != server.org_id:
+    if (
+        settings.MISP.host_org_id is None
+        or not server.internal
+        or settings.MISP.host_org_id != server.org_id
+    ):
         # update event distribution level
         event.distribution = downgrade_distribution(event.distribution)
 
@@ -235,8 +278,11 @@ def update_pulled_event_before_insert(db: Session, settings: Settings, event: MI
         event.orgc_id = event.org_id
 
     if not user.can_create_pulled_event(event):
-        logger.warning("User %s is not authorized to create events in org %s" % (user.id, event.org_id))
-        pass
+        logger.warning(
+            "User {} is not authorized to create events in org {}".format(
+                user.id, event.org_id
+            )
+        )
 
     event.id = None
 
@@ -250,7 +296,7 @@ def update_pulled_event_before_insert(db: Session, settings: Settings, event: MI
 
 
 def downgrade_distribution(distribution: DistributionLevel):
-    if (distribution is None):
+    if distribution is None:
         return DistributionLevel.COMMUNITY_ONLY
 
     if distribution == DistributionLevel.COMMUNITY_ONLY:
@@ -270,16 +316,25 @@ def check_if_event_is_not_empty(event: MISPEvent):
     if any(attribute for attribute in event.attributes if not attribute.deleted):
         return True
 
-    if any(object for object in event.objects if not object.deleted and any(attribute for attribute in object.attributes if not attribute.deleted)):
+    if any(
+        object
+        for object in event.objects
+        if not object.deleted
+        and any(attribute for attribute in object.attributes if not attribute.deleted)
+    ):
         return True
 
-    if any(event_report for event_report in event.event_reports if not event_report.deleted):
+    if any(
+        event_report for event_report in event.event_reports if not event_report.deleted
+    ):
         return True
 
     return False
 
 
-def create_or_update_pulled_event(db: Session, event: MISPEvent, server: server_schemas.Server, user: user_models.User):
+def create_or_update_pulled_event(
+    db: Session, event: MISPEvent, server: server_schemas.Server, user: user_models.User
+):
     """
     see: app/Model/Server.php::__checkIfPulledEventExistsAndAddOrUpdate()
     """
@@ -293,23 +348,27 @@ def create_or_update_pulled_event(db: Session, event: MISPEvent, server: server_
         created = events_repository.create_event_from_pulled_event(db, event)
         if created:
             # process attributes
-            db_attributes = create_pulled_event_attributes(db, created.id, event, server, user)
+            create_pulled_event_attributes(db, created.id, event, server, user)
 
             # TODO: process objects
-            db_objects = create_pulled_event_objects(db, created.id, event, server, user)
+            create_pulled_event_objects(db, created.id, event, server, user)
             # TODO: publish event creation to ZMQ
-            logger.info(f'Event {event.uuid} created')
+            logger.info(f"Event {event.uuid} created")
             return created
     else:
         # update event
         if not existing_event.locked and not server.internal:
-            logger.warning("Blocked an edit to an event that was created locally. This can happen if a synchronised event that was created on this instance was modified by an administrator on the remote side.")
+            logger.warning(
+                "Blocked an edit to an event that was created locally. This can happen if a synchronised event that was created on this instance was modified by an administrator on the remote side."
+            )
             return False
 
         # TODO: handle protected event
 
         # TODO: see Event::_edit
-        updated = events_repository.update_event_from_pulled_event(db, existing_event, event)
+        updated = events_repository.update_event_from_pulled_event(
+            db, existing_event, event
+        )
         if updated:
             # TODO: process attribute updates
             # TODO: process object updates
@@ -320,7 +379,13 @@ def create_or_update_pulled_event(db: Session, event: MISPEvent, server: server_
     return False
 
 
-def create_pulled_event_attributes(db: Session, local_event_id: int, event: Event, server: server_schemas.Server, user: user_models.User):
+def create_pulled_event_attributes(
+    db: Session,
+    local_event_id: int,
+    event: Event,
+    server: server_schemas.Server,
+    user: user_models.User,
+):
     """
     see: app/Model/Event.php::_add()
     """
@@ -328,13 +393,23 @@ def create_pulled_event_attributes(db: Session, local_event_id: int, event: Even
     # TODO: extract this logic somewhere reusable
     hashes_dict = {}
     for attribute in event.attributes:
-        hash = sha1((str(attribute.value) + attribute.type + attribute.category).encode('utf-8')).hexdigest()
+        hash = sha1(
+            (str(attribute.value) + attribute.type + attribute.category).encode("utf-8")
+        ).hexdigest()
         if hash not in hashes_dict:
             # Attribute::captureAttribute()
-            attributes_repository.create_attribute_from_pulled_attribute(db, attribute, local_event_id)
+            attributes_repository.create_attribute_from_pulled_attribute(
+                db, attribute, local_event_id
+            )
             hashes_dict[hash] = True
 
 
-def create_pulled_event_objects(db: Session, local_event_id: int, event: MISPEvent, server: server_schemas.Server, user: user_models.User):
+def create_pulled_event_objects(
+    db: Session,
+    local_event_id: int,
+    event: MISPEvent,
+    server: server_schemas.Server,
+    user: user_models.User,
+):
     # TODO
     pass

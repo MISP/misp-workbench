@@ -13,7 +13,7 @@ pymisp = "^2.4.159"
 pydantic = "^1.8.0"
 sqlalchemy = "^1.4.35"
 psycopg2-binary = "^2.9.3"
-alembic = "^1.7.7"
+alembic = "^1.7.7"  
 python-multipart = "^0.0.5"
 python-jose = "^3.3.0"
 cryptography = "^37.0.2"
@@ -23,12 +23,18 @@ celery = "^5.2.7"
 flower = "^1.0.0"
 Jinja2 = "^3.1.2"
 redis = "^4.3.3"
-debugpy = "^1.6.0"
 
 [tool.poetry.dev-dependencies]
 pytest = "^7.1.2"
 requests = "^2.27.1"
 debugpy = "^1.6.0"
+pyupgrade = "^2.34.0"
+autoflake = "^1.4"
+autopep8 = "^1.6.0"
+black = "^22.3.0"
+coveralls = "^3.3.1"
+flake8 = "^4.0.1"
+pre-commit = "^2.19.0"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

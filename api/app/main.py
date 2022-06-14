@@ -1,9 +1,11 @@
 import logging.config
+
 from fastapi import FastAPI
-from .routers import users, events, attributes, servers, roles, auth
+
+from .routers import attributes, auth, events, roles, servers, users
 
 # setup loggers
-logging.config.fileConfig('logging.conf', disable_existing_loggers=False)
+logging.config.fileConfig("logging.conf", disable_existing_loggers=False)
 
 # Bootstrap application
 app = FastAPI(title="misp-lite API", version="0.1.0")

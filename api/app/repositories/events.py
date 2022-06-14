@@ -1,9 +1,11 @@
 import time
 from datetime import datetime
+
 from pymisp import MISPEvent
+from sqlalchemy.orm import Session
+
 from ..models import event as event_models
 from ..schemas import event as event_schemas
-from sqlalchemy.orm import Session
 
 
 def get_events(db: Session, skip: int = 0, limit: int = 100, filters: dict = {}):
@@ -20,11 +22,17 @@ def get_events(db: Session, skip: int = 0, limit: int = 100, filters: dict = {})
 
 
 def get_event_by_id(db: Session, event_id: int):
-    return db.query(event_models.Event).filter(event_models.Event.id == event_id).first()
+    return (
+        db.query(event_models.Event).filter(event_models.Event.id == event_id).first()
+    )
 
 
 def get_event_by_uuid(db: Session, event_uuid: str):
-    return db.query(event_models.Event).filter(event_models.Event.uuid == event_uuid).first()
+    return (
+        db.query(event_models.Event)
+        .filter(event_models.Event.uuid == event_uuid)
+        .first()
+    )
 
 
 def get_user_by_info(db: Session, info: str):
@@ -52,7 +60,7 @@ def create_event(db: Session, event: event_schemas.EventCreate):
         sighting_timestamp=event.sighting_timestamp,
         disable_correlation=event.disable_correlation,
         extends_uuid=event.extends_uuid,
-        protected=event.protected
+        protected=event.protected,
     )
     db.add(db_event)
     db.commit()
@@ -91,14 +99,18 @@ def create_event_from_pulled_event(db: Session, pulled_event: MISPEvent):
     return event
 
 
-def update_event_from_pulled_event(db: Session, existing_event: event_models.Event, pulled_event: MISPEvent):
+def update_event_from_pulled_event(
+    db: Session, existing_event: event_models.Event, pulled_event: MISPEvent
+):
     existing_event.date = pulled_event.date
     existing_event.info = pulled_event.info
     existing_event.uuid = pulled_event.uuid
     existing_event.published = pulled_event.published
     existing_event.analysis = pulled_event.analysis
     existing_event.timestamp = pulled_event.timestamp.timestamp()
-    existing_event.distribution = event_models.DistributionLevel(pulled_event.distribution)
+    existing_event.distribution = event_models.DistributionLevel(
+        pulled_event.distribution
+    )
     existing_event.sharing_group_id = pulled_event.sharing_group_id
     existing_event.threat_level_id = pulled_event.threat_level_id
     existing_event.disable_correlation = pulled_event.disable_correlation

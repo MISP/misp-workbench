@@ -1,7 +1,6 @@
 from pymisp import MISPEvent
-from sqlalchemy import Column, Integer, String, ForeignKey, Boolean
+from sqlalchemy import Boolean, Column, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
-from .role import Role
 
 from .database import Base
 
@@ -24,10 +23,16 @@ class User(Base):
         see: app/Model/Event.php::_add()
         """
 
-        if event.orgc_id is not None and event.orgc_id == self.org_id and (self.role.perm_sync or self.role.perm_admin):
+        if (
+            event.orgc_id is not None
+            and event.orgc_id == self.org_id
+            and (self.role.perm_sync or self.role.perm_admin)
+        ):
             return True
 
-        if event.orgc.uuid == self.organisation.uuid and (self.roleperm_sync or self.role.perm_admin):
+        if event.orgc.uuid == self.organisation.uuid and (
+            self.roleperm_sync or self.role.perm_admin
+        ):
             return True
 
         return False

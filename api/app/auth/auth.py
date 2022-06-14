@@ -1,21 +1,21 @@
-from asyncio.log import logger
+from datetime import datetime, timedelta
+from typing import Union
+
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, SecurityScopes
-from sqlalchemy.orm import Session
-from datetime import datetime, timedelta
-from typing import Union, List
-from pydantic import BaseModel, ValidationError
 from jose import JWTError, jwt
 from passlib.context import CryptContext
-from datetime import datetime, timedelta
-from ..repositories import users as users_repository
+from pydantic import BaseModel, ValidationError
+from sqlalchemy.orm import Session
+
 from ..dependencies import get_db
+from ..repositories import users as users_repository
 from ..schemas import user as user_schemas
 from ..settings import Settings, get_settings
 
-
 # see: https://fastapi.tiangolo.com/tutorial/security/oauth2-jwt/
 # see: https://fastapi.tiangolo.com/advanced/security/
+
 
 class Token(BaseModel):
     access_token: str
@@ -23,8 +23,8 @@ class Token(BaseModel):
 
 
 class TokenData(BaseModel):
-    username: Union[str, None] = None
-    scopes: List[str] = []
+    username: str = ""
+    scopes: list[str] = []
 
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -32,7 +32,8 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(
     tokenUrl="auth/token",
     scopes={
-        "users:me": "Read information about the current user.", "items": "Read items.",
+        "users:me": "Read information about the current user.",
+        "items": "Read items.",
         "users:create": "Create users.",
         "users:read": "Read users.",
         "users:update": "Update users.",
@@ -54,8 +55,7 @@ oauth2_scheme = OAuth2PasswordBearer(
         "servers:update": "Update servers.",
         "servers:delete": "Delete servers.",
         "servers:pull": "Pull server by id.",
-
-    }
+    },
 )
 
 
@@ -67,29 +67,42 @@ def get_password_hash(password):
     return pwd_context.hash(password)
 
 
-def create_access_token(data: dict, expires_delta: Union[timedelta, None] = None, settings: Settings = get_settings()):
+def create_access_token(
+    data: dict,
+    expires_delta: Union[timedelta, None] = None,
+    settings: Settings = get_settings(),
+):
     to_encode = data.copy()
     if expires_delta:
         expire = datetime.utcnow() + expires_delta
     else:
         expire = datetime.utcnow() + timedelta(minutes=15)
     to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, settings.OAuth2.secret_key, algorithm=settings.OAuth2.algorithm)
+    encoded_jwt = jwt.encode(
+        to_encode, settings.OAuth2.secret_key, algorithm=settings.OAuth2.algorithm
+    )
     return encoded_jwt
 
 
-async def get_current_user(security_scopes: SecurityScopes, token: str = Depends(oauth2_scheme), db: Session = Depends(get_db), settings: Settings = Depends(get_settings)):
+async def get_current_user(
+    security_scopes: SecurityScopes,
+    token: str = Depends(oauth2_scheme),
+    db: Session = Depends(get_db),
+    settings: Settings = Depends(get_settings),
+):
     if security_scopes.scopes:
         authenticate_value = f'Bearer scope="{security_scopes.scope_str}"'
     else:
-        authenticate_value = f"Bearer"
+        authenticate_value = "Bearer"
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": authenticate_value},
     )
     try:
-        payload = jwt.decode(token, settings.OAuth2.secret_key, algorithms=[settings.OAuth2.algorithm])
+        payload = jwt.decode(
+            token, settings.OAuth2.secret_key, algorithms=[settings.OAuth2.algorithm]
+        )
         username: str = payload.get("sub")
         if username is None:
             raise credentials_exception
@@ -110,9 +123,13 @@ async def get_current_user(security_scopes: SecurityScopes, token: str = Depends
     return user
 
 
-async def get_current_active_user(current_user: user_schemas.User = Depends(get_current_user)):
+async def get_current_active_user(
+    current_user: user_schemas.User = Depends(get_current_user),
+):
     if current_user.disabled:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Inactive user")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Inactive user"
+        )
     return current_user
 
 
