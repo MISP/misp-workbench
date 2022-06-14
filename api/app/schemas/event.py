@@ -6,6 +6,7 @@ from pydantic import BaseModel
 
 from ..models.event import DistributionLevel
 from .attribute import Attribute
+from .object import Object
 
 
 class EventBase(BaseModel):
@@ -36,11 +37,11 @@ class EventBase(BaseModel):
 
 class Event(EventBase):
     id: int
+    attributes: list[Attribute] = []
+    objects: list[Object] = []
 
     class Config:
         orm_mode = True
-
-    attributes: list[Attribute] = []
 
 
 class EventCreate(EventBase):

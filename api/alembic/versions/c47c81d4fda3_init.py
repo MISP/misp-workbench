@@ -95,15 +95,7 @@ def upgrade():
         sa.Column("timestamp", sa.Integer(), nullable=False),
         sa.Column(
             "distribution",
-            postgresql.ENUM(
-                "ORGANISATION_ONLY",
-                "COMMUNITY_ONLY",
-                "CONNECTED_COMMUNITIES",
-                "ALL_COMMUNITIES",
-                "SHARING_GROUP",
-                "INHERIT_EVENT",
-                name="distribution_level",
-            ),
+            postgresql.ENUM(name="distribution_level", create_type=False),
             nullable=False,
         ),
         sa.Column("sharing_group_id", sa.Integer(), nullable=True),
