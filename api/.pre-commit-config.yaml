@@ -1,3 +1,4 @@
+files: ^api/
 repos:
   - repo: https://github.com/asottile/pyupgrade
     rev: v2.34.0
