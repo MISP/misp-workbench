@@ -43,7 +43,6 @@ class TestEventsResource(ApiTest):
         response = client.get(
             "/events/", headers={"Authorization": "Bearer " + auth_token}
         )
-        response.json()
 
         assert response.status_code == 401
 
@@ -96,7 +95,6 @@ class TestEventsResource(ApiTest):
             json={"user_id": 1, "orgc_id": 1, "org_id": 1, "date": "2020-01-01"},
             headers={"Authorization": "Bearer " + auth_token},
         )
-        response.json()
         assert response.status_code == 422
 
     @pytest.mark.parametrize("scopes", [["events:create"]])

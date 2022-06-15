@@ -16,8 +16,7 @@ def get_users(
     db: Session = Depends(get_db),
     user: user_schemas.User = Security(get_current_active_user, scopes=["users:read"]),
 ):
-    users = users_repository.get_users(db, skip=skip, limit=limit)
-    return users
+    return users_repository.get_users(db, skip=skip, limit=limit)
 
 
 @router.get("/users/me", response_model=user_schemas.User)

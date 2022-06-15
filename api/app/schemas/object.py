@@ -31,3 +31,7 @@ class Object(ObjectBase):
 
     class Config:
         orm_mode = True
+
+
+class ObjectCreate(ObjectBase):
+    pass

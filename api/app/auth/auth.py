@@ -50,6 +50,10 @@ oauth2_scheme = OAuth2PasswordBearer(
         "attributes:read": "Read attributes.",
         "attributes:update": "Update attributes.",
         "attributes:delete": "Delete attributes.",
+        "objects:create": "Create objects.",
+        "objects:read": "Read objects.",
+        "objects:update": "Update objects.",
+        "objects:delete": "Delete objects.",
         "servers:create": "Create servers.",
         "servers:read": "Read servers.",
         "servers:update": "Update servers.",
@@ -162,6 +166,7 @@ def get_scopes_for_user(user: user_schemas.User):
         scopes.add("users:*")
         scopes.add("events:*")
         scopes.add("attributes:*")
+        scopes.add("objects:*")
         scopes.add("servers:*")
         scopes.add("roles:*")
 
@@ -171,11 +176,13 @@ def get_scopes_for_user(user: user_schemas.User):
     if user.role.perm_add:
         scopes.add("events:create")
         scopes.add("attributes:create")
+        scopes.add("objects:create")
         # TODO
 
     if user.role.perm_modify:
         scopes.add("events:update")
         scopes.add("attributes:update")
+        scopes.add("objects:update")
         # TODO
 
     if user.role.perm_modify_org:

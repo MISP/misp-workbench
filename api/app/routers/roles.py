@@ -17,5 +17,4 @@ def get_roles(
     db: Session = Depends(get_db),
     user: user_schemas.User = Security(get_current_active_user, scopes=["roles:read"]),
 ):
-    roles = roles_repository.get_roles(db, skip=skip, limit=limit)
-    return roles
+    return roles_repository.get_roles(db, skip=skip, limit=limit)

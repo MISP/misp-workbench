@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from ..auth.auth import get_current_active_user
 from ..dependencies import get_db
 from ..repositories import attributes as attributes_repository
+from ..repositories import events as events_repository
 from ..schemas import attribute as attribute_schemas
 from ..schemas import user as user_schemas
 
@@ -19,8 +20,7 @@ def get_attributes(
         get_current_active_user, scopes=["attributes:read"]
     ),
 ):
-    attributes = attributes_repository.get_attributes(db, skip=skip, limit=limit)
-    return attributes
+    return attributes_repository.get_attributes(db, skip=skip, limit=limit)
 
 
 @router.get("/attributes/{attribute_id}", response_model=attribute_schemas.Attribute)
@@ -49,4 +49,10 @@ def create_attribute(
         get_current_active_user, scopes=["attributes:create"]
     ),
 ):
+    event = events_repository.get_event_by_id(db, event_id=attribute.event_id)
+    if event is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Event not found"
+        )
+
     return attributes_repository.create_attribute(db=db, attribute=attribute)

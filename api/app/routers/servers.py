@@ -21,8 +21,7 @@ def get_servers(
         get_current_active_user, scopes=["servers:read"]
     ),
 ):
-    servers = servers_repository.get_servers(db, skip=skip, limit=limit)
-    return servers
+    return servers_repository.get_servers(db, skip=skip, limit=limit)
 
 
 @router.get("/servers/{server_id}", response_model=server_schemas.Server)
