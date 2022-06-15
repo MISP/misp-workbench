@@ -51,7 +51,7 @@ jobs:
         uses: actions/cache@v2
         with:
           path: api
-          key: venv-${{ runner.os }}-${{ matrix.python-version }}-${{ matrix.poetry-version }}-${{ hashFiles('api/poetry.lock') }}
+          key: venv1-${{ runner.os }}-${{ matrix.python-version }}-${{ matrix.poetry-version }}-${{ hashFiles('api/poetry.lock') }}
 
       - name: Install dependencies
         working-directory: api
