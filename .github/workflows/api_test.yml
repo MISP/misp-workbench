@@ -37,6 +37,8 @@ jobs:
 
       - name: Install and configure Poetry
         uses: snok/install-poetry@v1
+        env:
+          PYTHONDONTWRITEBYTECODE: 1
         with:
           version: ${{ matrix.poetry-version }}
           virtualenvs-create: true
@@ -49,11 +51,13 @@ jobs:
         uses: actions/cache@v2
         with:
           path: api
-          key: venv1-${{ runner.os }}-${{ matrix.python-version }}-${{ matrix.poetry-version }}-${{ hashFiles('api/poetry.lock') }}
+          key: venv-${{ runner.os }}-${{ matrix.python-version }}-${{ matrix.poetry-version }}-${{ hashFiles('api/poetry.lock') }}
 
       - name: Install dependencies
         working-directory: api
         if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
+        env:
+          PYTHONDONTWRITEBYTECODE: 1
         run: poetry install --no-interaction --no-root
 
       - name: Run DB migrations
