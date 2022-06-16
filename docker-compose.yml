@@ -46,7 +46,7 @@ services:
     build:
       context: ./api
       dockerfile: Dockerfile
-    command: poetry run celery -A app.worker.worker worker --loglevel=info
+    command: poetry run celery -A app.worker.worker worker --uid=nobody --gid=nogroup --loglevel=info
     volumes:
       - "./api:/code"
     environment:
@@ -62,6 +62,7 @@ services:
       CELERY_RESULT_BACKEND: redis://${REDIS_HOSTNAME}:${REDIS_PORT}/${REDIS_CELERY_DB}
     depends_on:
       - redis
+      - postgres
       - api
 
   flower:
