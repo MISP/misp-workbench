@@ -40,6 +40,7 @@ def get_user_by_info(db: Session, info: str):
 
 
 def create_event(db: Session, event: event_schemas.EventCreate):
+    # TODO: Event::beforeValidate() && Event::$validate
     db_event = event_models.Event(
         org_id=event.org_id,
         date=event.date or datetime.now(),

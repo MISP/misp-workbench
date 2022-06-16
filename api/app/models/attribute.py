@@ -14,8 +14,7 @@ class Attribute(Base):
         Integer, primary_key=True, index=True, autoincrement=True, nullable=False
     )
     event_id = Column(Integer, ForeignKey("events.id"), index=True, nullable=False)
-    # TODO: ForeignKey("objects.id")
-    object_id = Column(Integer, index=True, nullable=True)
+    object_id = Column(Integer, ForeignKey("objects.id"))
     object_relation = Column(String(255), index=True)
     category = Column(String(255), index=True)
     type = Column(String(100), index=True)

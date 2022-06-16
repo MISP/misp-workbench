@@ -52,7 +52,7 @@ def pull_server(
         get_current_active_user, scopes=["servers:pull"]
     ),
 ):
-    task = worker.server_pull_by_id.delay(server_id)
+    task = worker.server_pull_by_id.delay(server_id, user.id)
 
     return task_schemas.Task(
         task_id=task.id,

@@ -57,3 +57,4 @@ class Event(Base):
     protected = Column(Boolean, nullable=False, default=False)
 
     attributes = relationship("Attribute")
+    objects = relationship("Object")

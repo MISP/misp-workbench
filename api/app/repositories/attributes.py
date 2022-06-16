@@ -21,6 +21,7 @@ def get_attribute_by_id(db: Session, attribute_id: int):
 
 
 def create_attribute(db: Session, attribute: attribute_schemas.AttributeCreate):
+    # TODO: Attribute::beforeValidate() && Attribute::$validate
     db_attribute = attribute_models.Attribute(
         event_id=attribute.event_id,
         object_id=attribute.object_id,
@@ -49,9 +50,7 @@ def create_attribute(db: Session, attribute: attribute_schemas.AttributeCreate):
 def create_attribute_from_pulled_attribute(
     db: Session, pulled_attribute: MISPAttribute, local_event_id: int
 ):
-
     # TODO: process sharing group // captureSG
-
     # TODO: enforce warninglist
 
     db_attribute = create_attribute(
@@ -70,14 +69,17 @@ def create_attribute_from_pulled_attribute(
             deleted=pulled_attribute.deleted,
             disable_correlation=pulled_attribute.disable_correlation,
             object_id=pulled_attribute.object_id,
-            # object_relation=pulled_attribute.object_relation, # TODO: object_relation
-            # first_seen=pulled_attribute.first_seen.timestamp(), # TODO: first_seen
-            # last_seen=pulled_attribute.last_seen.timestamp() # TODO: last_seen
+            object_relation=getattr(pulled_attribute, "object_relation", None),
+            first_seen=pulled_attribute.first_seen.timestamp()
+            if hasattr(pulled_attribute, "first_seen")
+            else None,
+            last_seen=pulled_attribute.last_seen.timestamp()
+            if hasattr(pulled_attribute, "last_seen")
+            else None,
         ),
     )
 
     # TODO: process attribute tags
-
     # TODO: process sigthings
 
     db.add(db_attribute)

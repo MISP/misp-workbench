@@ -1,7 +1,8 @@
 import uuid
 
-from sqlalchemy import Boolean, Column, Enum, Integer, String
+from sqlalchemy import Boolean, Column, Enum, ForeignKey, Integer, String
 from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import relationship
 
 from .database import Base
 from .event import DistributionLevel
@@ -16,7 +17,7 @@ class Object(Base):
     description = Column(String)
     template_uuid = Column(UUID(as_uuid=True), unique=True, default=uuid.uuid4)
     template_version = Column(Integer, nullable=False)
-    event_id = Column(Integer, nullable=False)
+    event_id = Column(Integer, ForeignKey("events.id"), nullable=False)
     uuid = Column(UUID(as_uuid=True), unique=True, default=uuid.uuid4)
     timestamp = Column(Integer, nullable=False)
     distribution = Column(
@@ -29,3 +30,5 @@ class Object(Base):
     deleted = Column(Boolean, nullable=False, default=False)
     first_seen = Column(Integer)
     last_seen = Column(Integer)
+
+    attributes = relationship("Attribute")

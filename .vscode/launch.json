@@ -10,6 +10,7 @@
             "request": "attach",
             "port": 5678,
             "host": "localhost",
+            "justMyCode": false,
             "pathMappings": [
                 {
                     "localRoot": "${workspaceFolder}/api",
@@ -21,6 +22,7 @@
             "name": "Celery: Remote Attach",
             "type": "python",
             "request": "attach",
+            "justMyCode": false,
             "connect": {
                 "host": "localhost",
                 "port": 5679

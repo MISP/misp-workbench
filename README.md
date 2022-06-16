@@ -154,7 +154,7 @@ $ poetry run pre-commit run --all-files
   - protected events logic
   - event attribute updates
   - event object updates
-  - breakOnDuplicate logic
+  - breakOnDuplicate logic for attributes and objects
 - Server Push
 - Feeds fetch
 

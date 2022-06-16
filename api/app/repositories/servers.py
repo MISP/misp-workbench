@@ -1,15 +1,18 @@
 import logging
 from hashlib import sha1
+from typing import Union
+from xmlrpc.client import Boolean
 
 from fastapi import HTTPException
-from pymisp import MISPEvent, PyMISP
+from pymisp import MISPAttribute, MISPEvent, MISPObject, PyMISP
 from sqlalchemy.orm import Session
 
 from ..models import server as server_models
 from ..models import user as user_models
-from ..models.event import DistributionLevel, Event
+from ..models.event import DistributionLevel
 from ..repositories import attributes as attributes_repository
 from ..repositories import events as events_repository
+from ..repositories import objects as objects_repository
 from ..repositories import users as users_repository
 from ..schemas import server as server_schemas
 from ..settings import Settings
@@ -65,7 +68,11 @@ def create_server(db: Session, server: server_schemas.ServerCreate):
 
 
 def pull_server_by_id(
-    db: Session, settings: Settings, server_id: int, technique: str = "full"
+    db: Session,
+    settings: Settings,
+    server_id: int,
+    user: user_models.User,
+    technique: str = "full",
 ):
     """
     see: app/Model/Server.php::pull()
@@ -107,7 +114,7 @@ def pull_server_by_id(
         )
 
     if technique == "full":
-        return pull_server_by_id_full(db, settings, server, remote_misp)
+        return pull_server_by_id_full(db, settings, server, remote_misp, user)
 
     raise HTTPException(
         status_code=400,
@@ -116,7 +123,11 @@ def pull_server_by_id(
 
 
 def pull_server_by_id_full(
-    db: Session, settings: Settings, server: server_schemas.Server, remote_misp: PyMISP
+    db: Session,
+    settings: Settings,
+    server: server_schemas.Server,
+    remote_misp: PyMISP,
+    user: user_models.User,
 ):
 
     # get a list of the event_ids on the server
@@ -127,7 +138,7 @@ def pull_server_by_id_full(
 
     # pull each of the events sequentially
     for event_id in event_ids:
-        pull_event_by_id(db, settings, server, event_id, remote_misp)
+        pull_event_by_id(db, settings, server, event_id, remote_misp, user)
 
     return {
         "message": "Pulling server ID: %s" % server.id,
@@ -155,6 +166,7 @@ def pull_event_by_id(
     server: server_schemas.Server,
     event_uuid: str,
     remote_misp: PyMISP,
+    user: user_models.User,
 ):
     """
     see: app/Model/Server.php::__pullEvent()
@@ -195,9 +207,6 @@ def pull_event_by_id(
             )
         )
         return False
-
-    # TODO: get user from auth
-    user = users_repository.get_users(db, limit=1)[0]
 
     event = update_pulled_event_before_insert(db, settings, event, server, user)
 
@@ -251,20 +260,12 @@ def update_pulled_event_before_insert(
         # process attributes
         if event.attributes:
             for attribute in event.attributes:
-
-                # TODO: handle MISP.enable_synchronisation_filtering_on_type / attributes pullRules
-
-                attribute.distribution = downgrade_distribution(attribute.distribution)
-
-                # remove local tags obtained via pull
-                attribute.tags = [tag for tag in attribute.tags if not tag.local]
-
-                # TODO pullRulesEmptiedEvent
+                attribute = update_pulled_attribute_before_insert(attribute)
 
         # process objects
         if event.objects:
-            # TODO handle objects
-            pass
+            for object in event.objects:
+                object = update_pulled_object_before_insert(object)
 
         # process event reports
         if event.event_reports:
@@ -295,7 +296,29 @@ def update_pulled_event_before_insert(
     return event
 
 
-def downgrade_distribution(distribution: DistributionLevel):
+def update_pulled_attribute_before_insert(attribute: MISPAttribute) -> MISPAttribute:
+    # TODO: handle MISP.enable_synchronisation_filtering_on_type / attributes pullRules
+
+    attribute.distribution = downgrade_distribution(attribute.distribution)
+
+    # remove local tags obtained via pull
+    attribute.tags = [tag for tag in attribute.tags if not tag.local]
+
+    return attribute
+
+
+def update_pulled_object_before_insert(object: MISPObject) -> MISPObject:
+    # TODO: handle MISP.enable_synchronisation_filtering_on_type / attributes pullRules
+
+    object.distribution = downgrade_distribution(object.distribution)
+
+    for attribute in object.attributes:
+        attribute = update_pulled_attribute_before_insert(attribute)
+
+    return object
+
+
+def downgrade_distribution(distribution: DistributionLevel) -> DistributionLevel:
     if distribution is None:
         return DistributionLevel.COMMUNITY_ONLY
 
@@ -309,7 +332,7 @@ def downgrade_distribution(distribution: DistributionLevel):
     return distribution
 
 
-def check_if_event_is_not_empty(event: MISPEvent):
+def check_if_event_is_not_empty(event: MISPEvent) -> Boolean:
     """
     see: app/Model/Server.php::__checkIfEventSaveAble()
     """
@@ -334,7 +357,7 @@ def check_if_event_is_not_empty(event: MISPEvent):
 
 def create_or_update_pulled_event(
     db: Session, event: MISPEvent, server: server_schemas.Server, user: user_models.User
-):
+) -> Union[MISPEvent, Boolean]:
     """
     see: app/Model/Server.php::__checkIfPulledEventExistsAndAddOrUpdate()
     """
@@ -347,11 +370,11 @@ def create_or_update_pulled_event(
 
         created = events_repository.create_event_from_pulled_event(db, event)
         if created:
-            # process attributes
-            create_pulled_event_attributes(db, created.id, event, server, user)
-
-            # TODO: process objects
+            create_pulled_event_attributes(
+                db, created.id, event.attributes, server, user
+            )
             create_pulled_event_objects(db, created.id, event, server, user)
+
             # TODO: publish event creation to ZMQ
             logger.info(f"Event {event.uuid} created")
             return created
@@ -382,22 +405,22 @@ def create_or_update_pulled_event(
 def create_pulled_event_attributes(
     db: Session,
     local_event_id: int,
-    event: Event,
+    attributes: list[MISPAttribute],
     server: server_schemas.Server,
     user: user_models.User,
-):
+) -> None:
     """
     see: app/Model/Event.php::_add()
     """
 
     # TODO: extract this logic somewhere reusable
     hashes_dict = {}
-    for attribute in event.attributes:
+    for attribute in attributes:
         hash = sha1(
             (str(attribute.value) + attribute.type + attribute.category).encode("utf-8")
         ).hexdigest()
         if hash not in hashes_dict:
-            # Attribute::captureAttribute()
+            # see: Attribute::captureAttribute()
             attributes_repository.create_attribute_from_pulled_attribute(
                 db, attribute, local_event_id
             )
@@ -410,6 +433,14 @@ def create_pulled_event_objects(
     event: MISPEvent,
     server: server_schemas.Server,
     user: user_models.User,
-):
-    # TODO
-    pass
+) -> None:
+    """
+    see: app/Model/Event.php::_add()
+    """
+
+    for object in event.objects:
+        # see: Object::captureObject()
+        # TODO: MispObject::checkForDuplicateObjects()
+        objects_repository.create_object_from_pulled_object(db, object, local_event_id)
+
+    # see: ObjectReference::captureReference()
