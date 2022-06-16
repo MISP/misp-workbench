@@ -5,10 +5,10 @@ from ...auth import auth
 from ...models import event as event_models
 from ...models import object as object_models
 from ...models import user as user_models
-from .api_test import ApiTest
+from ..api_tester import ApiTester
 
 
-class TestObjectsResource(ApiTest):
+class TestObjectsResource(ApiTester):
     @pytest.mark.parametrize("scopes", [["objects:read"]])
     def test_get_objects(
         self,

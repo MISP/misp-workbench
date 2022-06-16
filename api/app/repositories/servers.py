@@ -67,6 +67,25 @@ def create_server(db: Session, server: server_schemas.ServerCreate):
     return db_server
 
 
+def get_remote_misp_connection(server: server_models.Server):
+    verify_cert = not server.self_signed
+
+    try:
+        remote_misp = PyMISP(url=server.url, key=server.authkey, ssl=verify_cert)
+        remote_misp_version = remote_misp.misp_instance_version
+    except Exception:
+        raise HTTPException(
+            status_code=500, detail="Remote MISP instance not reachable"
+        )
+    # check sync permissions
+    if not remote_misp_version["perm_sync"]:
+        raise HTTPException(
+            status_code=401, detail="Not authorized to sync from remote MISP instance"
+        )
+
+    return remote_misp
+
+
 def pull_server_by_id(
     db: Session,
     settings: Settings,
@@ -82,22 +101,8 @@ def pull_server_by_id(
     if server is None:
         raise Exception("Server not found")
 
-    verify_cert = not server.self_signed
-
     # get remote instance version
-    try:
-        remote_misp = PyMISP(url=server.url, key=server.authkey, ssl=verify_cert)
-        remote_misp_version = remote_misp.misp_instance_version
-    except Exception:
-        raise HTTPException(
-            status_code=500, detail="Remote MISP instance not reachable"
-        )
-
-    # check sync permissions
-    if not remote_misp_version["perm_sync"]:
-        raise HTTPException(
-            status_code=401, detail="Not authorized to sync from remote MISP instance"
-        )
+    remote_misp = get_remote_misp_connection(server)
 
     if technique == "pull_relevant_clusters":
         # TODO implement pull_relevant_clusters server pull technique

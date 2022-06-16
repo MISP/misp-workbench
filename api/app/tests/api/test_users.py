@@ -3,10 +3,10 @@ from fastapi.testclient import TestClient
 
 from ...auth import auth
 from ...models import user as user_models
-from .api_test import ApiTest
+from ..api_tester import ApiTester
 
 
-class TestUsersResource(ApiTest):
+class TestUsersResource(ApiTester):
     @pytest.mark.parametrize("scopes", [["users:read"]])
     def test_get_users(
         self, client: TestClient, user_1: user_models.User, auth_token: auth.Token

@@ -7,19 +7,20 @@ from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import Session, sessionmaker
 
-from ...auth import auth
-from ...dependencies import get_db
-from ...main import app
-from ...models import attribute as attribute_models
-from ...models import event as event_models
-from ...models import object as object_models
-from ...models import server as server_models
-from ...models import user as user_models
+from ..auth import auth
+from ..dependencies import get_db
+from ..main import app
+from ..models import attribute as attribute_models
+from ..models import event as event_models
+from ..models import object as object_models
+from ..models import server as server_models
+from ..models import user as user_models
+from ..settings import get_settings
 
 
-class ApiTest:
-    @pytest.fixture(scope="class", name="db")
-    def session_fixture(self):
+class ApiTester:
+    @pytest.fixture(scope="class")
+    def db(self):
         SQLALCHEMY_DATABASE_URL = "postgresql://{}:{}@{}:{}/{}".format(
             os.environ["POSTGRES_USER"],
             os.environ["POSTGRES_PASSWORD"],
@@ -35,8 +36,8 @@ class ApiTest:
 
         yield SessionLocal()
 
-    @pytest.fixture(scope="class", name="client")
-    def client_fixture(self, db: Session):
+    @pytest.fixture(scope="class")
+    def client(self, db: Session):
         def get_db_override():
             return db
 
@@ -46,6 +47,10 @@ class ApiTest:
         yield client
 
         app.dependency_overrides.clear()
+
+    @pytest.fixture(scope="class")
+    def settings(self):
+        return get_settings()
 
     @pytest.fixture(scope="class", autouse=True)
     def cleanup(self, db: Session):
