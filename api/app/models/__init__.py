@@ -2,6 +2,7 @@ from .attribute import Attribute  # noqa
 from .event import Event  # noqa
 from .object import Object  # noqa
 from .object_reference import ObjectReference  # noqa
+from .organisations import Organisation  # noqa
 from .role import Role  # noqa
 from .server import Server  # noqa
 from .user import User  # noqa

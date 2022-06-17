@@ -13,6 +13,7 @@ from ..main import app
 from ..models import attribute as attribute_models
 from ..models import event as event_models
 from ..models import object as object_models
+from ..models import organisations as organisation_models
 from ..models import server as server_models
 from ..models import user as user_models
 from ..settings import get_settings
@@ -65,6 +66,7 @@ class ApiTester:
             db.execute("DELETE FROM events")
             db.execute("DELETE FROM users")
             db.execute("DELETE FROM servers")
+            db.execute("DELETE FROM organisations")
             db.commit()
 
     # MISP data model fixtures
@@ -79,9 +81,29 @@ class ApiTester:
         return api_tester_user
 
     @pytest.fixture(scope="class")
-    def user_1(self, db: Session):
+    def organisation_1(self, db: Session):
+        organisation_1 = organisation_models.Organisation(
+            name="test organisation",
+            date_created="2020-01-01 01:01:01",
+            date_modified="2020-01-01 01:01:01",
+            type="test",
+            sector="test",
+            nationality="test",
+            created_by=1,
+            local=False,
+        )
+        db.add(organisation_1)
+        db.commit()
+
+        return organisation_1
+
+    @pytest.fixture(scope="class")
+    def user_1(self, db: Session, organisation_1: organisation_models.Organisation):
         user_1 = user_models.User(
-            org_id=1, role_id=1, email="foo@bar.com", hashed_password="secret"
+            org_id=organisation_1.id,
+            role_id=1,
+            email="foo@bar.com",
+            hashed_password="secret",
         )
         db.add(user_1)
         db.commit()

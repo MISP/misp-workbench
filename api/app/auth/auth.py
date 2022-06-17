@@ -38,6 +38,10 @@ oauth2_scheme = OAuth2PasswordBearer(
         "users:read": "Read users.",
         "users:update": "Update users.",
         "users:delete": "Delete users.",
+        "organisations:create": "Create organisations.",
+        "organisations:read": "Read organisations.",
+        "organisations:update": "Update organisations.",
+        "organisations:delete": "Delete organisations.",
         "roles:create": "Create roles.",
         "roles:read": "Read roles.",
         "roles:update": "Update roles.",
@@ -177,96 +181,73 @@ def get_scopes_for_user(user: user_schemas.User):
         scopes.add("events:create")
         scopes.add("attributes:create")
         scopes.add("objects:create")
-        # TODO
 
     if user.role.perm_modify:
         scopes.add("events:update")
         scopes.add("attributes:update")
         scopes.add("objects:update")
-        # TODO
 
     if user.role.perm_modify_org:
-        # TODO
         pass
 
     if user.role.perm_publish:
-        # TODO
         pass
 
     if user.role.perm_delegate:
-        # TODO
         pass
 
     if user.role.perm_sync:
-        # TODO
         pass
 
     if user.role.perm_admin:
-        # TODO
         pass
 
     if user.role.perm_audit:
-        # TODO
         pass
 
     if user.role.perm_full:
-        # TODO
         pass
 
     if user.role.perm_auth:
-        # TODO
         pass
 
     if user.role.perm_site_admin:
-        # TODO
         pass
 
     if user.role.perm_regexp_access:
-        # TODO
         pass
 
     if user.role.perm_tagger:
-        # TODO
         pass
 
     if user.role.perm_template:
-        # TODO
         pass
 
     if user.role.perm_sharing_group:
-        # TODO
         pass
 
     if user.role.perm_tag_editor:
-        # TODO
         pass
 
     if user.role.perm_sighting:
-        # TODO
         pass
 
     if user.role.perm_object_template:
-        # TODO
         pass
 
     if user.role.perm_galaxy_editor:
-        # TODO
         pass
 
     if user.role.perm_warninglist:
-        # TODO
         pass
 
     if user.role.perm_publish_zmq:
-        # TODO
         pass
 
     if user.role.perm_publish_kafka:
-        # TODO
         pass
 
     if user.role.perm_decaying:
-        # TODO
         pass
 
     return list(scopes)

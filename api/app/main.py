@@ -2,7 +2,16 @@ import logging.config
 
 from fastapi import FastAPI
 
-from .routers import attributes, auth, events, objects, roles, servers, users
+from .routers import (
+    attributes,
+    auth,
+    events,
+    objects,
+    organisations,
+    roles,
+    servers,
+    users,
+)
 
 # setup loggers
 logging.config.fileConfig("logging.conf", disable_existing_loggers=False)
@@ -15,6 +24,9 @@ app.include_router(auth.router, tags=["OAuth2"])
 
 # Users resource
 app.include_router(users.router, tags=["Users"])
+
+# Organisations resource
+app.include_router(organisations.router, tags=["Organisations"])
 
 # Roles resource
 app.include_router(roles.router, tags=["Roles"])

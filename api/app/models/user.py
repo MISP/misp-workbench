@@ -9,8 +9,7 @@ class User(Base):
     __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, index=True)
-    # TODO: ForeignKey("organisations.id"),
-    org_id = Column(Integer, index=True, nullable=False)
+    org_id = Column(Integer, ForeignKey("organisations.id"), index=True, nullable=False)
     role_id = Column(Integer, ForeignKey("roles.id"), nullable=False)
     email = Column(String, unique=True, index=True)
     hashed_password = Column(String)

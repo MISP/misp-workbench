@@ -1,4 +1,4 @@
-from sqlalchemy import JSON, Boolean, Column, Integer, String
+from sqlalchemy import JSON, Boolean, Column, ForeignKey, Integer, String
 
 from .database import Base
 
@@ -10,7 +10,7 @@ class Server(Base):
     name = Column(String, unique=True)
     url = Column(String, nullable=False)
     authkey = Column(String, nullable=False)  # TODO: encrypted
-    org_id = Column(Integer, nullable=False)  # TODO: foreign key to organisations
+    org_id = Column(Integer, ForeignKey("organisations.id"), nullable=False)
     push = Column(Boolean, nullable=False, default=False)
     pull = Column(Boolean, nullable=False, default=False)
     push_sightings = Column(Boolean, nullable=False, default=False)

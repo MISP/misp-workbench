@@ -27,8 +27,7 @@ class Event(Base):
     id = Column(
         Integer, primary_key=True, index=True, autoincrement=True, nullable=False
     )
-    org_id = Column(Integer, index=True, nullable=False)
-    # TODO: ForeignKey("organisations.id"),
+    org_id = Column(Integer, ForeignKey("organisations.id"), index=True, nullable=False)
     date = Column(Date, nullable=False)
     info = Column(String, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
@@ -36,8 +35,9 @@ class Event(Base):
     published = Column(Boolean, default=False, nullable=False)
     analysis = Column(Integer)
     attribute_count = Column(Integer, default=0)
-    # TODO: ForeignKey("organisations.id"),
-    orgc_id = Column(Integer, index=True, nullable=False)
+    orgc_id = Column(
+        Integer, ForeignKey("organisations.id"), index=True, nullable=False
+    )
     timestamp = Column(Integer, nullable=False, default=0)
     distribution = Column(
         Enum(DistributionLevel),
@@ -52,7 +52,6 @@ class Event(Base):
     publish_timestamp = Column(Integer, nullable=False, default=0)
     sighting_timestamp = Column(Integer, nullable=True)
     disable_correlation = Column(Boolean, default=False)
-    # TODO: ForeignKey("organisations.uuid"),
     extends_uuid = Column(UUID(as_uuid=True), index=True, nullable=True)
     protected = Column(Boolean, nullable=False, default=False)
 

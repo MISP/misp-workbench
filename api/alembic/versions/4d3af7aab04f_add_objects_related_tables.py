@@ -26,7 +26,7 @@ def upgrade():
         sa.Column("template_uuid", postgresql.UUID(as_uuid=True)),
         sa.Column("template_version", sa.Integer, nullable=False),
         sa.Column("event_id", sa.Integer, nullable=False),
-        sa.Column("uuid", postgresql.UUID(as_uuid=True)),
+        sa.Column("uuid", postgresql.UUID(as_uuid=True), unique=True),
         sa.Column("timestamp", sa.Integer, nullable=False),
         sa.Column(
             "distribution",
