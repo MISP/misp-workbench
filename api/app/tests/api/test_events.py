@@ -4,6 +4,7 @@ from fastapi.testclient import TestClient
 from ...auth import auth
 from ...models import attribute as attribute_models
 from ...models import event as event_models
+from ...models import organisations as organisation_models
 from ...models import user as user_models
 from ..api_tester import ApiTester
 
@@ -48,7 +49,11 @@ class TestEventsResource(ApiTester):
 
     @pytest.mark.parametrize("scopes", [["events:create"]])
     def test_create_event(
-        self, client: TestClient, user_1: user_models.User, auth_token: auth.Token
+        self,
+        client: TestClient,
+        organisation_1: organisation_models.Organisation,
+        user_1: user_models.User,
+        auth_token: auth.Token,
     ):
         response = client.post(
             "/events/",
@@ -56,7 +61,7 @@ class TestEventsResource(ApiTester):
                 "info": "test create event",
                 "user_id": user_1.id,
                 "orgc_id": 1,
-                "org_id": 1,
+                "org_id": organisation_1.id,
                 "date": "2020-01-01",
             },
             headers={"Authorization": "Bearer " + auth_token},
@@ -67,12 +72,16 @@ class TestEventsResource(ApiTester):
         assert data["id"] is not None
         assert data["info"] == "test create event"
         assert data["user_id"] == user_1.id
-        assert data["org_id"] == 1
+        assert data["org_id"] == organisation_1.id
         assert data["orgc_id"] == 1
 
     @pytest.mark.parametrize("scopes", [["events:read"]])
     def test_create_event_unauthorized(
-        self, client: TestClient, user_1: user_models.User, auth_token: auth.Token
+        self,
+        client: TestClient,
+        organisation_1: organisation_models.Organisation,
+        user_1: user_models.User,
+        auth_token: auth.Token,
     ):
         response = client.post(
             "/events/",
@@ -80,7 +89,7 @@ class TestEventsResource(ApiTester):
                 "info": "test create event",
                 "user_id": user_1.id,
                 "orgc_id": 1,
-                "org_id": 1,
+                "org_id": organisation_1.id,
                 "date": "2020-01-01",
             },
             headers={"Authorization": "Bearer " + auth_token},

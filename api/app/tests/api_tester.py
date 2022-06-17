@@ -71,9 +71,14 @@ class ApiTester:
 
     # MISP data model fixtures
     @pytest.fixture(scope="class")
-    def api_tester_user(self, db: Session):
+    def api_tester_user(
+        self, db: Session, organisation_1: organisation_models.Organisation
+    ):
         api_tester_user = user_models.User(
-            org_id=1, role_id=3, email="api@tester.local", hashed_password="secret"
+            org_id=organisation_1.id,
+            role_id=3,
+            email="api@tester.local",
+            hashed_password="secret",
         )
         db.add(api_tester_user)
         db.commit()
@@ -111,9 +116,18 @@ class ApiTester:
         return user_1
 
     @pytest.fixture(scope="class")
-    def event_1(self, db: Session, user_1: user_models.User):
+    def event_1(
+        self,
+        db: Session,
+        organisation_1: organisation_models.Organisation,
+        user_1: user_models.User,
+    ):
         event_1 = event_models.Event(
-            info="test event", user_id=user_1.id, orgc_id=1, org_id=1, date="2020-01-01"
+            info="test event",
+            user_id=user_1.id,
+            orgc_id=1,
+            org_id=organisation_1.id,
+            date="2020-01-01",
         )
         db.add(event_1)
         db.commit()
@@ -148,12 +162,17 @@ class ApiTester:
         return object_1
 
     @pytest.fixture(scope="class")
-    def server_1(self, db: Session, event_1: event_models.Event):
+    def server_1(
+        self,
+        db: Session,
+        organisation_1: organisation_models.Organisation,
+        event_1: event_models.Event,
+    ):
         server_1 = server_models.Server(
             name="test server",
             url="http://localhost",
             authkey="JOvupq7Y96531wkWZBrIgbaxqaZIQqaYs9izZJ0g",
-            org_id=1,
+            org_id=organisation_1.id,
             remote_org_id=1,
             push=False,
             pull=True,

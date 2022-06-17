@@ -40,7 +40,25 @@ def upgrade():
         op.f("ix_organisations_name"), "organisations", ["name"], unique=False
     )
 
+    op.create_foreign_key(
+        "fk_users_organisations",
+        "users",
+        "organisations",
+        ["org_id"],
+        ["id"],
+    )
+
+    op.create_foreign_key(
+        "fk_events_organisations",
+        "events",
+        "organisations",
+        ["org_id"],
+        ["id"],
+    )
+
 
 def downgrade():
     op.drop_index(op.f("ix_organisations_name"), table_name="organisations")
+    op.drop_index(op.f("fk_users_organisations"), table_name="users")
+    op.drop_index(op.f("fk_events_organisations"), table_name="events")
     op.drop_table("organisations")

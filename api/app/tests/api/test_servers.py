@@ -3,6 +3,7 @@ from fastapi.testclient import TestClient
 
 from ...auth import auth
 from ...models import event as event_models
+from ...models import organisations as organisation_models
 from ...models import server as server_models
 from ...models import user as user_models
 from ..api_tester import ApiTester
@@ -54,7 +55,11 @@ class TestServersResource(ApiTester):
 
     @pytest.mark.parametrize("scopes", [["servers:create"]])
     def test_create_server(
-        self, client: TestClient, event_1: event_models.Event, auth_token: auth.Token
+        self,
+        client: TestClient,
+        organisation_1: organisation_models.Organisation,
+        event_1: event_models.Event,
+        auth_token: auth.Token,
     ):
         response = client.post(
             "/servers/",
@@ -62,7 +67,7 @@ class TestServersResource(ApiTester):
                 "name": "test",
                 "url": "http://localhost",
                 "authkey": "JOvupq7Y96531wkWZBrIgbaxqaZIQqaYs9izZJ0g",
-                "org_id": 1,
+                "org_id": organisation_1.id,
                 "remote_org_id": 1,
                 "push": False,
                 "pull": True,
@@ -85,7 +90,7 @@ class TestServersResource(ApiTester):
         assert data["id"] is not None
         assert data["name"] == "test"
         assert data["url"] == "http://localhost"
-        assert data["org_id"] == 1
+        assert data["org_id"] == organisation_1.id
         assert data["remote_org_id"] == 1
         assert data["push"] is False
         assert data["pull"] is True

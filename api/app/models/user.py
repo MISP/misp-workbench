@@ -16,6 +16,7 @@ class User(Base):
     disabled = Column(Boolean, default=False)
 
     role = relationship("Role")
+    organisation = relationship("Organisation")
 
     def can_create_pulled_event(self, event: MISPEvent) -> bool:
         """

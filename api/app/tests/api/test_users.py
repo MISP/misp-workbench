@@ -2,6 +2,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from ...auth import auth
+from ...models import organisations as organisation_models
 from ...models import user as user_models
 from ..api_tester import ApiTester
 
@@ -31,12 +32,17 @@ class TestUsersResource(ApiTester):
         assert response.status_code == 401
 
     @pytest.mark.parametrize("scopes", [["users:create"]])
-    def test_create_user(self, client: TestClient, auth_token: auth.Token):
+    def test_create_user(
+        self,
+        client: TestClient,
+        organisation_1: organisation_models.Organisation,
+        auth_token: auth.Token,
+    ):
         response = client.post(
             "/users/",
             headers={"Authorization": "Bearer " + auth_token},
             json={
-                "org_id": 1,
+                "org_id": organisation_1.id,
                 "role_id": 1,
                 "email": "foobar@example.local",
                 "password": "secret",
@@ -49,12 +55,17 @@ class TestUsersResource(ApiTester):
         assert data["id"] is not None
 
     @pytest.mark.parametrize("scopes", [[]])
-    def test_create_user_unauthorized(self, client: TestClient, auth_token: auth.Token):
+    def test_create_user_unauthorized(
+        self,
+        client: TestClient,
+        organisation_1: organisation_models.Organisation,
+        auth_token: auth.Token,
+    ):
         response = client.post(
             "/users/",
             headers={"Authorization": "Bearer " + auth_token},
             json={
-                "org_id": 1,
+                "org_id": organisation_1.id,
                 "role_id": 1,
                 "email": "foobar@example.local",
                 "password": "secret",
@@ -75,14 +86,17 @@ class TestUsersResource(ApiTester):
 
     @pytest.mark.parametrize("scopes", [["users:create"]])
     def test_create_user_invalid_exists(
-        self, client: TestClient, auth_token: auth.Token
+        self,
+        client: TestClient,
+        organisation_1: organisation_models.Organisation,
+        auth_token: auth.Token,
     ):
         # user with this email already exists
         response = client.post(
             "/users/",
             headers={"Authorization": "Bearer " + auth_token},
             json={
-                "org_id": 1,
+                "org_id": organisation_1.id,
                 "role_id": 1,
                 "email": "foo@bar.com",
                 "password": "secret",
