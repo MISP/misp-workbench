@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from ..models import object as object_models
 from ..repositories import attributes as attributes_repository
+from ..repositories import object_references as object_references_repository
 from ..schemas import event as event_schemas
 from ..schemas import object as object_schemas
 
@@ -85,6 +86,12 @@ def create_object_from_pulled_object(
         pulled_attribute.object_id = db_object.id
         attributes_repository.create_attribute_from_pulled_attribute(
             db, pulled_attribute, local_event_id
+        )
+
+    for pulled_object_reference in pulled_object.ObjectReference:
+        pulled_object_reference.object_id = db_object.id
+        object_references_repository.create_object_reference_from_pulled_object_reference(
+            db, pulled_object_reference, local_event_id
         )
 
     return db_object

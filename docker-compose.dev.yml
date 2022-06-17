@@ -4,6 +4,7 @@ services:
   api:
     ports:
       - "8080:80"
+      - "5677:5677"
       - "5678:5678"
     entrypoint: [ "bash", "-c", "./entrypoint.dev.sh" ]
     extra_hosts:
@@ -16,7 +17,7 @@ services:
       [
         "sh",
         "-c",
-        "poetry run python -m debugpy --listen 0.0.0.0:5679 -m celery -A app.worker.worker worker --loglevel=info",
+        "poetry run python -m debugpy --listen 0.0.0.0:5679 -m celery -A app.worker.worker worker --loglevel=info"
       ]
     extra_hosts:
       - "host.docker.internal:host-gateway"

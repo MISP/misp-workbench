@@ -70,6 +70,14 @@ app/test_main.py .                                                              
 ```
 
 
+#### Debugging tests
+1. Run:
+    ```console
+    docker-compose exec api poetry run python -m debugpy --listen 0.0.0.0:5677 --wait-for-client -m pytest app/tests/repositories
+    ```
+
+2. Press **F5** on VS Code and the IDE will connect to the remote debugpy port.
+
 ### Development and Debugging
 This guide is for Visual Studio Code, but should work with other IDEs with minor adjustements.
 
@@ -85,6 +93,22 @@ First make sure Make sure the [Python VS Code extension](https://marketplace) is
     {
         "version": "0.2.0",
         "configurations": [
+        {
+            "name": "Pytest: Remote Attach",
+            "type": "python",
+            "request": "attach",
+            "justMyCode": false,
+            "connect": {
+                "host": "localhost",
+                "port": 5677
+            },
+            "pathMappings": [
+                {
+                    "localRoot": "${workspaceFolder}/api",
+                    "remoteRoot": "/code"
+                }
+            ],
+        },
             {
                 "name": "Python: Remote Attach",
                 "type": "python",

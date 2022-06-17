@@ -378,7 +378,7 @@ def create_or_update_pulled_event(
             create_pulled_event_attributes(
                 db, created.id, event.attributes, server, user
             )
-            create_pulled_event_objects(db, created.id, event, server, user)
+            create_pulled_event_objects(db, created.id, event.objects, server, user)
 
             # TODO: publish event creation to ZMQ
             logger.info(f"Event {event.uuid} created")
@@ -435,7 +435,7 @@ def create_pulled_event_attributes(
 def create_pulled_event_objects(
     db: Session,
     local_event_id: int,
-    event: MISPEvent,
+    objects: list[MISPObject],
     server: server_schemas.Server,
     user: user_models.User,
 ) -> None:
@@ -443,8 +443,8 @@ def create_pulled_event_objects(
     see: app/Model/Event.php::_add()
     """
 
-    for object in event.objects:
-        # see: Object::captureObject()
+    for object in objects:
+        # see: MispObject::captureObject()
         # TODO: MispObject::checkForDuplicateObjects()
         objects_repository.create_object_from_pulled_object(db, object, local_event_id)
 

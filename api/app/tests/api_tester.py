@@ -60,6 +60,7 @@ class ApiTester:
             # teardown
             db.execute("DELETE FROM servers")
             db.execute("DELETE FROM attributes")
+            db.execute("DELETE FROM object_references")
             db.execute("DELETE FROM objects")
             db.execute("DELETE FROM events")
             db.execute("DELETE FROM users")
