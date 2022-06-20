@@ -7,6 +7,7 @@ ENV ENV_VARS=${ENV_VARS} \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 WORKDIR /code
+COPY . /code
 
 COPY poetry.lock pyproject.toml entrypoint.sh /code/
 

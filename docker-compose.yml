@@ -33,8 +33,6 @@ services:
       OAUTH2_ACCESS_TOKEN_EXPIRE_MINUTES: ${OAUTH2_ACCESS_TOKEN_EXPIRE_MINUTES}
       CELERY_BROKER_URL: redis://${REDIS_HOSTNAME}:${REDIS_PORT}/${REDIS_CELERY_DB}
       CELERY_RESULT_BACKEND: redis://${REDIS_HOSTNAME}:${REDIS_PORT}/${REDIS_CELERY_DB}
-    volumes:
-      - "./api:/code"
     entrypoint: [ "bash", "-c", "./entrypoint.sh" ]
     depends_on:
       postgres:
@@ -46,9 +44,7 @@ services:
     build:
       context: ./api
       dockerfile: Dockerfile
-    command: poetry run celery -A app.worker.worker worker --uid=nobody --gid=nogroup --loglevel=info
-    volumes:
-      - "./api:/code"
+    command: poetry run celery -A app.worker.worker worker --loglevel=info
     environment:
       POSTGRES_HOSTNAME: ${POSTGRES_HOSTNAME}
       POSTGRES_PORT: ${POSTGRES_PORT}
@@ -70,8 +66,6 @@ services:
       context: ./api
       dockerfile: Dockerfile
     command: poetry run celery -A app.worker.worker flower --loglevel=info
-    volumes:
-      - ./api:/code
     working_dir: /code
     ports:
       - 5555:5555
