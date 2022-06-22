@@ -20,34 +20,44 @@ class SharingGroupBase(BaseModel):
     modified: datetime
 
 
-class SharingGroupOrgBase(BaseModel):
-    sharing_group_id: int
+class SharingGroupOrganisationBase(BaseModel):
+    sharing_group_id: Optional[int]
     org_id: int
     extend: bool
 
 
+class SharingGroupOrganisationCreate(SharingGroupOrganisationBase):
+    pass
+
+
+class SharingGroupOrganisation(SharingGroupOrganisationBase):
+    id: int
+
+    class Config:
+        orm_mode = True
+
+
 class SharingGroupServerBase(BaseModel):
-    sharing_group_id: int
+    sharing_group_id: Optional[int]
     server_id: int
     all_orgs: bool
 
 
-class SharingGroup(SharingGroupBase):
-    id: int
-
-    class Config:
-        orm_mode = True
-
-
-class SharingGroupOrg(SharingGroupOrgBase):
-    id: int
-
-    class Config:
-        orm_mode = True
-
-
 class SharingGroupServer(SharingGroupServerBase):
     id: int
+
+    class Config:
+        orm_mode = True
+
+
+class SharingGroupServerCreate(SharingGroupServerBase):
+    pass
+
+
+class SharingGroup(SharingGroupBase):
+    id: int
+    sharing_group_organisations: list[SharingGroupOrganisation] = []
+    sharing_group_servers: list[SharingGroupServer] = []
 
     class Config:
         orm_mode = True

@@ -7,8 +7,8 @@ from app.models.role import Role  # noqa
 from app.models.server import Server  # noqa
 from app.models.sharing_groups import (  # noqa
     SharingGroup,
-    SharingGroupOrg,
-    SharingGroupServers,
+    SharingGroupOrganisation,
+    SharingGroupServer,
 )
 from app.models.user import User  # noqa
 

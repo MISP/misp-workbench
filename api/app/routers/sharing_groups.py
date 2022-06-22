@@ -55,3 +55,39 @@ def create_sharing_group(
     return sharing_groups_repository.create_sharing_group(
         db=db, sharing_group=sharing_group
     )
+
+
+@router.post(
+    "/sharing_groups/{sharing_group_id}/servers",
+    response_model=sharing_groups_schemas.SharingGroupServer,
+)
+def add_sharing_group_server(
+    sharing_group_id: int,
+    sharing_group_server: sharing_groups_schemas.SharingGroupServerCreate,
+    db: Session = Depends(get_db),
+    user: user_schemas.User = Security(
+        get_current_active_user, scopes=["sharing_groups:update"]
+    ),
+):
+    sharing_group_server.sharing_group_id = sharing_group_id
+    return sharing_groups_repository.add_sharing_group_server(
+        db=db, sharing_group_server=sharing_group_server
+    )
+
+
+@router.post(
+    "/sharing_groups/{sharing_group_id}/organisation",
+    response_model=sharing_groups_schemas.SharingGroupOrganisation,
+)
+def add_sharing_group_organisation(
+    sharing_group_id: int,
+    sharing_group_organisation: sharing_groups_schemas.SharingGroupOrganisationCreate,
+    db: Session = Depends(get_db),
+    user: user_schemas.User = Security(
+        get_current_active_user, scopes=["sharing_groups:update"]
+    ),
+):
+    sharing_group_organisation.sharing_group_id = sharing_group_id
+    return sharing_groups_repository.add_sharing_group_organisation(
+        db=db, sharing_group_organisation=sharing_group_organisation
+    )

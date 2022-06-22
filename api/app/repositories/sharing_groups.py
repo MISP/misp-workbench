@@ -42,3 +42,36 @@ def create_sharing_group(
     db.refresh(db_sharing_group)
 
     return db_sharing_group
+
+
+def add_sharing_group_server(
+    db: Session, sharing_group_server: sharing_groups_schemas.SharingGroupServerCreate
+):
+    db_sharing_group_server = sharing_groups_models.SharingGroupServer(
+        sharing_group_id=sharing_group_server.sharing_group_id,
+        server_id=sharing_group_server.server_id,
+        all_orgs=sharing_group_server.all_orgs,
+    )
+
+    db.add(db_sharing_group_server)
+    db.commit()
+    db.refresh(db_sharing_group_server)
+
+    return db_sharing_group_server
+
+
+def add_sharing_group_organisation(
+    db: Session,
+    sharing_group_organisation: sharing_groups_schemas.SharingGroupOrganisationCreate,
+):
+    db_sharing_group_organisation = sharing_groups_models.SharingGroupOrganisation(
+        sharing_group_id=sharing_group_organisation.sharing_group_id,
+        org_id=sharing_group_organisation.org_id,
+        extend=sharing_group_organisation.extend,
+    )
+
+    db.add(db_sharing_group_organisation)
+    db.commit()
+    db.refresh(db_sharing_group_organisation)
+
+    return db_sharing_group_organisation

@@ -3,6 +3,7 @@ import uuid
 from app.database import Base
 from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String
 from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import relationship
 
 
 class SharingGroup(Base):
@@ -22,8 +23,11 @@ class SharingGroup(Base):
     local = Column(Boolean, nullable=False, default=False)
     roaming = Column(Boolean, nullable=False, default=False)
 
+    sharing_group_organisations = relationship("SharingGroupOrganisation")
+    sharing_group_servers = relationship("SharingGroupServer")
 
-class SharingGroupOrg:
+
+class SharingGroupOrganisation(Base):
     __tablename__ = "sharing_group_orgs"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -32,7 +36,7 @@ class SharingGroupOrg:
     extend = Column(Boolean, nullable=False, default=False)
 
 
-class SharingGroupServers:
+class SharingGroupServer(Base):
     __tablename__ = "sharing_group_servers"
 
     id = Column(Integer, primary_key=True, index=True)

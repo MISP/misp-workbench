@@ -28,7 +28,7 @@ def upgrade():
         sa.Column("nationality", sa.String(255), nullable=False),
         sa.Column("sector", sa.String(255), nullable=False),
         sa.Column("created_by", sa.Integer, nullable=False),
-        sa.Column("uuid", postgresql.UUID(as_uuid=False)),
+        sa.Column("uuid", postgresql.UUID(as_uuid=False), nullable=False),
         sa.Column("contacts", sa.String),
         sa.Column("local", sa.Boolean(), nullable=False),
         sa.Column("restricted_to_domain", sa.String),

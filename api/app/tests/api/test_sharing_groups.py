@@ -1,6 +1,7 @@
 import pytest
 from app.auth import auth
 from app.models import organisations as organisation_models
+from app.models import server as server_models
 from app.models import sharing_groups as sharing_groups_models
 from app.tests.api_tester import ApiTester
 from fastapi.testclient import TestClient
@@ -47,7 +48,7 @@ class TestSharingGroupsResource(ApiTester):
         assert response.status_code == 401
 
     @pytest.mark.parametrize("scopes", [["sharing_groups:create"]])
-    def test_create_server(
+    def test_create_sharing_group(
         self,
         client: TestClient,
         organisation_1: organisation_models.Organisation,
@@ -79,7 +80,7 @@ class TestSharingGroupsResource(ApiTester):
         assert data["local"] is False
         assert data["roaming"] is False
 
-    @pytest.mark.parametrize("scopes", [["servers:read"]])
+    @pytest.mark.parametrize("scopes", [["sharing_groups:read"]])
     def test_create_sharing_group_unauthorized(
         self,
         client: TestClient,
@@ -104,7 +105,9 @@ class TestSharingGroupsResource(ApiTester):
         assert response.status_code == 401
 
     @pytest.mark.parametrize("scopes", [["sharing_groups:create"]])
-    def test_create_server_incomplete(self, client: TestClient, auth_token: auth.Token):
+    def test_create_sharing_group_incomplete(
+        self, client: TestClient, auth_token: auth.Token
+    ):
         # missing value
         response = client.post(
             "/sharing_groups/",
@@ -114,3 +117,58 @@ class TestSharingGroupsResource(ApiTester):
             headers={"Authorization": "Bearer " + auth_token},
         )
         assert response.status_code == 422
+
+    @pytest.mark.parametrize("scopes", [["sharing_groups:update"]])
+    def test_add_server_to_sharing_group(
+        self,
+        client: TestClient,
+        sharing_group_1: sharing_groups_models.SharingGroup,
+        server_1: server_models.Server,
+        auth_token: auth.Token,
+    ):
+        response = client.post(
+            f"/sharing_groups/{sharing_group_1.id}/servers",
+            json={"server_id": server_1.id, "all_orgs": False},
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+        data = response.json()
+
+        assert response.status_code == 200
+        assert data["server_id"] == server_1.id
+        assert data["all_orgs"] is False
+
+    @pytest.mark.parametrize("scopes", [[]])
+    def test_add_server_to_sharing_group_unauthorized(
+        self,
+        client: TestClient,
+        sharing_group_1: sharing_groups_models.SharingGroup,
+        server_1: server_models.Server,
+        auth_token: auth.Token,
+    ):
+        response = client.post(
+            f"/sharing_groups/{sharing_group_1.id}/servers",
+            json={"server_id": server_1.id, "all_orgs": False},
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+        response.json()
+
+        assert response.status_code == 401
+
+    @pytest.mark.parametrize("scopes", [["sharing_groups:update"]])
+    def test_add_organisation_to_sharing_group(
+        self,
+        client: TestClient,
+        sharing_group_1: sharing_groups_models.SharingGroup,
+        organisation_1: organisation_models.Organisation,
+        auth_token: auth.Token,
+    ):
+        response = client.post(
+            f"/sharing_groups/{sharing_group_1.id}/organisation",
+            json={"org_id": organisation_1.id, "extend": False},
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+        data = response.json()
+
+        assert response.status_code == 200
+        assert data["org_id"] == organisation_1.id
+        assert data["extend"] is False

@@ -70,6 +70,10 @@ def upgrade():
             ["org_id"],
             ["organisations.id"],
         ),
+        sa.ForeignKeyConstraint(
+            ["sharing_group_id"],
+            ["sharing_groups.id"],
+        ),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(
@@ -94,6 +98,10 @@ def upgrade():
         sa.ForeignKeyConstraint(
             ["server_id"],
             ["servers.id"],
+        ),
+        sa.ForeignKeyConstraint(
+            ["sharing_group_id"],
+            ["sharing_groups.id"],
         ),
         sa.PrimaryKeyConstraint("id"),
     )
