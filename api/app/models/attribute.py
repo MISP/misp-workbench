@@ -24,8 +24,9 @@ class Attribute(Base):
     distribution = Column(
         Enum(DistributionLevel), nullable=False, default=DistributionLevel.INHERIT_EVENT
     )
-    # TODO: ForeignKey("sharing_groups.id"),
-    sharing_group_id = Column(Integer, index=True, nullable=True)
+    sharing_group_id = Column(
+        Integer, ForeignKey("sharing_groups.id"), index=True, nullable=True
+    )
     comment = Column(String())
     deleted = Column(Boolean, default=False)
     disable_correlation = Column(Boolean, default=False)

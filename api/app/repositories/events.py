@@ -82,7 +82,9 @@ def create_event_from_pulled_event(db: Session, pulled_event: MISPEvent):
         orgc_id=pulled_event.orgc_id,
         timestamp=pulled_event.timestamp.timestamp(),
         distribution=event_models.DistributionLevel(pulled_event.distribution),
-        sharing_group_id=pulled_event.sharing_group_id,
+        sharing_group_id=pulled_event.sharing_group_id
+        if int(pulled_event.sharing_group_id) > 0
+        else None,
         proposal_email_lock=pulled_event.proposal_email_lock,
         locked=pulled_event.locked,
         threat_level_id=pulled_event.threat_level_id,

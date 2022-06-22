@@ -24,7 +24,7 @@ class Object(Base):
         nullable=False,
         default=DistributionLevel.INHERIT_EVENT,
     )
-    sharing_group_id = Column(Integer)
+    sharing_group_id = Column(Integer, ForeignKey("sharing_groups.id"))
     comment = Column(String)
     deleted = Column(Boolean, nullable=False, default=False)
     first_seen = Column(Integer)

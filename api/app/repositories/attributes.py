@@ -64,7 +64,9 @@ def create_attribute_from_pulled_attribute(
             timestamp=pulled_attribute.timestamp.timestamp(),
             distribution=event_schemas.DistributionLevel(pulled_attribute.distribution),
             comment=pulled_attribute.comment,
-            sharing_group_id=pulled_attribute.sharing_group_id,
+            sharing_group_id=pulled_attribute.sharing_group_id
+            if int(pulled_attribute.sharing_group_id) > 0
+            else None,
             deleted=pulled_attribute.deleted,
             disable_correlation=pulled_attribute.disable_correlation,
             object_id=pulled_attribute.object_id,

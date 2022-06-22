@@ -65,7 +65,9 @@ def create_object_from_pulled_object(
             uuid=pulled_object.uuid,
             timestamp=pulled_object.timestamp.timestamp(),
             distribution=event_schemas.DistributionLevel(pulled_object.distribution),
-            sharing_group_id=pulled_object.sharing_group_id,
+            sharing_group_id=pulled_object.sharing_group_id
+            if int(pulled_object.sharing_group_id) > 0
+            else None,
             comment=pulled_object.comment,
             deleted=pulled_object.deleted,
             first_seen=pulled_object.first_seen.timestamp()

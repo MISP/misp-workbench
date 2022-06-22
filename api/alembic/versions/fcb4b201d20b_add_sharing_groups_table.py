@@ -110,12 +110,48 @@ def upgrade():
         unique=False,
     )
 
+    op.create_foreign_key(
+        "fk_objects_sharing_groups",
+        "objects",
+        "sharing_groups",
+        ["sharing_group_id"],
+        ["id"],
+    )
+
+    op.create_foreign_key(
+        "fk_events_sharing_groups",
+        "events",
+        "sharing_groups",
+        ["sharing_group_id"],
+        ["id"],
+    )
+
+    op.create_foreign_key(
+        "fk_attributes_sharing_groups",
+        "attributes",
+        "sharing_groups",
+        ["sharing_group_id"],
+        ["id"],
+    )
+
 
 def downgrade():
     op.drop_index(op.f("ix_sharing_groups_org_id"), table_name="sharing_groups")
     op.drop_index(op.f("ix_sharing_groups_sync_user_id"), table_name="sharing_groups")
     op.drop_index(
         op.f("ix_sharing_groups_organisation_uuid"), table_name="sharing_groups"
+    )
+    op.drop_index(
+        op.f("fk_objects_sharing_groups"),
+        table_name="sharing_groups",
+    )
+    op.drop_index(
+        op.f("fk_events_sharing_groups"),
+        table_name="sharing_groups",
+    )
+    op.drop_index(
+        op.f("fk_attributes_sharing_groups"),
+        table_name="sharing_groups",
     )
     op.drop_table("sharing_groups")
 
@@ -132,4 +168,5 @@ def downgrade():
         op.f("ix_sharing_group_servers_sharing_group_id"),
         table_name="sharing_group_servers",
     )
+
     op.drop_table("sharing_group_servers")

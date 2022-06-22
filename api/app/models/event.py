@@ -43,8 +43,9 @@ class Event(Base):
         nullable=False,
         default=DistributionLevel.ORGANISATION_ONLY,
     )
-    # TODO: ForeignKey("sharing_groups.id"),
-    sharing_group_id = Column(Integer, index=True, nullable=True)
+    sharing_group_id = Column(
+        Integer, ForeignKey("sharing_groups.id"), index=True, nullable=True
+    )
     proposal_email_lock = Column(Boolean, nullable=False, default=False)
     locked = Column(Boolean, nullable=False, default=False)
     threat_level_id = Column(Integer, nullable=False, default=0)
