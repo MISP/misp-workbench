@@ -1,6 +1,5 @@
+from app.models import role as role_models
 from sqlalchemy.orm import Session
-
-from ..models import role as role_models
 
 
 def get_roles(db: Session, skip: int = 0, limit: int = 100):

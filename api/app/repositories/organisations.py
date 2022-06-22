@@ -1,7 +1,6 @@
+from app.models import organisations as organisation_models
+from app.schemas import organisations as organisations_schemas
 from sqlalchemy.orm import Session
-
-from ..models import organisations as organisation_models
-from ..schemas import organisations as organisations_schemas
 
 
 def get_organisations(db: Session, skip: int = 0, limit: int = 100):

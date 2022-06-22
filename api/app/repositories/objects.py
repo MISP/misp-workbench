@@ -1,13 +1,12 @@
 import time
 
+from app.models import object as object_models
+from app.repositories import attributes as attributes_repository
+from app.repositories import object_references as object_references_repository
+from app.schemas import event as event_schemas
+from app.schemas import object as object_schemas
 from pymisp import MISPObject
 from sqlalchemy.orm import Session
-
-from ..models import object as object_models
-from ..repositories import attributes as attributes_repository
-from ..repositories import object_references as object_references_repository
-from ..schemas import event as event_schemas
-from ..schemas import object as object_schemas
 
 
 def get_objects(db: Session, skip: int = 0, limit: int = 100):

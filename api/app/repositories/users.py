@@ -1,10 +1,9 @@
 import logging
 
+from app.auth import auth
+from app.models import user as user_models
+from app.schemas import user as user_schemas
 from sqlalchemy.orm import Session
-
-from ..auth import auth
-from ..models import user as user_models
-from ..schemas import user as user_schemas
 
 logger = logging.getLogger(__name__)
 

@@ -1,10 +1,9 @@
 import pytest
+from app.auth import auth
+from app.models import organisations as organisation_models
+from app.models import user as user_models
+from app.tests.api_tester import ApiTester
 from fastapi.testclient import TestClient
-
-from ...auth import auth
-from ...models import organisations as organisation_models
-from ...models import user as user_models
-from ..api_tester import ApiTester
 
 
 class TestUsersResource(ApiTester):

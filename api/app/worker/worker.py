@@ -1,12 +1,11 @@
 import logging
 import os
 
+from app.database import SessionLocal
+from app.repositories import servers as servers_repository
+from app.repositories import users as users_repository
+from app.settings import get_settings
 from celery import Celery
-
-from ..models.database import SessionLocal
-from ..repositories import servers as servers_repository
-from ..repositories import users as users_repository
-from ..settings import get_settings
 
 celery = Celery()
 celery.conf.broker_url = os.environ.get("CELERY_BROKER_URL")

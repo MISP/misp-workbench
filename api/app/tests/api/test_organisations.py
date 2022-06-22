@@ -1,10 +1,8 @@
 import pytest
+from app.auth import auth
+from app.models import organisations as organisation_models
+from app.tests.api_tester import ApiTester
 from fastapi.testclient import TestClient
-
-from ...auth import auth
-from ...models import organisations as organisation_models
-from ...models import user as user_models
-from ..api_tester import ApiTester
 
 
 class TestOrganisationsResource(ApiTester):
@@ -12,7 +10,6 @@ class TestOrganisationsResource(ApiTester):
     def test_get_organisations(
         self,
         client: TestClient,
-        user_1: user_models.User,
         organisation_1: organisation_models.Organisation,
         auth_token: auth.Token,
     ):

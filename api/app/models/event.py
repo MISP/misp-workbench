@@ -1,11 +1,10 @@
 import enum
 import uuid
 
+from app.database import Base
 from sqlalchemy import Boolean, Column, Date, Enum, ForeignKey, Integer, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
-
-from .database import Base
 
 
 class DistributionLevel(enum.Enum):

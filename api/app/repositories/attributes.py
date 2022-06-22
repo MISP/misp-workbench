@@ -1,11 +1,10 @@
 import time
 
+from app.models import attribute as attribute_models
+from app.schemas import attribute as attribute_schemas
+from app.schemas import event as event_schemas
 from pymisp import MISPAttribute
 from sqlalchemy.orm import Session
-
-from ..models import attribute as attribute_models
-from ..schemas import attribute as attribute_schemas
-from ..schemas import event as event_schemas
 
 
 def get_attributes(db: Session, skip: int = 0, limit: int = 100):

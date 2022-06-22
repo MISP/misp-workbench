@@ -1,17 +1,16 @@
 from datetime import datetime, timedelta
 from typing import Union
 
+from app.dependencies import get_db
+from app.repositories import users as users_repository
+from app.schemas import user as user_schemas
+from app.settings import Settings, get_settings
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, SecurityScopes
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from pydantic import BaseModel, ValidationError
 from sqlalchemy.orm import Session
-
-from ..dependencies import get_db
-from ..repositories import users as users_repository
-from ..schemas import user as user_schemas
-from ..settings import Settings, get_settings
 
 # see: https://fastapi.tiangolo.com/tutorial/security/oauth2-jwt/
 # see: https://fastapi.tiangolo.com/advanced/security/
@@ -63,6 +62,10 @@ oauth2_scheme = OAuth2PasswordBearer(
         "servers:update": "Update servers.",
         "servers:delete": "Delete servers.",
         "servers:pull": "Pull server by id.",
+        "sharing_groups:create": "Create sharing groups.",
+        "sharing_groups:read": "Read sharing groups.",
+        "sharing_groups:update": "Update sharing groups.",
+        "sharing_groups:delete": "Delete sharing groups.",
     },
 )
 
@@ -173,6 +176,7 @@ def get_scopes_for_user(user: user_schemas.User):
         scopes.add("objects:*")
         scopes.add("servers:*")
         scopes.add("roles:*")
+        scopes.add("sharing_groups:*")
 
     if user.role.perm_auth:
         scopes.add("auth:login")

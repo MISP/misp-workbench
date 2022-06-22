@@ -1,10 +1,9 @@
 import time
 
+from app.models import object_reference as object_reference_models
+from app.schemas import object_reference as object_reference_schemas
 from pymisp import MISPObjectReference
 from sqlalchemy.orm import Session
-
-from ..models import object_reference as object_reference_models
-from ..schemas import object_reference as object_reference_schemas
 
 
 def create_object_reference(

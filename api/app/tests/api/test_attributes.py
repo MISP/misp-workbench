@@ -1,11 +1,9 @@
 import pytest
+from app.auth import auth
+from app.models import attribute as attribute_models
+from app.models import event as event_models
+from app.tests.api_tester import ApiTester
 from fastapi.testclient import TestClient
-
-from ...auth import auth
-from ...models import attribute as attribute_models
-from ...models import event as event_models
-from ...models import user as user_models
-from ..api_tester import ApiTester
 
 
 class TestAttributesResource(ApiTester):
@@ -13,8 +11,6 @@ class TestAttributesResource(ApiTester):
     def test_get_attributes(
         self,
         client: TestClient,
-        user_1: user_models.User,
-        event_1: event_models.Event,
         attribute_1: attribute_models.Attribute,
         auth_token: auth.Token,
     ):

@@ -1,21 +1,16 @@
 import pytest
+from app.auth import auth
+from app.models import organisations as organisation_models
+from app.models import server as server_models
+from app.tests.api_tester import ApiTester
 from fastapi.testclient import TestClient
-
-from ...auth import auth
-from ...models import event as event_models
-from ...models import organisations as organisation_models
-from ...models import server as server_models
-from ...models import user as user_models
-from ..api_tester import ApiTester
 
 
 class TestServersResource(ApiTester):
     @pytest.mark.parametrize("scopes", [["servers:read"]])
-    def test_get_objects(
+    def test_get_servers(
         self,
         client: TestClient,
-        user_1: user_models.User,
-        event_1: event_models.Event,
         server_1: server_models.Server,
         auth_token: auth.Token,
     ):
@@ -58,7 +53,6 @@ class TestServersResource(ApiTester):
         self,
         client: TestClient,
         organisation_1: organisation_models.Organisation,
-        event_1: event_models.Event,
         auth_token: auth.Token,
     ):
         response = client.post(
@@ -107,7 +101,7 @@ class TestServersResource(ApiTester):
 
     @pytest.mark.parametrize("scopes", [["servers:read"]])
     def test_create_server_unauthorized(
-        self, client: TestClient, event_1: event_models.Event, auth_token: auth.Token
+        self, client: TestClient, auth_token: auth.Token
     ):
         response = client.post(
             "/servers/",
@@ -135,9 +129,7 @@ class TestServersResource(ApiTester):
         assert response.status_code == 401
 
     @pytest.mark.parametrize("scopes", [["servers:create"]])
-    def test_create_server_incomplete(
-        self, client: TestClient, event_1: event_models.Event, auth_token: auth.Token
-    ):
+    def test_create_server_incomplete(self, client: TestClient, auth_token: auth.Token):
         # missing value
         response = client.post(
             "/servers/",

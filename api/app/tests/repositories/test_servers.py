@@ -1,17 +1,16 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
+from app.models import attribute as attribute_models
+from app.models import event as event_models
+from app.models import object as object_models
+from app.models import object_reference as object_reference_models
+from app.models import server as server_models
+from app.models import user as user_models
+from app.repositories import servers as servers_repository
+from app.settings import Settings
+from app.tests.api_tester import ApiTester
 from sqlalchemy.orm import Session
-
-from ...models import attribute as attribute_models
-from ...models import event as event_models
-from ...models import object as object_models
-from ...models import object_reference as object_reference_models
-from ...models import server as server_models
-from ...models import user as user_models
-from ...repositories import servers as servers_repository
-from ...settings import Settings
-from ..api_tester import ApiTester
 
 
 class TestServersRepository(ApiTester):

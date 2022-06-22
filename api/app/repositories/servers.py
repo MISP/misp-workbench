@@ -1,21 +1,19 @@
 import logging
 from hashlib import sha1
 from typing import Union
-from xmlrpc.client import Boolean
 
+from app.models import server as server_models
+from app.models import user as user_models
+from app.models.event import DistributionLevel
+from app.repositories import attributes as attributes_repository
+from app.repositories import events as events_repository
+from app.repositories import objects as objects_repository
+from app.repositories import users as users_repository
+from app.schemas import server as server_schemas
+from app.settings import Settings
 from fastapi import HTTPException
 from pymisp import MISPAttribute, MISPEvent, MISPObject, PyMISP
 from sqlalchemy.orm import Session
-
-from ..models import server as server_models
-from ..models import user as user_models
-from ..models.event import DistributionLevel
-from ..repositories import attributes as attributes_repository
-from ..repositories import events as events_repository
-from ..repositories import objects as objects_repository
-from ..repositories import users as users_repository
-from ..schemas import server as server_schemas
-from ..settings import Settings
 
 logger = logging.getLogger(__name__)
 
@@ -337,7 +335,7 @@ def downgrade_distribution(distribution: DistributionLevel) -> DistributionLevel
     return distribution
 
 
-def check_if_event_is_not_empty(event: MISPEvent) -> Boolean:
+def check_if_event_is_not_empty(event: MISPEvent) -> bool:
     """
     see: app/Model/Server.php::__checkIfEventSaveAble()
     """
@@ -362,7 +360,7 @@ def check_if_event_is_not_empty(event: MISPEvent) -> Boolean:
 
 def create_or_update_pulled_event(
     db: Session, event: MISPEvent, server: server_schemas.Server, user: user_models.User
-) -> Union[MISPEvent, Boolean]:
+) -> Union[MISPEvent, bool]:
     """
     see: app/Model/Server.php::__checkIfPulledEventExistsAndAddOrUpdate()
     """

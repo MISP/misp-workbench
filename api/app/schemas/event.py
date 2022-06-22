@@ -2,11 +2,10 @@ from datetime import date
 from typing import Optional
 from uuid import UUID
 
+from app.models.event import DistributionLevel
+from app.schemas.attribute import Attribute
+from app.schemas.object import Object
 from pydantic import BaseModel
-
-from ..models.event import DistributionLevel
-from .attribute import Attribute
-from .object import Object
 
 
 class EventBase(BaseModel):

@@ -2,21 +2,21 @@ import os
 from datetime import timedelta
 
 import pytest
+from app.auth import auth
+from app.dependencies import get_db
+from app.main import app
+from app.models import attribute as attribute_models
+from app.models import event as event_models
+from app.models import object as object_models
+from app.models import organisations as organisation_models
+from app.models import server as server_models
+from app.models import sharing_groups as sharing_groups_models
+from app.models import user as user_models
+from app.settings import get_settings
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import Session, sessionmaker
-
-from ..auth import auth
-from ..dependencies import get_db
-from ..main import app
-from ..models import attribute as attribute_models
-from ..models import event as event_models
-from ..models import object as object_models
-from ..models import organisations as organisation_models
-from ..models import server as server_models
-from ..models import user as user_models
-from ..settings import get_settings
 
 
 class ApiTester:
@@ -59,6 +59,9 @@ class ApiTester:
             pass
         finally:
             # teardown
+            db.execute("DELETE FROM sharing_group_orgs")
+            db.execute("DELETE FROM sharing_group_servers")
+            db.execute("DELETE FROM sharing_groups")
             db.execute("DELETE FROM servers")
             db.execute("DELETE FROM attributes")
             db.execute("DELETE FROM object_references")
@@ -82,6 +85,7 @@ class ApiTester:
         )
         db.add(api_tester_user)
         db.commit()
+        db.refresh(api_tester_user)
 
         return api_tester_user
 
@@ -99,6 +103,7 @@ class ApiTester:
         )
         db.add(organisation_1)
         db.commit()
+        db.refresh(organisation_1)
 
         return organisation_1
 
@@ -112,6 +117,7 @@ class ApiTester:
         )
         db.add(user_1)
         db.commit()
+        db.refresh(user_1)
 
         return user_1
 
@@ -131,6 +137,7 @@ class ApiTester:
         )
         db.add(event_1)
         db.commit()
+        db.refresh(event_1)
 
         return event_1
 
@@ -144,6 +151,7 @@ class ApiTester:
         )
         db.add(attribute_1)
         db.commit()
+        db.refresh(attribute_1)
 
         return attribute_1
 
@@ -158,6 +166,7 @@ class ApiTester:
         )
         db.add(object_1)
         db.commit()
+        db.refresh(object_1)
 
         return object_1
 
@@ -189,8 +198,33 @@ class ApiTester:
         )
         db.add(server_1)
         db.commit()
+        db.refresh(server_1)
 
         return server_1
+
+    @pytest.fixture(scope="class")
+    def sharing_group_1(
+        self, db: Session, organisation_1: organisation_models.Organisation
+    ):
+        sharing_group_1 = sharing_groups_models.SharingGroup(
+            name="test server",
+            releasability="releasability",
+            description="description",
+            uuid="04750a80-3c22-432b-a016-8c743385b696",
+            organisation_uuid=organisation_1.uuid,
+            org_id=organisation_1.id,
+            sync_user_id=None,
+            active=True,
+            local=False,
+            roaming=False,
+            created="2020-01-01 01:01:01",
+            modified="2020-01-01 01:01:01",
+        )
+        db.add(sharing_group_1)
+        db.commit()
+        db.refresh(sharing_group_1)
+
+        return sharing_group_1
 
     @pytest.fixture(scope="function")
     def auth_token(

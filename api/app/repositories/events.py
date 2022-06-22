@@ -1,11 +1,10 @@
 import time
 from datetime import datetime
 
+from app.models import event as event_models
+from app.schemas import event as event_schemas
 from pymisp import MISPEvent
 from sqlalchemy.orm import Session
-
-from ..models import event as event_models
-from ..schemas import event as event_schemas
 
 
 def get_events(db: Session, skip: int = 0, limit: int = 100, filters: dict = {}):

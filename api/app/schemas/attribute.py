@@ -1,9 +1,8 @@
 from typing import Optional
 from uuid import UUID
 
+from app.models.event import DistributionLevel
 from pydantic import BaseModel
-
-from ..models.event import DistributionLevel
 
 
 class AttributeBase(BaseModel):

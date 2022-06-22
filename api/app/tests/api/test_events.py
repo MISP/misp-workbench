@@ -1,12 +1,11 @@
 import pytest
+from app.auth import auth
+from app.models import attribute as attribute_models
+from app.models import event as event_models
+from app.models import organisations as organisation_models
+from app.models import user as user_models
+from app.tests.api_tester import ApiTester
 from fastapi.testclient import TestClient
-
-from ...auth import auth
-from ...models import attribute as attribute_models
-from ...models import event as event_models
-from ...models import organisations as organisation_models
-from ...models import user as user_models
-from ..api_tester import ApiTester
 
 
 class TestEventsResource(ApiTester):

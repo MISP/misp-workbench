@@ -1,6 +1,5 @@
+from app.database import Base
 from sqlalchemy import JSON, Boolean, Column, ForeignKey, Integer, String
-
-from .database import Base
 
 
 class Server(Base):
