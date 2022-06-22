@@ -1,8 +1,6 @@
 import logging.config
 
-from fastapi import FastAPI
-
-from .routers import (
+from app.routers import (
     attributes,
     auth,
     events,
@@ -10,8 +8,10 @@ from .routers import (
     organisations,
     roles,
     servers,
+    sharing_groups,
     users,
 )
+from fastapi import FastAPI
 
 # setup loggers
 logging.config.fileConfig("logging.conf", disable_existing_loggers=False)
@@ -42,3 +42,6 @@ app.include_router(objects.router, tags=["Objects"])
 
 # Servers resource
 app.include_router(servers.router, tags=["Servers"])
+
+# Sharing Groups resource
+app.include_router(sharing_groups.router, tags=["Sharing Groups"])
