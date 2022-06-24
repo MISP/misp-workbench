@@ -3,6 +3,7 @@ from datetime import datetime
 
 from app.models import event as event_models
 from app.schemas import event as event_schemas
+from fastapi import HTTPException, status
 from pymisp import MISPEvent
 from sqlalchemy.orm import Session
 
@@ -122,3 +123,23 @@ def update_event_from_pulled_event(
     db.refresh(existing_event)
 
     return existing_event
+
+
+def update_event(db: Session, event_id: int, event: event_schemas.EventUpdate):
+    # TODO: Attribute::beforeValidate() && Attribute::$validate
+    db_event = get_event_by_id(db, event_id=event_id)
+
+    if db_event is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Event not found"
+        )
+
+    event_patch = event.dict(exclude_unset=True)
+    for key, value in event_patch.items():
+        setattr(db_event, key, value)
+
+    db.add(db_event)
+    db.commit()
+    db.refresh(db_event)
+
+    return db_event

@@ -96,7 +96,6 @@ class TestAttributesResource(ApiTester):
     def test_update_attribute(
         self,
         client: TestClient,
-        event_1: event_models.Event,
         attribute_1: attribute_models.Attribute,
         auth_token: auth.Token,
     ):

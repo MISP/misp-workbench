@@ -59,3 +59,15 @@ def create_event(
             status_code=400, detail="An event with this info already exists"
         )
     return events_repository.create_event(db=db, event=event)
+
+
+@router.patch("/events/{event_id}", response_model=event_schemas.Event)
+def update_event(
+    event_id: int,
+    event: event_schemas.EventUpdate,
+    db: Session = Depends(get_db),
+    user: user_schemas.User = Security(
+        get_current_active_user, scopes=["events:update"]
+    ),
+):
+    return events_repository.update_event(db=db, event_id=event_id, event=event)

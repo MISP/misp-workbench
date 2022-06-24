@@ -45,3 +45,22 @@ class Event(EventBase):
 
 class EventCreate(EventBase):
     pass
+
+
+class EventUpdate(BaseModel):
+    date: Optional[date]
+    info: Optional[str]
+    uuid: Optional[UUID]
+    published: Optional[bool]
+    analysis: Optional[int]
+    timestamp: Optional[int]
+    distribution: Optional[DistributionLevel]
+    sharing_group_id: Optional[int]
+    proposal_email_lock: Optional[bool]
+    locked: Optional[bool]
+    threat_level_id: Optional[int]
+    publish_timestamp: Optional[int]
+    sighting_timestamp: Optional[int]
+    disable_correlation: Optional[bool]
+    extends_uuid: Optional[UUID]
+    protected: Optional[bool]

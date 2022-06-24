@@ -125,3 +125,24 @@ class TestEventsResource(ApiTester):
 
         assert response.status_code == 400
         assert data["detail"] == "An event with this info already exists"
+
+    @pytest.mark.parametrize("scopes", [["events:update"]])
+    def test_update_event(
+        self,
+        client: TestClient,
+        event_1: event_models.Event,
+        auth_token: auth.Token,
+    ):
+        response = client.patch(
+            f"/events/{event_1.id}",
+            json={
+                "info": "updated via API",
+                "published": False,
+            },
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+        data = response.json()
+
+        assert response.status_code == 200
+        assert data["info"] == "updated via API"
+        assert data["published"] is False
