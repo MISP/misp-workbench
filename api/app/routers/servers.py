@@ -60,7 +60,7 @@ def pull_server(
     )
 
 
-@router.post("/servers/", response_model=server_schemas.Server)
+@router.post("/servers/", response_model=server_schemas.Server, status_code=201)
 def create_server(
     server: server_schemas.ServerCreate,
     db: Session = Depends(get_db),

@@ -44,7 +44,11 @@ def get_sharing_group_by_id(
     return db_sharing_group
 
 
-@router.post("/sharing_groups/", response_model=sharing_groups_schemas.SharingGroup)
+@router.post(
+    "/sharing_groups/",
+    response_model=sharing_groups_schemas.SharingGroup,
+    status_code=201,
+)
 def create_sharing_group(
     sharing_group: sharing_groups_schemas.SharingGroupCreate,
     db: Session = Depends(get_db),
@@ -60,8 +64,9 @@ def create_sharing_group(
 @router.post(
     "/sharing_groups/{sharing_group_id}/servers",
     response_model=sharing_groups_schemas.SharingGroupServer,
+    status_code=201,
 )
-def add_sharing_group_server(
+def add_server_to_sharing_group(
     sharing_group_id: int,
     sharing_group_server: sharing_groups_schemas.SharingGroupServerCreate,
     db: Session = Depends(get_db),
@@ -70,16 +75,17 @@ def add_sharing_group_server(
     ),
 ):
     sharing_group_server.sharing_group_id = sharing_group_id
-    return sharing_groups_repository.add_sharing_group_server(
+    return sharing_groups_repository.add_server_sharing_group(
         db=db, sharing_group_server=sharing_group_server
     )
 
 
 @router.post(
-    "/sharing_groups/{sharing_group_id}/organisation",
+    "/sharing_groups/{sharing_group_id}/organisations",
     response_model=sharing_groups_schemas.SharingGroupOrganisation,
+    status_code=201,
 )
-def add_sharing_group_organisation(
+def add_organisation_to_sharing_group(
     sharing_group_id: int,
     sharing_group_organisation: sharing_groups_schemas.SharingGroupOrganisationCreate,
     db: Session = Depends(get_db),
@@ -88,6 +94,6 @@ def add_sharing_group_organisation(
     ),
 ):
     sharing_group_organisation.sharing_group_id = sharing_group_id
-    return sharing_groups_repository.add_sharing_group_organisation(
+    return sharing_groups_repository.add_organisaiton_to_sharing_group(
         db=db, sharing_group_organisation=sharing_group_organisation
     )

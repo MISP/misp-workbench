@@ -54,7 +54,7 @@ class TestOrganisationsResource(ApiTester):
         )
         data = response.json()
 
-        assert response.status_code == 200
+        assert response.status_code == 201
         assert data["id"] is not None
         assert data["name"] == "test organisation 2"
         assert data["type"] == "test2"

@@ -41,7 +41,9 @@ def get_organisation_by_id(
     return db_organisation
 
 
-@router.post("/organisations/", response_model=organisation_schemas.Organisation)
+@router.post(
+    "/organisations/", response_model=organisation_schemas.Organisation, status_code=201
+)
 def create_organisation(
     organisation: organisation_schemas.OrganisationCreate,
     db: Session = Depends(get_db),

@@ -38,7 +38,7 @@ def get_object_by_id(
     return db_object
 
 
-@router.post("/objects/", response_model=object_schemas.Object)
+@router.post("/objects/", response_model=object_schemas.Object, status_code=201)
 def create_object(
     object: object_schemas.ObjectCreate,
     db: Session = Depends(get_db),

@@ -44,7 +44,7 @@ def get_user_by_id(
     return db_user
 
 
-@router.post("/users/", response_model=user_schemas.User)
+@router.post("/users/", response_model=user_schemas.User, status_code=201)
 def create_user(
     user_request: user_schemas.UserCreate,
     db: Session = Depends(get_db),

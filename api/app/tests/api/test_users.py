@@ -49,7 +49,7 @@ class TestUsersResource(ApiTester):
         )
         data = response.json()
 
-        assert response.status_code == 200
+        assert response.status_code == 201
         assert data["email"] == "foobar@example.local"
         assert data["id"] is not None
 

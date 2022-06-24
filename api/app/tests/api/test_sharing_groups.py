@@ -71,7 +71,7 @@ class TestSharingGroupsResource(ApiTester):
         )
         data = response.json()
 
-        assert response.status_code == 200
+        assert response.status_code == 201
         assert data["name"] == "test create sharing group"
         assert data["releasability"] == "releasability"
         assert data["description"] == "description"
@@ -133,7 +133,7 @@ class TestSharingGroupsResource(ApiTester):
         )
         data = response.json()
 
-        assert response.status_code == 200
+        assert response.status_code == 201
         assert data["server_id"] == server_1.id
         assert data["all_orgs"] is False
 
@@ -163,12 +163,29 @@ class TestSharingGroupsResource(ApiTester):
         auth_token: auth.Token,
     ):
         response = client.post(
-            f"/sharing_groups/{sharing_group_1.id}/organisation",
+            f"/sharing_groups/{sharing_group_1.id}/organisations",
             json={"org_id": organisation_1.id, "extend": False},
             headers={"Authorization": "Bearer " + auth_token},
         )
         data = response.json()
 
-        assert response.status_code == 200
+        assert response.status_code == 201
         assert data["org_id"] == organisation_1.id
         assert data["extend"] is False
+
+    @pytest.mark.parametrize("scopes", [[]])
+    def test_add_organisation_to_sharing_group_unauthorized(
+        self,
+        client: TestClient,
+        sharing_group_1: sharing_groups_models.SharingGroup,
+        organisation_1: organisation_models.Organisation,
+        auth_token: auth.Token,
+    ):
+        response = client.post(
+            f"/sharing_groups/{sharing_group_1.id}/organisations",
+            json={"org_id": organisation_1.id, "extend": False},
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+        response.json()
+
+        assert response.status_code == 401

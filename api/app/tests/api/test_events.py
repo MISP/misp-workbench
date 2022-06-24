@@ -67,7 +67,7 @@ class TestEventsResource(ApiTester):
         )
         data = response.json()
 
-        assert response.status_code == 200
+        assert response.status_code == 201
         assert data["id"] is not None
         assert data["info"] == "test create event"
         assert data["user_id"] == user_1.id

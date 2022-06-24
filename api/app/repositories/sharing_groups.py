@@ -44,7 +44,7 @@ def create_sharing_group(
     return db_sharing_group
 
 
-def add_sharing_group_server(
+def add_server_sharing_group(
     db: Session, sharing_group_server: sharing_groups_schemas.SharingGroupServerCreate
 ):
     db_sharing_group_server = sharing_groups_models.SharingGroupServer(
@@ -60,7 +60,7 @@ def add_sharing_group_server(
     return db_sharing_group_server
 
 
-def add_sharing_group_organisation(
+def add_organisaiton_to_sharing_group(
     db: Session,
     sharing_group_organisation: sharing_groups_schemas.SharingGroupOrganisationCreate,
 ):

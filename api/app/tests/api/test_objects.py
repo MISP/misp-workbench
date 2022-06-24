@@ -53,7 +53,7 @@ class TestObjectsResource(ApiTester):
         )
         data = response.json()
 
-        assert response.status_code == 200
+        assert response.status_code == 201
         assert data["id"] is not None
         assert data["event_id"] == event_1.id
         assert data["template_version"] == 0

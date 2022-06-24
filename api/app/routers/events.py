@@ -17,7 +17,6 @@ async def get_events_parameters(
     id: Optional[int] = None,
     info: Optional[str] = None,
 ):
-
     return {"skip": skip, "limit": limit, "filters": {"id": id, "info": info}}
 
 
@@ -46,7 +45,7 @@ def get_event_by_id(
     return db_event
 
 
-@router.post("/events/", response_model=event_schemas.Event)
+@router.post("/events/", response_model=event_schemas.Event, status_code=201)
 def create_event(
     event: event_schemas.EventCreate,
     db: Session = Depends(get_db),
