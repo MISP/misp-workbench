@@ -11,7 +11,7 @@ from app.repositories import objects as objects_repository
 from app.repositories import users as users_repository
 from app.schemas import server as server_schemas
 from app.settings import Settings
-from fastapi import HTTPException
+from fastapi import HTTPException, status
 from pymisp import MISPAttribute, MISPEvent, MISPObject, PyMISP
 from sqlalchemy.orm import Session
 
@@ -41,8 +41,8 @@ def create_server(db: Session, server: server_schemas.ServerCreate):
         push_sightings=server.push_sightings,
         push_galaxy_clusters=server.push_galaxy_clusters,
         pull_galaxy_clusters=server.pull_galaxy_clusters,
-        lastpulledid=server.lastpulledid,
-        lastpushedid=server.lastpushedid,
+        last_pulled_id=server.last_pulled_id,
+        last_pushed_id=server.last_pushed_id,
         organisation=server.organisation,
         remote_org_id=server.remote_org_id,
         publish_without_email=server.publish_without_email,
@@ -447,3 +447,27 @@ def create_pulled_event_objects(
         objects_repository.create_object_from_pulled_object(db, object, local_event_id)
 
     # see: ObjectReference::captureReference()
+
+
+def update_server(
+    db: Session,
+    server_id: int,
+    server: server_schemas.ServerUpdate,
+) -> server_models.Server:
+    # TODO: Server::beforeValidate() && Server::$validate
+    db_server = get_server_by_id(db, server_id=server_id)
+
+    if db_server is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Server not found"
+        )
+
+    server_patch = server.dict(exclude_unset=True)
+    for key, value in server_patch.items():
+        setattr(db_server, key, value)
+
+    db.add(db_server)
+    db.commit()
+    db.refresh(db_server)
+
+    return db_server

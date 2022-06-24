@@ -100,7 +100,7 @@ def create_object_from_pulled_object(
 
 
 def update_object(db: Session, object_id: int, object: object_schemas.ObjectUpdate):
-    # TODO: Attribute::beforeValidate() && Attribute::$validate
+    # TODO: MISPObject::beforeValidate() && MISPObject::$validate
     db_object = get_object_by_id(db, object_id=object_id)
 
     if db_object is None:

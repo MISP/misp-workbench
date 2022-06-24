@@ -126,7 +126,7 @@ def update_event_from_pulled_event(
 
 
 def update_event(db: Session, event_id: int, event: event_schemas.EventUpdate):
-    # TODO: Attribute::beforeValidate() && Attribute::$validate
+    # TODO: Event::beforeValidate() && Event::$validate
     db_event = get_event_by_id(db, event_id=event_id)
 
     if db_event is None:

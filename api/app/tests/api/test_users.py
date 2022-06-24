@@ -105,3 +105,22 @@ class TestUsersResource(ApiTester):
 
         assert response.status_code == 400
         assert data["detail"] == "Email already registered"
+
+    @pytest.mark.parametrize("scopes", [["users:update"]])
+    def test_update_user(
+        self,
+        client: TestClient,
+        user_1: user_models.User,
+        auth_token: auth.Token,
+    ):
+        response = client.patch(
+            f"/users/{user_1.id}",
+            json={
+                "email": "updated_via_api@foo.local",
+            },
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+        data = response.json()
+
+        assert response.status_code == 200
+        assert data["email"] == "updated_via_api@foo.local"

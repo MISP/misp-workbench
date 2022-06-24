@@ -3,6 +3,7 @@ import logging
 from app.auth import auth
 from app.models import user as user_models
 from app.schemas import user as user_schemas
+from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
 logger = logging.getLogger(__name__)
@@ -20,11 +21,6 @@ def get_user_by_email(db: Session, email: str):
     return db.query(user_models.User).filter(user_models.User.email == email).first()
 
 
-def get_user_by_token(db: Session, token: str):
-    # TODO: FIXME
-    return db.query(user_models.User).filter(user_models.User.email == token).first()
-
-
 def create_user(db: Session, user: user_schemas.UserCreate):
     hashed_password = auth.get_password_hash(user.password)
     db_user = user_models.User(
@@ -33,6 +29,30 @@ def create_user(db: Session, user: user_schemas.UserCreate):
         email=user.email,
         hashed_password=hashed_password,
     )
+    db.add(db_user)
+    db.commit()
+    db.refresh(db_user)
+
+    return db_user
+
+
+def update_user(
+    db: Session,
+    user_id: int,
+    user: user_schemas.UserUpdate,
+) -> user_models.User:
+    # TODO: User::beforeValidate() && User::$validate
+    db_user = get_user_by_id(db, user_id=user_id)
+
+    if db_user is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+        )
+
+    user_patch = user.dict(exclude_unset=True)
+    for key, value in user_patch.items():
+        setattr(db_user, key, value)
+
     db.add(db_user)
     db.commit()
     db.refresh(db_user)

@@ -69,3 +69,15 @@ def create_server(
     ),
 ):
     return servers_repository.create_server(db=db, server=server)
+
+
+@router.patch("/servers/{server_id}", response_model=server_schemas.Server)
+def update_server(
+    server_id: int,
+    server: server_schemas.ServerUpdate,
+    db: Session = Depends(get_db),
+    user: user_schemas.User = Security(
+        get_current_active_user, scopes=["servers:update"]
+    ),
+):
+    return servers_repository.update_server(db=db, server_id=server_id, server=server)

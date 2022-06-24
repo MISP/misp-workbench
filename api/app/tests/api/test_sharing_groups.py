@@ -189,3 +189,22 @@ class TestSharingGroupsResource(ApiTester):
         response.json()
 
         assert response.status_code == 401
+
+    @pytest.mark.parametrize("scopes", [["sharing_groups:update"]])
+    def test_update_sharing_group(
+        self,
+        client: TestClient,
+        sharing_group_1: sharing_groups_models.SharingGroup,
+        auth_token: auth.Token,
+    ):
+        response = client.patch(
+            f"/sharing_groups/{sharing_group_1.id}",
+            json={
+                "name": "updated via API",
+            },
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+        data = response.json()
+
+        assert response.status_code == 200
+        assert data["name"] == "updated via API"

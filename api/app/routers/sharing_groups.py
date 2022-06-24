@@ -97,3 +97,20 @@ def add_organisation_to_sharing_group(
     return sharing_groups_repository.add_organisaiton_to_sharing_group(
         db=db, sharing_group_organisation=sharing_group_organisation
     )
+
+
+@router.patch(
+    "/sharing_groups/{sharing_group_id}",
+    response_model=sharing_groups_schemas.SharingGroup,
+)
+def update_sharing_group(
+    sharing_group_id: int,
+    sharing_group: sharing_groups_schemas.SharingGroupUpdate,
+    db: Session = Depends(get_db),
+    user: user_schemas.User = Security(
+        get_current_active_user, scopes=["sharing_groups:update"]
+    ),
+):
+    return sharing_groups_repository.update_sharing_group(
+        db=db, sharing_group_id=sharing_group_id, sharing_group=sharing_group
+    )

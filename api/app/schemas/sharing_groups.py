@@ -65,3 +65,15 @@ class SharingGroup(SharingGroupBase):
 
 class SharingGroupCreate(SharingGroupBase):
     pass
+
+
+class SharingGroupUpdate(BaseModel):
+    name: Optional[str]
+    releasability: Optional[str]
+    description: Optional[str]
+    sync_user_id: Optional[int]
+    active: Optional[bool]
+    local: Optional[bool]
+    roaming: Optional[bool]
+    created: Optional[datetime]
+    modified: Optional[datetime]

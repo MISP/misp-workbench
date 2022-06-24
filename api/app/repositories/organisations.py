@@ -54,7 +54,7 @@ def update_organisation(
     organisation_id: int,
     organisation: organisations_schemas.OrganisationUpdate,
 ) -> organisation_models.Organisation:
-    # TODO: Attribute::beforeValidate() && Attribute::$validate
+    # TODO: Organisation::beforeValidate() && Organisation::$validate
     db_organisation = get_organisation_by_id(db, organisation_id=organisation_id)
 
     if db_organisation is None:

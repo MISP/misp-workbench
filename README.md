@@ -166,10 +166,12 @@ $ poetry run pre-commit run --all-files
 - servers ~~cr~~ud
 - roles ~~c~~r~~ud~~
 - objects crud
+- roles
 - events reports crud
 
 #### API
 - `/api/v1` prefix for API
+- rate limiting
 
 #### Sync
 - Encrypted server authkey
