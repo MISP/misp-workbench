@@ -50,7 +50,6 @@ class EventCreate(EventBase):
 class EventUpdate(BaseModel):
     date: Optional[date]
     info: Optional[str]
-    uuid: Optional[UUID]
     published: Optional[bool]
     analysis: Optional[int]
     timestamp: Optional[int]

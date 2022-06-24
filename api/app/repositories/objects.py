@@ -5,6 +5,7 @@ from app.repositories import attributes as attributes_repository
 from app.repositories import object_references as object_references_repository
 from app.schemas import event as event_schemas
 from app.schemas import object as object_schemas
+from fastapi import HTTPException, status
 from pymisp import MISPObject
 from sqlalchemy.orm import Session
 
@@ -94,5 +95,25 @@ def create_object_from_pulled_object(
         object_references_repository.create_object_reference_from_pulled_object_reference(
             db, pulled_object_reference, local_event_id
         )
+
+    return db_object
+
+
+def update_object(db: Session, object_id: int, object: object_schemas.ObjectUpdate):
+    # TODO: Attribute::beforeValidate() && Attribute::$validate
+    db_object = get_object_by_id(db, object_id=object_id)
+
+    if db_object is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Object not found"
+        )
+
+    object_patch = object.dict(exclude_unset=True)
+    for key, value in object_patch.items():
+        setattr(db_object, key, value)
+
+    db.add(db_object)
+    db.commit()
+    db.refresh(db_object)
 
     return db_object

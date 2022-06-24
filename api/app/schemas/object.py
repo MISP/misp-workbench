@@ -34,3 +34,18 @@ class Object(ObjectBase):
 
 class ObjectCreate(ObjectBase):
     pass
+
+
+class ObjectUpdate(BaseModel):
+    name: Optional[str]
+    meta_category: Optional[str]
+    description: Optional[str]
+    template_uuid: Optional[UUID]
+    template_version: Optional[int]
+    timestamp: Optional[int]
+    distribution: Optional[DistributionLevel]
+    sharing_group_id: Optional[int]
+    comment: Optional[str]
+    deleted: Optional[bool]
+    first_seen: Optional[int]
+    last_seen: Optional[int]

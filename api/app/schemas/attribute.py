@@ -42,7 +42,6 @@ class AttributeUpdate(BaseModel):
     type: Optional[str]
     value: Optional[str]
     to_ids: Optional[bool]
-    uuid: Optional[UUID]
     timestamp: Optional[int]
     distribution: Optional[DistributionLevel]
     sharing_group_id: Optional[int]

@@ -53,3 +53,15 @@ def create_object(
         )
 
     return objects_repository.create_object(db=db, object=object)
+
+
+@router.patch("/objects/{object_id}", response_model=object_schemas.Object)
+def update_object(
+    object_id: int,
+    object: object_schemas.ObjectUpdate,
+    db: Session = Depends(get_db),
+    user: user_schemas.User = Security(
+        get_current_active_user, scopes=["objects:update"]
+    ),
+):
+    return objects_repository.update_object(db=db, object_id=object_id, object=object)
