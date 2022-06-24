@@ -40,7 +40,9 @@ def get_attribute_by_id(
     return db_attribute
 
 
-@router.post("/attributes/", response_model=attribute_schemas.Attribute)
+@router.post(
+    "/attributes/", response_model=attribute_schemas.Attribute, status_code=201
+)
 def create_attribute(
     attribute: attribute_schemas.AttributeCreate,
     db: Session = Depends(get_db),
@@ -55,3 +57,17 @@ def create_attribute(
         )
 
     return attributes_repository.create_attribute(db=db, attribute=attribute)
+
+
+@router.patch("/attributes/{attribute_id}", response_model=attribute_schemas.Attribute)
+def update_attribute(
+    attribute_id: int,
+    attribute: attribute_schemas.AttributeUpdate,
+    db: Session = Depends(get_db),
+    user: user_schemas.User = Security(
+        get_current_active_user, scopes=["attributes:update"]
+    ),
+):
+    return attributes_repository.update_attribute(
+        db=db, attribute_id=attribute_id, attribute=attribute
+    )

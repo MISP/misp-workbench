@@ -1,17 +1,23 @@
 import time
+from typing import Union
 
 from app.models import attribute as attribute_models
 from app.schemas import attribute as attribute_schemas
 from app.schemas import event as event_schemas
+from fastapi import HTTPException, status
 from pymisp import MISPAttribute
 from sqlalchemy.orm import Session
 
 
-def get_attributes(db: Session, skip: int = 0, limit: int = 100):
+def get_attributes(
+    db: Session, skip: int = 0, limit: int = 100
+) -> list[attribute_models.Attribute]:
     return db.query(attribute_models.Attribute).offset(skip).limit(limit).all()
 
 
-def get_attribute_by_id(db: Session, attribute_id: int):
+def get_attribute_by_id(
+    db: Session, attribute_id: int
+) -> Union[attribute_models.Attribute, None]:
     return (
         db.query(attribute_models.Attribute)
         .filter(attribute_models.Attribute.id == attribute_id)
@@ -19,7 +25,9 @@ def get_attribute_by_id(db: Session, attribute_id: int):
     )
 
 
-def create_attribute(db: Session, attribute: attribute_schemas.AttributeCreate):
+def create_attribute(
+    db: Session, attribute: attribute_schemas.AttributeCreate
+) -> attribute_models.Attribute:
     # TODO: Attribute::beforeValidate() && Attribute::$validate
     db_attribute = attribute_models.Attribute(
         event_id=attribute.event_id,
@@ -48,7 +56,7 @@ def create_attribute(db: Session, attribute: attribute_schemas.AttributeCreate):
 
 def create_attribute_from_pulled_attribute(
     db: Session, pulled_attribute: MISPAttribute, local_event_id: int
-):
+) -> attribute_models.Attribute:
     # TODO: process sharing group // captureSG
     # TODO: enforce warninglist
 
@@ -82,6 +90,28 @@ def create_attribute_from_pulled_attribute(
 
     # TODO: process attribute tags
     # TODO: process sigthings
+
+    db.add(db_attribute)
+    db.commit()
+    db.refresh(db_attribute)
+
+    return db_attribute
+
+
+def update_attribute(
+    db: Session, attribute_id: int, attribute: attribute_schemas.AttributeUpdate
+) -> attribute_models.Attribute:
+    # TODO: Attribute::beforeValidate() && Attribute::$validate
+    db_attribute = get_attribute_by_id(db, attribute_id=attribute_id)
+
+    if db_attribute is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Attribute not found"
+        )
+
+    attribute_patch = attribute.dict(exclude_unset=True)
+    for key, value in attribute_patch.items():
+        setattr(db_attribute, key, value)
 
     db.add(db_attribute)
     db.commit()

@@ -33,3 +33,21 @@ class Attribute(AttributeBase):
 
 class AttributeCreate(AttributeBase):
     pass
+
+
+class AttributeUpdate(BaseModel):
+    object_id: Optional[int]
+    object_relation: Optional[str]
+    category: Optional[str]
+    type: Optional[str]
+    value: Optional[str]
+    to_ids: Optional[bool]
+    uuid: Optional[UUID]
+    timestamp: Optional[int]
+    distribution: Optional[DistributionLevel]
+    sharing_group_id: Optional[int]
+    comment: Optional[str]
+    deleted: Optional[bool]
+    disable_correlation: Optional[bool]
+    first_seen: Optional[int]
+    last_seen: Optional[int]

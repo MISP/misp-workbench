@@ -53,7 +53,7 @@ class TestAttributesResource(ApiTester):
         )
         data = response.json()
 
-        assert response.status_code == 200
+        assert response.status_code == 201
         assert data["id"] is not None
         assert data["event_id"] == event_1.id
         assert data["category"] == "Network activity"
@@ -91,3 +91,25 @@ class TestAttributesResource(ApiTester):
             headers={"Authorization": "Bearer " + auth_token},
         )
         assert response.status_code == 422
+
+    @pytest.mark.parametrize("scopes", [["attributes:update"]])
+    def test_update_attribute(
+        self,
+        client: TestClient,
+        event_1: event_models.Event,
+        attribute_1: attribute_models.Attribute,
+        auth_token: auth.Token,
+    ):
+        response = client.patch(
+            f"/attributes/{attribute_1.id}",
+            json={
+                "type": "ip-src",
+                "value": "8.8.8.8",
+            },
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+        data = response.json()
+
+        assert response.status_code == 200
+        assert data["type"] == "ip-src"
+        assert data["value"] == "8.8.8.8"
