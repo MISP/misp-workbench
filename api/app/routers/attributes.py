@@ -41,7 +41,9 @@ def get_attribute_by_id(
 
 
 @router.post(
-    "/attributes/", response_model=attribute_schemas.Attribute, status_code=201
+    "/attributes/",
+    response_model=attribute_schemas.Attribute,
+    status_code=status.HTTP_201_CREATED,
 )
 def create_attribute(
     attribute: attribute_schemas.AttributeCreate,
@@ -71,3 +73,14 @@ def update_attribute(
     return attributes_repository.update_attribute(
         db=db, attribute_id=attribute_id, attribute=attribute
     )
+
+
+@router.delete("/attributes/{attribute_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_attribute(
+    attribute_id: int,
+    db: Session = Depends(get_db),
+    user: user_schemas.User = Security(
+        get_current_active_user, scopes=["attributes:delete"]
+    ),
+):
+    return attributes_repository.delete_attribute(db=db, attribute_id=attribute_id)

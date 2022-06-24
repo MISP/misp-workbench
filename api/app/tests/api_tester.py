@@ -207,7 +207,7 @@ class ApiTester:
         self, db: Session, organisation_1: organisation_models.Organisation
     ):
         sharing_group_1 = sharing_groups_models.SharingGroup(
-            name="test server",
+            name="test sharing group",
             releasability="releasability",
             description="description",
             uuid="04750a80-3c22-432b-a016-8c743385b696",
@@ -225,6 +225,30 @@ class ApiTester:
         db.refresh(sharing_group_1)
 
         return sharing_group_1
+
+    @pytest.fixture(scope="class")
+    def sharing_group_2(
+        self, db: Session, organisation_1: organisation_models.Organisation
+    ):
+        sharing_group_2 = sharing_groups_models.SharingGroup(
+            name="test sharing group (for delete)",
+            releasability="releasability",
+            description="description",
+            uuid="04750a80-3c22-432b-a016-8c743385b695",
+            organisation_uuid=organisation_1.uuid,
+            org_id=organisation_1.id,
+            sync_user_id=None,
+            active=True,
+            local=False,
+            roaming=False,
+            created="2020-01-01 01:01:01",
+            modified="2020-01-01 01:01:01",
+        )
+        db.add(sharing_group_2)
+        db.commit()
+        db.refresh(sharing_group_2)
+
+        return sharing_group_2
 
     @pytest.fixture(scope="function")
     def auth_token(

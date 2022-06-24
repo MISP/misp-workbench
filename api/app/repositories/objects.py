@@ -117,3 +117,18 @@ def update_object(db: Session, object_id: int, object: object_schemas.ObjectUpda
     db.refresh(db_object)
 
     return db_object
+
+
+def delete_object(db: Session, object_id: int) -> None:
+    db_object = get_object_by_id(db, object_id=object_id)
+
+    if db_object is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Object not found"
+        )
+
+    db_object.deleted = True
+
+    db.add(db_object)
+    db.commit()
+    db.refresh(db_object)

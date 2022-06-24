@@ -2,6 +2,7 @@ import pytest
 from app.auth import auth
 from app.models import organisations as organisation_models
 from app.tests.api_tester import ApiTester
+from fastapi import status
 from fastapi.testclient import TestClient
 
 
@@ -18,7 +19,7 @@ class TestOrganisationsResource(ApiTester):
         )
         data = response.json()
 
-        assert response.status_code == 200
+        assert response.status_code == status.HTTP_200_OK
 
         assert len(data) == 1
         assert data[0]["id"] == organisation_1.id
@@ -33,7 +34,7 @@ class TestOrganisationsResource(ApiTester):
             "/organisations/", headers={"Authorization": "Bearer " + auth_token}
         )
 
-        assert response.status_code == 401
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
     @pytest.mark.parametrize("scopes", [["organisations:create"]])
     def test_create_organisation(self, client: TestClient, auth_token: auth.Token):
@@ -54,7 +55,7 @@ class TestOrganisationsResource(ApiTester):
         )
         data = response.json()
 
-        assert response.status_code == 201
+        assert response.status_code == status.HTTP_201_CREATED
         assert data["id"] is not None
         assert data["name"] == "test organisation 2"
         assert data["type"] == "test2"
@@ -82,7 +83,7 @@ class TestOrganisationsResource(ApiTester):
             },
             headers={"Authorization": "Bearer " + auth_token},
         )
-        assert response.status_code == 401
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
     @pytest.mark.parametrize("scopes", [["organisations:create"]])
     def test_create_organisation_incomplete(
@@ -96,7 +97,7 @@ class TestOrganisationsResource(ApiTester):
             },
             headers={"Authorization": "Bearer " + auth_token},
         )
-        assert response.status_code == 422
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
     @pytest.mark.parametrize("scopes", [["organisations:update"]])
     def test_update_organisation(
@@ -114,5 +115,19 @@ class TestOrganisationsResource(ApiTester):
         )
         data = response.json()
 
-        assert response.status_code == 200
+        assert response.status_code == status.HTTP_200_OK
         assert data["name"] == "updated via API"
+
+    @pytest.mark.parametrize("scopes", [["organisations:delete"]])
+    def test_delete_organisation(
+        self,
+        client: TestClient,
+        organisation_1: organisation_models.Organisation,
+        auth_token: auth.Token,
+    ):
+        response = client.delete(
+            f"/organisations/{organisation_1.id}",
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+
+        assert response.status_code == status.HTTP_204_NO_CONTENT

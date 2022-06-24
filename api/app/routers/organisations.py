@@ -42,7 +42,9 @@ def get_organisation_by_id(
 
 
 @router.post(
-    "/organisations/", response_model=organisation_schemas.Organisation, status_code=201
+    "/organisations/",
+    response_model=organisation_schemas.Organisation,
+    status_code=status.HTTP_201_CREATED,
 )
 def create_organisation(
     organisation: organisation_schemas.OrganisationCreate,
@@ -69,4 +71,19 @@ def update_organisation(
 ):
     return organisations_repository.update_organisation(
         db=db, organisation_id=organisation_id, organisation=organisation
+    )
+
+
+@router.delete(
+    "/organisations/{organisation_id}", status_code=status.HTTP_204_NO_CONTENT
+)
+def delete_organisation(
+    organisation_id: int,
+    db: Session = Depends(get_db),
+    user: user_schemas.User = Security(
+        get_current_active_user, scopes=["organisations:delete"]
+    ),
+):
+    return organisations_repository.delete_organisation(
+        db=db, organisation_id=organisation_id
     )

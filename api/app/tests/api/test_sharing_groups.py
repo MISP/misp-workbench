@@ -4,6 +4,7 @@ from app.models import organisations as organisation_models
 from app.models import server as server_models
 from app.models import sharing_groups as sharing_groups_models
 from app.tests.api_tester import ApiTester
+from fastapi import status
 from fastapi.testclient import TestClient
 
 
@@ -20,7 +21,7 @@ class TestSharingGroupsResource(ApiTester):
         )
         data = response.json()
 
-        assert response.status_code == 200
+        assert response.status_code == status.HTTP_200_OK
 
         assert len(data) == 1
         assert data[0]["id"] == sharing_group_1.id
@@ -45,7 +46,7 @@ class TestSharingGroupsResource(ApiTester):
             "/sharing_groups/", headers={"Authorization": "Bearer " + auth_token}
         )
 
-        assert response.status_code == 401
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
     @pytest.mark.parametrize("scopes", [["sharing_groups:create"]])
     def test_create_sharing_group(
@@ -71,7 +72,7 @@ class TestSharingGroupsResource(ApiTester):
         )
         data = response.json()
 
-        assert response.status_code == 201
+        assert response.status_code == status.HTTP_201_CREATED
         assert data["name"] == "test create sharing group"
         assert data["releasability"] == "releasability"
         assert data["description"] == "description"
@@ -102,7 +103,7 @@ class TestSharingGroupsResource(ApiTester):
             },
             headers={"Authorization": "Bearer " + auth_token},
         )
-        assert response.status_code == 401
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
     @pytest.mark.parametrize("scopes", [["sharing_groups:create"]])
     def test_create_sharing_group_incomplete(
@@ -116,7 +117,7 @@ class TestSharingGroupsResource(ApiTester):
             },
             headers={"Authorization": "Bearer " + auth_token},
         )
-        assert response.status_code == 422
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
     @pytest.mark.parametrize("scopes", [["sharing_groups:update"]])
     def test_add_server_to_sharing_group(
@@ -133,7 +134,7 @@ class TestSharingGroupsResource(ApiTester):
         )
         data = response.json()
 
-        assert response.status_code == 201
+        assert response.status_code == status.HTTP_201_CREATED
         assert data["server_id"] == server_1.id
         assert data["all_orgs"] is False
 
@@ -152,7 +153,7 @@ class TestSharingGroupsResource(ApiTester):
         )
         response.json()
 
-        assert response.status_code == 401
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
     @pytest.mark.parametrize("scopes", [["sharing_groups:update"]])
     def test_add_organisation_to_sharing_group(
@@ -169,7 +170,7 @@ class TestSharingGroupsResource(ApiTester):
         )
         data = response.json()
 
-        assert response.status_code == 201
+        assert response.status_code == status.HTTP_201_CREATED
         assert data["org_id"] == organisation_1.id
         assert data["extend"] is False
 
@@ -188,7 +189,7 @@ class TestSharingGroupsResource(ApiTester):
         )
         response.json()
 
-        assert response.status_code == 401
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
     @pytest.mark.parametrize("scopes", [["sharing_groups:update"]])
     def test_update_sharing_group(
@@ -206,5 +207,19 @@ class TestSharingGroupsResource(ApiTester):
         )
         data = response.json()
 
-        assert response.status_code == 200
+        assert response.status_code == status.HTTP_200_OK
         assert data["name"] == "updated via API"
+
+    @pytest.mark.parametrize("scopes", [["sharing_groups:delete"]])
+    def test_delete_sharing_group(
+        self,
+        client: TestClient,
+        sharing_group_2: sharing_groups_models.SharingGroup,
+        auth_token: auth.Token,
+    ):
+        response = client.delete(
+            f"/sharing_groups/{sharing_group_2.id}",
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+
+        assert response.status_code == status.HTTP_204_NO_CONTENT

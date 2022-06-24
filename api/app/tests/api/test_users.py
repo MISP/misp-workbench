@@ -3,6 +3,7 @@ from app.auth import auth
 from app.models import organisations as organisation_models
 from app.models import user as user_models
 from app.tests.api_tester import ApiTester
+from fastapi import status
 from fastapi.testclient import TestClient
 
 
@@ -16,7 +17,7 @@ class TestUsersResource(ApiTester):
         )
         data = response.json()
 
-        assert response.status_code == 200
+        assert response.status_code == status.HTTP_200_OK
 
         assert data not in [None, []]
         assert data[0]["email"] == user_1.email
@@ -28,7 +29,7 @@ class TestUsersResource(ApiTester):
             "/users/", headers={"Authorization": "Bearer " + auth_token}
         )
 
-        assert response.status_code == 401
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
     @pytest.mark.parametrize("scopes", [["users:create"]])
     def test_create_user(
@@ -49,7 +50,7 @@ class TestUsersResource(ApiTester):
         )
         data = response.json()
 
-        assert response.status_code == 201
+        assert response.status_code == status.HTTP_201_CREATED
         assert data["email"] == "foobar@example.local"
         assert data["id"] is not None
 
@@ -71,7 +72,7 @@ class TestUsersResource(ApiTester):
             },
         )
 
-        assert response.status_code == 401
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
     @pytest.mark.parametrize("scopes", [["users:create"]])
     def test_create_user_incomplete(self, client: TestClient, auth_token: auth.Token):
@@ -81,7 +82,7 @@ class TestUsersResource(ApiTester):
             json={"email": "nopass@example.local"},
             headers={"Authorization": "Bearer " + auth_token},
         )
-        assert response.status_code == 422
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
     @pytest.mark.parametrize("scopes", [["users:create"]])
     def test_create_user_invalid_exists(
@@ -103,7 +104,7 @@ class TestUsersResource(ApiTester):
         )
         data = response.json()
 
-        assert response.status_code == 400
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert data["detail"] == "Email already registered"
 
     @pytest.mark.parametrize("scopes", [["users:update"]])
@@ -122,5 +123,19 @@ class TestUsersResource(ApiTester):
         )
         data = response.json()
 
-        assert response.status_code == 200
+        assert response.status_code == status.HTTP_200_OK
         assert data["email"] == "updated_via_api@foo.local"
+
+    @pytest.mark.parametrize("scopes", [["users:delete"]])
+    def test_delete_user(
+        self,
+        client: TestClient,
+        user_1: user_models.User,
+        auth_token: auth.Token,
+    ):
+        response = client.delete(
+            f"/users/{user_1.id}",
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+
+        assert response.status_code == status.HTTP_204_NO_CONTENT

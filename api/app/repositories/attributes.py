@@ -118,3 +118,18 @@ def update_attribute(
     db.refresh(db_attribute)
 
     return db_attribute
+
+
+def delete_attribute(db: Session, attribute_id: int) -> None:
+    db_attribute = get_attribute_by_id(db, attribute_id=attribute_id)
+
+    if db_attribute is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Attribute not found"
+        )
+
+    db_attribute.deleted = True
+
+    db.add(db_attribute)
+    db.commit()
+    db.refresh(db_attribute)

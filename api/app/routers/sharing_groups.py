@@ -47,7 +47,7 @@ def get_sharing_group_by_id(
 @router.post(
     "/sharing_groups/",
     response_model=sharing_groups_schemas.SharingGroup,
-    status_code=201,
+    status_code=status.HTTP_201_CREATED,
 )
 def create_sharing_group(
     sharing_group: sharing_groups_schemas.SharingGroupCreate,
@@ -64,7 +64,7 @@ def create_sharing_group(
 @router.post(
     "/sharing_groups/{sharing_group_id}/servers",
     response_model=sharing_groups_schemas.SharingGroupServer,
-    status_code=201,
+    status_code=status.HTTP_201_CREATED,
 )
 def add_server_to_sharing_group(
     sharing_group_id: int,
@@ -83,7 +83,7 @@ def add_server_to_sharing_group(
 @router.post(
     "/sharing_groups/{sharing_group_id}/organisations",
     response_model=sharing_groups_schemas.SharingGroupOrganisation,
-    status_code=201,
+    status_code=status.HTTP_201_CREATED,
 )
 def add_organisation_to_sharing_group(
     sharing_group_id: int,
@@ -113,4 +113,19 @@ def update_sharing_group(
 ):
     return sharing_groups_repository.update_sharing_group(
         db=db, sharing_group_id=sharing_group_id, sharing_group=sharing_group
+    )
+
+
+@router.delete(
+    "/sharing_groups/{sharing_group_id}", status_code=status.HTTP_204_NO_CONTENT
+)
+def delete_sharing_group(
+    sharing_group_id: int,
+    db: Session = Depends(get_db),
+    user: user_schemas.User = Security(
+        get_current_active_user, scopes=["sharing_groups:delete"]
+    ),
+):
+    return sharing_groups_repository.delete_sharing_group(
+        db=db, sharing_group_id=sharing_group_id
     )

@@ -71,3 +71,15 @@ def update_organisation(
     db.refresh(db_organisation)
 
     return db_organisation
+
+
+def delete_organisation(db: Session, organisation_id: int) -> None:
+    db_organisation = get_organisation_by_id(db, organisation_id=organisation_id)
+
+    if db_organisation is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Organisation not found"
+        )
+
+    db.delete(db_organisation)
+    db.commit()

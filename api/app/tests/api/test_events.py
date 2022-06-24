@@ -5,6 +5,7 @@ from app.models import event as event_models
 from app.models import organisations as organisation_models
 from app.models import user as user_models
 from app.tests.api_tester import ApiTester
+from fastapi import status
 from fastapi.testclient import TestClient
 
 
@@ -23,7 +24,7 @@ class TestEventsResource(ApiTester):
         )
         data = response.json()
 
-        assert response.status_code == 200
+        assert response.status_code == status.HTTP_200_OK
 
         assert len(data) == 1
         assert data[0]["id"] == event_1.id
@@ -44,7 +45,7 @@ class TestEventsResource(ApiTester):
             "/events/", headers={"Authorization": "Bearer " + auth_token}
         )
 
-        assert response.status_code == 401
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
     @pytest.mark.parametrize("scopes", [["events:create"]])
     def test_create_event(
@@ -67,7 +68,7 @@ class TestEventsResource(ApiTester):
         )
         data = response.json()
 
-        assert response.status_code == 201
+        assert response.status_code == status.HTTP_201_CREATED
         assert data["id"] is not None
         assert data["info"] == "test create event"
         assert data["user_id"] == user_1.id
@@ -93,7 +94,7 @@ class TestEventsResource(ApiTester):
             },
             headers={"Authorization": "Bearer " + auth_token},
         )
-        assert response.status_code == 401
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
     @pytest.mark.parametrize("scopes", [["events:create"]])
     def test_create_event_incomplete(self, client: TestClient, auth_token: auth.Token):
@@ -103,7 +104,7 @@ class TestEventsResource(ApiTester):
             json={"user_id": 1, "orgc_id": 1, "org_id": 1, "date": "2020-01-01"},
             headers={"Authorization": "Bearer " + auth_token},
         )
-        assert response.status_code == 422
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
     @pytest.mark.parametrize("scopes", [["events:create"]])
     def test_create_event_invalid_exists(
@@ -123,7 +124,7 @@ class TestEventsResource(ApiTester):
         )
         data = response.json()
 
-        assert response.status_code == 400
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert data["detail"] == "An event with this info already exists"
 
     @pytest.mark.parametrize("scopes", [["events:update"]])
@@ -143,6 +144,20 @@ class TestEventsResource(ApiTester):
         )
         data = response.json()
 
-        assert response.status_code == 200
+        assert response.status_code == status.HTTP_200_OK
         assert data["info"] == "updated via API"
         assert data["published"] is False
+
+    @pytest.mark.parametrize("scopes", [["events:delete"]])
+    def test_delete_event(
+        self,
+        client: TestClient,
+        event_1: event_models.Event,
+        auth_token: auth.Token,
+    ):
+        response = client.delete(
+            f"/events/{event_1.id}",
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+
+        assert response.status_code == status.HTTP_204_NO_CONTENT

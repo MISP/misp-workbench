@@ -44,7 +44,9 @@ def get_user_by_id(
     return db_user
 
 
-@router.post("/users/", response_model=user_schemas.User, status_code=201)
+@router.post(
+    "/users/", response_model=user_schemas.User, status_code=status.HTTP_201_CREATED
+)
 def create_user(
     user_request: user_schemas.UserCreate,
     db: Session = Depends(get_db),
@@ -70,3 +72,14 @@ def update_user(
     ),
 ):
     return users_repository.update_user(db=db, user_id=user_id, user=user)
+
+
+@router.delete("/users/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_user(
+    user_id: int,
+    db: Session = Depends(get_db),
+    user: user_schemas.User = Security(
+        get_current_active_user, scopes=["users:delete"]
+    ),
+):
+    return users_repository.delete_user(db=db, user_id=user_id)

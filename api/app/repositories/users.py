@@ -58,3 +58,15 @@ def update_user(
     db.refresh(db_user)
 
     return db_user
+
+
+def delete_user(db: Session, user_id: int) -> None:
+    db_user = get_user_by_id(db, user_id=user_id)
+
+    if db_user is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+        )
+
+    db.delete(db_user)
+    db.commit()

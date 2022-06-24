@@ -3,6 +3,7 @@ from app.auth import auth
 from app.models import event as event_models
 from app.models import object as object_models
 from app.tests.api_tester import ApiTester
+from fastapi import status
 from fastapi.testclient import TestClient
 
 
@@ -19,7 +20,7 @@ class TestObjectsResource(ApiTester):
         )
         data = response.json()
 
-        assert response.status_code == 200
+        assert response.status_code == status.HTTP_200_OK
 
         assert len(data) == 1
         assert data[0]["id"] == object_1.id
@@ -34,7 +35,7 @@ class TestObjectsResource(ApiTester):
             "/objects/", headers={"Authorization": "Bearer " + auth_token}
         )
 
-        assert response.status_code == 401
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
     @pytest.mark.parametrize("scopes", [["objects:create"]])
     def test_create_object(
@@ -53,7 +54,7 @@ class TestObjectsResource(ApiTester):
         )
         data = response.json()
 
-        assert response.status_code == 201
+        assert response.status_code == status.HTTP_201_CREATED
         assert data["id"] is not None
         assert data["event_id"] == event_1.id
         assert data["template_version"] == 0
@@ -75,7 +76,7 @@ class TestObjectsResource(ApiTester):
             },
             headers={"Authorization": "Bearer " + auth_token},
         )
-        assert response.status_code == 401
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
     @pytest.mark.parametrize("scopes", [["objects:create"]])
     def test_create_object_incomplete(
@@ -89,7 +90,7 @@ class TestObjectsResource(ApiTester):
             },
             headers={"Authorization": "Bearer " + auth_token},
         )
-        assert response.status_code == 422
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
     @pytest.mark.parametrize("scopes", [["objects:update"]])
     def test_update_object(
@@ -108,6 +109,20 @@ class TestObjectsResource(ApiTester):
         )
         data = response.json()
 
-        assert response.status_code == 200
+        assert response.status_code == status.HTTP_200_OK
         assert data["name"] == "updated via API"
         assert data["comment"] == "test comment"
+
+    @pytest.mark.parametrize("scopes", [["objects:delete"]])
+    def test_delete_object(
+        self,
+        client: TestClient,
+        object_1: object_models.Object,
+        auth_token: auth.Token,
+    ):
+        response = client.delete(
+            f"/objects/{object_1.id}",
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+
+        assert response.status_code == status.HTTP_204_NO_CONTENT

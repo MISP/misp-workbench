@@ -60,7 +60,11 @@ def pull_server(
     )
 
 
-@router.post("/servers/", response_model=server_schemas.Server, status_code=201)
+@router.post(
+    "/servers/",
+    response_model=server_schemas.Server,
+    status_code=status.HTTP_201_CREATED,
+)
 def create_server(
     server: server_schemas.ServerCreate,
     db: Session = Depends(get_db),
@@ -81,3 +85,14 @@ def update_server(
     ),
 ):
     return servers_repository.update_server(db=db, server_id=server_id, server=server)
+
+
+@router.delete("/servers/{server_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_server(
+    server_id: int,
+    db: Session = Depends(get_db),
+    user: user_schemas.User = Security(
+        get_current_active_user, scopes=["servers:delete"]
+    ),
+):
+    return servers_repository.delete_server(db=db, server_id=server_id)

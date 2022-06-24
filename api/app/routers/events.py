@@ -45,7 +45,9 @@ def get_event_by_id(
     return db_event
 
 
-@router.post("/events/", response_model=event_schemas.Event, status_code=201)
+@router.post(
+    "/events/", response_model=event_schemas.Event, status_code=status.HTTP_201_CREATED
+)
 def create_event(
     event: event_schemas.EventCreate,
     db: Session = Depends(get_db),
@@ -71,3 +73,14 @@ def update_event(
     ),
 ):
     return events_repository.update_event(db=db, event_id=event_id, event=event)
+
+
+@router.delete("/events/{event_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_event(
+    event_id: int,
+    db: Session = Depends(get_db),
+    user: user_schemas.User = Security(
+        get_current_active_user, scopes=["events:delete"]
+    ),
+):
+    return events_repository.delete_event(db=db, event_id=event_id)

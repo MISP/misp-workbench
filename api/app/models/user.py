@@ -1,7 +1,7 @@
 from app.database import Base
 from pymisp import MISPEvent
 from sqlalchemy import Boolean, Column, ForeignKey, Integer, String
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import backref, relationship
 
 
 class User(Base):
@@ -15,7 +15,9 @@ class User(Base):
     disabled = Column(Boolean, default=False)
 
     role = relationship("Role")
-    organisation = relationship("Organisation")
+    organisation = relationship(
+        "Organisation", backref=backref("users", cascade="all, delete-orphan")
+    )
 
     def can_create_pulled_event(self, event: MISPEvent) -> bool:
         """

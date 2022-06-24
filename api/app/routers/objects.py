@@ -38,7 +38,11 @@ def get_object_by_id(
     return db_object
 
 
-@router.post("/objects/", response_model=object_schemas.Object, status_code=201)
+@router.post(
+    "/objects/",
+    response_model=object_schemas.Object,
+    status_code=status.HTTP_201_CREATED,
+)
 def create_object(
     object: object_schemas.ObjectCreate,
     db: Session = Depends(get_db),
@@ -65,3 +69,14 @@ def update_object(
     ),
 ):
     return objects_repository.update_object(db=db, object_id=object_id, object=object)
+
+
+@router.delete("/objects/{object_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_object(
+    object_id: int,
+    db: Session = Depends(get_db),
+    user: user_schemas.User = Security(
+        get_current_active_user, scopes=["objects:delete"]
+    ),
+):
+    return objects_repository.delete_object(db=db, object_id=object_id)

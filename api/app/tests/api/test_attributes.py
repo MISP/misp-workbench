@@ -3,6 +3,7 @@ from app.auth import auth
 from app.models import attribute as attribute_models
 from app.models import event as event_models
 from app.tests.api_tester import ApiTester
+from fastapi import status
 from fastapi.testclient import TestClient
 
 
@@ -19,7 +20,7 @@ class TestAttributesResource(ApiTester):
         )
         data = response.json()
 
-        assert response.status_code == 200
+        assert response.status_code == status.HTTP_200_OK
 
         assert len(data) == 1
         assert data[0]["id"] == attribute_1.id
@@ -35,7 +36,7 @@ class TestAttributesResource(ApiTester):
             "/attributes/", headers={"Authorization": "Bearer " + auth_token}
         )
 
-        assert response.status_code == 401
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
     @pytest.mark.parametrize("scopes", [["attributes:create"]])
     def test_create_attribute(
@@ -53,7 +54,7 @@ class TestAttributesResource(ApiTester):
         )
         data = response.json()
 
-        assert response.status_code == 201
+        assert response.status_code == status.HTTP_201_CREATED
         assert data["id"] is not None
         assert data["event_id"] == event_1.id
         assert data["category"] == "Network activity"
@@ -74,7 +75,7 @@ class TestAttributesResource(ApiTester):
             },
             headers={"Authorization": "Bearer " + auth_token},
         )
-        assert response.status_code == 401
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
     @pytest.mark.parametrize("scopes", [["attributes:create"]])
     def test_create_attribute_incomplete(
@@ -90,7 +91,7 @@ class TestAttributesResource(ApiTester):
             },
             headers={"Authorization": "Bearer " + auth_token},
         )
-        assert response.status_code == 422
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
     @pytest.mark.parametrize("scopes", [["attributes:update"]])
     def test_update_attribute(
@@ -109,6 +110,20 @@ class TestAttributesResource(ApiTester):
         )
         data = response.json()
 
-        assert response.status_code == 200
+        assert response.status_code == status.HTTP_200_OK
         assert data["type"] == "ip-src"
         assert data["value"] == "8.8.8.8"
+
+    @pytest.mark.parametrize("scopes", [["attributes:delete"]])
+    def test_delete_attribute(
+        self,
+        client: TestClient,
+        attribute_1: attribute_models.Attribute,
+        auth_token: auth.Token,
+    ):
+        response = client.delete(
+            f"/attributes/{attribute_1.id}",
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+
+        assert response.status_code == status.HTTP_204_NO_CONTENT

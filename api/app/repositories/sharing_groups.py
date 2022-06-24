@@ -100,3 +100,15 @@ def update_sharing_group(
     db.refresh(db_sharing_group)
 
     return db_sharing_group
+
+
+def delete_sharing_group(db: Session, sharing_group_id: int) -> None:
+    db_sharing_group = get_sharing_group_by_id(db, sharing_group_id=sharing_group_id)
+
+    if db_sharing_group is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Sharing Group not found"
+        )
+
+    db.delete(db_sharing_group)
+    db.commit()
