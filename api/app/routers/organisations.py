@@ -54,3 +54,19 @@ def create_organisation(
     return organisations_repository.create_organisation(
         db=db, organisation=organisation
     )
+
+
+@router.patch(
+    "/organisations/{organisation_id}", response_model=organisation_schemas.Organisation
+)
+def update_organisation(
+    organisation_id: int,
+    organisation: organisation_schemas.OrganisationUpdate,
+    db: Session = Depends(get_db),
+    user: user_schemas.User = Security(
+        get_current_active_user, scopes=["organisations:update"]
+    ),
+):
+    return organisations_repository.update_organisation(
+        db=db, organisation_id=organisation_id, organisation=organisation
+    )

@@ -97,3 +97,22 @@ class TestOrganisationsResource(ApiTester):
             headers={"Authorization": "Bearer " + auth_token},
         )
         assert response.status_code == 422
+
+    @pytest.mark.parametrize("scopes", [["organisations:update"]])
+    def test_update_organisation(
+        self,
+        client: TestClient,
+        organisation_1: organisation_models.Organisation,
+        auth_token: auth.Token,
+    ):
+        response = client.patch(
+            f"/organisations/{organisation_1.id}",
+            json={
+                "name": "updated via API",
+            },
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+        data = response.json()
+
+        assert response.status_code == 200
+        assert data["name"] == "updated via API"
