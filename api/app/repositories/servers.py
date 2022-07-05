@@ -8,11 +8,11 @@ from app.models.event import DistributionLevel
 from app.repositories import attributes as attributes_repository
 from app.repositories import events as events_repository
 from app.repositories import objects as objects_repository
-from app.repositories import users as users_repository
+from app.repositories import sharing_groups as sharing_groups_repository
 from app.schemas import server as server_schemas
 from app.settings import Settings
 from fastapi import HTTPException, status
-from pymisp import MISPAttribute, MISPEvent, MISPObject, PyMISP
+from pymisp import MISPAttribute, MISPEvent, MISPObject, MISPSharingGroup, PyMISP
 from sqlalchemy.orm import Session
 
 logger = logging.getLogger(__name__)
@@ -222,15 +222,15 @@ def pull_event_by_id(
     if not db_event:
         return False
 
-    # TODO: save EventTag, see Event::_add()
+    # TODO: save EventTag, see app/Model/Event.php::_add()
 
-    # TODO: process event reports, see Event::_add()
+    # TODO: process event reports, see app/Model/Event.php::_add()
 
-    # TODO: process cryptographic keys, see Event::_add()
+    # TODO: process cryptographic keys, see app/Model/Event.php::_add()
 
-    # TODO: process sightings, see Event::_add()
+    # TODO: process sightings, see app/Model/Event.php::_add()
 
-    # TODO: process tag collection, see Event::_add()
+    # TODO: process tag collection, see app/Model/Event.php::_add()
 
     return True
 
@@ -244,7 +244,7 @@ def update_pulled_event_before_insert(
 ):
     """
     see: app/Model/Server.php::__updatePulledEventBeforeInsert()
-    see: app/Model/Event::_add()
+    see: app/Model/Event.php::_add()
     """
 
     event.locked = True
@@ -275,7 +275,7 @@ def update_pulled_event_before_insert(
             # TODO handle event reports
             pass
 
-    # these transformations come from app/Model/Event::_add()
+    # these transformations come from app/Model/Event.php::_add()
     event.org_id = server.org_id
 
     if event.orgc_id is not None and event.orgc is not None:
@@ -293,8 +293,7 @@ def update_pulled_event_before_insert(
     if not user.can_publish_event():
         event.published = False
 
-    # TODO: handle user after auth is implemented
-    event.user_id = users_repository.get_users(db, limit=1)[0].id
+    event.user_id = user.id
 
     return event
 
@@ -371,8 +370,14 @@ def create_or_update_pulled_event(
 
         # TODO: handle protected event
 
+        if event.sharing_group_id > 0:
+            event.sharing_group_id = create_pulled_event_sharing_group(
+                db, event.SharingGroup, server, user
+            )
+
         created = events_repository.create_event_from_pulled_event(db, event)
         if created:
+
             create_pulled_event_attributes(
                 db, created.id, event.attributes, server, user
             )
@@ -391,18 +396,52 @@ def create_or_update_pulled_event(
 
         # TODO: handle protected event
 
-        # TODO: see Event::_edit
+        # see app/Model/Event::_edit
+        if existing_event.distribution == DistributionLevel.SHARING_GROUP:
+            if existing_event.sharing_group is None:
+                logger.error(
+                    "Event could not be saved: Sharing group chosen as the distribution level, but no sharing group specified. Make sure that the event includes a valid sharing_group_id or change to a different distribution level."
+                )
+                return False
+
+            sharing_group_id = sharing_groups_repository.capture_sharing_group(
+                existing_event.sharing_group, user, server
+            )
+
+            if sharing_group_id > 0:
+                event.sharing_group_id = sharing_group_id
+
         updated = events_repository.update_event_from_pulled_event(
             db, existing_event, event
         )
         if updated:
             # TODO: process attribute updates
             # TODO: process object updates
+
             # TODO: publish event update to ZMQ
             logger.info("Updated event %s" % event.uuid)
             return updated
 
     return False
+
+
+def create_pulled_event_sharing_group(
+    db: Session,
+    sharing_group: MISPSharingGroup,
+    server: server_schemas.Server,
+    user: user_models.User,
+) -> Union[int, None]:
+    """
+    see: app/Model/Event.php::__captureObjects()
+    """
+    sharing_group_id = sharing_groups_repository.capture_sharing_group(
+        db, sharing_group, user, server
+    )
+
+    if sharing_group_id > 0:
+        return sharing_group_id
+
+    return None
 
 
 def create_pulled_event_attributes(
@@ -423,7 +462,7 @@ def create_pulled_event_attributes(
             (str(attribute.value) + attribute.type + attribute.category).encode("utf-8")
         ).hexdigest()
         if hash not in hashes_dict:
-            # see: Attribute::captureAttribute()
+            # see: app/Model/Attribute.php::captureAttribute()
             attributes_repository.create_attribute_from_pulled_attribute(
                 db, attribute, local_event_id
             )
@@ -442,11 +481,11 @@ def create_pulled_event_objects(
     """
 
     for object in objects:
-        # see: MispObject::captureObject()
-        # TODO: MispObject::checkForDuplicateObjects()
+        # see: app/Model/MispObject.php::captureObject()
+        # TODO: app/Model/MispObject.php::checkForDuplicateObjects()
         objects_repository.create_object_from_pulled_object(db, object, local_event_id)
 
-    # see: ObjectReference::captureReference()
+    # see: app/Model/ObjectReference.php::captureReference()
 
 
 def update_server(
@@ -454,7 +493,7 @@ def update_server(
     server_id: int,
     server: server_schemas.ServerUpdate,
 ) -> server_models.Server:
-    # TODO: Server::beforeValidate() && Server::$validate
+    # TODO: app/Model/Server.php::beforeValidate() && app/Model/Server.php::$validate
     db_server = get_server_by_id(db, server_id=server_id)
 
     if db_server is None:

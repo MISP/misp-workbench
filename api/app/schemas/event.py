@@ -5,6 +5,7 @@ from uuid import UUID
 from app.models.event import DistributionLevel
 from app.schemas.attribute import Attribute
 from app.schemas.object import Object
+from app.schemas.sharing_groups import SharingGroup
 from pydantic import BaseModel
 
 
@@ -38,6 +39,7 @@ class Event(EventBase):
     id: int
     attributes: list[Attribute] = []
     objects: list[Object] = []
+    sharing_gruop: Optional[SharingGroup] = None
 
     class Config:
         orm_mode = True

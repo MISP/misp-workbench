@@ -7,6 +7,8 @@ from pydantic import BaseModel, BaseSettings
 
 class MISPSettings(BaseModel):
     host_org_id: Optional[int] = 1
+    baseurl: Optional[str] = "https://localhost"
+    external_baseurl: Optional[str] = ""
 
 
 class OAuth2Settings(BaseModel):

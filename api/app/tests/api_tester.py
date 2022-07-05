@@ -8,6 +8,7 @@ from app.main import app
 from app.models import attribute as attribute_models
 from app.models import event as event_models
 from app.models import object as object_models
+from app.models import object_reference as object_reference_models
 from app.models import organisations as organisation_models
 from app.models import server as server_models
 from app.models import sharing_groups as sharing_groups_models
@@ -51,7 +52,19 @@ class ApiTester:
 
     @pytest.fixture(scope="class")
     def settings(self):
-        return get_settings()
+        yield get_settings()
+
+    def teardown_db(self, db: Session):
+        db.query(attribute_models.Attribute).delete()
+        db.query(object_reference_models.ObjectReference).delete()
+        db.query(object_models.Object).delete()
+        db.query(event_models.Event).delete()
+        db.query(sharing_groups_models.SharingGroupOrganisation).delete()
+        db.query(sharing_groups_models.SharingGroupServer).delete()
+        db.query(sharing_groups_models.SharingGroup).delete()
+        db.query(server_models.Server).delete()
+        db.query(user_models.User).delete()
+        db.query(organisation_models.Organisation).delete()
 
     @pytest.fixture(scope="class", autouse=True)
     def cleanup(self, db: Session):
@@ -59,20 +72,10 @@ class ApiTester:
             pass
         finally:
             # teardown
-            db.execute("DELETE FROM sharing_group_orgs")
-            db.execute("DELETE FROM sharing_group_servers")
-            db.execute("DELETE FROM sharing_groups")
-            db.execute("DELETE FROM servers")
-            db.execute("DELETE FROM attributes")
-            db.execute("DELETE FROM object_references")
-            db.execute("DELETE FROM objects")
-            db.execute("DELETE FROM events")
-            db.execute("DELETE FROM users")
-            db.execute("DELETE FROM servers")
-            db.execute("DELETE FROM organisations")
-            db.commit()
+            self.teardown_db(db)
 
     # MISP data model fixtures
+
     @pytest.fixture(scope="class")
     def api_tester_user(
         self, db: Session, organisation_1: organisation_models.Organisation
@@ -87,7 +90,7 @@ class ApiTester:
         db.commit()
         db.refresh(api_tester_user)
 
-        return api_tester_user
+        yield api_tester_user
 
     @pytest.fixture(scope="class")
     def organisation_1(self, db: Session):
@@ -105,7 +108,7 @@ class ApiTester:
         db.commit()
         db.refresh(organisation_1)
 
-        return organisation_1
+        yield organisation_1
 
     @pytest.fixture(scope="class")
     def user_1(self, db: Session, organisation_1: organisation_models.Organisation):
@@ -119,7 +122,7 @@ class ApiTester:
         db.commit()
         db.refresh(user_1)
 
-        return user_1
+        yield user_1
 
     @pytest.fixture(scope="class")
     def event_1(
@@ -139,7 +142,7 @@ class ApiTester:
         db.commit()
         db.refresh(event_1)
 
-        return event_1
+        yield event_1
 
     @pytest.fixture(scope="class")
     def attribute_1(self, db: Session, event_1: event_models.Event):
@@ -153,7 +156,7 @@ class ApiTester:
         db.commit()
         db.refresh(attribute_1)
 
-        return attribute_1
+        yield attribute_1
 
     @pytest.fixture(scope="class")
     def object_1(self, db: Session, event_1: event_models.Event):
@@ -168,15 +171,10 @@ class ApiTester:
         db.commit()
         db.refresh(object_1)
 
-        return object_1
+        yield object_1
 
     @pytest.fixture(scope="class")
-    def server_1(
-        self,
-        db: Session,
-        organisation_1: organisation_models.Organisation,
-        event_1: event_models.Event,
-    ):
+    def server_1(self, db: Session, organisation_1: organisation_models.Organisation):
         server_1 = server_models.Server(
             name="test server",
             url="http://localhost",
@@ -190,7 +188,7 @@ class ApiTester:
             pull_galaxy_clusters=False,
             publish_without_email=True,
             self_signed=True,
-            internal=True,
+            internal=False,
             unpublish_event=False,
             skip_proxy=False,
             caching_enabled=False,
@@ -200,7 +198,7 @@ class ApiTester:
         db.commit()
         db.refresh(server_1)
 
-        return server_1
+        yield server_1
 
     @pytest.fixture(scope="class")
     def sharing_group_1(
@@ -224,7 +222,7 @@ class ApiTester:
         db.commit()
         db.refresh(sharing_group_1)
 
-        return sharing_group_1
+        yield sharing_group_1
 
     @pytest.fixture(scope="class")
     def sharing_group_2(
@@ -248,7 +246,7 @@ class ApiTester:
         db.commit()
         db.refresh(sharing_group_2)
 
-        return sharing_group_2
+        yield sharing_group_2
 
     @pytest.fixture(scope="function")
     def auth_token(
@@ -260,4 +258,4 @@ class ApiTester:
             expires_delta=access_token_expires,
         )
 
-        return auth_token
+        yield auth_token

@@ -1,8 +1,11 @@
+import uuid
+from datetime import datetime
 from typing import Union
 
 from app.models import organisations as organisation_models
 from app.schemas import organisations as organisations_schemas
 from fastapi import HTTPException, status
+from pymisp import MISPOrganisation
 from sqlalchemy.orm import Session
 
 
@@ -22,6 +25,16 @@ def get_organisation_by_id(
     )
 
 
+def get_organisation_by_uuid(
+    db: Session, organisation_uuid: uuid.UUID
+) -> Union[organisation_models.Organisation, None]:
+    return (
+        db.query(organisation_models.Organisation)
+        .filter(organisation_models.Organisation.uuid == organisation_uuid)
+        .first()
+    )
+
+
 def create_organisation(
     db: Session, organisation: organisations_schemas.OrganisationCreate
 ) -> organisation_models.Organisation:
@@ -29,8 +42,8 @@ def create_organisation(
     db_organisation = organisation_models.Organisation(
         name=organisation.name,
         description=organisation.description,
-        date_created=organisation.date_created,
-        date_modified=organisation.date_modified,
+        date_created=organisation.date_created or datetime.now(),
+        date_modified=organisation.date_modified or datetime.now(),
         type=organisation.type,
         nationality=organisation.nationality,
         sector=organisation.sector,
@@ -83,3 +96,34 @@ def delete_organisation(db: Session, organisation_id: int) -> None:
 
     db.delete(db_organisation)
     db.commit()
+
+
+def capture_sharing_group_organisation(
+    db: Session, sharing_group_organisation: MISPOrganisation, user_id: int
+) -> organisation_models.Organisation:
+    # TODO: app/Model/Organisation.php::captureOrg
+
+    db_organisation = get_organisation_by_uuid(
+        db, organisation_uuid=sharing_group_organisation.Organisation.uuid
+    )
+
+    if db_organisation is None:
+        db_organisation = create_organisation(
+            db=db,
+            organisation=organisations_schemas.OrganisationCreate(
+                name=sharing_group_organisation.Organisation.name,
+                uuid=sharing_group_organisation.Organisation.uuid,
+                local=False,
+                created_by=user_id,
+            ),
+        )
+    else:
+        db_organisation = update_organisation(
+            db,
+            db_organisation.id,
+            organisations_schemas.OrganisationUpdate(
+                name=sharing_group_organisation.Organisation.name,
+            ),
+        )
+
+    return db_organisation

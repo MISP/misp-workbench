@@ -29,7 +29,19 @@ class Organisation(OrganisationBase):
 
 
 class OrganisationCreate(OrganisationBase):
-    pass
+    name: str
+    description: Optional[str]
+    date_created: Optional[datetime]
+    date_modified: Optional[datetime]
+    type: Optional[str]
+    nationality: Optional[str]
+    sector: Optional[str]
+    created_by: int
+    uuid: Optional[UUID]
+    contacts: Optional[str]
+    local: bool
+    restricted_to_domain: Optional[str]
+    landing_page: Optional[str]
 
 
 class OrganisationUpdate(BaseModel):

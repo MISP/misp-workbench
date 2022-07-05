@@ -35,6 +35,8 @@ class SharingGroupOrganisation(Base):
     org_id = Column(Integer, ForeignKey("organisations.id"), nullable=False)
     extend = Column(Boolean, nullable=False, default=False)
 
+    organisation = relationship("Organisation")
+
 
 class SharingGroupServer(Base):
     __tablename__ = "sharing_group_servers"
@@ -43,3 +45,5 @@ class SharingGroupServer(Base):
     sharing_group_id = Column(Integer, ForeignKey("sharing_groups.id"), nullable=False)
     server_id = Column(Integer, ForeignKey("servers.id"), nullable=False)
     all_orgs = Column(Boolean, nullable=False, default=False)
+
+    server = relationship("Server")

@@ -94,7 +94,7 @@ def add_organisation_to_sharing_group(
     ),
 ):
     sharing_group_organisation.sharing_group_id = sharing_group_id
-    return sharing_groups_repository.add_organisaiton_to_sharing_group(
+    return sharing_groups_repository.add_organisation_to_sharing_group(
         db=db, sharing_group_organisation=sharing_group_organisation
     )
 

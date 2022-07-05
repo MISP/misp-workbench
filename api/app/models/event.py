@@ -57,3 +57,4 @@ class Event(Base):
 
     attributes = relationship("Attribute")
     objects = relationship("Object")
+    sharing_group = relationship("SharingGroup")

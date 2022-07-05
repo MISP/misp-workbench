@@ -110,7 +110,7 @@ def update_event_from_pulled_event(
     existing_event.uuid = pulled_event.uuid
     existing_event.published = pulled_event.published
     existing_event.analysis = pulled_event.analysis
-    existing_event.timestamp = pulled_event.timestamp.timestamp()
+    existing_event.timestamp = pulled_event.timestamp.timestamp() or time.time()
     existing_event.distribution = event_models.DistributionLevel(
         pulled_event.distribution
     )
