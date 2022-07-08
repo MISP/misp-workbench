@@ -28,7 +28,7 @@ class ApiTester:
             os.environ["POSTGRES_PASSWORD"],
             os.environ["POSTGRES_HOSTNAME"],
             os.environ["POSTGRES_PORT"],
-            os.environ["POSTGRES_DATABASE"],
+            os.environ["POSTGRES_DB"],
         )
 
         engine = create_engine(SQLALCHEMY_DATABASE_URL)

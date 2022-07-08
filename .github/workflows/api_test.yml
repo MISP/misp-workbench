@@ -69,7 +69,7 @@ jobs:
           POSTGRES_PORT: 5432
           POSTGRES_PASSWORD: postgres
           POSTGRES_USER: postgres
-          POSTGRES_DATABASE: misp
+          POSTGRES_DB: misp
 
       - name: Run tests
         working-directory: api
@@ -80,7 +80,7 @@ jobs:
           POSTGRES_PORT: 5432
           POSTGRES_PASSWORD: postgres
           POSTGRES_USER: postgres
-          POSTGRES_DATABASE: misp
+          POSTGRES_DB: misp
           OAUTH2_SECRET_KEY: e6d14a781f168c29f8ba7dad72c2ad1418375ab9e3878ea671ba87cf76618511
           OAUTH2_ALGORITHM: HS256
           OAUTH2_ACCESS_TOKEN_EXPIRE_MINUTES: 30
