@@ -86,6 +86,18 @@ services:
       - worker
       - redis
 
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:80"
+    environment:
+      API_HOST: api
+    command: "nginx-g daemon off;"
+    depends_on:
+      - api
+
   redis:
     image: redis:7-alpine
     healthcheck:

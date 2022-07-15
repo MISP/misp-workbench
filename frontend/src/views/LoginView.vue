@@ -1,49 +1,100 @@
 <script setup>
-import { Form, Field } from 'vee-validate';
-import * as Yup from 'yup';
-import { useAuthStore } from '@/stores';
+import { Form, Field } from "vee-validate";
+import * as Yup from "yup";
+import { useAuthStore } from "@/stores";
 const schema = Yup.object().shape({
-    username: Yup.string().required('Username is required'),
-    password: Yup.string().required('Password is required')
+  username: Yup.string().required("Username is required"),
+  password: Yup.string().required("Password is required"),
 });
 function onSubmit(values, { setErrors }) {
-    const authStore = useAuthStore();
-    const { username, password } = values;
-    return authStore.authenticate(username, password)
-        .catch(error => setErrors({ apiError: error }));
+  const authStore = useAuthStore();
+  const { username, password } = values;
+  return authStore
+    .authenticate(username, password)
+    .catch((error) => setErrors({ apiError: error }));
 }
 </script>
 
 <style>
-#login {
-  max-width: 400px;
-  margin: 0 auto;
-  padding: 2rem;
-  font-weight: normal;
+.form-signin {
+  max-width: 330px;
+  margin: auto;
+  text-align: center;
+}
+
+.form-signin .checkbox {
+  font-weight: 400;
+}
+
+.form-signin .form-floating:focus-within {
+  z-index: 2;
+}
+
+.form-signin input[type="email"] {
+  margin-bottom: -1px;
+  border-bottom-right-radius: 0;
+  border-bottom-left-radius: 0;
+}
+
+.form-signin input[type="password"] {
+  margin-bottom: 10px;
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+}
+
+.bd-placeholder-img {
+  font-size: 1.125rem;
+  text-anchor: middle;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  user-select: none;
+}
+
+@media (min-width: 768px) {
+  .bd-placeholder-img-lg {
+    font-size: 3.5rem;
+  }
 }
 </style>
 
 <template>
-    <div id="login" class="bg-light">
-        <h2>Login</h2>
-        <Form @submit="onSubmit" :validation-schema="schema" v-slot="{ errors, isSubmitting }">
-            <div class="form-group">
-                <label>Username</label>
-                <Field name="username" type="text" class="form-control" :class="{ 'is-invalid': errors.username }" />
-                <div class="invalid-feedback">{{errors.username}}</div>
-            </div>            
-            <div class="form-group">
-                <label>Password</label>
-                <Field name="password" type="password" class="form-control" :class="{ 'is-invalid': errors.password }" />
-                <div class="invalid-feedback">{{errors.password}}</div>
-            </div>            
-            <div class="form-group">
-                <button class="btn btn-primary" :disabled="isSubmitting">
-                    <span v-show="isSubmitting" class="spinner-border spinner-border-sm mr-1"></span>
-                    Login
-                </button>
-            </div>
-            <div v-if="errors.apiError" class="alert alert-danger mt-3 mb-0">{{errors.apiError}}</div>
-        </Form>
+  <div id="login-container" class="form-signin d-flex flex-column min-vh-100 justify-content-center align-items-center">
+      <Form
+        @submit="onSubmit"
+        :validation-schema="schema"
+        v-slot="{ errors, isSubmitting }"
+      >
+      <img class="mb-4" src="/public/images/misp-logo-pixel.png" alt="" width="120">
+
+      <div class="form-floating">
+          <Field
+            id="username"
+            name="username"
+            type="text"
+            class="form-control"
+            :class="{ 'is-invalid': errors.username }"
+          />
+        <label for="username">Email address</label>
+        <div class="invalid-feedback">{{ errors.username }}</div>
+      </div>
+
+      <div class="form-floating">
+          <Field
+            name="password"
+            type="password"
+            class="form-control"
+            :class="{ 'is-invalid': errors.password }"
+          />
+          <label>Password</label>
+          <div class="invalid-feedback">{{ errors.password }}</div>
+      </div>
+      
+      <div v-if="errors.apiError" class="w-100 alert alert-danger mt-3 mb-3">
+        {{ errors.apiError }}
+      </div>
+
+      <button class="w-100 btn btn-lg btn-primary" type="submit">Sign in</button>
+      <p class="mt-3 mb-3 text-muted">&copy; 2022</p>
+    </Form>
     </div>
 </template>

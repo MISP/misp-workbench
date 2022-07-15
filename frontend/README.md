@@ -1,6 +1,16 @@
 # frontend
 
-This template should help get you started developing with Vue 3 in Vite.
+* Vue.js 3
+* Vite
+* Bootstrap 5
+
+## Structure
+```
+./
+├─ api/
+└─ frontend/
+    └─ ...
+```
 
 ## Recommended IDE Setup
 

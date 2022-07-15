@@ -1,2 +1,3 @@
-export * from './auth.store';
-export * from './users.store';
+export * from "./auth.store";
+export * from "./users.store";
+export * from "./events.store";

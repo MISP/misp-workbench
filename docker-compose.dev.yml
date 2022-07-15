@@ -25,3 +25,6 @@ services:
       - ./api:/code
     extra_hosts:
       - "host.docker.internal:host-gateway"
+
+  frontend:
+    command: "nginx-debug daemon off;"
