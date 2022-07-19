@@ -59,36 +59,22 @@ function onSubmit(values, { setErrors }) {
 
 <template>
   <div id="login-container" class="form-signin d-flex flex-column min-vh-100 justify-content-center align-items-center">
-      <Form
-        @submit="onSubmit"
-        :validation-schema="schema"
-        v-slot="{ errors, isSubmitting }"
-      >
+    <Form @submit="onSubmit" :validation-schema="schema" v-slot="{ errors, isSubmitting }">
       <img class="mb-4" src="/public/images/misp-logo-pixel.png" alt="" width="120">
 
       <div class="form-floating">
-          <Field
-            id="username"
-            name="username"
-            type="text"
-            class="form-control"
-            :class="{ 'is-invalid': errors.username }"
-          />
+        <Field id="username" name="username" type="text" class="form-control"
+          :class="{ 'is-invalid': errors.username }" />
         <label for="username">Email address</label>
         <div class="invalid-feedback">{{ errors.username }}</div>
       </div>
 
       <div class="form-floating">
-          <Field
-            name="password"
-            type="password"
-            class="form-control"
-            :class="{ 'is-invalid': errors.password }"
-          />
-          <label>Password</label>
-          <div class="invalid-feedback">{{ errors.password }}</div>
+        <Field name="password" type="password" class="form-control" :class="{ 'is-invalid': errors.password }" />
+        <label>Password</label>
+        <div class="invalid-feedback">{{ errors.password }}</div>
       </div>
-      
+
       <div v-if="errors.apiError" class="w-100 alert alert-danger mt-3 mb-3">
         {{ errors.apiError }}
       </div>
@@ -96,5 +82,5 @@ function onSubmit(values, { setErrors }) {
       <button class="w-100 btn btn-lg btn-primary" type="submit">Sign in</button>
       <p class="mt-3 mb-3 text-muted">&copy; 2022</p>
     </Form>
-    </div>
+  </div>
 </template>

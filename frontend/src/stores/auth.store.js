@@ -1,5 +1,7 @@
 import { defineStore } from "pinia";
 
+import jwt_decode from "jwt-decode";
+
 import { fetchWrapper } from "@/helpers";
 import { router } from "@/router";
 
@@ -7,6 +9,7 @@ export const useAuthStore = defineStore({
   id: "auth",
   state: () => ({
     access_token: localStorage.getItem("access_token"),
+    decoded_access_token: localStorage.getItem("decoded_access_token"),
     returnUrl: null,
   }),
   actions: {
@@ -14,16 +17,22 @@ export const useAuthStore = defineStore({
       const response = await fetchWrapper.authenticate(username, password);
 
       this.access_token = response.access_token;
+      this.decoded_access_token = jwt_decode(this.access_token);
 
       localStorage.setItem(
         "access_token",
-        response.access_token
+        this.access_token
+      );
+
+      localStorage.setItem(
+        "decoded_access_token",
+        this.access_token
       );
 
       router.push("/");
     },
     isAuthenticated() {
-      return !!this.access_token;
+      return !!this.access_token && !!this.decoded_access_token && this.decoded_access_token.exp > Date.now() / 1000;
     },
     logout() {
       localStorage.removeItem("access_token");
