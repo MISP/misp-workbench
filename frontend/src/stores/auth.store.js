@@ -9,7 +9,7 @@ export const useAuthStore = defineStore({
   id: "auth",
   state: () => ({
     access_token: localStorage.getItem("access_token"),
-    decoded_access_token: localStorage.getItem("decoded_access_token"),
+    decoded_access_token: JSON.parse(localStorage.getItem("decoded_access_token")) || {},
     returnUrl: null,
   }),
   actions: {
@@ -26,7 +26,7 @@ export const useAuthStore = defineStore({
 
       localStorage.setItem(
         "decoded_access_token",
-        this.access_token
+        JSON.stringify(this.decoded_access_token)
       );
 
       router.push("/");
