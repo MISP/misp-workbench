@@ -1,7 +1,7 @@
 <script setup>
 import { storeToRefs } from "pinia";
 import { RouterLink } from "vue-router";
-import Spinner from "@/components/Spinner.vue";
+import Spinner from "@/components/misc/Spinner.vue";
 import { useUsersStore } from "@/stores";
 const usersStore = useUsersStore();
 const { users } = storeToRefs(usersStore);

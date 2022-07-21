@@ -2,7 +2,7 @@
 import { storeToRefs } from "pinia";
 import { useEventsStore } from "@/stores";
 import { RouterLink } from "vue-router";
-import Spinner from "@/components/Spinner.vue";
+import Spinner from "@/components/misc/Spinner.vue";
 const eventsStore = useEventsStore();
 const { events } = storeToRefs(eventsStore);
 eventsStore.getAll();
@@ -21,7 +21,7 @@ eventsStore.getAll();
                 <th scope="col">info</th>
                 <th scope="col">date</th>
                 <th scope="col" class="d-none d-sm-table-cell">distribution</th>
-                <th scope="col">actions</th>
+                <th scope="col" class="text-end">actions</th>
                 </tr>
             </thead>
             <tbody>
@@ -29,10 +29,10 @@ eventsStore.getAll();
                     <td>
                         <RouterLink :to="`/events/${event.id}`">{{ event.id }}</RouterLink>
                     </td>
-                    <td>{{ event.info}}</td>
+                    <td class="text-start">{{ event.info}}</td>
                     <td>{{ event.date}}</td>
                     <td class="d-none d-sm-table-cell">{{ event.distribution }}</td>
-                    <td>
+                    <td class="text-end">
                         <div class="flex-wrap" :class="{ 'btn-group-vertical': $isMobile, 'btn-group': !$isMobile}" aria-label="Event Actions">
                             <RouterLink :to="`/events/delete/${event.id}`" tag="button" class="btn btn-danger">
                                 <font-awesome-icon icon="fa-solid fa-trash" />

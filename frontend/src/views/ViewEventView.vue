@@ -3,12 +3,13 @@ import { storeToRefs } from "pinia";
 import { useEventsStore } from "@/stores";
 import { RouterLink, useRoute } from "vue-router";
 import EventView from "@/components/events/EventView.vue";
-import Spinner from "@/components/Spinner.vue";
+import Spinner from "@/components/misc/Spinner.vue";
 import { router } from "@/router";
 const route = useRoute() 
 const eventsStore = useEventsStore();
 const { event } = storeToRefs(eventsStore);
 eventsStore.getById(route.params.id);
+defineProps(['id']);
 </script>
 
 <style>
@@ -16,7 +17,6 @@ eventsStore.getById(route.params.id);
     text-align: left;
 }
 .btn-group{
-    float: right;
     display: inline-block;
 }
 .organisation-name{
