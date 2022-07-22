@@ -10,9 +10,14 @@ from sqlalchemy.orm import Session
 
 
 def get_attributes(
-    db: Session, skip: int = 0, limit: int = 100
+    db: Session, skip: int = 0, limit: int = 100, event_id: int = None
 ) -> list[attribute_models.Attribute]:
-    return db.query(attribute_models.Attribute).offset(skip).limit(limit).all()
+    query = db.query(attribute_models.Attribute)
+
+    if event_id is not None:
+        query = query.filter(attribute_models.Attribute.event_id == event_id)
+
+    return query.offset(skip).limit(limit).all()
 
 
 def get_attribute_by_id(

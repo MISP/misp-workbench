@@ -1,10 +1,32 @@
 <script setup>
 import { RouterLink } from "vue-router";
-defineProps(['attributes']);
+import { storeToRefs } from 'pinia'
+import { useAttributesStore } from "@/stores";
+import Spinner from "@/components/misc/Spinner.vue";
+import Paginate from "vuejs-paginate-next";
+
+const props = defineProps(['event_id', 'total_size', 'page_size']);
+let page_count = Math.ceil(props.total_size / props.page_size);
+
+const attributesStore = useAttributesStore();
+const { attributes } = storeToRefs(attributesStore);
+
+function onPageChange(page) {
+    attributesStore.get({
+        skip: (page - 1) * props.page_size,
+        limit: props.page_size,
+        event_id: props.event_id
+    });
+}
+onPageChange(1);
 </script>
 
 <template>
     <div class="table-responsive-sm">
+        <Spinner v-if="attributes.loading" />
+        <div v-if="attributes.error" class="text-danger">
+            Error loading attributes: {{ attributes.error }}
+        </div>
         <table class="table table-striped">
             <thead>
                 <tr>
@@ -44,5 +66,6 @@ defineProps(['attributes']);
                 </tr>
             </tbody>
         </table>
+        <Paginate :page-count="page_count" :click-handler="onPageChange" />
     </div>
 </template>

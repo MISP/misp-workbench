@@ -1,3 +1,5 @@
+from typing import Optional
+
 from app.auth.auth import get_current_active_user
 from app.dependencies import get_db
 from app.repositories import attributes as attributes_repository
@@ -10,16 +12,23 @@ from sqlalchemy.orm import Session
 router = APIRouter()
 
 
+async def get_attributes_parameters(
+    skip: int = 0, limit: int = 100, event_id: Optional[int] = None
+):
+    return {"skip": skip, "limit": limit, "event_id": event_id}
+
+
 @router.get("/attributes/", response_model=list[attribute_schemas.Attribute])
 def get_attributes(
-    skip: int = 0,
-    limit: int = 100,
+    params: dict = Depends(get_attributes_parameters),
     db: Session = Depends(get_db),
     user: user_schemas.User = Security(
         get_current_active_user, scopes=["attributes:read"]
     ),
 ):
-    return attributes_repository.get_attributes(db, skip=skip, limit=limit)
+    return attributes_repository.get_attributes(
+        db, params["skip"], params["limit"], params["event_id"]
+    )
 
 
 @router.get("/attributes/{attribute_id}", response_model=attribute_schemas.Attribute)

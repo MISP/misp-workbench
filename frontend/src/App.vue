@@ -5,6 +5,8 @@ import { useAuthStore } from "@/stores";
 
 const authStore = useAuthStore();
 
+
+
 </script>
 
 <template>
@@ -20,5 +22,11 @@ const authStore = useAuthStore();
 #app {
   margin: 0 auto;
   font-weight: normal;
+}
+.pagination{
+  justify-content: center;
+}
+ul.pagination {
+  margin-bottom: 0;
 }
 </style>

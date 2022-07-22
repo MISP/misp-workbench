@@ -26,6 +26,7 @@
     "vue-chartjs": "^4.1.1",
     "vue-router": "^4.0.16",
     "vue3-popper": "^1.5.0",
+    "vuejs-paginate-next": "^1.0.2",
     "yup": "^0.32.11"
   },
   "devDependencies": {

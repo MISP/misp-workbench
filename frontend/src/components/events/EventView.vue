@@ -2,7 +2,7 @@
 import Sparkline from "@/components/charts/Sparkline.vue";
 import AttributesIndex from "@/components/attributes/AttributesIndex.vue";
 import ObjectsIndex from "@/components/objects/ObjectsIndex.vue";
-import Pagination from "@/components/misc/Pagination.vue";
+
 defineProps(['event']);
 </script>
 
@@ -202,21 +202,15 @@ div.row h3 {
                     <div class="card-body d-flex flex-column">
                         <ObjectsIndex :objects="event.objects" />
                     </div>
-                    <div class="card-footer">
-                        <Pagination />
-                    </div>
                 </div>
             </div>
         </div>
-        <div class="row m-1" v-if="event.attributes.length > 0">
+        <div class="row m-1" v-if="event.attribute_count > 0">
             <div class="col-12">
                 <div class="card bg-light">
                     <div class="card-header">attributes</div>
                     <div class="card-body d-flex flex-column">
-                        <AttributesIndex :attributes="event.attributes" />
-                    </div>
-                    <div class="card-footer">
-                        <Pagination />
+                        <AttributesIndex :event_id="event.id" :total_size="event.attribute_count" :page_size="10"/>
                     </div>
                 </div>
             </div>

@@ -27,4 +27,4 @@ services:
       - "host.docker.internal:host-gateway"
 
   frontend:
-    command: "nginx-debug daemon off;"
+    command: [nginx-debug, '-g', 'daemon off;']
