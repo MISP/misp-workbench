@@ -15,4 +15,4 @@ COPY ./nginx.conf /etc/nginx/nginx.conf
 
 RUN rm -rf /usr/share/nginx/html/*
 
-COPY --from=builder /dist /usr/share/nginx/html
+COPY --from=builder /code/dist /usr/share/nginx/html
