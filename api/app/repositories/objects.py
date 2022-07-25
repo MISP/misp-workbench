@@ -10,8 +10,13 @@ from pymisp import MISPObject
 from sqlalchemy.orm import Session
 
 
-def get_objects(db: Session, skip: int = 0, limit: int = 100):
-    return db.query(object_models.Object).offset(skip).limit(limit).all()
+def get_objects(db: Session, skip: int = 0, limit: int = 100, event_id: int = None):
+    query = db.query(object_models.Object)
+
+    if event_id is not None:
+        query = query.filter(object_models.Object.event_id == event_id)
+
+    return query.offset(skip).limit(limit).all()
 
 
 def get_object_by_id(db: Session, object_id: int):

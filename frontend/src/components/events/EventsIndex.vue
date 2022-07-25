@@ -3,6 +3,7 @@ import { storeToRefs } from "pinia";
 import { useEventsStore } from "@/stores";
 import { RouterLink } from "vue-router";
 import Spinner from "@/components/misc/Spinner.vue";
+import DistributionLevel from "@/components/enums/DistributionLevel.vue";
 const eventsStore = useEventsStore();
 const { events } = storeToRefs(eventsStore);
 eventsStore.getAll();
@@ -17,11 +18,11 @@ eventsStore.getAll();
         <table v-if="!events.loading" class="table table-striped">
             <thead>
                 <tr>
-                <th scope="col">id</th>
-                <th scope="col">info</th>
-                <th scope="col">date</th>
-                <th scope="col" class="d-none d-sm-table-cell">distribution</th>
-                <th scope="col" class="text-end">actions</th>
+                    <th scope="col">id</th>
+                    <th scope="col">info</th>
+                    <th scope="col">date</th>
+                    <th scope="col" class="d-none d-sm-table-cell">distribution</th>
+                    <th scope="col" class="text-end">actions</th>
                 </tr>
             </thead>
             <tbody>
@@ -29,11 +30,14 @@ eventsStore.getAll();
                     <td>
                         <RouterLink :to="`/events/${event.id}`">{{ event.id }}</RouterLink>
                     </td>
-                    <td class="text-start">{{ event.info}}</td>
-                    <td>{{ event.date}}</td>
-                    <td class="d-none d-sm-table-cell">{{ event.distribution }}</td>
+                    <td class="text-start">{{ event.info }}</td>
+                    <td>{{ event.date }}</td>
+                    <td class="d-none d-sm-table-cell">
+                        <DistributionLevel :distribution_level_id=event.distribution />
+                    </td>
                     <td class="text-end">
-                        <div class="flex-wrap" :class="{ 'btn-group-vertical': $isMobile, 'btn-group': !$isMobile}" aria-label="Event Actions">
+                        <div class="flex-wrap" :class="{ 'btn-group-vertical': $isMobile, 'btn-group': !$isMobile }"
+                            aria-label="Event Actions">
                             <RouterLink :to="`/events/delete/${event.id}`" tag="button" class="btn btn-danger">
                                 <font-awesome-icon icon="fa-solid fa-trash" />
                             </RouterLink>

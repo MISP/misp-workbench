@@ -18,6 +18,7 @@ class EventBase(BaseModel):
     published: Optional[bool]
     analysis: Optional[int]
     attribute_count: Optional[int]
+    object_count: Optional[int]
     orgc_id: Optional[int]
     timestamp: Optional[int]
     distribution: Optional[DistributionLevel]

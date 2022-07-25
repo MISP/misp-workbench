@@ -377,7 +377,6 @@ def create_or_update_pulled_event(
 
         created = events_repository.create_event_from_pulled_event(db, event)
         if created:
-
             create_pulled_event_attributes(
                 db, created.id, event.attributes, server, user
             )

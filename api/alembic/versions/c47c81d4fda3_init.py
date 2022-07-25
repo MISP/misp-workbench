@@ -40,6 +40,7 @@ def upgrade():
         sa.Column("published", sa.Boolean(), nullable=False),
         sa.Column("analysis", sa.Integer(), nullable=True),
         sa.Column("attribute_count", sa.Integer(), nullable=True),
+        sa.Column("object_count", sa.Integer(), nullable=True),
         sa.Column("orgc_id", sa.Integer(), nullable=False),
         sa.Column("timestamp", sa.Integer(), nullable=False),
         sa.Column(

@@ -50,6 +50,7 @@ def create_event(db: Session, event: event_schemas.EventCreate):
         published=event.published,
         analysis=event.analysis,
         attribute_count=event.attribute_count,
+        object_count=event.object_count,
         orgc_id=event.orgc_id or event.org_id,
         timestamp=event.timestamp or time.time(),
         distribution=event.distribution,
@@ -80,6 +81,7 @@ def create_event_from_pulled_event(db: Session, pulled_event: MISPEvent):
         published=pulled_event.published,
         analysis=pulled_event.analysis,
         attribute_count=pulled_event.attribute_count,
+        object_count=len(pulled_event.objects),
         orgc_id=pulled_event.orgc_id,
         timestamp=pulled_event.timestamp.timestamp(),
         distribution=event_models.DistributionLevel(pulled_event.distribution),
@@ -109,6 +111,8 @@ def update_event_from_pulled_event(
     existing_event.info = pulled_event.info
     existing_event.uuid = pulled_event.uuid
     existing_event.published = pulled_event.published
+    existing_event.attribute_count = pulled_event.attribute_count
+    existing_event.object_count = len(pulled_event.objects)
     existing_event.analysis = pulled_event.analysis
     existing_event.timestamp = pulled_event.timestamp.timestamp() or time.time()
     existing_event.distribution = event_models.DistributionLevel(

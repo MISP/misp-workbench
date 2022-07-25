@@ -21,7 +21,12 @@ logging.config.fileConfig("logging.conf", disable_existing_loggers=False)
 app = FastAPI(title="misp-lite API", version="0.1.0")
 
 # Add CORS
-origins = ["http://localhost", "http://localhost:8080", "http://localhost:3000"]
+origins = [
+    "http://localhost",
+    "http://localhost:8080",
+    "http://localhost:3000",
+    "http://localhost:3001",
+]
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,

@@ -2,6 +2,9 @@
 import Sparkline from "@/components/charts/Sparkline.vue";
 import AttributesIndex from "@/components/attributes/AttributesIndex.vue";
 import ObjectsIndex from "@/components/objects/ObjectsIndex.vue";
+import DistributionLevel from "@/components/enums/DistributionLevel.vue";
+import ThreatLevel from "@/components/enums/ThreatLevel.vue";
+import AnalysisLevel from "@/components/enums/AnalysisLevel.vue";
 
 defineProps(['event']);
 </script>
@@ -81,19 +84,25 @@ div.row h3 {
                                     </tr>
                                     <tr>
                                         <th scope="row">threat level</th>
-                                        <td>{{ event.threat_level_id }}</td>
+                                        <td>
+                                            <ThreatLevel :threat_level_id=event.threat_level />
+                                        </td>
                                     </tr>
                                     <tr>
                                         <th scope="row">analysis</th>
-                                        <td>{{ event.analysis }}</td>
+                                        <td>
+                                            <AnalysisLevel :analysis_level_id=event.analysis />
+                                        </td>
                                     </tr>
                                     <tr>
                                         <th scope="row">distribution</th>
-                                        <td>{{ event.distribution }}</td>
+                                        <td>
+                                            <DistributionLevel :distribution_level_id=event.distribution />
+                                        </td>
                                     </tr>
                                     <tr>
                                         <th scope="row">attributes</th>
-                                        <td>{{ event.attribute_count }} (0 objects)</td>
+                                        <td>{{ event.attribute_count }} ({{ event.object_count }} objects)</td>
                                     </tr>
                                     <tr>
                                         <th scope="row">correlation</th>
@@ -200,7 +209,7 @@ div.row h3 {
                 <div class="card bg-light">
                     <div class="card-header">objects</div>
                     <div class="card-body d-flex flex-column">
-                        <ObjectsIndex :objects="event.objects" />
+                        <ObjectsIndex :event_id="event.id" :total_size="event.object_count" :page_size="10" />
                     </div>
                 </div>
             </div>
@@ -210,7 +219,7 @@ div.row h3 {
                 <div class="card bg-light">
                     <div class="card-header">attributes</div>
                     <div class="card-body d-flex flex-column">
-                        <AttributesIndex :event_id="event.id" :total_size="event.attribute_count" :page_size="10"/>
+                        <AttributesIndex :event_id="event.id" :total_size="event.attribute_count" :page_size="10" />
                     </div>
                 </div>
             </div>

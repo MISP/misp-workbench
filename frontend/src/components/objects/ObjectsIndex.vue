@@ -1,44 +1,45 @@
 <script setup>
 import { RouterLink } from "vue-router";
-defineProps(['objects']);
+import { storeToRefs } from 'pinia'
+import { useObjectsStore } from "@/stores";
+import ObjectAttributesList from "@/components/objects/ObjectAttributesList.vue";
+import Spinner from "@/components/misc/Spinner.vue";
+import Paginate from "vuejs-paginate-next";
+
+const props = defineProps(['event_id', 'total_size', 'page_size']);
+let page_count = Math.ceil(props.total_size / props.page_size);
+
+const objectsStore = useObjectsStore();
+const { objects } = storeToRefs(objectsStore);
+
+function onPageChange(page) {
+    objectsStore.get({
+        skip: (page - 1) * props.page_size,
+        limit: props.page_size,
+        event_id: props.event_id
+    });
+}
+onPageChange(1);
 </script>
 
 <template>
+    <Spinner v-if="objects.loading" />
+    <div v-if="objects.error" class="text-danger">
+        Error loading objects: {{ objects.error }}
+    </div>
     <div class="table-responsive-sm">
-        <table class="table table-striped">
-            <thead>
-                <tr>
-                    <th scope="col">id</th>
-                    <th scope="col">value</th>
-                    <th scope="col">date</th>
-                    <th scope="col" class="d-none d-sm-table-cell">distribution</th>
-                    <th scope="col" class="text-end">actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr :key="object.id" v-for="object in objects">
-                    <td>
-                        <RouterLink :to="`/objects/${object.id}`">{{ object.id }}</RouterLink>
-                    </td>
-                    <td>{{ object.value }}</td>
-                    <td>{{ object.date }}</td>
-                    <td class="d-none d-sm-table-cell">{{ object.distribution }}</td>
-                    <td>
-                        <div class="flex-wrap" :class="{ 'btn-group-vertical': $isMobile, 'btn-group': !$isMobile }"
-                            aria-label="object Actions">
-                            <RouterLink :to="`/objects/delete/${object.id}`" tag="button" class="btn btn-danger">
-                                <font-awesome-icon icon="fa-solid fa-trash" />
-                            </RouterLink>
-                            <RouterLink :to="`/objects/update/${object.id}`" tag="button" class="btn btn-primary">
-                                <font-awesome-icon icon="fa-solid fa-pen" />
-                            </RouterLink>
-                            <RouterLink :to="`/objects/${object.id}`" tag="button" class="btn btn-primary">
-                                <font-awesome-icon icon="fa-solid fa-eye" />
-                            </RouterLink>
-                        </div>
-                    </td>
-                </tr>
-            </tbody>
-        </table>
+        <div class="mt-2" :key="object.id" v-for="object in objects">
+            <div class="card">
+                <div class="card-header">
+                    {{ object.name }}
+                </div>
+                <div class="card-body">
+                    <ObjectAttributesList :attributes="object.attributes" :object_id="object.id" />
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="mt-2">
+        <Paginate v-if="page_count > 1" :page-count="page_count" :click-handler="onPageChange" />
     </div>
 </template>

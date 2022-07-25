@@ -34,6 +34,7 @@ class Event(Base):
     published = Column(Boolean, default=False, nullable=False)
     analysis = Column(Integer)
     attribute_count = Column(Integer, default=0)
+    object_count = Column(Integer, default=0)
     orgc_id = Column(
         Integer, ForeignKey("organisations.id"), index=True, nullable=False
     )

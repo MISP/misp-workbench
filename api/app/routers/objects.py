@@ -1,3 +1,5 @@
+from typing import Optional
+
 from app.auth.auth import get_current_active_user
 from app.dependencies import get_db
 from app.repositories import events as events_repository
@@ -10,16 +12,23 @@ from sqlalchemy.orm import Session
 router = APIRouter()
 
 
+async def get_objects_parameters(
+    skip: int = 0, limit: int = 100, event_id: Optional[int] = None
+):
+    return {"skip": skip, "limit": limit, "event_id": event_id}
+
+
 @router.get("/objects/", response_model=list[object_schemas.Object])
 def get_objects(
-    skip: int = 0,
-    limit: int = 100,
+    params: dict = Depends(get_objects_parameters),
     db: Session = Depends(get_db),
     user: user_schemas.User = Security(
         get_current_active_user, scopes=["objects:read"]
     ),
 ):
-    return objects_repository.get_objects(db, skip=skip, limit=limit)
+    return objects_repository.get_objects(
+        db, params["skip"], params["limit"], params["event_id"]
+    )
 
 
 @router.get("/objects/{object_id}", response_model=object_schemas.Object)

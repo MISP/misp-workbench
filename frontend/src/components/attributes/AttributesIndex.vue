@@ -2,6 +2,7 @@
 import { RouterLink } from "vue-router";
 import { storeToRefs } from 'pinia'
 import { useAttributesStore } from "@/stores";
+import DistributionLevel from "@/components/enums/DistributionLevel.vue";
 import Spinner from "@/components/misc/Spinner.vue";
 import Paginate from "vuejs-paginate-next";
 
@@ -30,25 +31,23 @@ onPageChange(1);
         <table class="table table-striped">
             <thead>
                 <tr>
-                    <th scope="col">id</th>
-                    <th scope="col">value</th>
-                    <th scope="col" class="d-none d-sm-table-cell">category</th>
-                    <th scope="col">type</th>
-                    <th scope="col" class="d-none d-sm-table-cell">timestamp</th>
-                    <th scope="col" class="d-none d-sm-table-cell">distribution</th>
-                    <th scope="col" class="text-end">actions</th>
+                    <th style="width: 30%" scope="col">value</th>
+                    <th style="width: 10%" scope="col" class="d-none d-sm-table-cell">category</th>
+                    <th style="width: 10%" scope="col">type</th>
+                    <th style="width: 10%" scope="col" class="d-none d-sm-table-cell">timestamp</th>
+                    <th style="width: 10%" scope="col" class="d-none d-sm-table-cell">distribution</th>
+                    <th style="width: 10%" scope="col" class="text-end">actions</th>
                 </tr>
             </thead>
             <tbody>
                 <tr :key="attribute.id" v-for="attribute in attributes">
-                    <td>
-                        <RouterLink :to="`/attributes/${attribute.id}`">{{ attribute.id }}</RouterLink>
-                    </td>
                     <td>{{ attribute.value }}</td>
                     <td class="d-none d-sm-table-cell">{{ attribute.category }}</td>
                     <td>{{ attribute.type }}</td>
                     <td class="d-none d-sm-table-cell">{{ attribute.timestamp }}</td>
-                    <td class="d-none d-sm-table-cell">{{ attribute.distribution }}</td>
+                    <td class="d-none d-sm-table-cell">
+                        <DistributionLevel :distribution_level_id=attribute.distribution />
+                    </td>
                     <td class="text-end">
                         <div class="flex-wrap" :class="{ 'btn-group-vertical': $isMobile, 'btn-group': !$isMobile }"
                             aria-label="Attribute Actions">
@@ -66,6 +65,6 @@ onPageChange(1);
                 </tr>
             </tbody>
         </table>
-        <Paginate :page-count="page_count" :click-handler="onPageChange" />
+        <Paginate v-if="page_count > 1" :page-count="page_count" :click-handler="onPageChange" />
     </div>
 </template>
