@@ -155,10 +155,6 @@ def upgrade():
             ["user_id"],
             ["users.id"],
         ),
-        # sa.ForeignKeyConstraint(
-        #     ["org_id"],
-        #     ["organisations.id"],
-        # ),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("uuid"),
     )

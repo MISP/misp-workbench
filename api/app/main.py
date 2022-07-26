@@ -9,6 +9,7 @@ from app.routers import (
     roles,
     servers,
     sharing_groups,
+    tags,
     users,
 )
 from fastapi import FastAPI
@@ -61,3 +62,6 @@ app.include_router(servers.router, tags=["Servers"])
 
 # Sharing Groups resource
 app.include_router(sharing_groups.router, tags=["Sharing Groups"])
+
+# Tags resource
+app.include_router(tags.router, tags=["Tags"])

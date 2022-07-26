@@ -66,6 +66,10 @@ oauth2_scheme = OAuth2PasswordBearer(
         "sharing_groups:read": "Read sharing groups.",
         "sharing_groups:update": "Update sharing groups.",
         "sharing_groups:delete": "Delete sharing groups.",
+        "tags:create": "Create tags.",
+        "tags:read": "Read tags.",
+        "tags:update": "Update tags.",
+        "tags:delete": "Delete tags.",
     },
 )
 
@@ -177,6 +181,7 @@ def get_scopes_for_user(user: user_schemas.User):
         scopes.add("servers:*")
         scopes.add("roles:*")
         scopes.add("sharing_groups:*")
+        scopes.add("tags:*")
 
     if user.role.perm_auth:
         scopes.add("auth:login")
@@ -185,11 +190,13 @@ def get_scopes_for_user(user: user_schemas.User):
         scopes.add("events:create")
         scopes.add("attributes:create")
         scopes.add("objects:create")
+        scopes.add("tags:create")
 
     if user.role.perm_modify:
         scopes.add("events:update")
         scopes.add("attributes:update")
         scopes.add("objects:update")
+        scopes.add("tags:update")
 
     if user.role.perm_modify_org:
         pass

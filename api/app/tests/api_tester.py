@@ -12,6 +12,7 @@ from app.models import object_reference as object_reference_models
 from app.models import organisations as organisation_models
 from app.models import server as server_models
 from app.models import sharing_groups as sharing_groups_models
+from app.models import tag as tag_models
 from app.models import user as user_models
 from app.settings import get_settings
 from fastapi.testclient import TestClient
@@ -55,6 +56,9 @@ class ApiTester:
         yield get_settings()
 
     def teardown_db(self, db: Session):
+        db.query(tag_models.AttributeTag).delete()
+        db.query(tag_models.EventTag).delete()
+        db.query(tag_models.Tag).delete()
         db.query(attribute_models.Attribute).delete()
         db.query(object_reference_models.ObjectReference).delete()
         db.query(object_models.Object).delete()
@@ -259,3 +263,28 @@ class ApiTester:
         )
 
         yield auth_token
+
+    @pytest.fixture(scope="class")
+    def tlp_white_tag(
+        self,
+        db: Session,
+        organisation_1: organisation_models.Organisation,
+        user_1: user_models.User,
+    ):
+        tlp_white_tag = tag_models.Tag(
+            name="tlp:white",
+            colour="#FFFFFF",
+            exportable=True,
+            org_id=organisation_1.id,
+            user_id=user_1.id,
+            hide_tag=False,
+            numerical_value=0,
+            is_galaxy=False,
+            is_custom_galaxy=False,
+            local_only=False,
+        )
+        db.add(tlp_white_tag)
+        db.commit()
+        db.refresh(tlp_white_tag)
+
+        yield tlp_white_tag

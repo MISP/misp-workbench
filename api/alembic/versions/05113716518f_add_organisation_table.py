@@ -56,9 +56,20 @@ def upgrade():
         ["id"],
     )
 
+    op.create_foreign_key(
+        "fk_object_templates_organisations",
+        "object_templates",
+        "organisations",
+        ["org_id"],
+        ["id"],
+    )
+
 
 def downgrade():
     op.drop_index(op.f("ix_organisations_name"), table_name="organisations")
     op.drop_index(op.f("fk_users_organisations"), table_name="users")
     op.drop_index(op.f("fk_events_organisations"), table_name="events")
+    op.drop_index(
+        op.f("fk_object_templates_organisations"), table_name="object_templates"
+    )
     op.drop_table("organisations")

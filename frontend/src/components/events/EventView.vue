@@ -31,7 +31,7 @@ div.row h3 {
                 <div class="col-10">
                     <h3><span class="badge bg-danger mx-1">tlp:red</span>{{ event.info }}</h3>
                 </div>
-                <div class="col-2">
+                <div class="col-2 text-end">
                     <div class="flex-wrap" :class="{ 'btn-group-vertical': $isMobile, 'btn-group': !$isMobile }"
                         aria-label="Event Actions">
                         <RouterLink :to="`/events/delete/${event.id}`" tag="button" class="btn btn-danger">
