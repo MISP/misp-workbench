@@ -5,7 +5,7 @@ from app.models import attribute as attribute_models
 from app.models import event as event_models
 from app.models import object as object_models
 from app.models import object_reference as object_reference_models
-from app.models import organisations as organisations_models
+from app.models import organisation as organisations_models
 from app.models import server as server_models
 from app.models import sharing_groups as sharing_groups_models
 from app.models import user as user_models

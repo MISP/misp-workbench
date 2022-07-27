@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from typing import Union
 
-from app.models import organisations as organisation_models
+from app.models import organisation as organisation_models
 from app.schemas import organisations as organisations_schemas
 from fastapi import HTTPException, status
 from pymisp import MISPOrganisation

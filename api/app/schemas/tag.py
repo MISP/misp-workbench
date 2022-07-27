@@ -23,6 +23,23 @@ class Tag(TagBase):
         orm_mode = True
 
 
+class TagCreate(TagBase):
+    pass
+
+
+class TagUpdate(TagBase):
+    name: Optional[str]
+    colour: Optional[str]
+    exportable: Optional[bool]
+    org_id: Optional[int]
+    user_id: Optional[int]
+    hide_tag: Optional[bool]
+    numerical_value: Optional[int]
+    is_galaxy: Optional[bool]
+    is_custom_galaxy: Optional[bool]
+    local_only: Optional[bool]
+
+
 class AttributeTagBase(BaseModel):
     attribute_id: int
     event_id: int
