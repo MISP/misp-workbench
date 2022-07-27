@@ -20,6 +20,27 @@ class DistributionLevel(enum.Enum):
     INHERIT_EVENT = 5
 
 
+class ThreatLevel(enum.Enum):
+    """
+    Enum for the Event threat level
+    """
+
+    HIGH = 1
+    MEDIUM = 2
+    LOW = 3
+    UNDEFINED = 4
+
+
+class AnalysisLevel(enum.Enum):
+    """
+    Enum for the Event analysis level
+    """
+
+    INITIAL = 0
+    ONGOING = 1
+    COMPLETE = 2
+
+
 class Event(Base):
     __tablename__ = "events"
 
@@ -32,7 +53,11 @@ class Event(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     uuid = Column(UUID(as_uuid=True), unique=True, default=uuid.uuid4)
     published = Column(Boolean, default=False, nullable=False)
-    analysis = Column(Integer)
+    analysis = Column(
+        Enum(AnalysisLevel),
+        nullable=False,
+        default=AnalysisLevel.INITIAL,
+    )
     attribute_count = Column(Integer, default=0)
     object_count = Column(Integer, default=0)
     orgc_id = Column(
@@ -49,7 +74,11 @@ class Event(Base):
     )
     proposal_email_lock = Column(Boolean, nullable=False, default=False)
     locked = Column(Boolean, nullable=False, default=False)
-    threat_level_id = Column(Integer, nullable=False, default=0)
+    threat_level = Column(
+        Enum(ThreatLevel),
+        nullable=False,
+        default=ThreatLevel.UNDEFINED,
+    )
     publish_timestamp = Column(Integer, nullable=False, default=0)
     sighting_timestamp = Column(Integer, nullable=True)
     disable_correlation = Column(Boolean, default=False)

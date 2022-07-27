@@ -2,10 +2,11 @@ from datetime import date
 from typing import Optional
 from uuid import UUID
 
-from app.models.event import DistributionLevel
+from app.models.event import AnalysisLevel, DistributionLevel, ThreatLevel
 from app.schemas.attribute import Attribute
 from app.schemas.object import Object
 from app.schemas.sharing_groups import SharingGroup
+from app.schemas.tag import Tag
 from pydantic import BaseModel
 
 
@@ -16,7 +17,7 @@ class EventBase(BaseModel):
     user_id: int
     uuid: Optional[UUID]
     published: Optional[bool]
-    analysis: Optional[int]
+    analysis: Optional[AnalysisLevel]
     attribute_count: Optional[int]
     object_count: Optional[int]
     orgc_id: Optional[int]
@@ -25,7 +26,7 @@ class EventBase(BaseModel):
     sharing_group_id: Optional[int]
     proposal_email_lock: Optional[bool]
     locked: Optional[bool]
-    threat_level_id: Optional[int]
+    threat_level: Optional[ThreatLevel]
     publish_timestamp: Optional[int]
     sighting_timestamp: Optional[int]
     disable_correlation: Optional[bool]
@@ -40,7 +41,8 @@ class Event(EventBase):
     id: int
     attributes: list[Attribute] = []
     objects: list[Object] = []
-    sharing_gruop: Optional[SharingGroup] = None
+    sharing_group: Optional[SharingGroup] = None
+    tags: list[Tag] = []
 
     class Config:
         orm_mode = True
@@ -54,13 +56,13 @@ class EventUpdate(BaseModel):
     date: Optional[date]
     info: Optional[str]
     published: Optional[bool]
-    analysis: Optional[int]
+    analysis: Optional[AnalysisLevel]
     timestamp: Optional[int]
     distribution: Optional[DistributionLevel]
     sharing_group_id: Optional[int]
     proposal_email_lock: Optional[bool]
     locked: Optional[bool]
-    threat_level_id: Optional[int]
+    threat_level: Optional[ThreatLevel]
     publish_timestamp: Optional[int]
     sighting_timestamp: Optional[int]
     disable_correlation: Optional[bool]

@@ -57,7 +57,7 @@ def create_event(db: Session, event: event_schemas.EventCreate):
         sharing_group_id=event.sharing_group_id,
         proposal_email_lock=event.proposal_email_lock,
         locked=event.locked,
-        threat_level_id=event.threat_level_id,
+        threat_level=event.threat_level,
         publish_timestamp=event.publish_timestamp,
         sighting_timestamp=event.sighting_timestamp,
         disable_correlation=event.disable_correlation,
@@ -79,7 +79,7 @@ def create_event_from_pulled_event(db: Session, pulled_event: MISPEvent):
         user_id=pulled_event.user_id,
         uuid=pulled_event.uuid,
         published=pulled_event.published,
-        analysis=pulled_event.analysis,
+        analysis=event_models.AnalysisLevel(pulled_event.analysis),
         attribute_count=pulled_event.attribute_count,
         object_count=len(pulled_event.objects),
         orgc_id=pulled_event.orgc_id,
@@ -90,7 +90,7 @@ def create_event_from_pulled_event(db: Session, pulled_event: MISPEvent):
         else None,
         proposal_email_lock=pulled_event.proposal_email_lock,
         locked=pulled_event.locked,
-        threat_level_id=pulled_event.threat_level_id,
+        threat_level=event_models.ThreatLevel(pulled_event.threat_level_id),
         publish_timestamp=pulled_event.publish_timestamp.timestamp(),
         # sighting_timestamp=pulled_event.sighting_timestamp, # TODO: add sighting_timestamp
         disable_correlation=pulled_event.disable_correlation,
@@ -113,13 +113,13 @@ def update_event_from_pulled_event(
     existing_event.published = pulled_event.published
     existing_event.attribute_count = pulled_event.attribute_count
     existing_event.object_count = len(pulled_event.objects)
-    existing_event.analysis = pulled_event.analysis
+    existing_event.analysis = event_models.AnalysisLevel(pulled_event.analysis)
     existing_event.timestamp = pulled_event.timestamp.timestamp() or time.time()
     existing_event.distribution = event_models.DistributionLevel(
         pulled_event.distribution
     )
     existing_event.sharing_group_id = pulled_event.sharing_group_id
-    existing_event.threat_level_id = pulled_event.threat_level_id
+    existing_event.threat_level = event_models.ThreatLevel(pulled_event.threat_level_id)
     existing_event.disable_correlation = pulled_event.disable_correlation
     existing_event.extends_uuid = pulled_event.extends_uuid or None
     db.add(existing_event)  # updates if exists

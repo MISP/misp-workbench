@@ -2,6 +2,7 @@ from typing import Optional
 from uuid import UUID
 
 from app.models.event import DistributionLevel
+from app.schemas.tag import Tag
 from pydantic import BaseModel
 
 
@@ -26,6 +27,7 @@ class AttributeBase(BaseModel):
 
 class Attribute(AttributeBase):
     id: int
+    tags: list[Tag] = []
 
     class Config:
         orm_mode = True
