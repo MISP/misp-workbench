@@ -4,6 +4,7 @@ from app.database import Base
 from app.models.event import DistributionLevel
 from sqlalchemy import BigInteger, Boolean, Column, Enum, ForeignKey, Integer, String
 from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import relationship
 
 
 class Attribute(Base):
@@ -32,3 +33,5 @@ class Attribute(Base):
     disable_correlation = Column(Boolean, default=False)
     first_seen = Column(BigInteger(), index=True)
     last_seen = Column(BigInteger(), index=True)
+
+    tags = relationship("Tag", secondary="attribute_tags")

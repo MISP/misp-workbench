@@ -4,9 +4,10 @@ from app.auth.auth import get_current_active_user
 from app.dependencies import get_db
 from app.repositories import attributes as attributes_repository
 from app.repositories import events as events_repository
+from app.repositories import tags as tags_repository
 from app.schemas import attribute as attribute_schemas
 from app.schemas import user as user_schemas
-from fastapi import APIRouter, Depends, HTTPException, Security, status
+from fastapi import APIRouter, Depends, HTTPException, Response, Security, status
 from sqlalchemy.orm import Session
 
 router = APIRouter()
@@ -93,3 +94,32 @@ def delete_attribute(
     ),
 ):
     return attributes_repository.delete_attribute(db=db, attribute_id=attribute_id)
+
+
+@router.post(
+    "/attributes/{attribute_id}/tag/{tag_id}",
+    status_code=status.HTTP_201_CREATED,
+)
+def tag_attribute(
+    attribute_id: int,
+    tag_id: int,
+    db: Session = Depends(get_db),
+    user: user_schemas.User = Security(
+        get_current_active_user, scopes=["attributes:update"]
+    ),
+):
+    attribute = attributes_repository.get_attribute_by_id(db, attribute_id=attribute_id)
+    if attribute is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Attribute not found"
+        )
+
+    tag = tags_repository.get_tag_by_id(db, tag_id=tag_id)
+    if tag is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Tag not found"
+        )
+
+    tags_repository.tag_attribute(db=db, attribute=attribute, tag=tag)
+
+    return Response(status_code=status.HTTP_201_CREATED)

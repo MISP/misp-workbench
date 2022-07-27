@@ -2,6 +2,7 @@ import pytest
 from app.auth import auth
 from app.models import attribute as attribute_models
 from app.models import event as event_models
+from app.models import tag as tag_models
 from app.tests.api_tester import ApiTester
 from fastapi import status
 from fastapi.testclient import TestClient
@@ -127,3 +128,19 @@ class TestAttributesResource(ApiTester):
         )
 
         assert response.status_code == status.HTTP_204_NO_CONTENT
+
+    @pytest.mark.parametrize("scopes", [["attributes:update"]])
+    def test_tag_attribute(
+        self,
+        client: TestClient,
+        event_1: event_models.Event,
+        attribute_1: attribute_models.Attribute,
+        tlp_white_tag: tag_models.Tag,
+        auth_token: auth.Token,
+    ):
+        response = client.post(
+            f"/attributes/{attribute_1.id}/tag/{tlp_white_tag.id}",
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+
+        assert response.status_code == status.HTTP_201_CREATED

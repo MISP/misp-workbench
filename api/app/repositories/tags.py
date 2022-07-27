@@ -1,3 +1,4 @@
+from app.models import attribute as attribute_models
 from app.models import tag as tag_models
 from app.schemas import tag as tag_schemas
 from fastapi import HTTPException, status
@@ -68,3 +69,21 @@ def delete_tag(db: Session, tag_id: int) -> None:
 
     db.delete(db_tag)
     db.commit()
+
+
+def tag_attribute(
+    db: Session,
+    attribute: attribute_models.Attribute,
+    tag: tag_models.Tag,
+):
+    db_attribute_tag = tag_models.AttributeTag(
+        event_id=attribute.event_id,
+        attribute_id=attribute.id,
+        tag_id=tag.id,
+    )
+
+    db.add(db_attribute_tag)
+    db.commit()
+    db.refresh(db_attribute_tag)
+
+    return db_attribute_tag
