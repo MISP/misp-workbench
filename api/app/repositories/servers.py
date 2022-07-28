@@ -2,6 +2,7 @@ import logging
 from hashlib import sha1
 from typing import Union
 
+from app.models import event as event_models
 from app.models import server as server_models
 from app.models import user as user_models
 from app.models.event import DistributionLevel
@@ -9,10 +10,18 @@ from app.repositories import attributes as attributes_repository
 from app.repositories import events as events_repository
 from app.repositories import objects as objects_repository
 from app.repositories import sharing_groups as sharing_groups_repository
+from app.repositories import tags as tags_repository
 from app.schemas import server as server_schemas
 from app.settings import Settings
 from fastapi import HTTPException, status
-from pymisp import MISPAttribute, MISPEvent, MISPObject, MISPSharingGroup, PyMISP
+from pymisp import (
+    MISPAttribute,
+    MISPEvent,
+    MISPObject,
+    MISPSharingGroup,
+    MISPTag,
+    PyMISP,
+)
 from sqlalchemy.orm import Session
 
 logger = logging.getLogger(__name__)
@@ -222,8 +231,6 @@ def pull_event_by_id(
     if not db_event:
         return False
 
-    # TODO: save EventTag, see app/Model/Event.php::_add()
-
     # TODO: process event reports, see app/Model/Event.php::_add()
 
     # TODO: process cryptographic keys, see app/Model/Event.php::_add()
@@ -382,6 +389,8 @@ def create_or_update_pulled_event(
             )
             create_pulled_event_objects(db, created.id, event.objects, server, user)
 
+            create_pulled_event_tags(db, created, event.tags, server, user)
+
             # TODO: publish event creation to ZMQ
             logger.info(f"Event {event.uuid} created")
             return created
@@ -416,6 +425,8 @@ def create_or_update_pulled_event(
         if updated:
             # TODO: process attribute updates
             # TODO: process object updates
+
+            create_pulled_event_tags(db, updated, event.tags, server, user)
 
             # TODO: publish event update to ZMQ
             logger.info("Updated event %s" % event.uuid)
@@ -485,6 +496,30 @@ def create_pulled_event_objects(
         objects_repository.create_object_from_pulled_object(db, object, local_event_id)
 
     # see: app/Model/ObjectReference.php::captureReference()
+
+
+def create_pulled_event_tags(
+    db: Session,
+    event: event_models.Event,
+    pulled_tags: list[MISPTag],
+    server: server_schemas.Server,
+    user: user_models.User,
+) -> None:
+    """
+    see: app/Model/Event.php::__captureObjects()
+    see: app/Model/Tag.php::captureTag()
+    see: app/Model/Tag.php::captureTagWithCache()
+    """
+
+    tags = []
+
+    for tag in pulled_tags:
+        tag = tags_repository.capture_tag(db, tag, user)
+        if tag:
+            tags.append(tag)
+
+    for tag in tags:
+        tags_repository.tag_event(db, event, tag)
 
 
 def update_server(

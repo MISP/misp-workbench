@@ -222,6 +222,21 @@ test_cases = {
                 ],
                 "EventReport": [],
                 "CryptographicKey": [],
+                "Tag": [
+                    {
+                        "id": "1",
+                        "name": "tlp:red",
+                        "colour": "#CC0033",
+                        "exportable": True,
+                        "user_id": "0",
+                        "hide_tag": False,
+                        "numerical_value": None,
+                        "is_galaxy": False,
+                        "is_custom_galaxy": False,
+                        "local_only": False,
+                        "local": 0,
+                    },
+                ],
             }
         },
         "expected_result": {
@@ -402,6 +417,21 @@ test_cases = {
                 "Object": [],
                 "EventReport": [],
                 "CryptographicKey": [],
+                "Tag": [
+                    {
+                        "id": "2",
+                        "name": "tlp:amber",
+                        "colour": "#FFC000",
+                        "exportable": True,
+                        "user_id": "0",
+                        "hide_tag": False,
+                        "numerical_value": None,
+                        "is_galaxy": False,
+                        "is_custom_galaxy": False,
+                        "local_only": False,
+                        "local": 0,
+                    },
+                ],
             }
         },
         "expected_result": {

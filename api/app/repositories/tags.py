@@ -1,7 +1,11 @@
 from app.models import attribute as attribute_models
+from app.models import event as event_models
 from app.models import tag as tag_models
+from app.models import user as user_models
 from app.schemas import tag as tag_schemas
 from fastapi import HTTPException, status
+from pymisp import MISPTag
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 
@@ -87,3 +91,64 @@ def tag_attribute(
     db.refresh(db_attribute_tag)
 
     return db_attribute_tag
+
+
+def tag_event(
+    db: Session,
+    event: event_models.Event,
+    tag: tag_models.Tag,
+):
+    db_event_tag = tag_models.EventTag(
+        event_id=event.id,
+        tag_id=tag.id,
+    )
+
+    db.add(db_event_tag)
+    db.commit()
+    db.refresh(db_event_tag)
+
+    return db_event_tag
+
+
+def capture_tag(db: Session, tag: MISPTag, user: user_models.User):
+    # see: app/Model/Tag.php::captureTag
+
+    if not user.role.perm_site_admin and (
+        tag.org_id != user.org_id or tag.user_id != user.id
+    ):
+        return False
+
+    db_tag = get_tag_by_name(db, tag_name=tag.name)
+
+    # TODO: handle setting MISP.incoming_tags_disabled_by_default
+
+    if db_tag is None and user.role.perm_tag_editor:
+        db_tag = create_tag(
+            db,
+            tag=tag_schemas.TagCreate(
+                name=tag.name,
+                colour=tag.colour,
+                exportable=tag.exportable,
+                org_id=user.org_id,
+                user_id=user.id,
+                hide_tag=tag.hide_tag,
+                # numerical_value=tag.numerical_value, # TODO: MISPTag has no numerical_value
+                is_galaxy=tag.is_galaxy,
+                is_custom_galaxy=tag.is_custom_galaxy,
+                local_only=tag.local_only,
+            ),
+        )
+
+    db.add(db_tag)
+    db.commit()
+    db.refresh(db_tag)
+
+    return db_tag
+
+
+def get_tag_by_name(db: Session, tag_name: str):
+    return (
+        db.query(tag_models.Tag)
+        .filter(func.lower(tag_models.Tag.name) == func.lower(tag_name))
+        .first()
+    )
