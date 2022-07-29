@@ -4,6 +4,7 @@ from typing import Union
 
 from app.models import event as event_models
 from app.models import server as server_models
+from app.models import tag as tag_models
 from app.models import user as user_models
 from app.models.event import DistributionLevel
 from app.repositories import attributes as attributes_repository
@@ -384,12 +385,15 @@ def create_or_update_pulled_event(
 
         created = events_repository.create_event_from_pulled_event(db, event)
         if created:
-            create_pulled_event_attributes(
+            event.attributes = create_pulled_event_attributes(
                 db, created.id, event.attributes, server, user
             )
-            create_pulled_event_objects(db, created.id, event.objects, server, user)
-
+            event.objects = create_pulled_event_objects(
+                db, created.id, event.objects, server, user
+            )
             create_pulled_event_tags(db, created, event.tags, server, user)
+            create_pulled_attributes_tags(db, created, event.attributes, server, user)
+            create_pulled_objects_tags(db, created, event.objects, server, user)
 
             # TODO: publish event creation to ZMQ
             logger.info(f"Event {event.uuid} created")
@@ -427,6 +431,8 @@ def create_or_update_pulled_event(
             # TODO: process object updates
 
             create_pulled_event_tags(db, updated, event.tags, server, user)
+            create_pulled_attributes_tags(db, updated, event.attributes, server, user)
+            create_pulled_objects_tags(db, updated, event.objects, server, user)
 
             # TODO: publish event update to ZMQ
             logger.info("Updated event %s" % event.uuid)
@@ -460,7 +466,7 @@ def create_pulled_event_attributes(
     attributes: list[MISPAttribute],
     server: server_schemas.Server,
     user: user_models.User,
-) -> None:
+) -> list[MISPAttribute]:
     """
     see: app/Model/Event.php::_add()
     """
@@ -473,10 +479,17 @@ def create_pulled_event_attributes(
         ).hexdigest()
         if hash not in hashes_dict:
             # see: app/Model/Attribute.php::captureAttribute()
-            attributes_repository.create_attribute_from_pulled_attribute(
-                db, attribute, local_event_id
+            pulled_attribute = (
+                attributes_repository.create_attribute_from_pulled_attribute(
+                    db, attribute, local_event_id
+                )
             )
+            attribute.event_id = local_event_id
+            attribute.id = pulled_attribute.id
+
             hashes_dict[hash] = True
+
+    return attributes
 
 
 def create_pulled_event_objects(
@@ -485,7 +498,7 @@ def create_pulled_event_objects(
     objects: list[MISPObject],
     server: server_schemas.Server,
     user: user_models.User,
-) -> None:
+) -> list[MISPObject]:
     """
     see: app/Model/Event.php::_add()
     """
@@ -493,18 +506,24 @@ def create_pulled_event_objects(
     for object in objects:
         # see: app/Model/MispObject.php::captureObject()
         # TODO: app/Model/MispObject.php::checkForDuplicateObjects()
-        objects_repository.create_object_from_pulled_object(db, object, local_event_id)
+        db_object = objects_repository.create_object_from_pulled_object(
+            db, object, local_event_id
+        )
+        object.id = db_object.id
+        object.event_id = local_event_id
 
     # see: app/Model/ObjectReference.php::captureReference()
 
+    return objects
 
-def create_pulled_event_tags(
+
+def create_pulled_tags(
     db: Session,
     event: event_models.Event,
     pulled_tags: list[MISPTag],
     server: server_schemas.Server,
     user: user_models.User,
-) -> None:
+) -> list[tag_models.Tag]:
     """
     see: app/Model/Event.php::__captureObjects()
     see: app/Model/Tag.php::captureTag()
@@ -514,12 +533,72 @@ def create_pulled_event_tags(
     tags = []
 
     for tag in pulled_tags:
+        # TODO: cache capture_tag()
         tag = tags_repository.capture_tag(db, tag, user)
         if tag:
             tags.append(tag)
 
+    return tags
+
+
+def create_pulled_event_tags(
+    db: Session,
+    event: event_models.Event,
+    pulled_tags: list[MISPTag],
+    server: server_schemas.Server,
+    user: user_models.User,
+) -> None:
+
+    tags = create_pulled_tags(db, event, pulled_tags, server, user)
+
+    # TODO: bulk insert
     for tag in tags:
         tags_repository.tag_event(db, event, tag)
+
+
+def create_pulled_attributes_tags(
+    db: Session,
+    event: event_models.Event,
+    attributes: list[MISPAttribute],
+    server: server_schemas.Server,
+    user: user_models.User,
+) -> None:
+    """
+    see: app/Model/Event.php::__captureObjects()
+    see: app/Model/Event.php::__captureAttributeTags()
+    see: app/Model/Tag.php::captureTag()
+    see: app/Model/Tag.php::captureTagWithCache()
+    """
+
+    for attribute in attributes:
+        tags = create_pulled_tags(db, event, attribute.tags, server, user)
+
+        # TODO: bulk insert
+        for tag in tags:
+            tags_repository.tag_attribute(db, attribute, tag)
+
+
+def create_pulled_objects_tags(
+    db: Session,
+    event: event_models.Event,
+    objects: list[MISPObject],
+    server: server_schemas.Server,
+    user: user_models.User,
+) -> None:
+    """
+    see: app/Model/Event.php::__captureObjects()
+    see: app/Model/Event.php::__captureAttributeTags()
+    see: app/Model/Tag.php::captureTag()
+    see: app/Model/Tag.php::captureTagWithCache()
+    """
+
+    for object in objects:
+        for attribute in object.attributes:
+            tags = create_pulled_tags(db, event, attribute.tags, server, user)
+
+            # TODO: bulk insert
+            for tag in tags:
+                tags_repository.tag_attribute(db, attribute, tag)
 
 
 def update_server(

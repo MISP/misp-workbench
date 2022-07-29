@@ -110,7 +110,7 @@ def tag_event(
     return db_event_tag
 
 
-def capture_tag(db: Session, tag: MISPTag, user: user_models.User):
+def capture_tag(db: Session, tag: MISPTag, user: user_models.User) -> tag_models.Tag:
     # see: app/Model/Tag.php::captureTag
 
     if not user.role.perm_site_admin and (

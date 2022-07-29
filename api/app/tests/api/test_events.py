@@ -3,6 +3,7 @@ from app.auth import auth
 from app.models import attribute as attribute_models
 from app.models import event as event_models
 from app.models import organisation as organisation_models
+from app.models import tag as tag_models
 from app.models import user as user_models
 from app.tests.api_tester import ApiTester
 from fastapi import status
@@ -161,3 +162,18 @@ class TestEventsResource(ApiTester):
         )
 
         assert response.status_code == status.HTTP_204_NO_CONTENT
+
+    @pytest.mark.parametrize("scopes", [["events:update"]])
+    def test_tag_event(
+        self,
+        client: TestClient,
+        event_1: event_models.Event,
+        tlp_white_tag: tag_models.Tag,
+        auth_token: auth.Token,
+    ):
+        response = client.post(
+            f"/events/{event_1.id}/tag/{tlp_white_tag.id}",
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+
+        assert response.status_code == status.HTTP_201_CREATED

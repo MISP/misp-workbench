@@ -3,9 +3,10 @@ from typing import Optional
 from app.auth.auth import get_current_active_user
 from app.dependencies import get_db
 from app.repositories import events as events_repository
+from app.repositories import tags as tags_repository
 from app.schemas import event as event_schemas
 from app.schemas import user as user_schemas
-from fastapi import APIRouter, Depends, HTTPException, Security, status
+from fastapi import APIRouter, Depends, HTTPException, Response, Security, status
 from sqlalchemy.orm import Session
 
 router = APIRouter()
@@ -84,3 +85,32 @@ def delete_event(
     ),
 ):
     return events_repository.delete_event(db=db, event_id=event_id)
+
+
+@router.post(
+    "/events/{event_id}/tag/{tag_id}",
+    status_code=status.HTTP_201_CREATED,
+)
+def tag_event(
+    event_id: int,
+    tag_id: int,
+    db: Session = Depends(get_db),
+    user: user_schemas.User = Security(
+        get_current_active_user, scopes=["events:update"]
+    ),
+):
+    event = events_repository.get_event_by_id(db, event_id=event_id)
+    if event is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Event not found"
+        )
+
+    tag = tags_repository.get_tag_by_id(db, tag_id=tag_id)
+    if tag is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Tag not found"
+        )
+
+    tags_repository.tag_event(db=db, event=event, tag=tag)
+
+    return Response(status_code=status.HTTP_201_CREATED)

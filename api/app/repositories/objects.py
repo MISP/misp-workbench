@@ -55,7 +55,7 @@ def create_object(db: Session, object: object_schemas.ObjectCreate):
 
 def create_object_from_pulled_object(
     db: Session, pulled_object: MISPObject, local_event_id: int
-):
+) -> MISPObject:
     # TODO: process sharing group // captureSG
     # TODO: enforce warninglist
 
@@ -89,11 +89,15 @@ def create_object_from_pulled_object(
     db.commit()
     db.refresh(db_object)
 
+    pulled_object.id = db_object.id
+
     for pulled_attribute in pulled_object.attributes:
         pulled_attribute.object_id = db_object.id
-        attributes_repository.create_attribute_from_pulled_attribute(
+        pulled_attribute.event_id = local_event_id
+        db_attribute = attributes_repository.create_attribute_from_pulled_attribute(
             db, pulled_attribute, local_event_id
         )
+        pulled_attribute.id = db_attribute.id
 
     for pulled_object_reference in pulled_object.ObjectReference:
         pulled_object_reference.object_id = db_object.id
@@ -101,7 +105,7 @@ def create_object_from_pulled_object(
             db, pulled_object_reference, local_event_id
         )
 
-    return db_object
+    return pulled_object
 
 
 def update_object(db: Session, object_id: int, object: object_schemas.ObjectUpdate):

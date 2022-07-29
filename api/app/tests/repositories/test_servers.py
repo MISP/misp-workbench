@@ -8,11 +8,13 @@ from app.models import object_reference as object_reference_models
 from app.models import organisation as organisations_models
 from app.models import server as server_models
 from app.models import sharing_groups as sharing_groups_models
+from app.models import tag as tag_models
 from app.models import user as user_models
 from app.repositories import servers as servers_repository
 from app.settings import Settings
 from app.tests.api_tester import ApiTester
 from app.tests.scenarios import server_pull_scenarios
+from sqlalchemy import and_
 from sqlalchemy.orm import Session
 
 
@@ -136,3 +138,40 @@ class TestServersRepository(ApiTester):
             assert len(sharing_group_orgs) == len(
                 scenario["expected_result"]["sharing_group_org_uuids"]
             )
+
+            # check the tags were created
+            tags = (
+                db.query(tag_models.Tag)
+                .filter(tag_models.Tag.name.in_(scenario["expected_result"]["tags"]))
+                .all()
+            )
+            assert len(tags) == len(scenario["expected_result"]["tags"])
+
+            # check the event tags were created
+            event_tags = (
+                db.query(tag_models.Tag)
+                .join(tag_models.EventTag)
+                .filter(
+                    tag_models.Tag.name.in_(scenario["expected_result"]["event_tags"])
+                )
+                .all()
+            )
+            assert len(event_tags) == len(scenario["expected_result"]["event_tags"])
+
+            # check the attribute tags were created
+            for attribute_tag in scenario["expected_result"]["attribute_tags"]:
+                attribute_tags = (
+                    db.query(tag_models.Tag)
+                    .join(tag_models.AttributeTag)
+                    .filter(
+                        and_(
+                            tag_models.Tag.name.in_(attribute_tag["tags"]),
+                            attribute_models.Attribute.uuid
+                            == attribute_tag["attribute_uuid"],
+                            attribute_models.Attribute.id
+                            == tag_models.AttributeTag.attribute_id,
+                        )
+                    )
+                    .all()
+                )
+                assert len(attribute_tags) == len(attribute_tag["tags"])

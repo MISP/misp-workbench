@@ -67,6 +67,21 @@ test_cases = {
                         "value": "1.1.1.1",
                         "Galaxy": [],
                         "ShadowAttribute": [],
+                        "Tag": [
+                            {
+                                "id": "4",
+                                "name": "tlp:green",
+                                "colour": "#00FF00",
+                                "exportable": True,
+                                "user_id": "0",
+                                "hide_tag": False,
+                                "numerical_value": None,
+                                "is_galaxy": False,
+                                "is_custom_galaxy": False,
+                                "local_only": False,
+                                "local": 0,
+                            },
+                        ],
                     }
                 ],
                 "ShadowAttribute": [],
@@ -133,6 +148,21 @@ test_cases = {
                                 "value": "evil.com",
                                 "Galaxy": [],
                                 "ShadowAttribute": [],
+                                "Tag": [
+                                    {
+                                        "id": "1",
+                                        "name": "tlp:red",
+                                        "colour": "#FF0000",
+                                        "exportable": True,
+                                        "user_id": "0",
+                                        "hide_tag": False,
+                                        "numerical_value": None,
+                                        "is_galaxy": False,
+                                        "is_custom_galaxy": False,
+                                        "local_only": False,
+                                        "local": 0,
+                                    },
+                                ],
                             },
                             {
                                 "id": "4",
@@ -260,6 +290,20 @@ test_cases = {
             "sharing_groups_uuids": ([]),
             "sharing_group_org_uuids": ([]),
             "sharing_groups_servers_uuids": ([]),
+            "tags": (["tlp:red"]),
+            "event_tags": (["tlp:red"]),
+            "attribute_tags": (
+                [
+                    {
+                        "attribute_uuid": "e437b43c-8b13-4599-9ccf-f31c61007dd2",
+                        "tags": ["tlp:green"],
+                    },
+                    {
+                        "attribute_uuid": "201257fb-8d9e-4b27-ac26-d00cdf35a744",
+                        "tags": ["tlp:red"],
+                    },
+                ]
+            ),
         },
     },
     "pull_sharing_group_event": {
@@ -409,6 +453,21 @@ test_cases = {
                         "value": "1.1.1.1",
                         "Galaxy": [],
                         "ShadowAttribute": [],
+                        "Tag": [
+                            {
+                                "id": "4",
+                                "name": "tlp:green",
+                                "colour": "#00FF00",
+                                "exportable": True,
+                                "user_id": "0",
+                                "hide_tag": False,
+                                "numerical_value": None,
+                                "is_galaxy": False,
+                                "is_custom_galaxy": False,
+                                "local_only": False,
+                                "local": 0,
+                            },
+                        ],
                     }
                 ],
                 "ShadowAttribute": [],
@@ -448,6 +507,16 @@ test_cases = {
                 ]
             ),
             "sharing_groups_servers_uuids": (["81a93b6d-0f67-4696-abe0-42f5064610a3"]),
+            "tags": (["tlp:amber"]),
+            "event_tags": (["tlp:amber"]),
+            "attribute_tags": (
+                [
+                    {
+                        "attribute_uuid": "70b688cf-e8d7-419a-9e0e-8fa85eeabbd2",
+                        "tags": ["tlp:green"],
+                    }
+                ]
+            ),
         },
     },
 }

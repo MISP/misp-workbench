@@ -61,7 +61,7 @@ def create_attribute(
 
 def create_attribute_from_pulled_attribute(
     db: Session, pulled_attribute: MISPAttribute, local_event_id: int
-) -> attribute_models.Attribute:
+) -> MISPAttribute:
     # TODO: process sharing group // captureSG
     # TODO: enforce warninglist
 
@@ -93,14 +93,16 @@ def create_attribute_from_pulled_attribute(
         ),
     )
 
-    # TODO: process attribute tags
     # TODO: process sigthings
 
     db.add(db_attribute)
     db.commit()
     db.refresh(db_attribute)
 
-    return db_attribute
+    pulled_attribute.id = db_attribute.id
+    pulled_attribute.event_id = local_event_id
+
+    return pulled_attribute
 
 
 def update_attribute(

@@ -88,3 +88,4 @@ class Event(Base):
     attributes = relationship("Attribute")
     objects = relationship("Object")
     sharing_group = relationship("SharingGroup")
+    tags = relationship("Tag", secondary="event_tags")
