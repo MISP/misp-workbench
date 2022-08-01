@@ -1,5 +1,6 @@
 <script setup>
 import DistributionLevel from "@/components/enums/DistributionLevel.vue";
+import TagsIndex from "@/components/tags/TagsIndex.vue";
 import { RouterLink } from "vue-router";
 
 defineProps(['attributes']);
@@ -10,6 +11,7 @@ defineProps(['attributes']);
         <thead>
             <tr>
                 <th style="width: 30%" scope="col">value</th>
+                <th style="width: 30%" scope="col" class="d-none d-sm-table-cell">tags</th>
                 <th style="width: 10%" scope="col" class="d-none d-sm-table-cell">category</th>
                 <th style="width: 10%" scope="col">type</th>
                 <th style="width: 10%" scope="col" class="d-none d-sm-table-cell">timestamp</th>
@@ -20,6 +22,9 @@ defineProps(['attributes']);
         <tbody>
             <tr :key="attribute.id" v-for="attribute in attributes">
                 <td>{{ attribute.value }}</td>
+                <td class="d-none d-sm-table-cell">
+                    <TagsIndex :tags="attribute.tags" />
+                </td>
                 <td class="d-none d-sm-table-cell">{{ attribute.category }}</td>
                 <td>{{ attribute.type }}</td>
                 <td class="d-none d-sm-table-cell">{{ attribute.timestamp }}</td>

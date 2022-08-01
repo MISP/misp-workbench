@@ -2,6 +2,7 @@
 import Sparkline from "@/components/charts/Sparkline.vue";
 import AttributesIndex from "@/components/attributes/AttributesIndex.vue";
 import ObjectsIndex from "@/components/objects/ObjectsIndex.vue";
+import TagsIndex from "@/components/tags/TagsIndex.vue";
 import DistributionLevel from "@/components/enums/DistributionLevel.vue";
 import ThreatLevel from "@/components/enums/ThreatLevel.vue";
 import AnalysisLevel from "@/components/enums/AnalysisLevel.vue";
@@ -29,7 +30,7 @@ div.row h3 {
         <div class="event-title card-header border-bottom">
             <div class="row">
                 <div class="col-10">
-                    <h3><span class="badge bg-danger mx-1">tlp:red</span>{{ event.info }}</h3>
+                    <h3>{{ event.info }}</h3>
                 </div>
                 <div class="col-2 text-end">
                     <div class="flex-wrap" :class="{ 'btn-group-vertical': $isMobile, 'btn-group': !$isMobile }"
@@ -189,15 +190,13 @@ div.row h3 {
                     </div>
                 </div>
                 <div class="mt-2">
-                    <div class="card bg-light h-100">
-                        <div class="card-header">tags</div>
+                    <div class="card h-100">
+                        <div class="card-header">
+                            <font-awesome-icon icon="fa-solid fa-tags" /> tags
+                        </div>
                         <div class="card-body d-flex flex-column">
                             <div class="card-text">
-                                <div class="col-auto">
-                                    <span class="badge bg-danger mx-1">tlp:red</span>
-                                    <span class="badge bg-warning mx-1">phishing</span>
-                                    <span class="badge bg-info mx-1">malware</span>
-                                </div>
+                                <TagsIndex :tags="event.tags" />
                             </div>
                         </div>
                     </div>
@@ -206,8 +205,10 @@ div.row h3 {
         </div>
         <div class="row m-1" v-if="event.objects.length > 0">
             <div class="col-12">
-                <div class="card bg-light">
-                    <div class="card-header">objects</div>
+                <div class="card">
+                    <div class="card-header">
+                        <font-awesome-icon icon="fa-solid fa-shapes" /> objects
+                    </div>
                     <div class="card-body d-flex flex-column">
                         <ObjectsIndex :event_id="event.id" :total_size="event.object_count" :page_size="10" />
                     </div>
@@ -216,8 +217,10 @@ div.row h3 {
         </div>
         <div class="row m-1" v-if="event.attribute_count > 0">
             <div class="col-12">
-                <div class="card bg-light">
-                    <div class="card-header">attributes</div>
+                <div class="card">
+                    <div class="card-header">
+                        <font-awesome-icon icon="fa-solid fa-cubes-stacked" /> attributes
+                    </div>
                     <div class="card-body d-flex flex-column">
                         <AttributesIndex :event_id="event.id" :total_size="event.attribute_count" :page_size="10" />
                     </div>
