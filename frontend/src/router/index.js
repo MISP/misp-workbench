@@ -1,7 +1,18 @@
 import { createRouter, createWebHistory } from "vue-router";
 
 import { useAuthStore } from "@/stores";
-import { HomeView, LoginView, IndexEventsView, ViewEventView, IndexUsersView, IndexOrganisationsView, ViewOrganisationView, ViewUsersView } from "@/views";
+import {
+  HomeView,
+  LoginView,
+  IndexEventsView,
+  ViewEventView,
+  IndexUsersView,
+  IndexOrganisationsView,
+  ViewOrganisationView,
+  ViewUsersView,
+  IndexServersView,
+  ViewServerView
+} from "@/views";
 
 export const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -15,6 +26,8 @@ export const router = createRouter({
     { path: "/users/:id", component: ViewUsersView, props: true },
     { path: "/organisations", component: IndexOrganisationsView },
     { path: "/organisations/:id", component: ViewOrganisationView, props: true },
+    { path: "/servers", component: IndexServersView },
+    { path: "/servers/:id", component: ViewServerView, props: true },
   ],
 });
 

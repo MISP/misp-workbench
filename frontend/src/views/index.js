@@ -6,3 +6,5 @@ export { default as IndexUsersView } from "./IndexUsersView.vue";
 export { default as IndexOrganisationsView } from "./IndexOrganisationsView.vue";
 export { default as ViewOrganisationView } from "./ViewOrganisationView.vue";
 export { default as ViewUsersView } from "./ViewUsersView.vue";
+export { default as IndexServersView } from "./IndexServersView.vue";
+export { default as ViewServerView } from "./ViewServerView.vue";

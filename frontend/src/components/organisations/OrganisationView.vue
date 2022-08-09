@@ -29,57 +29,57 @@ defineProps(['organisation']);
                 <table class="table table-striped">
                     <tbody>
                         <tr>
-                            <th scope="row">id</th>
+                            <th style="width: 30%">id</th>
                             <td>{{ organisation.id }}</td>
                         </tr>
                         <tr>
-                            <th scope="row">uuid</th>
+                            <th style="width: 30%">uuid</th>
                             <td>{{ organisation.uuid }}
                                 <font-awesome-icon class="text-primary" icon="fa-solid fa-copy" />
                             </td>
                         </tr>
                         <tr>
-                            <th scope="row">description</th>
+                            <th style="width: 30%">description</th>
                             <td>{{ organisation.description }}</td>
                         </tr>
                         <tr>
-                            <th scope="row">date_created</th>
+                            <th style="width: 30%">date_created</th>
                             <td>{{ organisation.date_created }}</td>
                         </tr>
                         <tr>
-                            <th scope="row">date_modified</th>
+                            <th style="width: 30%">date_modified</th>
                             <td>{{ organisation.date_modified }}</td>
                         </tr>
                         <tr>
-                            <th scope="row">type</th>
+                            <th style="width: 30%">type</th>
                             <td>{{ organisation.type }}</td>
                         </tr>
                         <tr>
-                            <th scope="row">nationality</th>
+                            <th style="width: 30%">nationality</th>
                             <td>{{ organisation.nationality }}</td>
                         </tr>
                         <tr>
-                            <th scope="row">sector</th>
+                            <th style="width: 30%">sector</th>
                             <td>{{ organisation.sector }}</td>
                         </tr>
                         <tr>
-                            <th scope="row">created_by</th>
+                            <th style="width: 30%">created_by</th>
                             <td>{{ organisation.created_by }}</td>
                         </tr>
                         <tr>
-                            <th scope="row">contacts</th>
+                            <th style="width: 30%">contacts</th>
                             <td>{{ organisation.contacts }}</td>
                         </tr>
                         <tr>
-                            <th scope="row">local</th>
+                            <th style="width: 30%">local</th>
                             <td>{{ organisation.local }}</td>
                         </tr>
                         <tr>
-                            <th scope="row">restricted_to_domain</th>
+                            <th style="width: 30%">restricted_to_domain</th>
                             <td>{{ organisation.restricted_to_domain }}</td>
                         </tr>
                         <tr>
-                            <th scope="row">landing_page</th>
+                            <th style="width: 30%">landing_page</th>
                             <td>{{ organisation.landing_page }}</td>
                         </tr>
                     </tbody>

@@ -27,15 +27,15 @@ defineProps(['user']);
                 <table class="table table-striped">
                     <tbody>
                         <tr>
-                            <th scope="row">id</th>
+                            <th style="width: 30%">id</th>
                             <td>{{ user.id }}</td>
                         </tr>
                         <tr>
-                            <th scope="row">org_id</th>
+                            <th style="width: 30%">org_id</th>
                             <td>{{ user.org_id }}</td>
                         </tr>
                         <tr>
-                            <th scope="row">role_id</th>
+                            <th style="width: 30%">role_id</th>
                             <td>{{ user.role_id }}</td>
                         </tr>
                     </tbody>

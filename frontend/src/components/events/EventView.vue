@@ -53,25 +53,25 @@ div.row h3 {
                             <table class="table table-striped">
                                 <tbody>
                                     <tr>
-                                        <th scope="row">id</th>
+                                        <th>id</th>
                                         <td>{{ event.id }}</td>
                                     </tr>
                                     <tr>
-                                        <th scope="row">uuid</th>
+                                        <th>uuid</th>
                                         <td>{{ event.uuid }}
                                             <font-awesome-icon class="text-primary" icon="fa-solid fa-copy" />
                                         </td>
                                     </tr>
                                     <tr>
-                                        <th scope="row">published</th>
+                                        <th>published</th>
                                         <td>{{ event.published }}</td>
                                     </tr>
                                     <tr>
-                                        <th scope="row">creator user</th>
+                                        <th>creator user</th>
                                         <td>{{ event.user_id }}</td>
                                     </tr>
                                     <tr>
-                                        <th scope="row">protected</th>
+                                        <th>protected</th>
                                         <td>
                                             <div class="form-check form-switch">
                                                 <input class="form-check-input" type="checkbox"
@@ -80,33 +80,33 @@ div.row h3 {
                                         </td>
                                     </tr>
                                     <tr>
-                                        <th scope="row">date</th>
+                                        <th>date</th>
                                         <td>{{ event.date }}</td>
                                     </tr>
                                     <tr>
-                                        <th scope="row">threat level</th>
+                                        <th>threat level</th>
                                         <td>
                                             <ThreatLevel :threat_level_id=event.threat_level />
                                         </td>
                                     </tr>
                                     <tr>
-                                        <th scope="row">analysis</th>
+                                        <th>analysis</th>
                                         <td>
                                             <AnalysisLevel :analysis_level_id=event.analysis />
                                         </td>
                                     </tr>
                                     <tr>
-                                        <th scope="row">distribution</th>
+                                        <th>distribution</th>
                                         <td>
                                             <DistributionLevel :distribution_level_id=event.distribution />
                                         </td>
                                     </tr>
                                     <tr>
-                                        <th scope="row">attributes</th>
+                                        <th>attributes</th>
                                         <td>{{ event.attribute_count }} ({{ event.object_count }} objects)</td>
                                     </tr>
                                     <tr>
-                                        <th scope="row">correlation</th>
+                                        <th>correlation</th>
                                         <td>
                                             <div class="form-check form-switch">
                                                 <input class="form-check-input" type="checkbox"
