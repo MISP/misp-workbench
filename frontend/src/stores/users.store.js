@@ -8,6 +8,7 @@ export const useUsersStore = defineStore({
   id: "users",
   state: () => ({
     users: {},
+    user: {},
   }),
   actions: {
     async getAll() {
