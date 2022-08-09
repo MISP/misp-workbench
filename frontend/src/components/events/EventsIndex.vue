@@ -38,10 +38,11 @@ eventsStore.getAll();
                     <td class="text-end">
                         <div class="flex-wrap" :class="{ 'btn-group-vertical': $isMobile, 'btn-group': !$isMobile }"
                             aria-label="Event Actions">
-                            <RouterLink :to="`/events/delete/${event.id}`" tag="button" class="btn btn-danger">
+                            <RouterLink :to="`/events/delete/${event.id}`" tag="button" class="btn btn-danger disabled">
                                 <font-awesome-icon icon="fa-solid fa-trash" />
                             </RouterLink>
-                            <RouterLink :to="`/events/update/${event.id}`" tag="button" class="btn btn-primary">
+                            <RouterLink :to="`/events/update/${event.id}`" tag="button"
+                                class="btn btn-primary disabled">
                                 <font-awesome-icon icon="fa-solid fa-pen" />
                             </RouterLink>
                             <RouterLink :to="`/events/${event.id}`" tag="button" class="btn btn-primary">

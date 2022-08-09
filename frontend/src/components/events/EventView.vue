@@ -35,10 +35,10 @@ div.row h3 {
                 <div class="col-2 text-end">
                     <div class="flex-wrap" :class="{ 'btn-group-vertical': $isMobile, 'btn-group': !$isMobile }"
                         aria-label="Event Actions">
-                        <RouterLink :to="`/events/delete/${event.id}`" tag="button" class="btn btn-danger">
+                        <RouterLink :to="`/events/delete/${event.id}`" tag="button" class="btn btn-danger disabled">
                             <font-awesome-icon icon="fa-solid fa-trash" />
                         </RouterLink>
-                        <RouterLink :to="`/events/update/${event.id}`" tag="button" class="btn btn-primary">
+                        <RouterLink :to="`/events/update/${event.id}`" tag="button" class="btn btn-primary disabled">
                             <font-awesome-icon icon="fa-solid fa-pen" />
                         </RouterLink>
                     </div>
@@ -75,7 +75,7 @@ div.row h3 {
                                         <td>
                                             <div class="form-check form-switch">
                                                 <input class="form-check-input" type="checkbox"
-                                                    :checked="event.protected" />
+                                                    :checked="event.protected" disabled />
                                             </div>
                                         </td>
                                     </tr>
@@ -110,7 +110,7 @@ div.row h3 {
                                         <td>
                                             <div class="form-check form-switch">
                                                 <input class="form-check-input" type="checkbox"
-                                                    :checked="!event.disable_correlation" />
+                                                    :checked="!event.disable_correlation" disabled />
                                             </div>
                                         </td>
                                     </tr>

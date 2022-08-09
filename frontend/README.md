@@ -9,8 +9,28 @@
 ./
 ├─ api/
 └─ frontend/
-    └─ ...
+    └─ cypress/
+    └─ public/
+    └─ src/
+        ├─ components/
+        ├─ helpers/
+        ├─ router/
+        ├─ stores/
+        ├─ views/
+        ├─ router/
+        ├─ main.ts
+        └─ App.vue
 ```
+
+* `cypress/`: e2e frontend tests.
+* `public/`: public assets like images.
+* `src/components/`: Vue reusable UI components.
+* `src/helpers/`: Helper libraries or functions.
+* `src/router/index.js`: Vue router definitions.
+* `src/stores/`: Pinia stores that interact with the API.
+* `src/views/`: Main Vue views.
+* `src/App.vue`: Vue App parent template.
+* `src/main.ts`: Vue App bootstraping.
 
 ## Recommended IDE Setup
 

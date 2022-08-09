@@ -10,9 +10,9 @@ class OrganisationBase(BaseModel):
     description: Optional[str]
     date_created: datetime
     date_modified: datetime
-    type: str
-    nationality: str
-    sector: str
+    type: Optional[str]
+    nationality: Optional[str]
+    sector: Optional[str]
     created_by: int
     uuid: UUID
     contacts: Optional[str]

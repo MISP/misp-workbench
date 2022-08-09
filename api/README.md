@@ -20,7 +20,8 @@
 │     ├─ worker/
 │     ├─ database.py
 │     ├─ dependencies.py
-│     └─ main.py
+│     ├─ main.py
+│     └─ settings.py
 └─ frontend/
 ```
 

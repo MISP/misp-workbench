@@ -17,10 +17,10 @@ usersStore.getAll();
         <table v-if="!users.loading" class="table table-striped">
             <thead>
                 <tr>
-                <th scope="col">id</th>
-                <th scope="col">email</th>
-                <th scope="col">disabled</th>
-                <th scope="col">actions</th>
+                    <th scope="col">id</th>
+                    <th scope="col">email</th>
+                    <th scope="col">disabled</th>
+                    <th scope="col" class="text-end">actions</th>
                 </tr>
             </thead>
             <tbody>
@@ -28,14 +28,15 @@ usersStore.getAll();
                     <td>
                         <RouterLink :to="`/users/${user.id}`">{{ user.id }}</RouterLink>
                     </td>
-                    <td>{{ user.email}}</td>
-                    <td>{{ !!user.disabled}}</td>
-                    <td>
-                        <div class="flex-wrap" :class="{ 'btn-group-vertical': $isMobile, 'btn-group': !$isMobile}" aria-label="User Actions">
-                            <RouterLink :to="`/users/delete/${user.id}`" tag="button" class="btn btn-danger">
+                    <td>{{ user.email }}</td>
+                    <td>{{ !!user.disabled }}</td>
+                    <td class="text-end">
+                        <div class="flex-wrap" :class="{ 'btn-group-vertical': $isMobile, 'btn-group': !$isMobile }"
+                            aria-label="User Actions">
+                            <RouterLink :to="`/users/delete/${user.id}`" tag="button" class="btn btn-danger disabled">
                                 <font-awesome-icon icon="fa-solid fa-trash" />
                             </RouterLink>
-                            <RouterLink :to="`/users/update/${user.id}`" tag="button" class="btn btn-primary">
+                            <RouterLink :to="`/users/update/${user.id}`" tag="button" class="btn btn-primary disabled">
                                 <font-awesome-icon icon="fa-solid fa-pen" />
                             </RouterLink>
                             <RouterLink :to="`/users/${user.id}`" tag="button" class="btn btn-primary">
