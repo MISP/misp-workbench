@@ -9,21 +9,35 @@ export const useEventsStore = defineStore({
     state: () => ({
         events: {},
         event: {},
+        status: {
+            loading: false,
+            updating: false,
+            error: false
+        }
     }),
     actions: {
         async getAll() {
-            this.events = { loading: true };
+            this.status = { loading: true };
             fetchWrapper
                 .get(baseUrl)
                 .then((events) => (this.events = events))
-                .catch((error) => (this.events = { error }));
+                .catch((error) => (this.status = { error }));
         },
         async getById(id) {
-            this.event = { loading: true };
+            this.status = { loading: true };
             fetchWrapper
                 .get(`${baseUrl}/${id}`)
                 .then((event) => (this.event = event))
-                .catch((error) => (this.event = { error }));
+                .catch((error) => (this.status = { error }))
+                .finally(() => (this.status = { loading: false }));
+        },
+        async update(event) {
+            this.status = { updating: true };
+            fetchWrapper
+                .patch(`${baseUrl}/${event.id}`, event)
+                .then((event) => (this.event = event))
+                .catch((error) => (this.error = error))
+                .finally(() => (this.status = { updating: false }));
         }
     },
 });

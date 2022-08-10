@@ -4,6 +4,7 @@ const baseUrl = `${import.meta.env.VITE_API_URL}`;
 export const fetchWrapper = {
   get: request("GET"),
   post: request("POST"),
+  patch: request("PATCH"),
   put: request("PUT"),
   delete: request("DELETE"),
   authenticate: authenticate(),

@@ -38,7 +38,7 @@ div.row h3 {
                         <RouterLink :to="`/events/delete/${event.id}`" tag="button" class="btn btn-danger disabled">
                             <font-awesome-icon icon="fa-solid fa-trash" />
                         </RouterLink>
-                        <RouterLink :to="`/events/update/${event.id}`" tag="button" class="btn btn-primary disabled">
+                        <RouterLink :to="`/events/update/${event.id}`" tag="button" class="btn btn-primary">
                             <font-awesome-icon icon="fa-solid fa-pen" />
                         </RouterLink>
                     </div>

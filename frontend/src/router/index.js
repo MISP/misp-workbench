@@ -11,7 +11,8 @@ import {
   ViewOrganisationView,
   ViewUsersView,
   IndexServersView,
-  ViewServerView
+  ViewServerView,
+  EditEventView
 } from "@/views";
 
 export const router = createRouter({
@@ -22,6 +23,7 @@ export const router = createRouter({
     { path: "/login", component: LoginView },
     { path: "/events", component: IndexEventsView },
     { path: "/events/:id", component: ViewEventView, props: true },
+    { path: "/events/update/:id", component: EditEventView, props: true },
     { path: "/users", component: IndexUsersView },
     { path: "/users/:id", component: ViewUsersView, props: true },
     { path: "/organisations", component: IndexOrganisationsView },
