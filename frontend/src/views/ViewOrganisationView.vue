@@ -7,15 +7,15 @@ import Spinner from "@/components/misc/Spinner.vue";
 import { router } from "@/router";
 const route = useRoute()
 const organisationsStore = useOrganisationsStore();
-const { organisation } = storeToRefs(organisationsStore);
+const { organisation, status } = storeToRefs(organisationsStore);
 organisationsStore.getById(route.params.id);
 defineProps(['id']);
 </script>
 
 <template>
-    <Spinner v-if="organisation.loading" />
-    <OrganisationView v-if="!organisation.loading" :organisation="organisation" />
-    <div v-if="organisation.error" class="text-danger">
-        Error loading organisation: {{ organisation.error }}
+    <Spinner v-if="status.loading" />
+    <OrganisationView v-if="!status.loading" :organisation="organisation" />
+    <div v-if="status.error" class="text-danger">
+        Error loading organisation: {{ status.error }}
     </div>
 </template>

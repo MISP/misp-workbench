@@ -7,15 +7,15 @@ import Spinner from "@/components/misc/Spinner.vue";
 import { router } from "@/router";
 const route = useRoute()
 const serversStore = useServersStore();
-const { server } = storeToRefs(serversStore);
+const { server, status } = storeToRefs(serversStore);
 serversStore.getById(route.params.id);
 defineProps(['id']);
 </script>
 
 <template>
-    <Spinner v-if="server.loading" />
-    <ServerView v-if="!server.loading" :server="server" />
-    <div v-if="server.error" class="text-danger">
-        Error loading server: {{ server.error }}
+    <Spinner v-if="status.loading" />
+    <ServerView v-if="!status.loading" :server="server" />
+    <div v-if="status.error" class="text-danger">
+        Error loading server: {{ status.error }}
     </div>
 </template>

@@ -7,15 +7,15 @@ import Spinner from "@/components/misc/Spinner.vue";
 import { router } from "@/router";
 const route = useRoute()
 const usersStore = useUsersStore();
-const { user } = storeToRefs(usersStore);
+const { user, status } = storeToRefs(usersStore);
 usersStore.getById(route.params.id);
 defineProps(['id']);
 </script>
 
 <template>
-    <Spinner v-if="user.loading" />
-    <UserView v-if="!user.loading" :user="user" />
-    <div v-if="user.error" class="text-danger">
-        Error loading user: {{ user.error }}
+    <Spinner v-if="status.loading" />
+    <UserView v-if="!status.loading" :user="user" />
+    <div v-if="status.error" class="text-danger">
+        Error loading user: {{ status.error }}
     </div>
 </template>

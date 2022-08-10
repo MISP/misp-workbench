@@ -9,21 +9,27 @@ export const useOrganisationsStore = defineStore({
     state: () => ({
         organisations: {},
         organisation: {},
+        status: {
+            loading: false,
+            error: false
+        }
     }),
     actions: {
         async getAll() {
-            this.organisations = { loading: true };
+            this.status = { loading: true };
             fetchWrapper
                 .get(baseUrl)
                 .then((organisations) => (this.organisations = organisations))
-                .catch((error) => (this.organisations = { error }));
+                .catch((error) => (this.status = { error }))
+                .finally(() => (this.status = { loading: false }));
         },
         async getById(id) {
-            this.organisation = { loading: true };
+            this.status = { loading: true };
             fetchWrapper
                 .get(`${baseUrl}/${id}`)
                 .then((organisation) => (this.organisation = organisation))
-                .catch((error) => (this.organisation = { error }));
+                .catch((error) => (this.status = { error }))
+                .finally(() => (this.status = { loading: false }));
         }
     },
 });

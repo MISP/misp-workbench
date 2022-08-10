@@ -5,17 +5,17 @@ import { RouterLink } from "vue-router";
 import Spinner from "@/components/misc/Spinner.vue";
 import DistributionLevel from "@/components/enums/DistributionLevel.vue";
 const eventsStore = useEventsStore();
-const { events } = storeToRefs(eventsStore);
+const { events, status } = storeToRefs(eventsStore);
 eventsStore.getAll();
 </script>
 
 <template>
-    <Spinner v-if="events.loading" />
-    <div v-if="events.error" class="text-danger">
-        Error loading events: {{ events.error }}
+    <Spinner v-if="status.loading" />
+    <div v-if="status.error" class="text-danger">
+        Error loading events: {{ status.error }}
     </div>
     <div class="table-responsive-sm">
-        <table v-if="!events.loading" class="table table-striped">
+        <table v-if="!status.loading" class="table table-striped">
             <thead>
                 <tr>
                     <th scope="col">id</th>

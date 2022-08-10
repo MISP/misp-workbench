@@ -4,17 +4,17 @@ import { useOrganisationsStore } from "@/stores";
 import { RouterLink } from "vue-router";
 import Spinner from "@/components/misc/Spinner.vue";
 const organisationsStore = useOrganisationsStore();
-const { organisations } = storeToRefs(organisationsStore);
+const { organisations, status} = storeToRefs(organisationsStore);
 organisationsStore.getAll();
 </script>
 
 <template>
-    <Spinner v-if="organisations.loading" />
-    <div v-if="organisations.error" class="text-danger">
-        Error loading organisations: {{ organisations.error }}
+    <Spinner v-if="status.loading" />
+    <div v-if="status.error" class="text-danger">
+        Error loading organisations: {{ status.error }}
     </div>
     <div class="table-responsive-sm">
-        <table v-if="!organisations.loading" class="table table-striped">
+        <table v-if="!status.loading" class="table table-striped">
             <thead>
                 <tr>
                     <th scope="col">id</th>

@@ -21,7 +21,8 @@ export const useEventsStore = defineStore({
             fetchWrapper
                 .get(baseUrl)
                 .then((events) => (this.events = events))
-                .catch((error) => (this.status = { error }));
+                .catch((error) => (this.status = { error }))
+                .finally(() => (this.status = { loading: false }));
         },
         async getById(id) {
             this.status = { loading: true };
