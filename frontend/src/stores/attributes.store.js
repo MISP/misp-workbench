@@ -8,21 +8,27 @@ export const useAttributesStore = defineStore({
     state: () => ({
         attributes: {},
         attribute: {},
+        status: {
+            loading: false,
+            error: false
+        }
     }),
     actions: {
         async get(params = { skip: 0, limit: 10, event_id: null }) {
-            this.attributes = { loading: true };
+            this.status = { loading: true };
             fetchWrapper
                 .get(baseUrl + "/?" + new URLSearchParams(params).toString())
                 .then((attributes) => (this.attributes = attributes))
-                .catch((error) => (this.attributes = { error }));
+                .catch((error) => (this.status = { error }))
+                .finally(() => (this.status = { loading: false }));
         },
         async getById(id) {
-            this.attribute = { loading: true };
+            this.status = { loading: true };
             fetchWrapper
                 .get(`${baseUrl}/${id}`)
                 .then((attribute) => (this.attribute = attribute))
-                .catch((error) => (this.attribute = { error }));
+                .catch((error) => (this.status = { error }))
+                .finally(() => (this.status = { loading: false }));
         }
     },
 });

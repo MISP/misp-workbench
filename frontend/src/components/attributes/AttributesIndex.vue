@@ -11,7 +11,7 @@ const props = defineProps(['event_id', 'total_size', 'page_size']);
 let page_count = Math.ceil(props.total_size / props.page_size);
 
 const attributesStore = useAttributesStore();
-const { attributes } = storeToRefs(attributesStore);
+const { attributes, status } = storeToRefs(attributesStore);
 
 function onPageChange(page) {
     attributesStore.get({
@@ -25,9 +25,9 @@ onPageChange(1);
 
 <template>
     <div class="table-responsive-sm">
-        <Spinner v-if="attributes.loading" />
-        <div v-if="attributes.error" class="text-danger">
-            Error loading attributes: {{ attributes.error }}
+        <Spinner v-if="status.loading" />
+        <div v-if="status.error" class="text-danger">
+            Error loading attributes: {{ status.error }}
         </div>
         <table class="table table-striped">
             <thead>
