@@ -9,21 +9,27 @@ export const useServersStore = defineStore({
     state: () => ({
         servers: {},
         server: {},
+        status: {
+            loading: false,
+            error: false
+        }
     }),
     actions: {
         async getAll() {
-            this.servers = { loading: true };
+            this.status = { loading: true };
             fetchWrapper
                 .get(baseUrl)
                 .then((servers) => (this.servers = servers))
-                .catch((error) => (this.servers = { error }));
+                .catch((error) => (this.status = { error }))
+                .finally(() => (this.status = { loading: false }));
         },
         async getById(id) {
-            this.server = { loading: true };
+            this.status = { loading: true };
             fetchWrapper
                 .get(`${baseUrl}/${id}`)
                 .then((server) => (this.server = server))
-                .catch((error) => (this.server = { error }));
+                .catch((error) => (this.status = { error }))
+                .finally(() => (this.status = { loading: false }));
         }
     },
 });
