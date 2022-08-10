@@ -4,17 +4,17 @@ import { RouterLink } from "vue-router";
 import Spinner from "@/components/misc/Spinner.vue";
 import { useUsersStore } from "@/stores";
 const usersStore = useUsersStore();
-const { users } = storeToRefs(usersStore);
+const { users, status } = storeToRefs(usersStore);
 usersStore.getAll();
 </script>
 
 <template>
-    <Spinner v-if="users.loading" />
-    <div v-if="users.error" class="text-danger">
-        Error loading users: {{ users.error }}
+    <Spinner v-if="status.loading" />
+    <div v-if="status.error" class="text-danger">
+        Error loading users: {{ status.error }}
     </div>
     <div class="table-responsive-sm">
-        <table v-if="!users.loading" class="table table-striped">
+        <table v-if="!status.loading" class="table table-striped">
             <thead>
                 <tr>
                     <th scope="col">id</th>

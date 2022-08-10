@@ -9,21 +9,27 @@ export const useUsersStore = defineStore({
   state: () => ({
     users: {},
     user: {},
+    status: {
+      loading: false,
+      error: false
+    }
   }),
   actions: {
     async getAll() {
-      this.users = { loading: true };
+      this.status = { loading: true };
       fetchWrapper
         .get(baseUrl)
         .then((users) => (this.users = users))
-        .catch((error) => (this.users = { error }));
+        .catch((error) => (this.status = { error }))
+        .finally(() => (this.status = { loading: false }));
     },
     async getById(id) {
-      this.user = { loading: true };
+      this.status = { loading: true };
       fetchWrapper
         .get(`${baseUrl}/${id}`)
         .then((user) => (this.user = user))
-        .catch((error) => (this.user = { error }));
+        .catch((error) => (this.status = { error }))
+        .finally(() => (this.status = { loading: false }));
     }
   },
 });
