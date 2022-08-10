@@ -10,7 +10,7 @@ const props = defineProps(['event_id', 'total_size', 'page_size']);
 let page_count = Math.ceil(props.total_size / props.page_size);
 
 const objectsStore = useObjectsStore();
-const { objects } = storeToRefs(objectsStore);
+const { objects, status } = storeToRefs(objectsStore);
 
 function onPageChange(page) {
     objectsStore.get({
@@ -23,9 +23,9 @@ onPageChange(1);
 </script>
 
 <template>
-    <Spinner v-if="objects.loading" />
-    <div v-if="objects.error" class="text-danger">
-        Error loading objects: {{ objects.error }}
+    <Spinner v-if="status.loading" />
+    <div v-if="status.error" class="text-danger">
+        Error loading objects: {{ status.error }}
     </div>
     <div class="table-responsive-sm">
         <div class="mt-2" :key="object.id" v-for="object in objects">
