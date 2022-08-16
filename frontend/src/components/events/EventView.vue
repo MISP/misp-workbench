@@ -6,8 +6,9 @@ import TagsIndex from "@/components/tags/TagsIndex.vue";
 import DistributionLevel from "@/components/enums/DistributionLevel.vue";
 import ThreatLevel from "@/components/enums/ThreatLevel.vue";
 import AnalysisLevel from "@/components/enums/AnalysisLevel.vue";
+import AddAttributeModal from "@/components/attributes/AddAttributeModal.vue";
 
-defineProps(['event']);
+defineProps(['event', 'status']);
 </script>
 
 <style>
@@ -211,6 +212,9 @@ div.row h3 {
                     </div>
                     <div class="card-body d-flex flex-column">
                         <ObjectsIndex :event_id="event.id" :total_size="event.object_count" :page_size="10" />
+                        <div class="mt-3">
+                            <button type="button" class="w-100 btn btn-outline-primary">Add Object</button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -226,22 +230,15 @@ div.row h3 {
                     </div>
                 </div>
             </div>
-        </div>
-        <!--div class="row m-1">
-            <div class="col-sm-3">
-                <div class="card bg-light">
-                    <div class="card-header">organisation</div>
-                    <div class="card-body d-flex flex-column">
-                        <div class="card-text">
-                            <img src="/public/images/CIRCL.png" class="card-img">
-                        </div>
-                    </div>
-                </div>
+            <div class="mt-3">
+                <button type="button" class="w-100 btn btn-outline-primary" data-bs-toggle="modal"
+                    data-bs-target="#addAttributeModal">Add Attribute</button>
             </div>
-        </div-->
+        </div>
         <div class="card-footer text-muted">
             <p class="card-text"><small class="text-muted">last updated 3 mins ago by <a
                         href="/users/123">adulau</a></small></p>
         </div>
     </div>
+    <AddAttributeModal />
 </template>
