@@ -29,6 +29,14 @@ export const useAttributesStore = defineStore({
                 .then((attribute) => (this.attribute = attribute))
                 .catch((error) => (this.status = { error }))
                 .finally(() => (this.status = { loading: false }));
+        },
+        async create(attribute) {
+            this.status = { loading: true };
+            fetchWrapper
+                .post(baseUrl, attribute)
+                .then((attribute) => (this.attribute = attribute))
+                .catch((error) => (this.status = { error }))
+                .finally(() => (this.status = { loading: false }));
         }
     },
 });

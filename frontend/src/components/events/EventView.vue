@@ -240,5 +240,5 @@ div.row h3 {
                         href="/users/123">adulau</a></small></p>
         </div>
     </div>
-    <AddAttributeModal />
+    <AddAttributeModal :event_id="event.id" />
 </template>

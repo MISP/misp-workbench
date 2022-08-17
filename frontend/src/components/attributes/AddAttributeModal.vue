@@ -1,19 +1,46 @@
 <script setup>
-import { ATTRIBUTE_CATEGORIES } from "@/helpers/constants";
+import { useAttributesStore } from "@/stores";
+import DistributionLevelSelect from "@/components/enums/DistributionLevelSelect.vue";
+import { ATTRIBUTE_CATEGORIES, DISTRIBUTION_LEVEL } from "@/helpers/constants";
 import { Form, Field } from "vee-validate";
 import * as Yup from "yup";
 
+const props = defineProps(['event_id']);
+
+let attribute = {
+  distribution: DISTRIBUTION_LEVEL.INHERIT_EVENT,
+  event_id: props.event_id,
+};
+
 const schema = Yup.object().shape({
-  attributeCategory: Yup.string().required("Category is required"),
-  attributeType: Yup.string().required("Type is required"),
+  attribute: Yup.object().shape({
+    category: Yup.string().required("Category is required"),
+    type: Yup.string().required("Type is required"),
+    value: Yup.string().required("Value is required"),
+  }),
 });
+
 function onSubmit(values, { setErrors }) {
-  console.log("add attr");
+  // const { attribute } = values;
+  const attributesStore = useAttributesStore();
+  return attributesStore
+    .create(attribute)
+    .then(() => {
+      // emit event attribute created so parent can reload the attributes list
+      closeModal();
+    })
+    .catch((error) => setErrors({ apiError: error }));
+}
+
+function closeModal() {
+  document.querySelector("#addAttributeModal").classList.remove("show");
+  document.querySelector("body").classList.remove("modal-open");
+  document.querySelector(".modal-backdrop").hidden = true;
 }
 </script>
 
 <template>
-  <div class="modal fade" id="addAttributeModal" tabindex="-1" aria-labelledby="addAttributeModalLabel"
+  <div id="addAttributeModal" class="modal fade" tabindex="-1" aria-labelledby="addAttributeModalLabel"
     aria-hidden="true">
     <Form @submit="onSubmit" :validation-schema="schema" v-slot="{ errors, isSubmitting }">
       <div class="modal-dialog modal-lg">
@@ -23,33 +50,104 @@ function onSubmit(values, { setErrors }) {
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Discard"></button>
           </div>
           <div class="modal-body">
-            <div class="row g-3">
+            <div class="row m-2">
               <div class="col text-start">
-                <label for="attributeCategory" class="form-label">Category</label>
-                <Field id="attributeCategory" name="attributeCategory" v-model="attributeCategory" as="select"
-                  class="form-control" :class="{ 'is-invalid': errors.attributeCategory }">
+                <label for="attribute.category" class="form-label">Category</label>
+                <Field id="attribute.category" name="attribute.category" v-model="attribute.category" as="select"
+                  class="form-control" :class="{ 'is-invalid': errors['attribute.category'] }">
                   <option selected disabled value="">Choose...</option>
                   <option v-for="(category, id) in ATTRIBUTE_CATEGORIES" :value="id">{{ id }}</option>
                 </Field>
-                <div class="invalid-feedback">{{ errors.attributeCategory }}</div>
+                <div class="invalid-feedback">{{ errors['attribute.category'] }}</div>
               </div>
               <div class="col text-start">
-                <label for="attributeType" class="form-label">Type</label>
-                <Field id="attributeType" name="attributeType" v-model="attributeType" as="select" class="form-control"
-                  :class="{ 'is-invalid': errors.attributeType }">
+                <label for="attribute.type" class="form-label">Type</label>
+                <Field id="attribute.type" name="attribute.type" v-model="attribute.type" as="select"
+                  class="form-control" :class="{ 'is-invalid': errors['attribute.type'] }">
                   <option selected disabled value="">Choose...</option>
-                  <option v-if="attributeCategory"
-                    v-for="attributeType in ATTRIBUTE_CATEGORIES[attributeCategory].types" :value="attributeType">
+                  <option v-if="attribute.category"
+                    v-for="attributeType in ATTRIBUTE_CATEGORIES[attribute.category].types" :value="attributeType">
                     {{ attributeType }}</option>
                 </Field>
-                <div class="invalid-feedback">{{ errors.attributeType }}</div>
+                <div class="invalid-feedback">{{ errors['attribute.type'] }}</div>
               </div>
             </div>
+            <div class="row m-2">
+              <div class="col col-6 text-start">
+                <label for="attribute.distribution" class="form-label">Distribution</label>
+                <DistributionLevelSelect v-model=attribute.distribution />
+                <div class="invalid-feedback">{{ errors['attribute.distribution'] }}</div>
+              </div>
+              <!-- TODO -->
+              <!-- <div class="col col-6 text-start">
+                <label for="attributeType" class="form-label">Sharing Group</label>
+                <SharingGroupSelect v-model=attribute.sharing_group_id />
+                <div class="invalid-feedback">{{ errors[attribute.sharing_group_id'] }}</div>
+              </div> -->
+            </div>
+            <div class="row m-2">
+              <div class="col text-start">
+                <label for="attribute.value">Value</label>
+                <Field class="form-control" id="attribute.value" name="attribute.value" as="textarea"
+                  v-model="attribute.value" style="height: 100px" :class="{ 'is-invalid': errors['attribute.value'] }">
+                </Field>
+                <div class=" invalid-feedback">{{ errors['attribute.value'] }}
+                </div>
+              </div>
+            </div>
+            <div class="row m-2">
+              <div class="col text-start">
+                <label for="attributeComment">Comment</label>
+                <input class="form-control" id="attributeComment" name="attributeComment" v-model="attribute.comment">
+              </div>
+            </div>
+            <div class="row m-2">
+              <div class="col text-start">
+                <div class="form-check form-switch">
+                  <input class="form-check-input" type="checkbox" value="" id="attributeIDS" name="attributeIDS">
+                  <label class="form-check-label" for="attributeIDS">For Intrusion Detection System</label>
+                </div>
+              </div>
+            </div>
+            <div class="row m-2">
+              <div class="col text-start">
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" value="" id="attributeBatchImport"
+                    name="attributeBatchImport">
+                  <label class="form-check-label" for="attributeBatchImport">Batch Import</label>
+                </div>
+              </div>
+            </div>
+            <div class="row m-2">
+              <div class="col text-start">
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" value="" id="attributeDisableCorrelation"
+                    name="attributeDisableCorrelation" v-model="attribute.disable_correlation">
+                  <label class="form-check-label" for="attributeDisableCorrelation">Disable Correlation</label>
+                </div>
+              </div>
+            </div>
+            <div class="row m-2">
+              <div class="col col-6 text-start">
+                <label for="attributeFirstSeen">First seen</label>
+                <input class="form-control" id="attributeFirstSeen" name="attributeFirstSeen"
+                  v-model="attribute.first_seen" placeholder="DD/MM/YYYY HH:MM:SS.ssssss+TT:TT">
+              </div>
+              <div class="col col-6 text-start">
+                <label for="attributeLastSeen">Last seen</label>
+                <input class="form-control" id="attributeLastSeen" name="attributeLastSeen"
+                  v-model="attribute.last_seen" placeholder="DD/MM/YYYY HH:MM:SS.ssssss+TT:TT">
+              </div>
+            </div>
+          </div>
+          <div v-if="errors.apiError" class="w-100 alert alert-danger mt-3 mb-3">
+            {{ errors.apiError }}
           </div>
           <div class="modal-footer">
             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Discard</button>
             <button type="submit" class="btn btn-primary">Add</button>
           </div>
+
         </div>
       </div>
     </Form>
