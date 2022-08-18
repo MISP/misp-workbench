@@ -4,6 +4,7 @@ from typing import Union
 from app.models import attribute as attribute_models
 from app.schemas import attribute as attribute_schemas
 from app.schemas import event as event_schemas
+from app.worker import worker
 from fastapi import HTTPException, status
 from pymisp import MISPAttribute
 from sqlalchemy.orm import Session
@@ -56,6 +57,8 @@ def create_attribute(
     db.commit()
     db.refresh(db_attribute)
 
+    worker.handle_created_attribute(db_attribute.__dict__)
+
     return db_attribute
 
 
@@ -102,6 +105,8 @@ def create_attribute_from_pulled_attribute(
     pulled_attribute.id = db_attribute.id
     pulled_attribute.event_id = local_event_id
 
+    worker.handle_created_attribute(pulled_attribute.__dict__)
+
     return pulled_attribute
 
 
@@ -140,3 +145,5 @@ def delete_attribute(db: Session, attribute_id: int) -> None:
     db.add(db_attribute)
     db.commit()
     db.refresh(db_attribute)
+
+    worker.handle_deleted_attribute(db_attribute.__dict__)

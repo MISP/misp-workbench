@@ -162,3 +162,33 @@ def delete_event(db: Session, event_id: int) -> None:
     db.add(db_event)
     db.commit()
     db.refresh(db_event)
+
+
+def increment_attribute_count(db: Session, event_id: int) -> None:
+    db_event = get_event_by_id(db, event_id=event_id)
+
+    if db_event is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Event not found"
+        )
+
+    db_event.attribute_count += 1
+
+    db.add(db_event)
+    db.commit()
+    db.refresh(db_event)
+
+
+def decrement_attribute_count(db: Session, event_id: int) -> None:
+    db_event = get_event_by_id(db, event_id=event_id)
+
+    if db_event is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Event not found"
+        )
+
+    db_event.attribute_count -= 1
+
+    db.add(db_event)
+    db.commit()
+    db.refresh(db_event)

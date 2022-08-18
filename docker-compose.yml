@@ -42,6 +42,17 @@ services:
       redis:
         condition: service_healthy
 
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:80"
+    environment:
+      API_HOST: api
+    depends_on:
+      - api
+
   worker:
     build:
       context: ./api
@@ -56,11 +67,12 @@ services:
       OAUTH2_SECRET_KEY: ${OAUTH2_SECRET_KEY}
       OAUTH2_ALGORITHM: ${OAUTH2_ALGORITHM:-HS256}
       OAUTH2_ACCESS_TOKEN_EXPIRE_MINUTES: ${OAUTH2_ACCESS_TOKEN_EXPIRE_MINUTES:-30}
-      CELERY_BROKER_URL: redis://${REDIS_HOSTNAME:-redis}:${REDIS_PORT:-6379}/${REDIS_CELERY_DB:-0}
+      CELERY_BROKER_URL: amqp://${RABBITMQ_DEFAULT_USER:-rabbitmq}:${RABBITMQ_DEFAULT_PASS:-rabbitmq}@${RABBITMQ_HOSTNAME:-rabbitmq}:5672/${RABBITMQ_DEFAULT_VHOST:-misp}
       CELERY_RESULT_BACKEND: redis://${REDIS_HOSTNAME:-redis}:${REDIS_PORT:-6379}/${REDIS_CELERY_DB:-0}
     depends_on:
       - redis
       - postgres
+      - rabbitmq
       - api
 
   flower:
@@ -80,24 +92,27 @@ services:
       OAUTH2_SECRET_KEY: ${OAUTH2_SECRET_KEY}
       OAUTH2_ALGORITHM: ${OAUTH2_ALGORITHM:-HS256}
       OAUTH2_ACCESS_TOKEN_EXPIRE_MINUTES: ${OAUTH2_ACCESS_TOKEN_EXPIRE_MINUTES:-30}
-      CELERY_BROKER_URL: redis://${REDIS_HOSTNAME:-redis}:${REDIS_PORT:-6379}/${REDIS_CELERY_DB:-0}
+      CELERY_BROKER_URL: amqp://${RABBITMQ_DEFAULT_USER:-rabbitmq}:${RABBITMQ_DEFAULT_PASS:-rabbitmq}@${RABBITMQ_HOSTNAME:-rabbitmq}:5672/${RABBITMQ_DEFAULT_VHOST:-misp}
       CELERY_RESULT_BACKEND: redis://${REDIS_HOSTNAME:-redis}:${REDIS_PORT:-6379}/${REDIS_CELERY_DB:-0}
     depends_on:
       - worker
-      - redis
-
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    ports:
-      - "3000:80"
-    environment:
-      API_HOST: api
-    depends_on:
-      - api
 
   redis:
     image: redis:7-alpine
     healthcheck:
       test: [ "CMD", "redis-cli", "ping" ]
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - "15672:15672"
+    environment:
+      RABBITMQ_HOSTNAME: ${RABBITMQ_HOSTNAME:-rabbitmq}
+      RABBITMQ_DEFAULT_VHOST: ${RABBITMQ_HOSTNAME:-misp}
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:-rabbitmq}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:-rabbitmq}
+    healthcheck:
+      test: [ "CMD", "rabbitmqctl", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
