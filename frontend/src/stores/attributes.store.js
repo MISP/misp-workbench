@@ -32,9 +32,16 @@ export const useAttributesStore = defineStore({
         },
         async create(attribute) {
             this.status = { loading: true };
-            fetchWrapper
+            return await fetchWrapper
                 .post(baseUrl, attribute)
                 .then((attribute) => (this.attribute = attribute))
+                .catch((error) => (this.status = { error }))
+                .finally(() => (this.status = { loading: false }));
+        },
+        async delete(id) {
+            this.status = { loading: true };
+            return await fetchWrapper
+                .delete(`${baseUrl}/${id}`)
                 .catch((error) => (this.status = { error }))
                 .finally(() => (this.status = { loading: false }));
         }

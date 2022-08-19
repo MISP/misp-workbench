@@ -6,6 +6,8 @@ import DistributionLevel from "@/components/enums/DistributionLevel.vue";
 import TagsIndex from "@/components/tags/TagsIndex.vue";
 import Spinner from "@/components/misc/Spinner.vue";
 import Paginate from "vuejs-paginate-next";
+import AddAttributeModal from "@/components/attributes/AddAttributeModal.vue";
+import DeleteAttributeModal from "@/components/attributes/DeleteAttributeModal.vue";
 
 const props = defineProps(['event_id', 'total_size', 'page_size']);
 let page_count = Math.ceil(props.total_size / props.page_size);
@@ -21,6 +23,11 @@ function onPageChange(page) {
     });
 }
 onPageChange(1);
+
+function handleAttributesUpdated(event) {
+    // FIXME: resets the page to 1 and reloads the attributes, not the best way to do this
+    onPageChange(1);
+}
 </script>
 
 <template>
@@ -55,10 +62,10 @@ onPageChange(1);
                     </td>
                     <td class="text-end">
                         <div class="flex-wrap btn-group-vertical" aria-label="Attribute Actions">
-                            <RouterLink :to="`/attributes/delete/${attribute.id}`" tag="button"
-                                class="btn btn-danger disabled">
+                            <button type="button" class="btn btn-danger" data-bs-toggle="modal"
+                                :data-bs-target="'#deleteAttributeModal-' + attribute.id">
                                 <font-awesome-icon icon="fa-solid fa-trash" />
-                            </RouterLink>
+                            </button>
                             <RouterLink :to="`/attributes/update/${attribute.id}`" tag="button"
                                 class="btn btn-primary disabled">
                                 <font-awesome-icon icon="fa-solid fa-pen" />
@@ -68,9 +75,16 @@ onPageChange(1);
                             </RouterLink>
                         </div>
                     </td>
+                    <DeleteAttributeModal @attributesUpdated="handleAttributesUpdated"
+                        :attribute_id="attribute.id" />
                 </tr>
             </tbody>
         </table>
         <Paginate v-if="page_count > 1" :page-count="page_count" :click-handler="onPageChange" />
+        <AddAttributeModal @attributesUpdated="handleAttributesUpdated" :event_id="event_id" />
+        <div class="mt-3">
+            <button type="button" class="w-100 btn btn-outline-primary" data-bs-toggle="modal"
+                data-bs-target="#addAttributeModal">Add Attribute</button>
+        </div>
     </div>
 </template>

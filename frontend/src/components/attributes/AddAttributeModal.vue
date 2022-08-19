@@ -1,11 +1,19 @@
 <script setup>
+
 import { useAttributesStore } from "@/stores";
+import { storeToRefs } from 'pinia'
 import DistributionLevelSelect from "@/components/enums/DistributionLevelSelect.vue";
 import { ATTRIBUTE_CATEGORIES, DISTRIBUTION_LEVEL } from "@/helpers/constants";
 import { Form, Field } from "vee-validate";
 import * as Yup from "yup";
+import { modals } from "@/helpers";
+
+const attributesStore = useAttributesStore();
+const { status } = storeToRefs(attributesStore);
 
 const props = defineProps(['event_id']);
+
+const emit = defineEmits(['attributesUpdated']);
 
 let attribute = {
   distribution: DISTRIBUTION_LEVEL.INHERIT_EVENT,
@@ -21,21 +29,13 @@ const schema = Yup.object().shape({
 });
 
 function onSubmit(values, { setErrors }) {
-  // const { attribute } = values;
-  const attributesStore = useAttributesStore();
   return attributesStore
     .create(attribute)
-    .then(() => {
-      // emit event attribute created so parent can reload the attributes list
-      closeModal();
+    .then((response) => {
+      emit('attributesUpdated', { "action": "attribute_created", "data": response });
+      modals.closeAll();
     })
     .catch((error) => setErrors({ apiError: error }));
-}
-
-function closeModal() {
-  document.querySelector("#addAttributeModal").classList.remove("show");
-  document.querySelector("body").classList.remove("modal-open");
-  document.querySelector(".modal-backdrop").hidden = true;
 }
 </script>
 
@@ -145,9 +145,13 @@ function closeModal() {
           </div>
           <div class="modal-footer">
             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Discard</button>
-            <button type="submit" class="btn btn-primary">Add</button>
+            <button type="submit" class="btn btn-primary" :class="{ 'disabled': status.loading }">
+              <span v-if="status.loading">
+                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+              </span>
+              <span v-if="!status.loading">Add</span>
+            </button>
           </div>
-
         </div>
       </div>
     </Form>

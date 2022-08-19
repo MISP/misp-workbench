@@ -6,9 +6,8 @@ import TagsIndex from "@/components/tags/TagsIndex.vue";
 import DistributionLevel from "@/components/enums/DistributionLevel.vue";
 import ThreatLevel from "@/components/enums/ThreatLevel.vue";
 import AnalysisLevel from "@/components/enums/AnalysisLevel.vue";
-import AddAttributeModal from "@/components/attributes/AddAttributeModal.vue";
 
-defineProps(['event', 'status']);
+const props = defineProps(['event', 'status']);
 </script>
 
 <style>
@@ -204,7 +203,7 @@ div.row h3 {
                 </div>
             </div>
         </div>
-        <div class="row m-1" v-if="event.objects.length > 0">
+        <div class="row m-1">
             <div class="col-12">
                 <div class="card">
                     <div class="card-header">
@@ -219,7 +218,7 @@ div.row h3 {
                 </div>
             </div>
         </div>
-        <div class="row m-1" v-if="event.attribute_count > 0">
+        <div class="row m-1">
             <div class="col-12">
                 <div class="card">
                     <div class="card-header">
@@ -230,15 +229,11 @@ div.row h3 {
                     </div>
                 </div>
             </div>
-            <div class="mt-3">
-                <button type="button" class="w-100 btn btn-outline-primary" data-bs-toggle="modal"
-                    data-bs-target="#addAttributeModal">Add Attribute</button>
-            </div>
+
         </div>
         <div class="card-footer text-muted">
             <p class="card-text"><small class="text-muted">last updated 3 mins ago by <a
                         href="/users/123">adulau</a></small></p>
         </div>
     </div>
-    <AddAttributeModal :event_id="event.id" />
 </template>

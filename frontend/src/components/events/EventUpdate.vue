@@ -64,7 +64,6 @@ defineProps(['event', 'status']);
                 :class="{ 'disabled': status.updating }">
 
                 <span v-if="status.updating">
-                    <span class="sr-only">Saving...</span>
                     <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
                 </span>
                 <span v-if="!status.updating">Save</span>
