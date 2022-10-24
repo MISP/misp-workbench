@@ -4,7 +4,7 @@ from app.repositories import servers as servers_repository
 from app.schemas import server as server_schemas
 from app.schemas import task as task_schemas
 from app.schemas import user as user_schemas
-from app.worker import worker
+from app.worker import tasks
 from fastapi import APIRouter, Depends, HTTPException, Security, status
 from sqlalchemy.orm import Session
 
@@ -51,7 +51,7 @@ def pull_server(
         get_current_active_user, scopes=["servers:pull"]
     ),
 ):
-    task = worker.server_pull_by_id.delay(server_id, user.id)
+    task = tasks.server_pull_by_id.delay(server_id, user.id)
 
     return task_schemas.Task(
         task_id=task.id,

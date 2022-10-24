@@ -19,7 +19,7 @@ services:
       [
         "sh",
         "-c",
-        "poetry run python -m debugpy --listen 0.0.0.0:5679 -m celery -A app.worker.worker worker --loglevel=info"
+        "poetry run python -m debugpy --listen 0.0.0.0:5679 -m celery -A app.worker.tasks worker --loglevel=info"
       ]
     volumes:
       - ./api:/code

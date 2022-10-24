@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 db = SessionLocal()
 
 
-@celery.task(name="server_pull")
+@celery.task
 def server_pull_by_id(server_id: int, user_id: int):
     logger.info("pull server_id=%s job started", server_id)
 
