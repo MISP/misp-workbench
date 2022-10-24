@@ -54,6 +54,19 @@ $ docker-compose exec api poetry run alembic downgrade [revision]
 $ docker-compose exec api poetry run alembic help 
 ```
 
+## CLI
+There is a CLI tool powered by [typer](https://github.com/tiangolo/typer) that lets you perform administrative tasks via command line:
+To list available commands:
+```console
+$ docker-compose exec api poetry run python -m app.cli --help
+```
+
+Create a user via CLI:
+```console
+$ docker-compose exec api poetry run python -m app.cli create-user [email] [password] [organisation_id] [role_id]
+Created user id=1
+```
+
 ## Testing
 ```console
 $ docker-compose --env-file=".env.test" up -d

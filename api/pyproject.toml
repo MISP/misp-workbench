@@ -23,6 +23,7 @@ celery = "^5.2.7"
 flower = "^1.0.0"
 Jinja2 = "^3.1.2"
 redis = "^4.3.3"
+typer = {extras = ["all"], version = "^0.6.1"}
 
 [tool.poetry.dev-dependencies]
 pytest = "^7.1.2"
