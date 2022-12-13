@@ -11,10 +11,10 @@ from pydantic import BaseModel
 
 
 class EventBase(BaseModel):
-    org_id: int
+    org_id: Optional[int]
     date: Optional[date]
     info: str
-    user_id: int
+    user_id: Optional[int]
     uuid: Optional[UUID]
     published: Optional[bool]
     analysis: Optional[AnalysisLevel]

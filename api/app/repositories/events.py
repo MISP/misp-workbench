@@ -48,16 +48,16 @@ def create_event(db: Session, event: event_schemas.EventCreate):
         user_id=event.user_id,
         uuid=event.uuid,
         published=event.published,
-        analysis=event.analysis,
+        analysis=event_models.AnalysisLevel(event.analysis),
         attribute_count=event.attribute_count,
         object_count=event.object_count,
         orgc_id=event.orgc_id or event.org_id,
         timestamp=event.timestamp or time.time(),
-        distribution=event.distribution,
+        distribution=event_models.DistributionLevel(event.distribution),
         sharing_group_id=event.sharing_group_id,
         proposal_email_lock=event.proposal_email_lock,
         locked=event.locked,
-        threat_level=event.threat_level,
+        threat_level=event_models.ThreatLevel(event.threat_level),
         publish_timestamp=event.publish_timestamp,
         sighting_timestamp=event.sighting_timestamp,
         disable_correlation=event.disable_correlation,
@@ -187,8 +187,8 @@ def decrement_attribute_count(db: Session, event_id: int) -> None:
             status_code=status.HTTP_404_NOT_FOUND, detail="Event not found"
         )
 
-    db_event.attribute_count -= 1
-
-    db.add(db_event)
-    db.commit()
-    db.refresh(db_event)
+    if db_event.attribute_count > 0:
+        db_event.attribute_count -= 1
+        db.add(db_event)
+        db.commit()
+        db.refresh(db_event)

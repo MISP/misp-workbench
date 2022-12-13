@@ -2,7 +2,7 @@ import logging
 import os
 
 from app.database import SessionLocal
-from app.repositories import events as events_reporsitory
+from app.repositories import events as events_repository
 from app.repositories import servers as servers_repository
 from app.repositories import users as users_repository
 from app.settings import get_settings
@@ -34,7 +34,7 @@ def server_pull_by_id(server_id: int, user_id: int):
 def handle_created_attribute(attribute: dict):
     logger.info("handling created attribute id=%s job started", attribute["id"])
 
-    events_reporsitory.increment_attribute_count(db, attribute["event_id"])
+    events_repository.increment_attribute_count(db, attribute["event_id"])
 
     return True
 
@@ -43,6 +43,6 @@ def handle_created_attribute(attribute: dict):
 def handle_deleted_attribute(attribute: dict):
     logger.info("handling deleted attribute id=%s job started", attribute["id"])
 
-    events_reporsitory.decrement_attribute_count(db, attribute["event_id"])
+    events_repository.decrement_attribute_count(db, attribute["event_id"])
 
     return True

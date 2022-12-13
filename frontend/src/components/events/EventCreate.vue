@@ -9,13 +9,15 @@ import { router } from "@/router";
 import { EventSchema } from "@/schemas/event";
 
 const eventsStore = useEventsStore();
-const { event, status, error } = storeToRefs(eventsStore);
+const { status, error } = storeToRefs(eventsStore);
+
+let event = {};
 
 function onSubmit(values, { setErrors }) {
     return eventsStore
-        .update(values.event)
+        .create(event)
         .then((response) => {
-            router.push(`/events/${values.event.id}`);
+            router.push(`/events/${event.id}`);
         })
         .catch((error) => setErrors({ apiError: error }));
 }
@@ -27,23 +29,16 @@ function onSubmit(values, { setErrors }) {
         <div class="card-header border-bottom">
             <div class="row">
                 <div class="col-10">
-                    <h3>Update Event</h3>
+                    <h3>Create Event</h3>
                 </div>
             </div>
         </div>
         <div class="card-body d-flex flex-column">
             <Form @submit="onSubmit" :validation-schema="EventSchema" v-slot="{ errors, isSubmitting }">
                 <div class="mb-3">
-                    <label for="event.id">id</label>
-                    <Field class="form-control" id="event.id" name="event.id" v-model="event.id"
-                        :class="{ 'is-invalid': errors['event.id'] }" disabled>
-                    </Field>
-                    <div class=" invalid-feedback">{{ errors['event.id'] }}</div>
-                </div>
-                <div class="mb-3">
                     <label for="event.uuid">uuid</label>
                     <Field class="form-control" id="event.uuid" name="event.uuid" v-model="event.uuid"
-                        :class="{ 'is-invalid': errors['event.uuid'] }" disabled>
+                        :class="{ 'is-invalid': errors['event.uuid'] }">
                     </Field>
                     <div class=" invalid-feedback">{{ errors['event.uuid'] }}</div>
                 </div>
@@ -89,11 +84,11 @@ function onSubmit(values, { setErrors }) {
                 <div v-if="error" class="w-100 alert alert-danger mt-3 mb-3">
                     {{ error }}
                 </div>
-                <button type="submit" class="btn btn-primary" :class="{ 'disabled': status.updating }">
-                    <span v-if="status.updating">
+                <button type="submit" class="btn btn-primary" :class="{ 'disabled': status.creating }">
+                    <span v-if="status.creating">
                         <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
                     </span>
-                    <span v-if="!status.updating">Save</span>
+                    <span v-if="!status.creating">Create</span>
                 </button>
             </Form>
         </div>

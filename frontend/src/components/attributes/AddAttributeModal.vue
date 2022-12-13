@@ -75,7 +75,7 @@ function onSubmit(values, { setErrors }) {
             <div class="row m-2">
               <div class="col col-6 text-start">
                 <label for="attribute.distribution" class="form-label">Distribution</label>
-                <DistributionLevelSelect v-model=attribute.distribution />
+                <DistributionLevelSelect name="attribute.distribution" v-model=attribute.distribution />
                 <div class="invalid-feedback">{{ errors['attribute.distribution'] }}</div>
               </div>
               <!-- TODO -->

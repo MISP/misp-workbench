@@ -52,18 +52,17 @@ class TestEventsResource(ApiTester):
     def test_create_event(
         self,
         client: TestClient,
-        organisation_1: organisation_models.Organisation,
-        user_1: user_models.User,
+        api_tester_user: user_models.User,
         auth_token: auth.Token,
     ):
         response = client.post(
             "/events/",
             json={
                 "info": "test create event",
-                "user_id": user_1.id,
-                "orgc_id": 1,
-                "org_id": organisation_1.id,
                 "date": "2020-01-01",
+                "analysis": 0,
+                "distribution": 0,
+                "threat_level": 1,
             },
             headers={"Authorization": "Bearer " + auth_token},
         )
@@ -72,9 +71,8 @@ class TestEventsResource(ApiTester):
         assert response.status_code == status.HTTP_201_CREATED
         assert data["id"] is not None
         assert data["info"] == "test create event"
-        assert data["user_id"] == user_1.id
-        assert data["org_id"] == organisation_1.id
-        assert data["orgc_id"] == 1
+        assert data["user_id"] == api_tester_user.id
+        assert data["org_id"] == api_tester_user.org_id
 
     @pytest.mark.parametrize("scopes", [["events:read"]])
     def test_create_event_unauthorized(

@@ -22,9 +22,7 @@ def upgrade():
         sa.Column("name", sa.String(255), nullable=False),
         sa.Column("url", sa.String(255), nullable=False),
         sa.Column("authkey", sa.String(255), nullable=False),  # TODO: encrypt
-        sa.Column(
-            "org_id", sa.Integer(), nullable=False
-        ),  # TODO: organisations ForeingKey
+        sa.Column("org_id", sa.Integer(), nullable=False),
         sa.Column("push", sa.Boolean(), nullable=False, default=False),
         sa.Column("pull", sa.Boolean(), nullable=False, default=False),
         sa.Column("push_sightings", sa.Boolean(), nullable=False, default=False),

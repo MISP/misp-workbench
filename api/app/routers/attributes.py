@@ -93,7 +93,9 @@ def delete_attribute(
         get_current_active_user, scopes=["attributes:delete"]
     ),
 ):
-    return attributes_repository.delete_attribute(db=db, attribute_id=attribute_id)
+    attributes_repository.delete_attribute(db=db, attribute_id=attribute_id)
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.post(

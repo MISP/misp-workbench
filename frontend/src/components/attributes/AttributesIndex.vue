@@ -19,13 +19,14 @@ function onPageChange(page) {
     attributesStore.get({
         skip: (page - 1) * props.page_size,
         limit: props.page_size,
-        event_id: props.event_id
+        event_id: props.event_id,
+        deleted: false
     });
 }
 onPageChange(1);
 
 function handleAttributesUpdated(event) {
-    // FIXME: resets the page to 1 and reloads the attributes, not the best way to do this
+    // TODO FIXME: resets the page to 1 and reloads the attributes, not the best way to do this
     onPageChange(1);
 }
 </script>

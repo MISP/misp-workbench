@@ -61,6 +61,8 @@ def create_event(
         raise HTTPException(
             status_code=400, detail="An event with this info already exists"
         )
+    event.user_id = user.id
+    event.org_id = user.org_id
     return events_repository.create_event(db=db, event=event)
 
 

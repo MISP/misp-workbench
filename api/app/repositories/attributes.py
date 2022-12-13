@@ -11,12 +11,19 @@ from sqlalchemy.orm import Session
 
 
 def get_attributes(
-    db: Session, skip: int = 0, limit: int = 100, event_id: int = None
+    db: Session,
+    skip: int = 0,
+    limit: int = 100,
+    event_id: int = None,
+    deleted: bool = False,
 ) -> list[attribute_models.Attribute]:
     query = db.query(attribute_models.Attribute)
 
     if event_id is not None:
         query = query.filter(attribute_models.Attribute.event_id == event_id)
+
+    if deleted is not None:
+        query = query.filter(attribute_models.Attribute.deleted == deleted)
 
     return query.offset(skip).limit(limit).all()
 

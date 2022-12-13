@@ -12,6 +12,7 @@ export const useEventsStore = defineStore({
         status: {
             loading: false,
             updating: false,
+            creating: false,
             error: false
         }
     }),
@@ -27,10 +28,10 @@ export const useEventsStore = defineStore({
         async getById(id) {
             this.status = { loading: true };
             fetchWrapper
-                .get(`${baseUrl}/${id}`)
-                .then((event) => (this.event = event))
-                .catch((error) => (this.status = { error }))
-                .finally(() => (this.status = { loading: false }));
+            .get(`${baseUrl}/${id}`)
+            .then((event) => (this.event = event))
+            .catch((error) => (this.status = { error }))
+            .finally(() => (this.status = { loading: false }));
         },
         async update(event) {
             this.status = { updating: true };
@@ -39,6 +40,14 @@ export const useEventsStore = defineStore({
                 .then((event) => (this.event = event))
                 .catch((error) => (this.error = error))
                 .finally(() => (this.status = { updating: false }));
+        },
+        async create(event) {
+            this.status = { creating: true };
+            fetchWrapper
+                .post(`${baseUrl}`, event)
+                .then((event) => (this.event = event))
+                .catch((error) => (this.error = error))
+                .finally(() => (this.status = { creating: false }));
         }
     },
 });

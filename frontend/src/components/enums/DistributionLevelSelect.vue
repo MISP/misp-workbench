@@ -1,12 +1,13 @@
 <script setup>
 import { DISTRIBUTION_LEVEL } from "@/helpers/constants";
-defineProps(['modelValue']);
-defineEmits(['update:modelValue'])
+import { Field } from "vee-validate";
+import {toRef} from "vue"
+let props = defineProps(['name', 'selected', 'errors']);
+const selected = toRef(props,'selected')
 </script>
 
 <template>
-    <select class="form-select" :value="modelValue"
-        @input="$emit('update:modelValue', $event.target.value)">
+    <Field class="form-control" :name="name" v-model="selected" :class="{ 'is-invalid': errors }" as="select">
         <option v-for="(id, name) in DISTRIBUTION_LEVEL" :value="id">{{ name }}</option>
-    </select>
+    </Field>
 </template>
