@@ -4,21 +4,22 @@ from datetime import datetime
 from app.models import event as event_models
 from app.schemas import event as event_schemas
 from fastapi import HTTPException, status
+from fastapi_pagination.ext.sqlalchemy import paginate
 from pymisp import MISPEvent
 from sqlalchemy.orm import Session
 
 
-def get_events(db: Session, skip: int = 0, limit: int = 100, filters: dict = {}):
+def get_events(db: Session, info: str = None, deleted: bool = None):
     query = db.query(event_models.Event)
 
-    if filters["id"]:
-        query = query.filter(event_models.Event.id == filters["id"])
-
-    if filters["info"]:
-        search = "%{}%".format(filters["info"])
+    if info is not None:
+        search = f"%{info}%"
         query = query.filter(event_models.Event.info.like(search))
 
-    return query.offset(skip).limit(limit).all()
+    if deleted is not None:
+        query = query.filter(event_models.Event.deleted == deleted)
+
+    return paginate(query)
 
 
 def get_event_by_id(db: Session, event_id: int):
@@ -63,6 +64,7 @@ def create_event(db: Session, event: event_schemas.EventCreate):
         disable_correlation=event.disable_correlation,
         extends_uuid=event.extends_uuid,
         protected=event.protected,
+        deleted=event.deleted,
     )
     db.add(db_event)
     db.commit()
@@ -95,7 +97,7 @@ def create_event_from_pulled_event(db: Session, pulled_event: MISPEvent):
         # sighting_timestamp=pulled_event.sighting_timestamp, # TODO: add sighting_timestamp
         disable_correlation=pulled_event.disable_correlation,
         extends_uuid=pulled_event.extends_uuid or None,
-        # protected=pulled_event.protected # TODO: add protected
+        # protected=pulled_event.protected # TODO: add protected [pymisp]
     )
     db.add(event)
     db.commit()

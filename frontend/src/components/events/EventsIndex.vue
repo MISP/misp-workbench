@@ -4,9 +4,26 @@ import { useEventsStore } from "@/stores";
 import { RouterLink } from "vue-router";
 import Spinner from "@/components/misc/Spinner.vue";
 import DistributionLevel from "@/components/enums/DistributionLevel.vue";
+import DeleteEventModal from "@/components/events/DeleteEventModal.vue";
+import Paginate from "vuejs-paginate-next";
 const eventsStore = useEventsStore();
-const { events, status } = storeToRefs(eventsStore);
-eventsStore.getAll();
+const { page_count, events, status } = storeToRefs(eventsStore);
+
+const props = defineProps(['event_id', 'page_size']);
+
+function onPageChange(page) {
+    eventsStore.get({
+        page: page,
+        size: props.page_size,
+        deleted: false
+    });
+}
+onPageChange(1);
+
+function handleEventsUpdated(event) {
+    // TODO FIXME: resets the page to 1 and reloads the events, not the best way to do this, reload current page
+    onPageChange(1);
+}
 </script>
 
 <template>
@@ -26,7 +43,7 @@ eventsStore.getAll();
                 </tr>
             </thead>
             <tbody>
-                <tr :key="event.id" v-for="event in events">
+                <tr :key="event.id" v-for="event in events.items">
                     <td>
                         <RouterLink :to="`/events/${event.id}`">{{ event.id }}</RouterLink>
                     </td>
@@ -38,9 +55,10 @@ eventsStore.getAll();
                     <td class="text-end">
                         <div class="flex-wrap" :class="{ 'btn-group-vertical': $isMobile, 'btn-group': !$isMobile }"
                             aria-label="Event Actions">
-                            <RouterLink :to="`/events/delete/${event.id}`" tag="button" class="btn btn-danger disabled">
+                            <button type="button" class="btn btn-danger" data-bs-toggle="modal"
+                                :data-bs-target="'#deleteEventModal-' + event.id">
                                 <font-awesome-icon icon="fa-solid fa-trash" />
-                            </RouterLink>
+                            </button>
                             <RouterLink :to="`/events/update/${event.id}`" tag="button" class="btn btn-primary">
                                 <font-awesome-icon icon="fa-solid fa-pen" />
                             </RouterLink>
@@ -49,8 +67,10 @@ eventsStore.getAll();
                             </RouterLink>
                         </div>
                     </td>
+                    <DeleteEventModal @eventsUpdated="handleEventsUpdated" :event_id="event.id" />
                 </tr>
             </tbody>
         </table>
+        <Paginate v-if="page_count > 1" :page-count="page_count" :click-handler="onPageChange" />
     </div>
 </template>

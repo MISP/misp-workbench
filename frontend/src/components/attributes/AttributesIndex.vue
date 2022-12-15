@@ -9,16 +9,15 @@ import Paginate from "vuejs-paginate-next";
 import AddAttributeModal from "@/components/attributes/AddAttributeModal.vue";
 import DeleteAttributeModal from "@/components/attributes/DeleteAttributeModal.vue";
 
-const props = defineProps(['event_id', 'total_size', 'page_size']);
-let page_count = Math.ceil(props.total_size / props.page_size);
+const props = defineProps(['event_id', 'page_size']);
 
 const attributesStore = useAttributesStore();
-const { attributes, status } = storeToRefs(attributesStore);
+const { page_count, attributes, status } = storeToRefs(attributesStore);
 
 function onPageChange(page) {
     attributesStore.get({
-        skip: (page - 1) * props.page_size,
-        limit: props.page_size,
+        page: page,
+        size: props.page_size,
         event_id: props.event_id,
         deleted: false
     });
@@ -26,7 +25,7 @@ function onPageChange(page) {
 onPageChange(1);
 
 function handleAttributesUpdated(event) {
-    // TODO FIXME: resets the page to 1 and reloads the attributes, not the best way to do this
+    // TODO FIXME: resets the page to 1 and reloads the attributes, not the best way to do this, reload current page
     onPageChange(1);
 }
 </script>
@@ -50,7 +49,7 @@ function handleAttributesUpdated(event) {
                 </tr>
             </thead>
             <tbody>
-                <tr :key="attribute.id" v-for="attribute in attributes">
+                <tr :key="attribute.id" v-for="attribute in attributes.items">
                     <td>{{ attribute.value }}</td>
                     <td class="d-none d-sm-table-cell">
                         <TagsIndex :tags="attribute.tags" />
@@ -76,8 +75,7 @@ function handleAttributesUpdated(event) {
                             </RouterLink>
                         </div>
                     </td>
-                    <DeleteAttributeModal @attributesUpdated="handleAttributesUpdated"
-                        :attribute_id="attribute.id" />
+                    <DeleteAttributeModal @attributesUpdated="handleAttributesUpdated" :attribute_id="attribute.id" />
                 </tr>
             </tbody>
         </table>

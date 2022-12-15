@@ -84,6 +84,7 @@ class Event(Base):
     disable_correlation = Column(Boolean, default=False)
     extends_uuid = Column(UUID(as_uuid=True), index=True, nullable=True)
     protected = Column(Boolean, nullable=False, default=False)
+    deleted = Column(Boolean, nullable=False, default=False)
 
     attributes = relationship("Attribute")
     objects = relationship("Object")

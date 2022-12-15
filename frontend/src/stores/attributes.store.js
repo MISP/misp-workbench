@@ -8,6 +8,7 @@ export const useAttributesStore = defineStore({
     state: () => ({
         attributes: {},
         attribute: {},
+        page_count: 0,
         status: {
             loading: false,
             error: false
@@ -17,10 +18,10 @@ export const useAttributesStore = defineStore({
         async get(params = { skip: 0, limit: 10, event_id: null, deleted: false }) {
             this.status = { loading: true };
             fetchWrapper
-                .get(baseUrl + "/?" + new URLSearchParams(params).toString())
-                .then((attributes) => (this.attributes = attributes))
-                .catch((error) => (this.status = { error }))
-                .finally(() => (this.status = { loading: false }));
+            .get(baseUrl + "/?" + new URLSearchParams(params).toString())
+            .then((response) => (this.attributes = response, this.page_count = Math.ceil(response.total / params.size)))
+            .catch((error) => (this.status = { error }))
+            .finally(() => (this.status = { loading: false }));
         },
         async getById(id) {
             this.status = { loading: true };

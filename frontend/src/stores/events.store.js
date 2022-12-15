@@ -9,6 +9,7 @@ export const useEventsStore = defineStore({
     state: () => ({
         events: {},
         event: {},
+        page_count: 0,
         status: {
             loading: false,
             updating: false,
@@ -17,6 +18,14 @@ export const useEventsStore = defineStore({
         }
     }),
     actions: {
+        async get(params = { page: 1, size: 10, deleted: false }) {
+            this.status = { loading: true };
+            fetchWrapper
+                .get(baseUrl + "/?" + new URLSearchParams(params).toString())
+                .then((response) => (this.events = response, this.page_count = Math.ceil(response.total / params.size)))
+                .catch((error) => (this.status = { error }))
+                .finally(() => (this.status = { loading: false }));
+        },
         async getAll() {
             this.status = { loading: true };
             fetchWrapper
@@ -28,10 +37,10 @@ export const useEventsStore = defineStore({
         async getById(id) {
             this.status = { loading: true };
             fetchWrapper
-            .get(`${baseUrl}/${id}`)
-            .then((event) => (this.event = event))
-            .catch((error) => (this.status = { error }))
-            .finally(() => (this.status = { loading: false }));
+                .get(`${baseUrl}/${id}`)
+                .then((event) => (this.event = event))
+                .catch((error) => (this.status = { error }))
+                .finally(() => (this.status = { loading: false }));
         },
         async update(event) {
             this.status = { updating: true };
@@ -48,6 +57,13 @@ export const useEventsStore = defineStore({
                 .then((event) => (this.event = event))
                 .catch((error) => (this.error = error))
                 .finally(() => (this.status = { creating: false }));
+        },
+        async delete(id) {
+            this.status = { loading: true };
+            return await fetchWrapper
+                .delete(`${baseUrl}/${id}`)
+                .catch((error) => (this.status = { error }))
+                .finally(() => (this.status = { loading: false }));
         }
     },
 });

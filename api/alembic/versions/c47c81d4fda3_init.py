@@ -83,6 +83,7 @@ def upgrade():
         sa.Column("disable_correlation", sa.Boolean(), nullable=True),
         sa.Column("extends_uuid", postgresql.UUID(as_uuid=True), nullable=True),
         sa.Column("protected", sa.Boolean(), nullable=False),
+        sa.Column("deleted", sa.Boolean(), nullable=False),
         sa.ForeignKeyConstraint(
             ["user_id"],
             ["users.id"],

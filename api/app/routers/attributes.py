@@ -8,18 +8,19 @@ from app.repositories import tags as tags_repository
 from app.schemas import attribute as attribute_schemas
 from app.schemas import user as user_schemas
 from fastapi import APIRouter, Depends, HTTPException, Response, Security, status
+from fastapi_pagination import Page
 from sqlalchemy.orm import Session
 
 router = APIRouter()
 
 
 async def get_attributes_parameters(
-    skip: int = 0, limit: int = 100, event_id: Optional[int] = None
+    event_id: Optional[int] = None, deleted: Optional[bool] = None
 ):
-    return {"skip": skip, "limit": limit, "event_id": event_id}
+    return {"event_id": event_id, "deleted": deleted}
 
 
-@router.get("/attributes/", response_model=list[attribute_schemas.Attribute])
+@router.get("/attributes/", response_model=Page[attribute_schemas.Attribute])
 def get_attributes(
     params: dict = Depends(get_attributes_parameters),
     db: Session = Depends(get_db),
@@ -28,7 +29,7 @@ def get_attributes(
     ),
 ):
     return attributes_repository.get_attributes(
-        db, params["skip"], params["limit"], params["event_id"]
+        db, params["event_id"], params["deleted"]
     )
 
 

@@ -7,7 +7,7 @@ license = "AGPL-3.0"
 
 [tool.poetry.dependencies]
 python = "^3.9"
-fastapi = "^0.78.0"
+fastapi = "^0.88.0"
 uvicorn = "^0.17.6"
 pymisp = "^2.4.159"
 pydantic = "^1.8.0"
@@ -24,6 +24,8 @@ flower = "^1.0.0"
 Jinja2 = "^3.1.2"
 redis = "^4.3.3"
 typer = {extras = ["all"], version = "^0.6.1"}
+fastapi-pagination = "^0.11.1"
+httpx = "^0.23.1"
 
 [tool.poetry.dev-dependencies]
 pytest = "^7.1.2"

@@ -19,7 +19,7 @@ class TestAttributesResource(ApiTester):
         response = client.get(
             "/attributes/", headers={"Authorization": "Bearer " + auth_token}
         )
-        data = response.json()
+        data = response.json()["items"]
 
         assert response.status_code == status.HTTP_200_OK
 

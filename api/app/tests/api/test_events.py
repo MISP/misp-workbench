@@ -23,7 +23,7 @@ class TestEventsResource(ApiTester):
         response = client.get(
             "/events/", headers={"Authorization": "Bearer " + auth_token}
         )
-        data = response.json()
+        data = response.json()["items"]
 
         assert response.status_code == status.HTTP_200_OK
 

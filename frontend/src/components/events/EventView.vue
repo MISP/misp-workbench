@@ -225,7 +225,7 @@ div.row h3 {
                         <font-awesome-icon icon="fa-solid fa-cubes-stacked" /> attributes
                     </div>
                     <div class="card-body d-flex flex-column">
-                        <AttributesIndex :event_id="event.id" :total_size="event.attribute_count" :page_size="10" />
+                        <AttributesIndex :event_id="event.id" :page_size="10" />
                     </div>
                 </div>
             </div>

@@ -14,6 +14,7 @@ from app.routers import (
 )
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi_pagination import add_pagination
 
 # setup loggers
 logging.config.fileConfig("logging.conf", disable_existing_loggers=False)
@@ -65,3 +66,6 @@ app.include_router(sharing_groups.router, tags=["Sharing Groups"])
 
 # Tags resource
 app.include_router(tags.router, tags=["Tags"])
+
+
+add_pagination(app)

@@ -32,6 +32,7 @@ class EventBase(BaseModel):
     disable_correlation: Optional[bool]
     extends_uuid: Optional[UUID]
     protected: Optional[bool]
+    deleted: Optional[bool]
 
     class Config:
         use_enum_values = True

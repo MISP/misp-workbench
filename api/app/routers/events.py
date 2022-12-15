@@ -7,29 +7,26 @@ from app.repositories import tags as tags_repository
 from app.schemas import event as event_schemas
 from app.schemas import user as user_schemas
 from fastapi import APIRouter, Depends, HTTPException, Response, Security, status
+from fastapi_pagination import Page
 from sqlalchemy.orm import Session
 
 router = APIRouter()
 
 
 async def get_events_parameters(
-    skip: int = 0,
-    limit: int = 100,
-    id: Optional[int] = None,
     info: Optional[str] = None,
+    deleted: Optional[bool] = None,
 ):
-    return {"skip": skip, "limit": limit, "filters": {"id": id, "info": info}}
+    return {"info": info, "deleted": deleted}
 
 
-@router.get("/events/", response_model=list[event_schemas.Event])
+@router.get("/events/", response_model=Page[event_schemas.Event])
 async def get_events(
     params: dict = Depends(get_events_parameters),
     db: Session = Depends(get_db),
     user: user_schemas.User = Security(get_current_active_user, scopes=["events:read"]),
 ):
-    return events_repository.get_events(
-        db, params["skip"], params["limit"], params["filters"]
-    )
+    return events_repository.get_events(db, params["info"], params["deleted"])
 
 
 @router.get("/events/{event_id}", response_model=event_schemas.Event)
