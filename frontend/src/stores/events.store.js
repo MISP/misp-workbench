@@ -46,7 +46,7 @@ export const useEventsStore = defineStore({
             this.status = { updating: true };
             fetchWrapper
                 .patch(`${baseUrl}/${event.id}`, event)
-                .then((event) => (this.event = event))
+                .then((response) => (this.event = response))
                 .catch((error) => (this.error = error))
                 .finally(() => (this.status = { updating: false }));
         },
@@ -54,7 +54,7 @@ export const useEventsStore = defineStore({
             this.status = { creating: true };
             fetchWrapper
                 .post(`${baseUrl}`, event)
-                .then((event) => (this.event = event))
+                .then((response) => (this.event = response))
                 .catch((error) => (this.error = error))
                 .finally(() => (this.status = { creating: false }));
         },

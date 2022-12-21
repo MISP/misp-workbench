@@ -22,6 +22,10 @@ def get_user_by_email(db: Session, email: str):
 
 
 def create_user(db: Session, user: user_schemas.UserCreate):
+
+    if user.password is None:
+        user.password = auth.get_random_password()
+
     hashed_password = auth.get_password_hash(user.password)
     db_user = user_models.User(
         org_id=user.org_id,
@@ -32,6 +36,8 @@ def create_user(db: Session, user: user_schemas.UserCreate):
     db.add(db_user)
     db.commit()
     db.refresh(db_user)
+
+    # TODO: send email with password w/background job
 
     return db_user
 

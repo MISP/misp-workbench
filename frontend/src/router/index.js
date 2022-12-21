@@ -9,11 +9,12 @@ import {
   IndexUsersView,
   IndexOrganisationsView,
   ViewOrganisationView,
+  AddUserView,
   ViewUsersView,
   IndexServersView,
   ViewServerView,
   EditEventView,
-  AddEventView
+  AddEventView,
 } from "@/views";
 
 export const router = createRouter({
@@ -27,6 +28,7 @@ export const router = createRouter({
     { path: "/events/update/:id", component: EditEventView, props: true },
     { path: "/events/add", component: AddEventView, props: true },
     { path: "/users", component: IndexUsersView },
+    { path: "/users/add", component: AddUserView },
     { path: "/users/:id", component: ViewUsersView, props: true },
     { path: "/organisations", component: IndexOrganisationsView },
     { path: "/organisations/:id", component: ViewOrganisationView, props: true },

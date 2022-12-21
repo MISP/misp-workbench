@@ -2,7 +2,7 @@
 import { storeToRefs } from "pinia";
 import { useUsersStore } from "@/stores";
 import { RouterLink, useRoute } from "vue-router";
-import UserView from "@/components/users/UsersView.vue";
+import UserView from "@/components/users/UserView.vue";
 import Spinner from "@/components/misc/Spinner.vue";
 import { router } from "@/router";
 const route = useRoute()

@@ -1,5 +1,6 @@
 from typing import Optional
 
+from app.schemas.role import Role
 from pydantic import BaseModel
 
 
@@ -11,13 +12,14 @@ class UserBase(BaseModel):
 
 class User(UserBase):
     id: int
+    role: Role
 
     class Config:
         orm_mode = True
 
 
 class UserCreate(UserBase):
-    password: str
+    password: Optional[str]
 
 
 class UserUpdate(BaseModel):

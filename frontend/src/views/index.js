@@ -10,3 +10,4 @@ export { default as IndexServersView } from "./IndexServersView.vue";
 export { default as ViewServerView } from "./ViewServerView.vue";
 export { default as EditEventView } from "./EditEventView.vue";
 export { default as AddEventView } from "./AddEventView.vue";
+export { default as AddUserView } from "./AddUserView.vue";

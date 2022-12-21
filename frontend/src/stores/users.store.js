@@ -11,6 +11,7 @@ export const useUsersStore = defineStore({
     user: {},
     status: {
       loading: false,
+      creating: false,
       error: false
     }
   }),
@@ -30,6 +31,13 @@ export const useUsersStore = defineStore({
         .then((user) => (this.user = user))
         .catch((error) => (this.status = { error }))
         .finally(() => (this.status = { loading: false }));
-    }
+    },
+    async create(user) {
+      this.status = { creating: true };
+      return await fetchWrapper
+          .post(baseUrl, user)
+          .then((response) => (this.attribute = response))
+          .finally(() => (this.status = { creating: false }));
+  },
   },
 });
