@@ -50,14 +50,13 @@ export const useEventsStore = defineStore({
                 .catch((error) => (this.error = error))
                 .finally(() => (this.status = { updating: false }));
         },
-        async create(event) {
+        async create(user) {
             this.status = { creating: true };
-            fetchWrapper
-                .post(`${baseUrl}`, event)
-                .then((response) => (this.event = response))
-                .catch((error) => (this.error = error))
-                .finally(() => (this.status = { creating: false }));
-        },
+            return await fetchWrapper
+              .post(baseUrl, user)
+              .then((response) => (this.event = response))
+              .finally(() => (this.status = { creating: false }));
+          },
         async delete(id) {
             this.status = { loading: true };
             return await fetchWrapper

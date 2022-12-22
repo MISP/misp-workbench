@@ -35,9 +35,9 @@ export const useUsersStore = defineStore({
     async create(user) {
       this.status = { creating: true };
       return await fetchWrapper
-          .post(baseUrl, user)
-          .then((response) => (this.attribute = response))
-          .finally(() => (this.status = { creating: false }));
-  },
+        .post(baseUrl, user)
+        .then((response) => (this.user = response))
+        .finally(() => (this.status = { creating: false }));
+    },
   },
 });
