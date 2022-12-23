@@ -19,9 +19,17 @@ class OAuth2Settings(BaseModel):
     )
 
 
+class MailSettings(BaseModel):
+    host: str = os.environ["MAIL_SERVER"]
+    port: int = int(os.environ["MAIL_PORT"])
+    username: str = os.environ["MAIL_USERNAME"]
+    password: str = os.environ["MAIL_PASSWORD"]
+
+
 class Settings(BaseSettings):
     MISP: MISPSettings = MISPSettings()
     OAuth2: OAuth2Settings = OAuth2Settings()
+    Mail: MailSettings = MailSettings()
 
 
 @lru_cache

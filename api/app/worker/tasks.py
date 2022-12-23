@@ -1,5 +1,6 @@
 import logging
 import os
+import smtplib
 
 from app.database import SessionLocal
 from app.repositories import events as events_repository
@@ -44,5 +45,28 @@ def handle_deleted_attribute(attribute: dict):
     logger.info("handling deleted attribute id=%s job started", attribute["id"])
 
     events_repository.decrement_attribute_count(db, attribute["event_id"])
+
+    return True
+
+
+@celery.task
+def send_email(email: dict):
+    logger.info("sending email job started")
+
+    sender = f'<{email["from"]}>'
+    receiver = f'<{email["to"]}>'
+
+    message = f"""\
+    Subject: {email["subject"]}
+    To: {receiver}
+    From: {sender}
+
+    {email["body"]}"""
+
+    with smtplib.SMTP(
+        os.environ.get("MAIL_SERVER"), os.environ.get("MAIL_PORT")
+    ) as server:
+        server.login(os.environ.get("MAIL_USERNAME"), os.environ.get("MAIL_PASSWORD"))
+        server.sendmail(sender, receiver, message)
 
     return True

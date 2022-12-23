@@ -3,6 +3,7 @@ import logging
 from app.auth import auth
 from app.models import user as user_models
 from app.schemas import user as user_schemas
+from app.worker import tasks
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -37,7 +38,14 @@ def create_user(db: Session, user: user_schemas.UserCreate):
     db.commit()
     db.refresh(db_user)
 
-    # TODO: send email with password w/background job
+    tasks.send_email(
+        {
+            "subject": "misp-lite password",
+            "body": f"your password is: {user.password}",
+            "to": user.email,
+            "from": "info@misp-lite.com",
+        }
+    )
 
     return db_user
 
