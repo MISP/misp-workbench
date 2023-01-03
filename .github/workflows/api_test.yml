@@ -89,4 +89,4 @@ jobs:
           MAIL_USERNAME: mail-user
           MAIL_PASSWORD: mail-pwd
           MAIL_PORT: 587
-          MAIL_SERVER: smtp
+          MAIL_SERVER: localhost
