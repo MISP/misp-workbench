@@ -9,15 +9,22 @@ from app.repositories import users as users_repository
 from app.settings import get_settings
 from celery import Celery
 
-celery = Celery()
-celery.conf.broker_url = os.environ.get("CELERY_BROKER_URL")
-celery.conf.result_backend = os.environ.get("CELERY_RESULT_BACKEND")
+# Celery configuration
+app = Celery()
+app.conf.update(
+    broker_url=os.environ.get("CELERY_BROKER_URL"),
+    result_backend=os.environ.get("CELERY_RESULT_BACKEND"),
+    task_serializer="json",
+    result_serializer="json",
+    accept_content=["json"],
+)
+
 logger = logging.getLogger(__name__)
 
 db = SessionLocal()
 
 
-@celery.task
+@app.task
 def server_pull_by_id(server_id: int, user_id: int):
     logger.info("pull server_id=%s job started", server_id)
 
@@ -31,25 +38,25 @@ def server_pull_by_id(server_id: int, user_id: int):
     return True
 
 
-@celery.task
-def handle_created_attribute(attribute: dict):
-    logger.info("handling created attribute id=%s job started", attribute["id"])
+@app.task
+def handle_created_attribute(attribute_id: int, event_id: int):
+    logger.info("handling created attribute id=%s job started", attribute_id)
 
-    events_repository.increment_attribute_count(db, attribute["event_id"])
-
-    return True
-
-
-@celery.task
-def handle_deleted_attribute(attribute: dict):
-    logger.info("handling deleted attribute id=%s job started", attribute["id"])
-
-    events_repository.decrement_attribute_count(db, attribute["event_id"])
+    events_repository.increment_attribute_count(db, event_id)
 
     return True
 
 
-@celery.task
+@app.task
+def handle_deleted_attribute(attribute_id: int, event_id: int):
+    logger.info("handling deleted attribute id=%s job started", attribute_id)
+
+    events_repository.decrement_attribute_count(db, event_id)
+
+    return True
+
+
+@app.task
 def send_email(email: dict):
     logger.info("sending email job started")
 

@@ -59,7 +59,7 @@ def create_attribute(
     db.commit()
     db.refresh(db_attribute)
 
-    tasks.handle_created_attribute(db_attribute.__dict__)
+    tasks.handle_created_attribute.delay(db_attribute.id, db_attribute.event_id)
 
     return db_attribute
 
@@ -107,7 +107,7 @@ def create_attribute_from_pulled_attribute(
     pulled_attribute.id = db_attribute.id
     pulled_attribute.event_id = local_event_id
 
-    tasks.handle_created_attribute(pulled_attribute.__dict__)
+    tasks.handle_created_attribute.delay(pulled_attribute.id, pulled_attribute.event_id)
 
     return pulled_attribute
 
@@ -148,4 +148,4 @@ def delete_attribute(db: Session, attribute_id: int) -> None:
     db.commit()
     db.refresh(db_attribute)
 
-    tasks.handle_deleted_attribute(db_attribute.__dict__)
+    tasks.handle_deleted_attribute.delay(db_attribute.id, db_attribute.event_id)
