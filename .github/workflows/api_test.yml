@@ -34,6 +34,10 @@ jobs:
         ports:
           - 15672:15672
           - 5672:5672
+        env:
+          RABBITMQ_DEFAULT_VHOST: rabbitmq
+          RABBITMQ_DEFAULT_USER: rabbitmq
+          RABBITMQ_DEFAULT_PASS: rabbitmq
 
       mailhog:
         image: mailhog/mailhog
