@@ -34,14 +34,20 @@ jobs:
         ports:
           - 15672:15672
 
+      mailhog:
+        image: mailhog/mailhog
+        ports:
+          - 1025:1025
+          - 8025:8025
+        options: >-
+          --smtp-bind-addr=:1025
+
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-python@v2
         with:
           python-version: ${{ matrix.python-version }}
-      - uses: mailhog/mailhog@v1
-        with:
-          smtp-bind-port: 1025
+
       - name: Install and configure Poetry
         uses: snok/install-poetry@v1
         env:
@@ -95,5 +101,5 @@ jobs:
           CELERY_RESULT_BACKEND: redis://localhost:6379/0
           MAIL_USERNAME: mail-user
           MAIL_PASSWORD: mail-pwd
-          MAIL_PORT: 1025
+          MAIL_PORT: 587
           MAIL_SERVER: localhost
