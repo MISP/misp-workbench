@@ -29,6 +29,11 @@ jobs:
         ports:
           - 6379:6379
 
+      mailhog:
+        image: mailhog/mailhog
+        ports:
+          - 587:587
+
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-python@v2
