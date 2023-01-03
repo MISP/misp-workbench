@@ -86,3 +86,7 @@ jobs:
           OAUTH2_ACCESS_TOKEN_EXPIRE_MINUTES: 30
           CELERY_BROKER_URL: redis://localhost:6379/0
           CELERY_RESULT_BACKEND: redis://localhost:6379/0
+          MAIL_USERNAME: mail-user
+          MAIL_PASSWORD: mail-pwd
+          MAIL_PORT: 587
+          MAIL_SERVER: smtp
