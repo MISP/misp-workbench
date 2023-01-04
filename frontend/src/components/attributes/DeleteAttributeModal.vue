@@ -3,7 +3,6 @@
 import { useAttributesStore } from "@/stores";
 import { storeToRefs } from 'pinia'
 import * as Yup from "yup";
-import { modals } from "@/helpers";
 
 const attributesStore = useAttributesStore();
 const { status } = storeToRefs(attributesStore);
@@ -17,7 +16,6 @@ function onSubmit() {
         .delete(props.attribute_id)
         .then((response) => {
             emit('attributesUpdated', { "action": "attribute_deleted", "data": { "attribute_id": props.attribute_id } });
-            modals.closeAll();
         })
         .catch((error) => status.error = error);
 }
@@ -39,8 +37,8 @@ function onSubmit() {
                     {{ status.error }}
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Discard</button>
-                    <button type="submit" @click="onSubmit" class="btn btn-danger"
+                    <button type="button" data-bs-dismiss="modal" class="btn btn-secondary">Discard</button>
+                    <button type="submit" data-bs-dismiss="modal" @click="onSubmit" class="btn btn-danger"
                         :class="{ 'disabled': status.loading }">
                         <span v-if="status.loading">
                             <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>

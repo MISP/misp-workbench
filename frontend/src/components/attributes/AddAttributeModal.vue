@@ -1,12 +1,12 @@
 <script setup>
 
+import { ref } from 'vue';
 import { useAttributesStore } from "@/stores";
 import { storeToRefs } from 'pinia'
 import DistributionLevelSelect from "@/components/enums/DistributionLevelSelect.vue";
 import { ATTRIBUTE_CATEGORIES, DISTRIBUTION_LEVEL } from "@/helpers/constants";
 import { Form, Field } from "vee-validate";
 import * as Yup from "yup";
-import { modals } from "@/helpers";
 
 const attributesStore = useAttributesStore();
 const { status } = storeToRefs(attributesStore);
@@ -15,10 +15,10 @@ const props = defineProps(['event_id']);
 
 const emit = defineEmits(['attributesUpdated']);
 
-let attribute = {
+const attribute = ref({
   distribution: DISTRIBUTION_LEVEL.INHERIT_EVENT,
   event_id: props.event_id,
-};
+});
 
 const schema = Yup.object().shape({
   attribute: Yup.object().shape({
@@ -30,12 +30,18 @@ const schema = Yup.object().shape({
 
 function onSubmit(values, { setErrors }) {
   return attributesStore
-    .create(attribute)
+    .create(attribute.value)
     .then((response) => {
       emit('attributesUpdated', { "action": "attribute_created", "data": response });
-      modals.closeAll();
     })
     .catch((error) => setErrors({ apiError: error }));
+}
+
+function onClose() {
+  attribute.value = {
+    distribution: DISTRIBUTION_LEVEL.INHERIT_EVENT,
+    event_id: props.event_id,
+  };
 }
 </script>
 
@@ -144,8 +150,9 @@ function onSubmit(values, { setErrors }) {
             {{ errors.apiError }}
           </div>
           <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Discard</button>
-            <button type="submit" class="btn btn-primary" :class="{ 'disabled': status.loading }">
+            <button type="button" data-bs-dismiss="modal" class="btn btn-secondary" @click="onClose()">Discard</button>
+            <button type="submit" data-bs-dismiss="modal" class="btn btn-primary"
+              :class="{ 'disabled': status.loading }">
               <span v-if="status.loading">
                 <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
               </span>

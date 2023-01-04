@@ -3,7 +3,6 @@
 import { useEventsStore } from "@/stores";
 import { storeToRefs } from 'pinia'
 import * as Yup from "yup";
-import { modals } from "@/helpers";
 
 const eventsStore = useEventsStore();
 const { status } = storeToRefs(eventsStore);
@@ -17,7 +16,6 @@ function onSubmit() {
         .delete(props.event_id)
         .then((response) => {
             emit('eventsUpdated', { "action": "event_deleted", "data": { "event_id": props.event_id } });
-            modals.closeAll();
         })
         .catch((error) => status.error = error);
 }
@@ -39,8 +37,8 @@ function onSubmit() {
                     {{ status.error }}
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Discard</button>
-                    <button type="submit" @click="onSubmit" class="btn btn-danger"
+                    <button type="button" data-bs-dismiss="modal" class="btn btn-secondary">Discard</button>
+                    <button type="submit" data-bs-dismiss="modal" @click="onSubmit" class="btn btn-danger"
                         :class="{ 'disabled': status.loading }">
                         <span v-if="status.loading">
                             <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
