@@ -1,6 +1,7 @@
 import pytest
 from app.auth import auth
 from app.models import organisation as organisation_models
+from app.models import user as user_models
 from app.tests.api_tester import ApiTester
 from fastapi import status
 from fastapi.testclient import TestClient
@@ -37,7 +38,12 @@ class TestOrganisationsResource(ApiTester):
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
     @pytest.mark.parametrize("scopes", [["organisations:create"]])
-    def test_create_organisation(self, client: TestClient, auth_token: auth.Token):
+    def test_create_organisation(
+        self,
+        client: TestClient,
+        auth_token: auth.Token,
+        api_tester_user: user_models.User,
+    ):
         response = client.post(
             "/organisations/",
             json={
@@ -61,7 +67,7 @@ class TestOrganisationsResource(ApiTester):
         assert data["type"] == "test2"
         assert data["sector"] == "test2"
         assert data["nationality"] == "test2"
-        assert data["created_by"] == 1
+        assert data["created_by"] == api_tester_user.id
         assert data["local"] is False
 
     @pytest.mark.parametrize("scopes", [["organisations:read"]])
@@ -78,7 +84,6 @@ class TestOrganisationsResource(ApiTester):
                 "type": "test2",
                 "sector": "test2",
                 "nationality": "test2",
-                "created_by": 1,
                 "local": False,
             },
             headers={"Authorization": "Bearer " + auth_token},
