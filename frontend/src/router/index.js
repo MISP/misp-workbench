@@ -15,6 +15,7 @@ import {
   ViewServer,
   EditEvent,
   AddEvent,
+  ViewAttribute
 } from "@/views";
 
 export const router = createRouter({
@@ -27,6 +28,7 @@ export const router = createRouter({
     { path: "/events/:id", component: ViewEvent, props: true },
     { path: "/events/update/:id", component: EditEvent, props: true },
     { path: "/events/add", component: AddEvent, props: true },
+    { path: "/attributes/:id", component: ViewAttribute, props: true },
     { path: "/users", component: IndexUsers },
     { path: "/users/add", component: AddUser },
     { path: "/users/:id", component: ViewUsers, props: true },

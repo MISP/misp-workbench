@@ -11,3 +11,4 @@ export { default as ViewServer } from "./ViewServer.vue";
 export { default as EditEvent } from "./EditEvent.vue";
 export { default as AddEvent } from "./AddEvent.vue";
 export { default as AddUser } from "./AddUser.vue";
+export { default as ViewAttribute } from "./ViewAttribute.vue";

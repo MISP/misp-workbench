@@ -1,10 +1,3 @@
-<template>
-    <svg class="sparkline" :width="width" :height="height" :stroke-width="stroke">
-        <path class="sparkline--line" :d="shape" fill="none"></path>
-        <path class="sparkline--fill" :d="[shape, fillEndPath].join(' ')" stroke="none"></path>
-    </svg>
-</template>
-
 <script>
 export default {
     props: ["data"],
@@ -65,3 +58,11 @@ svg path {
     box-sizing: border-box;
 }
 </style>
+
+<template>
+    <svg class="sparkline" :width="width" :height="height" :stroke-width="stroke">
+        <path class="sparkline--line" :d="shape" fill="none"></path>
+        <path class="sparkline--fill" :d="[shape, fillEndPath].join(' ')" stroke="none"></path>
+    </svg>
+</template >
+
