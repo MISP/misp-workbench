@@ -30,6 +30,13 @@ export const useOrganisationsStore = defineStore({
                 .then((organisation) => (this.organisation = organisation))
                 .catch((error) => (this.status = { error }))
                 .finally(() => (this.status = { loading: false }));
-        }
+        },
+        async create(organisation) {
+            this.status = { creating: true };
+            return await fetchWrapper
+                .post(baseUrl, organisation)
+                .then((response) => (this.organisation = response))
+                .finally(() => (this.status = { creating: false }));
+        },
     },
 });

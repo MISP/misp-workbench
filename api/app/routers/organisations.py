@@ -53,6 +53,7 @@ def create_organisation(
         get_current_active_user, scopes=["organisations:create"]
     ),
 ):
+    organisation.created_by = user.id
     return organisations_repository.create_organisation(
         db=db, organisation=organisation
     )

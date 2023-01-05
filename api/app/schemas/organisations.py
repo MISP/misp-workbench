@@ -28,7 +28,7 @@ class Organisation(OrganisationBase):
         orm_mode = True
 
 
-class OrganisationCreate(OrganisationBase):
+class OrganisationCreate(BaseModel):
     name: str
     description: Optional[str]
     date_created: Optional[datetime]
@@ -36,7 +36,7 @@ class OrganisationCreate(OrganisationBase):
     type: Optional[str]
     nationality: Optional[str]
     sector: Optional[str]
-    created_by: int
+    created_by: Optional[int]
     uuid: Optional[UUID]
     contacts: Optional[str]
     local: bool
