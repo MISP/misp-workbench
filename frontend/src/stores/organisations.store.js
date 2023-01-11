@@ -11,6 +11,8 @@ export const useOrganisationsStore = defineStore({
         organisation: {},
         status: {
             loading: false,
+            updating: false,
+            creating: false,
             error: false
         }
     }),
@@ -37,6 +39,14 @@ export const useOrganisationsStore = defineStore({
                 .post(baseUrl, organisation)
                 .then((response) => (this.organisation = response))
                 .finally(() => (this.status = { creating: false }));
+        },
+        async update(organisation) {
+            this.status = { updating: true };
+            fetchWrapper
+                .patch(`${baseUrl}/${organisation.id}`, organisation)
+                .then((response) => (this.organisation = response))
+                .catch((error) => (this.error = error))
+                .finally(() => (this.status = { updating: false }));
         },
         async delete(id) {
             this.status = { loading: true };

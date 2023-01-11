@@ -1,5 +1,12 @@
 <script setup>
+import DeleteOrganisationModal from "@/components/organisations/DeleteOrganisationModal.vue";
+import { router } from "@/router";
+
 defineProps(['organisation']);
+
+function handleOrganisationsUpdated(event) {
+    router.push(`/organisations`);
+}
 </script>
 
 <template>
@@ -12,12 +19,12 @@ defineProps(['organisation']);
                 <div class="col-2 text-end">
                     <div class="flex-wrap" :class="{ 'btn-group-vertical': $isMobile, 'btn-group': !$isMobile }"
                         aria-label="Organisation Actions">
-                        <RouterLink :to="`/organisations/delete/${organisation.id}`" tag="button"
-                            class="btn btn-danger disabled">
+                        <button type="button" class="btn btn-danger" data-bs-toggle="modal"
+                            :data-bs-target="'#deleteOrganisationModal-' + organisation.id">
                             <font-awesome-icon icon="fa-solid fa-trash" />
-                        </RouterLink>
+                        </button>
                         <RouterLink :to="`/organisations/update/${organisation.id}`" tag="button"
-                            class="btn btn-primary disabled">
+                            class="btn btn-primary">
                             <font-awesome-icon icon="fa-solid fa-pen" />
                         </RouterLink>
                     </div>
@@ -84,6 +91,8 @@ defineProps(['organisation']);
                         </tr>
                     </tbody>
                 </table>
+                <DeleteOrganisationModal @organisations-updated="handleOrganisationsUpdated"
+                    :organisation_id="organisation.id" />
             </div>
         </div>
     </div>

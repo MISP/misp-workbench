@@ -52,7 +52,7 @@ function handleOrganisationsUpdated(event) {
                                 <font-awesome-icon icon="fa-solid fa-trash" />
                             </button>
                             <RouterLink :to="`/organisations/update/${organisation.id}`" tag="button"
-                                class="btn btn-primary disabled">
+                                class="btn btn-primary">
                                 <font-awesome-icon icon="fa-solid fa-pen" />
                             </RouterLink>
                             <RouterLink :to="`/organisations/${organisation.id}`" tag="button" class="btn btn-primary">

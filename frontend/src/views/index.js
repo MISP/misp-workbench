@@ -6,6 +6,7 @@ export { default as IndexUsers } from "./IndexUsers.vue";
 export { default as IndexOrganisations } from "./IndexOrganisations.vue";
 export { default as ViewOrganisation } from "./ViewOrganisation.vue";
 export { default as AddOrganisation } from "./AddOrganisation.vue";
+export { default as EditOrganisation } from "./EditOrganisation.vue";
 export { default as ViewUsers } from "./ViewUsers.vue";
 export { default as IndexServers } from "./IndexServers.vue";
 export { default as ViewServer } from "./ViewServer.vue";

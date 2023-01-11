@@ -1,7 +1,7 @@
 <script setup>
 import { storeToRefs } from "pinia";
 import { useEventsStore } from "@/stores";
-import { RouterLink, useRoute } from "vue-router";
+import { useRoute } from "vue-router";
 import EventUpdate from "@/components/events/EventUpdate.vue";
 import Spinner from "@/components/misc/Spinner.vue";
 import { router } from "@/router";
