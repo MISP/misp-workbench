@@ -1,36 +1,35 @@
 <script setup>
-
-import { useEventsStore } from "@/stores";
+import { useUsersStore } from "@/stores";
 import { storeToRefs } from 'pinia'
 import * as Yup from "yup";
 
-const eventsStore = useEventsStore();
-const { status } = storeToRefs(eventsStore);
+const usersStore = useUsersStore();
+const { status } = storeToRefs(usersStore);
 
-const props = defineProps(['event_id']);
-const emit = defineEmits(['events-updated']);
+const props = defineProps(['user_id']);
+const emit = defineEmits(['users-updated']);
 
 function onSubmit() {
-    return eventsStore
-        .delete(props.event_id)
+    return usersStore
+        .delete(props.user_id)
         .then((response) => {
-            emit('events-updated', { "action": "event_deleted", "data": { "event_id": props.event_id } });
+            emit('users-updated', { "action": "user_deleted", "data": { "user_id": props.user_id } });
         })
         .catch((error) => status.error = error);
 }
 </script>
 
 <template>
-    <div :id="'deleteEventModal-' + event_id" class="modal fade" tabindex="-1" aria-labelledby="deleteEventModal"
+    <div :id="'deleteUserModal-' + user_id" class="modal fade" tabindex="-1" aria-labelledby="deleteUserModal"
         aria-hidden="true">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="deleteEventModal">Delete Event #{{ event_id }}</h5>
+                    <h5 class="modal-title" id="deleteUserModal">Delete User #{{ user_id }}</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Discard"></button>
                 </div>
                 <div class="modal-body">
-                    Are you sure you want to delete this event?
+                    Are you sure you want to delete this user?
                 </div>
                 <div v-if="status.error" class="w-100 alert alert-danger mt-3 mb-3">
                     {{ status.error }}

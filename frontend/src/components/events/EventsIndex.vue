@@ -67,7 +67,7 @@ function handleEventsUpdated(event) {
                             </RouterLink>
                         </div>
                     </td>
-                    <DeleteEventModal @eventsUpdated="handleEventsUpdated" :event_id="event.id" />
+                    <DeleteEventModal @events-updated="handleEventsUpdated" :event_id="event.id" />
                 </tr>
             </tbody>
         </table>

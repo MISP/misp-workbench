@@ -39,5 +39,20 @@ export const useUsersStore = defineStore({
         .then((response) => (this.user = response))
         .finally(() => (this.status = { creating: false }));
     },
+    async update(organisation) {
+      this.status = { updating: true };
+      fetchWrapper
+        .patch(`${baseUrl}/${organisation.id}`, organisation)
+        .then((response) => (this.organisation = response))
+        .catch((error) => (this.error = error))
+        .finally(() => (this.status = { updating: false }));
+    },
+    async delete(id) {
+      this.status = { loading: true };
+      return await fetchWrapper
+        .delete(`${baseUrl}/${id}`)
+        .catch((error) => (this.status = { error }))
+        .finally(() => (this.status = { loading: false }));
+    }
   },
 });

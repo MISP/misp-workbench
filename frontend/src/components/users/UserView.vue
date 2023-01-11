@@ -1,5 +1,10 @@
 <script setup>
+import DeleteUserModal from "@/components/users/DeleteUserModal.vue";
 defineProps(['user']);
+
+function handleUsersUpdated(event) {
+    router.push(`/users`);
+}
 </script>
 
 <template>
@@ -12,10 +17,11 @@ defineProps(['user']);
                 <div class="col-2 text-end">
                     <div class="flex-wrap" :class="{ 'btn-group-vertical': $isMobile, 'btn-group': !$isMobile }"
                         aria-label="User Actions">
-                        <RouterLink :to="`/users/delete/${user.id}`" tag="button" class="btn btn-danger disabled">
+                        <button type="button" class="btn btn-danger" data-bs-toggle="modal"
+                            :data-bs-target="'#deleteUserModal-' + user.id">
                             <font-awesome-icon icon="fa-solid fa-trash" />
-                        </RouterLink>
-                        <RouterLink :to="`/users/update/${user.id}`" tag="button" class="btn btn-primary disabled">
+                        </button>
+                        <RouterLink :to="`/users/update/${user.id}`" tag="button" class="btn btn-primary">
                             <font-awesome-icon icon="fa-solid fa-pen" />
                         </RouterLink>
                     </div>
@@ -44,6 +50,7 @@ defineProps(['user']);
                         </tr>
                     </tbody>
                 </table>
+                <DeleteUserModal @users-updated="handleUsersUpdated" :user_id="user.id" />
             </div>
         </div>
     </div>

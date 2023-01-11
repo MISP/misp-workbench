@@ -2,10 +2,15 @@
 import { storeToRefs } from "pinia";
 import { RouterLink } from "vue-router";
 import Spinner from "@/components/misc/Spinner.vue";
+import DeleteUserModal from "@/components/users/DeleteUserModal.vue";
 import { useUsersStore } from "@/stores";
 const usersStore = useUsersStore();
 const { users, status } = storeToRefs(usersStore);
 usersStore.getAll();
+
+function handleUsersUpdated(event) {
+    usersStore.getAll();
+}
 </script>
 
 <template>
@@ -14,7 +19,7 @@ usersStore.getAll();
         Error loading users: {{ status.error }}
     </div>
     <div class="table-responsive-sm">
-        <table v-if="!status.loading" class="table table-striped">
+        <table class="table table-striped">
             <thead>
                 <tr>
                     <th scope="col">id</th>
@@ -33,9 +38,10 @@ usersStore.getAll();
                     <td class="text-end">
                         <div class="flex-wrap" :class="{ 'btn-group-vertical': $isMobile, 'btn-group': !$isMobile }"
                             aria-label="User Actions">
-                            <RouterLink :to="`/users/delete/${user.id}`" tag="button" class="btn btn-danger disabled">
+                            <button type="button" class="btn btn-danger" data-bs-toggle="modal"
+                                :data-bs-target="'#deleteUserModal-' + user.id">
                                 <font-awesome-icon icon="fa-solid fa-trash" />
-                            </RouterLink>
+                            </button>
                             <RouterLink :to="`/users/update/${user.id}`" tag="button" class="btn btn-primary disabled">
                                 <font-awesome-icon icon="fa-solid fa-pen" />
                             </RouterLink>
@@ -44,6 +50,7 @@ usersStore.getAll();
                             </RouterLink>
                         </div>
                     </td>
+                    <DeleteUserModal @users-updated="handleUsersUpdated" :user_id="user.id" />
                 </tr>
             </tbody>
         </table>
