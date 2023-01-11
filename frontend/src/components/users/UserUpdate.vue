@@ -4,6 +4,7 @@ import { storeToRefs } from 'pinia'
 import { useUsersStore } from "@/stores";
 import { router } from "@/router";
 import { UserSchema } from "@/schemas/user";
+import RolesSelect from "@/components/roles/RolesSelect.vue";
 
 const usersStore = useUsersStore();
 const { user, status, error } = storeToRefs(usersStore);
@@ -53,9 +54,7 @@ function onSubmit(values, { setErrors }) {
                 </div>
                 <div class="mb-3">
                     <label for="user.role_id">role</label>
-                    <Field class="form-control" id="user.role_id" name="user.role_id" v-model="user.role_id"
-                        :class="{ 'is-invalid': errors['user.role_id'] }">
-                    </Field>
+                    <RolesSelect name="user.role_id" v-model=user.role_id :errors="errors['user.role_id']" />
                     <div class=" invalid-feedback">{{ errors['user.role_id'] }}</div>
                 </div>
                 <div v-if="error" class="w-100 alert alert-danger mt-3 mb-3">

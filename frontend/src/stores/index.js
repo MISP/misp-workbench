@@ -5,3 +5,4 @@ export * from "./attributes.store";
 export * from "./objects.store";
 export * from "./organisations.store";
 export * from "./servers.store";
+export * from "./roles.store";
