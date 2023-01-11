@@ -42,7 +42,7 @@ function handleUsersUpdated(event) {
                                 :data-bs-target="'#deleteUserModal-' + user.id">
                                 <font-awesome-icon icon="fa-solid fa-trash" />
                             </button>
-                            <RouterLink :to="`/users/update/${user.id}`" tag="button" class="btn btn-primary disabled">
+                            <RouterLink :to="`/users/update/${user.id}`" tag="button" class="btn btn-primary">
                                 <font-awesome-icon icon="fa-solid fa-pen" />
                             </RouterLink>
                             <RouterLink :to="`/users/${user.id}`" tag="button" class="btn btn-primary">

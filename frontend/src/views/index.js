@@ -3,6 +3,7 @@ export { default as Login } from "./Login.vue";
 export { default as IndexEvents } from "./IndexEvents.vue";
 export { default as ViewEvent } from "./ViewEvent.vue";
 export { default as IndexUsers } from "./IndexUsers.vue";
+export { default as EditUser } from "./EditUser.vue";
 export { default as IndexOrganisations } from "./IndexOrganisations.vue";
 export { default as ViewOrganisation } from "./ViewOrganisation.vue";
 export { default as AddOrganisation } from "./AddOrganisation.vue";
