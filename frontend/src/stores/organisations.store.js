@@ -38,5 +38,12 @@ export const useOrganisationsStore = defineStore({
                 .then((response) => (this.organisation = response))
                 .finally(() => (this.status = { creating: false }));
         },
+        async delete(id) {
+            this.status = { loading: true };
+            return await fetchWrapper
+                .delete(`${baseUrl}/${id}`)
+                .catch((error) => (this.status = { error }))
+                .finally(() => (this.status = { loading: false }));
+        }
     },
 });

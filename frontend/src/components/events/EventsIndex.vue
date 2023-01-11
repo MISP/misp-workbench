@@ -32,7 +32,7 @@ function handleEventsUpdated(event) {
         Error loading events: {{ status.error }}
     </div>
     <div class="table-responsive-sm">
-        <table v-if="!status.loading" class="table table-striped">
+        <table class="table table-striped">
             <thead>
                 <tr>
                     <th scope="col">id</th>

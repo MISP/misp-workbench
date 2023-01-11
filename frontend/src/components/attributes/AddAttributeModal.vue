@@ -13,7 +13,7 @@ const { status } = storeToRefs(attributesStore);
 
 const props = defineProps(['event_id']);
 
-const emit = defineEmits(['attributesUpdated']);
+const emit = defineEmits(['attributes-updated']);
 
 const attribute = ref({
   distribution: DISTRIBUTION_LEVEL.INHERIT_EVENT,
@@ -32,7 +32,7 @@ function onSubmit(values, { setErrors }) {
   return attributesStore
     .create(attribute.value)
     .then((response) => {
-      emit('attributesUpdated', { "action": "attribute_created", "data": response });
+      emit('attributes-updated', { "action": "attribute_created", "data": response });
     })
     .catch((error) => setErrors({ apiError: error }));
 }

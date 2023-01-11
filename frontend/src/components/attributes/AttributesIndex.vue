@@ -75,12 +75,12 @@ function handleAttributesUpdated(event) {
                             </RouterLink>
                         </div>
                     </td>
-                    <DeleteAttributeModal @attributesUpdated="handleAttributesUpdated" :attribute_id="attribute.id" />
+                    <DeleteAttributeModal @attributes-updated="handleAttributesUpdated" :attribute_id="attribute.id" />
                 </tr>
             </tbody>
         </table>
         <Paginate v-if="page_count > 1" :page-count="page_count" :click-handler="onPageChange" />
-        <AddAttributeModal @attributesUpdated="handleAttributesUpdated" :event_id="event_id" />
+        <AddAttributeModal @attributes-updated="handleAttributesUpdated" :event_id="event_id" />
         <div class="mt-3">
             <button type="button" class="w-100 btn btn-outline-primary" data-bs-toggle="modal"
                 data-bs-target="#addAttributeModal">Add Attribute</button>

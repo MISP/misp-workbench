@@ -3,9 +3,17 @@ import { storeToRefs } from "pinia";
 import { useOrganisationsStore } from "@/stores";
 import { RouterLink } from "vue-router";
 import Spinner from "@/components/misc/Spinner.vue";
+import DeleteOrganisationModal from "@/components/organisations/DeleteOrganisationModal.vue";
+
 const organisationsStore = useOrganisationsStore();
-const { organisations, status} = storeToRefs(organisationsStore);
+const { organisations, status } = storeToRefs(organisationsStore);
+
 organisationsStore.getAll();
+
+function handleOrganisationsUpdated(event) {
+    organisationsStore.getAll();
+}
+
 </script>
 
 <template>
@@ -14,7 +22,7 @@ organisationsStore.getAll();
         Error loading organisations: {{ status.error }}
     </div>
     <div class="table-responsive-sm">
-        <table v-if="!status.loading" class="table table-striped">
+        <table class="table table-striped">
             <thead>
                 <tr>
                     <th scope="col">id</th>
@@ -38,11 +46,11 @@ organisationsStore.getAll();
                     <td class="d-none d-sm-table-cell">{{ organisation.type }}</td>
                     <td class="text-end">
                         <div class="flex-wrap" :class="{ 'btn-group-vertical': $isMobile, 'btn-group': !$isMobile }"
-                            aria-label="Event Actions">
-                            <RouterLink :to="`/organisations/delete/${organisation.id}`" tag="button"
-                                class="btn btn-danger disabled">
+                            aria-label="Organisation Actions">
+                            <button type="button" class="btn btn-danger" data-bs-toggle="modal"
+                                :data-bs-target="'#deleteOrganisationModal-' + organisation.id">
                                 <font-awesome-icon icon="fa-solid fa-trash" />
-                            </RouterLink>
+                            </button>
                             <RouterLink :to="`/organisations/update/${organisation.id}`" tag="button"
                                 class="btn btn-primary disabled">
                                 <font-awesome-icon icon="fa-solid fa-pen" />
@@ -52,6 +60,8 @@ organisationsStore.getAll();
                             </RouterLink>
                         </div>
                     </td>
+                    <DeleteOrganisationModal @organisations-updated="handleOrganisationsUpdated"
+                        :organisation_id="organisation.id" />
                 </tr>
             </tbody>
         </table>

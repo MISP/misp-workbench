@@ -1,36 +1,36 @@
 <script setup>
 
-import { useAttributesStore } from "@/stores";
+import { useOrganisationsStore } from "@/stores";
 import { storeToRefs } from 'pinia'
 import * as Yup from "yup";
 
-const attributesStore = useAttributesStore();
-const { status } = storeToRefs(attributesStore);
+const organisationsStore = useOrganisationsStore();
+const { status } = storeToRefs(organisationsStore);
 
-const props = defineProps(['attribute_id']);
-const emit = defineEmits(['attributes-updated']);
+const props = defineProps(['organisation_id']);
+const emit = defineEmits(['organisations-updated']);
 
 function onSubmit() {
-    return attributesStore
-        .delete(props.attribute_id)
+    return organisationsStore
+        .delete(props.organisation_id)
         .then((response) => {
-            emit('attributes-updated', { "action": "attribute_deleted", "data": { "attribute_id": props.attribute_id } });
+            emit('organisations-updated', { "action": "organisation_deleted", "data": { "organisation_id": props.organisation_id } });
         })
         .catch((error) => status.error = error);
 }
 </script>
 
 <template>
-    <div :id="'deleteAttributeModal-' + attribute_id" class="modal fade" tabindex="-1"
-        aria-labelledby="deleteAttributeModal" aria-hidden="true">
+    <div :id="'deleteOrganisationModal-' + organisation_id" class="modal fade" tabindex="-1"
+        aria-labelledby="deleteOrganisationModal" aria-hidden="true">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="deleteAttributeModal">Delete Attribute #{{ attribute_id }}</h5>
+                    <h5 class="modal-title" id="deleteOrganisationModal">Delete Organisation #{{ organisation_id }}</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Discard"></button>
                 </div>
                 <div class="modal-body">
-                    Are you sure you want to delete this attribute?
+                    Are you sure you want to delete this organisation?
                 </div>
                 <div v-if="status.error" class="w-100 alert alert-danger mt-3 mb-3">
                     {{ status.error }}
