@@ -1,8 +1,7 @@
 <script setup>
 import DeleteUserModal from "@/components/users/DeleteUserModal.vue";
-defineProps(['user']);
-
-function handleUsersUpdated(event) {
+const props = defineProps(['user_id', 'user']);
+function handleUserDeleted(event) {
     router.push(`/users`);
 }
 </script>
@@ -46,11 +45,11 @@ function handleUsersUpdated(event) {
                         </tr>
                         <tr>
                             <th>role</th>
-                            <td>{{ user.role.name }}</td>
+                            <td v-if="user.role">{{ user.role.name }}</td>
                         </tr>
                     </tbody>
                 </table>
-                <DeleteUserModal @users-updated="handleUsersUpdated" :user_id="user.id" />
+                <DeleteUserModal @user-deleted="handleUserDeleted" :user_id="user_id" />
             </div>
         </div>
     </div>

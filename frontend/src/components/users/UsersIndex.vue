@@ -8,7 +8,7 @@ const usersStore = useUsersStore();
 const { users, status } = storeToRefs(usersStore);
 usersStore.getAll();
 
-function handleUsersUpdated(event) {
+function handleUserDeleted(event) {
     usersStore.getAll();
 }
 </script>
@@ -50,7 +50,7 @@ function handleUsersUpdated(event) {
                             </RouterLink>
                         </div>
                     </td>
-                    <DeleteUserModal @users-updated="handleUsersUpdated" :user_id="user.id" />
+                    <DeleteUserModal @user-deleted="handleUserDeleted" :user_id="user.id" />
                 </tr>
             </tbody>
         </table>

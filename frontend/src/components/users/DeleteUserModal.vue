@@ -7,13 +7,13 @@ const usersStore = useUsersStore();
 const { status } = storeToRefs(usersStore);
 
 const props = defineProps(['user_id']);
-const emit = defineEmits(['users-updated']);
+const emit = defineEmits(['user-deleted']);
 
 function onSubmit() {
     return usersStore
         .delete(props.user_id)
         .then((response) => {
-            emit('users-updated', { "action": "user_deleted", "data": { "user_id": props.user_id } });
+            emit('user-deleted', { "user_id": props.user_id });
         })
         .catch((error) => status.error = error);
 }

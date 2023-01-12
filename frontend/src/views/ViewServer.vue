@@ -14,7 +14,7 @@ defineProps(['id']);
 
 <template>
     <Spinner v-if="status.loading" />
-    <ServerView v-if="!status.loading" :server="server" />
+    <ServerView v-show="!status.loading" :server="server" />
     <div v-if="status.error" class="text-danger">
         Error loading server: {{ status.error }}
     </div>

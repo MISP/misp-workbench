@@ -10,7 +10,7 @@ const { organisations, status } = storeToRefs(organisationsStore);
 
 organisationsStore.getAll();
 
-function handleOrganisationsUpdated(event) {
+function handleOrganisationDeleted(event) {
     organisationsStore.getAll();
 }
 
@@ -60,7 +60,7 @@ function handleOrganisationsUpdated(event) {
                             </RouterLink>
                         </div>
                     </td>
-                    <DeleteOrganisationModal @organisations-updated="handleOrganisationsUpdated"
+                    <DeleteOrganisationModal @organisation-deleted="handleOrganisationDeleted"
                         :organisation_id="organisation.id" />
                 </tr>
             </tbody>

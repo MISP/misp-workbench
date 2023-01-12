@@ -8,13 +8,13 @@ const attributesStore = useAttributesStore();
 const { status } = storeToRefs(attributesStore);
 
 const props = defineProps(['attribute_id']);
-const emit = defineEmits(['attributes-updated']);
+const emit = defineEmits(['attribute-deleted']);
 
 function onSubmit() {
     return attributesStore
         .delete(props.attribute_id)
         .then((response) => {
-            emit('attributes-updated', { "action": "attribute_deleted", "data": { "attribute_id": props.attribute_id } });
+            emit('attribute-deleted', { "attribute_id": props.attribute_id });
         })
         .catch((error) => status.error = error);
 }

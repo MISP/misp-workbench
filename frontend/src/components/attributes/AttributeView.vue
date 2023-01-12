@@ -4,8 +4,13 @@ import TagsIndex from "@/components/tags/TagsIndex.vue";
 import DistributionLevel from "@/components/enums/DistributionLevel.vue";
 import ThreatLevel from "@/components/enums/ThreatLevel.vue";
 import AnalysisLevel from "@/components/enums/AnalysisLevel.vue";
+import DeleteAttributeModal from "@/components/attributes/DeleteAttributeModal.vue";
 
 const props = defineProps(['attribute', 'status']);
+
+function handleAttributeDeleted(event) {
+    router.go(-1);
+}
 </script>
 
 <style>
@@ -28,14 +33,15 @@ div.row h3 {
         <div class="attribute-title card-header border-bottom">
             <div class="row">
                 <div class="col-10">
+                    <h3>Attribute #{{ attribute.id }}</h3>
                 </div>
                 <div class="col-2 text-end">
                     <div class="flex-wrap" :class="{ 'btn-group-vertical': $isMobile, 'btn-group': !$isMobile }"
                         aria-label="Attribute Actions">
-                        <RouterLink :to="`/attributes/delete/${attribute.id}`" tag="button"
-                            class="btn btn-danger disabled">
+                        <button type="button" class="btn btn-danger" data-bs-toggle="modal"
+                            :data-bs-target="'#deleteAttributeModal-' + attribute.id">
                             <font-awesome-icon icon="fa-solid fa-trash" />
-                        </RouterLink>
+                        </button>
                         <RouterLink :to="`/attributes/update/${attribute.id}`" tag="button" class="btn btn-primary">
                             <font-awesome-icon icon="fa-solid fa-pen" />
                         </RouterLink>
@@ -109,7 +115,7 @@ div.row h3 {
                         <div class="d-flex justify-content-between align-items-center">
                             <div>
                                 <p class="mb-0 text-muted">activity</p>
-                                <Sparkline v-bind:data="[2, 3, 5, 7, 18, 8, 6, 15, 23, 20, 21]" />
+                                <Sparkline :data="[2, 3, 5, 7, 18, 8, 6, 15, 23, 20, 21]" />
                             </div>
                         </div>
                     </div>
@@ -149,7 +155,7 @@ div.row h3 {
                     </div>
                 </div>
             </div>
-
         </div>
+        <DeleteAttributeModal @attribute-deleted="handleAttributeDeleted" :attribute_id="attribute.id" />
     </div>
 </template>

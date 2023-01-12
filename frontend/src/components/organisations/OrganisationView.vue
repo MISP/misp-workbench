@@ -4,7 +4,7 @@ import { router } from "@/router";
 
 defineProps(['organisation']);
 
-function handleOrganisationsUpdated(event) {
+function handleOrganisationDeleted(event) {
     router.push(`/organisations`);
 }
 </script>
@@ -91,7 +91,7 @@ function handleOrganisationsUpdated(event) {
                         </tr>
                     </tbody>
                 </table>
-                <DeleteOrganisationModal @organisations-updated="handleOrganisationsUpdated"
+                <DeleteOrganisationModal @organisation-deleted="handleOrganisationDeleted"
                     :organisation_id="organisation.id" />
             </div>
         </div>

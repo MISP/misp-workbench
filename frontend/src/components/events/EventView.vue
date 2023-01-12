@@ -1,4 +1,5 @@
 <script setup>
+import { toRef } from 'vue';
 import Sparkline from "@/components/charts/Sparkline.vue";
 import AttributesIndex from "@/components/attributes/AttributesIndex.vue";
 import ObjectsIndex from "@/components/objects/ObjectsIndex.vue";
@@ -6,8 +7,14 @@ import TagsIndex from "@/components/tags/TagsIndex.vue";
 import DistributionLevel from "@/components/enums/DistributionLevel.vue";
 import ThreatLevel from "@/components/enums/ThreatLevel.vue";
 import AnalysisLevel from "@/components/enums/AnalysisLevel.vue";
+import DeleteEventModal from "@/components/events/DeleteEventModal.vue";
+import { router } from "@/router";
 
-const props = defineProps(['event', 'status']);
+const props = defineProps(['event_id', 'event', 'status']);
+
+function handleEventDeleted(event) {
+    router.push(`/events`);
+}
 </script>
 
 <style>
@@ -35,9 +42,10 @@ div.row h3 {
                 <div class="col-2 text-end">
                     <div class="flex-wrap" :class="{ 'btn-group-vertical': $isMobile, 'btn-group': !$isMobile }"
                         aria-label="Event Actions">
-                        <RouterLink :to="`/events/delete/${event.id}`" tag="button" class="btn btn-danger disabled">
+                        <button type="button" class="btn btn-danger" data-bs-toggle="modal"
+                            :data-bs-target="'#deleteEventModal-' + event.id">
                             <font-awesome-icon icon="fa-solid fa-trash" />
-                        </RouterLink>
+                        </button>
                         <RouterLink :to="`/events/update/${event.id}`" tag="button" class="btn btn-primary">
                             <font-awesome-icon icon="fa-solid fa-pen" />
                         </RouterLink>
@@ -127,7 +135,7 @@ div.row h3 {
                             <div class="d-flex justify-content-between align-items-center">
                                 <div>
                                     <p class="mb-0 text-muted">activity</p>
-                                    <Sparkline v-bind:data="[2, 3, 5, 7, 18, 8, 6, 15, 23, 20, 21]" />
+                                    <Sparkline :data="[2, 3, 5, 7, 18, 8, 6, 15, 23, 20, 21]" />
                                 </div>
                             </div>
                         </div>
@@ -210,7 +218,7 @@ div.row h3 {
                         <font-awesome-icon icon="fa-solid fa-shapes" /> objects
                     </div>
                     <div class="card-body d-flex flex-column">
-                        <ObjectsIndex :event_id="event.id" :total_size="event.object_count" :page_size="10" />
+                        <ObjectsIndex :event_id="event_id" :total_size="event.object_count" :page_size="10" />
                         <div class="mt-3">
                             <button type="button" class="w-100 btn btn-outline-primary">Add Object</button>
                         </div>
@@ -225,7 +233,7 @@ div.row h3 {
                         <font-awesome-icon icon="fa-solid fa-cubes-stacked" /> attributes
                     </div>
                     <div class="card-body d-flex flex-column">
-                        <AttributesIndex :event_id="event.id" :page_size="10" />
+                        <AttributesIndex :event_id="event_id" :page_size="10" />
                     </div>
                 </div>
             </div>
@@ -235,5 +243,6 @@ div.row h3 {
             <p class="card-text"><small class="text-muted">last updated 3 mins ago by <a
                         href="/users/123">adulau</a></small></p>
         </div>
+        <DeleteEventModal @event-deleted="handleEventDeleted" :event_id="event.id" />
     </div>
 </template>

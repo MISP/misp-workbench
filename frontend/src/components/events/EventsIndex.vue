@@ -20,7 +20,7 @@ function onPageChange(page) {
 }
 onPageChange(1);
 
-function handleEventsUpdated(event) {
+function handleEventDeleted(event) {
     // TODO FIXME: resets the page to 1 and reloads the events, not the best way to do this, reload current page
     onPageChange(1);
 }
@@ -67,7 +67,7 @@ function handleEventsUpdated(event) {
                             </RouterLink>
                         </div>
                     </td>
-                    <DeleteEventModal @events-updated="handleEventsUpdated" :event_id="event.id" />
+                    <DeleteEventModal @event-deleted="handleEventDeleted" :event_id="event.id" />
                 </tr>
             </tbody>
         </table>

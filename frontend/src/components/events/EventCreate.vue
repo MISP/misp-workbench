@@ -22,6 +22,17 @@ function onSubmit(values, { setErrors }) {
         .catch((error) => setErrors({ apiError: error }));
 }
 
+function handleDistributionLevelUpdated(distributionLevelId) {
+    event.distribution = parseInt(distributionLevelId);
+}
+
+function handleThreatLevelUpdated(threatLevelId) {
+    event.threat_level = parseInt(threatLevelId);
+}
+
+function handleAnalysisLevelUpdated(analysisLevelId) {
+    event.analysis = parseInt(analysisLevelId);
+}
 </script>
 
 <template>
@@ -58,20 +69,21 @@ function onSubmit(values, { setErrors }) {
                 </div>
                 <div class="mb-3">
                     <label for="event.distribution" class="form-label">distribution</label>
-                    <DistributionLevelSelect name="event.distribution" v-model=event.distribution
+                    <DistributionLevelSelect name="event.distribution" :selected=event.distribution
+                        @distribution-level-updated="handleDistributionLevelUpdated"
                         :errors="errors['event.distribution']" />
                     <div class="invalid-feedback">{{ errors['event.distribution'] }}</div>
                 </div>
                 <div class="mb-3">
                     <label for="event.threat_level" class="form-label">threat level</label>
-                    <ThreatLevelSelect name="event.threat_level" v-model=event.threat_level
-                        :errors="errors['event.threat_level']" />
+                    <ThreatLevelSelect name="event.threat_level" :selected=event.threat_level
+                        @threat-level-updated="handleThreatLevelUpdated" :errors="errors['event.threat_level']" />
                     <div class="invalid-feedback">{{ errors['event.threat_level'] }}</div>
                 </div>
                 <div class="mb-3">
                     <label for="event.analysis" class="form-label">analysis</label>
-                    <AnalysisLevelSelect name="event.analysis" v-model=event.analysis
-                        :errors="errors['event.analysis']" />
+                    <AnalysisLevelSelect name="event.analysis" :selected=event.analysis
+                        @analysis-level-updated="handleAnalysisLevelUpdated" :errors="errors['event.analysis']" />
                     <div class="invalid-feedback">{{ errors['event.analysis'] }}</div>
                 </div>
                 <div class="mb-3">

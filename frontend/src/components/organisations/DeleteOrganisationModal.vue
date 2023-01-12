@@ -8,13 +8,13 @@ const organisationsStore = useOrganisationsStore();
 const { status } = storeToRefs(organisationsStore);
 
 const props = defineProps(['organisation_id']);
-const emit = defineEmits(['organisations-updated']);
+const emit = defineEmits(['organisation-deleted']);
 
 function onSubmit() {
     return organisationsStore
         .delete(props.organisation_id)
         .then((response) => {
-            emit('organisations-updated', { "action": "organisation_deleted", "data": { "organisation_id": props.organisation_id } });
+            emit('organisation-deleted', { "organisation_id": props.organisation_id });
         })
         .catch((error) => status.error = error);
 }

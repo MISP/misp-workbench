@@ -8,8 +8,10 @@ import { router } from "@/router";
 const route = useRoute()
 const eventsStore = useEventsStore();
 const { event, status } = storeToRefs(eventsStore);
+
 eventsStore.getById(route.params.id);
-defineProps(['id']);
+const props = defineProps(['id']);
+
 </script>
 
 <style>
@@ -28,7 +30,7 @@ defineProps(['id']);
 
 <template>
     <Spinner v-if="status.loading" />
-    <EventView v-if="!status.loading" :event="event" :status="status" />
+    <EventView v-show="!status.loading" :event_id="id" :event="event" :status="status" />
     <div v-if="status.error" class="text-danger">
         Error loading event: {{ status.error }}
     </div>

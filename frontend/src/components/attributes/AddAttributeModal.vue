@@ -12,8 +12,7 @@ const attributesStore = useAttributesStore();
 const { status } = storeToRefs(attributesStore);
 
 const props = defineProps(['event_id']);
-
-const emit = defineEmits(['attributes-updated']);
+const emit = defineEmits(['attribute-created']);
 
 const attribute = ref({
   distribution: DISTRIBUTION_LEVEL.INHERIT_EVENT,
@@ -32,7 +31,7 @@ function onSubmit(values, { setErrors }) {
   return attributesStore
     .create(attribute.value)
     .then((response) => {
-      emit('attributes-updated', { "action": "attribute_created", "data": response });
+      emit('attribute-created', { "attribute": response });
     })
     .catch((error) => setErrors({ apiError: error }));
 }
@@ -42,6 +41,10 @@ function onClose() {
     distribution: DISTRIBUTION_LEVEL.INHERIT_EVENT,
     event_id: props.event_id,
   };
+}
+
+function handleDistributionLevelUpdated(distributionLevelId) {
+  attribute.value.distribution = distributionLevelId;
 }
 </script>
 
@@ -81,7 +84,8 @@ function onClose() {
             <div class="row m-2">
               <div class="col col-6 text-start">
                 <label for="attribute.distribution" class="form-label">Distribution</label>
-                <DistributionLevelSelect name="attribute.distribution" v-model=attribute.distribution />
+                <DistributionLevelSelect name="attribute.distribution" :selected=attribute.distribution
+                  @distribution-level-updated="handleDistributionLevelUpdated" />
                 <div class="invalid-feedback">{{ errors['attribute.distribution'] }}</div>
               </div>
               <!-- TODO -->
@@ -153,10 +157,10 @@ function onClose() {
             <button type="button" data-bs-dismiss="modal" class="btn btn-secondary" @click="onClose()">Discard</button>
             <button type="submit" data-bs-dismiss="modal" class="btn btn-primary"
               :class="{ 'disabled': status.loading }">
-              <span v-if="status.loading">
+              <span v-show="status.loading">
                 <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
               </span>
-              <span v-if="!status.loading">Add</span>
+              <span v-show="!status.loading">Add</span>
             </button>
           </div>
         </div>

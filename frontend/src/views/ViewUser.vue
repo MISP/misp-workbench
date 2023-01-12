@@ -14,7 +14,7 @@ defineProps(['id']);
 
 <template>
     <Spinner v-if="status.loading" />
-    <UserView v-if="!status.loading" :user="user" />
+    <UserView v-show="!status.loading" :user_id="id" :user="user" />
     <div v-if="status.error" class="text-danger">
         Error loading user: {{ status.error }}
     </div>

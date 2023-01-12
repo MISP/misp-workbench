@@ -10,7 +10,6 @@ import AddAttributeModal from "@/components/attributes/AddAttributeModal.vue";
 import DeleteAttributeModal from "@/components/attributes/DeleteAttributeModal.vue";
 
 const props = defineProps(['event_id', 'page_size']);
-
 const attributesStore = useAttributesStore();
 const { page_count, attributes, status } = storeToRefs(attributesStore);
 
@@ -75,12 +74,12 @@ function handleAttributesUpdated(event) {
                             </RouterLink>
                         </div>
                     </td>
-                    <DeleteAttributeModal @attributes-updated="handleAttributesUpdated" :attribute_id="attribute.id" />
+                    <DeleteAttributeModal @attribute-deleted="handleAttributesUpdated" :attribute_id="attribute.id" />
                 </tr>
             </tbody>
         </table>
         <Paginate v-if="page_count > 1" :page-count="page_count" :click-handler="onPageChange" />
-        <AddAttributeModal @attributes-updated="handleAttributesUpdated" :event_id="event_id" />
+        <AddAttributeModal @attribute-created="handleAttributesUpdated" :event_id="event_id" />
         <div class="mt-3">
             <button type="button" class="w-100 btn btn-outline-primary" data-bs-toggle="modal"
                 data-bs-target="#addAttributeModal">Add Attribute</button>

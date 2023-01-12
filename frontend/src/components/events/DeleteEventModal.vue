@@ -8,13 +8,13 @@ const eventsStore = useEventsStore();
 const { status } = storeToRefs(eventsStore);
 
 const props = defineProps(['event_id']);
-const emit = defineEmits(['events-updated']);
+const emit = defineEmits(['event-deleted']);
 
 function onSubmit() {
     return eventsStore
         .delete(props.event_id)
         .then((response) => {
-            emit('events-updated', { "action": "event_deleted", "data": { "event_id": props.event_id } });
+            emit('event-deleted', { "event_id": props.event_id });
         })
         .catch((error) => status.error = error);
 }

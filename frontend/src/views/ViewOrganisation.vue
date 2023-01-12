@@ -14,7 +14,7 @@ defineProps(['id']);
 
 <template>
     <Spinner v-if="status.loading" />
-    <OrganisationView v-if="!status.loading" :organisation="organisation" />
+    <OrganisationView v-show="!status.loading" :organisation="organisation" />
     <div v-if="status.error" class="text-danger">
         Error loading organisation: {{ status.error }}
     </div>

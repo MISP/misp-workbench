@@ -19,6 +19,10 @@ function onSubmit(values, { setErrors }) {
         })
         .catch((error) => setErrors({ apiError: error }));
 }
+
+function handleRoleUpdated(roleId) {
+    user.role_id = roleId;
+}
 </script>
 
 <template>
@@ -27,6 +31,7 @@ function onSubmit(values, { setErrors }) {
             <div class="row">
                 <div class="col-10">
                     <h3>Create User</h3>
+                    {{ user.role_id }}
                 </div>
             </div>
         </div>
@@ -48,7 +53,8 @@ function onSubmit(values, { setErrors }) {
                 </div>
                 <div class="mb-3">
                     <label for="user.role_id">role</label>
-                    <RolesSelect name="user.role_id" v-model=user.role_id :errors="errors['user.role_id']" />
+                    <RolesSelect name="user.role_id" @role-updated="handleRoleUpdated"
+                        :errors="errors['user.role_id']" />
                     <div class=" invalid-feedback">{{ errors['user.role_id'] }}</div>
                 </div>
                 <div v-if="errors.apiError" class="w-100 alert alert-danger mt-3 mb-3">
