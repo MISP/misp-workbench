@@ -16,6 +16,7 @@ import {
   EditOrganisation,
   IndexServers,
   ViewServer,
+  AddServer,
   EditEvent,
   AddEvent,
   ViewAttribute
@@ -42,6 +43,7 @@ export const router = createRouter({
     { path: "/organisations/update/:id", component: EditOrganisation, props: true },
     { path: "/servers", component: IndexServers },
     { path: "/servers/:id", component: ViewServer, props: true },
+    { path: "/servers/add", component: AddServer },
   ],
 });
 
