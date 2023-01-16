@@ -61,8 +61,8 @@ function handleRoleUpdated(roleId) {
                         :errors="errors['user.role_id']" />
                     <div class=" invalid-feedback">{{ errors['user.role_id'] }}</div>
                 </div>
-                <div v-if="error" class="w-100 alert alert-danger mt-3 mb-3">
-                    {{ error }}
+                <div v-if="errors.apiError" class="w-100 alert alert-danger mt-3 mb-3">
+                    {{ errors.apiError }}
                 </div>
                 <button type="submit" class="btn btn-primary" :class="{ 'disabled': status.updating }">
                     <span v-if="status.updating">

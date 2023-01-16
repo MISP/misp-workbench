@@ -16,6 +16,7 @@ import {
   EditOrganisation,
   IndexServers,
   ViewServer,
+  EditServer,
   AddServer,
   EditEvent,
   AddEvent,
@@ -44,6 +45,7 @@ export const router = createRouter({
     { path: "/servers", component: IndexServers },
     { path: "/servers/:id", component: ViewServer, props: true },
     { path: "/servers/add", component: AddServer },
+    { path: "/servers/update/:id", component: EditServer, props: true },
   ],
 });
 

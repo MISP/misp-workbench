@@ -12,6 +12,7 @@ export { default as ViewUser } from "./ViewUser.vue";
 export { default as IndexServers } from "./IndexServers.vue";
 export { default as ViewServer } from "./ViewServer.vue";
 export { default as AddServer } from "./AddServer.vue";
+export { default as EditServer } from "./EditServer.vue";
 export { default as EditEvent } from "./EditEvent.vue";
 export { default as AddEvent } from "./AddEvent.vue";
 export { default as AddUser } from "./AddUser.vue";

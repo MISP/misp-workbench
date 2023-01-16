@@ -3,9 +3,16 @@ import { storeToRefs } from "pinia";
 import { RouterLink } from "vue-router";
 import Spinner from "@/components/misc/Spinner.vue";
 import { useServersStore } from "@/stores";
+import DeleteServerModal from "@/components/servers/DeleteServerModal.vue";
+
 const serversStore = useServersStore();
 const { servers, status } = storeToRefs(serversStore);
+
 serversStore.getAll();
+
+function handleServerDeleted(event) {
+    serversStore.getAll();
+}
 </script>
 
 <template>
@@ -14,7 +21,7 @@ serversStore.getAll();
         Error loading servers: {{ status.error }}
     </div>
     <div class="table-responsive-sm">
-        <table v-if="!status.loading" class="table table-striped">
+        <table v-show="!status.loading" class="table table-striped">
             <thead>
                 <tr>
                     <th scope="col">id</th>
@@ -35,12 +42,11 @@ serversStore.getAll();
                     <td class="text-end">
                         <div class="flex-wrap" :class="{ 'btn-group-vertical': $isMobile, 'btn-group': !$isMobile }"
                             aria-label="User Actions">
-                            <RouterLink :to="`/servers/delete/${server.id}`" tag="button"
-                                class="btn btn-danger disabled">
+                            <button type="button" class="btn btn-danger" data-bs-toggle="modal"
+                                :data-bs-target="'#deleteServerModal-' + server.id">
                                 <font-awesome-icon icon="fa-solid fa-trash" />
-                            </RouterLink>
-                            <RouterLink :to="`/servers/update/${server.id}`" tag="button"
-                                class="btn btn-primary disabled">
+                            </button>
+                            <RouterLink :to="`/servers/update/${server.id}`" tag="button" class="btn btn-primary">
                                 <font-awesome-icon icon="fa-solid fa-pen" />
                             </RouterLink>
                             <RouterLink :to="`/servers/${server.id}`" tag="button" class="btn btn-primary">
@@ -48,6 +54,7 @@ serversStore.getAll();
                             </RouterLink>
                         </div>
                     </td>
+                    <DeleteServerModal @server-deleted="handleServerDeleted" :server_id="server.id" />
                 </tr>
             </tbody>
         </table>

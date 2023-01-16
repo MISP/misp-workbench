@@ -1,5 +1,13 @@
 <script setup>
+import DeleteServerModal from "@/components/servers/DeleteServerModal.vue";
+
+import { router } from "@/router";
+
 defineProps(['server']);
+
+function handleServerDeleted(event) {
+    router.push(`/servers`);
+}
 </script>
 
 <template>
@@ -12,10 +20,11 @@ defineProps(['server']);
                 <div class="col-2 text-end">
                     <div class="flex-wrap" :class="{ 'btn-group-vertical': $isMobile, 'btn-group': !$isMobile }"
                         aria-label="Server Actions">
-                        <RouterLink :to="`/servers/delete/${server.id}`" tag="button" class="btn btn-danger disabled">
+                        <button type="button" class="btn btn-danger" data-bs-toggle="modal"
+                            :data-bs-target="'#deleteServerModal-' + server.id">
                             <font-awesome-icon icon="fa-solid fa-trash" />
-                        </RouterLink>
-                        <RouterLink :to="`/servers/update/${server.id}`" tag="button" class="btn btn-primary disabled">
+                        </button>
+                        <RouterLink :to="`/servers/update/${server.id}`" tag="button" class="btn btn-primary">
                             <font-awesome-icon icon="fa-solid fa-pen" />
                         </RouterLink>
                     </div>
@@ -120,6 +129,7 @@ defineProps(['server']);
                         </tr>
                     </tbody>
                 </table>
+                <DeleteServerModal @server-deleted="handleServerDeleted" :server_id="server.id" />
             </div>
         </div>
     </div>
