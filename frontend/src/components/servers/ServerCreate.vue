@@ -8,7 +8,20 @@ import { ServerSchema } from "@/schemas/server";
 const serversStore = useServersStore();
 const { status, error } = storeToRefs(serversStore);
 
-let server = {};
+let server = {
+    push: false,
+    pull: false,
+    push_galaxy_clusters: false,
+    pull_galaxy_clusters: false,
+    push_sightings: false,
+    publish_without_email: false,
+    unpublish_event: false,
+    self_signed: false,
+    internal: false,
+    skip_proxy: false,
+    caching_enabled: false,
+    priority: 0
+};
 
 function onSubmit(values, { setErrors }) {
     return serversStore
@@ -114,7 +127,7 @@ function onSubmit(values, { setErrors }) {
                     <div class=" invalid-feedback">{{ errors['server.pull_galaxy_clusters'] }}</div>
                 </div>
                 <div class="mb-3">
-                    <label for="server.remote_org_id">organisation</label>
+                    <label for="server.remote_org_id">remote organisation</label>
                     <Field class="form-control" id="server.remote_org_id" name="server.remote_org_id"
                         v-model="server.remote_org_id" :class="{ 'is-invalid': errors['server.remote_org_id'] }">
                     </Field>
@@ -187,11 +200,8 @@ function onSubmit(values, { setErrors }) {
                 </div>
                 <div class="mb-3">
                     <label for="server.priority">priority</label>
-                    <Field class="form-control" id="server.priority" name="server.priority" :value="server.priority"
-                        v-model="server.priority" :class="{ 'is-invalid': errors['server.priority'] }">
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" v-model="server.priority">
-                        </div>
+                    <Field class="form-control" id="server.priority" name="server.priority" v-model="server.priority"
+                        :class="{ 'is-invalid': errors['server.priority'] }">
                     </Field>
                     <div class=" invalid-feedback">{{ errors['server.priority'] }}</div>
                 </div>
