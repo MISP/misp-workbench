@@ -60,7 +60,7 @@ function handleRemoteOrgUpdated(orgId) {
                 </div>
                 <div class="mb-3">
                     <label for="server.authkey">authkey</label>
-                    <Field class="form-control" id="server.authkey" name="server.authkey" v-model="server.authkey"
+                    <Field class="form-control" id="server.authkey" type="password" name="server.authkey" v-model="server.authkey"
                         :class="{ 'is-invalid': errors['server.authkey'] }">
                     </Field>
                     <div class=" invalid-feedback">{{ errors['server.authkey'] }}</div>
