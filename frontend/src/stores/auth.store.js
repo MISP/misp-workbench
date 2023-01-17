@@ -29,15 +29,19 @@ export const useAuthStore = defineStore({
         JSON.stringify(this.decoded_access_token)
       );
 
-      router.go("/");
+      router.push("/");
     },
     isAuthenticated() {
+      console.log(!!this.access_token && !!this.decoded_access_token && this.decoded_access_token.exp > Date.now() / 1000);
+      console.log(!!this.access_token);
+      console.log(!!this.decoded_access_token);
+      console.log(this.decoded_access_token.exp > Date.now() / 1000);
       return !!this.access_token && !!this.decoded_access_token && this.decoded_access_token.exp > Date.now() / 1000;
     },
     logout() {
       localStorage.removeItem("access_token");
       this.$reset();
-      router.go("/login");
+      router.push("/login");
     },
   }
 });
