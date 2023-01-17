@@ -13,6 +13,25 @@ serversStore.getAll();
 function handleServerDeleted(event) {
     serversStore.getAll();
 }
+function testServerConnection(server) {
+    server.testingConnection = true;
+    serversStore
+        .testConnection(server.id)
+        .then((response) => {
+            if (response.status == "ok") {
+                server.connectionSucceeded = true;
+            } else {
+                server.connectionSucceeded = false;
+                server.connectionFailed = true;
+            }
+            server.testingConnection = false;
+        })
+        .catch((error) => {
+            server.connectionSucceeded = false;
+            setErrors({ apiError: error });
+        })
+        .finally(() => { server.testingConnection = false; });
+}
 </script>
 
 <template>
@@ -28,6 +47,7 @@ function handleServerDeleted(event) {
                     <th scope="col">name</th>
                     <th scope="col">url</th>
                     <th scope="col">org_id</th>
+                    <th scope="col">sync actions</th>
                     <th scope="col" class="text-end">actions</th>
                 </tr>
             </thead>
@@ -39,9 +59,40 @@ function handleServerDeleted(event) {
                     <td>{{ server.name }}</td>
                     <td>{{ server.url }}</td>
                     <td>{{ server.org_id }}</td>
+                    <td>
+                        <div class="flex-wrap" :class="{ 'btn-group-vertical': $isMobile, 'btn-group': !$isMobile }"
+                            aria-label="Sync Actions">
+                            <button
+                                v-if="!server.testingConnection && !server.connectionSucceeded && !server.connectionFailed"
+                                type="button" class="btn btn-light" @click="testServerConnection(server)"
+                                data-toggle="tooltip" data-placement="top" title="Check connection">
+                                <font-awesome-icon icon="fa-solid fa-check" />
+                            </button>
+                            <button v-if="server.testingConnection" type="button" class="btn btn-light">
+                                <font-awesome-icon icon="fa-solid fa-sync" spin />
+                            </button>
+                            <button
+                                v-if="!server.testingConnection && server.connectionFailed && !server.connectionSucceeded"
+                                type="button" class="btn btn-danger" @click="testServerConnection(server)"
+                                data-toggle="tooltip" data-placement="top" title="Connection failed">
+                                <font-awesome-icon icon="fa-solid fa-check" />
+                            </button>
+                            <button v-if="server.connectionSucceeded" type="button" class="btn btn-success"
+                                data-toggle="tooltip" data-placement="top" title="Connection succeed">
+                                <font-awesome-icon icon="fa-solid fa-check" />
+                            </button>
+                            <button type="button" class="btn btn-muted" data-toggle="tooltip" data-placement="top"
+                                title="Push">
+                                <font-awesome-icon icon="fa-solid fa-arrow-up" />
+                            </button>
+                            <button type="button" class="btn btn-primary" data-placement="top" title="Pull">
+                                <font-awesome-icon icon="fa-solid fa-arrow-down" />
+                            </button>
+                        </div>
+                    </td>
                     <td class="text-end">
                         <div class="flex-wrap" :class="{ 'btn-group-vertical': $isMobile, 'btn-group': !$isMobile }"
-                            aria-label="User Actions">
+                            aria-label="Server Actions">
                             <button type="button" class="btn btn-danger" data-bs-toggle="modal"
                                 :data-bs-target="'#deleteServerModal-' + server.id">
                                 <font-awesome-icon icon="fa-solid fa-trash" />

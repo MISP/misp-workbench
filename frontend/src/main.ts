@@ -9,8 +9,8 @@ import "bootstrap/dist/css/bootstrap.min.css";
 import "bootstrap/dist/js/bootstrap.js"
 import { library } from '@fortawesome/fontawesome-svg-core'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
-import { faPen, faEye, faTrash, faAngleUp, faAngleDoubleUp, faAngleDown, faAngleDoubleDown, faCopy, faBars, faEnvelopeOpenText, faBuilding, faUsers, faServer, faArrowRightFromBracket, faDownLong, faUpLong, faTags, faTag, faShapes, faCubesStacked } from '@fortawesome/free-solid-svg-icons'
-library.add(faPen, faEye, faTrash, faAngleUp, faAngleDoubleUp, faAngleDown, faAngleDoubleDown, faCopy, faBars, faEnvelopeOpenText, faBuilding, faUsers, faServer, faArrowRightFromBracket, faDownLong, faUpLong, faTags, faTag, faShapes, faCubesStacked);
+import { faPen, faEye, faTrash, faAngleUp, faAngleDoubleUp, faAngleDown, faAngleDoubleDown, faCopy, faBars, faEnvelopeOpenText, faBuilding, faUsers, faServer, faArrowRightFromBracket, faDownLong, faUpLong, faTags, faTag, faShapes, faCubesStacked, faArrowUp, faArrowDown, faCheck, faCheckDouble, faSync } from '@fortawesome/free-solid-svg-icons'
+library.add(faPen, faEye, faTrash, faAngleUp, faAngleDoubleUp, faAngleDown, faAngleDoubleDown, faCopy, faBars, faEnvelopeOpenText, faBuilding, faUsers, faServer, faArrowRightFromBracket, faDownLong, faUpLong, faTags, faTag, faShapes, faCubesStacked, faArrowUp, faArrowDown, faCheck, faCheckDouble, faSync);
 
 const app = createApp(App);
 app.component('font-awesome-icon', FontAwesomeIcon);

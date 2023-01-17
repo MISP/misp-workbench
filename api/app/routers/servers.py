@@ -96,3 +96,17 @@ def delete_server(
     ),
 ):
     return servers_repository.delete_server(db=db, server_id=server_id)
+
+
+@router.post(
+    "/servers/{server_id}/test-connection",
+    response_model=server_schemas.TestServerConnectionResponse,
+)
+def test_server(
+    server_id: int,
+    db: Session = Depends(get_db),
+    user: user_schemas.User = Security(
+        get_current_active_user, scopes=["servers:test"]
+    ),
+):
+    return servers_repository.test_server(db=db, server_id=server_id)

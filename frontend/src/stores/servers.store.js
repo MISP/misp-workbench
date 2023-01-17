@@ -9,6 +9,7 @@ export const useServersStore = defineStore({
     state: () => ({
         servers: {},
         server: {},
+        testConnection: {},
         status: {
             loading: false,
             updating: false,
@@ -54,6 +55,11 @@ export const useServersStore = defineStore({
                 .delete(`${baseUrl}/${id}`)
                 .catch((error) => (this.status = { error }))
                 .finally(() => (this.status = { loading: false }));
+        },
+        async testConnection(id) {
+            return await fetchWrapper
+                .post(`${baseUrl}/${id}/test-connection`)
+                .catch((error) => (this.status = { error }));
         }
     },
 });

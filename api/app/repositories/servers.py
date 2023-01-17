@@ -635,3 +635,27 @@ def delete_server(db: Session, server_id: int) -> None:
 
     db.delete(db_server)
     db.commit()
+
+
+def test_server(db: Session, server_id: int) -> None:
+    db_server = get_server_by_id(db, server_id=server_id)
+
+    if db_server is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Server not found"
+        )
+
+    # get remote instance version
+    try:
+        remote_misp = get_remote_misp_connection(db_server)
+
+        return server_schemas.TestServerConnectionResponse(
+            status="ok",
+            version=remote_misp.version.get("version"),
+        )
+
+    except Exception as e:
+        return server_schemas.TestServerConnectionResponse(
+            status="error",
+            error=str(e),
+        )

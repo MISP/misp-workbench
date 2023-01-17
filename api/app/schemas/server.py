@@ -66,3 +66,9 @@ class ServerUpdate(BaseModel):
     skip_proxy: Optional[bool]
     caching_enabled: Optional[bool]
     priority: Optional[int]
+
+
+class TestServerConnectionResponse(BaseModel):
+    status: str
+    version: Optional[str]
+    error: Optional[str]
