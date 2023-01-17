@@ -5,6 +5,7 @@ import { useUsersStore, useRolesStore } from "@/stores";
 import { router } from "@/router";
 import { UserSchema } from "@/schemas/user";
 import RolesSelect from "@/components/roles/RolesSelect.vue";
+import OrganisationsSelect from "@/components/organisations/OrganisationsSelect.vue";
 
 const usersStore = useUsersStore();
 const { status, error } = storeToRefs(usersStore);
@@ -22,6 +23,9 @@ function onSubmit(values, { setErrors }) {
 
 function handleRoleUpdated(roleId) {
     user.role_id = roleId;
+}
+function handleOrganisationUpdated(orgId) {
+    user.org_id = orgId;
 }
 </script>
 
@@ -46,9 +50,8 @@ function handleRoleUpdated(roleId) {
                 </div>
                 <div class="mb-3">
                     <label for="user.org_id">organisation</label>
-                    <Field class="form-control" id="user.org_id" name="user.org_id" v-model="user.org_id"
-                        :class="{ 'is-invalid': errors['user.org_id'] }">
-                    </Field>
+                    <OrganisationsSelect name="user.org_id" :selected=user.org_id
+                        @organisation-updated="handleOrganisationUpdated" :errors="errors['user.org_id']" />
                     <div class=" invalid-feedback">{{ errors['user.org_id'] }}</div>
                 </div>
                 <div class="mb-3">

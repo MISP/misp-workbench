@@ -45,6 +45,7 @@ class ServerUpdate(BaseModel):
     name: Optional[str]
     url: Optional[str]
     authkey: Optional[str]
+    org_id: Optional[int]
     push: Optional[bool]
     pull: Optional[bool]
     push_sightings: Optional[bool]

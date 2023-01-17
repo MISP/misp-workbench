@@ -4,6 +4,7 @@ import { storeToRefs } from 'pinia'
 import { useServersStore } from "@/stores";
 import { router } from "@/router";
 import { ServerSchema } from "@/schemas/server";
+import OrganisationsSelect from "@/components/organisations/OrganisationsSelect.vue";
 
 const serversStore = useServersStore();
 const { status, error } = storeToRefs(serversStore);
@@ -30,6 +31,13 @@ function onSubmit(values, { setErrors }) {
             router.push(`/servers/${response.id}`);
         })
         .catch((error) => setErrors({ apiError: error }));
+}
+
+function handleOrganisationUpdated(orgId) {
+    server.org_id = orgId;
+}
+function handleRemoteOrgUpdated(orgId) {
+    server.remote_org_id = orgId;
 }
 </script>
 
@@ -68,9 +76,8 @@ function onSubmit(values, { setErrors }) {
                 </div>
                 <div class="mb-3">
                     <label for="server.org_id">organisation</label>
-                    <Field class="form-control" id="server.org_id" name="server.org_id" v-model="server.org_id"
-                        :class="{ 'is-invalid': errors['server.org_id'] }">
-                    </Field>
+                    <OrganisationsSelect name="server.org_id" :selected=server.org_id
+                        @organisation-updated="handleOrganisationUpdated" :errors="errors['server.org_id']" />
                     <div class=" invalid-feedback">{{ errors['server.org_id'] }}</div>
                 </div>
                 <div class="mb-3">
@@ -128,9 +135,8 @@ function onSubmit(values, { setErrors }) {
                 </div>
                 <div class="mb-3">
                     <label for="server.remote_org_id">remote organisation</label>
-                    <Field class="form-control" id="server.remote_org_id" name="server.remote_org_id"
-                        v-model="server.remote_org_id" :class="{ 'is-invalid': errors['server.remote_org_id'] }">
-                    </Field>
+                    <OrganisationsSelect name="server.remote_org_id" :selected=server.remote_org_id
+                        @organisation-updated="handleRemoteOrgUpdated" :errors="errors['server.remote_org_id']" />
                     <div class=" invalid-feedback">{{ errors['server.remote_org_id'] }}</div>
                 </div>
                 <div class="mb-3">

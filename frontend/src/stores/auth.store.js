@@ -29,7 +29,7 @@ export const useAuthStore = defineStore({
         JSON.stringify(this.decoded_access_token)
       );
 
-      router.push("/");
+      router.go("/");
     },
     isAuthenticated() {
       return !!this.access_token && !!this.decoded_access_token && this.decoded_access_token.exp > Date.now() / 1000;
@@ -37,7 +37,7 @@ export const useAuthStore = defineStore({
     logout() {
       localStorage.removeItem("access_token");
       this.$reset();
-      router.push("/login");
+      router.go("/login");
     },
   }
 });

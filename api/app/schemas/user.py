@@ -24,4 +24,5 @@ class UserCreate(UserBase):
 
 class UserUpdate(BaseModel):
     email: Optional[str]
+    org_id: Optional[int]
     role_id: Optional[int]
