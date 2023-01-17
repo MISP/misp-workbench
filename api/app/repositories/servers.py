@@ -654,8 +654,8 @@ def test_server(db: Session, server_id: int) -> None:
             version=remote_misp.version.get("version"),
         )
 
-    except Exception as e:
+    except Exception as ex:
         return server_schemas.TestServerConnectionResponse(
             status="error",
-            error=str(e),
+            error=ex.detail,
         )

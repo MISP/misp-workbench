@@ -23,6 +23,7 @@ function testServerConnection(server) {
             } else {
                 server.connectionSucceeded = false;
                 server.connectionFailed = true;
+                server.connectionError = response.error;
             }
             server.testingConnection = false;
         })
@@ -74,7 +75,8 @@ function testServerConnection(server) {
                             <button
                                 v-if="!server.testingConnection && server.connectionFailed && !server.connectionSucceeded"
                                 type="button" class="btn btn-danger" @click="testServerConnection(server)"
-                                data-toggle="tooltip" data-placement="top" title="Connection failed">
+                                data-toggle="tooltip" data-placement="top"
+                                :title="'Connection failed: ' + server.connectionError">
                                 <font-awesome-icon icon="fa-solid fa-check" />
                             </button>
                             <button v-if="server.connectionSucceeded" type="button" class="btn btn-success"
