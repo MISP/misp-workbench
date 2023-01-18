@@ -51,7 +51,8 @@ def pull_server(
         get_current_active_user, scopes=["servers:pull"]
     ),
 ):
-    task = tasks.server_pull_by_id.delay(server_id, user.id)
+    # TODO: handle other techniques
+    task = tasks.server_pull_by_id.delay(server_id, user.id, "full")
 
     return task_schemas.Task(
         task_id=task.id,
@@ -109,4 +110,4 @@ def test_server(
         get_current_active_user, scopes=["servers:test"]
     ),
 ):
-    return servers_repository.test_server(db=db, server_id=server_id)
+    return servers_repository.test_server_connection(db=db, server_id=server_id)

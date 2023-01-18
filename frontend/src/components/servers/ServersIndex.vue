@@ -13,6 +13,7 @@ serversStore.getAll();
 function handleServerDeleted(event) {
     serversStore.getAll();
 }
+
 function testServerConnection(server) {
     server.testingConnection = true;
     serversStore
@@ -33,6 +34,10 @@ function testServerConnection(server) {
         })
         .finally(() => { server.testingConnection = false; });
 }
+
+function pullServer(server) {
+    serversStore.pull(server.id);
+}
 </script>
 
 <template>
@@ -46,8 +51,8 @@ function testServerConnection(server) {
                 <tr>
                     <th scope="col">id</th>
                     <th scope="col">name</th>
-                    <th scope="col">url</th>
-                    <th scope="col">org_id</th>
+                    <th scope="col" v-if="!$isMobile">url</th>
+                    <th scope="col" v-if="!$isMobile">org_id</th>
                     <th scope="col">sync actions</th>
                     <th scope="col" class="text-end">actions</th>
                 </tr>
@@ -58,11 +63,10 @@ function testServerConnection(server) {
                         <RouterLink :to="`/servers/${server.id}`">{{ server.id }}</RouterLink>
                     </td>
                     <td>{{ server.name }}</td>
-                    <td>{{ server.url }}</td>
-                    <td>{{ server.org_id }}</td>
+                    <td v-if="!$isMobile">{{ server.url }}</td>
+                    <td v-if="!$isMobile">{{ server.org_id }}</td>
                     <td>
-                        <div class="flex-wrap" :class="{ 'btn-group-vertical': $isMobile, 'btn-group': !$isMobile }"
-                            aria-label="Sync Actions">
+                        <div class="flex-wrap btn-group" aria-label="Sync Actions">
                             <button
                                 v-if="!server.testingConnection && !server.connectionSucceeded && !server.connectionFailed"
                                 type="button" class="btn btn-light" @click="testServerConnection(server)"
@@ -87,7 +91,8 @@ function testServerConnection(server) {
                                 title="Push">
                                 <font-awesome-icon icon="fa-solid fa-arrow-up" />
                             </button>
-                            <button type="button" class="btn btn-primary" data-placement="top" title="Pull">
+                            <button type="button" class="btn btn-primary" data-placement="top" title="Pull"
+                                @click="pullServer(server)">
                                 <font-awesome-icon icon="fa-solid fa-arrow-down" />
                             </button>
                         </div>

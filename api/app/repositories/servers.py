@@ -637,7 +637,7 @@ def delete_server(db: Session, server_id: int) -> None:
     db.commit()
 
 
-def test_server(db: Session, server_id: int) -> None:
+def test_server_connection(db: Session, server_id: int) -> None:
     db_server = get_server_by_id(db, server_id=server_id)
 
     if db_server is None:

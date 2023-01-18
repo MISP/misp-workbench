@@ -60,6 +60,11 @@ export const useServersStore = defineStore({
             return await fetchWrapper
                 .post(`${baseUrl}/${id}/test-connection`)
                 .catch((error) => (this.status = { error }));
+        },
+        async pull(id) {
+            return await fetchWrapper
+                .post(`${baseUrl}/${id}/pull`)
+                .catch((error) => (this.status = { error }));
         }
     },
 });
