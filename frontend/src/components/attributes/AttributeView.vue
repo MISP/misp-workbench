@@ -66,6 +66,22 @@ div.row h3 {
                                         </td>
                                     </tr>
                                     <tr>
+                                        <th>category</th>
+                                        <td>{{ attribute.category }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>type</th>
+                                        <td>{{ attribute.type }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>value</th>
+                                        <td>{{ attribute.value }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>comment</th>
+                                        <td>{{ attribute.comment }}</td>
+                                    </tr>
+                                    <tr>
                                         <th>timestamp</th>
                                         <td>{{ attribute.timestamp }}</td>
                                     </tr>
@@ -85,16 +101,21 @@ div.row h3 {
                                         </td>
                                     </tr>
                                     <tr>
-                                        <th>category</th>
-                                        <td>{{ attribute.category }}</td>
+                                        <th>to IDS</th>
+                                        <td>
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox"
+                                                    :checked="attribute.to_ids" disabled />
+                                            </div>
+                                        </td>
                                     </tr>
                                     <tr>
-                                        <th>type</th>
-                                        <td>{{ attribute.type }}</td>
+                                        <th>first seen</th>
+                                        <td>{{ attribute.first_seen }}</td>
                                     </tr>
                                     <tr>
-                                        <th>value</th>
-                                        <td>{{ attribute.value }}</td>
+                                        <th>last seen</th>
+                                        <td>{{ attribute.last_seen }}</td>
                                     </tr>
                                 </tbody>
                             </table>
