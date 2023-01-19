@@ -32,10 +32,6 @@ function handleAttributeTypeUpdated(type) {
 function handleDistributionLevelUpdated(distributionLevelId) {
     attribute.value.distribution = parseInt(distributionLevelId);
 }
-
-function handleAnalysisLevelUpdated(analysisLevelId) {
-    attribute.vallue.analysis = parseInt(analysisLevelId);
-}
 </script>
 
 <template>
