@@ -1,9 +1,17 @@
 <script setup>
+import { ref } from 'vue';
 import DistributionLevel from "@/components/enums/DistributionLevel.vue";
 import TagsIndex from "@/components/tags/TagsIndex.vue";
 import { RouterLink } from "vue-router";
+import DeleteAttributeModal from "@/components/attributes/DeleteAttributeModal.vue";
 
-defineProps(['attributes']);
+
+const props = defineProps(['object_id', 'attributes']);
+const attributes = ref(props.attributes);
+
+function handleAttributesUpdated(attribute) {
+    attributes.value = attributes.value.filter(a => a.id !== attribute.attribute_id);
+}
 </script>
 
 <template>
@@ -20,7 +28,7 @@ defineProps(['attributes']);
             </tr>
         </thead>
         <tbody>
-            <tr :key="attribute.id" v-for="attribute in attributes">
+            <tr :key="attribute.id" v-for="attribute in attributes.filter(attr => !attr.deleted)">
                 <td>{{ attribute.value }}</td>
                 <td class="d-none d-sm-table-cell">
                     <TagsIndex :tags="attribute.tags" />
@@ -33,12 +41,11 @@ defineProps(['attributes']);
                 </td>
                 <td class="text-end">
                     <div class="flex-wrap btn-group-vertical" aria-label="Attribute Actions">
-                        <RouterLink :to="`/attributes/delete/${attribute.id}`" tag="button"
-                            class="btn btn-danger disabled">
+                        <button type="button" class="btn btn-danger" data-bs-toggle="modal"
+                            :data-bs-target="'#deleteAttributeModal-' + attribute.id">
                             <font-awesome-icon icon="fa-solid fa-trash" />
-                        </RouterLink>
-                        <RouterLink :to="`/attributes/update/${attribute.id}`" tag="button"
-                            class="btn btn-primary">
+                        </button>
+                        <RouterLink :to="`/attributes/update/${attribute.id}`" tag="button" class="btn btn-primary">
                             <font-awesome-icon icon="fa-solid fa-pen" />
                         </RouterLink>
                         <RouterLink :to="`/attributes/${attribute.id}`" tag="button" class="btn btn-primary">
@@ -46,6 +53,7 @@ defineProps(['attributes']);
                         </RouterLink>
                     </div>
                 </td>
+                <DeleteAttributeModal @attribute-deleted="handleAttributesUpdated" :attribute_id="attribute.id" />
             </tr>
         </tbody>
     </table>
