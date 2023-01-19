@@ -66,7 +66,7 @@ function handleAttributesUpdated(event) {
                                 <font-awesome-icon icon="fa-solid fa-trash" />
                             </button>
                             <RouterLink :to="`/attributes/update/${attribute.id}`" tag="button"
-                                class="btn btn-primary disabled">
+                                class="btn btn-primary">
                                 <font-awesome-icon icon="fa-solid fa-pen" />
                             </RouterLink>
                             <RouterLink :to="`/attributes/${attribute.id}`" tag="button" class="btn btn-primary">

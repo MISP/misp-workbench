@@ -18,10 +18,10 @@ export const useAttributesStore = defineStore({
         async get(params = { skip: 0, limit: 10, event_id: null, deleted: false }) {
             this.status = { loading: true };
             fetchWrapper
-            .get(baseUrl + "/?" + new URLSearchParams(params).toString())
-            .then((response) => (this.attributes = response, this.page_count = Math.ceil(response.total / params.size)))
-            .catch((error) => (this.status = { error }))
-            .finally(() => (this.status = { loading: false }));
+                .get(baseUrl + "/?" + new URLSearchParams(params).toString())
+                .then((response) => (this.attributes = response, this.page_count = Math.ceil(response.total / params.size)))
+                .catch((error) => (this.status = { error }))
+                .finally(() => (this.status = { loading: false }));
         },
         async getById(id) {
             this.status = { loading: true };
@@ -38,6 +38,14 @@ export const useAttributesStore = defineStore({
                 .then((attribute) => (this.attribute = attribute))
                 .catch((error) => (this.status = { error }))
                 .finally(() => (this.status = { loading: false }));
+        },
+        async update(attribute) {
+            this.status = { updating: true };
+            fetchWrapper
+                .patch(`${baseUrl}/${attribute.id}`, attribute)
+                .then((response) => (this.attribute = response))
+                .catch((error) => (this.error = error))
+                .finally(() => (this.status = { updating: false }));
         },
         async delete(id) {
             this.status = { loading: true };

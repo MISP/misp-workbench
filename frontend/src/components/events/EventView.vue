@@ -114,11 +114,11 @@ div.row h3 {
                                         <td>{{ event.attribute_count }} ({{ event.object_count }} objects)</td>
                                     </tr>
                                     <tr>
-                                        <th>correlation</th>
+                                        <th>disable correlation</th>
                                         <td>
                                             <div class="form-check form-switch">
                                                 <input class="form-check-input" type="checkbox"
-                                                    :checked="!event.disable_correlation" disabled />
+                                                    :checked="event.disable_correlation" disabled />
                                             </div>
                                         </td>
                                     </tr>

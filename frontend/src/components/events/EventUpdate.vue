@@ -98,6 +98,17 @@ function handleAnalysisLevelUpdated(analysisLevelId) {
                     </Field>
                     <div class=" invalid-feedback">{{ errors['event.extends_uuid'] }}</div>
                 </div>
+                <div class="mb-3">
+                    <label for="event.disable_correlation">disable correlation</label>
+                    <Field class="form-control" id="event.disable_correlation" name="event.disable_correlation"
+                        :value="event.push" v-model="event.disable_correlation"
+                        :class="{ 'is-invalid': errors['event.disable_correlation'] }">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" v-model="event.disable_correlation">
+                        </div>
+                    </Field>
+                    <div class=" invalid-feedback">{{ errors['attribute.disable_correlation'] }}</div>
+                </div>
                 <div v-if="errors.apiError" class="w-100 alert alert-danger mt-3 mb-3">
                     {{ errors.apiError }}
                 </div>

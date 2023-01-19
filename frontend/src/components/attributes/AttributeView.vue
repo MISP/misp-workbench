@@ -3,7 +3,6 @@ import Sparkline from "@/components/charts/Sparkline.vue";
 import TagsIndex from "@/components/tags/TagsIndex.vue";
 import DistributionLevel from "@/components/enums/DistributionLevel.vue";
 import ThreatLevel from "@/components/enums/ThreatLevel.vue";
-import AnalysisLevel from "@/components/enums/AnalysisLevel.vue";
 import DeleteAttributeModal from "@/components/attributes/DeleteAttributeModal.vue";
 
 const props = defineProps(['attribute', 'status']);
@@ -71,23 +70,17 @@ div.row h3 {
                                         <td>{{ attribute.timestamp }}</td>
                                     </tr>
                                     <tr>
-                                        <th>analysis</th>
-                                        <td>
-                                            <AnalysisLevel :analysis_level_id=attribute.analysis />
-                                        </td>
-                                    </tr>
-                                    <tr>
                                         <th>distribution</th>
                                         <td>
                                             <DistributionLevel :distribution_level_id=attribute.distribution />
                                         </td>
                                     </tr>
                                     <tr>
-                                        <th>correlation</th>
+                                        <th>disable correlation</th>
                                         <td>
                                             <div class="form-check form-switch">
                                                 <input class="form-check-input" type="checkbox"
-                                                    :checked="!attribute.disable_correlation" disabled />
+                                                    :checked="attribute.disable_correlation" disabled />
                                             </div>
                                         </td>
                                     </tr>
