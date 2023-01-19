@@ -3,8 +3,12 @@
 import { ref } from 'vue';
 import { useAttributesStore } from "@/stores";
 import { storeToRefs } from 'pinia'
+import { AttributeSchema } from "@/schemas/attribute";
+import { DISTRIBUTION_LEVEL } from "@/helpers/constants";
 import DistributionLevelSelect from "@/components/enums/DistributionLevelSelect.vue";
-import { ATTRIBUTE_CATEGORIES, DISTRIBUTION_LEVEL } from "@/helpers/constants";
+import AnalysisLevelSelect from "@/components/enums/AnalysisLevelSelect.vue";
+import AttributeCategorySelect from "@/components/enums/AttributeCategorySelect.vue";
+import AttributeTypeSelect from "@/components/enums/AttributeTypeSelect.vue";
 import { Form, Field } from "vee-validate";
 import * as Yup from "yup";
 
@@ -17,14 +21,9 @@ const emit = defineEmits(['attribute-created']);
 const attribute = ref({
   distribution: DISTRIBUTION_LEVEL.INHERIT_EVENT,
   event_id: props.event_id,
-});
-
-const schema = Yup.object().shape({
-  attribute: Yup.object().shape({
-    category: Yup.string().required("Category is required"),
-    type: Yup.string().required("Type is required"),
-    value: Yup.string().required("Value is required"),
-  }),
+  category: "Network activity",
+  type: "ip-src",
+  disable_correlation: false
 });
 
 function onSubmit(values, { setErrors }) {
@@ -32,6 +31,7 @@ function onSubmit(values, { setErrors }) {
     .create(attribute.value)
     .then((response) => {
       emit('attribute-created', { "attribute": response });
+      document.getElementById('closeModalButton').click();
     })
     .catch((error) => setErrors({ apiError: error }));
 }
@@ -40,18 +40,29 @@ function onClose() {
   attribute.value = {
     distribution: DISTRIBUTION_LEVEL.INHERIT_EVENT,
     event_id: props.event_id,
+    category: "Network activity",
+    type: "ip-src",
+    disable_correlation: false
   };
 }
 
+function handleAttributeCategoryUpdated(category) {
+  attribute.value.category = category;
+}
+
+function handleAttributeTypeUpdated(type) {
+  attribute.value.type = type;
+}
+
 function handleDistributionLevelUpdated(distributionLevelId) {
-  attribute.value.distribution = distributionLevelId;
+  attribute.value.distribution = parseInt(distributionLevelId);
 }
 </script>
 
 <template>
   <div id="addAttributeModal" class="modal fade" tabindex="-1" aria-labelledby="addAttributeModalLabel"
     aria-hidden="true">
-    <Form @submit="onSubmit" :validation-schema="schema" v-slot="{ errors, isSubmitting }">
+    <Form @submit="onSubmit" :validation-schema="AttributeSchema" v-slot="{ errors, isSubmitting }">
       <div class="modal-dialog modal-lg">
         <div class="modal-content">
           <div class="modal-header">
@@ -61,31 +72,24 @@ function handleDistributionLevelUpdated(distributionLevelId) {
           <div class="modal-body">
             <div class="row m-2">
               <div class="col text-start">
-                <label for="attribute.category" class="form-label">Category</label>
-                <Field id="attribute.category" name="attribute.category" v-model="attribute.category" as="select"
-                  class="form-control" :class="{ 'is-invalid': errors['attribute.category'] }">
-                  <option selected disabled value="">Choose...</option>
-                  <option v-for="(category, id) in ATTRIBUTE_CATEGORIES" :value="id">{{ id }}</option>
-                </Field>
+                <label for="attribute.category" class="form-label">category</label>
+                <AttributeCategorySelect name="attribute.category" :selected=attribute.category
+                  @attribute-category-updated="handleAttributeCategoryUpdated" :errors="errors['attribute.category']" />
                 <div class="invalid-feedback">{{ errors['attribute.category'] }}</div>
               </div>
               <div class="col text-start">
-                <label for="attribute.type" class="form-label">Type</label>
-                <Field id="attribute.type" name="attribute.type" v-model="attribute.type" as="select"
-                  class="form-control" :class="{ 'is-invalid': errors['attribute.type'] }">
-                  <option selected disabled value="">Choose...</option>
-                  <option v-if="attribute.category"
-                    v-for="attributeType in ATTRIBUTE_CATEGORIES[attribute.category].types" :value="attributeType">
-                    {{ attributeType }}</option>
-                </Field>
+                <label for="attribute.type" class="form-label">type</label>
+                <AttributeTypeSelect name="attribute.type" :category="attribute.category" :selected=attribute.type
+                  @attribute-type-updated="handleAttributeTypeUpdated" :errors="errors['attribute.type']" />
                 <div class="invalid-feedback">{{ errors['attribute.type'] }}</div>
               </div>
             </div>
             <div class="row m-2">
               <div class="col col-6 text-start">
-                <label for="attribute.distribution" class="form-label">Distribution</label>
+                <label for="attribute.distribution" class="form-label">distribution</label>
                 <DistributionLevelSelect name="attribute.distribution" :selected=attribute.distribution
-                  @distribution-level-updated="handleDistributionLevelUpdated" />
+                  @distribution-level-updated="handleDistributionLevelUpdated"
+                  :errors="errors['attribute.distribution']" />
                 <div class="invalid-feedback">{{ errors['attribute.distribution'] }}</div>
               </div>
               <!-- TODO -->
@@ -97,7 +101,7 @@ function handleDistributionLevelUpdated(distributionLevelId) {
             </div>
             <div class="row m-2">
               <div class="col text-start">
-                <label for="attribute.value">Value</label>
+                <label for="attribute.value">value</label>
                 <Field class="form-control" id="attribute.value" name="attribute.value" as="textarea"
                   v-model="attribute.value" style="height: 100px" :class="{ 'is-invalid': errors['attribute.value'] }">
                 </Field>
@@ -107,46 +111,68 @@ function handleDistributionLevelUpdated(distributionLevelId) {
             </div>
             <div class="row m-2">
               <div class="col text-start">
-                <label for="attributeComment">Comment</label>
-                <input class="form-control" id="attributeComment" name="attributeComment" v-model="attribute.comment">
-              </div>
-            </div>
-            <div class="row m-2">
-              <div class="col text-start">
-                <div class="form-check form-switch">
-                  <input class="form-check-input" type="checkbox" value="" id="attributeIDS" name="attributeIDS">
-                  <label class="form-check-label" for="attributeIDS">For Intrusion Detection System</label>
+                <label for="attribute.comment">comment</label>
+                <Field class="form-control" id="attribute.comment" name="attribute.comment" as="textarea"
+                  v-model="attribute.comment" style="height: 100px"
+                  :class="{ 'is-invalid': errors['attribute.comment'] }">
+                </Field>
+                <div class=" invalid-feedback">{{ errors['attribute.comment'] }}
                 </div>
               </div>
             </div>
             <div class="row m-2">
               <div class="col text-start">
                 <div class="form-check">
-                  <input class="form-check-input" type="checkbox" value="" id="attributeBatchImport"
-                    name="attributeBatchImport">
-                  <label class="form-check-label" for="attributeBatchImport">Batch Import</label>
+                  <Field class="form-control" id="attribute.to_ids" name="attribute.to_ids" :value="attribute.push"
+                    v-model="attribute.to_ids" :class="{ 'is-invalid': errors['attribute.to_ids'] }">
+                    <input class="form-check-input" type="checkbox" v-model="attribute.to_ids">
+                  </Field>
+                  <label for="attribute.to_ids">for intrusion detection system (IDS)</label>
                 </div>
               </div>
             </div>
             <div class="row m-2">
               <div class="col text-start">
                 <div class="form-check">
-                  <input class="form-check-input" type="checkbox" value="" id="attributeDisableCorrelation"
-                    name="attributeDisableCorrelation" v-model="attribute.disable_correlation">
-                  <label class="form-check-label" for="attributeDisableCorrelation">Disable Correlation</label>
+                  <Field class="form-control" id="attribute.batch_import" name="attribute.batch_import"
+                    :value="attribute.push" v-model="attribute.batch_import"
+                    :class="{ 'is-invalid': errors['attribute.batch_import'] }">
+                    <input class="form-check-input" type="checkbox" v-model="attribute.batch_import">
+                  </Field>
+                  <label for="attribute.batch_import">batch import</label>
+                </div>
+              </div>
+            </div>
+            <div class="row m-2">
+              <div class="col text-start">
+                <div class="form-check">
+                  <Field class="form-control" id="attribute.disable_correlation" name="attribute.disable_correlation"
+                    :value="attribute.push" v-model="attribute.disable_correlation"
+                    :class="{ 'is-invalid': errors['attribute.disable_correlation'] }">
+                    <input class="form-check-input" type="checkbox" v-model="attribute.disable_correlation">
+                  </Field>
+                  <label for="attribute.disable_correlation">disable correlation</label>
                 </div>
               </div>
             </div>
             <div class="row m-2">
               <div class="col col-6 text-start">
-                <label for="attributeFirstSeen">First seen</label>
-                <input class="form-control" id="attributeFirstSeen" name="attributeFirstSeen"
-                  v-model="attribute.first_seen" placeholder="DD/MM/YYYY HH:MM:SS.ssssss+TT:TT">
+                <label for="attribute.value">first seen</label>
+                <Field class="form-control" id="attribute.first_seen" name="attribute.first_seen"
+                  placeholder="DD/MM/YYYY HH:MM:SS.ssssss+TT:TT" v-model="attribute.first_seen"
+                  :class="{ 'is-invalid': errors['attribute.first_seen'] }">
+                </Field>
+                <div class=" invalid-feedback">{{ errors['attribute.first_seen'] }}
+                </div>
               </div>
               <div class="col col-6 text-start">
-                <label for="attributeLastSeen">Last seen</label>
-                <input class="form-control" id="attributeLastSeen" name="attributeLastSeen"
-                  v-model="attribute.last_seen" placeholder="DD/MM/YYYY HH:MM:SS.ssssss+TT:TT">
+                <label for="attribute.value">first seen</label>
+                <Field class="form-control" id="attribute.last_seen" name="attribute.last_seen"
+                  placeholder="DD/MM/YYYY HH:MM:SS.ssssss+TT:TT" v-model="attribute.last_seen"
+                  :class="{ 'is-invalid': errors['attribute.last_seen'] }">
+                </Field>
+                <div class=" invalid-feedback">{{ errors['attribute.last_seen'] }}
+                </div>
               </div>
             </div>
           </div>
@@ -154,9 +180,9 @@ function handleDistributionLevelUpdated(distributionLevelId) {
             {{ errors.apiError }}
           </div>
           <div class="modal-footer">
-            <button type="button" data-bs-dismiss="modal" class="btn btn-secondary" @click="onClose()">Discard</button>
-            <button type="submit" data-bs-dismiss="modal" class="btn btn-primary"
-              :class="{ 'disabled': status.loading }">
+            <button id="closeModalButton" type="button" data-bs-dismiss="modal" class="btn btn-secondary"
+              @click="onClose()">Discard</button>
+            <button type="submit" class="btn btn-primary" :disabled="status.loading">
               <span v-show="status.loading">
                 <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
               </span>

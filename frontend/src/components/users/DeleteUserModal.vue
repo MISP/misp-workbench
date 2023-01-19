@@ -14,6 +14,7 @@ function onSubmit() {
         .delete(props.user_id)
         .then((response) => {
             emit('user-deleted', { "user_id": props.user_id });
+            document.getElementById('closeModalButton').click();
         })
         .catch((error) => status.error = error);
 }
@@ -35,8 +36,9 @@ function onSubmit() {
                     {{ status.error }}
                 </div>
                 <div class="modal-footer">
-                    <button type="button" data-bs-dismiss="modal" class="btn btn-secondary">Discard</button>
-                    <button type="submit" data-bs-dismiss="modal" @click="onSubmit" class="btn btn-danger"
+                    <button id="closeModalButton" type="button" data-bs-dismiss="modal"
+                        class="btn btn-secondary">Discard</button>
+                    <button type="submit" @click="onSubmit" class="btn btn-danger"
                         :class="{ 'disabled': status.loading }">
                         <span v-if="status.loading">
                             <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
