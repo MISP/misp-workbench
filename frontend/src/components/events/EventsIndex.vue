@@ -9,7 +9,7 @@ import Paginate from "vuejs-paginate-next";
 const eventsStore = useEventsStore();
 const { page_count, events, status } = storeToRefs(eventsStore);
 
-const props = defineProps(['event_id', 'page_size']);
+const props = defineProps(['page_size']);
 
 function onPageChange(page) {
     eventsStore.get({
