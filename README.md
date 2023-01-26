@@ -11,7 +11,7 @@ This repository is a kind of [RiiR](https://transitiontech.ca/random/RIIR) exerc
 
 1. Start API dev server:
     ```console
-    docker-compose -f docker-compose.yml -f docker-compose.dev.yml --env-file=".env.test" up --build
+    docker-compose -f docker-compose.yml -f docker-compose.dev.yml --env-file=".env.dev" up --build
     ```
 
 2. Start Frontend dev server: 
