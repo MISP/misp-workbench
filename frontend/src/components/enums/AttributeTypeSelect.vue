@@ -3,10 +3,10 @@ import { ATTRIBUTE_CATEGORIES } from "@/helpers/constants";
 import { Field } from "vee-validate";
 
 let props = defineProps(['name', 'category', 'selected', 'errors']);
-const emit = defineEmits(['attribute-category-updated']);
+const emit = defineEmits(['attribute-type-updated']);
 
 function handleSelectChange(event) {
-    emit('attribute-category-updated', event.target.value);
+    emit('attribute-type-updated', event.target.value);
 }
 </script>
 

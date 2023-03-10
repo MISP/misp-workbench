@@ -219,9 +219,6 @@ div.row h3 {
                     </div>
                     <div class="card-body d-flex flex-column">
                         <ObjectsIndex :event_id="event_id" :total_size="event.object_count" :page_size="10" />
-                        <div class="mt-3">
-                            <button type="button" class="w-100 btn btn-outline-primary">Add Object</button>
-                        </div>
                     </div>
                 </div>
             </div>

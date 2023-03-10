@@ -8,6 +8,7 @@ export const useObjectsStore = defineStore({
     state: () => ({
         objects: {},
         object: {},
+        objectTemplates: {},
         status: {
             loading: false,
             error: false
@@ -29,6 +30,17 @@ export const useObjectsStore = defineStore({
                 .then((object) => (this.object = object))
                 .catch((error) => (this.object = { error }))
                 .finally(() => (this.status = { loading: false }));
+        },
+        async getObjectTemplates() {
+            this.status = { loading: true };
+            fetchWrapper
+                .get(`${import.meta.env.VITE_API_URL}/object-templates`)
+                .then((objectTemplates) => (this.objectTemplates = objectTemplates))
+                .catch((error) => (this.objectTemplates = { error }))
+                .finally(() => (this.status = { loading: false }));
+        },
+        getObjectTemplateByUuid(uuid) {
+            return this.objectTemplates.find((objectTemplate) => objectTemplate.uuid === uuid);
         }
     },
 });

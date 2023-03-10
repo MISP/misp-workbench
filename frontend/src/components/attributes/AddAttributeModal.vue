@@ -92,13 +92,15 @@ function handleDistributionLevelUpdated(distributionLevelId) {
                   :errors="errors['attribute.distribution']" />
                 <div class="invalid-feedback">{{ errors['attribute.distribution'] }}</div>
               </div>
-              <!-- TODO -->
-              <!-- <div class="col col-6 text-start">
-                <label for="attributeType" class="form-label">Sharing Group</label>
-                <SharingGroupSelect v-model=attribute.sharing_group_id />
-                <div class="invalid-feedback">{{ errors[attribute.sharing_group_id'] }}</div>
-              </div> -->
             </div>
+            <!-- TODO -->
+            <!-- <div class="row m-2"> -->
+            <!-- <div class="col col-6 text-start">
+                  <label for="attributeSharingGroupId" class="form-label">Sharing Group</label>
+                  <SharingGroupSelect v-model=attribute.sharing_group_id />
+                  <div class="invalid-feedback">{{ errors[attribute.sharing_group_id'] }}</div>
+                </div>
+              </div> -->
             <div class="row m-2">
               <div class="col text-start">
                 <label for="attribute.value">value</label>

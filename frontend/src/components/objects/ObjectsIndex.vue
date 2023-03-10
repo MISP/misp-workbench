@@ -3,6 +3,7 @@ import { RouterLink } from "vue-router";
 import { storeToRefs } from 'pinia'
 import { useObjectsStore } from "@/stores";
 import ObjectAttributesList from "@/components/objects/ObjectAttributesList.vue";
+import AddObjectModal from "@/components/objects/AddObjectModal.vue";
 import Spinner from "@/components/misc/Spinner.vue";
 import Paginate from "vuejs-paginate-next";
 
@@ -20,6 +21,11 @@ function onPageChange(page) {
     });
 }
 onPageChange(1);
+
+function handleObjectsUpdated(event) {
+    // TODO FIXME: resets the page to 1 and reloads the objects, not the best way to do this, reload current page
+    onPageChange(1);
+}
 </script>
 
 <template>
@@ -39,7 +45,10 @@ onPageChange(1);
             </div>
         </div>
     </div>
-    <div class="mt-2">
-        <Paginate v-if="page_count > 1" :page-count="page_count" :click-handler="onPageChange" />
+    <Paginate v-if="page_count > 1" :page-count="page_count" :click-handler="onPageChange" />
+    <AddObjectModal @object-created="handleObjectsUpdated" :event_id="event_id" />
+    <div class="mt-3">
+        <button type="button" class="w-100 btn btn-outline-primary" data-bs-toggle="modal"
+            data-bs-target="#addObjectModal">Add Object</button>
     </div>
 </template>

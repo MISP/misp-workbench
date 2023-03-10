@@ -20,6 +20,15 @@ export const ANALYSIS_LEVEL = {
   COMPLETE: 2,
 };
 
+export const OBJECT_META_CATEGORIES = {
+  "network": {
+    "description": "Network related objects",
+    "templates": [
+      "domain", "domain|ip", "domain|whois", "domain|ip|port", "domain|port", "domain|ip|hostname", "domain|hostname", "domain|ip|hostname|port", "domain|ip|port", "domain|port", "domain|ip|port"
+    ]
+  }
+};
+
 export const ATTRIBUTE_CATEGORIES = {
   "Internal reference": {
     "description": "Reference used by the publishing party (e.g. ticket number)",

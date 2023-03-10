@@ -4,6 +4,7 @@ from app.routers import (
     attributes,
     auth,
     events,
+    object_templates,
     objects,
     organisations,
     roles,
@@ -57,6 +58,9 @@ app.include_router(attributes.router, tags=["Attributes"])
 
 # Objects resource
 app.include_router(objects.router, tags=["Objects"])
+
+# Object Templates resource
+app.include_router(object_templates.router, tags=["Object Templates"])
 
 # Servers resource
 app.include_router(servers.router, tags=["Servers"])
