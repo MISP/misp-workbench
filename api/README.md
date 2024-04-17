@@ -74,7 +74,7 @@ Created user id=1
 
 ## Testing
 ```console
-$ docker-compose --env-file=".env.test" up -d
+$ docker-compose -f docker-compose.yml -f docker-compose.test.yml --env-file=".env.test" up -d
 ...
 $ docker-compose exec api poetry run pytest
 =========================================================================================== test session starts ===========================================================================================
