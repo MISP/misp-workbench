@@ -5,6 +5,7 @@ WORKDIR /code
 
 COPY package*.json ./
 RUN npm install --omit=dev
+RUN npm install npm-run-all
 
 COPY . .
 
