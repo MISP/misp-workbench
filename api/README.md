@@ -61,6 +61,11 @@ To list available commands:
 $ docker-compose exec api poetry run python -m app.cli --help
 ```
 
+Create an organisation via CLI:
+```console
+$ docker-compose exec api poetry run python -m app.cli create-organisation [org_name]
+Created organisation id=1
+
 Create a user via CLI:
 ```console
 $ docker-compose exec api poetry run python -m app.cli create-user [email] [password] [organisation_id] [role_id]
