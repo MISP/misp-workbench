@@ -1,4 +1,5 @@
 from app.database import SessionLocal
+from app.opensearch import OpenSearchClient
 
 
 async def get_db():
@@ -7,3 +8,7 @@ async def get_db():
         yield db
     finally:
         db.close()
+
+
+def get_opensearch_client():
+    return OpenSearchClient

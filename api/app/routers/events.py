@@ -1,7 +1,7 @@
 from typing import Optional
 
 from app.auth.auth import get_current_active_user
-from app.dependencies import get_db
+from app.dependencies import get_db, get_opensearch_client
 from app.repositories import events as events_repository
 from app.repositories import tags as tags_repository
 from app.schemas import event as event_schemas
@@ -56,11 +56,26 @@ def create_event(
     db_event = events_repository.get_user_by_info(db, info=event.info)
     if db_event:
         raise HTTPException(
-            status_code=400, detail="An event with this info already exists"
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="An event with this info already exists",
         )
     event.user_id = user.id
     event.org_id = user.org_id
-    return events_repository.create_event(db=db, event=event)
+    event = events_repository.create_event(db=db, event=event)
+
+    # push event to OpenSearch
+    OpenSearchClient = get_opensearch_client()
+
+    response = OpenSearchClient.index(
+        index="misp-events", id=event.uuid, body=event.model_dump()
+    )
+
+    if response["result"] not in ["created", "updated"]:
+        raise HTTPException(
+            status_code=status.HTTP_INTERNAL_SERVER_ERROR, detail=response
+        )
+
+    return event
 
 
 @router.patch("/events/{event_id}", response_model=event_schemas.Event)

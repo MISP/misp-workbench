@@ -1,4 +1,4 @@
-FROM python:3.11
+FROM python:3.11-slim
 
 ARG ENV_VARS
 
@@ -7,10 +7,11 @@ ENV ENV_VARS=${ENV_VARS} \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 WORKDIR /code
-COPY . /code
 
 COPY poetry.lock pyproject.toml entrypoint.sh /code/
 
 RUN pip install "poetry==$POETRY_VERSION"
 
 RUN poetry install
+
+COPY . /code
