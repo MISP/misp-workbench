@@ -777,34 +777,36 @@ standard = ["fastapi", "uvicorn[standard] (>=0.15.0)"]
 
 [[package]]
 name = "fastapi-pagination"
-version = "0.11.4"
+version = "0.12.24"
 description = "FastAPI pagination"
 optional = false
-python-versions = ">=3.8,<4.0"
+python-versions = "<4.0,>=3.8"
 files = [
-    {file = "fastapi_pagination-0.11.4-py3-none-any.whl", hash = "sha256:6d3e0d52e510cd58e68fa4699999e06abaf7062762af08dc3ce49939924cebbd"},
-    {file = "fastapi_pagination-0.11.4.tar.gz", hash = "sha256:9457b78cd5d0be590cbda506d5913f9d196a7b50768b7943cd0ad6a5f5aa090c"},
+    {file = "fastapi_pagination-0.12.24-py3-none-any.whl", hash = "sha256:a639df7301a89414244c6763bb97cff043815cb839070b8a38c58c007cf75d48"},
+    {file = "fastapi_pagination-0.12.24.tar.gz", hash = "sha256:c9c6508e0182aab679a13b1de261d4923e3b530b410500dcb271638ff714fb14"},
 ]
 
 [package.dependencies]
-fastapi = ">=0.80.0"
+fastapi = ">=0.93.0"
 pydantic = ">=1.9.1"
+typing-extensions = ">=4.8.0,<5.0.0"
 
 [package.extras]
-all = ["SQLAlchemy (>=1.3.20)", "asyncpg (>=0.24.0)", "beanie (>=1.11.9,<2.0.0)", "databases (>=0.6.0)", "django (<5.0.0)", "mongoengine (>=0.23.1,<0.27.0)", "motor (>=2.5.1,<4.0.0)", "orm (>=0.3.1)", "ormar (>=0.11.2)", "piccolo (>=0.89,<0.106)", "pony (>=0.7.16,<0.8.0)", "scylla-driver (>=3.25.6,<4.0.0)", "sqlakeyset (>=1.0.1659142803,<2.0.0)", "sqlmodel (>=0.0.8,<0.0.9)", "tortoise-orm (>=0.16.18,<0.20.0)"]
+all = ["SQLAlchemy (>=1.3.20)", "asyncpg (>=0.24.0)", "beanie (>=1.25.0)", "bunnet (>=1.1.0,<2.0.0)", "databases (>=0.6.0)", "django (<5.0.0)", "mongoengine (>=0.23.1,<0.29.0)", "motor (>=2.5.1,<4.0.0)", "orm (>=0.3.1)", "ormar (>=0.11.2)", "piccolo (>=0.89,<0.122)", "pony (>=0.7.16,<0.8.0)", "scylla-driver (>=3.25.6,<4.0.0)", "sqlakeyset (>=2.0.1680321678,<3.0.0)", "sqlmodel (>=0.0.8,<0.0.15)", "tortoise-orm (>=0.16.18,<0.21.0)"]
 asyncpg = ["SQLAlchemy (>=1.3.20)", "asyncpg (>=0.24.0)"]
-beanie = ["beanie (>=1.11.9,<2.0.0)"]
+beanie = ["beanie (>=1.25.0)"]
+bunnet = ["bunnet (>=1.1.0,<2.0.0)"]
 databases = ["databases (>=0.6.0)"]
 django = ["databases (>=0.6.0)", "django (<5.0.0)"]
-mongoengine = ["mongoengine (>=0.23.1,<0.27.0)"]
+mongoengine = ["mongoengine (>=0.23.1,<0.29.0)"]
 motor = ["motor (>=2.5.1,<4.0.0)"]
 orm = ["databases (>=0.6.0)", "orm (>=0.3.1)"]
 ormar = ["ormar (>=0.11.2)"]
-piccolo = ["piccolo (>=0.89,<0.106)"]
+piccolo = ["piccolo (>=0.89,<0.122)"]
 scylla-driver = ["scylla-driver (>=3.25.6,<4.0.0)"]
-sqlalchemy = ["SQLAlchemy (>=1.3.20)", "sqlakeyset (>=1.0.1659142803,<2.0.0)"]
-sqlmodel = ["sqlakeyset (>=1.0.1659142803,<2.0.0)", "sqlmodel (>=0.0.8,<0.0.9)"]
-tortoise = ["tortoise-orm (>=0.16.18,<0.20.0)"]
+sqlalchemy = ["SQLAlchemy (>=1.3.20)", "sqlakeyset (>=2.0.1680321678,<3.0.0)"]
+sqlmodel = ["sqlakeyset (>=2.0.1680321678,<3.0.0)", "sqlmodel (>=0.0.8,<0.0.15)"]
+tortoise = ["tortoise-orm (>=0.16.18,<0.21.0)"]
 
 [[package]]
 name = "filelock"
@@ -1739,6 +1741,25 @@ files = [
 
 [package.dependencies]
 typing-extensions = ">=4.6.0,<4.7.0 || >4.7.0"
+
+[[package]]
+name = "pydantic-settings"
+version = "2.2.1"
+description = "Settings management using Pydantic"
+optional = false
+python-versions = ">=3.8"
+files = [
+    {file = "pydantic_settings-2.2.1-py3-none-any.whl", hash = "sha256:0235391d26db4d2190cb9b31051c4b46882d28a51533f97440867f012d4da091"},
+    {file = "pydantic_settings-2.2.1.tar.gz", hash = "sha256:00b9f6a5e95553590434c0fa01ead0b216c3e10bc54ae02e37f359948643c5ed"},
+]
+
+[package.dependencies]
+pydantic = ">=2.3.0"
+python-dotenv = ">=0.21.0"
+
+[package.extras]
+toml = ["tomli (>=2.0.1)"]
+yaml = ["pyyaml (>=6.0.1)"]
 
 [[package]]
 name = "pyflakes"
@@ -2778,4 +2799,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.9"
-content-hash = "d6b3723ec80fdaff187e23280c133f386b43f979e4c2bd99f3753d856fc67eea"
+content-hash = "7aef3d017d3deff13a8aa8f3873f7cc0771bee2b7341ad0414969449685c1049"

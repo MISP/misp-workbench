@@ -2,17 +2,17 @@ from datetime import datetime
 from typing import Optional
 from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class SharingGroupBase(BaseModel):
     name: str
     releasability: str
     description: str
-    uuid: Optional[UUID]
-    organisation_uuid: Optional[UUID]
+    uuid: Optional[UUID] = None
+    organisation_uuid: Optional[UUID] = None
     org_id: int
-    sync_user_id: Optional[int]
+    sync_user_id: Optional[int] = None
     active: bool
     local: bool
     roaming: bool
@@ -21,7 +21,7 @@ class SharingGroupBase(BaseModel):
 
 
 class SharingGroupOrganisationBase(BaseModel):
-    sharing_group_id: Optional[int]
+    sharing_group_id: Optional[int] = None
     org_id: int
     extend: bool
 
@@ -32,22 +32,18 @@ class SharingGroupOrganisationCreate(SharingGroupOrganisationBase):
 
 class SharingGroupOrganisation(SharingGroupOrganisationBase):
     id: int
-
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class SharingGroupServerBase(BaseModel):
-    sharing_group_id: Optional[int]
+    sharing_group_id: Optional[int] = None
     server_id: int
     all_orgs: bool
 
 
 class SharingGroupServer(SharingGroupServerBase):
     id: int
-
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class SharingGroupServerCreate(SharingGroupServerBase):
@@ -58,9 +54,7 @@ class SharingGroup(SharingGroupBase):
     id: int
     sharing_group_organisations: list[SharingGroupOrganisation] = []
     sharing_group_servers: list[SharingGroupServer] = []
-
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class SharingGroupCreate(SharingGroupBase):
@@ -68,12 +62,12 @@ class SharingGroupCreate(SharingGroupBase):
 
 
 class SharingGroupUpdate(BaseModel):
-    name: Optional[str]
-    releasability: Optional[str]
-    description: Optional[str]
-    sync_user_id: Optional[int]
-    active: Optional[bool]
-    local: Optional[bool]
-    roaming: Optional[bool]
-    created: Optional[datetime]
-    modified: Optional[datetime]
+    name: Optional[str] = None
+    releasability: Optional[str] = None
+    description: Optional[str] = None
+    sync_user_id: Optional[int] = None
+    active: Optional[bool] = None
+    local: Optional[bool] = None
+    roaming: Optional[bool] = None
+    created: Optional[datetime] = None
+    modified: Optional[datetime] = None

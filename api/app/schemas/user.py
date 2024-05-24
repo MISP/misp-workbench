@@ -1,7 +1,7 @@
 from typing import Optional
 
 from app.schemas.role import Role
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class UserBase(BaseModel):
@@ -13,16 +13,14 @@ class UserBase(BaseModel):
 class User(UserBase):
     id: int
     role: Role
-
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class UserCreate(UserBase):
-    password: Optional[str]
+    password: Optional[str] = None
 
 
 class UserUpdate(BaseModel):
-    email: Optional[str]
-    org_id: Optional[int]
-    role_id: Optional[int]
+    email: Optional[str] = None
+    org_id: Optional[int] = None
+    role_id: Optional[int] = None
