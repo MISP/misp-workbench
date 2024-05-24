@@ -175,6 +175,16 @@ To check the style before a commit, run:
 $ poetry run pre-commit run --all-files
 ```
 
+### Tasks / Background Jobs (Celery)
+Tasks to be run async by Celery should be added to the `api/app/worker/tasks.py` file (potencially spliting it in different files in the future).
+
+Example:
+```
+from app.worker import tasks
+
+tasks.handle_created_attribute.delay(pulled_attribute.id, pulled_attribute.event_id)
+```
+
 ## TODO
 
 ### CRUD
