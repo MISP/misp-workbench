@@ -12,7 +12,7 @@ jobs:
 
     services:
       postgres:
-        image: postgres
+        image: postgres:16.3
         env:
           POSTGRES_PASSWORD: postgres
           POSTGRES_DB: misp
@@ -23,6 +23,16 @@ jobs:
           --health-retries 5
         ports:
           - 5432:5432
+
+      opensearch:
+        image: opensearchproject/opensearch:1.3.16
+        ports:
+          - 9200:9200
+          - 9300:9300
+        env:
+          OPENSEARCH_HOSTNAME: localhost
+          OPENSEARCH_PORT: 9200
+          OPENSEARCH_INITIAL_ADMIN_PASSWORD: ;pnNZC+$#&5Af%'
 
       redis:
         image: redis:7-alpine
@@ -86,6 +96,8 @@ jobs:
           POSTGRES_PASSWORD: postgres
           POSTGRES_USER: postgres
           POSTGRES_DB: misp
+          OPENSEARCH_HOSTNAME: localhost
+          OPENSEARCH_PORT: 9200
 
       - name: Run tests
         working-directory: api
@@ -97,6 +109,8 @@ jobs:
           POSTGRES_PASSWORD: postgres
           POSTGRES_USER: postgres
           POSTGRES_DB: misp
+          OPENSEARCH_HOSTNAME: localhost
+          OPENSEARCH_PORT: 9200
           OAUTH2_SECRET_KEY: e6d14a781f168c29f8ba7dad72c2ad1418375ab9e3878ea671ba87cf76618511
           OAUTH2_ALGORITHM: HS256
           OAUTH2_ACCESS_TOKEN_EXPIRE_MINUTES: 30

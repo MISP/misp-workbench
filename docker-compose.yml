@@ -22,7 +22,7 @@ services:
     environment:
       OPENSEARCH_HOSTNAME: ${OPENSEARCH_HOSTNAME:-opensearch}
       OPENSEARCH_PORT: ${OPENSEARCH_PORT:-9200}
-      OPENSEARCH_INITIAL_ADMIN_PASSWORD: ;pnNZC+$#&5Af%'
+      OPENSEARCH_INITIAL_ADMIN_PASSWORD: ${OPENSEARCH_INITIAL_ADMIN_PASSWORD}
       cluster.name: opensearch-cluster
       node.name: opensearch-misp1
       discovery.type: single-node
