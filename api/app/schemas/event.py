@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import datetime
 from typing import Optional
 from uuid import UUID
 
@@ -12,7 +12,7 @@ from pydantic import BaseModel, ConfigDict
 
 class EventBase(BaseModel):
     org_id: Optional[int] = None
-    date: Optional[date] = None
+    date: Optional[datetime] = None
     info: str
     user_id: Optional[int] = None
     uuid: Optional[UUID] = None
@@ -50,7 +50,7 @@ class EventCreate(EventBase):
 
 
 class EventUpdate(BaseModel):
-    date: Optional[date] = None
+    date: Optional[datetime] = None
     info: Optional[str] = None
     published: Optional[bool] = None
     analysis: Optional[AnalysisLevel] = None

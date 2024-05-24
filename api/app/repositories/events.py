@@ -40,7 +40,7 @@ def get_user_by_info(db: Session, info: str):
     return db.query(event_models.Event).filter(event_models.Event.info == info).first()
 
 
-def create_event(db: Session, event: event_schemas.EventCreate):
+def create_event(db: Session, event: event_schemas.EventCreate) -> event_models.Event:
     # TODO: Event::beforeValidate() && Event::$validate
     db_event = event_models.Event(
         org_id=event.org_id,
@@ -68,6 +68,7 @@ def create_event(db: Session, event: event_schemas.EventCreate):
     )
     db.add(db_event)
     db.commit()
+    db.flush()
     db.refresh(db_event)
 
     return db_event

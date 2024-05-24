@@ -6,9 +6,10 @@ from app.repositories import events as events_repository
 from app.repositories import tags as tags_repository
 from app.schemas import event as event_schemas
 from app.schemas import user as user_schemas
-from fastapi import APIRouter, Depends, HTTPException, Response, Security, status
+from fastapi import APIRouter, Depends, HTTPException, Response, Security
 from fastapi_pagination import Page
 from sqlalchemy.orm import Session
+from starlette import status
 
 router = APIRouter()
 
@@ -61,9 +62,12 @@ def create_event(
         )
     event.user_id = user.id
     event.org_id = user.org_id
-    event = events_repository.create_event(db=db, event=event)
+    db_event = events_repository.create_event(db=db, event=event)
+
+    event = event_schemas.Event.model_validate(db_event)
 
     # push event to OpenSearch
+    # TODO: move this to a background task
     OpenSearchClient = get_opensearch_client()
 
     response = OpenSearchClient.index(
@@ -72,7 +76,7 @@ def create_event(
 
     if response["result"] not in ["created", "updated"]:
         raise HTTPException(
-            status_code=status.HTTP_INTERNAL_SERVER_ERROR, detail=response
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=response
         )
 
     return event
