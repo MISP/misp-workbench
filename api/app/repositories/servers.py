@@ -614,7 +614,7 @@ def update_server(
             status_code=status.HTTP_404_NOT_FOUND, detail="Server not found"
         )
 
-    server_patch = server.dict(exclude_unset=True)
+    server_patch = server.model_dump(exclude_unset=True)
     for key, value in server_patch.items():
         setattr(db_server, key, value)
 

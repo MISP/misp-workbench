@@ -123,7 +123,7 @@ def update_object(db: Session, object_id: int, object: object_schemas.ObjectUpda
             status_code=status.HTTP_404_NOT_FOUND, detail="Object not found"
         )
 
-    object_patch = object.dict(exclude_unset=True)
+    object_patch = object.model_dump(exclude_unset=True)
     for key, value in object_patch.items():
         setattr(db_object, key, value)
 

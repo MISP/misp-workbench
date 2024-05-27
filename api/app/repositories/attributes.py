@@ -129,7 +129,7 @@ def update_attribute(
             status_code=status.HTTP_404_NOT_FOUND, detail="Attribute not found"
         )
 
-    attribute_patch = attribute.dict(exclude_unset=True)
+    attribute_patch = attribute.model_dump(exclude_unset=True)
     for key, value in attribute_patch.items():
         setattr(db_attribute, key, value)
 

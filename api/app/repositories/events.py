@@ -143,7 +143,7 @@ def update_event(db: Session, event_id: int, event: event_schemas.EventUpdate):
             status_code=status.HTTP_404_NOT_FOUND, detail="Event not found"
         )
 
-    event_patch = event.dict(exclude_unset=True)
+    event_patch = event.model_dump(exclude_unset=True)
     for key, value in event_patch.items():
         setattr(db_event, key, value)
 
