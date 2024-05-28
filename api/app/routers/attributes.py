@@ -86,6 +86,9 @@ def update_attribute(
         get_current_active_user, scopes=["attributes:update"]
     ),
 ):
+    if attribute.id is None:
+        attribute.id = attribute_id
+
     attribute_db = attributes_repository.get_attribute_by_id(
         db, attribute_id=attribute.id
     )  # TODO: check only if attribute_id is present
