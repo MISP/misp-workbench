@@ -93,7 +93,7 @@ def update_attribute(
     attribute_db = attributes_repository.update_attribute(
         db=db, attribute_id=attribute_id, attribute=attribute
     )
-    event = events_repository.get_event_by_id(db, event_id=attribute.event_id)
+    event = events_repository.get_event_by_id(db, event_id=attribute_db.event_id)
     tasks.index_event.delay(event.uuid)
 
     attribute_db
