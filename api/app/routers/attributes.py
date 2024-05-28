@@ -96,7 +96,7 @@ def update_attribute(
     event = events_repository.get_event_by_id(db, event_id=attribute_db.event_id)
     tasks.index_event.delay(event.uuid)
 
-    attribute_db
+    return attribute_db
 
 
 @router.delete("/attributes/{attribute_id}", status_code=status.HTTP_204_NO_CONTENT)
