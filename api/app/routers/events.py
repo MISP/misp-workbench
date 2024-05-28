@@ -1,11 +1,12 @@
 from typing import Optional
 
 from app.auth.auth import get_current_active_user
-from app.dependencies import get_db, get_opensearch_client
+from app.dependencies import get_db
 from app.repositories import events as events_repository
 from app.repositories import tags as tags_repository
 from app.schemas import event as event_schemas
 from app.schemas import user as user_schemas
+from app.worker import tasks
 from fastapi import APIRouter, Depends, HTTPException, Response, Security
 from fastapi_pagination import Page
 from sqlalchemy.orm import Session
@@ -48,38 +49,25 @@ def get_event_by_id(
     "/events/", response_model=event_schemas.Event, status_code=status.HTTP_201_CREATED
 )
 def create_event(
-    event: event_schemas.EventCreate,
+    event_create_request: event_schemas.EventCreate,
     db: Session = Depends(get_db),
     user: user_schemas.User = Security(
         get_current_active_user, scopes=["events:create"]
     ),
 ):
-    db_event = events_repository.get_user_by_info(db, info=event.info)
+    db_event = events_repository.get_user_by_info(db, info=event_create_request.info)
     if db_event:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="An event with this info already exists",
         )
-    event.user_id = user.id
-    event.org_id = user.org_id
-    db_event = events_repository.create_event(db=db, event=event)
+    event_create_request.user_id = user.id
+    event_create_request.org_id = user.org_id
 
-    event = event_schemas.Event.model_validate(db_event)
+    db_event = events_repository.create_event(db=db, event=event_create_request)
+    tasks.index_event.delay(db_event.uuid)
 
-    # push event to OpenSearch
-    # TODO: move this to a background task
-    OpenSearchClient = get_opensearch_client()
-
-    response = OpenSearchClient.index(
-        index="misp-events", id=event.uuid, body=event.model_dump()
-    )
-
-    if response["result"] not in ["created", "updated"]:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=response
-        )
-
-    return event
+    return db_event
 
 
 @router.patch("/events/{event_id}", response_model=event_schemas.Event)

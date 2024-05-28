@@ -21,6 +21,7 @@ class ObjectBase(BaseModel):
     deleted: bool
     first_seen: Optional[int] = None
     last_seen: Optional[int] = None
+    model_config = ConfigDict(use_enum_values=True)
 
 
 class Object(ObjectBase):

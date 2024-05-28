@@ -23,6 +23,7 @@ class AttributeBase(BaseModel):
     disable_correlation: Optional[bool] = None
     first_seen: Optional[int] = None
     last_seen: Optional[int] = None
+    model_config = ConfigDict(use_enum_values=True)
 
 
 class Attribute(AttributeBase):

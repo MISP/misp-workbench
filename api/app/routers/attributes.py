@@ -7,6 +7,7 @@ from app.repositories import events as events_repository
 from app.repositories import tags as tags_repository
 from app.schemas import attribute as attribute_schemas
 from app.schemas import user as user_schemas
+from app.worker import tasks
 from fastapi import APIRouter, Depends, HTTPException, Response, Security, status
 from fastapi_pagination import Page
 from sqlalchemy.orm import Session
@@ -63,11 +64,15 @@ def create_attribute(
         get_current_active_user, scopes=["attributes:create"]
     ),
 ):
-    event = events_repository.get_event_by_id(db, event_id=attribute.event_id)
+    event = events_repository.get_event_by_id(
+        db, event_id=attribute.event_id
+    )  # TODO: only check if exists and get uuid
     if event is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Event not found"
         )
+
+    tasks.index_event.delay(event.uuid)
 
     return attributes_repository.create_attribute(db=db, attribute=attribute)
 
@@ -81,9 +86,17 @@ def update_attribute(
         get_current_active_user, scopes=["attributes:update"]
     ),
 ):
-    return attributes_repository.update_attribute(
+    attribute_db = attributes_repository.get_attribute_by_id(
+        db, attribute_id=attribute.id
+    )  # TODO: check only if attribute_id is present
+
+    attribute_db = attributes_repository.update_attribute(
         db=db, attribute_id=attribute_id, attribute=attribute
     )
+    event = events_repository.get_event_by_id(db, event_id=attribute.event_id)
+    tasks.index_event.delay(event.uuid)
+
+    attribute_db
 
 
 @router.delete("/attributes/{attribute_id}", status_code=status.HTTP_204_NO_CONTENT)
