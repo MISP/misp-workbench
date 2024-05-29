@@ -52,7 +52,7 @@ def update_tag(
             status_code=status.HTTP_404_NOT_FOUND, detail="Tag not found"
         )
 
-    tag_patch = tag.dict(exclude_unset=True)
+    tag_patch = tag.model_dump(exclude_unset=True)
     for key, value in tag_patch.items():
         setattr(db_tag, key, value)
 

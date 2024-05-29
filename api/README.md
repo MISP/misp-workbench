@@ -61,6 +61,11 @@ To list available commands:
 $ docker-compose exec api poetry run python -m app.cli --help
 ```
 
+Create an organisation via CLI:
+```console
+$ docker-compose exec api poetry run python -m app.cli create-organisation [org_name]
+Created organisation id=1
+
 Create a user via CLI:
 ```console
 $ docker-compose exec api poetry run python -m app.cli create-user [email] [password] [organisation_id] [role_id]
@@ -69,7 +74,7 @@ Created user id=1
 
 ## Testing
 ```console
-$ docker-compose --env-file=".env.test" up -d
+$ docker-compose -f docker-compose.yml -f docker-compose.test.yml --env-file=".env.test" up -d
 ...
 $ docker-compose exec api poetry run pytest
 =========================================================================================== test session starts ===========================================================================================
@@ -168,6 +173,25 @@ $ poetry run pre-commit install
 To check the style before a commit, run:
 ```console
 $ poetry run pre-commit run --all-files
+```
+
+### Tasks / Background Jobs (Celery)
+Tasks to be run async by Celery should be added to the `api/app/worker/tasks.py` file (potencially spliting it in different files in the future).
+
+Example:
+```
+from app.worker import tasks
+
+tasks.handle_created_attribute.delay(pulled_attribute.id, pulled_attribute.event_id)
+```
+
+If you add a new task, you have to restart the celery `worker` container, otherwise you will get `NotRegistered('app.worker.tasks.new_task') ` exception.
+Same if you modify a tasks code, you have to restart the `worker` container.
+
+
+To restart the worker container run:
+```
+$ docker-compose restart worker
 ```
 
 ## TODO

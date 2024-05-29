@@ -53,6 +53,11 @@ See [Vite Configuration Reference](https://vitejs.dev/config/).
 
 ## Project Setup
 
+Copy .env file:
+```sh
+cp .env.dist .env
+```
+
 ```sh
 npm install
 ```

@@ -63,7 +63,7 @@ def update_user(
             status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
         )
 
-    user_patch = user.dict(exclude_unset=True)
+    user_patch = user.model_dump(exclude_unset=True)
     for key, value in user_patch.items():
         setattr(db_user, key, value)
 

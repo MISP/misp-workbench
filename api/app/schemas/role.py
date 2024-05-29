@@ -1,13 +1,13 @@
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class RoleBase(BaseModel):
     name: str
-    created: Optional[datetime]
-    modified: Optional[datetime]
+    created: Optional[datetime] = None
+    modified: Optional[datetime] = None
     perm_add: bool
     perm_modify: bool
     perm_modify_org: bool
@@ -41,6 +41,4 @@ class RoleBase(BaseModel):
 
 class Role(RoleBase):
     id: int
-
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)

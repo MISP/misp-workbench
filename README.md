@@ -5,7 +5,10 @@ This repository is a kind of [RiiR](https://transitiontech.ca/random/RIIR) exerc
 * See: [README.md](api/README.md)
 
 ## Frontend
-* See: [README.md](frontned/README.md)
+* See: [README.md](frontend/README.md)
+
+## Production
+TODO
 
 ## Development
 

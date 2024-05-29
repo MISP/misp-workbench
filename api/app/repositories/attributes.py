@@ -82,19 +82,25 @@ def create_attribute_from_pulled_attribute(
             timestamp=pulled_attribute.timestamp.timestamp(),
             distribution=event_schemas.DistributionLevel(pulled_attribute.distribution),
             comment=pulled_attribute.comment,
-            sharing_group_id=pulled_attribute.sharing_group_id
-            if int(pulled_attribute.sharing_group_id) > 0
-            else None,
+            sharing_group_id=(
+                pulled_attribute.sharing_group_id
+                if int(pulled_attribute.sharing_group_id) > 0
+                else None
+            ),
             deleted=pulled_attribute.deleted,
             disable_correlation=pulled_attribute.disable_correlation,
             object_id=pulled_attribute.object_id,
             object_relation=getattr(pulled_attribute, "object_relation", None),
-            first_seen=pulled_attribute.first_seen.timestamp()
-            if hasattr(pulled_attribute, "first_seen")
-            else None,
-            last_seen=pulled_attribute.last_seen.timestamp()
-            if hasattr(pulled_attribute, "last_seen")
-            else None,
+            first_seen=(
+                pulled_attribute.first_seen.timestamp()
+                if hasattr(pulled_attribute, "first_seen")
+                else None
+            ),
+            last_seen=(
+                pulled_attribute.last_seen.timestamp()
+                if hasattr(pulled_attribute, "last_seen")
+                else None
+            ),
         ),
     )
 
@@ -123,7 +129,7 @@ def update_attribute(
             status_code=status.HTTP_404_NOT_FOUND, detail="Attribute not found"
         )
 
-    attribute_patch = attribute.dict(exclude_unset=True)
+    attribute_patch = attribute.model_dump(exclude_unset=True)
     for key, value in attribute_patch.items():
         setattr(db_attribute, key, value)
 

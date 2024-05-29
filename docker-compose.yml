@@ -1,8 +1,6 @@
-version: '3.1'
-
 services:
   postgres:
-    image: postgres
+    image: postgres:16.3
     restart: always
     environment:
       POSTGRES_HOSTNAME: ${POSTGRES_HOSTNAME:-postgres}
@@ -10,13 +8,46 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_DB: ${POSTGRES_DB:-misp}
-    ports:
-      - "54321:5432"
     healthcheck:
       test: "pg_isready --username=$$POSTGRES_USER --dbname=$$POSTGRES_DB"
       interval: 10s
       timeout: 5s
       retries: 5
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+  opensearch:
+    image: opensearchproject/opensearch:1.3.16
+    container_name: opensearch-misp1
+    environment:
+      OPENSEARCH_HOSTNAME: ${OPENSEARCH_HOSTNAME:-opensearch}
+      OPENSEARCH_PORT: ${OPENSEARCH_PORT:-9200}
+      OPENSEARCH_INITIAL_ADMIN_PASSWORD: ${OPENSEARCH_INITIAL_ADMIN_PASSWORD}
+      cluster.name: opensearch-cluster
+      node.name: opensearch-misp1
+      discovery.type: single-node
+      bootstrap.memory_lock: true
+      OPENSEARCH_JAVA_OPTS: "-Xms512m -Xmx512m"
+      plugins.security.disabled: true
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - opensearch-data:/usr/share/opensearch/data
+
+  dashboards:
+    image: opensearchproject/opensearch-dashboards:1.3.16
+    container_name: opensearch-dashboards
+    environment:
+      OPENSEARCH_HOSTNAME: ${OPENSEARCH_HOSTNAME:-opensearch}
+      OPENSEARCH_PORT: ${OPENSEARCH_PORT:-9200}
+      OPENSEARCH_HOSTS: "http://${OPENSEARCH_HOSTNAME}:${OPENSEARCH_PORT}"
+      DISABLE_SECURITY_DASHBOARDS_PLUGIN: true
+    ports:
+      - "5601:5601"
+    depends_on:
+      - opensearch
 
   api:
     build:
@@ -30,6 +61,8 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_DB: ${POSTGRES_DB:-misp}
+      OPENSEARCH_HOSTNAME: ${OPENSEARCH_HOSTNAME:-opensearch}
+      OPENSEARCH_PORT: ${OPENSEARCH_PORT:-9200}
       OAUTH2_SECRET_KEY: ${OAUTH2_SECRET_KEY}
       OAUTH2_ALGORITHM: ${OAUTH2_ALGORITHM:-HS256}
       OAUTH2_ACCESS_TOKEN_EXPIRE_MINUTES: ${OAUTH2_ACCESS_TOKEN_EXPIRE_MINUTES:-30}
@@ -68,6 +101,8 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_DB: ${POSTGRES_DB:-misp}
+      OPENSEARCH_HOSTNAME: ${OPENSEARCH_HOSTNAME:-opensearch}
+      OPENSEARCH_PORT: ${OPENSEARCH_PORT:-9200}
       OAUTH2_SECRET_KEY: ${OAUTH2_SECRET_KEY}
       OAUTH2_ALGORITHM: ${OAUTH2_ALGORITHM:-HS256}
       OAUTH2_ACCESS_TOKEN_EXPIRE_MINUTES: ${OAUTH2_ACCESS_TOKEN_EXPIRE_MINUTES:-30}
@@ -77,7 +112,6 @@ services:
       MAIL_PASSWORD: ${MAIL_PASSWORD}
       MAIL_PORT: ${MAIL_PORT}
       MAIL_SERVER: ${MAIL_SERVER}
-
     depends_on:
       - redis
       - postgres
@@ -89,15 +123,17 @@ services:
       context: ./api
       dockerfile: Dockerfile
     command: poetry run celery -A app.worker.tasks flower --loglevel=info
-    working_dir: /code
     ports:
-      - 5555:5555
+      - "5555:5555"
+    working_dir: /code
     environment:
       POSTGRES_HOSTNAME: ${POSTGRES_HOSTNAME:-postgres}
       POSTGRES_PORT: ${POSTGRES_PORT:-5432}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_DB: ${POSTGRES_DB:-misp}
+      OPENSEARCH_HOSTNAME: ${OPENSEARCH_HOSTNAME:-opensearch}
+      OPENSEARCH_PORT: ${OPENSEARCH_PORT:-9200}
       OAUTH2_SECRET_KEY: ${OAUTH2_SECRET_KEY}
       OAUTH2_ALGORITHM: ${OAUTH2_ALGORITHM:-HS256}
       OAUTH2_ACCESS_TOKEN_EXPIRE_MINUTES: ${OAUTH2_ACCESS_TOKEN_EXPIRE_MINUTES:-30}
@@ -109,23 +145,33 @@ services:
       MAIL_SERVER: ${MAIL_SERVER}
     depends_on:
       - worker
+      - rabbitmq
 
   redis:
     image: redis:7-alpine
+    ports:
+      - "6379:6379"
     healthcheck:
       test: [ "CMD", "redis-cli", "ping" ]
 
   rabbitmq:
     image: rabbitmq:3-management
-    ports:
-      - "15672:15672"
     environment:
       RABBITMQ_HOSTNAME: ${RABBITMQ_HOSTNAME:-rabbitmq}
       RABBITMQ_DEFAULT_VHOST: ${RABBITMQ_HOSTNAME:-rabbitmq}
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:-rabbitmq}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:-rabbitmq}
+    ports:
+      - "15672:15672"
+      - "5672:5672"
     healthcheck:
       test: [ "CMD", "rabbitmqctl", "ping" ]
       interval: 10s
       timeout: 5s
       retries: 5
+    depends_on:
+      - redis
+  
+volumes:
+  opensearch-data:
+  postgres-data:

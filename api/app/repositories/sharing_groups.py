@@ -108,7 +108,7 @@ def update_sharing_group(
             status_code=status.HTTP_404_NOT_FOUND, detail="Sharing Group not found"
         )
 
-    sharing_group_patch = sharing_group.dict(exclude_unset=True)
+    sharing_group_patch = sharing_group.model_dump(exclude_unset=True)
     for key, value in sharing_group_patch.items():
         setattr(db_sharing_group, key, value)
 

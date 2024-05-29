@@ -1,11 +1,15 @@
 import logging
 import os
 import smtplib
+import uuid
+from datetime import datetime
 
 from app.database import SessionLocal
+from app.dependencies import get_opensearch_client
 from app.repositories import events as events_repository
 from app.repositories import servers as servers_repository
 from app.repositories import users as users_repository
+from app.schemas import event as event_schemas
 from app.settings import get_settings
 from celery import Celery
 
@@ -75,5 +79,57 @@ def send_email(email: dict):
     ) as server:
         server.login(os.environ.get("MAIL_USERNAME"), os.environ.get("MAIL_PASSWORD"))
         server.sendmail(sender, receiver, message)
+
+    return True
+
+
+@app.task
+def index_event(event_uuid: uuid.UUID):
+    logger.info("index event uuid=%s job started", event_uuid)
+
+    db_event = events_repository.get_event_by_uuid(db, event_uuid)
+    if db_event is None:
+        raise Exception("Event with uuid=%s not found", event_uuid)
+
+    event = event_schemas.Event.model_validate(db_event)
+
+    OpenSearchClient = get_opensearch_client()
+
+    event_json = event.model_dump()
+
+    # convert timestamp to datetime so it can be indexed
+    event_json["@timestamp"] = datetime.fromtimestamp(
+        event_json["timestamp"]
+    ).isoformat()
+
+    if event_json["publish_timestamp"]:
+        event_json["@publish_timestamp"] = datetime.fromtimestamp(
+            event_json["publish_timestamp"]
+        ).isoformat()
+
+    for attribute in event_json["attributes"]:
+        attribute["@timestamp"] = datetime.fromtimestamp(
+            attribute["timestamp"]
+        ).isoformat()
+
+    for object in event_json["objects"]:
+        object["@timestamp"] = datetime.fromtimestamp(object["timestamp"]).isoformat()
+
+        for attribute in object["attributes"]:
+            attribute["@timestamp"] = datetime.fromtimestamp(
+                attribute["timestamp"]
+            ).isoformat()
+
+    response = OpenSearchClient.index(
+        index="misp-events", id=event.uuid, body=event_json, refresh=True
+    )
+
+    if response["result"] not in ["created", "updated"]:
+        logger.error(
+            "Failed to index event uuid=%s. Response: %s", event_uuid, response
+        )
+        raise Exception("Failed to index event.")
+
+    logger.info("index event uuid=%s job finished", event_uuid)
 
     return True

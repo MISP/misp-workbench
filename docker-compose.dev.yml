@@ -1,12 +1,23 @@
-version: '3.1'
-
 services:
+  
+  postgres:
+    ports:
+      - "5432:5432"
+  
+  opensearch:
+    ports:
+      - "9200:9200"
+      - "9600:9600"
+  
   api:
     ports:
       - "8080:80"
       - "5677:5677"
       - "5678:5678"
     entrypoint: [ "bash", "-c", "./entrypoint.dev.sh" ]
+    environment:
+      WATCHFILES_FORCE_POLLING: true
+      WATCHFILES_POLLING_INTERVAL: 1
     volumes:
       - ./api:/code
     extra_hosts:
@@ -19,12 +30,22 @@ services:
       [
         "sh",
         "-c",
-        "poetry run python -m debugpy --listen 0.0.0.0:5679 -m celery -A app.worker.tasks worker --loglevel=info --concurrency=1 --pool=solo"
+        "poetry run python -m debugpy --listen 0.0.0.0:5679 -m celery -A app.worker.tasks worker --loglevel=debug --concurrency=1 --pool=solo"
       ]
     volumes:
       - ./api:/code
     extra_hosts:
       - "host.docker.internal:host-gateway"
+
+  flower:
+    ports:
+      - "5555:5555"
+    command: poetry run celery -A app.worker.tasks flower --loglevel=debug
+
+  rabbitmq:
+    ports:
+      - "5672:5672"
+      - "15672:15672"
 
   frontend:
     command: [ nginx-debug, '-g', 'daemon off;' ]

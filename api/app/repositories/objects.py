@@ -10,7 +10,9 @@ from pymisp import MISPObject
 from sqlalchemy.orm import Session
 
 
-def get_objects(db: Session, skip: int = 0, limit: int = 100, event_id: int = None):
+def get_objects(
+    db: Session, skip: int = 0, limit: int = 100, event_id: int = None
+) -> list[object_models.Object]:
     query = db.query(object_models.Object)
 
     if event_id is not None:
@@ -27,7 +29,9 @@ def get_object_by_id(db: Session, object_id: int):
     )
 
 
-def create_object(db: Session, object: object_schemas.ObjectCreate):
+def create_object(
+    db: Session, object: object_schemas.ObjectCreate
+) -> object_models.Object:
     # TODO: MispObject::beforeValidate() && MispObject::$validate
     db_object = object_models.Object(
         event_id=object.event_id,
@@ -71,17 +75,23 @@ def create_object_from_pulled_object(
             uuid=pulled_object.uuid,
             timestamp=pulled_object.timestamp.timestamp(),
             distribution=event_schemas.DistributionLevel(pulled_object.distribution),
-            sharing_group_id=pulled_object.sharing_group_id
-            if int(pulled_object.sharing_group_id) > 0
-            else None,
+            sharing_group_id=(
+                pulled_object.sharing_group_id
+                if int(pulled_object.sharing_group_id) > 0
+                else None
+            ),
             comment=pulled_object.comment,
             deleted=pulled_object.deleted,
-            first_seen=pulled_object.first_seen.timestamp()
-            if hasattr(pulled_object, "first_seen")
-            else None,
-            last_seen=pulled_object.last_seen.timestamp()
-            if hasattr(pulled_object, "last_seen")
-            else None,
+            first_seen=(
+                pulled_object.first_seen.timestamp()
+                if hasattr(pulled_object, "first_seen")
+                else None
+            ),
+            last_seen=(
+                pulled_object.last_seen.timestamp()
+                if hasattr(pulled_object, "last_seen")
+                else None
+            ),
         ),
     )
 
@@ -108,7 +118,9 @@ def create_object_from_pulled_object(
     return pulled_object
 
 
-def update_object(db: Session, object_id: int, object: object_schemas.ObjectUpdate):
+def update_object(
+    db: Session, object_id: int, object: object_schemas.ObjectUpdate
+) -> object_models.Object:
     # TODO: MISPObject::beforeValidate() && MISPObject::$validate
     db_object = get_object_by_id(db, object_id=object_id)
 
@@ -117,7 +129,7 @@ def update_object(db: Session, object_id: int, object: object_schemas.ObjectUpda
             status_code=status.HTTP_404_NOT_FOUND, detail="Object not found"
         )
 
-    object_patch = object.dict(exclude_unset=True)
+    object_patch = object.model_dump(exclude_unset=True)
     for key, value in object_patch.items():
         setattr(db_object, key, value)
 
@@ -128,7 +140,7 @@ def update_object(db: Session, object_id: int, object: object_schemas.ObjectUpda
     return db_object
 
 
-def delete_object(db: Session, object_id: int) -> None:
+def delete_object(db: Session, object_id: int) -> object_models.Object:
     db_object = get_object_by_id(db, object_id=object_id)
 
     if db_object is None:
@@ -141,3 +153,5 @@ def delete_object(db: Session, object_id: int) -> None:
     db.add(db_object)
     db.commit()
     db.refresh(db_object)
+
+    return db_object
