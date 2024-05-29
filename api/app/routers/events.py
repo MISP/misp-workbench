@@ -6,9 +6,11 @@ from app.repositories import events as events_repository
 from app.repositories import tags as tags_repository
 from app.schemas import event as event_schemas
 from app.schemas import user as user_schemas
-from fastapi import APIRouter, Depends, HTTPException, Response, Security, status
+from app.worker import tasks
+from fastapi import APIRouter, Depends, HTTPException, Response, Security
 from fastapi_pagination import Page
 from sqlalchemy.orm import Session
+from starlette import status
 
 router = APIRouter()
 
@@ -25,7 +27,7 @@ async def get_events(
     params: dict = Depends(get_events_parameters),
     db: Session = Depends(get_db),
     user: user_schemas.User = Security(get_current_active_user, scopes=["events:read"]),
-):
+) -> Page[event_schemas.Event]:
     return events_repository.get_events(db, params["info"], params["deleted"])
 
 
@@ -34,7 +36,7 @@ def get_event_by_id(
     event_id: int,
     db: Session = Depends(get_db),
     user: user_schemas.User = Security(get_current_active_user, scopes=["events:read"]),
-):
+) -> event_schemas.Event:
     db_event = events_repository.get_event_by_id(db, event_id=event_id)
     if db_event is None:
         raise HTTPException(
@@ -47,20 +49,25 @@ def get_event_by_id(
     "/events/", response_model=event_schemas.Event, status_code=status.HTTP_201_CREATED
 )
 def create_event(
-    event: event_schemas.EventCreate,
+    event_create_request: event_schemas.EventCreate,
     db: Session = Depends(get_db),
     user: user_schemas.User = Security(
         get_current_active_user, scopes=["events:create"]
     ),
-):
-    db_event = events_repository.get_user_by_info(db, info=event.info)
+) -> event_schemas.Event:
+    db_event = events_repository.get_user_by_info(db, info=event_create_request.info)
     if db_event:
         raise HTTPException(
-            status_code=400, detail="An event with this info already exists"
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="An event with this info already exists",
         )
-    event.user_id = user.id
-    event.org_id = user.org_id
-    return events_repository.create_event(db=db, event=event)
+    event_create_request.user_id = user.id
+    event_create_request.org_id = user.org_id
+
+    db_event = events_repository.create_event(db=db, event=event_create_request)
+    tasks.index_event.delay(db_event.uuid)
+
+    return db_event
 
 
 @router.patch("/events/{event_id}", response_model=event_schemas.Event)
@@ -71,7 +78,7 @@ def update_event(
     user: user_schemas.User = Security(
         get_current_active_user, scopes=["events:update"]
     ),
-):
+) -> event_schemas.Event:
     return events_repository.update_event(db=db, event_id=event_id, event=event)
 
 

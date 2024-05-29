@@ -1,43 +1,6 @@
 services:
-  api:
-    ports:
-      - "8080:80"
-      - "5677:5677"
-      - "5678:5678"
-    entrypoint: [ "bash", "-c", "./entrypoint.dev.sh" ]
-    volumes:
-      - ./api:/code
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-
-  worker:
-    ports:
-      - "5679:5679"
-    command:
-      [
-        "sh",
-        "-c",
-        "poetry run python -m debugpy --listen 0.0.0.0:5679 -m celery -A app.worker.tasks worker --loglevel=info --concurrency=1 --pool=solo"
-      ]
-    volumes:
-      - ./api:/code
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-
-  frontend:
-    command: [ nginx-debug, '-g', 'daemon off;' ]
-
   mailhog:
     image: mailhog/mailhog
     ports:
       - "8025:8025"
       - "1025:1025"
-
-  pgadmin:
-    image: dpage/pgadmin4
-    restart: always
-    ports:
-      - "5050:80"
-    environment:
-      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
-      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}

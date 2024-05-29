@@ -7,6 +7,9 @@ This repository is a kind of [RiiR](https://transitiontech.ca/random/RIIR) exerc
 ## Frontend
 * See: [README.md](frontend/README.md)
 
+## Production
+TODO
+
 ## Development
 
 1. Start API dev server:

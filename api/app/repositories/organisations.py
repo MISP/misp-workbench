@@ -75,7 +75,7 @@ def update_organisation(
             status_code=status.HTTP_404_NOT_FOUND, detail="Organisation not found"
         )
 
-    organisation_patch = organisation.dict(exclude_unset=True)
+    organisation_patch = organisation.model_dump(exclude_unset=True)
     for key, value in organisation_patch.items():
         setattr(db_organisation, key, value)
 

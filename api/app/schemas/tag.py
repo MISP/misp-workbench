@@ -1,6 +1,6 @@
 from typing import Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class TagBase(BaseModel):
@@ -10,7 +10,7 @@ class TagBase(BaseModel):
     org_id: int
     user_id: int
     hide_tag: bool
-    numerical_value: Optional[int]
+    numerical_value: Optional[int] = None
     is_galaxy: bool
     is_custom_galaxy: bool
     local_only: bool
@@ -18,9 +18,7 @@ class TagBase(BaseModel):
 
 class Tag(TagBase):
     id: int
-
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class TagCreate(TagBase):
@@ -28,16 +26,16 @@ class TagCreate(TagBase):
 
 
 class TagUpdate(TagBase):
-    name: Optional[str]
-    colour: Optional[str]
-    exportable: Optional[bool]
-    org_id: Optional[int]
-    user_id: Optional[int]
-    hide_tag: Optional[bool]
-    numerical_value: Optional[int]
-    is_galaxy: Optional[bool]
-    is_custom_galaxy: Optional[bool]
-    local_only: Optional[bool]
+    name: Optional[str] = None
+    colour: Optional[str] = None
+    exportable: Optional[bool] = None
+    org_id: Optional[int] = None
+    user_id: Optional[int] = None
+    hide_tag: Optional[bool] = None
+    numerical_value: Optional[int] = None
+    is_galaxy: Optional[bool] = None
+    is_custom_galaxy: Optional[bool] = None
+    local_only: Optional[bool] = None
 
 
 class AttributeTagBase(BaseModel):
@@ -49,9 +47,7 @@ class AttributeTagBase(BaseModel):
 
 class AttributeTag(AttributeTagBase):
     id: int
-
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class EventTagBase(BaseModel):
@@ -62,6 +58,4 @@ class EventTagBase(BaseModel):
 
 class EventTag(EventTagBase):
     id: int
-
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)

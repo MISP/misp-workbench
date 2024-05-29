@@ -2,7 +2,8 @@ import os
 from functools import lru_cache
 from typing import Optional
 
-from pydantic import BaseModel, BaseSettings
+from pydantic import BaseModel
+from pydantic_settings import BaseSettings
 
 
 class MISPSettings(BaseModel):

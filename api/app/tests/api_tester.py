@@ -17,8 +17,7 @@ from app.models import user as user_models
 from app.settings import get_settings
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import Session, declarative_base, sessionmaker
 
 
 class ApiTester:

@@ -3,34 +3,33 @@ from uuid import UUID
 
 from app.models.event import DistributionLevel
 from app.schemas.tag import Tag
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class AttributeBase(BaseModel):
     event_id: int
-    object_id: Optional[int]
-    object_relation: Optional[str]
+    object_id: Optional[int] = None
+    object_relation: Optional[str] = None
     category: str
     type: str
     value: str
-    to_ids: Optional[bool]
-    uuid: Optional[UUID]
-    timestamp: Optional[int]
-    distribution: Optional[DistributionLevel]
-    sharing_group_id: Optional[int]
-    comment: Optional[str]
-    deleted: Optional[bool]
-    disable_correlation: Optional[bool]
-    first_seen: Optional[int]
-    last_seen: Optional[int]
+    to_ids: Optional[bool] = None
+    uuid: Optional[UUID] = None
+    timestamp: Optional[int] = None
+    distribution: Optional[DistributionLevel] = None
+    sharing_group_id: Optional[int] = None
+    comment: Optional[str] = None
+    deleted: Optional[bool] = None
+    disable_correlation: Optional[bool] = None
+    first_seen: Optional[int] = None
+    last_seen: Optional[int] = None
+    model_config = ConfigDict(use_enum_values=True)
 
 
 class Attribute(AttributeBase):
     id: int
     tags: list[Tag] = []
-
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class AttributeCreate(AttributeBase):
@@ -38,17 +37,17 @@ class AttributeCreate(AttributeBase):
 
 
 class AttributeUpdate(BaseModel):
-    object_id: Optional[int]
-    object_relation: Optional[str]
-    category: Optional[str]
-    type: Optional[str]
-    value: Optional[str]
-    to_ids: Optional[bool]
-    timestamp: Optional[int]
-    distribution: Optional[DistributionLevel]
-    sharing_group_id: Optional[int]
-    comment: Optional[str]
-    deleted: Optional[bool]
-    disable_correlation: Optional[bool]
-    first_seen: Optional[int]
-    last_seen: Optional[int]
+    object_id: Optional[int] = None
+    object_relation: Optional[str] = None
+    category: Optional[str] = None
+    type: Optional[str] = None
+    value: Optional[str] = None
+    to_ids: Optional[bool] = None
+    timestamp: Optional[int] = None
+    distribution: Optional[DistributionLevel] = None
+    sharing_group_id: Optional[int] = None
+    comment: Optional[str] = None
+    deleted: Optional[bool] = None
+    disable_correlation: Optional[bool] = None
+    first_seen: Optional[int] = None
+    last_seen: Optional[int] = None

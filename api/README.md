@@ -185,6 +185,15 @@ from app.worker import tasks
 tasks.handle_created_attribute.delay(pulled_attribute.id, pulled_attribute.event_id)
 ```
 
+If you add a new task, you have to restart the celery `worker` container, otherwise you will get `NotRegistered('app.worker.tasks.new_task') ` exception.
+Same if you modify a tasks code, you have to restart the `worker` container.
+
+
+To restart the worker container run:
+```
+$ docker-compose restart worker
+```
+
 ## TODO
 
 ### CRUD

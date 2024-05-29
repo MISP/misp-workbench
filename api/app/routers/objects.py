@@ -6,6 +6,7 @@ from app.repositories import events as events_repository
 from app.repositories import objects as objects_repository
 from app.schemas import object as object_schemas
 from app.schemas import user as user_schemas
+from app.worker import tasks
 from fastapi import APIRouter, Depends, HTTPException, Security, status
 from sqlalchemy.orm import Session
 
@@ -65,7 +66,11 @@ def create_object(
             status_code=status.HTTP_404_NOT_FOUND, detail="Event not found"
         )
 
-    return objects_repository.create_object(db=db, object=object)
+    object_db = objects_repository.create_object(db=db, object=object)
+
+    tasks.index_event.delay(event.uuid)
+
+    return object_db
 
 
 @router.patch("/objects/{object_id}", response_model=object_schemas.Object)
@@ -88,4 +93,9 @@ def delete_object(
         get_current_active_user, scopes=["objects:delete"]
     ),
 ):
-    return objects_repository.delete_object(db=db, object_id=object_id)
+    object_db = objects_repository.delete_object(db=db, object_id=object_id)
+    event = events_repository.get_event_by_id(db, event_id=object_db.event_id)
+
+    tasks.index_event.delay(event.uuid)
+
+    return object_db

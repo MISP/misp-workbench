@@ -3,33 +3,32 @@ from uuid import UUID
 
 from app.models.event import DistributionLevel
 from app.schemas.attribute import Attribute
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class ObjectBase(BaseModel):
     name: str
-    meta_category: Optional[str]
-    description: Optional[str]
-    template_uuid: Optional[UUID]
+    meta_category: Optional[str] = None
+    description: Optional[str] = None
+    template_uuid: Optional[UUID] = None
     template_version: int
     event_id: int
-    uuid: Optional[UUID]
+    uuid: Optional[UUID] = None
     timestamp: int
-    distribution: Optional[DistributionLevel]
-    sharing_group_id: Optional[int]
-    comment: Optional[str]
+    distribution: Optional[DistributionLevel] = None
+    sharing_group_id: Optional[int] = None
+    comment: Optional[str] = None
     deleted: bool
-    first_seen: Optional[int]
-    last_seen: Optional[int]
+    first_seen: Optional[int] = None
+    last_seen: Optional[int] = None
+    model_config = ConfigDict(use_enum_values=True)
 
 
 class Object(ObjectBase):
     id: int
 
     attributes: list[Attribute] = []
-
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ObjectCreate(ObjectBase):
@@ -37,15 +36,15 @@ class ObjectCreate(ObjectBase):
 
 
 class ObjectUpdate(BaseModel):
-    name: Optional[str]
-    meta_category: Optional[str]
-    description: Optional[str]
-    template_uuid: Optional[UUID]
-    template_version: Optional[int]
-    timestamp: Optional[int]
-    distribution: Optional[DistributionLevel]
-    sharing_group_id: Optional[int]
-    comment: Optional[str]
-    deleted: Optional[bool]
-    first_seen: Optional[int]
-    last_seen: Optional[int]
+    name: Optional[str] = None
+    meta_category: Optional[str] = None
+    description: Optional[str] = None
+    template_uuid: Optional[UUID] = None
+    template_version: Optional[int] = None
+    timestamp: Optional[int] = None
+    distribution: Optional[DistributionLevel] = None
+    sharing_group_id: Optional[int] = None
+    comment: Optional[str] = None
+    deleted: Optional[bool] = None
+    first_seen: Optional[int] = None
+    last_seen: Optional[int] = None

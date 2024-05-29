@@ -40,7 +40,7 @@ def get_user_by_info(db: Session, info: str):
     return db.query(event_models.Event).filter(event_models.Event.info == info).first()
 
 
-def create_event(db: Session, event: event_schemas.EventCreate):
+def create_event(db: Session, event: event_schemas.EventCreate) -> event_models.Event:
     # TODO: Event::beforeValidate() && Event::$validate
     db_event = event_models.Event(
         org_id=event.org_id,
@@ -68,6 +68,7 @@ def create_event(db: Session, event: event_schemas.EventCreate):
     )
     db.add(db_event)
     db.commit()
+    db.flush()
     db.refresh(db_event)
 
     return db_event
@@ -87,9 +88,11 @@ def create_event_from_pulled_event(db: Session, pulled_event: MISPEvent):
         orgc_id=pulled_event.orgc_id,
         timestamp=pulled_event.timestamp.timestamp(),
         distribution=event_models.DistributionLevel(pulled_event.distribution),
-        sharing_group_id=pulled_event.sharing_group_id
-        if int(pulled_event.sharing_group_id) > 0
-        else None,
+        sharing_group_id=(
+            pulled_event.sharing_group_id
+            if int(pulled_event.sharing_group_id) > 0
+            else None
+        ),
         proposal_email_lock=pulled_event.proposal_email_lock,
         locked=pulled_event.locked,
         threat_level=event_models.ThreatLevel(pulled_event.threat_level_id),
@@ -140,7 +143,7 @@ def update_event(db: Session, event_id: int, event: event_schemas.EventUpdate):
             status_code=status.HTTP_404_NOT_FOUND, detail="Event not found"
         )
 
-    event_patch = event.dict(exclude_unset=True)
+    event_patch = event.model_dump(exclude_unset=True)
     for key, value in event_patch.items():
         setattr(db_event, key, value)
 
