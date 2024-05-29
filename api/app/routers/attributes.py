@@ -28,7 +28,7 @@ def get_attributes(
     user: user_schemas.User = Security(
         get_current_active_user, scopes=["attributes:read"]
     ),
-):
+) -> Page[attribute_schemas.Attribute]:
     return attributes_repository.get_attributes(
         db, params["event_id"], params["deleted"]
     )
@@ -41,7 +41,7 @@ def get_attribute_by_id(
     user: user_schemas.User = Security(
         get_current_active_user, scopes=["attributes:read"]
     ),
-):
+) -> attribute_schemas.Attribute:
     db_attribute = attributes_repository.get_attribute_by_id(
         db, attribute_id=attribute_id
     )
@@ -63,7 +63,7 @@ def create_attribute(
     user: user_schemas.User = Security(
         get_current_active_user, scopes=["attributes:create"]
     ),
-):
+) -> attribute_schemas.Attribute:
     event = events_repository.get_event_by_id(
         db, event_id=attribute.event_id
     )  # TODO: only check if exists and get uuid
@@ -85,7 +85,7 @@ def update_attribute(
     user: user_schemas.User = Security(
         get_current_active_user, scopes=["attributes:update"]
     ),
-):
+) -> attribute_schemas.Attribute:
     attribute_db = attributes_repository.get_attribute_by_id(
         db, attribute_id=attribute_id
     )

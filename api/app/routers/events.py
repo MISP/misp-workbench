@@ -27,7 +27,7 @@ async def get_events(
     params: dict = Depends(get_events_parameters),
     db: Session = Depends(get_db),
     user: user_schemas.User = Security(get_current_active_user, scopes=["events:read"]),
-):
+) -> Page[event_schemas.Event]:
     return events_repository.get_events(db, params["info"], params["deleted"])
 
 
@@ -36,7 +36,7 @@ def get_event_by_id(
     event_id: int,
     db: Session = Depends(get_db),
     user: user_schemas.User = Security(get_current_active_user, scopes=["events:read"]),
-):
+) -> event_schemas.Event:
     db_event = events_repository.get_event_by_id(db, event_id=event_id)
     if db_event is None:
         raise HTTPException(
@@ -54,7 +54,7 @@ def create_event(
     user: user_schemas.User = Security(
         get_current_active_user, scopes=["events:create"]
     ),
-):
+) -> event_schemas.Event:
     db_event = events_repository.get_user_by_info(db, info=event_create_request.info)
     if db_event:
         raise HTTPException(
@@ -78,7 +78,7 @@ def update_event(
     user: user_schemas.User = Security(
         get_current_active_user, scopes=["events:update"]
     ),
-):
+) -> event_schemas.Event:
     return events_repository.update_event(db=db, event_id=event_id, event=event)
 
 

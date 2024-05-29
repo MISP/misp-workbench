@@ -10,7 +10,9 @@ from pymisp import MISPObject
 from sqlalchemy.orm import Session
 
 
-def get_objects(db: Session, skip: int = 0, limit: int = 100, event_id: int = None):
+def get_objects(
+    db: Session, skip: int = 0, limit: int = 100, event_id: int = None
+) -> list[object_models.Object]:
     query = db.query(object_models.Object)
 
     if event_id is not None:
@@ -27,7 +29,9 @@ def get_object_by_id(db: Session, object_id: int):
     )
 
 
-def create_object(db: Session, object: object_schemas.ObjectCreate):
+def create_object(
+    db: Session, object: object_schemas.ObjectCreate
+) -> object_models.Object:
     # TODO: MispObject::beforeValidate() && MispObject::$validate
     db_object = object_models.Object(
         event_id=object.event_id,
@@ -114,7 +118,9 @@ def create_object_from_pulled_object(
     return pulled_object
 
 
-def update_object(db: Session, object_id: int, object: object_schemas.ObjectUpdate):
+def update_object(
+    db: Session, object_id: int, object: object_schemas.ObjectUpdate
+) -> object_models.Object:
     # TODO: MISPObject::beforeValidate() && MISPObject::$validate
     db_object = get_object_by_id(db, object_id=object_id)
 
@@ -134,7 +140,7 @@ def update_object(db: Session, object_id: int, object: object_schemas.ObjectUpda
     return db_object
 
 
-def delete_object(db: Session, object_id: int) -> None:
+def delete_object(db: Session, object_id: int) -> object_models.Object:
     db_object = get_object_by_id(db, object_id=object_id)
 
     if db_object is None:
@@ -147,3 +153,5 @@ def delete_object(db: Session, object_id: int) -> None:
     db.add(db_object)
     db.commit()
     db.refresh(db_object)
+
+    return db_object
