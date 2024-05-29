@@ -101,9 +101,11 @@ def index_event(event_uuid: uuid.UUID):
     event_json["@timestamp"] = datetime.fromtimestamp(
         event_json["timestamp"]
     ).isoformat()
-    event_json["@publish_timestamp"] = datetime.fromtimestamp(
-        event_json["publish_timestamp"]
-    ).isoformat()
+
+    if event_json["publish_timestamp"]:
+        event_json["@publish_timestamp"] = datetime.fromtimestamp(
+            event_json["publish_timestamp"]
+        ).isoformat()
 
     for attribute in event_json["attributes"]:
         attribute["@timestamp"] = datetime.fromtimestamp(
