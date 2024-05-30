@@ -37,7 +37,7 @@ function onSubmit() {
                     {{ status.error }}
                 </div>
                 <div class="modal-footer">
-                    <button id="closeModalButton-10" type="button" data-bs-dismiss="modal"
+                    <button id="closeModalButton" type="button" data-bs-dismiss="modal"
                         class="btn btn-secondary">Discard</button>
                     <button type="submit" @click="onSubmit" class="btn btn-danger"
                         :class="{ 'disabled': status.loading }">
