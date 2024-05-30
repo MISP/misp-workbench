@@ -40,7 +40,7 @@ function handleAttributesUpdated(attribute) {
                     <DistributionLevel :distribution_level_id=attribute.distribution />
                 </td>
                 <td class="text-end">
-                    <div class="flex-wrap btn-group-vertical" aria-label="Attribute Actions">
+                    <div :class="{ 'btn-group-vertical': $isMobile, 'btn-group': !$isMobile }" aria-label="Attribute Actions">
                         <button type="button" class="btn btn-danger" data-bs-toggle="modal"
                             :data-bs-target="'#deleteAttributeModal-' + attribute.id">
                             <font-awesome-icon icon="fa-solid fa-trash" />
