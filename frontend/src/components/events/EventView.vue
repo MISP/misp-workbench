@@ -192,7 +192,7 @@ div.row h3 {
                     <div class="card bg-light">
                         <div class="card-body d-flex flex-column">
                             <div class="card-text">
-                                <img src="/public/images/pie-chart.png" class="card-img">
+                                <img src="/images/pie-chart.png" class="card-img">
                             </div>
                         </div>
                     </div>
