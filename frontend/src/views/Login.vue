@@ -60,7 +60,7 @@ function onSubmit(values, { setErrors }) {
 <template>
   <div id="login-container" class="form-signin d-flex flex-column min-vh-100 justify-content-center align-items-center">
     <Form @submit="onSubmit" :validation-schema="schema" v-slot="{ errors, isSubmitting }">
-      <img class="mb-4" src="/public/images/misp-logo-pixel.png" alt="" width="120">
+      <img class="mb-4" src="/images/misp-logo-pixel.png" alt="" width="120">
 
       <div class="form-floating">
         <Field id="username" name="username" type="text" class="form-control"
