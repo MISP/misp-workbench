@@ -41,6 +41,13 @@ export const useObjectsStore = defineStore({
         },
         getObjectTemplateByUuid(uuid) {
             return this.objectTemplates.find((objectTemplate) => objectTemplate.uuid === uuid);
+        },
+        async delete(id) {
+            this.status = { loading: true };
+            return await fetchWrapper
+                .delete(`${baseUrl}/${id}`)
+                .catch((error) => (this.status = { error }))
+                .finally(() => (this.status = { loading: false }));
         }
     },
 });

@@ -4,6 +4,7 @@ import { storeToRefs } from 'pinia'
 import { useObjectsStore } from "@/stores";
 import ObjectAttributesList from "@/components/objects/ObjectAttributesList.vue";
 import AddObjectModal from "@/components/objects/AddObjectModal.vue";
+import DeleteObjectModal from "@/components/objects/DeleteObjectModal.vue";
 import Spinner from "@/components/misc/Spinner.vue";
 import Paginate from "vuejs-paginate-next";
 
@@ -35,14 +36,23 @@ function handleObjectsUpdated(event) {
     </div>
     <div class="table-responsive-sm">
         <div class="mt-2" :key="object.id" v-for="object in objects">
-            <div class="card">
+            <div class="card" v-if="!object.deleted">
                 <div class="card-header">
                     {{ object.name }}
                 </div>
                 <div class="card-body">
                     <ObjectAttributesList :attributes="object.attributes" :object_id="object.id" />
+                    <div class="row">
+                        <div class="col text-center">
+                            <button type="button" class="btn btn-danger text-center" data-bs-toggle="modal"
+                                :data-bs-target="'#deleteObjectModal-' + object.id">
+                                <font-awesome-icon icon="fa-solid fa-trash" />
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
+            <DeleteObjectModal @object-deleted="handleObjectsUpdated" :object_id="object.id" />
         </div>
     </div>
     <Paginate v-if="page_count > 1" :page-count="page_count" :click-handler="onPageChange" />
