@@ -14,6 +14,7 @@ TODO
 
 1. Start API dev server:
     ```console
+    git submodule update --init --recursive
     docker-compose -f docker-compose.yml -f docker-compose.dev.yml --env-file=".env.dev" up --build
     ```
 
