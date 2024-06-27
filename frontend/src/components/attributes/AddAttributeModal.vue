@@ -184,7 +184,7 @@ function handleDistributionLevelUpdated(distributionLevelId) {
           <div class="modal-footer">
             <button id="closeModalButton" type="button" data-bs-dismiss="modal" class="btn btn-secondary"
               @click="onClose()">Discard</button>
-            <button type="submit" class="btn btn-primary" :disabled="status.loading">
+            <button type="submit" class="btn btn-outline-primary" :disabled="status.loading">
               <span v-show="status.loading">
                 <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
               </span>

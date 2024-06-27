@@ -55,14 +55,14 @@ function handleEventDeleted(event) {
                     <td class="text-end">
                         <div class="flex-wrap" :class="{ 'btn-group-vertical': $isMobile, 'btn-group': !$isMobile }"
                             aria-label="Event Actions">
-                            <button type="button" class="btn btn-danger" data-bs-toggle="modal"
+                            <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal"
                                 :data-bs-target="'#deleteEventModal-' + event.id">
                                 <font-awesome-icon icon="fa-solid fa-trash" />
                             </button>
-                            <RouterLink :to="`/events/update/${event.id}`" tag="button" class="btn btn-primary">
+                            <RouterLink :to="`/events/update/${event.id}`" tag="button" class="btn btn-outline-primary">
                                 <font-awesome-icon icon="fa-solid fa-pen" />
                             </RouterLink>
-                            <RouterLink :to="`/events/${event.id}`" tag="button" class="btn btn-primary">
+                            <RouterLink :to="`/events/${event.id}`" tag="button" class="btn btn-outline-primary">
                                 <font-awesome-icon icon="fa-solid fa-eye" />
                             </RouterLink>
                         </div>

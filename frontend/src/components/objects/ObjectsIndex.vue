@@ -44,7 +44,7 @@ function handleObjectsUpdated(event) {
                     <ObjectAttributesList :attributes="object.attributes" :object_id="object.id" />
                     <div class="row">
                         <div class="col text-center">
-                            <button type="button" class="btn btn-danger text-center" data-bs-toggle="modal"
+                            <button type="button" class="btn btn-outline-danger text-center" data-bs-toggle="modal"
                                 :data-bs-target="'#deleteObjectModal-' + object.id">
                                 <font-awesome-icon icon="fa-solid fa-trash" />
                             </button>

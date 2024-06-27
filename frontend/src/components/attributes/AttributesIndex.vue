@@ -61,15 +61,15 @@ function handleAttributesUpdated(event) {
                     </td>
                     <td class="text-end">
                         <div :class="{ 'btn-group-vertical': $isMobile, 'btn-group': !$isMobile }" aria-label="Attribute Actions">
-                            <button type="button" class="btn btn-danger" data-bs-toggle="modal"
+                            <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal"
                                 :data-bs-target="'#deleteAttributeModal-' + attribute.id">
                                 <font-awesome-icon icon="fa-solid fa-trash" />
                             </button>
                             <RouterLink :to="`/attributes/update/${attribute.id}`" tag="button"
-                                class="btn btn-primary">
+                                class="btn btn-outline-primary">
                                 <font-awesome-icon icon="fa-solid fa-pen" />
                             </RouterLink>
-                            <RouterLink :to="`/attributes/${attribute.id}`" tag="button" class="btn btn-primary">
+                            <RouterLink :to="`/attributes/${attribute.id}`" tag="button" class="btn btn-outline-primary">
                                 <font-awesome-icon icon="fa-solid fa-eye" />
                             </RouterLink>
                         </div>

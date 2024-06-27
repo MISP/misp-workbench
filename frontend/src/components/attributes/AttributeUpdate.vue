@@ -107,7 +107,7 @@ function handleDistributionLevelUpdated(distributionLevelId) {
                 <div v-if="errors.apiError" class="w-100 alert alert-danger mt-3 mb-3">
                     {{ errors.apiError }}
                 </div>
-                <button type="submit" class="btn btn-primary" :class="{ 'disabled': status.updating }">
+                <button type="submit" class="btn btn-outline-primary" :class="{ 'disabled': status.updating }">
                     <span v-if="status.updating">
                         <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
                     </span>
