@@ -3,12 +3,21 @@ import { ref, watch } from 'vue';
 import AddObjectAttributeRow from "@/components/objects/AddObjectAttributeRow.vue";
 import ObjectAttributesSelect from "@/components/objects/ObjectAttributesSelect.vue";
 import { AttributeSchema } from "@/schemas/attribute";
-import { Form, Field } from "vee-validate";
+import { Form, Field, validateObject } from "vee-validate";
 import * as Yup from "yup";
 
 const props = defineProps(['template', 'object']);
 const object = ref(props.object);
+const template = ref(props.template);
 
+const ObjectTemplateSchema = Yup.object().shape({
+  attributes: Yup.array()
+    .test(
+      'at-least-one-required-type',
+      `The object must contain at least one attribute with a type matching one of the following: ${template.value.requiredOneOf.join(', ')}`,
+      (array) => array && array.some((element) => template.value.requiredOneOf.includes(element.type))
+    ),
+});
 const attribute = ref({
     type: '',
     value: '',
@@ -23,7 +32,7 @@ let autosuggestAttributeType = true;
 function addAttribute(values, { resetForm }) {
     object.value.attributes = [...object.value.attributes, { ...attribute.value }];
     attribute.value.value = '';
-    attribute.value.type = '';
+    attribute.value.type = ''; // TODO: set actual misp type
     attribute.value.category = 'category'; // TODO: set actual category (need misp_attribute->category map)
     attribute.value.to_ids = false;
     attribute.value.distribution = 0;
@@ -83,6 +92,7 @@ watch(attribute.value, (newValue, oldValue) => {
                 @attribute-type-changed="handleAttributeTypeChanged" />
             <Field class="form-control" type="hidden" id="attribute.disable_correlation"
                 name="attribute.disable_correlation" v-model="attribute.disable_correlation"></Field>
+
             <Field class="form-control" type="hidden" id="attribute.category" name="attribute.category"
                 v-model="attribute.category"></Field>
             <Field class="form-control" type="hidden" id="attribute.distribution" name="attribute.distribution"
@@ -93,7 +103,15 @@ watch(attribute.value, (newValue, oldValue) => {
             </div>
         </div>
     </Form>
-    <div class="mx-auto" style="width: 200px;">
-        <button type="button" class="btn btn-outline-primary" style="width: 200px;" @click="nextStep">Next</button>
+    <div >
+        <Form @submit="nextStep" :validation-schema="ObjectTemplateSchema" v-slot="{ errors }">
+            <div >
+                <button type="submit"  style="width: 200px;" class="btn btn-outline-primary mx-auto">Next</button>
+            </div>
+            <Field class="form-control" type="hidden" id="attributes" name="attributes" v-model="object.attributes"></Field>
+            <div v-for="error in errors" class="text-danger">
+                {{ error }}
+            </div>
+        </Form>
     </div>
 </template>

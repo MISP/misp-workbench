@@ -1,8 +1,5 @@
 <script setup>
 
-import ObjectAttributesSelect from "@/components/objects/ObjectAttributesSelect.vue";
-
-
 const props = defineProps(['attribute']);
 const emit = defineEmits(['object-attribute-deleted']);
 

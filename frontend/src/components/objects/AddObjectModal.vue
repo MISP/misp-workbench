@@ -1,15 +1,14 @@
 <script setup>
 
-import { ref } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { useObjectsStore } from "@/stores";
 import { storeToRefs } from 'pinia'
 import { ObjectSchema } from "@/schemas/object";
 import { DISTRIBUTION_LEVEL } from "@/helpers/constants";
-import DistributionLevelSelect from "@/components/enums/DistributionLevelSelect.vue";
-import ObjectMetaCategorySelect from "@/components/enums/ObjectMetaCategorySelect.vue";
 import ObjectTemplateSelect from "@/components/enums/ObjectTemplateSelect.vue";
 import AddObjectForm from "@/components/objects/AddObjectForm.vue";
 import AddObjectPreview from "@/components/objects/AddObjectPreview.vue";
+import DisplayObjectTemplate from "@/components/objects/DisplayObjectTemplate.vue";
 import { Form, Field } from "vee-validate";
 
 
@@ -23,11 +22,14 @@ const object = ref({
     distribution: DISTRIBUTION_LEVEL.INHERIT_EVENT,
     meta_category: "network",
     template_uuid: null,
-    template: null,
     attributes: []
 });
 
+let selectedQuickTemplate = ref('');
+
+
 const activeTemplate = ref({});
+const isTemplateNotEmpty = computed(() => Object.keys(activeTemplate.value).length > 0);
 
 function onSubmit(values, { setErrors }) {
     return objectsStore
@@ -48,28 +50,24 @@ function onClose() {
     };
 }
 
-function handleDistributionLevelUpdated(distributionLevelId) {
-    object.value.distribution = parseInt(distributionLevelId);
-}
-
-function handleObjectMetaCategoryUpdated(metaCategory) {
-    object.value.meta_category = metaCategory;
-}
-
 function handleObjectTemplateUpdated(templateUuid) {
     object.value.template_uuid = templateUuid;
+    console.log('templateUuid', templateUuid);
     activeTemplate.value = objectsStore.getObjectTemplateByUuid(templateUuid);
-    document.getElementById('attributes-tab').click();
+
+    selectedQuickTemplate.value = '';
 }
 
-function selectObjectCategory(category) {
-    if (category === 'ip/domain') {
+watch(selectedQuickTemplate, (newValue, oldValue) => {
+    if (newValue === 'domain/ip') {
         object.value.template_uuid = '43b3b146-77eb-4931-b4cc-b66c60f28734';
         activeTemplate.value = objectsStore.getObjectTemplateByUuid('43b3b146-77eb-4931-b4cc-b66c60f28734');
     }
-    document.getElementById('attributes-tab').click();
+});
 
-};
+function nextStep() {
+    document.getElementById('attributes-tab').click();
+}
 
 </script>
 
@@ -89,10 +87,6 @@ function selectObjectCategory(category) {
     width: 100px;
     text-align: center;
     vertical-align: middle;
-}
-
-button:hover .figure-caption {
-    color: white;
 }
 </style>
 
@@ -114,8 +108,8 @@ button:hover .figure-caption {
                             </li>
                             <li class="nav-item" role="presentation">
                                 <button class="nav-link" id="attributes-tab" data-bs-toggle="tab"
-                                    data-bs-target="#attributes" type="button" role="tab" aria-controls="attributes"
-                                    aria-selected="false">Attributes</button>
+                                    :disabled="!isTemplateNotEmpty" data-bs-target="#attributes" type="button"
+                                    role="tab" aria-controls="attributes" aria-selected="false">Attributes</button>
                             </li>
                             <!-- <li class="nav-item" role="presentation">
                                 <button class="nav-link" id="distribution-tab" data-bs-toggle="tab"
@@ -129,61 +123,66 @@ button:hover .figure-caption {
                             </li> -->
                             <li class="nav-item" role="presentation">
                                 <button class="nav-link" id="preview-tab" data-bs-toggle="tab" data-bs-target="#preview"
-                                    type="button" role="tab" aria-controls="preview"
+                                    :disabled="!isTemplateNotEmpty" type="button" role="tab" aria-controls="preview"
                                     aria-selected="false">Preview</button>
                             </li>
                         </ul>
                         <div class="tab-content" id="add-object-tab-content">
+                            <div class="btn-group" role="group" aria-label="Basic radio toggle button group">
+                                <input type="radio" class="btn-check" v-model="selectedQuickTemplate"
+                                    v-bind:value="'domain/ip'" name="btnradio" id="btn-domain-ip" autocomplete="off">
+                                <label class="btn btn-outline-primary" for="btn-domain-ip">
+                                    <font-awesome-icon icon="fa-solid fa-network-wired" class="fa-2xl mt-3" />
+                                    <p>Domain/IP</p>
+                                </label>
+                                <input type="radio" class="btn-check" v-model="selectedQuickTemplate"
+                                    v-bind:value="'url/domain'" name="btnradio" id="btn-url-domain" autocomplete="off">
+                                <label class="btn btn-outline-primary" for="btn-url-domain">
+                                    <font-awesome-icon icon="fa-solid fa-link" class="fa-2xl mt-3" />
+                                    <p>URL/Domain</p>
+                                </label>
+                                <input type="radio" class="btn-check" v-model="selectedQuickTemplate"
+                                    v-bind:value="'file/hash'" name="btnradio" id="btn-file-hash" autocomplete="off">
+                                <label class="btn btn-outline-primary" for="btn-file-hash">
+                                    <font-awesome-icon icon="fa-solid fa-file-lines" class="fa-2xl mt-3" />
+                                    <p>File/Hash</p>
+                                </label>
+                                <input type="radio" class="btn-check" v-model="selectedQuickTemplate"
+                                    v-bind:value="'vulnerability'" name="btnradio" id="btn-vulnerability"
+                                    autocomplete="off">
+                                <label class="btn btn-outline-primary" for="btn-vulnerability">
+                                    <font-awesome-icon icon="fa-solid fa-skull-crossbones" class="fa-2xl mt-3" />
+                                    <p>Vulnerability</p>
+                                </label>
+                                <input type="radio" class="btn-check" v-model="selectedQuickTemplate"
+                                    v-bind:value="'financial'" name="btnradio" id="btn-financial" autocomplete="off">
+                                <label class="btn btn-outline-primary" for="btn-financial">
+                                    <font-awesome-icon icon="fa-solid fa-money-check-dollar" class="fa-2xl mt-3" />
+                                    <p>Financial</p>
+                                </label>
+                                <input type="radio" class="btn-check" v-model="selectedQuickTemplate"
+                                    v-bind:value="'personal'" name="btnradio" id="btn-person" autocomplete="off">
+                                <label class="btn btn-outline-primary" for="btn-person">
+                                    <font-awesome-icon icon="fa-solid fa-person" class="fa-2xl mt-3" />
+                                    <p>Personal</p>
+                                </label>
+                            </div>
                             <div class="tab-pane show active" id="category" role="tabpanel"
                                 aria-labelledby="category-tab">
-                                <button type="button" class="btn btn-outline-secondary m-1"
-                                    @click="selectObjectCategory('ip/domain')">
-                                    <figure class="figure m-1">
-                                        <font-awesome-icon icon="fa-solid fa-network-wired" class="fa-2xl" />
-                                        <figcaption class="figure-caption">Domain/IP</figcaption>
-                                    </figure>
-                                </button>
-                                <button type="button" class="btn btn-outline-secondary m-1">
-                                    <figure class="figure m-1">
-                                        <font-awesome-icon icon="fa-solid fa-link" class="fa-2xl" />
-                                        <figcaption class="figure-caption">URL/Domain</figcaption>
-                                    </figure>
-                                </button>
-                                <button type="button" class="btn btn-outline-secondary m-1">
-                                    <figure class="figure m-1">
-                                        <font-awesome-icon icon="fa-solid fa-file-lines" class="fa-2xl" />
-                                        <figcaption class="figure-caption">File/Hash</figcaption>
-                                    </figure>
-                                </button>
-                                <button type="button" class="btn btn-outline-secondary m-1">
-                                    <figure class="figure m-1">
-                                        <font-awesome-icon icon="fa-solid fa-skull-crossbones" class="fa-2xl" />
-                                        <figcaption class="figure-caption">Vulnerability</figcaption>
-                                    </figure>
-                                </button>
-                                <button type="button" class="btn btn-outline-secondary m-1">
-                                    <figure class="figure m-1">
-                                        <font-awesome-icon icon="fa-solid fa-money-check-dollar" class="fa-2xl" />
-                                        <figcaption class="figure-caption">Financial</figcaption>
-                                    </figure>
-                                </button>
-                                <button type="button" class="btn btn-outline-secondary m-1">
-                                    <figure class="figure m-1">
-                                        <font-awesome-icon icon="fa-solid fa-person" class="fa-2xl" />
-                                        <figcaption class="figure-caption">Personal</figcaption>
-                                    </figure>
-                                </button>
                                 <div class="col text-start mt-3">
-                                    <label for="object.template" class="form-label">Or select a template from the
+                                    <label for="activeTemplate" class="form-label">Or select a template from the
                                         list:</label>
-                                    <ObjectTemplateSelect name="object.template" :selected=object.template
+                                    <ObjectTemplateSelect name="activeTemplate" :selected=activeTemplate
                                         @object-template-updated="handleObjectTemplateUpdated"
-                                        :errors="errors['object.template']" />
-                                    <div class="invalid-feedback">{{ errors['object.template'] }}</div>
+                                        :errors="errors['activeTemplate']" />
+                                    <div class="invalid-feedback">{{ errors['activeTemplate'] }}</div>
+                                </div>
+                                <div>
+                                    <DisplayObjectTemplate v-if="isTemplateNotEmpty" :key="activeTemplate.uuid" :template="activeTemplate" />
                                 </div>
                             </div>
                             <div class="tab-pane" id="attributes" role="tabpanel" aria-labelledby="attributes-tab">
-                                <AddObjectForm :object="object" :template="activeTemplate" />
+                                <AddObjectForm v-if="isTemplateNotEmpty" :object="object" :template="activeTemplate" />
                             </div>
                             <!-- <div class="tab-pane" id="distribution" role="tabpanel" aria-labelledby="distribution-tab">
                                 distribution
@@ -220,7 +219,7 @@ button:hover .figure-caption {
                                 </div>
                             </div> -->
                             <div class="tab-pane" id="preview" role="tabpanel" aria-labelledby="preview-tab">
-                                <AddObjectPreview :object="object" :template="activeTemplate"/>
+                                <AddObjectPreview :object="object" :template="activeTemplate" />
                             </div>
                         </div>
                         <!-- TODO -->
@@ -233,10 +232,15 @@ button:hover .figure-caption {
                             </div>
                         </div> 
                         -->
+                        <div class="row m-2">
+                            <button type="button" @click="nextStep()" style="width: 200px;"
+                                class="btn btn-outline-primary mx-auto" :disabled="!isTemplateNotEmpty">Next</button>
+                        </div>
                     </div>
                     <div v-if="errors.apiError" class="w-100 alert alert-danger mt-3 mb-3">
                         {{ errors.apiError }}
                     </div>
+
                     <div class="modal-footer">
                         <button id="closeModalButton" type="button" data-bs-dismiss="modal" class="btn btn-secondary"
                             @click="onClose()">Discard</button>

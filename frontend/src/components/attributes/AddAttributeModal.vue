@@ -93,7 +93,7 @@ function handleDistributionLevelUpdated(distributionLevelId) {
                 <div class="invalid-feedback">{{ errors['attribute.distribution'] }}</div>
               </div>
             </div>
-            <!-- TODO -->
+            <!-- TODO: sharing groups -->
             <!-- <div class="row m-2"> -->
             <!-- <div class="col col-6 text-start">
                   <label for="attributeSharingGroupId" class="form-label">Sharing Group</label>
