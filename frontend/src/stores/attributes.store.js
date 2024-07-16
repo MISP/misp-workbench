@@ -36,7 +36,6 @@ export const useAttributesStore = defineStore({
             return await fetchWrapper
                 .post(baseUrl, attribute)
                 .then((attribute) => (this.attribute = attribute))
-                .catch((error) => (this.status = { error }))
                 .finally(() => (this.status = { loading: false }));
         },
         async update(attribute) {
