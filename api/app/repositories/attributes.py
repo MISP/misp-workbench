@@ -47,7 +47,7 @@ def create_attribute(
         to_ids=attribute.to_ids,
         uuid=attribute.uuid,
         timestamp=attribute.timestamp or time.time(),
-        distribution=attribute.distribution,
+        distribution=event_schemas.DistributionLevel(attribute.distribution),
         sharing_group_id=attribute.sharing_group_id,
         comment=attribute.comment,
         deleted=attribute.deleted,
