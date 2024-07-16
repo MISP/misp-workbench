@@ -11,7 +11,7 @@ function handleSelectChange(event) {
 </script>
 
 <template>
-    <Field class="form-control form-select" :name="name" :class="{ 'is-invalid': errors }" as="select" @change="handleSelectChange"
+    <Field class="form-select" :name="name" :class="{ 'is-invalid': errors }" as="select" @change="handleSelectChange"
         :value="props.selected">
         <option v-for="attribute in template.attributes" :value="attribute.name">{{ attribute.name }}</option>
     </Field>

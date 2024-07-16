@@ -42,10 +42,6 @@ function addAttribute(values, { resetForm }) {
     resetForm();
 }
 
-function nextStep() {
-    document.getElementById('preview-tab').click();
-}
-
 function handleObjectAttributeDeleted(event) {
     object.value.attributes = object.value.attributes.filter(a => a !== event.attribute);
 }
@@ -103,15 +99,4 @@ watch(attribute.value, (newValue, oldValue) => {
             </div>
         </div>
     </Form>
-    <div >
-        <Form @submit="nextStep" :validation-schema="ObjectTemplateSchema" v-slot="{ errors }">
-            <div >
-                <button type="submit"  style="width: 200px;" class="btn btn-outline-primary mx-auto">Next</button>
-            </div>
-            <Field class="form-control" type="hidden" id="attributes" name="attributes" v-model="object.attributes"></Field>
-            <div v-for="error in errors" class="text-danger">
-                {{ error }}
-            </div>
-        </Form>
-    </div>
 </template>

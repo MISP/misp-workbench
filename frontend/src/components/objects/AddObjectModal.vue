@@ -36,7 +36,7 @@ function onSubmit(values, { setErrors }) {
         .create(object.value)
         .then((response) => {
             emit('object-created', { "object": response });
-            document.getElementById('closeModalButton').click();
+            // document.getElementById('closeModalButton').click();
         })
         .catch((error) => setErrors({ apiError: error }));
 }
@@ -64,10 +64,6 @@ watch(selectedQuickTemplate, (newValue, oldValue) => {
         activeTemplate.value = objectsStore.getObjectTemplateByUuid('43b3b146-77eb-4931-b4cc-b66c60f28734');
     }
 });
-
-function nextStep() {
-    document.getElementById('attributes-tab').click();
-}
 
 </script>
 
@@ -178,7 +174,8 @@ function nextStep() {
                                     <div class="invalid-feedback">{{ errors['activeTemplate'] }}</div>
                                 </div>
                                 <div>
-                                    <DisplayObjectTemplate v-if="isTemplateNotEmpty" :key="activeTemplate.uuid" :template="activeTemplate" />
+                                    <DisplayObjectTemplate v-if="isTemplateNotEmpty" :key="activeTemplate.uuid"
+                                        :template="activeTemplate" />
                                 </div>
                             </div>
                             <div class="tab-pane" id="attributes" role="tabpanel" aria-labelledby="attributes-tab">
@@ -232,12 +229,9 @@ function nextStep() {
                             </div>
                         </div> 
                         -->
-                        <div class="row m-2">
-                            <button type="button" @click="nextStep()" style="width: 200px;"
-                                class="btn btn-outline-primary mx-auto" :disabled="!isTemplateNotEmpty">Next</button>
-                        </div>
                     </div>
                     <div v-if="errors.apiError" class="w-100 alert alert-danger mt-3 mb-3">
+                        asd
                         {{ errors.apiError }}
                     </div>
 
