@@ -95,10 +95,12 @@ watch(attribute.value, (newValue, oldValue) => {
             </a>
         </p>
         <div class="collapse" id="collapseTemplateInfo">
-            {{ template }}
             <div class="card card-body">
-                <span>{{ template.description }}</span>
-                <span class="badge bg-secondary">{{ template.meta_category }}</span>
+                <div><span class="badge bg-secondary flex">{{ template.meta_category }}</span>
+                </div>
+                <div>
+                    <span>{{ template.description }}</span>
+                </div>
                 <span class="fw-bold">requires one of:</span>
                 <ul>
                     <li v-for="attribute in template.requiredOneOf">{{ attribute }}</li>
