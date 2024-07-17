@@ -8,7 +8,7 @@ import { ObjectSchema } from "@/schemas/object";
 import { DISTRIBUTION_LEVEL } from "@/helpers/constants";
 import ObjectTemplateSelect from "@/components/enums/ObjectTemplateSelect.vue";
 import ApiError from "@/components/misc/ApiError.vue";
-import AddObjectForm from "@/components/objects/AddObjectForm.vue";
+import AddObjectAttributesForm from "@/components/objects/AddObjectAttributesForm.vue";
 import AddObjectPreview from "@/components/objects/AddObjectPreview.vue";
 import DisplayObjectTemplate from "@/components/objects/DisplayObjectTemplate.vue";
 import { Form, Field } from "vee-validate";
@@ -68,10 +68,19 @@ function handleObjectTemplateUpdated(templateUuid) {
     selectedQuickTemplate.value = '';
 }
 
+const defaultObjectTemplates = {
+    'domain/ip': '43b3b146-77eb-4931-b4cc-b66c60f28734',
+    'url/domain': '60efb77b-40b5-4c46-871b-ed1ed999fce5',
+    'file/hash': '688c46fb-5edb-40a3-8273-1af7923e2215',
+    'vulnerability': '81650945-f186-437b-8945-9f31715d32da',
+    'financial': 'c51ed099-a628-46ee-ad8f-ffed866b6b8d',
+    'personal': 'a15b0477-e9d1-4b9c-9546-abe78a4f4248'
+};
+
 watch(selectedQuickTemplate, (newValue, oldValue) => {
-    if (newValue === 'domain/ip') {
-        object.value.template_uuid = '43b3b146-77eb-4931-b4cc-b66c60f28734';
-        activeTemplate.value = objectsStore.getObjectTemplateByUuid('43b3b146-77eb-4931-b4cc-b66c60f28734');
+    if (defaultObjectTemplates[newValue]) {
+        object.value.template_uuid = defaultObjectTemplates[newValue];
+        activeTemplate.value = objectsStore.getObjectTemplateByUuid(defaultObjectTemplates[newValue]);
     }
 });
 
@@ -134,47 +143,51 @@ watch(selectedQuickTemplate, (newValue, oldValue) => {
                             </li>
                         </ul>
                         <div class="tab-content" id="add-object-tab-content">
-                            <div class="btn-group" role="group" aria-label="Basic radio toggle button group">
-                                <input type="radio" class="btn-check" v-model="selectedQuickTemplate"
-                                    v-bind:value="'domain/ip'" name="btnradio" id="btn-domain-ip" autocomplete="off">
-                                <label class="btn btn-outline-primary" for="btn-domain-ip">
-                                    <font-awesome-icon icon="fa-solid fa-network-wired" class="fa-2xl mt-3" />
-                                    <p>Domain/IP</p>
-                                </label>
-                                <input type="radio" class="btn-check" v-model="selectedQuickTemplate"
-                                    v-bind:value="'url/domain'" name="btnradio" id="btn-url-domain" autocomplete="off">
-                                <label class="btn btn-outline-primary" for="btn-url-domain">
-                                    <font-awesome-icon icon="fa-solid fa-link" class="fa-2xl mt-3" />
-                                    <p>URL/Domain</p>
-                                </label>
-                                <input type="radio" class="btn-check" v-model="selectedQuickTemplate"
-                                    v-bind:value="'file/hash'" name="btnradio" id="btn-file-hash" autocomplete="off">
-                                <label class="btn btn-outline-primary" for="btn-file-hash">
-                                    <font-awesome-icon icon="fa-solid fa-file-lines" class="fa-2xl mt-3" />
-                                    <p>File/Hash</p>
-                                </label>
-                                <input type="radio" class="btn-check" v-model="selectedQuickTemplate"
-                                    v-bind:value="'vulnerability'" name="btnradio" id="btn-vulnerability"
-                                    autocomplete="off">
-                                <label class="btn btn-outline-primary" for="btn-vulnerability">
-                                    <font-awesome-icon icon="fa-solid fa-skull-crossbones" class="fa-2xl mt-3" />
-                                    <p>Vulnerability</p>
-                                </label>
-                                <input type="radio" class="btn-check" v-model="selectedQuickTemplate"
-                                    v-bind:value="'financial'" name="btnradio" id="btn-financial" autocomplete="off">
-                                <label class="btn btn-outline-primary" for="btn-financial">
-                                    <font-awesome-icon icon="fa-solid fa-money-check-dollar" class="fa-2xl mt-3" />
-                                    <p>Financial</p>
-                                </label>
-                                <input type="radio" class="btn-check" v-model="selectedQuickTemplate"
-                                    v-bind:value="'personal'" name="btnradio" id="btn-person" autocomplete="off">
-                                <label class="btn btn-outline-primary" for="btn-person">
-                                    <font-awesome-icon icon="fa-solid fa-person" class="fa-2xl mt-3" />
-                                    <p>Personal</p>
-                                </label>
-                            </div>
                             <div class="tab-pane show active" id="category" role="tabpanel"
                                 aria-labelledby="category-tab">
+                                <div class="btn-group" role="group">
+                                    <input type="radio" class="btn-check" v-model="selectedQuickTemplate"
+                                        v-bind:value="'domain/ip'" name="btnradio" id="btn-domain-ip"
+                                        autocomplete="off">
+                                    <label class="btn btn-outline-primary" for="btn-domain-ip">
+                                        <font-awesome-icon icon="fa-solid fa-network-wired" class="fa-2xl mt-3" />
+                                        <p>Domain/IP</p>
+                                    </label>
+                                    <input type="radio" class="btn-check" v-model="selectedQuickTemplate"
+                                        v-bind:value="'url/domain'" name="btnradio" id="btn-url-domain"
+                                        autocomplete="off">
+                                    <label class="btn btn-outline-primary" for="btn-url-domain">
+                                        <font-awesome-icon icon="fa-solid fa-link" class="fa-2xl mt-3" />
+                                        <p>URL/Domain</p>
+                                    </label>
+                                    <input type="radio" class="btn-check" v-model="selectedQuickTemplate"
+                                        v-bind:value="'file/hash'" name="btnradio" id="btn-file-hash"
+                                        autocomplete="off">
+                                    <label class="btn btn-outline-primary" for="btn-file-hash">
+                                        <font-awesome-icon icon="fa-solid fa-file-lines" class="fa-2xl mt-3" />
+                                        <p>File/Hash</p>
+                                    </label>
+                                    <input type="radio" class="btn-check" v-model="selectedQuickTemplate"
+                                        v-bind:value="'vulnerability'" name="btnradio" id="btn-vulnerability"
+                                        autocomplete="off">
+                                    <label class="btn btn-outline-primary" for="btn-vulnerability">
+                                        <font-awesome-icon icon="fa-solid fa-skull-crossbones" class="fa-2xl mt-3" />
+                                        <p>Vulnerability</p>
+                                    </label>
+                                    <input type="radio" class="btn-check" v-model="selectedQuickTemplate"
+                                        v-bind:value="'financial'" name="btnradio" id="btn-financial"
+                                        autocomplete="off">
+                                    <label class="btn btn-outline-primary" for="btn-financial">
+                                        <font-awesome-icon icon="fa-solid fa-money-check-dollar" class="fa-2xl mt-3" />
+                                        <p>Financial</p>
+                                    </label>
+                                    <input type="radio" class="btn-check" v-model="selectedQuickTemplate"
+                                        v-bind:value="'personal'" name="btnradio" id="btn-person" autocomplete="off">
+                                    <label class="btn btn-outline-primary" for="btn-person">
+                                        <font-awesome-icon icon="fa-solid fa-person" class="fa-2xl mt-3" />
+                                        <p>Personal</p>
+                                    </label>
+                                </div>
                                 <div class="col text-start mt-3">
                                     <label for="activeTemplate" class="form-label">Or select a template from the
                                         list:</label>
@@ -189,7 +202,8 @@ watch(selectedQuickTemplate, (newValue, oldValue) => {
                                 </div>
                             </div>
                             <div class="tab-pane" id="attributes" role="tabpanel" aria-labelledby="attributes-tab">
-                                <AddObjectForm v-if="isTemplateNotEmpty" :object="object" :template="activeTemplate" />
+                                <AddObjectAttributesForm v-if="isTemplateNotEmpty" :object="object"
+                                    :key="activeTemplate.uuid" :template="activeTemplate" />
                             </div>
                             <!-- <div class="tab-pane" id="distribution" role="tabpanel" aria-labelledby="distribution-tab">
                                 distribution

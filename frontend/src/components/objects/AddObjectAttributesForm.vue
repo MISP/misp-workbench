@@ -1,7 +1,8 @@
 <script setup>
 import { ref, watch } from 'vue';
 import AddObjectAttributeRow from "@/components/objects/AddObjectAttributeRow.vue";
-import ObjectAttributesSelect from "@/components/objects/ObjectAttributesSelect.vue";
+import ObjectTemplateAttributesSelect from "@/components/objects/ObjectTemplateAttributesSelect.vue";
+import ObjectAttributeValueInput from "@/components/objects/ObjectAttributeValueInput.vue";
 import { AttributeSchema } from "@/schemas/attribute";
 import { Form, Field, validateObject } from "vee-validate";
 import * as Yup from "yup";
@@ -20,13 +21,15 @@ const ObjectTemplateSchema = Yup.object().shape({
 });
 const attribute = ref({
     event_id: object.value.event_id,
-    type: '',
     value: '',
+    type: '',
     category: 'category', // TODO: set actual category (need misp_attribute->category map)
     to_ids: false,
     distribution: 0,
     disable_correlation: false
 });
+const selectedTemplateAttribute = ref({});
+
 
 let autosuggestAttributeType = true;
 
@@ -34,7 +37,7 @@ function addAttribute(values, { resetForm }) {
     object.value.attributes = [...object.value.attributes, { ...attribute.value }];
     attribute.value.event_id = object.value.id;
     attribute.value.value = '';
-    attribute.value.type = ''; // TODO: set actual misp type
+    attribute.value.type = selectedTemplateAttribute.value['misp-attribute'];
     attribute.value.category = 'category'; // TODO: set actual category (need misp_attribute->category map)
     attribute.value.to_ids = false;
     attribute.value.distribution = 0;
@@ -54,7 +57,18 @@ function handleAttributesUpdated(attribute) {
 
 function handleAttributeTypeChanged(type) {
     attribute.value.type = type;
+    template.value.attributes.forEach((templateAttribute) => {
+        if (templateAttribute.name === type) {
+            selectedTemplateAttribute.value = templateAttribute;
+        }
+    });
     autosuggestAttributeType = false;
+}
+
+
+function handleAttributeValueChanged(value) {
+    attribute.value.value = value;
+    console.log(attribute.value.value);
 }
 
 // Watch for changes in the attribute
@@ -74,18 +88,34 @@ watch(attribute.value, (newValue, oldValue) => {
 
 <template>
     <div class="mt-3 mb-3">
-        <span class="fw-bold">{{ template.name }} </span> ({{ template.uuid }})
+        <p>
+            <a class="btn btn-primary" data-bs-toggle="collapse" href="#collapseTemplateInfo" role="button"
+                aria-expanded="false" aria-controls="collapseExample">
+                <span class="fw-bold">{{ template.name }} </span> ({{ template.uuid }})
+            </a>
+        </p>
+        <div class="collapse" id="collapseTemplateInfo">
+            {{ template }}
+            <div class="card card-body">
+                <span>{{ template.description }}</span>
+                <span class="badge bg-secondary">{{ template.meta_category }}</span>
+                <span class="fw-bold">requires one of:</span>
+                <ul>
+                    <li v-for="attribute in template.requiredOneOf">{{ attribute }}</li>
+                </ul>
+            </div>
+        </div>
     </div>
     <AddObjectAttributeRow v-for="attribute in object.attributes" :key="attribute.id" :attribute="attribute"
         @object-attribute-deleted="handleObjectAttributeDeleted" />
     <Form @submit="addAttribute" :validation-schema="AttributeSchema" v-slot="{ errors }">
         <div class="input-group has-validation mb-3">
             <label class="input-group-text" for="attribute.value">value</label>
-            <Field class="form-control" id="attribute.value" name="attribute.value" v-model="attribute.value"
-                :class="{ 'is-invalid': errors['attribute.value'] }">
-            </Field>
+            <ObjectAttributeValueInput id="attribute.value" name="attribute.value" :type="selectedTemplateAttribute"
+                v-model="attribute.value" :errors="errors['attribute.value']"
+                @attribute-value-changed="handleAttributeValueChanged" />
             <label class="input-group-text" for="attribute.type">type</label>
-            <ObjectAttributesSelect id="attribute.type" name="attribute.type" v-model="attribute.type"
+            <ObjectTemplateAttributesSelect id="attribute.type" name="attribute.type" v-model="attribute.type"
                 :errors="errors['attribute.type']" :template="template"
                 @attribute-type-changed="handleAttributeTypeChanged" />
             <Field class="form-control" type="hidden" id="attribute.disable_correlation"
@@ -97,6 +127,8 @@ watch(attribute.value, (newValue, oldValue) => {
             <Field class="form-control" type="hidden" id="attribute.distribution" name="attribute.distribution"
                 v-model="attribute.distribution"></Field>
             <button type="submit" class="btn btn-outline-primary">Add Attribute</button>
+
+            <label class="container text-secondary">{{ selectedTemplateAttribute.description }}</label>
             <div v-for="error in errors" class="invalid-feedback">
                 {{ error }}
             </div>

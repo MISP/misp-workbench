@@ -27,12 +27,14 @@ def get_object_templates():
                         "misp_attribute": attribute["misp-attribute"],
                         "multiple": attribute.get("multiple", False),
                         "ui_priority": attribute.get("ui-priority", 0),
+                        "sane_default": attribute.get("sane_default"),
                     }
                 )
 
             template = {
                 "uuid": raw_template["uuid"],
                 "name": raw_template["name"],
+                "description": raw_template["description"],
                 "meta_category": raw_template["meta-category"],
                 "version": raw_template["version"],
                 "attributes": attributes,

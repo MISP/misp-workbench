@@ -10,7 +10,8 @@ const template = ref(props.template);
 <template>
     <div class="mt-3">
         <span class="fw-bold">{{ template.name }} </span> ({{ template.uuid }})
-        <p class="text-secondary">{{ template.meta_category }} </p> 
+        <span class="badge bg-secondary">{{ template.meta_category }}</span>
+        <div>{{ template.description }}</div>
     </div>
     <table class="table">
         <thead>

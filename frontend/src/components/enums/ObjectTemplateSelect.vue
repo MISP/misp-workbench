@@ -13,7 +13,6 @@ const { objectTemplates } = storeToRefs(objectsStore);
 objectsStore.getObjectTemplates();
 
 function handleSelectChange(event) {
-    console.log(event.target.value);
     emit('object-template-updated', event.target.value);
 }
 </script>
