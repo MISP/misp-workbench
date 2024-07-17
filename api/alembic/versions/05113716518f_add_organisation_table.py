@@ -8,7 +8,6 @@ Create Date: 2022-06-17 13:51:19.945810
 
 import sqlalchemy as sa
 from alembic import op
-from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
 revision = "05113716518f"
@@ -29,7 +28,7 @@ def upgrade():
         sa.Column("nationality", sa.String(255)),
         sa.Column("sector", sa.String(255)),
         sa.Column("created_by", sa.Integer, nullable=False),
-        sa.Column("uuid", postgresql.UUID(as_uuid=False), nullable=False),
+        sa.Column("uuid", sa.types.Uuid(as_uuid=False), nullable=False),
         sa.Column("contacts", sa.String),
         sa.Column("local", sa.Boolean(), nullable=False),
         sa.Column("restricted_to_domain", sa.String),
