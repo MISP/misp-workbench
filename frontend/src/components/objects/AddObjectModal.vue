@@ -2,10 +2,12 @@
 
 import { ref, computed, watch } from 'vue';
 import { useObjectsStore } from "@/stores";
+import { errorHandler } from "@/helpers";
 import { storeToRefs } from 'pinia'
 import { ObjectSchema } from "@/schemas/object";
 import { DISTRIBUTION_LEVEL } from "@/helpers/constants";
 import ObjectTemplateSelect from "@/components/enums/ObjectTemplateSelect.vue";
+import ApiError from "@/components/misc/ApiError.vue";
 import AddObjectForm from "@/components/objects/AddObjectForm.vue";
 import AddObjectPreview from "@/components/objects/AddObjectPreview.vue";
 import DisplayObjectTemplate from "@/components/objects/DisplayObjectTemplate.vue";
@@ -14,6 +16,7 @@ import { Form, Field } from "vee-validate";
 
 const objectsStore = useObjectsStore();
 const { status } = storeToRefs(objectsStore);
+const apiError = ref(null);
 
 const props = defineProps(['event_id']);
 const emit = defineEmits(['object-created']);
@@ -22,7 +25,9 @@ const object = ref({
     distribution: DISTRIBUTION_LEVEL.INHERIT_EVENT,
     meta_category: "network",
     template_uuid: null,
-    attributes: []
+    attributes: [],
+    deleted: false,
+    event_id: props.event_id,
 });
 
 let selectedQuickTemplate = ref('');
@@ -32,13 +37,19 @@ const activeTemplate = ref({});
 const isTemplateNotEmpty = computed(() => Object.keys(activeTemplate.value).length > 0);
 
 function onSubmit(values, { setErrors }) {
+    object.value.name = activeTemplate.value.name;
+    object.value.template_version = activeTemplate.value.version;
+    object.value.deleted = false;
+    object.value.timestamp = Date.now();
     return objectsStore
         .create(object.value)
         .then((response) => {
             emit('object-created', { "object": response });
-            // document.getElementById('closeModalButton').click();
         })
-        .catch((error) => setErrors({ apiError: error }));
+        .catch((errors) => {
+            apiError.value = errors;
+            setErrors(errorHandler.transformApiToFormErrors(errors));
+        });
 }
 
 function onClose() {
@@ -46,13 +57,12 @@ function onClose() {
         distribution: DISTRIBUTION_LEVEL.INHERIT_EVENT,
         meta_category: "network",
         template_uuid: null,
-        template: null
+        template: null,
     };
 }
 
 function handleObjectTemplateUpdated(templateUuid) {
     object.value.template_uuid = templateUuid;
-    console.log('templateUuid', templateUuid);
     activeTemplate.value = objectsStore.getObjectTemplateByUuid(templateUuid);
 
     selectedQuickTemplate.value = '';
@@ -230,11 +240,9 @@ watch(selectedQuickTemplate, (newValue, oldValue) => {
                         </div> 
                         -->
                     </div>
-                    <div v-if="errors.apiError" class="w-100 alert alert-danger mt-3 mb-3">
-                        asd
-                        {{ errors.apiError }}
+                    <div v-if="apiError" class="w-100 alert alert-danger mt-3 mb-3">
+                        <ApiError :errors="apiError" />
                     </div>
-
                     <div class="modal-footer">
                         <button id="closeModalButton" type="button" data-bs-dismiss="modal" class="btn btn-secondary"
                             @click="onClose()">Discard</button>

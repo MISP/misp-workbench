@@ -14,9 +14,12 @@ router = APIRouter()
 
 
 async def get_objects_parameters(
-    skip: int = 0, limit: int = 100, event_id: Optional[int] = None
+    skip: int = 0,
+    limit: int = 100,
+    event_id: Optional[int] = None,
+    deleted: Optional[bool] = False,
 ):
-    return {"skip": skip, "limit": limit, "event_id": event_id}
+    return {"skip": skip, "limit": limit, "event_id": event_id, "deleted": deleted}
 
 
 @router.get("/objects/", response_model=list[object_schemas.Object])
@@ -28,7 +31,7 @@ def get_objects(
     ),
 ):
     return objects_repository.get_objects(
-        db, params["skip"], params["limit"], params["event_id"]
+        db, params["skip"], params["limit"], params["event_id"], params["deleted"]
     )
 
 

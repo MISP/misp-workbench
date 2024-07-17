@@ -15,7 +15,7 @@ export const useObjectsStore = defineStore({
         }
     }),
     actions: {
-        async get(params = { skip: 0, limit: 10, event_id: null }) {
+        async get(params = { skip: 0, limit: 10, event_id: null, deleted: false }) {
             this.status = { loading: true };
             fetchWrapper
                 .get(baseUrl + "/?" + new URLSearchParams(params).toString())
@@ -47,7 +47,6 @@ export const useObjectsStore = defineStore({
             return await fetchWrapper
                 .post(baseUrl, attribute)
                 .then((object) => (this.object = object))
-                .catch((error) => (this.status = { error }))
                 .finally(() => (this.status = { loading: false }));
         },
         async delete(id) {

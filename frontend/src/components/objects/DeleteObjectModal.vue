@@ -15,7 +15,6 @@ function onSubmit() {
         .delete(props.object_id)
         .then((response) => {
             emit('object-deleted', { "object_id": props.object_id });
-            document.getElementById('closeModalButton').click();
         })
         .catch((error) => status.error = error);
 }

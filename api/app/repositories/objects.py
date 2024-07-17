@@ -11,12 +11,18 @@ from sqlalchemy.orm import Session
 
 
 def get_objects(
-    db: Session, skip: int = 0, limit: int = 100, event_id: int = None
+    db: Session,
+    skip: int = 0,
+    limit: int = 100,
+    event_id: int = None,
+    deleted: bool = False,
 ) -> list[object_models.Object]:
     query = db.query(object_models.Object)
 
     if event_id is not None:
         query = query.filter(object_models.Object.event_id == event_id)
+
+    query = query.filter(object_models.Object.deleted.is_(bool(deleted)))
 
     return query.offset(skip).limit(limit).all()
 
@@ -42,7 +48,11 @@ def create_object(
         template_version=object.template_version,
         uuid=object.uuid,
         timestamp=object.timestamp or time.time(),
-        distribution=object.distribution,
+        distribution=(
+            object.distribution
+            if object.distribution is None
+            else event_schemas.DistributionLevel(object.distribution)
+        ),
         sharing_group_id=object.sharing_group_id,
         comment=object.comment,
         deleted=object.deleted,
@@ -52,6 +62,13 @@ def create_object(
 
     db.add(db_object)
     db.commit()
+    db.refresh(db_object)
+
+    for attribute in object.attributes:
+        attribute.object_id = db_object.id
+        attribute.event_id = object.event_id
+        attributes_repository.create_attribute(db, attribute)
+
     db.refresh(db_object)
 
     return db_object

@@ -8,7 +8,6 @@ import { AttributeSchema } from "@/schemas/attribute";
 import { DISTRIBUTION_LEVEL } from "@/helpers/constants";
 import DistributionLevelSelect from "@/components/enums/DistributionLevelSelect.vue";
 import ApiError from "@/components/misc/ApiError.vue";
-import AnalysisLevelSelect from "@/components/enums/AnalysisLevelSelect.vue";
 import AttributeCategorySelect from "@/components/enums/AttributeCategorySelect.vue";
 import AttributeTypeSelect from "@/components/enums/AttributeTypeSelect.vue";
 import { Form, Field } from "vee-validate";

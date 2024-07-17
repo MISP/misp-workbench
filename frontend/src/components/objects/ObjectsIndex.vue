@@ -18,7 +18,8 @@ function onPageChange(page) {
     objectsStore.get({
         skip: (page - 1) * props.page_size,
         limit: props.page_size,
-        event_id: props.event_id
+        event_id: props.event_id,
+        deleted: false,
     });
 }
 onPageChange(1);

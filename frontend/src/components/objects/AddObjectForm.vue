@@ -11,14 +11,15 @@ const object = ref(props.object);
 const template = ref(props.template);
 
 const ObjectTemplateSchema = Yup.object().shape({
-  attributes: Yup.array()
-    .test(
-      'at-least-one-required-type',
-      `The object must contain at least one attribute with a type matching one of the following: ${template.value.requiredOneOf.join(', ')}`,
-      (array) => array && array.some((element) => template.value.requiredOneOf.includes(element.type))
-    ),
+    attributes: Yup.array()
+        .test(
+            'at-least-one-required-type',
+            `The object must contain at least one attribute with a type matching one of the following: ${template.value.requiredOneOf.join(', ')}`,
+            (array) => array && array.some((element) => template.value.requiredOneOf.includes(element.type))
+        ),
 });
 const attribute = ref({
+    event_id: object.value.event_id,
     type: '',
     value: '',
     category: 'category', // TODO: set actual category (need misp_attribute->category map)
@@ -31,6 +32,7 @@ let autosuggestAttributeType = true;
 
 function addAttribute(values, { resetForm }) {
     object.value.attributes = [...object.value.attributes, { ...attribute.value }];
+    attribute.value.event_id = object.value.id;
     attribute.value.value = '';
     attribute.value.type = ''; // TODO: set actual misp type
     attribute.value.category = 'category'; // TODO: set actual category (need misp_attribute->category map)
@@ -88,7 +90,8 @@ watch(attribute.value, (newValue, oldValue) => {
                 @attribute-type-changed="handleAttributeTypeChanged" />
             <Field class="form-control" type="hidden" id="attribute.disable_correlation"
                 name="attribute.disable_correlation" v-model="attribute.disable_correlation"></Field>
-
+            <Field class="form-control" type="hidden" id="attribute.event_id" name="attribute.event_id"
+                v-model="attribute.event_id"></Field>
             <Field class="form-control" type="hidden" id="attribute.category" name="attribute.category"
                 v-model="attribute.category"></Field>
             <Field class="form-control" type="hidden" id="attribute.distribution" name="attribute.distribution"

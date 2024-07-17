@@ -2,7 +2,7 @@ from typing import Optional
 from uuid import UUID
 
 from app.models.event import DistributionLevel
-from app.schemas.attribute import Attribute
+from app.schemas.attribute import Attribute, AttributeCreate
 from pydantic import BaseModel, ConfigDict
 
 
@@ -32,7 +32,7 @@ class Object(ObjectBase):
 
 
 class ObjectCreate(ObjectBase):
-    pass
+    attributes: Optional[list[AttributeCreate]] = []
 
 
 class ObjectUpdate(BaseModel):
