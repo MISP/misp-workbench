@@ -68,7 +68,6 @@ function handleAttributeTypeChanged(type) {
 
 function handleAttributeValueChanged(value) {
     attribute.value.value = value;
-    console.log(attribute.value.value);
 }
 
 // Watch for changes in the attribute
