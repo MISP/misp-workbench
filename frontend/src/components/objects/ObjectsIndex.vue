@@ -2,6 +2,7 @@
 import { ref } from 'vue';
 import { storeToRefs } from 'pinia'
 import { useObjectsStore } from "@/stores";
+import { Modal } from 'bootstrap';
 import ObjectAttributesList from "@/components/objects/ObjectAttributesList.vue";
 import AddObjectModal from "@/components/objects/AddObjectModal.vue";
 import DeleteObjectModal from "@/components/objects/DeleteObjectModal.vue";
@@ -24,10 +25,26 @@ function onPageChange(page) {
 }
 onPageChange(1);
 
+const addObjectModal = ref(null);
+const deleteObjectModal = ref(null);
+const selectedObject = ref(null);
+
 function handleObjectsUpdated(event) {
     // TODO FIXME: resets the page to 1 and reloads the objects, not the best way to do this, reload current page
     onPageChange(1);
 }
+
+function openAddObjectModal() {
+    addObjectModal.value = new Modal(document.getElementById('addObjectModal'));
+    addObjectModal.value.show();
+}
+
+function openDeleteObjectModal(object) {
+    selectedObject.value = object;
+    deleteObjectModal.value = new Modal(document.getElementById('deleteObjectModal'));
+    deleteObjectModal.value.show();
+}
+
 </script>
 
 <template>
@@ -45,21 +62,22 @@ function handleObjectsUpdated(event) {
                     <ObjectAttributesList :attributes="object.attributes" :object_id="object.id" />
                     <div class="row">
                         <div class="col text-center">
-                            <button type="button" class="btn btn-outline-danger text-center" data-bs-toggle="modal"
-                                :data-bs-target="'#deleteObjectModal-' + object.id">
+                            <button type="button" class="btn btn-outline-danger text-center"
+                                @click="openDeleteObjectModal(object)">
                                 <font-awesome-icon icon="fa-solid fa-trash" />
                             </button>
                         </div>
                     </div>
                 </div>
             </div>
-            <DeleteObjectModal :id="'deleteObjectModal-' + object.id" :key="object.id" :object_id="object.id" @object-deleted="handleObjectsUpdated" />
         </div>
     </div>
     <Paginate v-if="page_count > 1" :page-count="page_count" :click-handler="onPageChange" />
-    <AddObjectModal :event_id="event_id" @object-created="handleObjectsUpdated" />
+    <AddObjectModal id="addObjectModal" :modal="addObjectModal" :event_id="event_id"
+        @object-created="handleObjectsUpdated" />
+    <DeleteObjectModal id="deleteObjectModal" :modal="deleteObjectModal" :object="selectedObject"
+        @object-deleted="handleObjectsUpdated" />
     <div class="mt-3">
-        <button type="button" class="w-100 btn btn-outline-primary" data-bs-toggle="modal"
-            data-bs-target="#addObjectModal">Add Object</button>
+        <button type="button" class="w-100 btn btn-outline-primary" @click="openAddObjectModal">Add Object</button>
     </div>
 </template>

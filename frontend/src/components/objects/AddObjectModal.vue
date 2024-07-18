@@ -1,6 +1,5 @@
 <script setup>
 import { ref, watch, onMounted } from 'vue';
-import { Modal } from 'bootstrap';
 import { useObjectsStore } from "@/stores";
 import { errorHandler } from "@/helpers";
 import { storeToRefs } from 'pinia'
@@ -18,15 +17,8 @@ const objectsStore = useObjectsStore();
 const { status } = storeToRefs(objectsStore);
 const apiError = ref(null);
 const objectTemplateErrors = ref(null);
-const props = defineProps(['event_id']);
+const props = defineProps(['event_id', 'modal']);
 const emit = defineEmits(['object-created']);
-
-const addObjectModal = ref(null);
-
-onMounted(() => {
-    const container = document.getElementById("addObjectModal");
-    addObjectModal.value = new Modal(container);;
-});
 
 const object = ref({
     distribution: DISTRIBUTION_LEVEL.INHERIT_EVENT,
@@ -84,7 +76,7 @@ function createObject(values, { setErrors }) {
                 .create(object.value)
                 .then((response) => {
                     emit('object-created', { "object": response });
-                    addObjectModal.value.hide();
+                    props.modal.hide();
                 })
                 .catch((errors) => {
                     apiError.value = errors;
@@ -103,7 +95,7 @@ function onClose() {
         template_uuid: null,
         template: null,
     };
-    addObjectModal.value.hide();
+    props.modal.hide();
 }
 
 function handleObjectTemplateUpdated(templateUuid) {
