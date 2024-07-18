@@ -5,20 +5,12 @@ import ObjectTemplateAttributesSelect from "@/components/objects/ObjectTemplateA
 import ObjectAttributeValueInput from "@/components/objects/ObjectAttributeValueInput.vue";
 import { AttributeSchema } from "@/schemas/attribute";
 import { Form, Field, validateObject } from "vee-validate";
-import * as Yup from "yup";
 
 const props = defineProps(['template', 'object']);
+const emit = defineEmits(['object-attribute-added', 'object-attribute-deleted']);
 const object = ref(props.object);
 const template = ref(props.template);
 
-const ObjectTemplateSchema = Yup.object().shape({
-    attributes: Yup.array()
-        .test(
-            'at-least-one-required-type',
-            `The object must contain at least one attribute with a type matching one of the following: ${template.value.requiredOneOf.join(', ')}`,
-            (array) => array && array.some((element) => template.value.requiredOneOf.includes(element.type))
-        ),
-});
 const attribute = ref({
     event_id: object.value.event_id,
     value: '',
@@ -28,8 +20,8 @@ const attribute = ref({
     distribution: 0,
     disable_correlation: false
 });
-const selectedTemplateAttribute = ref({});
 
+const selectedTemplateAttribute = ref({});
 
 let autosuggestAttributeType = true;
 
@@ -44,11 +36,14 @@ function addAttribute(values, { resetForm }) {
     attribute.value.disable_correlation = false;
     autosuggestAttributeType = true;
 
+    emit('object-attribute-added', { "attribute": attribute.value });
+
     resetForm();
 }
 
 function handleObjectAttributeDeleted(event) {
     object.value.attributes = object.value.attributes.filter(a => a !== event.attribute);
+    emit('object-attribute-deleted', { "attribute": event.attribute });
 }
 
 function handleAttributesUpdated(attribute) {

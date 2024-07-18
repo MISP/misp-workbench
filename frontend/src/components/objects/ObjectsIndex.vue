@@ -1,5 +1,5 @@
 <script setup>
-import { RouterLink } from "vue-router";
+import { ref } from 'vue';
 import { storeToRefs } from 'pinia'
 import { useObjectsStore } from "@/stores";
 import ObjectAttributesList from "@/components/objects/ObjectAttributesList.vue";
@@ -57,7 +57,7 @@ function handleObjectsUpdated(event) {
         </div>
     </div>
     <Paginate v-if="page_count > 1" :page-count="page_count" :click-handler="onPageChange" />
-    <AddObjectModal @object-created="handleObjectsUpdated" :event_id="event_id" />
+    <AddObjectModal id="addObjectModal" :event_id="event_id" />
     <div class="mt-3">
         <button type="button" class="w-100 btn btn-outline-primary" data-bs-toggle="modal"
             data-bs-target="#addObjectModal">Add Object</button>

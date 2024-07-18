@@ -1,6 +1,6 @@
 <script setup>
-
-import { ref, computed, watch } from 'vue';
+import { ref, watch, onMounted } from 'vue';
+import { Modal } from 'bootstrap';
 import { useObjectsStore } from "@/stores";
 import { errorHandler } from "@/helpers";
 import { storeToRefs } from 'pinia'
@@ -12,14 +12,21 @@ import AddObjectAttributesForm from "@/components/objects/AddObjectAttributesFor
 import AddObjectPreview from "@/components/objects/AddObjectPreview.vue";
 import DisplayObjectTemplate from "@/components/objects/DisplayObjectTemplate.vue";
 import { Form, Field } from "vee-validate";
-
+import * as Yup from "yup";
 
 const objectsStore = useObjectsStore();
 const { status } = storeToRefs(objectsStore);
 const apiError = ref(null);
-
+const objectTemplateErrors = ref(null);
 const props = defineProps(['event_id']);
 const emit = defineEmits(['object-created']);
+
+const addObjectModal = ref(null);
+
+onMounted(() => {
+    const container = document.getElementById("addObjectModal");
+    addObjectModal.value = new Modal(container);;
+});
 
 const object = ref({
     distribution: DISTRIBUTION_LEVEL.INHERIT_EVENT,
@@ -31,24 +38,61 @@ const object = ref({
 });
 
 let selectedQuickTemplate = ref('');
+const activeTemplate = ref({
+    requiredOneOf: [],
+});
 
+function getObjectTemplateSchema() {
+    return Yup.object().shape({
+        attributes: Yup.array()
+            .test(
+                'at-least-one-required-type',
+                `The object must contain at least one attribute with a type matching one of the following: ${activeTemplate.value.requiredOneOf.join(', ')}`,
+                (attributes) => attributes && attributes.some((attribute) => activeTemplate.value.requiredOneOf.includes(attribute.type))
+            ),
+    });
+}
 
-const activeTemplate = ref({});
-const isTemplateNotEmpty = computed(() => Object.keys(activeTemplate.value).length > 0);
+const validateObjectTemplate = (object) => {
+    return new Promise((resolve, reject) => {
+        let schema = getObjectTemplateSchema();
+        schema.validate(object)
+            .then((validObject) => {
+                objectTemplateErrors.value = null;
+                resolve(validObject);
+            })
+            .catch((error) => {
+                objectTemplateErrors.value = error;
+                reject(error);
+            });
+    });
+};
 
-function onSubmit(values, { setErrors }) {
+function handleAttributesUpdated() {
+    validateObjectTemplate(object.value);
+}
+
+function createObject(values, { setErrors }) {
     object.value.name = activeTemplate.value.name;
     object.value.template_version = activeTemplate.value.version;
     object.value.deleted = false;
     object.value.timestamp = Date.now();
-    return objectsStore
-        .create(object.value)
-        .then((response) => {
-            emit('object-created', { "object": response });
+
+    validateObjectTemplate(object.value)
+        .then((validObject) => {
+            return objectsStore
+                .create(object.value)
+                .then((response) => {
+                    emit('object-created', { "object": response });
+                    addObjectModal.value.hide();
+                })
+                .catch((errors) => {
+                    apiError.value = errors;
+                    setErrors(errorHandler.transformApiToFormErrors(errors));
+                });
         })
         .catch((errors) => {
-            apiError.value = errors;
-            setErrors(errorHandler.transformApiToFormErrors(errors));
+            objectTemplateErrors.value = errors;
         });
 }
 
@@ -59,11 +103,15 @@ function onClose() {
         template_uuid: null,
         template: null,
     };
+    addObjectModal.value.hide();
 }
 
 function handleObjectTemplateUpdated(templateUuid) {
     object.value.template_uuid = templateUuid;
     activeTemplate.value = objectsStore.getObjectTemplateByUuid(templateUuid);
+    ObjectTemplateSchema.value = getObjectTemplateSchema();
+
+    validateObjectTemplate();
 
     selectedQuickTemplate.value = '';
 }
@@ -106,8 +154,8 @@ watch(selectedQuickTemplate, (newValue, oldValue) => {
 </style>
 
 <template>
-    <div id="addObjectModal" class="modal fade" tabindex="-1" aria-labelledby="addObjectModalLabel" aria-hidden="true">
-        <Form @submit="onSubmit" :validation-schema="ObjectSchema" v-slot="{ errors, isSubmitting }">
+    <div id="addObjectModal" class="modal" aria-labelledby="addObjectModalLabel" aria-hidden="true">
+        <Form @submit="createObject" v-slot="{ errors }">
             <div class="modal-dialog modal-xl">
                 <div class="modal-content">
                     <div class="modal-header">
@@ -123,7 +171,7 @@ watch(selectedQuickTemplate, (newValue, oldValue) => {
                             </li>
                             <li class="nav-item" role="presentation">
                                 <button class="nav-link" id="attributes-tab" data-bs-toggle="tab"
-                                    :disabled="!isTemplateNotEmpty" data-bs-target="#attributes" type="button"
+                                    :disabled="!activeTemplate.uuid" data-bs-target="#attributes" type="button"
                                     role="tab" aria-controls="attributes" aria-selected="false">Attributes</button>
                             </li>
                             <!-- <li class="nav-item" role="presentation">
@@ -138,7 +186,7 @@ watch(selectedQuickTemplate, (newValue, oldValue) => {
                             </li> -->
                             <li class="nav-item" role="presentation">
                                 <button class="nav-link" id="preview-tab" data-bs-toggle="tab" data-bs-target="#preview"
-                                    :disabled="!isTemplateNotEmpty" type="button" role="tab" aria-controls="preview"
+                                    :disabled="!activeTemplate.uuid" type="button" role="tab" aria-controls="preview"
                                     aria-selected="false">Preview</button>
                             </li>
                         </ul>
@@ -197,13 +245,15 @@ watch(selectedQuickTemplate, (newValue, oldValue) => {
                                     <div class="invalid-feedback">{{ errors['activeTemplate'] }}</div>
                                 </div>
                                 <div>
-                                    <DisplayObjectTemplate v-if="isTemplateNotEmpty" :key="activeTemplate.uuid"
+                                    <DisplayObjectTemplate v-if="activeTemplate.uuid" :key="activeTemplate.uuid"
                                         :template="activeTemplate" />
                                 </div>
                             </div>
                             <div class="tab-pane" id="attributes" role="tabpanel" aria-labelledby="attributes-tab">
-                                <AddObjectAttributesForm v-if="isTemplateNotEmpty" :object="object"
-                                    :key="activeTemplate.uuid" :template="activeTemplate" />
+                                <AddObjectAttributesForm v-if="activeTemplate.uuid" :object="object"
+                                    :key="activeTemplate.uuid" :template="activeTemplate"
+                                    @object-attribute-added="handleAttributesUpdated"
+                                    @object-attribute-deleted="handleAttributesUpdated" />
                             </div>
                             <!-- <div class="tab-pane" id="distribution" role="tabpanel" aria-labelledby="distribution-tab">
                                 distribution
@@ -257,10 +307,14 @@ watch(selectedQuickTemplate, (newValue, oldValue) => {
                     <div v-if="apiError" class="w-100 alert alert-danger mt-3 mb-3">
                         <ApiError :errors="apiError" />
                     </div>
+                    <div v-if="objectTemplateErrors" class="w-100 alert alert-danger mt-3 mb-3">
+                        <span>{{ objectTemplateErrors }}</span>
+                    </div>
                     <div class="modal-footer">
                         <button id="closeModalButton" type="button" data-bs-dismiss="modal" class="btn btn-secondary"
                             @click="onClose()">Discard</button>
-                        <button type="submit" class="btn btn-primary" :disabled="status.loading">
+                        <button type="submit" class="btn btn-primary"
+                            :disabled="status.loading || !activeTemplate.uuid">
                             <span v-show="status.loading">
                                 <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
                             </span>
