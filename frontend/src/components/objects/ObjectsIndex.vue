@@ -53,11 +53,11 @@ function handleObjectsUpdated(event) {
                     </div>
                 </div>
             </div>
-            <DeleteObjectModal @object-deleted="handleObjectsUpdated" :object_id="object.id" />
+            <DeleteObjectModal :id="'deleteObjectModal-' + object.id" :key="object.id" :object_id="object.id" @object-deleted="handleObjectsUpdated" />
         </div>
     </div>
     <Paginate v-if="page_count > 1" :page-count="page_count" :click-handler="onPageChange" />
-    <AddObjectModal id="addObjectModal" :event_id="event_id" />
+    <AddObjectModal :event_id="event_id" @object-created="handleObjectsUpdated" />
     <div class="mt-3">
         <button type="button" class="w-100 btn btn-outline-primary" data-bs-toggle="modal"
             data-bs-target="#addObjectModal">Add Object</button>

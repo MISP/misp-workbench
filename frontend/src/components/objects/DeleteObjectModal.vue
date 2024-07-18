@@ -1,8 +1,8 @@
 <script setup>
-
+import { ref, onMounted } from 'vue';
+import { Modal } from 'bootstrap';
 import { useObjectsStore } from "@/stores";
 import { storeToRefs } from 'pinia'
-import * as Yup from "yup";
 
 const objectsStore = useObjectsStore();
 const { status } = storeToRefs(objectsStore);
@@ -10,23 +10,30 @@ const { status } = storeToRefs(objectsStore);
 const props = defineProps(['object_id']);
 const emit = defineEmits(['object-deleted']);
 
-function onSubmit() {
+const deleteObjectModal = ref(null);
+
+onMounted(() => {
+    const container = document.getElementById('deleteObjectModal-' + props.object_id);
+    deleteObjectModal.value = new Modal(container);;
+});
+
+function deleteObject() {
     return objectsStore
         .delete(props.object_id)
         .then((response) => {
             emit('object-deleted', { "object_id": props.object_id });
+            deleteObjectModal.value.hide();
         })
         .catch((error) => status.error = error);
 }
 </script>
 
 <template>
-    <div :id="'deleteObjectModal-' + object_id" class="modal fade" tabindex="-1" aria-labelledby="deleteObjectModal"
-        aria-hidden="true">
+    <div :id="'deleteObjectModal-' + object_id" class="modal" aria-labelledby="deleteObjectModal" aria-hidden="true">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="deleteObjectModal">Delete Object #{{ object_id }}</h5>
+                    <h5 class="modal-title">Delete Object #{{ object_id }}</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Discard"></button>
                 </div>
                 <div class="modal-body">
@@ -38,7 +45,7 @@ function onSubmit() {
                 <div class="modal-footer">
                     <button id="closeModalButton" type="button" data-bs-dismiss="modal"
                         class="btn btn-secondary">Discard</button>
-                    <button type="submit" @click="onSubmit" class="btn btn-outline-danger"
+                    <button type="submit" @click="deleteObject" class="btn btn-outline-danger"
                         :class="{ 'disabled': status.loading }">
                         <span v-if="status.loading">
                             <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
