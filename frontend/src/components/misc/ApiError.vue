@@ -1,7 +1,7 @@
 <script setup>
 
 const props = defineProps(['errors']);
-console.log(props.errors);
+
 </script>
 
 <template>
