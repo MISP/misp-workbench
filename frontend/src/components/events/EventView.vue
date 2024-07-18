@@ -5,6 +5,7 @@ import AttributesIndex from "@/components/attributes/AttributesIndex.vue";
 import ObjectsIndex from "@/components/objects/ObjectsIndex.vue";
 import TagsIndex from "@/components/tags/TagsIndex.vue";
 import DistributionLevel from "@/components/enums/DistributionLevel.vue";
+import UUID from "@/components/misc/UUID.vue";
 import ThreatLevel from "@/components/enums/ThreatLevel.vue";
 import AnalysisLevel from "@/components/enums/AnalysisLevel.vue";
 import DeleteEventModal from "@/components/events/DeleteEventModal.vue";
@@ -66,8 +67,8 @@ div.row h3 {
                                     </tr>
                                     <tr>
                                         <th>uuid</th>
-                                        <td>{{ event.uuid }}
-                                            <font-awesome-icon class="text-primary" icon="fa-solid fa-copy" />
+                                        <td>
+                                            <UUID :uuid=event.uuid />
                                         </td>
                                     </tr>
                                     <tr>

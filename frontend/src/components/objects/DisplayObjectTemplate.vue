@@ -1,5 +1,6 @@
 <script setup>
 import { ref } from 'vue';
+import UUID from "@/components/misc/UUID.vue";
 
 
 const props = defineProps(['template']);
@@ -9,7 +10,8 @@ const template = ref(props.template);
 
 <template>
     <div class="mt-3">
-        <span class="fw-bold">{{ template.name }} </span> ({{ template.uuid }})
+        <span class="fw-bold">{{ template.name }} </span>
+        <UUID :uuid=template.uuid />
         <span class="badge bg-secondary">{{ template.meta_category }}</span>
         <div>{{ template.description }}</div>
     </div>

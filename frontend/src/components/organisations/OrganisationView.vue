@@ -1,5 +1,6 @@
 <script setup>
 import DeleteOrganisationModal from "@/components/organisations/DeleteOrganisationModal.vue";
+import UUID from "@/components/misc/UUID.vue";
 import { router } from "@/router";
 
 defineProps(['organisation']);
@@ -41,8 +42,8 @@ function handleOrganisationDeleted(event) {
                         </tr>
                         <tr>
                             <th style="width: 30%">uuid</th>
-                            <td>{{ organisation.uuid }}
-                                <font-awesome-icon class="text-primary" icon="fa-solid fa-copy" />
+                            <td>
+                                <UUID :uuid=organisation.uuid />
                             </td>
                         </tr>
                         <tr>
