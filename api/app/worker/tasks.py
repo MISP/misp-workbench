@@ -61,6 +61,24 @@ def handle_deleted_attribute(attribute_id: int, event_id: int):
 
 
 @app.task
+def handle_created_object(object_id: int, event_id: int):
+    logger.info("handling created object id=%s job started", object_id)
+
+    events_repository.increment_object_count(db, event_id)
+
+    return True
+
+
+@app.task
+def handle_deleted_object(object_id: int, event_id: int):
+    logger.info("handling deleted object id=%s job started", object_id)
+
+    events_repository.decrement_object_count(db, event_id)
+
+    return True
+
+
+@app.task
 def send_email(email: dict):
     logger.info("sending email job started")
 

@@ -5,6 +5,7 @@ from app.repositories import attributes as attributes_repository
 from app.repositories import object_references as object_references_repository
 from app.schemas import event as event_schemas
 from app.schemas import object as object_schemas
+from app.worker import tasks
 from fastapi import HTTPException, status
 from pymisp import MISPObject
 from sqlalchemy.orm import Session
@@ -70,6 +71,8 @@ def create_object(
         attributes_repository.create_attribute(db, attribute)
 
     db.refresh(db_object)
+
+    tasks.handle_created_object.delay(db_object.id, db_object.event_id)
 
     return db_object
 
@@ -167,8 +170,14 @@ def delete_object(db: Session, object_id: int) -> object_models.Object:
 
     db_object.deleted = True
 
+    # delete attributes
+    for attribute in db_object.attributes:
+        attributes_repository.delete_attribute(db, attribute.id)
+
     db.add(db_object)
     db.commit()
     db.refresh(db_object)
+
+    tasks.handle_deleted_object.delay(db_object.id, db_object.event_id)
 
     return db_object
