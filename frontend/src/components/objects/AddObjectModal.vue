@@ -68,7 +68,7 @@ function createObject(values, { setErrors }) {
     object.value.name = activeTemplate.value.name;
     object.value.template_version = activeTemplate.value.version;
     object.value.deleted = false;
-    object.value.timestamp = Date.now();
+    object.value.timestamp = parseInt(Date.now() / 1000);
 
     validateObjectTemplate(object.value)
         .then((validObject) => {
