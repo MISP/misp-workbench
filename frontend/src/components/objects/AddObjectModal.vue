@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch, onMounted } from 'vue';
+import { ref, watch } from 'vue';
 import { useObjectsStore } from "@/stores";
 import { errorHandler } from "@/helpers";
 import { storeToRefs } from 'pinia'
@@ -10,7 +10,7 @@ import ApiError from "@/components/misc/ApiError.vue";
 import AddObjectAttributesForm from "@/components/objects/AddObjectAttributesForm.vue";
 import AddObjectPreview from "@/components/objects/AddObjectPreview.vue";
 import DisplayObjectTemplate from "@/components/objects/DisplayObjectTemplate.vue";
-import { Form, Field } from "vee-validate";
+import { Form } from "vee-validate";
 import * as Yup from "yup";
 
 const objectsStore = useObjectsStore();
@@ -45,10 +45,10 @@ function getObjectTemplateSchema() {
     });
 }
 
-const validateObjectTemplate = (object) => {
+const validateObject = (object) => {
     return new Promise((resolve, reject) => {
         let schema = getObjectTemplateSchema();
-        schema.validate(object)
+        ObjectSchema.concat(schema).validate(object)
             .then((validObject) => {
                 objectTemplateErrors.value = null;
                 resolve(validObject);
@@ -61,7 +61,7 @@ const validateObjectTemplate = (object) => {
 };
 
 function handleAttributesUpdated() {
-    validateObjectTemplate(object.value);
+    validateObject(object.value);
 }
 
 function createObject(values, { setErrors }) {
@@ -70,7 +70,7 @@ function createObject(values, { setErrors }) {
     object.value.deleted = false;
     object.value.timestamp = parseInt(Date.now() / 1000);
 
-    validateObjectTemplate(object.value)
+    validateObject(object.value)
         .then((validObject) => {
             return objectsStore
                 .create(object.value)
