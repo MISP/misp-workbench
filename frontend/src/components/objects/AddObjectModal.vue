@@ -158,7 +158,7 @@ watch(selectedQuickTemplate, (newValue, oldValue) => {
                 <div class="modal-content">
                     <div class="modal-header">
                         <h5 class="modal-title" id="addObjectModalLabel">Add Object</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Discard"></button>
+                        <button type="button" class="btn-close btn-outline-s" data-bs-dismiss="modal" aria-label="Discard"></button>
                     </div>
                     <div class="modal-body">
                         <ul class="nav nav-tabs" id="addObjectTabs" role="tablist">
@@ -309,7 +309,7 @@ watch(selectedQuickTemplate, (newValue, oldValue) => {
                         <span>{{ objectTemplateErrors }}</span>
                     </div>
                     <div class="modal-footer">
-                        <button id="closeModalButton" type="button" data-bs-dismiss="modal" class="btn btn-secondary"
+                        <button id="closeModalButton" type="button" data-bs-dismiss="modal" class="btn btn-outline-secondary"
                             @click="onClose()">Discard</button>
                         <button type="submit" class="btn btn-primary"
                             :disabled="status.loading || !activeTemplate.uuid">

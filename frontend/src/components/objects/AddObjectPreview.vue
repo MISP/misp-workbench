@@ -1,4 +1,5 @@
 <script setup>
+import UUID from "@/components/misc/UUID.vue";
 
 const props = defineProps(['object', 'template']);
 
@@ -6,7 +7,11 @@ const props = defineProps(['object', 'template']);
 
 <template>
     <div class="mt-3">
-        <span class="fw-bold">{{ template.name }} </span> ({{ template.uuid }})
+        <span class="fw-bold">{{ template.name }} </span>
+        <span class="badge bg-info flex">v{{ template.version }}</span>
+    </div>
+    <div>
+        <UUID :uuid=template.uuid />
     </div>
     <div class="container mt-3">
         <div class="table-responsive">
@@ -15,6 +20,7 @@ const props = defineProps(['object', 'template']);
                     <tr>
                         <th scope="col">value</th>
                         <th scope="col">type</th>
+                        <th scope="col">disable_correlation</th>
                         <th scope="col">to_ids</th>
                     </tr>
                 </thead>
@@ -22,6 +28,7 @@ const props = defineProps(['object', 'template']);
                     <tr v-for="attribute in object.attributes">
                         <td>{{ attribute.value }}</td>
                         <td>{{ attribute.type }}</td>
+                        <td>{{ attribute.disable_correlation }}</td>
                         <td>{{ attribute.to_ids }}</td>
                     </tr>
                 </tbody>

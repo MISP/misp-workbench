@@ -4,6 +4,7 @@ import AddObjectAttributeRow from "@/components/objects/AddObjectAttributeRow.vu
 import ObjectTemplateAttributeTypeSelect from "@/components/objects/ObjectTemplateAttributeTypeSelect.vue";
 import ObjectAttributeValueInput from "@/components/objects/ObjectAttributeValueInput.vue";
 import { AttributeSchema, getAttributeTypeValidationSchema } from "@/schemas/attribute";
+import UUID from "@/components/misc/UUID.vue";
 import { Form, Field } from "vee-validate";
 import * as Yup from "yup";
 
@@ -15,8 +16,9 @@ const template = ref(props.template);
 const AttributeTypeSchema = ref(getAttributeTypeValidationSchema('text'));
 
 const attributeErrors = ref(null);
+let attributeCount = 0;
 
-const attribute = ref({
+const newAttribute = ref({
     event_id: object.value.event_id,
     value: '',
     category: 'category', // TODO: set actual category (need misp_attribute->category map)
@@ -30,18 +32,17 @@ const selectedTemplateAttribute = ref({});
 function addAttribute(values, { resetForm }) {
     validateAttributeValue(values, AttributeTypeSchema.value)
         .then((validAttribute) => {
-            object.value.attributes = [...object.value.attributes, { ...attribute.value }];
+            attributeCount++;
+            newAttribute.value.id = attributeCount;
+            object.value.attributes = [...object.value.attributes, { ...newAttribute.value }];
+            emit('object-attribute-added', { "attribute": newAttribute.value });
 
             // reset defaults
-            attribute.value.value = '';
-            attribute.value.category = 'category'; // TODO: set actual category (need misp_attribute->category map)
-            attribute.value.to_ids = false;
-            attribute.value.distribution = 0;
-            attribute.value.disable_correlation = false;
-
-            emit('object-attribute-added', { "attribute": attribute.value });
-
-            console.log(object.value.attributes);
+            newAttribute.value.value = '';
+            newAttribute.value.category = 'category'; // TODO: set actual category (need misp_attribute->category map)
+            newAttribute.value.to_ids = false;
+            newAttribute.value.distribution = 0;
+            newAttribute.value.disable_correlation = true;
 
             attributeErrors.value = null;
             resetForm();
@@ -56,20 +57,27 @@ function handleObjectAttributeDeleted(event) {
     emit('object-attribute-deleted', { "attribute": event.attribute });
 }
 
-function handleAttributesUpdated(attribute) {
-    object.value.attributes = object.value.attributes.filter(a => a.id !== attribute.attribute_id);
+function handleObjectAttributeUpdated(event) {
+    // replace old attribute with new attribute
+    object.value.attributes = object.value.attributes.map((a) => {
+        if (a === event.old_attribute) {
+            return event.new_attribute.value;
+        }
+        return a;
+    });
 }
 
 function handleAttributeTypeChanged(type) {
-    attribute.value.template_type = type;
+    newAttribute.value.template_type = type;
     template.value.attributes.forEach((templateAttribute) => {
         if (templateAttribute.name === type) {
             selectedTemplateAttribute.value = templateAttribute;
-            attribute.value.type = selectedTemplateAttribute.value['misp_attribute'];
+            newAttribute.value.type = selectedTemplateAttribute.value['misp_attribute'];
+            newAttribute.value.disable_correlation = selectedTemplateAttribute.value['disable_correlation'];
         }
     });
 
-    AttributeTypeSchema.value = getAttributeTypeValidationSchema(attribute.value.type);
+    AttributeTypeSchema.value = getAttributeTypeValidationSchema(newAttribute.value.type);
 }
 
 const validateAttributeValue = (object, schema) => {
@@ -86,7 +94,7 @@ const validateAttributeValue = (object, schema) => {
 
 
 function handleAttributeValueChanged(value) {
-    attribute.value.value = value;
+    newAttribute.value.value = value;
 }
 
 </script>
@@ -94,49 +102,49 @@ function handleAttributeValueChanged(value) {
 <template>
     <div>
         <div class="mt-3 mb-3">
-            <p>
-                <button class="btn btn-primary" type="button" data-bs-toggle="collapse"
-                    data-bs-target="#collapseTemplateInfo">
-                    <span class="fw-bold">{{ template.name }} </span> ({{ template.uuid }})
-                </button>
-            </p>
-            <div class="collapse" id="collapseTemplateInfo">
-                <div class="card card-body">
-                    <div><span class="badge bg-secondary flex">{{ template.meta_category }}</span>
-                    </div>
-                    <div>
-                        <span>{{ template.description }}</span>
-                    </div>
-                    <span class="fw-bold">requires one of:</span>
-                    <ul>
-                        <li v-for="attribute in template.requiredOneOf">{{ attribute }}</li>
-                    </ul>
+            <div class="card card-body">
+                <div>
+                    <span class="fw-bold">{{ template.name }} </span>
+                    <span class="badge bg-info flex">v{{ template.version }}</span>
                 </div>
+                <div>
+                    <UUID :uuid=template.uuid />
+                </div>
+                <div><span class="badge bg-secondary flex">{{ template.meta_category }}</span>
+                </div>
+                <div>
+                    <span>{{ template.description }}</span>
+                </div>
+                <span class="fw-bold">requires one of:</span>
+                <ul>
+                    <li v-for="attribute in template.requiredOneOf">{{ attribute }}</li>
+                </ul>
             </div>
         </div>
-        <AddObjectAttributeRow v-for="attribute in object.attributes" :key="attribute.id" :attribute="attribute"
-            @object-attribute-deleted="handleObjectAttributeDeleted" />
+        <AddObjectAttributeRow v-for="attribute in object.attributes" :attribute="attribute"
+            @object-attribute-deleted="handleObjectAttributeDeleted"
+            @object-attribute-updated="handleObjectAttributeUpdated" />
         <Form @submit="addAttribute" :validation-schema="AttributeSchema" v-slot="{ errors }">
             <div class="input-group has-validation mb-3">
                 <label class="input-group-text" for="attribute.value">value</label>
                 <ObjectAttributeValueInput id="attribute.value" name="attribute.value"
-                    :attribyte_type="selectedTemplateAttribute" v-model="attribute.value"
-                    :errors="errors['attribute.value']" @attribute-value-changed="handleAttributeValueChanged" />
+                    :attribyte_type="selectedTemplateAttribute" v-model="newAttribute.value"
+                    :errors="errors['newAttribute.value']" @attribute-value-changed="handleAttributeValueChanged" />
                 <label class="input-group-text" for="attribute.type">type</label>
                 <ObjectTemplateAttributeTypeSelect id="attribute.template_type" name="attribute.template_type"
-                    v-model="attribute.template_type" :errors="errors['attribute.type']" :template="template"
+                    v-model="newAttribute.template_type" :errors="errors['newAttribute.type']" :template="template"
                     @attribute-template-type-changed="handleAttributeTypeChanged" />
                 <Field class="form-control" type="hidden" id="attribute.disable_correlation"
-                    name="attribute.disable_correlation" v-model="attribute.disable_correlation"></Field>
+                    name="attribute.disable_correlation" v-model="newAttribute.disable_correlation"></Field>
                 <Field class="form-control" type="hidden" id="attribute.event_id" name="attribute.event_id"
-                    v-model="attribute.event_id"></Field>
+                    v-model="newAttribute.event_id"></Field>
                 <Field class="form-control" type="hidden" id="attribute.category" name="attribute.category"
-                    v-model="attribute.category"></Field>
+                    v-model="newAttribute.category"></Field>
                 <Field class="form-control" type="hidden" id="attribute.distribution" name="attribute.distribution"
-                    v-model="attribute.distribution"></Field>
+                    v-model="newAttribute.distribution"></Field>
                 <Field class="form-control" type="hidden" id="attribute.type" name="attribute.type"
-                    v-model="attribute.type"></Field>
-                <label v-if="attribute.type" class="input-group-text" for="attribute.description"><font-awesome-icon
+                    v-model="newAttribute.type"></Field>
+                <label v-if="newAttribute.type" class="input-group-text" for="attribute.description"><font-awesome-icon
                         icon="fa-solid fa-circle-info" class="btn-success" data-bs-toggle="tooltip"
                         data-bs-placement="top" :title="selectedTemplateAttribute.description" /></label>
                 <button type="submit" class="btn btn-outline-primary">Add
