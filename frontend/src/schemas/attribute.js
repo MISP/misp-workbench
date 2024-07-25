@@ -16,7 +16,7 @@ export const AttributeSchema = Yup.object().shape({
 
 
 export const getAttributeTypeValidationSchema = (type) => {
-    if (type === 'ip') {
+    if (type === 'ip-src' || type === 'ip-dst') {
         return AttributeSchema.concat(Yup.object().shape({
             attribute: Yup.object().shape({
                 value: Yup.string().matches(ipRegex({ exact: true }), 'Invalid IP address.').required()

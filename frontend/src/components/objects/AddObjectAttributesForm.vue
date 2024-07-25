@@ -69,7 +69,7 @@ function handleAttributeTypeChanged(type) {
         }
     });
 
-    AttributeTypeSchema.value = getAttributeTypeValidationSchema(type);
+    AttributeTypeSchema.value = getAttributeTypeValidationSchema(attribute.value.type);
 }
 
 const validateAttributeValue = (object, schema) => {
