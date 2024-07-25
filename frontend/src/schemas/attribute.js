@@ -24,5 +24,22 @@ export const getAttributeTypeValidationSchema = (type) => {
         }));
     }
 
+    if (type === 'email') {
+        return AttributeSchema.concat(Yup.object().shape({
+            attribute: Yup.object().shape({
+                value: Yup.string().email().required()
+            }),
+        }));
+    }
+
+    if (type === 'url') {
+        return AttributeSchema.concat(Yup.object().shape({
+            attribute: Yup.object().shape({
+                value: Yup.string().url().required()
+            }),
+        }));
+    }
+
+
     return AttributeSchema;
 }
