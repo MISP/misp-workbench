@@ -1,7 +1,7 @@
 <script setup>
-import { ref, watch } from 'vue';
+import { ref } from 'vue';
 import AddObjectAttributeRow from "@/components/objects/AddObjectAttributeRow.vue";
-import ObjectTemplateAttributesSelect from "@/components/objects/ObjectTemplateAttributesSelect.vue";
+import ObjectTemplateAttributeTypeSelect from "@/components/objects/ObjectTemplateAttributeTypeSelect.vue";
 import ObjectAttributeValueInput from "@/components/objects/ObjectAttributeValueInput.vue";
 import { AttributeSchema, getAttributeTypeValidationSchema } from "@/schemas/attribute";
 import { Form, Field } from "vee-validate";
@@ -14,12 +14,11 @@ const template = ref(props.template);
 
 const AttributeTypeSchema = ref(getAttributeTypeValidationSchema('text'));
 
-const attributeTypeErrors = ref(null);
+const attributeErrors = ref(null);
 
 const attribute = ref({
     event_id: object.value.event_id,
     value: '',
-    type: '',
     category: 'category', // TODO: set actual category (need misp_attribute->category map)
     to_ids: false,
     distribution: 0,
@@ -28,26 +27,27 @@ const attribute = ref({
 
 const selectedTemplateAttribute = ref({});
 
-function addAttribute(values, { resetForm, setErrors }) {
+function addAttribute(values, { resetForm }) {
     validateAttributeValue(values, AttributeTypeSchema.value)
         .then((validAttribute) => {
             object.value.attributes = [...object.value.attributes, { ...attribute.value }];
 
             // reset defaults
             attribute.value.value = '';
-            attribute.value.type = selectedTemplateAttribute.value['misp-attribute'];
             attribute.value.category = 'category'; // TODO: set actual category (need misp_attribute->category map)
             attribute.value.to_ids = false;
             attribute.value.distribution = 0;
             attribute.value.disable_correlation = false;
 
-            attributeTypeErrors.value = null;
             emit('object-attribute-added', { "attribute": attribute.value });
 
+            console.log(object.value.attributes);
+
+            attributeErrors.value = null;
             resetForm();
         })
         .catch((error) => {
-            attributeTypeErrors.value = error;
+            attributeErrors.value = error;
         });
 }
 
@@ -61,10 +61,11 @@ function handleAttributesUpdated(attribute) {
 }
 
 function handleAttributeTypeChanged(type) {
-    attribute.value.type = type;
+    attribute.value.template_type = type;
     template.value.attributes.forEach((templateAttribute) => {
         if (templateAttribute.name === type) {
             selectedTemplateAttribute.value = templateAttribute;
+            attribute.value.type = selectedTemplateAttribute.value['misp_attribute'];
         }
     });
 
@@ -75,11 +76,9 @@ const validateAttributeValue = (object, schema) => {
     return new Promise((resolve, reject) => {
         schema.validate(object)
             .then((validAttribute) => {
-                // objectTemplateErrors.value = null;
                 resolve(validAttribute);
             })
             .catch((error) => {
-                // objectTemplateErrors.value = error;
                 reject(error);
             });
     });
@@ -89,21 +88,6 @@ const validateAttributeValue = (object, schema) => {
 function handleAttributeValueChanged(value) {
     attribute.value.value = value;
 }
-
-// Watch for changes in the attribute
-watch(attribute.value, (newValue, oldValue) => {
-    const attributeFormObject = { "attribute": newValue };
-
-    validateAttributeValue(attributeFormObject, AttributeTypeSchema.value)
-        .then((validAttribute) => {
-            attributeTypeErrors.value = null;
-        })
-        .catch((error) => {
-            attributeTypeErrors.value = error;
-        });
-
-    // TODO: autosuggest attribute type based on value
-});
 
 </script>
 
@@ -139,9 +123,9 @@ watch(attribute.value, (newValue, oldValue) => {
                     :attribyte_type="selectedTemplateAttribute" v-model="attribute.value"
                     :errors="errors['attribute.value']" @attribute-value-changed="handleAttributeValueChanged" />
                 <label class="input-group-text" for="attribute.type">type</label>
-                <ObjectTemplateAttributesSelect id="attribute.type" name="attribute.type" v-model="attribute.type"
-                    :errors="errors['attribute.type']" :template="template"
-                    @attribute-type-changed="handleAttributeTypeChanged" />
+                <ObjectTemplateAttributeTypeSelect id="attribute.template_type" name="attribute.template_type"
+                    v-model="attribute.template_type" :errors="errors['attribute.type']" :template="template"
+                    @attribute-template-type-changed="handleAttributeTypeChanged" />
                 <Field class="form-control" type="hidden" id="attribute.disable_correlation"
                     name="attribute.disable_correlation" v-model="attribute.disable_correlation"></Field>
                 <Field class="form-control" type="hidden" id="attribute.event_id" name="attribute.event_id"
@@ -150,12 +134,15 @@ watch(attribute.value, (newValue, oldValue) => {
                     v-model="attribute.category"></Field>
                 <Field class="form-control" type="hidden" id="attribute.distribution" name="attribute.distribution"
                     v-model="attribute.distribution"></Field>
+                <Field class="form-control" type="hidden" id="attribute.type" name="attribute.type"
+                    v-model="attribute.type"></Field>
                 <label v-if="attribute.type" class="input-group-text" for="attribute.description"><font-awesome-icon
                         icon="fa-solid fa-circle-info" class="btn-success" data-bs-toggle="tooltip"
                         data-bs-placement="top" :title="selectedTemplateAttribute.description" /></label>
-                <button type="submit" class="btn btn-outline-primary">Add Attribute</button>
-                <div v-if="attributeTypeErrors" class="w-100 alert alert-danger mt-3 mb-3">
-                    <span>{{ attributeTypeErrors }}</span>
+                <button type="submit" class="btn btn-outline-primary">Add
+                    Attribute</button>
+                <div v-if="attributeErrors" class="w-100 alert alert-danger mt-3 mb-3">
+                    <span>{{ attributeErrors }}</span>
                 </div>
             </div>
         </Form>

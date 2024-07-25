@@ -28,7 +28,7 @@ function deleteObjectAttribute() {
       <label for="attributeToIDS">correlate</label>
     </div>
     <div class="form-floating">
-      <input id="attributeType" class="form-control" :value="attribute.type" disabled>
+      <input id="attributeType" class="form-control" :value="attribute.template_type" disabled>
       <label for="attributeType">type</label>
     </div>
     <button class="btn btn-outline-primary" type="button"><font-awesome-icon icon="fa-solid fa-pen" /></button>

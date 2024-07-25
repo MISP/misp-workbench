@@ -2,10 +2,10 @@
 import { Field } from "vee-validate";
 
 const props = defineProps(['name', 'selected', 'errors', 'template']);
-const emit = defineEmits(['attribute-type-changed']);
+const emit = defineEmits(['attribute-template-type-changed']);
 
 function handleSelectChange(event) {
-    emit('attribute-type-changed', event.target.value);
+    emit('attribute-template-type-changed', event.target.value);
 }
 
 </script>

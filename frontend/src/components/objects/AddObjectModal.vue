@@ -61,7 +61,13 @@ const validateObject = (object) => {
 };
 
 function handleAttributesUpdated() {
-    validateObject(object.value);
+    validateObject(object.value)
+        .then((validObject) => {
+            objectTemplateErrors.value = null;
+        })
+        .catch((error) => {
+            objectTemplateErrors.value = error;
+        });
 }
 
 function createObject(values, { setErrors }) {
