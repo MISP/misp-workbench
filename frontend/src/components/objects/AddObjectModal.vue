@@ -40,7 +40,7 @@ function getObjectTemplateSchema() {
             .test(
                 'at-least-one-required-type',
                 `The object must contain at least one attribute with a type matching one of the following: ${activeTemplate.value.requiredOneOf.join(', ')}`,
-                (attributes) => attributes && attributes.some((attribute) => activeTemplate.value.requiredOneOf.includes(attribute.type))
+                (attributes) => attributes && attributes.some((attribute) => activeTemplate.value.requiredOneOf.includes(attribute.template_type))
             ),
     });
 }
