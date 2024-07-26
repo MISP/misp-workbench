@@ -8,6 +8,7 @@ import Spinner from "@/components/misc/Spinner.vue";
 import Paginate from "vuejs-paginate-next";
 import AddAttributeModal from "@/components/attributes/AddAttributeModal.vue";
 import DeleteAttributeModal from "@/components/attributes/DeleteAttributeModal.vue";
+import Timestamp from "@/components/misc/Timestamp.vue";
 
 const props = defineProps(['event_id', 'page_size']);
 const attributesStore = useAttributesStore();
@@ -53,7 +54,9 @@ function handleAttributesUpdated(event) {
                         <TagsIndex :tags="attribute.tags" />
                     </td>
                     <td>{{ attribute.type }}</td>
-                    <td class="d-none d-sm-table-cell">{{ attribute.timestamp }}</td>
+                    <td class="d-none d-sm-table-cell">
+                        <Timestamp :timestamp="attribute.timestamp" />
+                    </td>
                     <td class="d-none d-sm-table-cell">
                         <DistributionLevel :distribution_level_id=attribute.distribution />
                     </td>

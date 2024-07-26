@@ -3,6 +3,7 @@ import { ref } from 'vue';
 import DistributionLevel from "@/components/enums/DistributionLevel.vue";
 import TagsIndex from "@/components/tags/TagsIndex.vue";
 import { RouterLink } from "vue-router";
+import Timestamp from "@/components/misc/Timestamp.vue";
 import DeleteAttributeModal from "@/components/attributes/DeleteAttributeModal.vue";
 
 
@@ -33,7 +34,9 @@ function handleAttributesUpdated(attribute) {
                     <TagsIndex :tags="attribute.tags" />
                 </td>
                 <td>{{ attribute.type }}</td>
-                <td class="d-none d-sm-table-cell">{{ attribute.timestamp }}</td>
+                <td class="d-none d-sm-table-cell">
+                      <Timestamp :timestamp="attribute.timestamp" />
+                </td>
                 <td class="d-none d-sm-table-cell">
                     <DistributionLevel :distribution_level_id=attribute.distribution />
                 </td>

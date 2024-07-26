@@ -121,7 +121,7 @@ function handleAttributeValueChanged(value) {
                 </ul>
             </div>
         </div>
-        <AddObjectAttributeRow v-for="attribute in object.attributes" :attribute="attribute"
+        <AddObjectAttributeRow v-for="attribute in object.attributes" :attribute="attribute" :template="template"
             @object-attribute-deleted="handleObjectAttributeDeleted"
             @object-attribute-updated="handleObjectAttributeUpdated" />
         <Form @submit="addAttribute" :validation-schema="AttributeSchema" v-slot="{ errors }">
