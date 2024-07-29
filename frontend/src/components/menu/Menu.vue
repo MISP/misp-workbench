@@ -25,7 +25,7 @@ export default {
         <div class="container-fluid">
             <div class="navbar-nav collapse navbar-collapse">
                 <RouterLink to="/" class="nav-item nav-link">
-                    <img src="/public/images/misp-logo-pixel.png" alt="" height="30">
+                    <img src="/images/misp-logo-pixel.png" alt="" height="30">
                 </RouterLink>
                 <RouterLink to="/events" class="nav-item nav-link">events</RouterLink>
                 <RouterLink to="/organisations" class="nav-item nav-link">organisations</RouterLink>

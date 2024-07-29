@@ -5,7 +5,7 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Pytest: Remote Attach",
+            "name": "Pytest: Remote Attach (local)",
             "type": "python",
             "request": "attach",
             "justMyCode": false,
@@ -21,7 +21,7 @@
             ],
         },
         {
-            "name": "Python: Remote Attach",
+            "name": "Python: Remote Attach (docker)",
             "type": "python",
             "request": "attach",
             "port": 5678,

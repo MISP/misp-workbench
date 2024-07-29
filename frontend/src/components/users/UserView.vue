@@ -16,11 +16,11 @@ function handleUserDeleted(event) {
                 <div class="col-2 text-end">
                     <div class="flex-wrap" :class="{ 'btn-group-vertical': $isMobile, 'btn-group': !$isMobile }"
                         aria-label="User Actions">
-                        <button type="button" class="btn btn-danger" data-bs-toggle="modal"
+                        <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal"
                             :data-bs-target="'#deleteUserModal-' + user.id">
                             <font-awesome-icon icon="fa-solid fa-trash" />
                         </button>
-                        <RouterLink :to="`/users/update/${user.id}`" tag="button" class="btn btn-primary">
+                        <RouterLink :to="`/users/update/${user.id}`" tag="button" class="btn btn-outline-primary">
                             <font-awesome-icon icon="fa-solid fa-pen" />
                         </RouterLink>
                     </div>

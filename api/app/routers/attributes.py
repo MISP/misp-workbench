@@ -16,9 +16,11 @@ router = APIRouter()
 
 
 async def get_attributes_parameters(
-    event_id: Optional[int] = None, deleted: Optional[bool] = None
+    event_id: Optional[int] = None,
+    deleted: Optional[bool] = None,
+    object_id: Optional[int] = None,
 ):
-    return {"event_id": event_id, "deleted": deleted}
+    return {"event_id": event_id, "deleted": deleted, "object_id": object_id}
 
 
 @router.get("/attributes/", response_model=Page[attribute_schemas.Attribute])
@@ -30,7 +32,7 @@ def get_attributes(
     ),
 ) -> Page[attribute_schemas.Attribute]:
     return attributes_repository.get_attributes(
-        db, params["event_id"], params["deleted"]
+        db, params["event_id"], params["deleted"], params["object_id"]
     )
 
 

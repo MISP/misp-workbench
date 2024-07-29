@@ -1,5 +1,6 @@
 <script setup>
 import DeleteOrganisationModal from "@/components/organisations/DeleteOrganisationModal.vue";
+import UUID from "@/components/misc/UUID.vue";
 import { router } from "@/router";
 
 defineProps(['organisation']);
@@ -19,12 +20,12 @@ function handleOrganisationDeleted(event) {
                 <div class="col-2 text-end">
                     <div class="flex-wrap" :class="{ 'btn-group-vertical': $isMobile, 'btn-group': !$isMobile }"
                         aria-label="Organisation Actions">
-                        <button type="button" class="btn btn-danger" data-bs-toggle="modal"
+                        <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal"
                             :data-bs-target="'#deleteOrganisationModal-' + organisation.id">
                             <font-awesome-icon icon="fa-solid fa-trash" />
                         </button>
                         <RouterLink :to="`/organisations/update/${organisation.id}`" tag="button"
-                            class="btn btn-primary">
+                            class="btn btn-outline-primary">
                             <font-awesome-icon icon="fa-solid fa-pen" />
                         </RouterLink>
                     </div>
@@ -41,8 +42,8 @@ function handleOrganisationDeleted(event) {
                         </tr>
                         <tr>
                             <th style="width: 30%">uuid</th>
-                            <td>{{ organisation.uuid }}
-                                <font-awesome-icon class="text-primary" icon="fa-solid fa-copy" />
+                            <td>
+                                <UUID :uuid=organisation.uuid />
                             </td>
                         </tr>
                         <tr>

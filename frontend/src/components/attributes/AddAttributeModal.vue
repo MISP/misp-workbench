@@ -2,11 +2,12 @@
 
 import { ref } from 'vue';
 import { useAttributesStore } from "@/stores";
+import { errorHandler } from "@/helpers";
 import { storeToRefs } from 'pinia'
 import { AttributeSchema } from "@/schemas/attribute";
 import { DISTRIBUTION_LEVEL } from "@/helpers/constants";
 import DistributionLevelSelect from "@/components/enums/DistributionLevelSelect.vue";
-import AnalysisLevelSelect from "@/components/enums/AnalysisLevelSelect.vue";
+import ApiError from "@/components/misc/ApiError.vue";
 import AttributeCategorySelect from "@/components/enums/AttributeCategorySelect.vue";
 import AttributeTypeSelect from "@/components/enums/AttributeTypeSelect.vue";
 import { Form, Field } from "vee-validate";
@@ -14,7 +15,7 @@ import * as Yup from "yup";
 
 const attributesStore = useAttributesStore();
 const { status } = storeToRefs(attributesStore);
-
+const apiError = ref(null);
 const props = defineProps(['event_id']);
 const emit = defineEmits(['attribute-created']);
 
@@ -27,13 +28,17 @@ const attribute = ref({
 });
 
 function onSubmit(values, { setErrors }) {
+  apiError.value = null;
   return attributesStore
     .create(attribute.value)
     .then((response) => {
       emit('attribute-created', { "attribute": response });
       document.getElementById('closeModalButton').click();
     })
-    .catch((error) => setErrors({ apiError: error }));
+    .catch((errors) => {
+      apiError.value = errors;
+      setErrors(errorHandler.transformApiToFormErrors(errors));
+    });
 }
 
 function onClose() {
@@ -92,13 +97,15 @@ function handleDistributionLevelUpdated(distributionLevelId) {
                   :errors="errors['attribute.distribution']" />
                 <div class="invalid-feedback">{{ errors['attribute.distribution'] }}</div>
               </div>
-              <!-- TODO -->
-              <!-- <div class="col col-6 text-start">
-                <label for="attributeType" class="form-label">Sharing Group</label>
-                <SharingGroupSelect v-model=attribute.sharing_group_id />
-                <div class="invalid-feedback">{{ errors[attribute.sharing_group_id'] }}</div>
-              </div> -->
             </div>
+            <!-- TODO: sharing groups -->
+            <!-- <div class="row m-2"> -->
+            <!-- <div class="col col-6 text-start">
+                  <label for="attributeSharingGroupId" class="form-label">Sharing Group</label>
+                  <SharingGroupSelect v-model=attribute.sharing_group_id />
+                  <div class="invalid-feedback">{{ errors[attribute.sharing_group_id'] }}</div>
+                </div>
+              </div> -->
             <div class="row m-2">
               <div class="col text-start">
                 <label for="attribute.value">value</label>
@@ -166,7 +173,7 @@ function handleDistributionLevelUpdated(distributionLevelId) {
                 </div>
               </div>
               <div class="col col-6 text-start">
-                <label for="attribute.value">first seen</label>
+                <label for="attribute.value">last seen</label>
                 <Field class="form-control" id="attribute.last_seen" name="attribute.last_seen"
                   placeholder="DD/MM/YYYY HH:MM:SS.ssssss+TT:TT" v-model="attribute.last_seen"
                   :class="{ 'is-invalid': errors['attribute.last_seen'] }">
@@ -176,13 +183,13 @@ function handleDistributionLevelUpdated(distributionLevelId) {
               </div>
             </div>
           </div>
-          <div v-if="errors.apiError" class="w-100 alert alert-danger mt-3 mb-3">
-            {{ errors.apiError }}
+          <div v-if="apiError" class="w-100 alert alert-danger mt-3 mb-3">
+            <ApiError :errors="apiError" />
           </div>
           <div class="modal-footer">
             <button id="closeModalButton" type="button" data-bs-dismiss="modal" class="btn btn-secondary"
               @click="onClose()">Discard</button>
-            <button type="submit" class="btn btn-primary" :disabled="status.loading">
+            <button type="submit" class="btn btn-outline-primary" :disabled="status.loading">
               <span v-show="status.loading">
                 <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
               </span>

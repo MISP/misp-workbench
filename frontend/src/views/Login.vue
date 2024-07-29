@@ -60,7 +60,7 @@ function onSubmit(values, { setErrors }) {
 <template>
   <div id="login-container" class="form-signin d-flex flex-column min-vh-100 justify-content-center align-items-center">
     <Form @submit="onSubmit" :validation-schema="schema" v-slot="{ errors, isSubmitting }">
-      <img class="mb-4" src="/public/images/misp-logo-pixel.png" alt="" width="120">
+      <img class="mb-4" src="/images/misp-logo-pixel.png" alt="" width="120">
 
       <div class="form-floating">
         <Field id="username" name="username" type="text" class="form-control"
@@ -79,8 +79,8 @@ function onSubmit(values, { setErrors }) {
         {{ errors.apiError }}
       </div>
 
-      <button class="w-100 btn btn-lg btn-primary" type="submit">Sign in</button>
-      <p class="mt-3 mb-3 text-muted">&copy; 2022</p>
+      <button class="w-100 btn btn-lg btn-outline-primary" type="submit">Sign in</button>
+      <p class="mt-3 mb-3 text-muted">&copy; 2024</p>
     </Form>
   </div>
 </template>

@@ -39,7 +39,7 @@ function onSubmit() {
                 <div class="modal-footer">
                     <button id="closeModalButton" type="button" data-bs-dismiss="modal"
                         class="btn btn-secondary">Discard</button>
-                    <button type="submit" @click="onSubmit" class="btn btn-danger"
+                    <button type="submit" @click="onSubmit" class="btn btn-outline-danger"
                         :class="{ 'disabled': status.loading }">
                         <span v-if="status.loading">
                             <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>

@@ -36,7 +36,7 @@ def upgrade():
         sa.Column("date", sa.Date(), nullable=False),
         sa.Column("info", sa.String(), nullable=True),
         sa.Column("user_id", sa.Integer(), nullable=False),
-        sa.Column("uuid", postgresql.UUID(as_uuid=True), nullable=True),
+        sa.Column("uuid", sa.types.Uuid(as_uuid=True), nullable=True),
         sa.Column("published", sa.Boolean(), nullable=False),
         sa.Column(
             "analysis",
@@ -51,7 +51,7 @@ def upgrade():
         sa.Column("attribute_count", sa.Integer(), nullable=True),
         sa.Column("object_count", sa.Integer(), nullable=True),
         sa.Column("orgc_id", sa.Integer(), nullable=False),
-        sa.Column("timestamp", sa.Integer(), nullable=False),
+        sa.Column("timestamp", sa.types.BigInteger(), nullable=False),
         sa.Column(
             "distribution",
             postgresql.ENUM(
@@ -82,7 +82,7 @@ def upgrade():
         sa.Column("publish_timestamp", sa.Integer(), nullable=False),
         sa.Column("sighting_timestamp", sa.Integer(), nullable=True),
         sa.Column("disable_correlation", sa.Boolean(), nullable=True),
-        sa.Column("extends_uuid", postgresql.UUID(as_uuid=True), nullable=True),
+        sa.Column("extends_uuid", sa.types.Uuid(as_uuid=True), nullable=True),
         sa.Column("protected", sa.Boolean(), nullable=False),
         sa.Column("deleted", sa.Boolean(), nullable=False),
         sa.ForeignKeyConstraint(
@@ -112,8 +112,8 @@ def upgrade():
         sa.Column("type", sa.String(length=100), nullable=True),
         sa.Column("value", sa.String(), nullable=True),
         sa.Column("to_ids", sa.Boolean(), nullable=True),
-        sa.Column("uuid", postgresql.UUID(as_uuid=True), nullable=True),
-        sa.Column("timestamp", sa.Integer(), nullable=False),
+        sa.Column("uuid", sa.types.Uuid(as_uuid=True), nullable=True),
+        sa.Column("timestamp", sa.types.BigInteger(), nullable=False),
         sa.Column(
             "distribution",
             postgresql.ENUM(name="distribution_level", create_type=False),

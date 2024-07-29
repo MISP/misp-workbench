@@ -10,6 +10,10 @@ services:
       - "9600:9600"
   
   api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+      target: dev
     ports:
       - "8080:80"
       - "5677:5677"

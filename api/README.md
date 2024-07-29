@@ -74,6 +74,7 @@ Created user id=1
 
 ## Testing
 ```console
+git submodule update --init --recursive
 $ docker-compose -f docker-compose.yml -f docker-compose.test.yml --env-file=".env.test" up -d
 ...
 $ docker-compose exec api poetry run pytest

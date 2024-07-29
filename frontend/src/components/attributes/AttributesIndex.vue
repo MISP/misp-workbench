@@ -8,6 +8,7 @@ import Spinner from "@/components/misc/Spinner.vue";
 import Paginate from "vuejs-paginate-next";
 import AddAttributeModal from "@/components/attributes/AddAttributeModal.vue";
 import DeleteAttributeModal from "@/components/attributes/DeleteAttributeModal.vue";
+import Timestamp from "@/components/misc/Timestamp.vue";
 
 const props = defineProps(['event_id', 'page_size']);
 const attributesStore = useAttributesStore();
@@ -40,7 +41,6 @@ function handleAttributesUpdated(event) {
                 <tr>
                     <th style="width: 30%" scope="col">value</th>
                     <th style="width: 30%" scope="col" class="d-none d-sm-table-cell">tags</th>
-                    <th style="width: 10%" scope="col" class="d-none d-sm-table-cell">category</th>
                     <th style="width: 10%" scope="col">type</th>
                     <th style="width: 10%" scope="col" class="d-none d-sm-table-cell">timestamp</th>
                     <th style="width: 10%" scope="col" class="d-none d-sm-table-cell">distribution</th>
@@ -53,23 +53,24 @@ function handleAttributesUpdated(event) {
                     <td class="d-none d-sm-table-cell">
                         <TagsIndex :tags="attribute.tags" />
                     </td>
-                    <td class="d-none d-sm-table-cell">{{ attribute.category }}</td>
                     <td>{{ attribute.type }}</td>
-                    <td class="d-none d-sm-table-cell">{{ attribute.timestamp }}</td>
+                    <td class="d-none d-sm-table-cell">
+                        <Timestamp :timestamp="attribute.timestamp" />
+                    </td>
                     <td class="d-none d-sm-table-cell">
                         <DistributionLevel :distribution_level_id=attribute.distribution />
                     </td>
                     <td class="text-end">
-                        <div class="flex-wrap btn-group-vertical" aria-label="Attribute Actions">
-                            <button type="button" class="btn btn-danger" data-bs-toggle="modal"
+                        <div :class="{ 'btn-group-vertical': $isMobile, 'btn-group': !$isMobile }" aria-label="Attribute Actions">
+                            <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal"
                                 :data-bs-target="'#deleteAttributeModal-' + attribute.id">
                                 <font-awesome-icon icon="fa-solid fa-trash" />
                             </button>
                             <RouterLink :to="`/attributes/update/${attribute.id}`" tag="button"
-                                class="btn btn-primary">
+                                class="btn btn-outline-primary">
                                 <font-awesome-icon icon="fa-solid fa-pen" />
                             </RouterLink>
-                            <RouterLink :to="`/attributes/${attribute.id}`" tag="button" class="btn btn-primary">
+                            <RouterLink :to="`/attributes/${attribute.id}`" tag="button" class="btn btn-outline-primary">
                                 <font-awesome-icon icon="fa-solid fa-eye" />
                             </RouterLink>
                         </div>

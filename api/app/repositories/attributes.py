@@ -11,7 +11,9 @@ from pymisp import MISPAttribute
 from sqlalchemy.orm import Session
 
 
-def get_attributes(db: Session, event_id: int = None, deleted: bool = None):
+def get_attributes(
+    db: Session, event_id: int = None, deleted: bool = None, object_id: int = None
+):
     query = db.query(attribute_models.Attribute)
 
     if event_id is not None:
@@ -19,6 +21,8 @@ def get_attributes(db: Session, event_id: int = None, deleted: bool = None):
 
     if deleted is not None:
         query = query.filter(attribute_models.Attribute.deleted == deleted)
+
+    query = query.filter(attribute_models.Attribute.object_id == object_id)
 
     return paginate(query)
 
@@ -47,7 +51,11 @@ def create_attribute(
         to_ids=attribute.to_ids,
         uuid=attribute.uuid,
         timestamp=attribute.timestamp or time.time(),
-        distribution=attribute.distribution,
+        distribution=(
+            attribute.distribution
+            if attribute.distribution is None
+            else event_schemas.DistributionLevel(attribute.distribution)
+        ),
         sharing_group_id=attribute.sharing_group_id,
         comment=attribute.comment,
         deleted=attribute.deleted,
