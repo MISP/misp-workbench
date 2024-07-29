@@ -13,6 +13,6 @@ function handleSelectChange(event) {
 <template>
     <Field class="form-control" :name="name" :class="{ 'is-invalid': errors }" as="select" @change="handleSelectChange"
         :value="props.selected">
-        <option v-for="(type) in ATTRIBUTE_CATEGORIES[category]['types']" :value="type">{{ type }}</option>
+        <!-- <option v-for="(type) in ATTRIBUTE_CATEGORIES[category]['types']" :value="type">{{ type }}</option> -->
     </Field>
 </template>

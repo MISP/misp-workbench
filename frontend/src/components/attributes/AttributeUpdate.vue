@@ -6,7 +6,7 @@ import { router } from "@/router";
 import { AttributeSchema } from "@/schemas/attribute";
 import DistributionLevelSelect from "@/components/enums/DistributionLevelSelect.vue";
 import AnalysisLevelSelect from "@/components/enums/AnalysisLevelSelect.vue";
-import AttributeCategorySelect from "@/components/enums/AttributeCategorySelect.vue";
+// import AttributeCategorySelect from "@/components/enums/AttributeCategorySelect.vue";
 import AttributeTypeSelect from "@/components/enums/AttributeTypeSelect.vue";
 
 const attributesStore = useAttributesStore();
@@ -84,13 +84,13 @@ function handleDistributionLevelUpdated(distributionLevelId) {
                     </Field>
                     <div class=" invalid-feedback">{{ errors['attribute.disable_correlation'] }}</div>
                 </div>
-                <div class="mb-3">
+                <!-- <div class="mb-3">
                     <label for="attribute.category" class="form-label">category</label>
                     <AttributeCategorySelect name="attribute.category" :selected=attribute.category
                         @attribute-category-updated="handleAttributeCategoryUpdated"
                         :errors="errors['attribute.category']" />
                     <div class="invalid-feedback">{{ errors['attribute.category'] }}</div>
-                </div>
+                </div> -->
                 <div class="mb-3">
                     <label for="attribute.type" class="form-label">type</label>
                     <AttributeTypeSelect name="attribute.type" :category="attribute.category" :selected=attribute.type
