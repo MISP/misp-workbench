@@ -21,7 +21,8 @@ import {
   EditEvent,
   AddEvent,
   ViewAttribute,
-  EditAttribute
+  EditAttribute,
+  IndexModules
 } from "@/views";
 
 export const router = createRouter({
@@ -48,6 +49,7 @@ export const router = createRouter({
     { path: "/servers/:id", component: ViewServer, props: true },
     { path: "/servers/add", component: AddServer },
     { path: "/servers/update/:id", component: EditServer, props: true },
+    { path: "/settings/modules", component: IndexModules },
   ],
 });
 
