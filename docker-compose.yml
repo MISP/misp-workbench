@@ -146,6 +146,7 @@ services:
     depends_on:
       - worker
       - rabbitmq
+      - redis
 
   redis:
     image: redis:7-alpine
@@ -169,6 +170,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    restart: unless-stopped
     depends_on:
       - redis
   
