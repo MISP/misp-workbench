@@ -174,7 +174,7 @@ services:
     depends_on:
       - redis
   
-  misp-modules:
+  modules:
     image: ghcr.io/misp/misp-docker/misp-modules:latest
     environment:
       - "REDIS_BACKEND=redis"
