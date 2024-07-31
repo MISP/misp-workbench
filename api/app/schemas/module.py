@@ -36,3 +36,8 @@ class ModuleSettingsUpdate(BaseModel):
 
 class Module(ModuleBase):
     model_config = ConfigDict(from_attributes=True)
+
+
+class ModuleQuery(BaseModel):
+    query: dict
+    model_config = ConfigDict(from_attributes=True)

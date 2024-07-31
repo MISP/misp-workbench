@@ -75,6 +75,7 @@ oauth2_scheme = OAuth2PasswordBearer(
         "tags:delete": "Delete tags.",
         "modules:read": "Read misp-modules.",
         "modules:update": "Update misp-modules.",
+        "modules:query": "Query misp-modules.",
     },
 )
 

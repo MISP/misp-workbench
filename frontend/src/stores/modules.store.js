@@ -9,6 +9,7 @@ export const useModulesStore = defineStore({
     state: () => ({
         modules: {},
         module: {},
+        moduleResponse: {},
         status: {
             loading: false,
             updating: false,
@@ -48,6 +49,14 @@ export const useModulesStore = defineStore({
                 )
                 .catch((error) => (this.status = { error }))
                 .finally(() => module.updating = false);
+        },
+        async query(name, request) {
+            this.status = { loading: true };
+            fetchWrapper
+                .post(`${baseUrl}/${name}/query`, { query: request })
+                .then((response) => this.moduleResponse = response)
+                .catch((error) => (this.status = { error }))
+                .finally(() => (this.status = { loading: false }));
         },
         async dismissErrors() {
             this.status = { error: false };

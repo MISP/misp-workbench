@@ -4,6 +4,7 @@ import { storeToRefs } from "pinia";
 import Spinner from "@/components/misc/Spinner.vue";
 import { useModulesStore } from "@/stores";
 import ConfigureModuleModal from "@/components/settings/modules/ConfigureModuleModal.vue";
+import QueryModuleModal from "@/components/settings/modules/QueryModuleModal.vue";
 import { Modal } from 'bootstrap';
 
 const modulesStore = useModulesStore();
@@ -30,6 +31,7 @@ function dismissErrors() {
 }
 
 const configureModuleModal = ref(null);
+const queryModuleModal = ref(null);
 const selectedModule = ref(null);
 
 function showConfigureModuleModal() {
@@ -37,10 +39,22 @@ function showConfigureModuleModal() {
     configureModuleModal.value.show();
 }
 
-function openConfigureModalModal(module) {
+function showQueryModuleModal() {
+    queryModuleModal.value = new Modal(document.getElementById('queryModuleModal'));
+    queryModuleModal.value.show();
+}
+
+function openConfigureModuleModal(module) {
     selectedModule.value = module;
     nextTick(() => {
         showConfigureModuleModal();
+    });
+}
+
+function openQueryModuleModal(module) {
+    selectedModule.value = module;
+    nextTick(() => {
+        showQueryModuleModal();
     });
 }
 
@@ -103,9 +117,9 @@ function handleModuleConfigUpdate(event) {
                         </span>
                         <span v-if="!module.updating">disable</span>
                     </button>
-                    <button type="button" class="btn btn-success m-2">query</button>
+                    <button type="button" class="btn btn-success m-2" @click="openQueryModuleModal(module)">query</button>
                     <button v-if="module.meta.config" type="button" class="btn btn-secondary  position-relative m-2"
-                        @click="openConfigureModalModal(module)">configure
+                        @click="openConfigureModuleModal(module)">configure
                         <span v-if="module.config && Object.keys(module.config).length > 0"
                             class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-info">
                             {{ Object.keys(module.config).length }}
@@ -116,5 +130,7 @@ function handleModuleConfigUpdate(event) {
         </div>
         <ConfigureModuleModal id="configureModuleModal" v-if="selectedModule" :modal="configureModuleModal"
             :module="selectedModule" @module-config-updated="handleModuleConfigUpdate" />
+        <QueryModuleModal id="queryModuleModal" v-if="selectedModule" :modal="queryModuleModal"
+            :module="selectedModule" />
     </div>
 </template>

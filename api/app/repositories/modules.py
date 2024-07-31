@@ -103,3 +103,10 @@ def update_module(
     db.refresh(db_module)
 
     return True
+
+
+def query_module(
+    module_name: str,
+    query: module_schemas.ModuleQuery,
+):
+    return {"module_name": module_name, "query": query.dict()}
