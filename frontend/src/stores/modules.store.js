@@ -37,6 +37,18 @@ export const useModulesStore = defineStore({
                 .catch((error) => (this.status = { error }))
                 .finally(() => module.updating = false);
         },
+        async configure(name, config) {
+            let module = this.modules.find((module) => module.name === name);
+            module.updating = true;
+
+            fetchWrapper
+                .patch(`${baseUrl}/${name}`, { config: config })
+                .then(() =>
+                    module.config = module.config
+                )
+                .catch((error) => (this.status = { error }))
+                .finally(() => module.updating = false);
+        },
         async dismissErrors() {
             this.status = { error: false };
         }

@@ -1,8 +1,10 @@
 <script setup>
-import { ref, computed } from "vue"
+import { ref, computed, nextTick } from "vue"
 import { storeToRefs } from "pinia";
 import Spinner from "@/components/misc/Spinner.vue";
 import { useModulesStore } from "@/stores";
+import ConfigureModuleModal from "@/components/settings/modules/ConfigureModuleModal.vue";
+import { Modal } from 'bootstrap';
 
 const modulesStore = useModulesStore();
 const { modules, status } = storeToRefs(modulesStore);
@@ -27,6 +29,29 @@ function dismissErrors() {
     modulesStore.dismissErrors();
 }
 
+const configureModuleModal = ref(null);
+const selectedModule = ref(null);
+
+function showConfigureModuleModal() {
+    configureModuleModal.value = new Modal(document.getElementById('configureModuleModal'));
+    configureModuleModal.value.show();
+}
+
+function openConfigureModalModal(module) {
+    selectedModule.value = module;
+    nextTick(() => {
+        showConfigureModuleModal();
+    });
+}
+
+function handleModuleConfigUpdate(event) {
+    modules.value = modules.value.map(module => {
+        if (module.name === event.module) {
+            module.config = event.config;
+        }
+        return module;
+    });
+}
 </script>
 
 <template>
@@ -64,14 +89,14 @@ function dismissErrors() {
                     </ul>
                     </p>
                     <p class="card-text">{{ module.meta.description }}</p>
-                    <button v-if="module.enabled == false || !module.enabled" type="submit" class="btn btn-primary"
+                    <button v-if="module.enabled == false || !module.enabled" type="submit" class="btn btn-primary m-2"
                         :class="{ 'disabled': module.updating }" @click="toggle(module.name)">
                         <span v-if="module.updating">
                             <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
                         </span>
                         <span v-if="!module.updating">enable</span>
                     </button>
-                    <button v-if="module.enabled == true" type="submit" class="btn btn-danger"
+                    <button v-if="module.enabled == true" type="submit" class="btn btn-danger m-2"
                         :class="{ 'disabled': module.updating }" @click="toggle(module.name)">
                         <span v-if="module.updating">
                             <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
@@ -79,9 +104,17 @@ function dismissErrors() {
                         <span v-if="!module.updating">disable</span>
                     </button>
                     <button type="button" class="btn btn-success m-2">query</button>
-                    <button type="button" class="btn btn-secondary m-2">configure</button>
+                    <button v-if="module.meta.config" type="button" class="btn btn-secondary  position-relative m-2"
+                        @click="openConfigureModalModal(module)">configure
+                        <span v-if="module.config && Object.keys(module.config).length > 0"
+                            class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-info">
+                            {{ Object.keys(module.config).length }}
+                            <span class="visually-hidden">custom settings</span>
+                        </span></button>
                 </div>
             </div>
         </div>
+        <ConfigureModuleModal id="configureModuleModal" v-if="selectedModule" :modal="configureModuleModal"
+            :module="selectedModule" @module-config-updated="handleModuleConfigUpdate" />
     </div>
 </template>
