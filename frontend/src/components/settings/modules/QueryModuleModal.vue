@@ -9,8 +9,7 @@ const { status, moduleResponse } = storeToRefs(modulesStore);
 const props = defineProps(['module', 'modal']);
 
 const request = ref({
-    // "module": props.module.name,
-    "module": "mmdb_lookup",
+    "module": props.module.name,
     "attribute": {
         "type": "ip-dst",
         "uuid": "",
