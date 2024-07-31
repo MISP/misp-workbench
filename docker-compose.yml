@@ -72,6 +72,8 @@ services:
       MAIL_PASSWORD: ${MAIL_PASSWORD}
       MAIL_PORT: ${MAIL_PORT}
       MAIL_SERVER: ${MAIL_SERVER}
+      MODULES_HOST: ${MODULES_HOST:-modules}
+      MODULES_PORT: ${MODULES_PORT:-6666}
     entrypoint: [ "bash", "-c", "./entrypoint.sh" ]
     depends_on:
       postgres:
@@ -112,6 +114,8 @@ services:
       MAIL_PASSWORD: ${MAIL_PASSWORD}
       MAIL_PORT: ${MAIL_PORT}
       MAIL_SERVER: ${MAIL_SERVER}
+      MODULES_HOST: ${MODULES_HOST:-modules}
+      MODULES_PORT: ${MODULES_PORT:-6666}
     depends_on:
       - redis
       - postgres
@@ -143,6 +147,8 @@ services:
       MAIL_PASSWORD: ${MAIL_PASSWORD}
       MAIL_PORT: ${MAIL_PORT}
       MAIL_SERVER: ${MAIL_SERVER}
+      MODULES_HOST: ${MODULES_HOST:-modules}
+      MODULES_PORT: ${MODULES_PORT:-6666}
     depends_on:
       - worker
       - rabbitmq

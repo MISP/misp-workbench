@@ -27,10 +27,16 @@ class MailSettings(BaseModel):
     password: str = os.environ["MAIL_PASSWORD"]
 
 
+class ModuleSettings(BaseModel):
+    host: str = os.environ["MODULES_HOST"] or "localhost"
+    port: int = int(os.environ["MODULES_PORT"]) or 6666
+
+
 class Settings(BaseSettings):
     MISP: MISPSettings = MISPSettings()
     OAuth2: OAuth2Settings = OAuth2Settings()
     Mail: MailSettings = MailSettings()
+    Modules: ModuleSettings = ModuleSettings()
 
 
 @lru_cache

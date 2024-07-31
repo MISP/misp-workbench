@@ -19,6 +19,14 @@ const filteredModules = computed(() => {
     );
 });
 
+function toggle(module_name) {
+    modulesStore.toggle(module_name);
+}
+
+function dismissErrors() {
+    modulesStore.dismissErrors();
+}
+
 </script>
 
 <template>
@@ -36,15 +44,18 @@ const filteredModules = computed(() => {
         </nav>
 
         <Spinner v-if="status.loading" />
-        <div v-if="status.error" class="text-danger">
-            Error loading modules: {{ status.error }}
+        <div v-if="status.error" class="alert alert-danger alert-dismissible fade show" role="alert">
+            <span>{{ status.error }} </span>
+            <button type="button" class="btn-close" aria-label="Close" @click="dismissErrors()"></button>
         </div>
 
         <div v-show="!status.loading">
             <div class="card mb-3" :key="module.name" v-for="module in filteredModules">
-                <h5 class="card-header">{{ module.name }} <span class="badge badge-pill bg-info"> v{{
+                <h5 class="card-header">
+                    {{ module.name }} <span class="badge badge-pill bg-info"> v{{
                             module.meta.version
-                        }}</span></h5>
+                        }}</span>
+                </h5>
                 <div class="card-body">
                     <p>
                     <ul>
@@ -53,8 +64,20 @@ const filteredModules = computed(() => {
                     </ul>
                     </p>
                     <p class="card-text">{{ module.meta.description }}</p>
-                    <button type="button" class="btn btn-primary m-2">enable</button>
-                    <button type="button" class="btn btn-danger m-2">disable</button>
+                    <button v-if="module.enabled == false || !module.enabled" type="submit" class="btn btn-primary"
+                        :class="{ 'disabled': module.updating }" @click="toggle(module.name)">
+                        <span v-if="module.updating">
+                            <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                        </span>
+                        <span v-if="!module.updating">enable</span>
+                    </button>
+                    <button v-if="module.enabled == true" type="submit" class="btn btn-danger"
+                        :class="{ 'disabled': module.updating }" @click="toggle(module.name)">
+                        <span v-if="module.updating">
+                            <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                        </span>
+                        <span v-if="!module.updating">disable</span>
+                    </button>
                     <button type="button" class="btn btn-success m-2">query</button>
                     <button type="button" class="btn btn-secondary m-2">configure</button>
                 </div>

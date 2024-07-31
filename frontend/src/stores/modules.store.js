@@ -25,5 +25,20 @@ export const useModulesStore = defineStore({
                 .catch((error) => (this.status = { error }))
                 .finally(() => (this.status = { loading: false }));
         },
+        async toggle(name) {
+            let module = this.modules.find((module) => module.name === name);
+            module.updating = true;
+
+            fetchWrapper
+                .patch(`${baseUrl}/${name}`, { enabled: !module.enabled })
+                .then(() =>
+                    module.enabled = !module.enabled
+                )
+                .catch((error) => (this.status = { error }))
+                .finally(() => module.updating = false);
+        },
+        async dismissErrors() {
+            this.status = { error: false };
+        }
     },
 });

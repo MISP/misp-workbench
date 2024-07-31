@@ -25,6 +25,13 @@ class ModuleBase(BaseModel):
     type: str
     mispattributes: ModuleAttributes
     meta: ModuleMeta
+    enabled: bool
+    config: Optional[dict]
+
+
+class ModuleSettingsUpdate(BaseModel):
+    enabled: Optional[bool] = None
+    config: Optional[dict] = None
 
 
 class Module(ModuleBase):
