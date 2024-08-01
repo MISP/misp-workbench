@@ -35,23 +35,29 @@ function handleAttributesUpdated(attribute) {
                 </td>
                 <td>{{ attribute.type }}</td>
                 <td class="d-none d-sm-table-cell">
-                      <Timestamp :timestamp="attribute.timestamp" />
+                    <Timestamp :timestamp="attribute.timestamp" />
                 </td>
                 <td class="d-none d-sm-table-cell">
                     <DistributionLevel :distribution_level_id=attribute.distribution />
                 </td>
                 <td class="text-end">
-                    <div :class="{ 'btn-group-vertical': $isMobile, 'btn-group': !$isMobile }" aria-label="Attribute Actions">
-                        <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal"
-                            :data-bs-target="'#deleteAttributeModal-' + attribute.id">
-                            <font-awesome-icon icon="fa-solid fa-trash" />
-                        </button>
-                        <RouterLink :to="`/attributes/update/${attribute.id}`" tag="button" class="btn btn-outline-primary">
-                            <font-awesome-icon icon="fa-solid fa-pen" />
-                        </RouterLink>
+                    <div :class="{ 'btn-group-vertical': $isMobile, 'btn-group': !$isMobile }"
+                        aria-label="Attribute Actions">
                         <RouterLink :to="`/attributes/${attribute.id}`" tag="button" class="btn btn-outline-primary">
                             <font-awesome-icon icon="fa-solid fa-eye" />
                         </RouterLink>
+                        <RouterLink :to="`/attributes/enrich/${attribute.id}`" tag="button"
+                            class="btn btn-outline-primary">
+                            <font-awesome-icon icon="fa-solid fa-magic-wand-sparkles" />
+                        </RouterLink>
+                        <RouterLink :to="`/attributes/update/${attribute.id}`" tag="button"
+                            class="btn btn-outline-primary">
+                            <font-awesome-icon icon="fa-solid fa-pen" />
+                        </RouterLink>
+                        <button type="button" class="btn btn-danger" data-bs-toggle="modal"
+                            :data-bs-target="'#deleteAttributeModal-' + attribute.id">
+                            <font-awesome-icon icon="fa-solid fa-trash" />
+                        </button>
                     </div>
                 </td>
                 <DeleteAttributeModal @attribute-deleted="handleAttributesUpdated" :attribute_id="attribute.id" />

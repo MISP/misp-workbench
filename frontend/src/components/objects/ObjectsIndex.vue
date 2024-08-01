@@ -57,17 +57,13 @@ function openDeleteObjectModal(object) {
             <div class="card" v-if="!object.deleted">
                 <div class="card-header">
                     {{ object.name }}
+                    <button type="button" class="btn btn-danger text-center float-end"
+                        @click="openDeleteObjectModal(object)">
+                        <font-awesome-icon icon="fa-solid fa-trash" />
+                    </button>
                 </div>
                 <div class="card-body">
                     <ObjectAttributesList :attributes="object.attributes" :object_id="object.id" />
-                    <div class="row">
-                        <div class="col text-center">
-                            <button type="button" class="btn btn-outline-danger text-center"
-                                @click="openDeleteObjectModal(object)">
-                                <font-awesome-icon icon="fa-solid fa-trash" />
-                            </button>
-                        </div>
-                    </div>
                 </div>
             </div>
         </div>

@@ -47,17 +47,18 @@ function handleOrganisationDeleted(event) {
                     <td class="text-end">
                         <div class="flex-wrap" :class="{ 'btn-group-vertical': $isMobile, 'btn-group': !$isMobile }"
                             aria-label="Organisation Actions">
-                            <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal"
-                                :data-bs-target="'#deleteOrganisationModal-' + organisation.id">
-                                <font-awesome-icon icon="fa-solid fa-trash" />
-                            </button>
+                            <RouterLink :to="`/organisations/${organisation.id}`" tag="button"
+                                class="btn btn-outline-primary">
+                                <font-awesome-icon icon="fa-solid fa-eye" />
+                            </RouterLink>
                             <RouterLink :to="`/organisations/update/${organisation.id}`" tag="button"
                                 class="btn btn-outline-primary">
                                 <font-awesome-icon icon="fa-solid fa-pen" />
                             </RouterLink>
-                            <RouterLink :to="`/organisations/${organisation.id}`" tag="button" class="btn btn-outline-primary">
-                                <font-awesome-icon icon="fa-solid fa-eye" />
-                            </RouterLink>
+                            <button type="button" class="btn btn-danger" data-bs-toggle="modal"
+                                :data-bs-target="'#deleteOrganisationModal-' + organisation.id">
+                                <font-awesome-icon icon="fa-solid fa-trash" />
+                            </button>
                         </div>
                     </td>
                     <DeleteOrganisationModal @organisation-deleted="handleOrganisationDeleted"
