@@ -12,7 +12,6 @@ onMounted(() => {
     deleteAttributeModal.value = new Modal(document.getElementById('deleteAttributeModal'));
 });
 
-
 function openDeleteAttributeModal() {
     deleteAttributeModal.value.show();
 }

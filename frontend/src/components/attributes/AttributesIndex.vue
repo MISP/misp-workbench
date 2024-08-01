@@ -1,5 +1,5 @@
 <script setup>
-import { RouterLink } from "vue-router";
+import { ref, onMounted } from "vue";
 import { storeToRefs } from 'pinia'
 import { useAttributesStore } from "@/stores";
 import DistributionLevel from "@/components/enums/DistributionLevel.vue";
@@ -9,10 +9,21 @@ import Paginate from "vuejs-paginate-next";
 import AddAttributeModal from "@/components/attributes/AddAttributeModal.vue";
 import AttributeActions from "@/components/attributes/AttributeActions.vue";
 import Timestamp from "@/components/misc/Timestamp.vue";
+import { Modal } from 'bootstrap';
 
 const props = defineProps(['event_id', 'page_size']);
 const attributesStore = useAttributesStore();
 const { page_count, attributes, status } = storeToRefs(attributesStore);
+
+const addAttributeModal = ref(null);
+
+onMounted(() => {
+    addAttributeModal.value = new Modal(document.getElementById('addAttributeModal'));
+});
+
+function openAddAttributeModal() {
+    addAttributeModal.value.show();
+}
 
 function onPageChange(page) {
     attributesStore.get({
@@ -67,10 +78,11 @@ function handleAttributesUpdated(event) {
             </tbody>
         </table>
         <Paginate v-if="page_count > 1" :page-count="page_count" :click-handler="onPageChange" />
-        <AddAttributeModal @attribute-created="handleAttributesUpdated" :event_id="event_id" />
+        <AddAttributeModal id="addAttributeModal" @attribute-created="handleAttributesUpdated"
+            :modal="addAttributeModal" :event_id="event_id" />
         <div class="mt-3">
-            <button type="button" class="w-100 btn btn-outline-primary" data-bs-toggle="modal"
-                data-bs-target="#addAttributeModal">Add Attribute</button>
+            <button type="button" class="w-100 btn btn-outline-primary" @click="openAddAttributeModal">Add
+                Attribute</button>
         </div>
     </div>
 </template>
