@@ -7,7 +7,7 @@ import TagsIndex from "@/components/tags/TagsIndex.vue";
 import Spinner from "@/components/misc/Spinner.vue";
 import Paginate from "vuejs-paginate-next";
 import AddAttributeModal from "@/components/attributes/AddAttributeModal.vue";
-import DeleteAttributeModal from "@/components/attributes/DeleteAttributeModal.vue";
+import AttributeActions from "@/components/attributes/AttributeActions.vue";
 import Timestamp from "@/components/misc/Timestamp.vue";
 
 const props = defineProps(['event_id', 'page_size']);
@@ -61,7 +61,8 @@ function handleAttributesUpdated(event) {
                         <DistributionLevel :distribution_level_id=attribute.distribution />
                     </td>
                     <td class="text-end">
-                        <div :class="{ 'btn-group-vertical': $isMobile, 'btn-group': !$isMobile }"
+                        <AttributeActions :attribute="attribute" @attribute-deleted="handleAttributesUpdated" />
+                        <!-- <div :class="{ 'btn-group-vertical': $isMobile, 'btn-group': !$isMobile }"
                             aria-label="Attribute Actions">
                             <RouterLink :to="`/attributes/${attribute.id}`" tag="button"
                                 class="btn btn-outline-primary">
@@ -79,9 +80,8 @@ function handleAttributesUpdated(event) {
                                 :data-bs-target="'#deleteAttributeModal-' + attribute.id">
                                 <font-awesome-icon icon="fa-solid fa-trash" />
                             </button>
-                        </div>
+                        </div> -->
                     </td>
-                    <DeleteAttributeModal @attribute-deleted="handleAttributesUpdated" :attribute_id="attribute.id" />
                 </tr>
             </tbody>
         </table>
