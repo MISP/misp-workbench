@@ -15,7 +15,7 @@ const types = ref([]);
 if (ATTRIBUTE_CATEGORIES[props.category] === undefined) {
     types.value = ATTRIBUTE_TYPES;
 } else {
-    types.value = ATTRIBUTE_CATEGORIES[props.category];
+    types.value = ATTRIBUTE_CATEGORIES[props.category]['types'];
 }
 
 </script>

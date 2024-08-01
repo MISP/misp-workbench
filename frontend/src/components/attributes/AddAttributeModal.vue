@@ -84,7 +84,7 @@ function handleDistributionLevelUpdated(distributionLevelId) {
               </div>
               <div class="col text-start">
                 <label for="attribute.type" class="form-label">type</label>
-                <AttributeTypeSelect name="attribute.type" :category="attribute.category" :selected=attribute.type
+                <AttributeTypeSelect :key="attribute.category" name="attribute.type" :category="attribute.category" :selected=attribute.type
                   @attribute-type-updated="handleAttributeTypeUpdated" :errors="errors['attribute.type']" />
                 <div class="invalid-feedback">{{ errors['attribute.type'] }}</div>
               </div>
