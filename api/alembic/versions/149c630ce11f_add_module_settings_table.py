@@ -20,7 +20,7 @@ def upgrade():
     op.create_table(
         "module_settings",
         sa.Column("id", sa.Integer, autoincrement=True, primary_key=True),
-        sa.Column("module_name", sa.String(255), nullable=False),
+        sa.Column("module_name", sa.String(255), nullable=False, unique=True),
         sa.Column("created", sa.DateTime()),
         sa.Column("modified", sa.DateTime()),
         sa.Column("config", sa.JSON(), nullable=False, default={}),

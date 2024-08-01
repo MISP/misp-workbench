@@ -20,12 +20,26 @@ async def get_modules(
     return modules_repository.get_modules(db)
 
 
-@router.post("/modules/{module_name}/query")
-def update_module(
+@router.patch("/modules/{module_name}")
+async def update_module(
     module_name: str,
+    module: module_schemas.ModuleSettingsUpdate,
+    db: Session = Depends(get_db),
+    user: user_schemas.User = Security(
+        get_current_active_user, scopes=["modules:update"]
+    ),
+):
+    return modules_repository.update_module(
+        db=db, module_name=module_name, module=module
+    )
+
+
+@router.post("/modules/query")
+async def query_module(
     query: module_schemas.ModuleQuery,
+    db: Session = Depends(get_db),
     user: user_schemas.User = Security(
         get_current_active_user, scopes=["modules:query"]
     ),
 ):
-    return modules_repository.query_module(module_name=module_name, query=query)
+    return modules_repository.query_module(db, query=query)

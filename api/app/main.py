@@ -72,7 +72,7 @@ app.include_router(sharing_groups.router, tags=["Sharing Groups"])
 # Tags resource
 app.include_router(tags.router, tags=["Tags"])
 
-# Tags resource
+# Modules resource
 app.include_router(modules.router, tags=["Modules"])
 
 add_pagination(app)

@@ -25,7 +25,7 @@ def get_modules(db: Session):
     rawModules = json.loads(req.text)
 
     # get configured modules from db
-    db_modules = db.query(module_models.ModuleSettings).all()
+    db_module_configs = db.query(module_models.ModuleSettings).all()
 
     for rawModule in rawModules:
         moduleMeta = module_schemas.ModuleMeta(
@@ -65,8 +65,8 @@ def get_modules(db: Session):
             ),
         )
 
-        db_module = next(
-            (m for m in db_modules if m.module_name == rawModule["name"]), None
+        db_module_config = next(
+            (m for m in db_module_configs if m.module_name == rawModule["name"]), None
         )
 
         module = module_schemas.Module(
@@ -74,13 +74,23 @@ def get_modules(db: Session):
             type=rawModule["type"],
             mispattributes=moduleAttributes,
             meta=moduleMeta,
-            enabled=(db_module.enabled if db_module else False),
-            config=db_module.config if db_module else None,
+            enabled=(db_module_config.enabled if db_module_config else False),
+            config=db_module_config.config if db_module_config else None,
         )
 
         modules.append(module)
 
     return modules
+
+
+def get_module_config(db: Session, module_name: str):
+    db_module_config = (
+        db.query(module_models.ModuleSettings)
+        .filter_by(module_name=module_name)
+        .first()
+    )
+
+    return db_module_config if db_module_config else None
 
 
 def update_module(
@@ -89,35 +99,38 @@ def update_module(
     module: module_schemas.ModuleSettingsUpdate,
 ):
     # get module by name
-    db_module = (
-        db.query(module_models.ModuleSettings)
-        .filter_by(module_name=module_name)
-        .first()
-    )
+    db_module_config = get_module_config(db, module_name)
 
-    if db_module is None:
-        db_module = module_models.ModuleSettings(module_name=module_name, config={})
+    if db_module_config is None:
+        db_module_config = module_models.ModuleSettings(
+            module_name=module_name, config={}
+        )
 
     if module.enabled is not None:
-        db_module.enabled = module.enabled
+        db_module_config.enabled = module.enabled
 
     if module.config is not None:
-        db_module.config = module.config
+        db_module_config.config = module.config
 
-    db.add(db_module)
+    db.add(db_module_config)
     db.commit()
-    db.refresh(db_module)
+    db.refresh(db_module_config)
 
     return True
 
 
 def query_module(
-    module_name: str,
+    db: Session,
     query: module_schemas.ModuleQuery,
 ):
 
+    db_module_config = get_module_config(db, query.module)
+
+    if db_module_config.enabled is not True:
+        raise Exception("Module is not enabled")
+
     url = f"{get_modules_service_url()}/query"
-    logger.info("query misp-module: %s" % module_name)
+    logger.info("query misp-module: %s" % query.module)
     req = requests.post(url, query.json())
 
     return req.json()

@@ -24,7 +24,7 @@ const requestJson = ref(JSON.stringify(request.value, null, 2));
 
 function queryModule() {
     return modulesStore
-        .query(props.module.name, request.value)
+        .query(request.value)
         .catch((error) => status.error = error);
 }
 
@@ -77,9 +77,6 @@ function copyToClipboard(text) {
                         </div>
                     </div>
 
-                </div>
-                <div v-if="status.error" class="w-100 alert alert-danger mt-3 mb-3">
-                    {{ status.error }}
                 </div>
                 <div class="modal-footer">
                     <button id="closeModalButton" type="button" data-bs-dismiss="modal"

@@ -50,12 +50,13 @@ export const useModulesStore = defineStore({
                 .catch((error) => (this.status = { error }))
                 .finally(() => module.updating = false);
         },
-        async query(name, request) {
+        async query(request) {
             this.status = { loading: true };
+            this.moduleResponse = {};
             fetchWrapper
-                .post(`${baseUrl}/${name}/query`, request)
+                .post(`${baseUrl}/query`, request)
                 .then((response) => this.moduleResponse = response)
-                .catch((error) => (this.status = { error }))
+                .catch((error) => { this.status = { error }; this.moduleResponse = { error: error } })
                 .finally(() => (this.status = { loading: false }));
         },
         async dismissErrors() {

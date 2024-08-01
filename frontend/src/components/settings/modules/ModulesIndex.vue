@@ -117,7 +117,7 @@ function handleModuleConfigUpdate(event) {
                         </span>
                         <span v-if="!module.updating">disable</span>
                     </button>
-                    <button type="button" class="btn btn-success m-2" @click="openQueryModuleModal(module)">query</button>
+                    <button v-if="module.enabled" type="button" class="btn btn-success m-2" @click="openQueryModuleModal(module)">query</button>
                     <button v-if="module.meta.config" type="button" class="btn btn-secondary  position-relative m-2"
                         @click="openConfigureModuleModal(module)">configure
                         <span v-if="module.config && Object.keys(module.config).length > 0"
