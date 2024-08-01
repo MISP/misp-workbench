@@ -21,7 +21,7 @@ function deleteAttribute() {
 </script>
 
 <template>
-    <div id="deleteAttributeModal" class="modal" aria-labelledby="deleteAttributeModal" aria-hidden="true">
+    <div :id="`deleteAttributeModal_${attribute_id}`" class="modal">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <div class="modal-header">

@@ -9,7 +9,7 @@ const emit = defineEmits(['attribute-deleted']);
 const deleteAttributeModal = ref(null);
 
 onMounted(() => {
-    deleteAttributeModal.value = new Modal(document.getElementById('deleteAttributeModal'));
+    deleteAttributeModal.value = new Modal(document.getElementById(`deleteAttributeModal_${props.attribute.id}`));
 });
 
 function openDeleteAttributeModal() {
@@ -37,6 +37,6 @@ function handleAttributeDeleted() {
             <font-awesome-icon icon="fa-solid fa-trash" />
         </button>
     </div>
-    <DeleteAttributeModal id="deleteAttributeModal" @attribute-deleted="handleAttributeDeleted"
+    <DeleteAttributeModal :id="`deleteAttributeModal_${attribute.id}`" @attribute-deleted="handleAttributeDeleted"
         :modal="deleteAttributeModal" :attribute_id="attribute.id" />
 </template>
