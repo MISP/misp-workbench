@@ -1,4 +1,5 @@
 import json
+import logging
 from functools import lru_cache
 
 import requests
@@ -7,14 +8,19 @@ from app.schemas import module as module_schemas
 from app.settings import Settings, get_settings
 from sqlalchemy.orm import Session
 
+logger = logging.getLogger(__name__)
+
+
+def get_modules_service_url(settings: Settings = get_settings()):
+    return f"http://{settings.Modules.host}:{settings.Modules.port}"
+
 
 @lru_cache
-def get_modules(db: Session, settings: Settings = get_settings()):
+def get_modules(db: Session):
     modules = []
 
     # get modules from api
-    modules_url = f"http://{settings.Modules.host}:{settings.Modules.port}/modules"
-    req = requests.get(modules_url)
+    req = requests.get(f"{get_modules_service_url()}/modules")
 
     rawModules = json.loads(req.text)
 
@@ -109,4 +115,9 @@ def query_module(
     module_name: str,
     query: module_schemas.ModuleQuery,
 ):
-    return {"module_name": module_name, "query": query.dict()}
+
+    url = f"{get_modules_service_url()}/query"
+    logger.info("query misp-module: %s" % module_name)
+    req = requests.post(url, query.json())
+
+    return req.json()

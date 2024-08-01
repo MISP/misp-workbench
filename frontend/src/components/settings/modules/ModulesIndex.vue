@@ -130,7 +130,7 @@ function handleModuleConfigUpdate(event) {
         </div>
         <ConfigureModuleModal id="configureModuleModal" v-if="selectedModule" :modal="configureModuleModal"
             :module="selectedModule" @module-config-updated="handleModuleConfigUpdate" />
-        <QueryModuleModal id="queryModuleModal" v-if="selectedModule" :modal="queryModuleModal"
+        <QueryModuleModal id="queryModuleModal" v-if="selectedModule" :key="selectedModule.name" :modal="queryModuleModal"
             :module="selectedModule" />
     </div>
 </template>

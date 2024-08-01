@@ -16,7 +16,7 @@ const submittedData = ref(null);
 
 onMounted(() => {
     settings.value.forEach(field => {
-        formData[field] = props.module.config[field] || '';
+        formData[field] = props.module.config ? props.module.config[field] || '' : '';
     });
 });
 

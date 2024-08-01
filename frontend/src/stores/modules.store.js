@@ -53,7 +53,7 @@ export const useModulesStore = defineStore({
         async query(name, request) {
             this.status = { loading: true };
             fetchWrapper
-                .post(`${baseUrl}/${name}/query`, { query: request })
+                .post(`${baseUrl}/${name}/query`, request)
                 .then((response) => this.moduleResponse = response)
                 .catch((error) => (this.status = { error }))
                 .finally(() => (this.status = { loading: false }));

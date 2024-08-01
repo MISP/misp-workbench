@@ -13,7 +13,7 @@ const request = ref({
     "attribute": {
         "type": "ip-dst",
         "uuid": "",
-        "value": "127.0.0.1"
+        "value": "8.8.8.8"
     },
     "config": {
         "custom_API": null

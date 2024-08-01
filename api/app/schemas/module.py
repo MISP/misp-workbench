@@ -39,5 +39,7 @@ class Module(ModuleBase):
 
 
 class ModuleQuery(BaseModel):
-    query: dict
+    module: str
+    attribute: dict
+    config: Optional[dict] = None
     model_config = ConfigDict(from_attributes=True)
