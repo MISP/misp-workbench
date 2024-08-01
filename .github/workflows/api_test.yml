@@ -128,3 +128,5 @@ jobs:
           MAIL_PASSWORD: mail-pwd
           MAIL_PORT: 1025
           MAIL_SERVER: localhost
+          MODULES_HOST: localhost
+          MODULES_PORT: 6666
