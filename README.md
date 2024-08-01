@@ -18,7 +18,7 @@ TODO
     docker-compose -f docker-compose.yml -f docker-compose.dev.yml --env-file=".env.dev" up --build
     ```
 
-2. Start Frontend dev server: 
+2. Start frontend dev server:
     ```console
     cd frontend/ 
     npm run dev
@@ -31,6 +31,3 @@ To start the application run:
 ```console
 $ docker-compose up -d
 ```
-
-## Ideas
-* Suggest tags/taxonomies using AI/ML
