@@ -2,22 +2,33 @@
 import { ref, onMounted } from 'vue';
 import { Modal } from 'bootstrap';
 import DeleteAttributeModal from "@/components/attributes/DeleteAttributeModal.vue";
+import EnrichAttributeModal from "@/components/attributes/EnrichAttributeModal.vue";
 
 const props = defineProps(['attribute']);
-const emit = defineEmits(['attribute-deleted']);
+const emit = defineEmits(['attribute-deleted', 'attribute-enriched']);
 
 const deleteAttributeModal = ref(null);
+const enrichAttributeModal = ref(null);
 
 onMounted(() => {
     deleteAttributeModal.value = new Modal(document.getElementById(`deleteAttributeModal_${props.attribute.id}`));
+    enrichAttributeModal.value = new Modal(document.getElementById(`enrichAttributeModal_${props.attribute.id}`));
 });
 
 function openDeleteAttributeModal() {
     deleteAttributeModal.value.show();
 }
 
+function openEnrichAttributeModal() {
+    enrichAttributeModal.value.show();
+}
+
 function handleAttributeDeleted() {
     emit('attribute-deleted', props.attribute.id);
+}
+
+function handleAttributeEnriched() {
+    emit('attribute-enriched', props.attribute.id);
 }
 
 </script>
@@ -29,9 +40,9 @@ function handleAttributeDeleted() {
             <RouterLink :to="`/attributes/${attribute.id}`" tag="button" class="btn btn-outline-primary">
                 <font-awesome-icon icon="fa-solid fa-eye" />
             </RouterLink>
-            <RouterLink :to="`/attributes/enrich/${attribute.id}`" tag="button" class="btn btn-outline-primary">
+            <button type="button" class="btn btn-outline-primary" @click="openEnrichAttributeModal">
                 <font-awesome-icon icon="fa-solid fa-magic-wand-sparkles" />
-            </RouterLink>
+            </button>
             <RouterLink :to="`/attributes/update/${attribute.id}`" tag="button" class="btn btn-outline-primary">
                 <font-awesome-icon icon="fa-solid fa-pen" />
             </RouterLink>
@@ -44,4 +55,6 @@ function handleAttributeDeleted() {
     </div>
     <DeleteAttributeModal :id="`deleteAttributeModal_${attribute.id}`" @attribute-deleted="handleAttributeDeleted"
         :modal="deleteAttributeModal" :attribute_id="attribute.id" />
+    <EnrichAttributeModal :id="`enrichAttributeModal_${attribute.id}`" @attribute-enriched="handleAttributeEnriched"
+        :modal="enrichAttributeModal" :attribute="attribute" />
 </template>

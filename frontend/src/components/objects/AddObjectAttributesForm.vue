@@ -21,7 +21,7 @@ let attributeCount = 0;
 const newAttribute = ref({
     event_id: object.value.event_id,
     value: '',
-    category: 'category', // TODO: set actual category (need misp_attribute->category map)
+    category: 'Other',
     to_ids: false,
     distribution: 0,
     disable_correlation: false
@@ -39,7 +39,7 @@ function addAttribute(values, { resetForm }) {
 
             // reset defaults
             newAttribute.value.value = '';
-            newAttribute.value.category = 'category'; // TODO: set actual category (need misp_attribute->category map)
+            newAttribute.value.category = 'Other';
             newAttribute.value.to_ids = false;
             newAttribute.value.distribution = 0;
             newAttribute.value.disable_correlation = true;

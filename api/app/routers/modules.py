@@ -1,3 +1,5 @@
+from typing import Optional
+
 from app.auth.auth import get_current_active_user
 from app.dependencies import get_db
 from app.repositories import modules as modules_repository
@@ -9,15 +11,22 @@ from sqlalchemy.orm import Session
 router = APIRouter()
 
 
+async def get_modules_parameters(
+    enabled: Optional[bool] = None,
+):
+    return {"enabled": enabled}
+
+
 @router.get("/modules/", response_model=list[module_schemas.Module])
 async def get_modules(
+    params: dict = Depends(get_modules_parameters),
     db: Session = Depends(get_db),
     user: user_schemas.User = Security(
         get_current_active_user, scopes=["modules:read"]
     ),
 ) -> list[module_schemas.Module]:
 
-    return modules_repository.get_modules(db)
+    return modules_repository.get_modules(db, params["enabled"])
 
 
 @router.patch("/modules/{module_name}")

@@ -16,7 +16,7 @@ def get_modules_service_url(settings: Settings = get_settings()):
 
 
 @lru_cache
-def get_modules(db: Session):
+def get_modules(db: Session, enabled: bool = None):
     modules = []
 
     # get modules from api
@@ -79,6 +79,9 @@ def get_modules(db: Session):
         )
 
         modules.append(module)
+
+    if enabled is not None:
+        modules = [m for m in modules if m.enabled == enabled]
 
     return modules
 

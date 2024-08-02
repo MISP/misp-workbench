@@ -37,7 +37,7 @@ function deleteAttribute() {
                 <div class="modal-footer">
                     <button id="closeModalButton" type="button" data-bs-dismiss="modal"
                         class="btn btn-secondary">Discard</button>
-                    <button type="submit" @click="deleteAttribute" class="btn btn-outline-danger"
+                    <button type="submit" @click="deleteAttribute" class="btn btn-danger"
                         :class="{ 'disabled': status.loading }">
                         <span v-if="status.loading">
                             <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>

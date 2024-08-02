@@ -26,6 +26,14 @@ export const useModulesStore = defineStore({
                 .catch((error) => (this.status = { error }))
                 .finally(() => (this.status = { loading: false }));
         },
+        async get(params = { enabled: true }) {
+            this.status = { loading: true };
+            fetchWrapper
+                .get(baseUrl + "/?" + new URLSearchParams(params).toString())
+                .then((modules) => (this.modules = modules))
+                .catch((error) => (this.status = { error }))
+                .finally(() => (this.status = { loading: false }));
+        },
         async toggle(name) {
             let module = this.modules.find((module) => module.name === name);
             module.updating = true;
