@@ -51,11 +51,11 @@ function handleAttributesUpdated(event) {
             <thead>
                 <tr>
                     <th style="width: 30%" scope="col">value</th>
-                    <th style="width: 30%" scope="col" class="d-none d-sm-table-cell">tags</th>
+                    <th style="width: 20%" scope="col" class="d-none d-sm-table-cell">tags</th>
                     <th style="width: 10%" scope="col">type</th>
                     <th style="width: 10%" scope="col" class="d-none d-sm-table-cell">timestamp</th>
                     <th style="width: 10%" scope="col" class="d-none d-sm-table-cell">distribution</th>
-                    <th style="width: 10%" scope="col" class="text-end">actions</th>
+                    <th style="width: 20%" scope="col" class="text-end">actions</th>
                 </tr>
             </thead>
             <tbody>

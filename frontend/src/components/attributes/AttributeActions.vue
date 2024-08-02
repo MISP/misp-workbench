@@ -23,19 +23,24 @@ function handleAttributeDeleted() {
 </script>
 
 <template>
-    <div :class="{ 'btn-group-vertical': $isMobile, 'btn-group': !$isMobile }" aria-label="Attribute Actions">
-        <RouterLink :to="`/attributes/${attribute.id}`" tag="button" class="btn btn-outline-primary">
-            <font-awesome-icon icon="fa-solid fa-eye" />
-        </RouterLink>
-        <RouterLink :to="`/attributes/enrich/${attribute.id}`" tag="button" class="btn btn-outline-primary">
-            <font-awesome-icon icon="fa-solid fa-magic-wand-sparkles" />
-        </RouterLink>
-        <RouterLink :to="`/attributes/update/${attribute.id}`" tag="button" class="btn btn-outline-primary">
-            <font-awesome-icon icon="fa-solid fa-pen" />
-        </RouterLink>
-        <button type="button" class="btn btn-danger" @click="openDeleteAttributeModal">
-            <font-awesome-icon icon="fa-solid fa-trash" />
-        </button>
+    <div class="btn-toolbar float-end" role="toolbar">
+        <div :class="{ 'btn-group-vertical': $isMobile, 'btn-group me-2': !$isMobile }" role="group"
+            aria-label="Attribute Actions">
+            <RouterLink :to="`/attributes/${attribute.id}`" tag="button" class="btn btn-outline-primary">
+                <font-awesome-icon icon="fa-solid fa-eye" />
+            </RouterLink>
+            <RouterLink :to="`/attributes/enrich/${attribute.id}`" tag="button" class="btn btn-outline-primary">
+                <font-awesome-icon icon="fa-solid fa-magic-wand-sparkles" />
+            </RouterLink>
+            <RouterLink :to="`/attributes/update/${attribute.id}`" tag="button" class="btn btn-outline-primary">
+                <font-awesome-icon icon="fa-solid fa-pen" />
+            </RouterLink>
+        </div>
+        <div class="btn-group me-2" role="group">
+            <button type="button" class="btn btn-danger" @click="openDeleteAttributeModal">
+                <font-awesome-icon icon="fa-solid fa-trash" />
+            </button>
+        </div>
     </div>
     <DeleteAttributeModal :id="`deleteAttributeModal_${attribute.id}`" @attribute-deleted="handleAttributeDeleted"
         :modal="deleteAttributeModal" :attribute_id="attribute.id" />
