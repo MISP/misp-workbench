@@ -98,19 +98,24 @@ function pullServer(server) {
                         </div>
                     </td>
                     <td class="text-end">
-                        <div class="flex-wrap" :class="{ 'btn-group-vertical': $isMobile, 'btn-group': !$isMobile }"
-                            aria-label="Server Actions">
-                            <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal"
-                                :data-bs-target="'#deleteServerModal-' + server.id">
-                                <font-awesome-icon icon="fa-solid fa-trash" />
-                            </button>
-                            <RouterLink :to="`/servers/update/${server.id}`" tag="button"
-                                class="btn btn-outline-primary">
-                                <font-awesome-icon icon="fa-solid fa-pen" />
-                            </RouterLink>
-                            <RouterLink :to="`/servers/${server.id}`" tag="button" class="btn btn-outline-primary">
-                                <font-awesome-icon icon="fa-solid fa-eye" />
-                            </RouterLink>
+                        <div class="btn-toolbar float-end" role="toolbar">
+                            <div class="flex-wrap"
+                                :class="{ 'btn-group-vertical': $isMobile, 'btn-group me-2': !$isMobile }"
+                                aria-label="Server Actions">
+                                <RouterLink :to="`/servers/update/${server.id}`" tag="button"
+                                    class="btn btn-outline-primary">
+                                    <font-awesome-icon icon="fa-solid fa-pen" />
+                                </RouterLink>
+                                <RouterLink :to="`/servers/${server.id}`" tag="button" class="btn btn-outline-primary">
+                                    <font-awesome-icon icon="fa-solid fa-eye" />
+                                </RouterLink>
+                            </div>
+                            <div class="btn-group me-2" role="group">
+                                <button type="button" class="btn btn-danger" data-bs-toggle="modal"
+                                    :data-bs-target="'#deleteServerModal-' + server.id">
+                                    <font-awesome-icon icon="fa-solid fa-trash" />
+                                </button>
+                            </div>
                         </div>
                     </td>
                     <DeleteServerModal @server-deleted="handleServerDeleted" :server_id="server.id" />
