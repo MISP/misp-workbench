@@ -1,6 +1,6 @@
 <script setup>
 import { ref } from 'vue';
-import { useModulesStore } from "@/stores";
+import { useModulesStore, useAttributesStore } from "@/stores";
 import { storeToRefs } from 'pinia'
 import UUID from "@/components/misc/UUID.vue";
 
@@ -8,7 +8,8 @@ const props = defineProps(['attribute', 'modal']);
 const emit = defineEmits(['attribute-enriched']);
 
 const modulesStore = useModulesStore();
-const { status, modules, moduleResponse } = storeToRefs(modulesStore);
+const attributesStore = useAttributesStore();
+const { status, modules, modulesResponses } = storeToRefs(modulesStore);
 const allModules = ref(false);
 const allEnrichments = ref(false);
 
@@ -26,21 +27,43 @@ function queryModule(module) {
 }
 
 function queryModules() {
-    moduleResponse.value = {};
-    Object.keys(modules.value).forEach((key) => {
-        if (modules.value[key].query) {
-            queryModule(modules.value[key]);
-        }
-    });
+    modulesResponses.value = [];
+    let selectedModules = modules.value.filter((module) => module.query);
+
+    modulesStore.queryAll(selectedModules, props.attribute)
+        .catch((error) => status.error = error);
 }
 
 function toggleAllEnrichments() {
-    moduleResponse.value.results.Object.forEach((object) => {
-        object.selected = allEnrichments.value;
+    modulesResponses.value.forEach((moduleResults) => {
+        moduleResults.response.results.Attribute.forEach((attr) => {
+            attr.selected = allEnrichments.value;
+        });
+        moduleResults.response.results.Object.forEach((obj) => {
+            obj.selected = allEnrichments.value;
+        });
     });
 }
 
 function enrichAttribute() {
+    let objects = [];
+    let attributes = [];
+    modulesResponses.value.forEach((moduleResults) => {
+        if (!moduleResults.response.results) {
+            return;
+        }
+        moduleResults.response.results.Attribute.forEach((attr) => {
+            if (attr.selected) {
+                attributes.push(attr);
+            }
+        });
+        moduleResults.response.results.Object.forEach((obj) => {
+            if (obj.selected) {
+                objects.push(obj);
+            }
+        });
+    });
+
     return attributesStore
         .enrich(props.attribute)
         .then((response) => {
@@ -108,7 +131,7 @@ function toggleAllModules() {
                                     <h5>preview enrichment results</h5>
                                 </div>
                                 <div class="col">
-                                    <div v-if="moduleResponse.results" class="form-check float-end">
+                                    <div v-if="modulesResponses.length" class="form-check float-end">
                                         <div class="form-check float-end fs-5">
                                             <label>Select All Enrichments</label>
                                             <input id="btn-check-all-enrichments" class="form-check-input"
@@ -117,81 +140,87 @@ function toggleAllModules() {
                                     </div>
                                 </div>
                             </div>
-                            <div v-if="moduleResponse.results">
-                                <div v-for="attr in moduleResponse.results.Attribute">
-                                    <div class="card mt-2" v-if="attr.uuid != attribute.uuid">
-                                        <div class="card-header">
-                                            Attribute <span class="badge badge-pill bg-info"> {{ attr.type }}
-                                            </span>
-                                            <div class="form-check float-end fs-4">
-                                                <input class="form-check-input" type="checkbox" />
-                                            </div>
-                                        </div>
-                                        <div class="card-body">
-                                            <table class="table">
-                                                <thead>
-                                                    <tr>
-                                                        <th scope="col">value</th>
-                                                        <th scope="col">type</th>
-                                                        <th scope="col">to_ids</th>
-                                                        <th scope="col">disable_correlation</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    <tr scope="row">
-                                                        <td>{{ attr.value }}</td>
-                                                        <td>{{ attr.type }}</td>
-                                                        <td>{{ attr.to_ids }}</td>
-                                                        <td>{{ attr.disable_correlation }}</td>
-                                                    </tr>
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                    </div>
+                            <div v-for="moduleResults in modulesResponses">
+                                <h5>{{ moduleResults.module }}</h5>
+                                <div v-if="!moduleResults.response.results" class="alert alert-info" role="alert">
+                                    No enrichment results available.
                                 </div>
-                                <div v-for="object in moduleResponse.results.Object">
-                                    <div class="card mt-2">
-                                        <div class="card-header">
-                                            Object <span class="badge badge-pill bg-info"> {{ object.name }} </span>
-                                            <div class="form-check float-end fs-4">
-                                                <input class="form-check-input" type="checkbox"
-                                                    v-model="object.selected" />
-                                            </div>
-                                        </div>
-                                        <div class="card-body">
-                                            <div v-if="object.ObjectReference">
-                                                <h6>references:</h6>
-                                                <div v-for="reference in object.ObjectReference">
-                                                    <UUID :uuid="reference.object_uuid" />
-                                                    <font-awesome-icon icon="fa-solid fa-arrow-right" />
-                                                    {{ reference.relationship_type }}
-                                                    <font-awesome-icon icon="fa-solid fa-arrow-right" />
-                                                    <UUID :uuid="reference.referenced_uuid" />
+                                <div v-if="moduleResults.response.results">
+                                    <div v-for="attr in moduleResults.response.results.Attribute">
+                                        <div class="card mt-2" v-if="attr.uuid != attribute.uuid">
+                                            <div class="card-header">
+                                                Attribute <span class="badge badge-pill bg-info"> {{ attr.type }}
+                                                </span>
+                                                <div class="form-check float-end fs-4">
+                                                    <input class="form-check-input" type="checkbox" />
                                                 </div>
                                             </div>
-                                            <table class="table">
-                                                <thead>
-                                                    <tr>
-                                                        <th scope="col">value</th>
-                                                        <th scope="col">type</th>
-                                                        <th scope="col">to_ids</th>
-                                                        <th scope="col">disable_correlation</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    <tr scope="row" v-for="attribute in object.Attribute">
-                                                        <td>{{ attribute.value }}</td>
-                                                        <td>{{ attribute.type }}</td>
-                                                        <td>{{ attribute.to_ids }}</td>
-                                                        <td>{{ attribute.disable_correlation }}</td>
-                                                    </tr>
-                                                </tbody>
-                                            </table>
+                                            <div class="card-body">
+                                                <table class="table">
+                                                    <thead>
+                                                        <tr>
+                                                            <th scope="col">value</th>
+                                                            <th scope="col">type</th>
+                                                            <th scope="col">to_ids</th>
+                                                            <th scope="col">disable_correlation</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        <tr scope="row">
+                                                            <td>{{ attr.value }}</td>
+                                                            <td>{{ attr.type }}</td>
+                                                            <td>{{ attr.to_ids }}</td>
+                                                            <td>{{ attr.disable_correlation }}</td>
+                                                        </tr>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div v-for="object in moduleResults.response.results.Object">
+                                        <div class="card mt-2">
+                                            <div class="card-header">
+                                                Object <span class="badge badge-pill bg-info"> {{ object.name }} </span>
+                                                <div class="form-check float-end fs-4">
+                                                    <input class="form-check-input" type="checkbox"
+                                                        v-model="object.selected" />
+                                                </div>
+                                            </div>
+                                            <div class="card-body">
+                                                <div v-if="object.ObjectReference">
+                                                    <h6>references:</h6>
+                                                    <div v-for="reference in object.ObjectReference">
+                                                        <UUID :uuid="reference.object_uuid" />
+                                                        <font-awesome-icon icon="fa-solid fa-arrow-right" />
+                                                        {{ reference.relationship_type }}
+                                                        <font-awesome-icon icon="fa-solid fa-arrow-right" />
+                                                        <UUID :uuid="reference.referenced_uuid" />
+                                                    </div>
+                                                </div>
+                                                <table class="table">
+                                                    <thead>
+                                                        <tr>
+                                                            <th scope="col">value</th>
+                                                            <th scope="col">type</th>
+                                                            <th scope="col">to_ids</th>
+                                                            <th scope="col">disable_correlation</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        <tr scope="row" v-for="attribute in object.Attribute">
+                                                            <td>{{ attribute.value }}</td>
+                                                            <td>{{ attribute.type }}</td>
+                                                            <td>{{ attribute.to_ids }}</td>
+                                                            <td>{{ attribute.disable_correlation }}</td>
+                                                        </tr>
+                                                    </tbody>
+                                                </table>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
-                            <div v-if="!moduleResponse.results" class="alert alert-info" role="alert">
+                            <div v-if="!modulesResponses.length" class="alert alert-info" role="alert">
                                 No enrichment results available.
                             </div>
                             <div v-if="status.error" class="w-100 alert alert-danger mt-3 mb-3">

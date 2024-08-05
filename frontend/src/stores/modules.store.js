@@ -10,6 +10,7 @@ export const useModulesStore = defineStore({
         modules: {},
         module: {},
         moduleResponse: {},
+        modulesResponses: {},
         status: {
             loading: false,
             updating: false,
@@ -66,6 +67,25 @@ export const useModulesStore = defineStore({
                 .then((response) => this.moduleResponse = response)
                 .catch((error) => { this.status = { error }; this.moduleResponse = { error: error } })
                 .finally(() => (this.status = { loading: false }));
+        },
+        async queryAll(modules, attribute) {
+            console.log(modules);
+            console.log(attribute);
+            this.status = { loading: true };
+            this.modulesResponses = [];
+
+            for (let module of modules) {
+                let request = {
+                    "module": module.name,
+                    "attribute": attribute,
+                    "config": module.config
+                };
+                fetchWrapper
+                    .post(`${baseUrl}/query`, request)
+                    .then((response) => this.modulesResponses.push({ module: module.name, response: response, error: false }))
+                    .catch((error) => { this.status = { error }; this.modulesResponses.push({ module: module.name, error: error }) });
+            }
+            this.status = { loading: false };
         },
         async dismissErrors() {
             this.status = { error: false };
