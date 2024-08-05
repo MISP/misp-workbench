@@ -14,13 +14,20 @@ modulesStore.getAll();
 
 const searchTerm = ref('');
 
-const filteredModules = computed(() => {
-    if (!searchTerm.value) return modules.value;
+const showOnlyEnabled = ref(false);
 
-    return modules.value.filter(item =>
+const filteredModules = computed(() => {
+    let tempFilteredModules = modules.value.filter(item =>
         item.name.toLowerCase().includes(searchTerm.value.toLowerCase())
     );
+
+    if (showOnlyEnabled.value) {
+        tempFilteredModules = tempFilteredModules.filter(item => item.enabled);
+    }
+
+    return tempFilteredModules;
 });
+
 
 function toggle(module_name) {
     modulesStore.toggle(module_name);
@@ -74,6 +81,13 @@ function handleModuleConfigUpdate(event) {
             <div class="container-fluid">
                 <a class="navbar-brand">misp-modules</a>
                 <form class="d-flex" role="search">
+                    <div class="input-group d-flex fs-5 mt-1">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" v-model="showOnlyEnabled" role="switch"
+                                id="showOnlyEnabledSwitch">
+                            <label class="form-check-label" for="showOnlyEnabledSwitch">Only enabled</label>
+                        </div>
+                    </div>
                     <div class="input-group d-flex">
                         <span class="input-group-text"><font-awesome-icon icon="fa-solid fa-magnifying-glass" /></span>
                         <input type="text" class="form-control " v-model="searchTerm" placeholder="Search">
@@ -92,8 +106,8 @@ function handleModuleConfigUpdate(event) {
             <div class="card mb-3" :key="module.name" v-for="module in filteredModules">
                 <h5 class="card-header">
                     {{ module.name }} <span class="badge badge-pill bg-info"> v{{
-                            module.meta.version
-                        }}</span>
+                                module.meta.version
+                            }}</span>
                 </h5>
                 <div class="card-body">
                     <p>
@@ -117,7 +131,8 @@ function handleModuleConfigUpdate(event) {
                         </span>
                         <span v-if="!module.updating">disable</span>
                     </button>
-                    <button v-if="module.enabled" type="button" class="btn btn-success m-2" @click="openQueryModuleModal(module)">query</button>
+                    <button v-if="module.enabled" type="button" class="btn btn-success m-2"
+                        @click="openQueryModuleModal(module)">query</button>
                     <button v-if="module.meta.config" type="button" class="btn btn-secondary  position-relative m-2"
                         @click="openConfigureModuleModal(module)">configure
                         <span v-if="module.config && Object.keys(module.config).length > 0"
@@ -130,7 +145,7 @@ function handleModuleConfigUpdate(event) {
         </div>
         <ConfigureModuleModal id="configureModuleModal" v-if="selectedModule" :modal="configureModuleModal"
             :module="selectedModule" @module-config-updated="handleModuleConfigUpdate" />
-        <QueryModuleModal id="queryModuleModal" v-if="selectedModule" :key="selectedModule.name" :modal="queryModuleModal"
-            :module="selectedModule" />
+        <QueryModuleModal id="queryModuleModal" v-if="selectedModule" :key="selectedModule.name"
+            :modal="queryModuleModal" :module="selectedModule" />
     </div>
 </template>
