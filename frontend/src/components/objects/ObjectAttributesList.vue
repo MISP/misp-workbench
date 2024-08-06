@@ -6,11 +6,15 @@ import Timestamp from "@/components/misc/Timestamp.vue";
 import AttributeActions from "@/components/attributes/AttributeActions.vue";
 
 const props = defineProps(['object_id', 'attributes']);
-const emit = defineEmits(['attribute-enriched']);
+const emit = defineEmits(['attribute-created', 'attribute-updated', 'attribute-deleted', 'object-created', 'attribute-enriched']);
+
 const attributes = ref(props.attributes);
 
-function handleAttributesUpdated(attribute_id) {
+function handleAttributeDeleted(attribute_id) {
     attributes.value = attributes.value.filter(a => a.id !== attribute_id);
+}
+function handleAttributeCreated(attribute) {
+    attributes.value.push(attribute);
 }
 
 function handleAttributeEnriched(attribute_id) {
@@ -45,7 +49,7 @@ function handleAttributeEnriched(attribute_id) {
                 </td>
                 <td class="text-end">
                     <AttributeActions :attribute="attribute" @attribute-deleted="handleAttributesUpdated"
-                        @attribute-enriched="handleAttributeEnriched" />
+                        @attribute-created="handleAttributeCreated" @attribute-enriched="handleAttributeEnriched" />
                 </td>
             </tr>
         </tbody>

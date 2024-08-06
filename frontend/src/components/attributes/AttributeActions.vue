@@ -5,7 +5,7 @@ import DeleteAttributeModal from "@/components/attributes/DeleteAttributeModal.v
 import EnrichAttributeModal from "@/components/attributes/EnrichAttributeModal.vue";
 
 const props = defineProps(['attribute']);
-const emit = defineEmits(['attribute-deleted', 'attribute-enriched']);
+const emit = defineEmits(['attribute-created', 'attribute-updated', 'attribute-deleted', 'object-created', 'attribute-enriched']);
 
 const deleteAttributeModal = ref(null);
 const enrichAttributeModal = ref(null);

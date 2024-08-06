@@ -1,15 +1,16 @@
 <script setup>
 import { ref } from 'vue';
-import { useModulesStore, useObjectsStore } from "@/stores";
+import { useModulesStore, useObjectsStore, useAttributesStore } from "@/stores";
 import { storeToRefs } from 'pinia'
 import UUID from "@/components/misc/UUID.vue";
 import ApiError from "@/components/misc/ApiError.vue";
 
 const props = defineProps(['attribute', 'modal']);
-const emit = defineEmits(['object-created', 'attribute-enriched']);
+const emit = defineEmits(['attribute-created', 'object-created', 'attribute-enriched']);
 
 const modulesStore = useModulesStore();
 const objectsStore = useObjectsStore();
+const attributesStore = useAttributesStore();
 const { status, modules, modulesResponses } = storeToRefs(modulesStore);
 const allModules = ref(false);
 const allEnrichments = ref(false);
@@ -29,7 +30,9 @@ function queryModules() {
 function toggleAllEnrichments() {
     modulesResponses.value.forEach((moduleResults) => {
         moduleResults.response.results.Attribute.forEach((attr) => {
-            attr.selected = allEnrichments.value;
+            if (attr.uuid != props.attribute.uuid) {
+                attr.selected = allEnrichments.value;
+            }
         });
         moduleResults.response.results.Object.forEach((obj) => {
             obj.selected = allEnrichments.value;
@@ -45,7 +48,7 @@ function enrichAttribute() {
             return;
         }
         moduleResults.response.results.Attribute.forEach((attr) => {
-            if (attr.selected) {
+            if (attr.selected && attr.uuid != props.attribute.uuid) {
                 attributes.push(attr);
             }
         });
@@ -56,7 +59,8 @@ function enrichAttribute() {
         });
     });
 
-    const promises = objects.map(object => {
+    status.loading = true;
+    const objectsPromises = objects.map(object => {
         object.event_id = props.attribute.event_id;
         object.distribution = props.attribute.distribution;
         object.sharing_group_id = props.attribute.sharing_group_id;
@@ -71,13 +75,28 @@ function enrichAttribute() {
             attribute.timestamp = parseInt(Date.now() / 1000);
             attribute.deleted = false;
         }
+
         return objectsStore.create(object)
             .then(response => {
                 emit('object-created', { "object": response });
             });
     });
 
-    status.loading = true;
+    const attributesPromises = attributes.map(attribute => {
+        attribute.event_id = props.attribute.event_id;
+        attribute.distribution = props.attribute.distribution;
+        attribute.sharing_group_id = props.attribute.sharing_group_id;
+        attribute.timestamp = parseInt(Date.now() / 1000);
+        attribute.deleted = false;
+
+        return attributesStore.create(attribute)
+            .then(response => {
+                emit('attribute-created', { "attribute": response });
+            });
+    });
+
+    let promises = [...objectsPromises, ...attributesPromises];
+
     Promise.all(promises)
         .then(() => {
             emit('attribute-enriched', { "attribute.id": props.attribute });
@@ -240,6 +259,7 @@ function toggleAllModules() {
                             <div v-if="status.error" class="w-100 alert alert-danger mt-3 mb-3">
                                 {{ status.error }}
                             </div>
+                            {{ enrichErrors }}
                             <div v-if="enrichErrors.length" class="w-100 alert alert-danger mt-3 mb-3">
                                 <ApiError :errors="enrichErrors" />
                             </div>
