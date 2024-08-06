@@ -69,8 +69,6 @@ export const useModulesStore = defineStore({
                 .finally(() => (this.status = { loading: false }));
         },
         async queryAll(modules, attribute) {
-            console.log(modules);
-            console.log(attribute);
             this.status = { loading: true };
             this.modulesResponses = [];
 

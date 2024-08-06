@@ -2,16 +2,19 @@
 import { ref } from 'vue';
 import DistributionLevel from "@/components/enums/DistributionLevel.vue";
 import TagsIndex from "@/components/tags/TagsIndex.vue";
-import { RouterLink } from "vue-router";
 import Timestamp from "@/components/misc/Timestamp.vue";
-import DeleteAttributeModal from "@/components/attributes/DeleteAttributeModal.vue";
 import AttributeActions from "@/components/attributes/AttributeActions.vue";
 
 const props = defineProps(['object_id', 'attributes']);
+const emit = defineEmits(['attribute-enriched']);
 const attributes = ref(props.attributes);
 
 function handleAttributesUpdated(attribute_id) {
     attributes.value = attributes.value.filter(a => a.id !== attribute_id);
+}
+
+function handleAttributeEnriched(attribute_id) {
+    emit('attribute-enriched', { "attribute.id": attribute_id });
 }
 </script>
 
@@ -41,7 +44,8 @@ function handleAttributesUpdated(attribute_id) {
                     <DistributionLevel :distribution_level_id=attribute.distribution />
                 </td>
                 <td class="text-end">
-                    <AttributeActions :attribute="attribute" @attribute-deleted="handleAttributesUpdated" />
+                    <AttributeActions :attribute="attribute" @attribute-deleted="handleAttributesUpdated"
+                        @attribute-enriched="handleAttributeEnriched" />
                 </td>
             </tr>
         </tbody>

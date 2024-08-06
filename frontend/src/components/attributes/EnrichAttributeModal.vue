@@ -1,30 +1,22 @@
 <script setup>
 import { ref } from 'vue';
-import { useModulesStore, useAttributesStore } from "@/stores";
+import { useModulesStore, useObjectsStore } from "@/stores";
 import { storeToRefs } from 'pinia'
 import UUID from "@/components/misc/UUID.vue";
+import ApiError from "@/components/misc/ApiError.vue";
 
 const props = defineProps(['attribute', 'modal']);
-const emit = defineEmits(['attribute-enriched']);
+const emit = defineEmits(['object-created', 'attribute-enriched']);
 
 const modulesStore = useModulesStore();
-const attributesStore = useAttributesStore();
+const objectsStore = useObjectsStore();
 const { status, modules, modulesResponses } = storeToRefs(modulesStore);
 const allModules = ref(false);
 const allEnrichments = ref(false);
+const enrichErrors = ref([]);
+
 
 modulesStore.get({ enabled: true });
-
-function queryModule(module) {
-    const request = {
-        "module": module.name,
-        "attribute": props.attribute,
-        "config": module.config
-    };
-    return modulesStore
-        .query(request)
-        .catch((error) => status.error = error);
-}
 
 function queryModules() {
     modulesResponses.value = [];
@@ -64,13 +56,35 @@ function enrichAttribute() {
         });
     });
 
-    return attributesStore
-        .enrich(props.attribute)
-        .then((response) => {
+    const promises = objects.map(object => {
+        object.event_id = props.attribute.event_id;
+        object.distribution = props.attribute.distribution;
+        object.sharing_group_id = props.attribute.sharing_group_id;
+        object.timestamp = parseInt(Date.now() / 1000);
+        object.deleted = false;
+        object.attributes = object.Attribute;
+
+        for (let attribute of object.attributes) {
+            attribute.event_id = props.attribute.event_id;
+            attribute.distribution = props.attribute.distribution;
+            attribute.sharing_group_id = props.attribute.sharing_group_id;
+            attribute.timestamp = parseInt(Date.now() / 1000);
+            attribute.deleted = false;
+        }
+        return objectsStore.create(object)
+            .then(response => {
+                emit('object-created', { "object": response });
+            });
+    });
+
+    status.loading = true;
+    Promise.all(promises)
+        .then(() => {
             emit('attribute-enriched', { "attribute.id": props.attribute });
             props.modal.hide();
         })
-        .catch((error) => status.error = error);
+        .catch((error) => enrichErrors.value = error)
+        .finally(() => status.loading = false);
 }
 
 function toggleAllModules() {
@@ -225,6 +239,9 @@ function toggleAllModules() {
                             </div>
                             <div v-if="status.error" class="w-100 alert alert-danger mt-3 mb-3">
                                 {{ status.error }}
+                            </div>
+                            <div v-if="enrichErrors.length" class="w-100 alert alert-danger mt-3 mb-3">
+                                <ApiError :errors="enrichErrors" />
                             </div>
                         </div>
                     </div>
