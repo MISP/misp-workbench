@@ -14,7 +14,7 @@ class ObjectReferenceBase(BaseModel):
     referenced_id: int
     referenced_type: int
     relationship_type: Optional[str] = None
-    comment: str
+    comment: Optional[str] = None
     deleted: bool
 
 
@@ -24,7 +24,9 @@ class ObjectReference(ObjectReferenceBase):
 
 
 class ObjectReferenceCreate(ObjectReferenceBase):
-    pass
+    object_id: Optional[int] = None
+    referenced_type: Optional[int] = 0
+    comment: Optional[str] = ""
 
 
 class ObjectReferenceUpdate(ObjectReferenceBase):
@@ -33,7 +35,7 @@ class ObjectReferenceUpdate(ObjectReferenceBase):
     referenced_uuid: Optional[UUID] = None
     timestamp: Optional[int] = None
     referenced_id: Optional[int] = None
-    referenced_type: Optional[int] = None
+    referenced_type: Optional[str] = None
     relationship_type: Optional[str] = None
     comment: Optional[str] = None
     deleted: Optional[bool] = None

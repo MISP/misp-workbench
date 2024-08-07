@@ -48,7 +48,7 @@ function handleAttributeEnriched(attribute_id) {
                     <DistributionLevel :distribution_level_id=attribute.distribution />
                 </td>
                 <td class="text-end">
-                    <AttributeActions :attribute="attribute" @attribute-deleted="handleAttributesUpdated"
+                    <AttributeActions :attribute="attribute" @attribute-deleted="handleAttributeDeleted"
                         @attribute-created="handleAttributeCreated" @attribute-enriched="handleAttributeEnriched" />
                 </td>
             </tr>

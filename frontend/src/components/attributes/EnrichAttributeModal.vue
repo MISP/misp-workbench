@@ -66,14 +66,27 @@ function enrichAttribute() {
         object.sharing_group_id = props.attribute.sharing_group_id;
         object.timestamp = parseInt(Date.now() / 1000);
         object.deleted = false;
-        object.attributes = object.Attribute;
 
+        object.attributes = object.Attribute;
+        delete object.Attribute;
         for (let attribute of object.attributes) {
             attribute.event_id = props.attribute.event_id;
             attribute.distribution = props.attribute.distribution;
             attribute.sharing_group_id = props.attribute.sharing_group_id;
             attribute.timestamp = parseInt(Date.now() / 1000);
             attribute.deleted = false;
+        }
+
+        object.object_references = object.ObjectReference;
+        delete object.ObjectReference;
+        for (let reference of object.object_references) {
+            reference.object_id = object.id;
+            reference.referenced_id = props.attribute.id;
+            reference.event_id = props.attribute.event_id;
+            reference.distribution = props.attribute.distribution;
+            reference.sharing_group_id = props.attribute.sharing_group_id;
+            reference.timestamp = parseInt(Date.now() / 1000);
+            reference.deleted = false;
         }
 
         return objectsStore.create(object)
