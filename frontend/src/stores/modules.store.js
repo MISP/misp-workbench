@@ -7,7 +7,7 @@ const baseUrl = `${import.meta.env.VITE_API_URL}/modules`;
 export const useModulesStore = defineStore({
     id: "modules",
     state: () => ({
-        modules: {},
+        modules: [],
         module: {},
         moduleResponse: {},
         modulesResponses: {},

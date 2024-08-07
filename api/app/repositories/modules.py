@@ -132,6 +132,7 @@ def query_module(
 ):
 
     db_module_config = get_module_config(db, query.module)
+    query.config = db_module_config.config
 
     if db_module_config.enabled is not True:
         raise Exception("Module is not enabled")

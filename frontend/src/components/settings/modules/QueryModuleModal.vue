@@ -14,9 +14,6 @@ const request = ref({
         "type": "ip-dst",
         "uuid": "",
         "value": "8.8.8.8"
-    },
-    "config": {
-        "custom_API": null
     }
 });
 const requestJson = ref(JSON.stringify(request.value, null, 2));
