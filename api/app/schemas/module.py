@@ -4,10 +4,10 @@ from pydantic import BaseModel, ConfigDict
 
 
 class ModuleAttributes(BaseModel):
-    inputSource: Optional[list[str]]
+    input: Optional[list[str]]
     output: Optional[list[str]]
     format: Optional[str]
-    userConfig: Optional[dict]
+    user_config: Optional[dict]
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -23,7 +23,7 @@ class ModuleMeta(BaseModel):
 class ModuleBase(BaseModel):
     name: str
     type: str
-    mispattributes: ModuleAttributes
+    misp_attributes: ModuleAttributes
     meta: ModuleMeta
     enabled: bool
     config: Optional[dict]

@@ -1,6 +1,8 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import { Modal } from 'bootstrap';
+import { storeToRefs } from 'pinia'
+import { useModulesStore } from "@/stores";
 import DeleteAttributeModal from "@/components/attributes/DeleteAttributeModal.vue";
 import EnrichAttributeModal from "@/components/attributes/EnrichAttributeModal.vue";
 
@@ -9,6 +11,8 @@ const emit = defineEmits(['attribute-created', 'attribute-updated', 'attribute-d
 
 const deleteAttributeModal = ref(null);
 const enrichAttributeModal = ref(null);
+const modulesStore = useModulesStore();
+const { modulesResponses } = storeToRefs(modulesStore);
 
 onMounted(() => {
     deleteAttributeModal.value = new Modal(document.getElementById(`deleteAttributeModal_${props.attribute.id}`));
@@ -20,6 +24,7 @@ function openDeleteAttributeModal() {
 }
 
 function openEnrichAttributeModal() {
+    modulesResponses.value = [];
     enrichAttributeModal.value.show();
 }
 
@@ -53,8 +58,8 @@ function handleAttributeEnriched() {
             </button>
         </div>
     </div>
-    <DeleteAttributeModal :id="`deleteAttributeModal_${attribute.id}`" @attribute-deleted="handleAttributeDeleted"
-        :modal="deleteAttributeModal" :attribute_id="attribute.id" />
-    <EnrichAttributeModal :id="`enrichAttributeModal_${attribute.id}`" @attribute-enriched="handleAttributeEnriched"
-        :modal="enrichAttributeModal" :attribute="attribute" />
+    <DeleteAttributeModal :key="attribute.id" :id="`deleteAttributeModal_${attribute.id}`"
+        @attribute-deleted="handleAttributeDeleted" :modal="deleteAttributeModal" :attribute_id="attribute.id" />
+    <EnrichAttributeModal :key="attribute.id" :id="`enrichAttributeModal_${attribute.id}`"
+        @attribute-enriched="handleAttributeEnriched" :modal="enrichAttributeModal" :attribute="attribute" />
 </template>

@@ -43,10 +43,14 @@ def get_modules(db: Session, enabled: bool = None):
         )
 
         moduleAttributes = module_schemas.ModuleAttributes(
-            inputSource=(
-                rawModule["mispattributes"]["inputSource"]
-                if "inputSource" in rawModule["mispattributes"]
-                else []
+            input=(
+                rawModule["mispattributes"]["input"]
+                if "input" in rawModule["mispattributes"]
+                else (
+                    rawModule["mispattributes"]["inputSource"]
+                    if "inputSource" in rawModule["mispattributes"]
+                    else []
+                )
             ),
             output=(
                 rawModule["mispattributes"]["output"]
@@ -58,7 +62,7 @@ def get_modules(db: Session, enabled: bool = None):
                 if "format" in rawModule["mispattributes"]
                 else None
             ),
-            userConfig=(
+            user_config=(
                 rawModule["mispattributes"]["userConfig"]
                 if "userConfig" in rawModule["mispattributes"]
                 else None
@@ -72,7 +76,7 @@ def get_modules(db: Session, enabled: bool = None):
         module = module_schemas.Module(
             name=rawModule["name"],
             type=rawModule["type"],
-            mispattributes=moduleAttributes,
+            misp_attributes=moduleAttributes,
             meta=moduleMeta,
             enabled=(db_module_config.enabled if db_module_config else False),
             config=db_module_config.config if db_module_config else None,

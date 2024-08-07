@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
 import { useModulesStore, useObjectsStore, useAttributesStore } from "@/stores";
 import { storeToRefs } from 'pinia'
 import UUID from "@/components/misc/UUID.vue";
@@ -123,6 +123,34 @@ function toggleAllModules() {
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Discard"></button>
                     </div>
                     <div class="modal-body text-start">
+                        <div class="card m-2">
+                            <div class="card-header">
+                                Attribute <span class="badge badge-pill bg-info"> {{ attribute.type }}
+                                </span>
+                                <UUID :uuid="attribute.uuid" />
+                            </div>
+                            <div class="card-body">
+                                <table class="table">
+                                    <thead>
+                                        <tr>
+                                            <th scope="col">value</th>
+                                            <th scope="col">type</th>
+                                            <th scope="col">to_ids</th>
+                                            <th scope="col">disable_correlation</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr scope="row">
+                                            <td>{{ attribute.value }}</td>
+                                            <td>{{ attribute.type }}</td>
+                                            <td>{{ attribute.to_ids }}</td>
+                                            <td>{{ attribute.disable_correlation }}</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
                         <h5>enabled modules</h5>
                         <table class="table">
                             <thead>
@@ -158,10 +186,10 @@ function toggleAllModules() {
                     <div>
                         <button type="button" class="btn btn-outline-primary text-end"
                             @click="queryModules">Query</button>
-                        <div class="text-start mt-4">
+                        <div class="text-start m-3">
                             <div class="row">
                                 <div class="col">
-                                    <h5>preview enrichment results</h5>
+                                    <h4>preview enrichment results</h4>
                                 </div>
                                 <div class="col">
                                     <div v-if="modulesResponses.length" class="form-check float-end">
@@ -259,7 +287,6 @@ function toggleAllModules() {
                             <div v-if="status.error" class="w-100 alert alert-danger mt-3 mb-3">
                                 {{ status.error }}
                             </div>
-                            {{ enrichErrors }}
                             <div v-if="enrichErrors.length" class="w-100 alert alert-danger mt-3 mb-3">
                                 <ApiError :errors="enrichErrors" />
                             </div>
@@ -274,7 +301,7 @@ function toggleAllModules() {
                         <span v-if="status.loading">
                             <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
                         </span>
-                        <span v-if="!status.loading">Enrich</span>
+                        <span v-if="!status.loading">Add</span>
                     </button>
                 </div>
             </div>
