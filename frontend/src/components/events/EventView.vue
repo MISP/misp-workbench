@@ -41,15 +41,20 @@ div.row h3 {
                     <h3>{{ event.info }}</h3>
                 </div>
                 <div class="col-2 text-end">
-                    <div class="flex-wrap" :class="{ 'btn-group-vertical': $isMobile, 'btn-group': !$isMobile }"
-                        aria-label="Event Actions">
-                        <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal"
-                            :data-bs-target="'#deleteEventModal-' + event.id">
-                            <font-awesome-icon icon="fa-solid fa-trash" />
-                        </button>
-                        <RouterLink :to="`/events/update/${event.id}`" tag="button" class="btn btn-outline-primary">
-                            <font-awesome-icon icon="fa-solid fa-pen" />
-                        </RouterLink>
+                    <div class="btn-toolbar float-end" role="toolbar">
+                        <div class="flex-wrap"
+                            :class="{ 'btn-group-vertical': $isMobile, 'btn-group me-2': !$isMobile }"
+                            aria-label="Event Actions">
+                            <RouterLink :to="`/events/update/${event.id}`" tag="button" class="btn btn-outline-primary">
+                                <font-awesome-icon icon="fa-solid fa-pen" />
+                            </RouterLink>
+                        </div>
+                        <div class="btn-group" role="group">
+                            <button type="button" class="btn btn-danger" data-bs-toggle="modal"
+                                :data-bs-target="'#deleteEventModal-' + event.id">
+                                <font-awesome-icon icon="fa-solid fa-trash" />
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
