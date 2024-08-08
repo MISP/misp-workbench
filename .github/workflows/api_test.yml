@@ -63,6 +63,8 @@ jobs:
 
       modules:
         image: ghcr.io/misp/misp-docker/misp-modules:latest
+        ports:
+          - 6666:6666
         env:
           REDIS_BACKEND: redis
 
