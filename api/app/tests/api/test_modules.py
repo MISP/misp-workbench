@@ -43,7 +43,7 @@ class TestModulesResource(ApiTester):
     ):
         response = client.patch(
             f"/modules/{module_1_settings.module_name}",
-            json={"enabled": False, "config": {"test": "test"}},
+            json={"enabled": True, "config": {"test": "test"}},
             headers={"Authorization": "Bearer " + auth_token},
         )
 
