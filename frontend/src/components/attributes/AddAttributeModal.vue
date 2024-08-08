@@ -16,7 +16,7 @@ import * as Yup from "yup";
 const attributesStore = useAttributesStore();
 const { status } = storeToRefs(attributesStore);
 const apiError = ref(null);
-const props = defineProps(['event_id']);
+const props = defineProps(['event_id', 'modal']);
 const emit = defineEmits(['attribute-created']);
 
 const attribute = ref({
@@ -27,13 +27,13 @@ const attribute = ref({
   disable_correlation: false
 });
 
-function onSubmit(values, { setErrors }) {
+function addAttribute(values, { setErrors }) {
   apiError.value = null;
   return attributesStore
     .create(attribute.value)
     .then((response) => {
       emit('attribute-created', { "attribute": response });
-      document.getElementById('closeModalButton').click();
+      props.modal.hide();
     })
     .catch((errors) => {
       apiError.value = errors;
@@ -65,10 +65,9 @@ function handleDistributionLevelUpdated(distributionLevelId) {
 </script>
 
 <template>
-  <div id="addAttributeModal" class="modal fade" tabindex="-1" aria-labelledby="addAttributeModalLabel"
-    aria-hidden="true">
-    <Form @submit="onSubmit" :validation-schema="AttributeSchema" v-slot="{ errors, isSubmitting }">
-      <div class="modal-dialog modal-lg">
+  <div id="addAttributeModal" class="modal" aria-labelledby="addAttributeModal" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <Form @submit="addAttribute" :validation-schema="AttributeSchema" v-slot="{ errors, isSubmitting }">
         <div class="modal-content">
           <div class="modal-header">
             <h5 class="modal-title" id="addAttributeModalLabel">Add Attribute</h5>
@@ -84,8 +83,9 @@ function handleDistributionLevelUpdated(distributionLevelId) {
               </div>
               <div class="col text-start">
                 <label for="attribute.type" class="form-label">type</label>
-                <AttributeTypeSelect name="attribute.type" :category="attribute.category" :selected=attribute.type
-                  @attribute-type-updated="handleAttributeTypeUpdated" :errors="errors['attribute.type']" />
+                <AttributeTypeSelect :key="attribute.category" name="attribute.type" :category="attribute.category"
+                  :selected=attribute.type @attribute-type-updated="handleAttributeTypeUpdated"
+                  :errors="errors['attribute.type']" />
                 <div class="invalid-feedback">{{ errors['attribute.type'] }}</div>
               </div>
             </div>
@@ -197,7 +197,7 @@ function handleDistributionLevelUpdated(distributionLevelId) {
             </button>
           </div>
         </div>
-      </div>
-    </Form>
+      </Form>
+    </div>
   </div>
 </template>

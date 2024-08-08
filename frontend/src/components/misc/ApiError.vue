@@ -12,7 +12,7 @@ const props = defineProps(['errors']);
             </li>
         </ul>
     </div>
-    <p>
+    <p v-if="Array.isArray(errors)">
         {{ errors }}
     </p>
 </template>

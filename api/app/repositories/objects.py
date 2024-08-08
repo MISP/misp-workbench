@@ -70,6 +70,11 @@ def create_object(
         attribute.event_id = object.event_id
         attributes_repository.create_attribute(db, attribute)
 
+    for object_reference in object.object_references:
+        object_reference.object_id = db_object.id
+        object_reference.event_id = db_object.event_id
+        object_references_repository.create_object_reference(db, object_reference)
+
     db.refresh(db_object)
 
     tasks.handle_created_object.delay(db_object.id, db_object.event_id)

@@ -3,6 +3,7 @@ from uuid import UUID
 
 from app.models.event import DistributionLevel
 from app.schemas.attribute import Attribute, AttributeCreate
+from app.schemas.object_reference import ObjectReference, ObjectReferenceCreate
 from pydantic import BaseModel, ConfigDict
 
 
@@ -28,11 +29,13 @@ class Object(ObjectBase):
     id: int
 
     attributes: list[Attribute] = []
+    object_references: list[ObjectReference] = []
     model_config = ConfigDict(from_attributes=True)
 
 
 class ObjectCreate(ObjectBase):
     attributes: Optional[list[AttributeCreate]] = []
+    object_references: list[ObjectReferenceCreate] = []
 
 
 class ObjectUpdate(BaseModel):

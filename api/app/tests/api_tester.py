@@ -7,6 +7,7 @@ from app.dependencies import get_db
 from app.main import app
 from app.models import attribute as attribute_models
 from app.models import event as event_models
+from app.models import module as module_models
 from app.models import object as object_models
 from app.models import object_reference as object_reference_models
 from app.models import organisation as organisation_models
@@ -68,6 +69,7 @@ class ApiTester:
         db.query(server_models.Server).delete()
         db.query(user_models.User).delete()
         db.query(organisation_models.Organisation).delete()
+        db.query(module_models.ModuleSettings).delete()
 
     @pytest.fixture(scope="class", autouse=True)
     def cleanup(self, db: Session):
@@ -287,3 +289,18 @@ class ApiTester:
         db.refresh(tlp_white_tag)
 
         yield tlp_white_tag
+
+    @pytest.fixture(scope="class")
+    def module_1_settings(self, db: Session):
+        module_1_settings = module_models.ModuleSettings(
+            module_name="mmdb_lookup",
+            created="2020-01-01 01:01:01",
+            modified="2020-01-01 01:01:01",
+            enabled=True,
+            config={},
+        )
+        db.add(module_1_settings)
+        db.commit()
+        db.refresh(module_1_settings)
+
+        yield module_1_settings

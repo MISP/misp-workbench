@@ -73,6 +73,9 @@ oauth2_scheme = OAuth2PasswordBearer(
         "tags:read": "Read tags.",
         "tags:update": "Update tags.",
         "tags:delete": "Delete tags.",
+        "modules:read": "Read misp-modules.",
+        "modules:update": "Update misp-modules.",
+        "modules:query": "Query misp-modules.",
     },
 )
 
@@ -185,6 +188,7 @@ def get_scopes_for_user(user: user_schemas.User):
         scopes.add("roles:*")
         scopes.add("sharing_groups:*")
         scopes.add("tags:*")
+        scopes.add("modules:*")
 
     if user.role.perm_auth:
         scopes.add("auth:login")

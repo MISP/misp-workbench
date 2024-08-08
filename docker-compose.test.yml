@@ -1,4 +1,16 @@
 services:
+
+  api:
+    volumes:
+      - ./api:/code
+    ports:
+      - "8080:80"
+      - "5677:5677"
+      - "5678:5678"
+    entrypoint: [ "bash", "-c", "./entrypoint.dev.sh" ]
+  worker:
+    volumes:
+      - ./api:/code
   mailhog:
     image: mailhog/mailhog
     ports:

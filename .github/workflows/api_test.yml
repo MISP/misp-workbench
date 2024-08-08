@@ -61,6 +61,13 @@ jobs:
           - 1025:1025
           - 8025:8025
 
+      modules:
+        image: ghcr.io/misp/misp-docker/misp-modules:latest
+        ports:
+          - 6666:6666
+        env:
+          REDIS_BACKEND: redis
+
     steps:
       - uses: actions/checkout@v2
         with:
@@ -128,3 +135,5 @@ jobs:
           MAIL_PASSWORD: mail-pwd
           MAIL_PORT: 1025
           MAIL_SERVER: localhost
+          MODULES_HOST: localhost
+          MODULES_PORT: 6666

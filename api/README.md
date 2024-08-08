@@ -36,6 +36,11 @@
 ## Migrations
 Migrations are managed by [Alembic](https://alembic.sqlalchemy.org).
 
+### Add new revision
+```console
+docker-compose exec api poetry run alembic revision -m "create foobar table"
+```
+
 ### Show migrations history
 ```console
 docker-compose exec api poetry run alembic history
@@ -95,8 +100,10 @@ app/test_main.py .                                                              
     docker-compose exec api poetry run python -m debugpy --listen 0.0.0.0:5677 --wait-for-client -m pytest
     ```
 
+
 2. Press **F5** on VS Code and the IDE will connect to the remote debugpy port.
 
+    > NOTE: Use the "Pytest: Remote Attach (local)" debugging profile.
 ## Development and Debugging
 This guide is for Visual Studio Code, but should work with other IDEs with minor adjustements.
 

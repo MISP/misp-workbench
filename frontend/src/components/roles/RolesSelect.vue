@@ -2,7 +2,6 @@
 import { storeToRefs } from 'pinia'
 import { useRolesStore } from "@/stores";
 import { Field } from "vee-validate";
-import { toRef } from "vue"
 
 const props = defineProps(['name', 'selected', 'errors']);
 const emit = defineEmits(['role-updated']);

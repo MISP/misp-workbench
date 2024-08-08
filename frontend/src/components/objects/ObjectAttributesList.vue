@@ -2,16 +2,23 @@
 import { ref } from 'vue';
 import DistributionLevel from "@/components/enums/DistributionLevel.vue";
 import TagsIndex from "@/components/tags/TagsIndex.vue";
-import { RouterLink } from "vue-router";
 import Timestamp from "@/components/misc/Timestamp.vue";
-import DeleteAttributeModal from "@/components/attributes/DeleteAttributeModal.vue";
-
+import AttributeActions from "@/components/attributes/AttributeActions.vue";
 
 const props = defineProps(['object_id', 'attributes']);
+const emit = defineEmits(['attribute-created', 'attribute-updated', 'attribute-deleted', 'object-created', 'attribute-enriched']);
+
 const attributes = ref(props.attributes);
 
-function handleAttributesUpdated(attribute) {
-    attributes.value = attributes.value.filter(a => a.id !== attribute.attribute_id);
+function handleAttributeDeleted(attribute_id) {
+    attributes.value = attributes.value.filter(a => a.id !== attribute_id);
+}
+function handleAttributeCreated(attribute) {
+    attributes.value.push(attribute);
+}
+
+function handleAttributeEnriched(attribute_id) {
+    emit('attribute-enriched', { "attribute.id": attribute_id });
 }
 </script>
 
@@ -20,11 +27,11 @@ function handleAttributesUpdated(attribute) {
         <thead>
             <tr>
                 <th style="width: 30%" scope="col">value</th>
-                <th style="width: 30%" scope="col" class="d-none d-sm-table-cell">tags</th>
+                <th style="width: 20%" scope="col" class="d-none d-sm-table-cell">tags</th>
                 <th style="width: 10%" scope="col">type</th>
                 <th style="width: 10%" scope="col" class="d-none d-sm-table-cell">timestamp</th>
                 <th style="width: 10%" scope="col" class="d-none d-sm-table-cell">distribution</th>
-                <th style="width: 10%" scope="col" class="text-end">actions</th>
+                <th style="width: 20%" scope="col" class="text-end">actions</th>
             </tr>
         </thead>
         <tbody>
@@ -35,26 +42,15 @@ function handleAttributesUpdated(attribute) {
                 </td>
                 <td>{{ attribute.type }}</td>
                 <td class="d-none d-sm-table-cell">
-                      <Timestamp :timestamp="attribute.timestamp" />
+                    <Timestamp :timestamp="attribute.timestamp" />
                 </td>
                 <td class="d-none d-sm-table-cell">
                     <DistributionLevel :distribution_level_id=attribute.distribution />
                 </td>
                 <td class="text-end">
-                    <div :class="{ 'btn-group-vertical': $isMobile, 'btn-group': !$isMobile }" aria-label="Attribute Actions">
-                        <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal"
-                            :data-bs-target="'#deleteAttributeModal-' + attribute.id">
-                            <font-awesome-icon icon="fa-solid fa-trash" />
-                        </button>
-                        <RouterLink :to="`/attributes/update/${attribute.id}`" tag="button" class="btn btn-outline-primary">
-                            <font-awesome-icon icon="fa-solid fa-pen" />
-                        </RouterLink>
-                        <RouterLink :to="`/attributes/${attribute.id}`" tag="button" class="btn btn-outline-primary">
-                            <font-awesome-icon icon="fa-solid fa-eye" />
-                        </RouterLink>
-                    </div>
+                    <AttributeActions :attribute="attribute" @attribute-deleted="handleAttributeDeleted"
+                        @attribute-created="handleAttributeCreated" @attribute-enriched="handleAttributeEnriched" />
                 </td>
-                <DeleteAttributeModal @attribute-deleted="handleAttributesUpdated" :attribute_id="attribute.id" />
             </tr>
         </tbody>
     </table>

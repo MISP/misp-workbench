@@ -36,18 +36,23 @@ function handleUserDeleted(event) {
                     <td>{{ user.email }}</td>
                     <td>{{ !!user.disabled }}</td>
                     <td class="text-end">
-                        <div class="flex-wrap" :class="{ 'btn-group-vertical': $isMobile, 'btn-group': !$isMobile }"
-                            aria-label="User Actions">
-                            <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal"
-                                :data-bs-target="'#deleteUserModal-' + user.id">
-                                <font-awesome-icon icon="fa-solid fa-trash" />
-                            </button>
-                            <RouterLink :to="`/users/update/${user.id}`" tag="button" class="btn btn-outline-primary">
-                                <font-awesome-icon icon="fa-solid fa-pen" />
-                            </RouterLink>
-                            <RouterLink :to="`/users/${user.id}`" tag="button" class="btn btn-outline-primary">
-                                <font-awesome-icon icon="fa-solid fa-eye" />
-                            </RouterLink>
+                        <div class="btn-toolbar float-end" role="toolbar">
+                            <div class="flex-wrap" :class="{ 'btn-group-vertical': $isMobile, 'btn-group me-2': !$isMobile }"
+                                aria-label="User Actions">
+                                <RouterLink :to="`/users/${user.id}`" tag="button" class="btn btn-outline-primary">
+                                    <font-awesome-icon icon="fa-solid fa-eye" />
+                                </RouterLink>
+                                <RouterLink :to="`/users/update/${user.id}`" tag="button"
+                                    class="btn btn-outline-primary">
+                                    <font-awesome-icon icon="fa-solid fa-pen" />
+                                </RouterLink>
+                            </div>
+                            <div class="btn-group me-2" role="group">
+                                <button type="button" class="btn btn-danger" data-bs-toggle="modal"
+                                    :data-bs-target="'#deleteUserModal-' + user.id">
+                                    <font-awesome-icon icon="fa-solid fa-trash" />
+                                </button>
+                            </div>
                         </div>
                     </td>
                     <DeleteUserModal @user-deleted="handleUserDeleted" :user_id="user.id" />

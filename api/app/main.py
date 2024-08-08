@@ -4,6 +4,7 @@ from app.routers import (
     attributes,
     auth,
     events,
+    modules,
     object_templates,
     objects,
     organisations,
@@ -71,5 +72,7 @@ app.include_router(sharing_groups.router, tags=["Sharing Groups"])
 # Tags resource
 app.include_router(tags.router, tags=["Tags"])
 
+# Modules resource
+app.include_router(modules.router, tags=["Modules"])
 
 add_pagination(app)

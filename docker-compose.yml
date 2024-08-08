@@ -72,6 +72,8 @@ services:
       MAIL_PASSWORD: ${MAIL_PASSWORD}
       MAIL_PORT: ${MAIL_PORT}
       MAIL_SERVER: ${MAIL_SERVER}
+      MODULES_HOST: ${MODULES_HOST:-modules}
+      MODULES_PORT: ${MODULES_PORT:-6666}
     entrypoint: [ "bash", "-c", "./entrypoint.sh" ]
     depends_on:
       postgres:
@@ -112,6 +114,8 @@ services:
       MAIL_PASSWORD: ${MAIL_PASSWORD}
       MAIL_PORT: ${MAIL_PORT}
       MAIL_SERVER: ${MAIL_SERVER}
+      MODULES_HOST: ${MODULES_HOST:-modules}
+      MODULES_PORT: ${MODULES_PORT:-6666}
     depends_on:
       - redis
       - postgres
@@ -143,6 +147,8 @@ services:
       MAIL_PASSWORD: ${MAIL_PASSWORD}
       MAIL_PORT: ${MAIL_PORT}
       MAIL_SERVER: ${MAIL_SERVER}
+      MODULES_HOST: ${MODULES_HOST:-modules}
+      MODULES_PORT: ${MODULES_PORT:-6666}
     depends_on:
       - worker
       - rabbitmq
@@ -174,6 +180,14 @@ services:
     depends_on:
       - redis
   
+  modules:
+    image: ghcr.io/misp/misp-docker/misp-modules:latest
+    environment:
+      - "REDIS_BACKEND=redis"
+    depends_on:
+      redis:
+        condition: service_healthy
+
 volumes:
   opensearch-data:
   postgres-data:

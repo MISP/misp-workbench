@@ -1,5 +1,6 @@
 from app.models.attribute import Attribute  # noqa
 from app.models.event import Event  # noqa
+from app.models.module import ModuleSettings  # noqa
 from app.models.object import Object  # noqa
 from app.models.object_reference import ObjectReference  # noqa
 from app.models.organisation import Organisation  # noqa

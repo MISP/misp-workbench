@@ -31,6 +31,21 @@ export default {
                 <RouterLink to="/organisations" class="nav-item nav-link">organisations</RouterLink>
                 <RouterLink to="/users" class="nav-item nav-link">users</RouterLink>
                 <RouterLink to="/servers" class="nav-item nav-link">servers</RouterLink>
+                <div class="nav-item dropdown navbar-dark bg-dark">
+                    <a class="nav-link dropdown-toggle" href="#" id="navbarScrollingDropdown" role="button"
+                        data-bs-toggle="dropdown" aria-expanded="false">
+                        settings
+                    </a>
+                    <ul class="dropdown-menu" aria-labelledby="navbarScrollingDropdown">
+                        <li>
+                            <RouterLink to="/settings/modules" class="dropdown-item">modules</RouterLink>
+                        </li>
+                        <hr class="dropdown-divider">
+                        <li>
+                            <RouterLink to="/settings/internals" class="dropdown-item">internals</RouterLink>
+                        </li>
+                    </ul>
+                </div>
             </div>
             <form class="d-flex">
                 <button @click="authStore.logout()" class="btn btn-sm btn-outline-secondary"
