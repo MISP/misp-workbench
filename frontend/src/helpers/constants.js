@@ -111,7 +111,7 @@ export const ATTRIBUTE_CATEGORIES = {
   "Other": {
     "description": "Attributes that are not part of any other category or are meant to be used as a component in MISP objects in the future",
     "help": "",
-    "types": ['comment', 'text', 'other', 'size-in-bytes', 'counter', 'datetime', 'cpe', 'port', 'float', 'hex', 'phone-number', 'boolean', 'anonymised', 'pgp-public-key', 'pgp-private-key']
+    "types": ATTRIBUTE_TYPES
   },
 };
 

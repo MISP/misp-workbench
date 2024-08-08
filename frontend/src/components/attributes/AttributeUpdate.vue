@@ -95,6 +95,8 @@ function handleDistributionLevelUpdated(distributionLevelId) {
                     </Field>
                     <div class=" invalid-feedback">{{ errors['attribute.value'] }}</div>
                 </div>
+                <Field class="form-control" type="hidden" id="attribute.category" name="attribute.category"
+                    v-model="attribute.category"></Field>
                 <div v-if="errors.apiError" class="w-100 alert alert-danger mt-3 mb-3">
                     {{ errors.apiError }}
                 </div>
