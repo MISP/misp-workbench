@@ -61,6 +61,11 @@ jobs:
           - 1025:1025
           - 8025:8025
 
+      modules:
+        image: ghcr.io/misp/misp-docker/misp-modules:latest
+        env:
+          REDIS_BACKEND: redis
+
     steps:
       - uses: actions/checkout@v2
         with:
