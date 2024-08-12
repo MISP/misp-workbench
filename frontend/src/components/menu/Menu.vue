@@ -31,6 +31,7 @@ export default {
                 <RouterLink to="/organisations" class="nav-item nav-link">organisations</RouterLink>
                 <RouterLink to="/users" class="nav-item nav-link">users</RouterLink>
                 <RouterLink to="/servers" class="nav-item nav-link">servers</RouterLink>
+                <RouterLink to="/feeds" class="nav-item nav-link">feeds</RouterLink>
                 <div class="nav-item dropdown navbar-dark bg-dark">
                     <a class="nav-link dropdown-toggle" href="#" id="navbarScrollingDropdown" role="button"
                         data-bs-toggle="dropdown" aria-expanded="false">

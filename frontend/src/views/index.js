@@ -19,3 +19,4 @@ export { default as EditServer } from "./servers/EditServer.vue";
 export { default as ViewAttribute } from "./attributes/ViewAttribute.vue";
 export { default as EditAttribute } from "./attributes/EditAttribute.vue";
 export { default as IndexModules } from "./settings/modules/IndexModules.vue";
+export { default as IndexFeeds } from "./feeds/IndexFeeds.vue";
