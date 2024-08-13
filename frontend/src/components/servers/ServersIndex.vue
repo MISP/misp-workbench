@@ -69,31 +69,31 @@ function pullServer(server) {
                         <div class="flex-wrap btn-group" aria-label="Sync Actions">
                             <button
                                 v-if="!server.testingConnection && !server.connectionSucceeded && !server.connectionFailed"
-                                type="button" class="btn btn-light" @click="testServerConnection(server)"
+                                type="button" class="btn btn-outline-primary" @click="testServerConnection(server)"
                                 data-toggle="tooltip" data-placement="top" title="Check connection">
                                 <font-awesome-icon icon="fa-solid fa-check" />
                             </button>
                             <button v-if="server.testingConnection" type="button" class="btn btn-light">
                                 <font-awesome-icon icon="fa-solid fa-sync" spin />
                             </button>
-                            <button v-if="server.connectionSucceeded" type="button" class="btn btn-success"
-                                data-toggle="tooltip" data-placement="top" title="Connection succeed">
-                                <font-awesome-icon icon="fa-solid fa-check" />
-                            </button>
-                            <button type="button" class="btn btn-muted" data-toggle="tooltip" data-placement="top"
-                                title="Push">
-                                <font-awesome-icon icon="fa-solid fa-arrow-up" />
-                            </button>
-                            <button type="button" class="btn btn-outline-primary" data-placement="top" title="Pull"
-                                @click="pullServer(server)">
-                                <font-awesome-icon icon="fa-solid fa-arrow-down" />
-                            </button>
                             <button
                                 v-if="!server.testingConnection && server.connectionFailed && !server.connectionSucceeded"
                                 type="button" class="btn btn-danger" @click="testServerConnection(server)"
                                 data-toggle="tooltip" data-placement="top"
                                 :title="'Connection failed: ' + server.connectionError">
+                                <font-awesome-icon icon="fa-solid fa-xmark" />
+                            </button>
+                            <button v-if="server.connectionSucceeded" type="button" class="btn btn-success"
+                                data-toggle="tooltip" data-placement="top" title="Connection succeed">
                                 <font-awesome-icon icon="fa-solid fa-check" />
+                            </button>
+                            <button type="button" class="btn btn-outline-primary" disabled data-toggle="tooltip"
+                                data-placement="top" title="Push">
+                                <font-awesome-icon icon="fa-solid fa-upload" />
+                            </button>
+                            <button type="button" class="btn btn-outline-primary" data-placement="top" title="Pull"
+                                @click="pullServer(server)">
+                                <font-awesome-icon icon="fa-solid fa-download" />
                             </button>
                         </div>
                     </td>

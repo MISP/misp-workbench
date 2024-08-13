@@ -52,6 +52,7 @@ function pullFeed(feed) {
                     <th scope="col">id</th>
                     <th scope="col">name</th>
                     <th scope="col" v-if="!$isMobile">url</th>
+                    <th scope="col">enabled</th>
                     <th scope="col">sync actions</th>
                     <th scope="col" class="text-end">actions</th>
                 </tr>
@@ -63,11 +64,12 @@ function pullFeed(feed) {
                     </td>
                     <td>{{ feed.name }}</td>
                     <td v-if="!$isMobile">{{ feed.url }}</td>
+                    <td>{{ feed.enabled }}</td>
                     <td>
                         <div class="flex-wrap btn-group" aria-label="Sync Actions">
                             <button
                                 v-if="!feed.testingConnection && !feed.connectionSucceeded && !feed.connectionFailed"
-                                type="button" class="btn btn-light" @click="testFeedConnection(feed)"
+                                type="button" class="btn btn-outline-primary" @click="testFeedConnection(feed)"
                                 data-toggle="tooltip" data-placement="top" title="Check connection">
                                 <font-awesome-icon icon="fa-solid fa-check" />
                             </button>
@@ -78,19 +80,19 @@ function pullFeed(feed) {
                                 data-toggle="tooltip" data-placement="top" title="Connection succeed">
                                 <font-awesome-icon icon="fa-solid fa-check" />
                             </button>
-                            <button type="button" class="btn btn-muted" data-toggle="tooltip" data-placement="top"
-                                title="Push">
-                                <font-awesome-icon icon="fa-solid fa-arrow-up" />
-                            </button>
-                            <button type="button" class="btn btn-outline-primary" data-placement="top" title="Pull"
-                                @click="pullFeed(feed)">
-                                <font-awesome-icon icon="fa-solid fa-arrow-down" />
-                            </button>
                             <button v-if="!feed.testingConnection && feed.connectionFailed && !feed.connectionSucceeded"
                                 type="button" class="btn btn-danger" @click="testFeedConnection(feed)"
                                 data-toggle="tooltip" data-placement="top"
                                 :title="'Connection failed: ' + feed.connectionError">
-                                <font-awesome-icon icon="fa-solid fa-check" />
+                                <font-awesome-icon icon="fa-solid fa-xmark" />
+                            </button>
+                            <button type="button" class="btn btn-outline-primary" data-toggle="tooltip"
+                                data-placement="top" title="Preview">
+                                <font-awesome-icon icon="fa-solid fa-magnifying-glass" />
+                            </button>
+                            <button type="button" class="btn btn-outline-primary" data-placement="top" title="Fetch"
+                                @click="fetchFeed(feed)">
+                                <font-awesome-icon icon="fa-solid fa-arrow-down" />
                             </button>
                         </div>
                     </td>
@@ -99,6 +101,10 @@ function pullFeed(feed) {
                             <div class="flex-wrap"
                                 :class="{ 'btn-group-vertical': $isMobile, 'btn-group me-2': !$isMobile }"
                                 aria-label="Feed Actions">
+                                <RouterLink :to="`/feeds/configure/${feed.id}`" tag="button"
+                                    class="btn btn-outline-primary">
+                                    <font-awesome-icon icon="fa-solid fa-cog" />
+                                </RouterLink>
                                 <RouterLink :to="`/feeds/update/${feed.id}`" tag="button"
                                     class="btn btn-outline-primary">
                                     <font-awesome-icon icon="fa-solid fa-pen" />

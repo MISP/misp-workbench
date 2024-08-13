@@ -76,6 +76,12 @@ oauth2_scheme = OAuth2PasswordBearer(
         "modules:read": "Read misp-modules.",
         "modules:update": "Update misp-modules.",
         "modules:query": "Query misp-modules.",
+        "feeds:create": "Create feeds.",
+        "feeds:read": "Read feeds.",
+        "feeds:update": "Update feeds.",
+        "feeds:delete": "Delete feeds.",
+        "feeds:fetch": "Fetch feeds.",
+        "feeds:test": "Test feed connection by id.",
     },
 )
 
