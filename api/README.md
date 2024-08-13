@@ -38,7 +38,7 @@ Migrations are managed by [Alembic](https://alembic.sqlalchemy.org).
 
 ### Add new revision
 ```console
-docker-compose exec api poetry run alembic revision -m "create foobar table"
+docker-compose exec api poetry run alembic revision -m "add foobar table"
 ```
 
 ### Show migrations history
