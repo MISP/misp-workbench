@@ -40,7 +40,7 @@ function handleAnalysisLevelUpdated(analysisLevelId) {
         <div class="card-header border-bottom">
             <div class="row">
                 <div class="col-10">
-                    <h3>Create Event</h3>
+                    <h3>Add Event</h3>
                 </div>
             </div>
         </div>
