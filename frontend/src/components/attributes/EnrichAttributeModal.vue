@@ -70,6 +70,7 @@ function enrichAttribute() {
         object.attributes = object.Attribute;
         delete object.Attribute;
         for (let attribute of object.attributes) {
+            attribute.value = attribute.value.toString();
             attribute.event_id = props.attribute.event_id;
             attribute.distribution = props.attribute.distribution;
             attribute.sharing_group_id = props.attribute.sharing_group_id;
