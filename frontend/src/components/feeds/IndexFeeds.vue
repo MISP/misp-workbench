@@ -14,25 +14,26 @@ function handleFeedDeleted(event) {
     feedsStore.getAll();
 }
 
-function testFeedConnection(feed) {
-    feed.testingConnection = true;
-    feedsStore
-        .testConnection(feed.id)
-        .then((response) => {
-            if (response.status == "ok") {
-                feed.connectionSucceeded = true;
-            } else {
-                feed.connectionSucceeded = false;
-                feed.connectionFailed = true;
-                feed.connectionError = response.error;
-            }
-            feed.testingConnection = false;
-        })
-        .catch((error) => {
-            feed.connectionSucceeded = false;
-            setErrors({ apiError: error });
-        })
-        .finally(() => { feed.testingConnection = false; });
+function toggleEnable(feed) {
+    feed.enabled = !feed.enabled;
+    // feed.testingConnection = true;
+    // feedsStore
+    //     .testConnection(feed.id)
+    //     .then((response) => {
+    //         if (response.status == "ok") {
+    //             feed.connectionSucceeded = true;
+    //         } else {
+    //             feed.connectionSucceeded = false;
+    //             feed.connectionFailed = true;
+    //             feed.connectionError = response.error;
+    //         }
+    //         feed.testingConnection = false;
+    //     })
+    //     .catch((error) => {
+    //         feed.connectionSucceeded = false;
+    //         setErrors({ apiError: error });
+    //     })
+    //     .finally(() => { feed.testingConnection = false; });
 }
 
 function pullFeed(feed) {
@@ -43,14 +44,16 @@ function pullFeed(feed) {
 <template>
     <Spinner v-if="status.loading" />
     <div class="table-responsive-sm">
-        <table v-show="!status.loading" class="table table-striped">
+        <table v-show="!status.loading" class="table table-striped text-start">
             <thead>
                 <tr>
                     <th scope="col">id</th>
                     <th scope="col">name</th>
+                    <th scope="col">provider</th>
                     <th scope="col" v-if="!$isMobile">url</th>
-                    <th scope="col">enabled</th>
-                    <th scope="col" class="float-end">sync actions</th>
+                    <th scope="col" v-if="!$isMobile">source_format</th>
+                    <th scope="col" v-if="!$isMobile">input_source</th>
+                    <th scope="col" class="text-end">enabled</th>
                     <th scope="col" class="text-end">actions</th>
                 </tr>
             </thead>
@@ -60,50 +63,37 @@ function pullFeed(feed) {
                         <RouterLink :to="`/feeds/${feed.id}`">{{ feed.id }}</RouterLink>
                     </td>
                     <td>{{ feed.name }}</td>
+                    <td>{{ feed.provider }}</td>
                     <td v-if="!$isMobile">{{ feed.url }}</td>
-                    <td>{{ feed.enabled }}</td>
-                    <td>
+                    <td v-if="!$isMobile">{{ feed.source_format }}</td>
+                    <td v-if="!$isMobile">{{ feed.input_source }}</td>
+                    <td class="text-end">
+                        <div class="flex-wrap btn-group me-2" aria-label="Sync Actions">
+                            <button type="button" class="btn" @click="toggleEnable(feed)"
+                                :class="{ 'btn-outline-success': feed.enabled, 'btn-outline-danger': !feed.enabled }"
+                                data-toggle="tooltip" data-placement="top" title="Toggle feed">
+                                <font-awesome-icon v-if="feed.enabled" icon="fa-solid fa-check" />
+                                <font-awesome-icon v-if="!feed.enabled" icon="fa-solid fa-xmark" />
+                            </button>
+                        </div>
+
+                    </td>
+                    <td class="text-end">
                         <div class="btn-toolbar float-end" role="toolbar">
                             <div class="flex-wrap btn-group me-2" aria-label="Sync Actions">
-                                <button
-                                    v-if="!feed.testingConnection && !feed.connectionSucceeded && !feed.connectionFailed"
-                                    type="button" class="btn btn-outline-primary" @click="testFeedConnection(feed)"
-                                    data-toggle="tooltip" data-placement="top" title="Check connection">
-                                    <font-awesome-icon icon="fa-solid fa-check" />
-                                </button>
-                                <button v-if="feed.testingConnection" type="button" class="btn btn-light">
-                                    <font-awesome-icon icon="fa-solid fa-sync" spin />
-                                </button>
-                                <button v-if="feed.connectionSucceeded" type="button" class="btn btn-success"
-                                    data-toggle="tooltip" data-placement="top" title="Connection succeed">
-                                    <font-awesome-icon icon="fa-solid fa-check" />
-                                </button>
-                                <button
-                                    v-if="!feed.testingConnection && feed.connectionFailed && !feed.connectionSucceeded"
-                                    type="button" class="btn btn-danger" @click="testFeedConnection(feed)"
-                                    data-toggle="tooltip" data-placement="top"
-                                    :title="'Connection failed: ' + feed.connectionError">
-                                    <font-awesome-icon icon="fa-solid fa-xmark" />
-                                </button>
                                 <button type="button" class="btn btn-outline-primary" data-placement="top" title="Fetch"
                                     @click="fetchFeed(feed)">
-                                    <font-awesome-icon icon="fa-solid fa-arrow-down" />
+                                    <font-awesome-icon icon="fa-solid fa-download" />
                                 </button>
                                 <button type="button" class="btn btn-outline-primary" data-toggle="tooltip"
                                     data-placement="top" title="Preview">
                                     <font-awesome-icon icon="fa-solid fa-magnifying-glass" />
                                 </button>
-                            </div>
-                            <div class="flex-wrap btn-group" aria-label="Sync Actions">
-                                <RouterLink :to="`/feeds/configure/${feed.id}`" tag="button"
+                                <RouterLink :to="`/feeds/configure/${feed.id}`" tag="button" title="Configure"
                                     class="btn btn-outline-primary">
                                     <font-awesome-icon icon="fa-solid fa-cog" />
                                 </RouterLink>
                             </div>
-                        </div>
-                    </td>
-                    <td class="text-end">
-                        <div class="btn-toolbar float-end" role="toolbar">
                             <div class="flex-wrap"
                                 :class="{ 'btn-group-vertical': $isMobile, 'btn-group me-2': !$isMobile }"
                                 aria-label="Feed Actions">

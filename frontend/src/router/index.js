@@ -26,6 +26,7 @@ import {
   IndexFeeds,
   AddFeed,
   ViewFeed,
+  UpdateFeed,
 } from "@/views";
 
 export const router = createRouter({
@@ -56,7 +57,7 @@ export const router = createRouter({
     { path: "/feeds", component: IndexFeeds },
     { path: "/feeds/:id", component: ViewFeed, props: true },
     { path: "/feeds/add", component: AddFeed },
-    // { path: "/feeds/update/:id", component: EditServer, props: true },
+    { path: "/feeds/update/:id", component: UpdateFeed, props: true },
   ],
 });
 

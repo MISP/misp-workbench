@@ -46,3 +46,15 @@ def create_feed(
     ),
 ):
     return feeds_repository.create_feed(db=db, feed=feed)
+
+
+@router.patch("/feeds/{feed_id}", response_model=feed_schemas.Feed)
+def update_server(
+    feed_id: int,
+    feed: feed_schemas.Feed,
+    db: Session = Depends(get_db),
+    user: user_schemas.User = Security(
+        get_current_active_user, scopes=["feeds:update"]
+    ),
+):
+    return feeds_repository.update_feed(db=db, feed_id=feed_id, feed=feed)

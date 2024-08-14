@@ -2,6 +2,7 @@ import logging
 
 from app.models import feed as feed_models
 from app.schemas import feed as feed_schemas
+from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
 logger = logging.getLogger(__name__)
@@ -44,6 +45,29 @@ def create_feed(db: Session, feed: feed_schemas.FeedCreate):
         cached_elements=feed.cached_elements,
         coverage_by_other_feeds=feed.coverage_by_other_feeds,
     )
+
+    db.add(db_feed)
+    db.commit()
+    db.refresh(db_feed)
+
+    return db_feed
+
+
+def update_feed(
+    db: Session,
+    feed_id: int,
+    feed: feed_schemas.FeedUpdate,
+) -> feed_models.Feed:
+    db_feed = get_feed_by_id(db, feed_id=feed_id)
+
+    if db_feed is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Feed not found"
+        )
+
+    feed_patch = feed.model_dump(exclude_unset=True)
+    for key, value in feed_patch.items():
+        setattr(db_feed, key, value)
 
     db.add(db_feed)
     db.commit()
