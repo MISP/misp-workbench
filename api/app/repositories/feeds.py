@@ -11,6 +11,10 @@ def get_feeds(db: Session, skip: int = 0, limit: int = 100):
     return db.query(feed_models.Feed).offset(skip).limit(limit).all()
 
 
+def get_feed_by_id(db: Session, feed_id: int):
+    return db.query(feed_models.Feed).filter(feed_models.Feed.id == feed_id).first()
+
+
 def create_feed(db: Session, feed: feed_schemas.FeedCreate):
     db_feed = feed_models.Feed(
         name=feed.name,

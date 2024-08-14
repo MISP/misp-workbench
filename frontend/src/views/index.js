@@ -21,3 +21,4 @@ export { default as EditAttribute } from "./attributes/EditAttribute.vue";
 export { default as IndexModules } from "./settings/modules/IndexModules.vue";
 export { default as IndexFeeds } from "./feeds/IndexFeeds.vue";
 export { default as AddFeed } from "./feeds/AddFeed.vue";
+export { default as ViewFeed } from "./feeds/ViewFeed.vue";

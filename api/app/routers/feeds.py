@@ -3,14 +3,14 @@ from app.dependencies import get_db
 from app.repositories import feeds as feeds_repository
 from app.schemas import feed as feed_schemas
 from app.schemas import user as user_schemas
-from fastapi import APIRouter, Depends, Security, status
+from fastapi import APIRouter, Depends, HTTPException, Security, status
 from sqlalchemy.orm import Session
 
 router = APIRouter()
 
 
 @router.get("/feeds/", response_model=list[feed_schemas.Feed])
-def get_users(
+def get_feeds(
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
@@ -19,12 +19,26 @@ def get_users(
     return feeds_repository.get_feeds(db, skip=skip, limit=limit)
 
 
+@router.get("/feeds/{feed_id}", response_model=feed_schemas.Feed)
+def get_feed_by_id(
+    feed_id: int,
+    db: Session = Depends(get_db),
+    user: user_schemas.User = Security(get_current_active_user, scopes=["feeds:read"]),
+):
+    db_feed = feeds_repository.get_feed_by_id(db, feed_id=feed_id)
+    if db_feed is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Feed not found"
+        )
+    return db_feed
+
+
 @router.post(
     "/feeds/",
     response_model=feed_schemas.Feed,
     status_code=status.HTTP_201_CREATED,
 )
-def create_server(
+def create_feed(
     feed: feed_schemas.FeedCreate,
     db: Session = Depends(get_db),
     user: user_schemas.User = Security(

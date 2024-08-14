@@ -2,32 +2,30 @@
 
 import { useFeedsStore } from "@/stores";
 import { storeToRefs } from 'pinia'
-import * as Yup from "yup";
 
 const feedsStore = useFeedsStore();
 const { status } = storeToRefs(feedsStore);
 
-const props = defineProps(['feed_id']);
+const props = defineProps(['feed_id', 'modal']);
 const emit = defineEmits(['feed-deleted']);
 
-function onSubmit() {
+function deleteFeed() {
     return feedsStore
         .delete(props.feed_id)
         .then((response) => {
             emit('feed-deleted', { "feed_id": props.feed_id });
-            document.getElementById('closeModalButton').click();
+            props.modal.hide();
         })
         .catch((error) => status.error = error);
 }
 </script>
 
 <template>
-    <div :id="'deleteFeedModal-' + feed_id" class="modal fade" tabindex="-1" aria-labelledby="deleteFeedModal"
-        aria-hidden="true">
+    <div :id="`deleteFeedModal_${feed_id}`" class="modal">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="deleteFeedModal">Delete Feed #{{ feed_id }}</h5>
+                    <h5 class="modal-title">Delete Feed #{{ feed_id }}</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Discard"></button>
                 </div>
                 <div class="modal-body">
@@ -39,7 +37,7 @@ function onSubmit() {
                 <div class="modal-footer">
                     <button id="closeModalButton" type="button" data-bs-dismiss="modal"
                         class="btn btn-secondary">Discard</button>
-                    <button type="submit" @click="onSubmit" class="btn btn-outline-danger"
+                    <button type="submit" @click="deleteFeed" class="btn btn-danger"
                         :class="{ 'disabled': status.loading }">
                         <span v-if="status.loading">
                             <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
