@@ -38,7 +38,7 @@ def get_tag_by_id(
     response_model=tag_schemas.Tag,
     status_code=status.HTTP_201_CREATED,
 )
-def create_server(
+def create_tag(
     tag: tag_schemas.TagCreate,
     db: Session = Depends(get_db),
     user: user_schemas.User = Security(get_current_active_user, scopes=["tags:create"]),
