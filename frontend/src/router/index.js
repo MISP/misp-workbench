@@ -23,7 +23,8 @@ import {
   ViewAttribute,
   EditAttribute,
   IndexModules,
-  IndexFeeds
+  IndexFeeds,
+  AddFeed,
 } from "@/views";
 
 export const router = createRouter({
@@ -52,6 +53,9 @@ export const router = createRouter({
     { path: "/servers/update/:id", component: EditServer, props: true },
     { path: "/settings/modules", component: IndexModules },
     { path: "/feeds", component: IndexFeeds },
+    // { path: "/feeds/:id", component: ViewServer, props: true },
+    { path: "/feeds/add", component: AddFeed },
+    // { path: "/feeds/update/:id", component: EditServer, props: true },
   ],
 });
 
