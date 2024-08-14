@@ -36,8 +36,8 @@ function toggleEnable(feed) {
     //     .finally(() => { feed.testingConnection = false; });
 }
 
-function pullFeed(feed) {
-    feedsStore.pull(feed.id);
+function fetchFeed(feed) {
+    feedsStore.fetch(feed.id);
 }
 </script>
 

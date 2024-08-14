@@ -49,7 +49,7 @@ def create_feed(
 
 
 @router.patch("/feeds/{feed_id}", response_model=feed_schemas.Feed)
-def update_server(
+def update_feed(
     feed_id: int,
     feed: feed_schemas.Feed,
     db: Session = Depends(get_db),
@@ -58,3 +58,14 @@ def update_server(
     ),
 ):
     return feeds_repository.update_feed(db=db, feed_id=feed_id, feed=feed)
+
+
+@router.delete("/feeds/{feed_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_feed(
+    feed_id: int,
+    db: Session = Depends(get_db),
+    user: user_schemas.User = Security(
+        get_current_active_user, scopes=["feeds:delete"]
+    ),
+):
+    return feeds_repository.delete_feed(db=db, feed_id=feed_id)

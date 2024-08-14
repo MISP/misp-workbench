@@ -155,7 +155,7 @@ function openDeleteFeedModal() {
                         </tr>
                     </tbody>
                 </table>
-                <DeleteFeedModal @feed-deleted="handleFeedDeleted" :feed_id="feed.id" />
+                <DeleteFeedModal @feed-deleted="handleFeedDeleted" :feed_id="feed.id" :modal="deleteFeedModal" />
             </div>
         </div>
     </div>

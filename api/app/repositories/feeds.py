@@ -74,3 +74,15 @@ def update_feed(
     db.refresh(db_feed)
 
     return db_feed
+
+
+def delete_feed(db: Session, feed_id: int) -> None:
+    db_feed = get_feed_by_id(db, feed_id=feed_id)
+
+    if db_feed is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Feed not found"
+        )
+
+    db.delete(db_feed)
+    db.commit()
