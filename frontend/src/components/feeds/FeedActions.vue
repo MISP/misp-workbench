@@ -37,10 +37,6 @@ function handleFeedDeleted() {
                 title="Preview">
                 <font-awesome-icon icon="fa-solid fa-magnifying-glass" />
             </button>
-            <RouterLink :to="`/feeds/configure/${feed.id}`" tag="button" title="Configure"
-                class="btn btn-outline-primary">
-                <font-awesome-icon icon="fa-solid fa-cog" />
-            </RouterLink>
         </div>
         <div :class="{ 'btn-group-vertical': $isMobile, 'btn-group me-2': !$isMobile }" role="group"
             aria-label="Feed Actions">

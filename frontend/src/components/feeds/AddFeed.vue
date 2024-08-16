@@ -1,4 +1,5 @@
 <script setup>
+import { ref } from 'vue';
 import { Form, Field } from "vee-validate";
 import { storeToRefs } from 'pinia'
 import { useFeedsStore } from "@/stores";
@@ -10,14 +11,20 @@ import DistributionLevelSelect from "@/components/enums/DistributionLevelSelect.
 const feedsStore = useFeedsStore();
 const { status, error } = storeToRefs(feedsStore);
 
-let feed = {
-};
+let feed = {};
+
+const feedRules = ref(JSON.stringify(feed.rules || {}, null, 2));
+const feedSettings = ref(JSON.stringify(feed.settings || {}, null, 2));
+const feedHeaders = ref(JSON.stringify(feed.headers || {}, null, 2));
 
 function createFeed(values, { setErrors }) {
+    feed.rules = JSON.parse(feedRules.value) || {};
+    feed.settings = JSON.parse(feedSettings.value) || {};
+    feed.headers = JSON.parse(feedHeaders.value) || {};
     return feedsStore
         .create(feed)
         .then((response) => {
-            router.push(`/feeds/${response.id}`);
+            router.go(`/feeds/${response.id}`);
         })
         .catch((error) => setErrors({ apiError: error }));
 }
@@ -103,12 +110,39 @@ function handleDistributionLevelUpdated(distributionLevelId) {
                     <div class=" invalid-feedback">{{ errors['feed.enabled'] }}</div>
                 </div>
                 <p>
-                    <a class="btn-primary" data-bs-toggle="collapse" href="#advancedOptions" role="button"
-                        aria-expanded="false" aria-controls="advancedOptions">
+                    <a class="btn-primary" data-bs-toggle="collapse" href="#advancedSettings" role="button"
+                        aria-expanded="false" aria-controls="advancedSettings">
                         Advanced Options <font-awesome-icon icon="fa-solid fa-caret-down" />
                     </a>
                 </p>
-                <div class="collapse" id="advancedOptions">
+                <div class="collapse" id="advancedSettings">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="feed.rules">rules</label>
+                            <Field class="form-control" id="feed.rules" name="feed.rules" as="textarea" cols="40"
+                                rows="5" v-model="feedRules" :class="{ 'is-invalid': errors['feed.rules'] }">
+                            </Field>
+                            <div class=" invalid-feedback">{{ errors['feed.rules'] }}</div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="feed.headers">headers</label>
+                            <Field class="form-control" id="feed.headers" name="feed.headers" as="textarea" cols="40"
+                                rows="2" v-model="feedHeaders" :class="{ 'is-invalid': errors['feed.headers'] }">
+                            </Field>
+                            <div class=" invalid-feedback">{{ errors['feed.headers'] }}</div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="feed.settings">settings</label>
+                            <Field class="form-control" id="feed.settings" name="feed.settings" as="textarea" cols="40"
+                                rows="2" v-model="feedSettings" :class="{ 'is-invalid': errors['feed.settings'] }">
+                            </Field>
+                            <div class=" invalid-feedback">{{ errors['feed.settings'] }}</div>
+                        </div>
+                    </div>
                     <div class="mb-3">
                         <label for="feed.tag_id">tag_id</label>
                         <Field class="form-control" id="feed.tag_id" name="feed.tag_id" v-model="feed.tag_id"
