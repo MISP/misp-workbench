@@ -79,7 +79,7 @@ function fetchFeed(feed) {
 
                     </td>
                     <td class="text-end">
-                        <FeedActions :feed="feed" />
+                        <FeedActions :feed="feed" @feed-deleted="handleFeedDeleted"/>
                     </td>
                 </tr>
             </tbody>
