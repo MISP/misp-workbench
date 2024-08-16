@@ -15,25 +15,12 @@ function handleFeedDeleted(event) {
 }
 
 function toggleEnable(feed) {
-    feed.enabled = !feed.enabled;
-    // feed.testingConnection = true;
-    // feedsStore
-    //     .testConnection(feed.id)
-    //     .then((response) => {
-    //         if (response.status == "ok") {
-    //             feed.connectionSucceeded = true;
-    //         } else {
-    //             feed.connectionSucceeded = false;
-    //             feed.connectionFailed = true;
-    //             feed.connectionError = response.error;
-    //         }
-    //         feed.testingConnection = false;
-    //     })
-    //     .catch((error) => {
-    //         feed.connectionSucceeded = false;
-    //         setErrors({ apiError: error });
-    //     })
-    //     .finally(() => { feed.testingConnection = false; });
+    feedsStore
+        .toggleEnable(feed)
+        .then((response) => {
+            feed.enabled = !feed.enabled;
+        })
+        .catch((errors) => (this.status.error = errors))
 }
 
 function fetchFeed(feed) {
@@ -79,7 +66,7 @@ function fetchFeed(feed) {
 
                     </td>
                     <td class="text-end">
-                        <FeedActions :feed="feed" @feed-deleted="handleFeedDeleted"/>
+                        <FeedActions :feed="feed" @feed-deleted="handleFeedDeleted" />
                     </td>
                 </tr>
             </tbody>

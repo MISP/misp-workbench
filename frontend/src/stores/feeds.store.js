@@ -23,8 +23,8 @@ export const useFeedsStore = defineStore({
             fetchWrapper
                 .get(baseUrl)
                 .then((feeds) => (this.feeds = feeds))
-                .catch((error) => (this.status = { error }))
-                .finally(() => (this.status = { loading: false }));
+                .catch((error) => (this.status.error = error))
+                .finally(() => (this.status.loading = false));
         },
         async getById(id) {
             this.status = { loading: true };
@@ -32,39 +32,43 @@ export const useFeedsStore = defineStore({
                 .get(`${baseUrl}/${id}`)
                 .then((feed) => (this.feed = feed))
                 .catch((error) => (this.status = { error }))
-                .finally(() => (this.status = { loading: false }));
+                .finally(() => (this.status.loading = false));
         },
         async create(feed) {
             this.status = { creating: true };
             return await fetchWrapper
                 .post(baseUrl, feed)
                 .then((response) => (this.feed = response))
-                .finally(() => (this.status = { creating: false }));
+                .catch((error) => (this.status.error = error))
+                .finally(() => (this.status.creating = false));
         },
         async update(feed) {
             this.status = { updating: true };
             fetchWrapper
                 .patch(`${baseUrl}/${feed.id}`, feed)
                 .then((response) => (this.feed = response))
-                .catch((error) => (this.error = error))
-                .finally(() => (this.status = { updating: false }));
+                .catch((error) => (this.status.error = error))
+                .finally(() => (this.status.updating = false));
         },
         async delete(id) {
             this.status = { loading: true };
             return await fetchWrapper
                 .delete(`${baseUrl}/${id}`)
-                .catch((error) => (this.status = { error }))
-                .finally(() => (this.status = { loading: false }));
+                .catch((error) => (this.status.error = error))
+                .finally(() => (this.status.loading = false));
         },
-        async testConnection(id) {
-            return await fetchWrapper
-                .post(`${baseUrl}/${id}/test-connection`)
-                .catch((error) => (this.status = { error }));
+        async toggleEnable(feed) {
+            this.status = { updating: true };
+            return fetchWrapper
+                .patch(`${baseUrl}/${feed.id}`, {
+                    enabled: !feed.enabled,
+                })
+                .finally(() => (this.status.updating = false));
         },
         async fetch(id) {
             return await fetchWrapper
                 .post(`${baseUrl}/${id}/pull`)
-                .catch((error) => (this.status = { error }));
+                .catch((error) => (this.status.error = error))
         }
     },
 });

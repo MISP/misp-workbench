@@ -43,23 +43,23 @@ class FeedCreate(FeedBase):
 
 
 class FeedUpdate(FeedBase):
-    name: str = None
-    provider: str = None
-    url: str = None
+    name: Optional[str] = None
+    provider: Optional[str] = None
+    url: Optional[str] = None
     rules: Optional[dict] = None
     enabled: Optional[bool] = None
     distribution: Optional[DistributionLevel] = None
     sharing_group_id: Optional[int] = None
     tag_id: Optional[int] = None
     default: Optional[bool] = None
-    source_format: str = None
+    source_format: Optional[str] = None
     fixed_event: Optional[bool] = None
     delta_merge: Optional[bool] = None
     event_id: Optional[int] = None
     publish: Optional[bool] = None
     override_ids: Optional[bool] = None
     settings: Optional[dict] = None
-    input_source: str = None
+    input_source: Optional[str] = None
     delete_local_file: Optional[bool] = None
     lookup_visible: Optional[bool] = None
     headers: Optional[dict] = None
