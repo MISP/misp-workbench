@@ -3,7 +3,7 @@ import { storeToRefs } from "pinia";
 import { RouterLink } from "vue-router";
 import Spinner from "@/components/misc/Spinner.vue";
 import { useFeedsStore } from "@/stores";
-import DeleteFeedModal from "@/components/feeds/DeleteFeedModal.vue";
+import FeedActions from "@/components/feeds/FeedActions.vue";
 
 const feedsStore = useFeedsStore();
 const { feeds, status } = storeToRefs(feedsStore);
@@ -79,41 +79,8 @@ function fetchFeed(feed) {
 
                     </td>
                     <td class="text-end">
-                        <div class="btn-toolbar float-end" role="toolbar">
-                            <div class="flex-wrap btn-group me-2" aria-label="Sync Actions">
-                                <button type="button" class="btn btn-outline-primary" data-placement="top" title="Fetch"
-                                    @click="fetchFeed(feed)">
-                                    <font-awesome-icon icon="fa-solid fa-download" />
-                                </button>
-                                <button type="button" class="btn btn-outline-primary" data-toggle="tooltip"
-                                    data-placement="top" title="Preview">
-                                    <font-awesome-icon icon="fa-solid fa-magnifying-glass" />
-                                </button>
-                                <RouterLink :to="`/feeds/configure/${feed.id}`" tag="button" title="Configure"
-                                    class="btn btn-outline-primary">
-                                    <font-awesome-icon icon="fa-solid fa-cog" />
-                                </RouterLink>
-                            </div>
-                            <div class="flex-wrap"
-                                :class="{ 'btn-group-vertical': $isMobile, 'btn-group me-2': !$isMobile }"
-                                aria-label="Feed Actions">
-                                <RouterLink :to="`/feeds/update/${feed.id}`" tag="button"
-                                    class="btn btn-outline-primary">
-                                    <font-awesome-icon icon="fa-solid fa-pen" />
-                                </RouterLink>
-                                <RouterLink :to="`/feeds/${feed.id}`" tag="button" class="btn btn-outline-primary">
-                                    <font-awesome-icon icon="fa-solid fa-eye" />
-                                </RouterLink>
-                            </div>
-                            <div class="btn-group me-2" role="group">
-                                <button type="button" class="btn btn-danger" data-bs-toggle="modal"
-                                    :data-bs-target="'#deleteFeedModal-' + feed.id">
-                                    <font-awesome-icon icon="fa-solid fa-trash" />
-                                </button>
-                            </div>
-                        </div>
+                        <FeedActions :feed="feed" />
                     </td>
-                    <DeleteFeedModal @feed-deleted="handleFeedDeleted" :feed_id="feed.id" />
                 </tr>
             </tbody>
         </table>

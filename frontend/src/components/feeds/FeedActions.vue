@@ -1,0 +1,62 @@
+<script setup>
+import { ref, onMounted } from 'vue';
+import { Modal } from 'bootstrap';
+import { storeToRefs } from 'pinia'
+import { useModulesStore } from "@/stores";
+import DeleteFeedModal from "@/components/feeds/DeleteFeedModal.vue";
+
+const props = defineProps(['feed']);
+const emit = defineEmits(['feed-deleted']);
+
+const deleteFeedModal = ref(null);
+const modulesStore = useModulesStore();
+const { modulesResponses } = storeToRefs(modulesStore);
+
+onMounted(() => {
+    deleteFeedModal.value = new Modal(document.getElementById(`deleteFeedModal_${props.feed.id}`));
+});
+
+function openDeleteFeedModal() {
+    deleteFeedModal.value.show();
+}
+
+function handleFeedDeleted() {
+    emit('feed-deleted', props.feed.id);
+}
+
+</script>
+
+<template>
+    <div class="btn-toolbar float-end" role="toolbar">
+        <div class="flex-wrap btn-group me-2" aria-label="Sync Actions">
+            <button type="button" class="btn btn-outline-primary" data-placement="top" title="Fetch"
+                @click="fetchFeed(feed)">
+                <font-awesome-icon icon="fa-solid fa-download" />
+            </button>
+            <button type="button" class="btn btn-outline-primary" data-toggle="tooltip" data-placement="top"
+                title="Preview">
+                <font-awesome-icon icon="fa-solid fa-magnifying-glass" />
+            </button>
+            <RouterLink :to="`/feeds/configure/${feed.id}`" tag="button" title="Configure"
+                class="btn btn-outline-primary">
+                <font-awesome-icon icon="fa-solid fa-cog" />
+            </RouterLink>
+        </div>
+        <div :class="{ 'btn-group-vertical': $isMobile, 'btn-group me-2': !$isMobile }" role="group"
+            aria-label="Feed Actions">
+            <RouterLink :to="`/feeds/${feed.id}`" tag="button" class="btn btn-outline-primary">
+                <font-awesome-icon icon="fa-solid fa-eye" />
+            </RouterLink>
+            <RouterLink :to="`/feeds/update/${feed.id}`" tag="button" class="btn btn-outline-primary">
+                <font-awesome-icon icon="fa-solid fa-pen" />
+            </RouterLink>
+        </div>
+        <div class="btn-group me-2" role="group">
+            <button type="button" class="btn btn-danger" @click="openDeleteFeedModal">
+                <font-awesome-icon icon="fa-solid fa-trash" />
+            </button>
+        </div>
+    </div>
+    <DeleteFeedModal :key="feed.id" :id="`deleteFeedModal_${feed.id}`" @feed-deleted="handleFeedDeleted"
+        :modal="deleteFeedModal" :feed_id="feed.id" />
+</template>
