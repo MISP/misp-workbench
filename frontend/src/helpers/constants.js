@@ -15,9 +15,9 @@ export const THREAT_LEVEL = {
 };
 
 export const ANALYSIS_LEVEL = {
-  INITIAL: 0,
-  ONGOING: 1,
-  COMPLETE: 2,
+  INITIAL: 1,
+  ONGOING: 2,
+  COMPLETE: 3,
 };
 
 export const OBJECT_META_CATEGORIES = {

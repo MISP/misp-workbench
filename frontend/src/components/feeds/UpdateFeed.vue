@@ -16,13 +16,14 @@ const feedSettings = ref(JSON.stringify(feed.value.settings || {}, null, 2));
 const feedHeaders = ref(JSON.stringify(feed.value.headers || {}, null, 2));
 
 function updateFeed(values, { setErrors }) {
+    console.log(values);
     values.feed.rules = JSON.parse(feedRules.value) || {};
     values.feed.settings = JSON.parse(feedSettings.value) || {};
     values.feed.headers = JSON.parse(feedHeaders.value) || {};
     return feedsStore
         .update(values.feed)
         .then((response) => {
-            router.go(`/feeds/${values.feed.id}`);
+            router.push(`/feeds/${values.feed.id}`);
         })
         .catch((error) => setErrors({ apiError: error }));
 }
@@ -48,7 +49,6 @@ function handleDistributionLevelUpdated(distributionLevel) {
         </div>
         <div class="card-body d-flex flex-column">
             <Form @submit="updateFeed" :validation-schema="FeedSchema" v-slot="{ errors, isSubmitting }">
-                {{ errors }}
                 <div class="mb-3">
                     <label for="feed.id">id</label>
                     <Field class="form-control" id="feed.id" name="feed.id" v-model="feed.id"

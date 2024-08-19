@@ -69,3 +69,12 @@ def delete_feed(
     ),
 ):
     return feeds_repository.delete_feed(db=db, feed_id=feed_id)
+
+
+@router.post("/feeds/{feed_id}/fetch")
+def fetch_feed(
+    feed_id: int,
+    db: Session = Depends(get_db),
+    user: user_schemas.User = Security(get_current_active_user, scopes=["feeds:fetch"]),
+):
+    return feeds_repository.fetch_feed(db=db, feed_id=feed_id, user=user)

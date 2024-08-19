@@ -67,7 +67,7 @@ export const useFeedsStore = defineStore({
         },
         async fetch(id) {
             return await fetchWrapper
-                .post(`${baseUrl}/${id}/pull`)
+                .post(`${baseUrl}/${id}/fetch`)
                 .catch((error) => (this.status.error = error))
         }
     },

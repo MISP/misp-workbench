@@ -36,9 +36,9 @@ class AnalysisLevel(enum.Enum):
     Enum for the Event analysis level
     """
 
-    INITIAL = 0
-    ONGOING = 1
-    COMPLETE = 2
+    INITIAL = 1
+    ONGOING = 2
+    COMPLETE = 3
 
 
 class Event(Base):

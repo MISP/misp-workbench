@@ -2,15 +2,14 @@
 import { ref, onMounted } from 'vue';
 import { Modal } from 'bootstrap';
 import { storeToRefs } from 'pinia'
-import { useModulesStore } from "@/stores";
+import { useFeedsStore } from "@/stores";
 import DeleteFeedModal from "@/components/feeds/DeleteFeedModal.vue";
 
 const props = defineProps(['feed']);
 const emit = defineEmits(['feed-deleted']);
 
 const deleteFeedModal = ref(null);
-const modulesStore = useModulesStore();
-const { modulesResponses } = storeToRefs(modulesStore);
+const feedsStore = useFeedsStore();
 
 onMounted(() => {
     deleteFeedModal.value = new Modal(document.getElementById(`deleteFeedModal_${props.feed.id}`));
@@ -23,6 +22,19 @@ function openDeleteFeedModal() {
 function handleFeedDeleted() {
     emit('feed-deleted', props.feed.id);
 }
+
+function fetchFeed(feed) {
+    feedsStore.fetch(feed.id)
+        .then((response) => {
+            console.log('Feed fetched');
+            console.log(response);
+        })
+        .catch((error) => {
+            console.log('Error fetching feed');
+            console.log(error);
+        });
+}
+
 
 </script>
 

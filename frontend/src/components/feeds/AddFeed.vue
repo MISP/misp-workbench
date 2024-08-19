@@ -24,7 +24,7 @@ function createFeed(values, { setErrors }) {
     return feedsStore
         .create(feed)
         .then((response) => {
-            router.go(`/feeds/${response.id}`);
+            router.push(`/feeds/${response.id}`);
         })
         .catch((error) => setErrors({ apiError: error }));
 }
