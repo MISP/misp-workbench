@@ -13,7 +13,7 @@ class Feed(Base):
     url = Column(String, nullable=False)
     rules = Column(JSON, nullable=False, default={})
     enabled = Column(Boolean, nullable=False, default=False)
-    distribution = Mapped[DistributionLevel] = mapped_column(
+    distribution: Mapped[DistributionLevel] = mapped_column(
         Enum(DistributionLevel, name="distribution_level"),
         nullable=False,
         default=DistributionLevel.ORGANISATION_ONLY,

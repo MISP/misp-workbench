@@ -53,7 +53,7 @@ class Event(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     uuid = Column(UUID(as_uuid=True), unique=True, default=uuid.uuid4)
     published = Column(Boolean, default=False, nullable=False)
-    analysis = Mapped[AnalysisLevel] = mapped_column(
+    analysis: Mapped[AnalysisLevel] = mapped_column(
         Enum(AnalysisLevel, name="analysis_level"),
         nullable=False,
         default=AnalysisLevel.INITIAL,
@@ -74,7 +74,7 @@ class Event(Base):
     )
     proposal_email_lock = Column(Boolean, nullable=False, default=False)
     locked = Column(Boolean, nullable=False, default=False)
-    threat_level = Mapped[ThreatLevel] = mapped_column(
+    threat_level: Mapped[ThreatLevel] = mapped_column(
         Enum(ThreatLevel, name="threat_level"),
         nullable=False,
         default=ThreatLevel.UNDEFINED,
