@@ -50,9 +50,9 @@ def create_object(
         uuid=object.uuid,
         timestamp=object.timestamp or time.time(),
         distribution=(
-            object.distribution
-            if object.distribution is None
-            else event_schemas.DistributionLevel(object.distribution)
+            event_schemas.DistributionLevel(object.distribution)
+            if object.distribution is not None
+            else event_schemas.DistributionLevel.INHERIT_EVENT
         ),
         sharing_group_id=object.sharing_group_id,
         comment=object.comment,

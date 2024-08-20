@@ -1,11 +1,15 @@
 import logging
+import time
 from datetime import datetime
 
 import requests
 from app.models import attribute as attribute_models
 from app.models import event as event_models
 from app.models import feed as feed_models
+from app.models import object as object_models
+from app.models import object_reference as object_reference_models
 from app.models import organisation as organisation_models
+from app.repositories import events as events_repository
 from app.repositories import organisations as organisations_repository
 from app.schemas import event as event_schemas
 from app.schemas import feed as feed_schemas
@@ -132,7 +136,7 @@ def fetch_feed(db: Session, feed_id: int, user: user_schemas.User):
             #     uuid for uuid in feed_events_uuids if uuid not in skip_events
             # ]
 
-            feed_events_uuids = ["636cabbd-4bde-4fb2-bc6b-6b2c05fafcd5"]
+            feed_events_uuids = ["5742ea44-5ff4-4634-99c9-4b32950d210f"]
             local_feed_events_uuids = []
 
             for event_uuid in feed_events_uuids:
@@ -264,6 +268,7 @@ def fetch_feed(db: Session, feed_id: int, user: user_schemas.User):
                         db.refresh(db_event)
 
                         # process attributes
+                        attribute_count = 0
                         if "Attribute" in event_data["Event"]:
                             for attribute in event_data["Event"]["Attribute"]:
                                 # TODO: process sharing group
@@ -304,13 +309,146 @@ def fetch_feed(db: Session, feed_id: int, user: user_schemas.User):
                                         else False
                                     ),
                                 )
+
                                 db.add(db_attribute)
+                                attribute_count += 1
 
-                        # TODO: process event attributes, update attribute_count
-                        # events_repository.increment_attribute_count(db, event_id)
+                        # process objects
+                        objects_count = 0
+                        if "Object" in event_data["Event"]:
+                            for object in event_data["Event"]["Object"]:
+                                db_object = object_models.Object(
+                                    event_id=db_event.id,
+                                    name=object["name"],
+                                    meta_category=object["meta-category"],
+                                    description=object["description"],
+                                    template_uuid=object["template_uuid"],
+                                    template_version=object["template_version"],
+                                    uuid=object["uuid"],
+                                    timestamp=(
+                                        object["timetamp"]
+                                        if "timetamp" in object
+                                        else time.time()
+                                    ),
+                                    distribution=event_schemas.DistributionLevel.INHERIT_EVENT,
+                                    sharing_group_id=(
+                                        object["sharing_group_id"]
+                                        if "sharing_group_id" in object
+                                        else None
+                                    ),
+                                    comment=(
+                                        object["comment"] if "comment" in object else ""
+                                    ),
+                                    deleted=(
+                                        object["deleted"]
+                                        if "deleted" in object
+                                        else False
+                                    ),
+                                    first_seen=(
+                                        object["first_seen"]
+                                        if "first_seen" in object
+                                        else None
+                                    ),
+                                    last_seen=(
+                                        object["last_seen"]
+                                        if "last_seen" in object
+                                        else None
+                                    ),
+                                )
 
-                        # TODO: process event objects, update objects_count
-                        # events_repository.increment_object_count(db, event_id)
+                                db.add(db_object)
+                                db.commit()
+                                db.refresh(db_object)
+                                objects_count += 1
+
+                                for attribute in object["Attribute"]:
+                                    db_attribute = attribute_models.Attribute(
+                                        uuid=attribute["uuid"],
+                                        event_id=db_event.id,
+                                        object_id=db_object.id,
+                                        type=attribute["type"],
+                                        category=attribute["category"],
+                                        to_ids=(
+                                            attribute["to_ids"]
+                                            if "to_ids" in attribute
+                                            else False
+                                        ),
+                                        distribution=event_schemas.DistributionLevel.INHERIT_EVENT,
+                                        comment=(
+                                            attribute["comment"]
+                                            if "comment" in attribute
+                                            else ""
+                                        ),
+                                        value=attribute["value"],
+                                        timestamp=(
+                                            int(attribute["timestamp"])
+                                            if "timestamp" in attribute
+                                            else time.time()
+                                        ),
+                                        sharing_group_id=(
+                                            attribute["sharing_group_id"]
+                                            if "sharing_group_id" in attribute
+                                            else None
+                                        ),
+                                        disable_correlation=(
+                                            attribute["disable_correlation"]
+                                            if "disable_correlation" in attribute
+                                            else False
+                                        ),
+                                        deleted=(
+                                            attribute["deleted"]
+                                            if "deleted" in attribute
+                                            else False
+                                        ),
+                                    )
+                                    db.add(db_attribute)
+                                    attribute_count += 1
+
+                                db.commit()
+
+                        # process object references
+                        if "Object" in event_data["Event"]:
+                            for object in event_data["Event"]["Object"]:
+                                if "ObjectReference" in object:
+                                    for object_reference in object["ObjectReference"]:
+                                        referenced = (
+                                            db.query(object_models.Object)
+                                            .filter_by(
+                                                uuid=object_reference["referenced_uuid"]
+                                            )
+                                            .first()
+                                        )
+                                        db_object_reference = (
+                                            object_reference_models.ObjectReference(
+                                                uuid=object_reference["uuid"],
+                                                event_id=db_event.id,
+                                                object_id=db_object.id,
+                                                referenced_uuid=object_reference[
+                                                    "referenced_uuid"
+                                                ],
+                                                referenced_id=referenced.id,
+                                                relationship_type=object_reference[
+                                                    "relationship_type"
+                                                ],
+                                                timestamp=(
+                                                    int(object_reference["timestamp"])
+                                                    if "timestamp" in object_reference
+                                                    else time.time()
+                                                ),
+                                                referenced_type=referenced.name,
+                                                comment=(
+                                                    object_reference["comment"]
+                                                    if "comment" in object_reference
+                                                    else ""
+                                                ),
+                                                deleted=(
+                                                    object_reference["deleted"]
+                                                    if "deleted" in object_reference
+                                                    else False
+                                                ),
+                                            )
+                                        )
+                                        db.add(db_object_reference)
 
                         # TODO: process event tags
                         # TODO: process event galaxies
@@ -320,6 +458,13 @@ def fetch_feed(db: Session, feed_id: int, user: user_schemas.User):
                         # TODO: process event shadow_objects
                         # TODO: process event reports
                         # TODO: process event analyst data
+
+                        events_repository.increment_attribute_count(
+                            db, db_event.id, attribute_count
+                        )
+                        events_repository.increment_object_count(
+                            db, db_event.id, objects_count
+                        )
                         db.commit()
 
                     else:
