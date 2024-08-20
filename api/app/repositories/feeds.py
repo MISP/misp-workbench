@@ -109,32 +109,31 @@ def fetch_feed(db: Session, feed_id: int, user: user_schemas.User):
         req = requests.get(f"{db_feed.url}/manifest.json")
 
         if req.status_code == 200:
-            manifest = req.json()
+            req.json()
 
             # TODO: cache etag value in redis
             req.headers.get("etag")
 
-            feed_events_uuids = manifest.keys()
+            # feed_events_uuids = manifest.keys()
+            # local_feed_events = (
+            #     db.query(event_models.Event)
+            #     .filter(event_models.Event.uuid.in_(feed_events_uuids))
+            #     .all()
+            # )
+            # local_feed_events_uuids = [event.uuid for event in local_feed_events]
 
-            local_feed_events = (
-                db.query(event_models.Event)
-                .filter(event_models.Event.uuid.in_(feed_events_uuids))
-                .all()
-            )
-            local_feed_events_uuids = [event.uuid for event in local_feed_events]
+            # # filter out events that are already in the database and have the same timestamp
+            # skip_events = [
+            #     str(event.uuid)
+            #     for event in local_feed_events
+            #     if event.timestamp == manifest[str(event.uuid)]["timestamp"]
+            # ]
+            # feed_events_uuids = [
+            #     uuid for uuid in feed_events_uuids if uuid not in skip_events
+            # ]
 
-            # filter out events that are already in the database and have the same timestamp
-            skip_events = [
-                str(event.uuid)
-                for event in local_feed_events
-                if event.timestamp == manifest[str(event.uuid)]["timestamp"]
-            ]
-            feed_events_uuids = [
-                uuid for uuid in feed_events_uuids if uuid not in skip_events
-            ]
-
-            # feed_events_uuids = ["55b7c901-614c-44d1-a638-440e950d210b"]
-            # local_feed_events_uuids = []
+            feed_events_uuids = ["636cabbd-4bde-4fb2-bc6b-6b2c05fafcd5"]
+            local_feed_events_uuids = []
 
             for event_uuid in feed_events_uuids:
 

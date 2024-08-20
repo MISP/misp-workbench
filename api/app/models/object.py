@@ -4,7 +4,7 @@ from app.database import Base
 from app.models.event import DistributionLevel
 from sqlalchemy import Boolean, Column, Enum, ForeignKey, Integer, String
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 
 class Object(Base):
@@ -19,8 +19,8 @@ class Object(Base):
     event_id = Column(Integer, ForeignKey("events.id"), nullable=False)
     uuid = Column(UUID(as_uuid=True), unique=True, default=uuid.uuid4)
     timestamp = Column(Integer, nullable=False)
-    distribution = Column(
-        Enum(DistributionLevel),
+    distribution: Mapped[DistributionLevel] = mapped_column(
+        Enum(DistributionLevel, name="distribution_level"),
         nullable=False,
         default=DistributionLevel.INHERIT_EVENT,
     )

@@ -1,6 +1,7 @@
 from app.database import Base
 from app.models.event import DistributionLevel
 from sqlalchemy import JSON, Boolean, Column, Enum, Float, ForeignKey, Integer, String
+from sqlalchemy.orm import Mapped, mapped_column
 
 
 class Feed(Base):
@@ -12,8 +13,8 @@ class Feed(Base):
     url = Column(String, nullable=False)
     rules = Column(JSON, nullable=False, default={})
     enabled = Column(Boolean, nullable=False, default=False)
-    distribution = Column(
-        Enum(DistributionLevel),
+    distribution = Mapped[DistributionLevel] = mapped_column(
+        Enum(DistributionLevel, name="distribution_level"),
         nullable=False,
         default=DistributionLevel.ORGANISATION_ONLY,
     )
