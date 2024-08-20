@@ -2,11 +2,12 @@ import logging
 from datetime import datetime
 
 import requests
+from app.models import attribute as attribute_models
 from app.models import event as event_models
 from app.models import feed as feed_models
 from app.models import organisation as organisation_models
-from app.models.event import DistributionLevel
 from app.repositories import organisations as organisations_repository
+from app.schemas import event as event_schemas
 from app.schemas import feed as feed_schemas
 from app.schemas import user as user_schemas
 from fastapi import HTTPException, status
@@ -124,19 +125,20 @@ def fetch_feed(db: Session, feed_id: int, user: user_schemas.User):
 
             # filter out events that are already in the database and have the same timestamp
             skip_events = [
-                event.uuid
+                str(event.uuid)
                 for event in local_feed_events
-                if event.timestamp == manifest[event.uuid].timestamp
+                if event.timestamp == manifest[str(event.uuid)]["timestamp"]
             ]
             feed_events_uuids = [
                 uuid for uuid in feed_events_uuids if uuid not in skip_events
             ]
 
-            i = 0
+            # feed_events_uuids = ["55b7c901-614c-44d1-a638-440e950d210b"]
+            # local_feed_events_uuids = []
+
             for event_uuid in feed_events_uuids:
-                # TODO: for testing purposes only fetch 1 event, remove this line to fetch all events
-                if i >= 1:
-                    break
+
+                # TODO: check if event is blocked by blocklist or feed rules (tags, orgs)
 
                 if event_uuid in local_feed_events_uuids:
                     # update event
@@ -155,8 +157,6 @@ def fetch_feed(db: Session, feed_id: int, user: user_schemas.User):
                         # TODO: process tag_id and tag_collection_id
 
                         # TODO: process sharing_group_id
-
-                        # TODO: check if blocked by event blocklist or feed rules (tags, orgs)
 
                         # TODO: apply feed rules (disable_correlation, unpublish_event)
 
@@ -194,17 +194,15 @@ def fetch_feed(db: Session, feed_id: int, user: user_schemas.User):
                                 if "analysis" in event_data["Event"]
                                 else None
                             ),
-                            # attribute_count=event_data["Event"]["attribute_count"], # TODO: process event attributes
-                            # object_count=event_data["Event"]["object_count"], # TODO: process event objects
                             org_id=user.org_id,
                             orgc_id=orgc.id,
                             timestamp=event_data["Event"]["timestamp"],
                             distribution=(
-                                event_models.DistributionLevel(
+                                event_schemas.DistributionLevel(
                                     int(event_data["Event"]["distribution"])
                                 )
                                 if "distribution" in event_data["Event"]
-                                else DistributionLevel.ORGANISATION_ONLY
+                                else event_schemas.DistributionLevel.ORGANISATION_ONLY
                             ),
                             sharing_group_id=(
                                 event_data["Event"]["sharing_group_id"]
@@ -261,8 +259,60 @@ def fetch_feed(db: Session, feed_id: int, user: user_schemas.User):
                             ),
                         )
 
-                        # TODO: process event attributes
-                        # TODO: process event objects
+                        db.add(db_event)
+                        db.commit()
+                        db.flush()
+                        db.refresh(db_event)
+
+                        # process attributes
+                        if "Attribute" in event_data["Event"]:
+                            for attribute in event_data["Event"]["Attribute"]:
+                                # TODO: process sharing group
+                                # TODO: process tags
+
+                                db_attribute = attribute_models.Attribute(
+                                    uuid=attribute["uuid"],
+                                    event_id=db_event.id,
+                                    type=attribute["type"],
+                                    category=attribute["category"],
+                                    to_ids=(
+                                        attribute["to_ids"]
+                                        if "to_ids" in attribute
+                                        else False
+                                    ),
+                                    distribution=event_schemas.DistributionLevel.INHERIT_EVENT,
+                                    comment=attribute["comment"],
+                                    value=attribute["value"],
+                                    timestamp=int(attribute["timestamp"]),
+                                    sharing_group_id=(
+                                        attribute["sharing_group_id"]
+                                        if "sharing_group_id" in attribute
+                                        else None
+                                    ),
+                                    disable_correlation=(
+                                        attribute["disable_correlation"]
+                                        if "disable_correlation" in attribute
+                                        else False
+                                    ),
+                                    object_id=(
+                                        attribute["object_id"]
+                                        if "object_id" in attribute
+                                        else None
+                                    ),
+                                    deleted=(
+                                        attribute["deleted"]
+                                        if "deleted" in attribute
+                                        else False
+                                    ),
+                                )
+                                db.add(db_attribute)
+
+                        # TODO: process event attributes, update attribute_count
+                        # events_repository.increment_attribute_count(db, event_id)
+
+                        # TODO: process event objects, update objects_count
+                        # events_repository.increment_object_count(db, event_id)
+
                         # TODO: process event tags
                         # TODO: process event galaxies
                         # TODO: process event sightings
@@ -271,15 +321,10 @@ def fetch_feed(db: Session, feed_id: int, user: user_schemas.User):
                         # TODO: process event shadow_objects
                         # TODO: process event reports
                         # TODO: process event analyst data
-
-                        db.add(db_event)
                         db.commit()
-                        db.flush()
-                        db.refresh(db_event)
+
                     else:
                         logger.error(f"Failed to fetch event {event_uuid}")
-
-                i += 1
 
             return feed_events_uuids
 

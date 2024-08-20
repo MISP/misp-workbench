@@ -53,8 +53,6 @@ def upgrade():
         sa.Column("cached_elements", sa.Integer(), nullable=False, default=0),
         sa.Column("coverage_by_other_feeds", Float(), nullable=False, default=0),
         sa.ForeignKeyConstraint(["sharing_group_id"], ["sharing_groups.id"]),
-        sa.ForeignKeyConstraint(["tag_id"], ["tags.id"]),
-        sa.ForeignKeyConstraint(["event_id"], ["events.id"]),
         sa.ForeignKeyConstraint(["orgc_id"], ["organisations.id"]),
     )
 

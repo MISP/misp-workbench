@@ -43,7 +43,7 @@ function handleAttributesUpdated(event) {
 
 <template>
     <div class="table-responsive-sm">
-        <Spinner v-if="status.loading" />
+
         <div v-if="status.error" class="text-danger">
             Error loading attributes: {{ status.error }}
         </div>
@@ -77,6 +77,7 @@ function handleAttributesUpdated(event) {
                 </tr>
             </tbody>
         </table>
+        <Spinner v-if="status.loading" />
         <Paginate v-if="page_count > 1" :page-count="page_count" :click-handler="onPageChange" />
         <AddAttributeModal id="addAttributeModal" @attribute-created="handleAttributesUpdated"
             :modal="addAttributeModal" :event_id="event_id" />

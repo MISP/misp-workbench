@@ -52,9 +52,9 @@ def create_attribute(
         uuid=attribute.uuid,
         timestamp=attribute.timestamp or time.time(),
         distribution=(
-            attribute.distribution
-            if attribute.distribution is None
-            else event_schemas.DistributionLevel(attribute.distribution)
+            event_schemas.DistributionLevel(attribute.distribution)
+            if attribute.distribution is not None
+            else event_schemas.DistributionLevel.INHERIT_EVENT
         ),
         sharing_group_id=attribute.sharing_group_id,
         comment=attribute.comment,
