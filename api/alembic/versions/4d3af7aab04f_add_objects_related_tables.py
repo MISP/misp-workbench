@@ -105,7 +105,15 @@ def upgrade():
         sa.Column("source_uuid", sa.types.Uuid(as_uuid=True)),
         sa.Column("referenced_uuid", sa.types.Uuid(as_uuid=True)),
         sa.Column("referenced_id", sa.Integer, nullable=False),
-        sa.Column("referenced_type", sa.Integer, nullable=False),
+        sa.Column(
+            "referenced_type",
+            postgresql.ENUM(
+                "ATTRIBUTE",
+                "OBJECT",
+                name="referenced_type",
+            ),
+            nullable=False,
+        ),
         sa.Column("relationship_type", sa.String(255)),
         sa.Column("comment", sa.String(), nullable=False),
         sa.Column("deleted", sa.Boolean(), nullable=False),
