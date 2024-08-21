@@ -38,11 +38,17 @@ function fetchFeed(feed) {
 
 </script>
 
+<style scoped>
+.btn-toolbar {
+    flex-wrap: nowrap !important;
+}
+</style>
+
 <template>
     <div class="btn-toolbar float-end" role="toolbar">
         <div class="flex-wrap btn-group me-2" aria-label="Sync Actions">
             <button type="button" class="btn btn-outline-primary" data-placement="top" title="Fetch"
-                @click="fetchFeed(feed)">
+                @click="fetchFeed(feed)" :class="{ 'disabled': !feed.enabled }">
                 <font-awesome-icon icon="fa-solid fa-download" />
             </button>
             <button type="button" class="btn btn-outline-primary" data-toggle="tooltip" data-placement="top"

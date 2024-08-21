@@ -24,7 +24,7 @@ def upgrade():
         sa.Column("name", sa.String(255)),
         sa.Column("meta_category", sa.String(255)),
         sa.Column("description", sa.String()),
-        sa.Column("template_uuid", sa.types.Uuid(as_uuid=True)),
+        sa.Column("template_uuid", sa.String(255)),
         sa.Column("template_version", sa.Integer, nullable=False),
         sa.Column("event_id", sa.Integer, nullable=False),
         sa.Column("uuid", sa.types.Uuid(as_uuid=True), unique=True),

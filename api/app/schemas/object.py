@@ -11,7 +11,7 @@ class ObjectBase(BaseModel):
     name: str
     meta_category: Optional[str] = None
     description: Optional[str] = None
-    template_uuid: Optional[UUID] = None
+    template_uuid: Optional[str] = None
     template_version: int
     event_id: int
     uuid: Optional[UUID] = None
@@ -42,7 +42,7 @@ class ObjectUpdate(BaseModel):
     name: Optional[str] = None
     meta_category: Optional[str] = None
     description: Optional[str] = None
-    template_uuid: Optional[UUID] = None
+    template_uuid: Optional[str] = None
     template_version: Optional[int] = None
     timestamp: Optional[int] = None
     distribution: Optional[DistributionLevel] = None

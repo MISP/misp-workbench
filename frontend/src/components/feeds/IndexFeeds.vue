@@ -22,10 +22,6 @@ function toggleEnable(feed) {
         })
         .catch((errors) => (this.status.error = errors))
 }
-
-function fetchFeed(feed) {
-    feedsStore.fetch(feed.id);
-}
 </script>
 
 <template>
