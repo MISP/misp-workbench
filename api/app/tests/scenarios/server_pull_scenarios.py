@@ -112,7 +112,7 @@ test_cases = {
                                 "object_id": "1",
                                 "referenced_uuid": "576a7264-0029-46e5-8eaa-771d3a9ec3d3",
                                 "referenced_id": "2",
-                                "referenced_type": 1,
+                                "referenced_type": "1",
                                 "relationship_type": "uses",
                                 "comment": "",
                                 "deleted": False,
