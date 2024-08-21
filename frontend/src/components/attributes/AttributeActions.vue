@@ -38,6 +38,12 @@ function handleAttributeEnriched() {
 
 </script>
 
+<style scoped>
+.btn-toolbar {
+    flex-wrap: nowrap !important;
+}
+</style>
+
 <template>
     <div class="btn-toolbar float-end" role="toolbar">
         <div :class="{ 'btn-group-vertical': $isMobile, 'btn-group me-2': !$isMobile }" role="group"
