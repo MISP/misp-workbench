@@ -11,13 +11,10 @@ const emit = defineEmits(['attribute-created', 'object-created', 'attribute-enri
 const modulesStore = useModulesStore();
 const objectsStore = useObjectsStore();
 const attributesStore = useAttributesStore();
-const { status, modules, modulesResponses } = storeToRefs(modulesStore);
+const { status, modulesResponses, modules } = storeToRefs(modulesStore);
 const allModules = ref(false);
 const allEnrichments = ref(false);
 const enrichErrors = ref([]);
-
-
-modulesStore.get({ enabled: true });
 
 function queryModules() {
     modulesResponses.value = [];
