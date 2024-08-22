@@ -1,23 +1,19 @@
 import asyncio
 import logging
-import time
 from asyncio import Semaphore
-from datetime import datetime
 
 import aiohttp
 import requests
-from app.models import attribute as attribute_models
 from app.models import event as event_models
 from app.models import feed as feed_models
-from app.models import object as object_models
-from app.models import object_reference as object_reference_models
-from app.models import organisation as organisation_models
+from app.repositories import attributes as attributes_repository
 from app.repositories import events as events_repository
+from app.repositories import objects as objects_repository
 from app.repositories import organisations as organisations_repository
-from app.schemas import event as event_schemas
 from app.schemas import feed as feed_schemas
 from app.schemas import user as user_schemas
 from fastapi import HTTPException, status
+from pymisp import MISPEvent
 from sqlalchemy.orm import Session
 
 logger = logging.getLogger(__name__)
@@ -125,337 +121,47 @@ async def process_feed_event(
     async with semaphore:
         logging.info(f"Fetching event {feed.url}/{event_uuid}")
         try:
-            event_data = await fetch_feed_event_by_uuid(feed, event_uuid, session)
+            event_raw = await fetch_feed_event_by_uuid(feed, event_uuid, session)
+            event = MISPEvent()
+            event.load(event_raw)
+
         except Exception as e:
             logger.error(f"Failed to fetch event {event_uuid}: {str(e)}")
             return None
 
         try:
             if event_uuid in local_feed_events_uuids:
-                # update event
+                # TODO: update event
                 pass
             else:
-                # TODO: if remote event has no distribution set everything to inherit
-
                 # TODO: process tag_id and tag_collection_id
 
                 # TODO: process sharing_group_id
 
                 # TODO: apply feed rules (disable_correlation, unpublish_event)
 
-                orgc = organisations_repository.get_organisation_by_uuid(
-                    db,
-                    organisation_uuid=event_data["Event"]["Orgc"]["uuid"],
+                orgc = organisations_repository.get_or_create_organisation_from_feed(
+                    db, event.Orgc, user=user
                 )
 
-                if orgc is None:
-                    logger.info(
-                        f"Creating Organisation {event_data['Event']['Orgc']['name']} ({event_data['Event']['Orgc']['uuid']})"
-                    )
-                    orgc = organisation_models.Organisation(
-                        uuid=event_data["Event"]["Orgc"]["uuid"],
-                        name=event_data["Event"]["Orgc"]["name"],
-                        date_created=datetime.now(),
-                        date_modified=datetime.now(),
-                        created_by=user.id,
-                        local=False,
-                    )
-                    db.add(orgc)
-                    db.commit()
-                    db.flush()
-                    db.refresh(orgc)
-
-                db_event = event_models.Event(
-                    uuid=event_data["Event"]["uuid"],
-                    date=event_data["Event"]["date"],
-                    info=event_data["Event"]["info"],
-                    user_id=user.id,
-                    published=event_data["Event"]["published"],
-                    analysis=(
-                        event_models.AnalysisLevel(int(event_data["Event"]["analysis"]))
-                        if "analysis" in event_data["Event"]
-                        else None
-                    ),
-                    org_id=user.org_id,
-                    orgc_id=orgc.id,
-                    timestamp=(
-                        int(event_data["Event"]["timestamp"])
-                        if "timestamp" in event_data["Event"]
-                        else time.time()
-                    ),
-                    distribution=(
-                        event_schemas.DistributionLevel(
-                            int(event_data["Event"]["distribution"])
-                        )
-                        if "distribution" in event_data["Event"]
-                        else event_schemas.DistributionLevel.ORGANISATION_ONLY
-                    ),
-                    sharing_group_id=(
-                        event_data["Event"]["sharing_group_id"]
-                        if "sharing_group_id" in event_data["Event"]
-                        else None
-                    ),
-                    proposal_email_lock=(
-                        event_data["Event"]["proposal_email_lock"]
-                        if "proposal_email_lock" in event_data["Event"]
-                        else False
-                    ),
-                    locked=(
-                        event_data["Event"]["locked"]
-                        if "locked" in event_data["Event"]
-                        else False
-                    ),
-                    threat_level=(
-                        event_models.ThreatLevel(
-                            int(event_data["Event"]["threat_level_id"])
-                        )
-                        if "threat_level_id" in event_data["Event"]
-                        else None
-                    ),
-                    publish_timestamp=(
-                        int(event_data["Event"]["publish_timestamp"])
-                        if "publish_timestamp" in event_data["Event"]
-                        else None
-                    ),
-                    sighting_timestamp=(
-                        int(event_data["Event"]["sighting_timestamp"])
-                        if "sighting_timestamp" in event_data["Event"]
-                        else None
-                    ),
-                    disable_correlation=(
-                        event_data["Event"]["disable_correlation"]
-                        if "disable_correlation" in event_data["Event"]
-                        else False
-                    ),
-                    extends_uuid=(
-                        event_data["Event"]["extends_uuid"]
-                        if "extends_uuid" in event_data["Event"]
-                        and event_data["Event"]["extends_uuid"] != ""
-                        else None
-                    ),
-                    protected=(
-                        event_data["Event"]["protected"]
-                        if "protected" in event_data["Event"]
-                        else False
-                    ),
-                    deleted=(
-                        event_data["Event"]["deleted"]
-                        if "deleted" in event_data["Event"]
-                        else False
-                    ),
+                db_event = events_repository.create_event_from_fetched_event(
+                    db, event, orgc, user
                 )
-
-                db.add(db_event)
-                db.commit()
-                db.flush()
-                db.refresh(db_event)
 
                 # process attributes
-                attribute_count = 0
-                if "Attribute" in event_data["Event"]:
-                    for attribute in event_data["Event"]["Attribute"]:
-                        # TODO: process sharing group
-                        # TODO: process tags
-
-                        db_attribute = attribute_models.Attribute(
-                            uuid=attribute["uuid"],
-                            event_id=db_event.id,
-                            type=attribute["type"],
-                            category=attribute["category"],
-                            to_ids=(
-                                attribute["to_ids"] if "to_ids" in attribute else False
-                            ),
-                            distribution=event_schemas.DistributionLevel.INHERIT_EVENT,
-                            comment=attribute["comment"],
-                            value=attribute["value"],
-                            timestamp=(
-                                int(attribute["timestamp"])
-                                if "timestamp" in attribute
-                                else time.time()
-                            ),
-                            sharing_group_id=(
-                                attribute["sharing_group_id"]
-                                if "sharing_group_id" in attribute
-                                else None
-                            ),
-                            disable_correlation=(
-                                attribute["disable_correlation"]
-                                if "disable_correlation" in attribute
-                                else False
-                            ),
-                            object_id=(
-                                attribute["object_id"]
-                                if "object_id" in attribute
-                                else None
-                            ),
-                            deleted=(
-                                attribute["deleted"]
-                                if "deleted" in attribute
-                                else False
-                            ),
-                        )
-
-                        db.add(db_attribute)
-                        attribute_count += 1
+                attribute_count = (
+                    attributes_repository.create_event_attributes_from_fetched_event(
+                        db, db_event.id, event
+                    )
+                )
 
                 # process objects
-                objects_count = 0
-                if "Object" in event_data["Event"]:
-                    for object in event_data["Event"]["Object"]:
-                        db_object = object_models.Object(
-                            event_id=db_event.id,
-                            name=object["name"],
-                            meta_category=object["meta-category"],
-                            description=object["description"],
-                            template_uuid=object["template_uuid"],
-                            template_version=object["template_version"],
-                            uuid=object["uuid"],
-                            timestamp=(
-                                int(object["timetamp"])
-                                if "timetamp" in object
-                                else time.time()
-                            ),
-                            distribution=event_schemas.DistributionLevel.INHERIT_EVENT,
-                            sharing_group_id=(
-                                object["sharing_group_id"]
-                                if "sharing_group_id" in object
-                                else None
-                            ),
-                            comment=(object["comment"] if "comment" in object else ""),
-                            deleted=(
-                                object["deleted"] if "deleted" in object else False
-                            ),
-                            first_seen=(
-                                datetime.fromisoformat(object["first_seen"]).timestamp()
-                                if "first_seen" in object
-                                else None
-                            ),
-                            last_seen=(
-                                datetime.fromisoformat(object["last_seen"]).timestamp()
-                                if "last_seen" in object
-                                else None
-                            ),
-                        )
+                result = objects_repository.create_event_objects_from_fetched_event(
+                    db, db_event.id, event
+                )
 
-                        db.add(db_object)
-                        db.commit()
-                        db.refresh(db_object)
-                        objects_count += 1
-
-                        for attribute in object["Attribute"]:
-                            db_attribute = attribute_models.Attribute(
-                                uuid=attribute["uuid"],
-                                event_id=db_event.id,
-                                object_id=db_object.id,
-                                type=attribute["type"],
-                                category=attribute["category"],
-                                to_ids=(
-                                    attribute["to_ids"]
-                                    if "to_ids" in attribute
-                                    else False
-                                ),
-                                distribution=event_schemas.DistributionLevel.INHERIT_EVENT,
-                                comment=(
-                                    attribute["comment"]
-                                    if "comment" in attribute
-                                    else ""
-                                ),
-                                value=attribute["value"],
-                                timestamp=(
-                                    int(attribute["timestamp"])
-                                    if "timestamp" in attribute
-                                    else time.time()
-                                ),
-                                sharing_group_id=(
-                                    attribute["sharing_group_id"]
-                                    if "sharing_group_id" in attribute
-                                    else None
-                                ),
-                                disable_correlation=(
-                                    attribute["disable_correlation"]
-                                    if "disable_correlation" in attribute
-                                    else False
-                                ),
-                                deleted=(
-                                    attribute["deleted"]
-                                    if "deleted" in attribute
-                                    else False
-                                ),
-                                first_seen=(
-                                    datetime.fromisoformat(
-                                        attribute["first_seen"]
-                                    ).timestamp()
-                                    if "first_seen" in attribute
-                                    else None
-                                ),
-                                last_seen=(
-                                    datetime.fromisoformat(
-                                        attribute["last_seen"]
-                                    ).timestamp()
-                                    if "last_seen" in attribute
-                                    else None
-                                ),
-                            )
-                            db.add(db_attribute)
-                            attribute_count += 1
-
-                        db.commit()
-
-                # process object references
-                if "Object" in event_data["Event"]:
-                    for object in event_data["Event"]["Object"]:
-                        if "ObjectReference" in object:
-                            for object_reference in object["ObjectReference"]:
-                                referenced = (
-                                    db.query(object_models.Object)
-                                    .filter_by(uuid=object_reference["referenced_uuid"])
-                                    .first()
-                                )
-                                if referenced is None:
-                                    referenced = (
-                                        db.query(attribute_models.Attribute)
-                                        .filter_by(
-                                            uuid=object_reference["referenced_uuid"]
-                                        )
-                                        .first()
-                                    )
-                                if referenced is None:
-                                    logger.error(
-                                        f"Referenced entity not found, skipping object reference uuid: {object_reference['uuid']}"
-                                    )
-                                    break
-
-                                db_object_reference = object_reference_models.ObjectReference(
-                                    uuid=object_reference["uuid"],
-                                    event_id=db_event.id,
-                                    object_id=db_object.id,
-                                    referenced_uuid=object_reference["referenced_uuid"],
-                                    referenced_id=referenced.id,
-                                    relationship_type=object_reference[
-                                        "relationship_type"
-                                    ],
-                                    timestamp=(
-                                        int(object_reference["timestamp"])
-                                        if "timestamp" in object_reference
-                                        else time.time()
-                                    ),
-                                    referenced_type=(
-                                        object_reference_models.ReferencedType.ATTRIBUTE
-                                        if referenced.__class__.__name__ == "Attribute"
-                                        else object_reference_models.ReferencedType.OBJECT
-                                    ),
-                                    comment=(
-                                        object_reference["comment"]
-                                        if "comment" in object_reference
-                                        else ""
-                                    ),
-                                    deleted=(
-                                        object_reference["deleted"]
-                                        if "deleted" in object_reference
-                                        else False
-                                    ),
-                                )
-                                db.add(db_object_reference)
+                object_count = result["object_count"]
+                attribute_count += result["attribute_count"]
 
                 # TODO: process event tags
                 # TODO: process event galaxies
@@ -468,7 +174,7 @@ async def process_feed_event(
                 events_repository.increment_attribute_count(
                     db, db_event.id, attribute_count
                 )
-                events_repository.increment_object_count(db, db_event.id, objects_count)
+                events_repository.increment_object_count(db, db_event.id, object_count)
                 db.commit()
 
         except Exception as e:
@@ -540,11 +246,13 @@ def fetch_feed(db: Session, feed_id: int, user: user_schemas.User):
                 uuid for uuid in feed_events_uuids if uuid not in skip_events
             ]
 
+            # for testing purposes
             # feed_events_uuids = ["5742ea44-5ff4-4634-99c9-4b32950d210f"]
             # local_feed_events_uuids = []
 
             # TODO: check if event is blocked by blocklist or feed rules (tags, orgs)
 
+            # fetch events in parallel http requests
             asyncio.run(
                 fetch_feeds_async(
                     feed_events_uuids,

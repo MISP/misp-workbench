@@ -1,12 +1,16 @@
+import logging
 import uuid
 from datetime import datetime
 from typing import Union
 
 from app.models import organisation as organisation_models
 from app.schemas import organisations as organisations_schemas
+from app.schemas import user as user_schemas
 from fastapi import HTTPException, status
 from pymisp import MISPOrganisation
 from sqlalchemy.orm import Session
+
+logger = logging.getLogger(__name__)
 
 
 def get_organisations(
@@ -127,3 +131,29 @@ def capture_sharing_group_organisation(
         )
 
     return db_organisation
+
+
+def get_or_create_organisation_from_feed(
+    db: Session, Orgc: MISPOrganisation, user: user_schemas.User
+):
+    orgc = get_organisation_by_uuid(
+        db,
+        organisation_uuid=Orgc["uuid"],
+    )
+
+    if orgc is None:
+        logger.info(f"Creating Organisation {Orgc['name']} ({Orgc['uuid']})")
+        orgc = organisation_models.Organisation(
+            uuid=Orgc["uuid"],
+            name=Orgc["name"],
+            date_created=datetime.now(),
+            date_modified=datetime.now(),
+            created_by=user.id,
+            local=False,
+        )
+        db.add(orgc)
+        db.commit()
+        db.flush()
+        db.refresh(orgc)
+
+    return orgc

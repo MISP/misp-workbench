@@ -3,9 +3,10 @@ from datetime import datetime
 
 from app.models import event as event_models
 from app.schemas import event as event_schemas
+from app.schemas import user as user_schemas
 from fastapi import HTTPException, status
 from fastapi_pagination.ext.sqlalchemy import paginate
-from pymisp import MISPEvent
+from pymisp import MISPEvent, MISPOrganisation
 from sqlalchemy.orm import Session
 
 
@@ -234,3 +235,48 @@ def decrement_object_count(db: Session, event_id: int, objects_count: int = 1) -
     db.add(db_event)
     db.commit()
     db.refresh(db_event)
+
+
+def create_event_from_fetched_event(
+    db: Session,
+    fetched_event: MISPEvent,
+    Orgc: MISPOrganisation,
+    user: user_schemas.User,
+):
+    db_event = event_models.Event(
+        org_id=user.org_id,
+        date=fetched_event.date,
+        info=fetched_event.info,
+        user_id=user.id,
+        uuid=fetched_event.uuid,
+        published=fetched_event.published,
+        analysis=event_models.AnalysisLevel(fetched_event.analysis),
+        object_count=len(fetched_event.objects),
+        orgc_id=Orgc.id,
+        timestamp=fetched_event.timestamp.timestamp(),
+        distribution=(
+            event_models.DistributionLevel(fetched_event.distribution)
+            if fetched_event.distribution
+            else event_models.DistributionLevel.ORGANISATION_ONLY
+        ),
+        sharing_group_id=getattr(fetched_event, "sharing_group_id", None),
+        locked=(fetched_event.locked if hasattr(fetched_event, "locked") else False),
+        threat_level=event_models.ThreatLevel(fetched_event.threat_level_id),
+        publish_timestamp=fetched_event.publish_timestamp.timestamp(),
+        # sighting_timestamp=fetched_event.sighting_timestamp, # TODO: add sighting_timestamp
+        disable_correlation=getattr(fetched_event, "disable_correlation", False),
+        extends_uuid=(
+            fetched_event.extends_uuid
+            if hasattr(fetched_event, "extends_uuid")
+            and fetched_event.extends_uuid != ""
+            else None
+        ),
+        # protected=fetched_event.protected # TODO: add protected [pymisp]
+    )
+
+    db.add(db_event)
+    db.commit()
+    db.flush()
+    db.refresh(db_event)
+
+    return db_event

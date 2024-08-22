@@ -4,7 +4,7 @@ import smtplib
 import uuid
 from datetime import datetime
 
-from app.database import SessionLocal
+from app.database import SQLALCHEMY_DATABASE_URL
 from app.dependencies import get_opensearch_client
 from app.repositories import events as events_repository
 from app.repositories import feeds as feeds_repository
@@ -13,6 +13,8 @@ from app.repositories import users as users_repository
 from app.schemas import event as event_schemas
 from app.settings import get_settings
 from celery import Celery
+from sqlalchemy import create_engine
+from sqlalchemy.orm import Session
 
 # Celery configuration
 app = Celery()
@@ -26,19 +28,22 @@ app.conf.update(
 
 logger = logging.getLogger(__name__)
 
-db = SessionLocal()
+engine = create_engine(SQLALCHEMY_DATABASE_URL)
 
 
 @app.task
 def server_pull_by_id(server_id: int, user_id: int, technique: str):
     logger.info("pull server_id=%s job started", server_id)
 
-    user = users_repository.get_user_by_id(db, user_id)
-    if user is None:
-        raise Exception("User not found")
+    with Session(engine) as db:
+        user = users_repository.get_user_by_id(db, user_id)
+        if user is None:
+            raise Exception("User not found")
 
-    servers_repository.pull_server_by_id(db, get_settings(), server_id, user, technique)
-    logger.info("pull server_id=%s job finished", server_id)
+        servers_repository.pull_server_by_id(
+            db, get_settings(), server_id, user, technique
+        )
+        logger.info("pull server_id=%s job finished", server_id)
 
     return True
 
@@ -46,8 +51,8 @@ def server_pull_by_id(server_id: int, user_id: int, technique: str):
 @app.task
 def handle_created_attribute(attribute_id: int, event_id: int):
     logger.info("handling created attribute id=%s job started", attribute_id)
-
-    events_repository.increment_attribute_count(db, event_id)
+    with Session(engine) as db:
+        events_repository.increment_attribute_count(db, event_id)
 
     return True
 
@@ -55,8 +60,8 @@ def handle_created_attribute(attribute_id: int, event_id: int):
 @app.task
 def handle_deleted_attribute(attribute_id: int, event_id: int):
     logger.info("handling deleted attribute id=%s job started", attribute_id)
-
-    events_repository.decrement_attribute_count(db, event_id)
+    with Session(engine) as db:
+        events_repository.decrement_attribute_count(db, event_id)
 
     return True
 
@@ -65,7 +70,8 @@ def handle_deleted_attribute(attribute_id: int, event_id: int):
 def handle_created_object(object_id: int, event_id: int):
     logger.info("handling created object id=%s job started", object_id)
 
-    events_repository.increment_object_count(db, event_id)
+    with Session(engine) as db:
+        events_repository.increment_object_count(db, event_id)
 
     return True
 
@@ -74,7 +80,8 @@ def handle_created_object(object_id: int, event_id: int):
 def handle_deleted_object(object_id: int, event_id: int):
     logger.info("handling deleted object id=%s job started", object_id)
 
-    events_repository.decrement_object_count(db, event_id)
+    with Session(engine) as db:
+        events_repository.decrement_object_count(db, event_id)
 
     return True
 
@@ -106,9 +113,10 @@ def send_email(email: dict):
 def index_event(event_uuid: uuid.UUID):
     logger.info("index event uuid=%s job started", event_uuid)
 
-    db_event = events_repository.get_event_by_uuid(db, event_uuid)
-    if db_event is None:
-        raise Exception("Event with uuid=%s not found", event_uuid)
+    with Session(engine) as db:
+        db_event = events_repository.get_event_by_uuid(db, event_uuid)
+        if db_event is None:
+            raise Exception("Event with uuid=%s not found", event_uuid)
 
     event = event_schemas.Event.model_validate(db_event)
 
@@ -158,9 +166,9 @@ def index_event(event_uuid: uuid.UUID):
 def fetch_feed(feed_id: int, user_id: int):
     logger.info("fetch feed id=%s job started", feed_id)
 
-    user = users_repository.get_user_by_id(db, user_id)
-
-    feeds_repository.fetch_feed(db, feed_id, user)
+    with Session(engine) as db:
+        user = users_repository.get_user_by_id(db, user_id)
+        feeds_repository.fetch_feed(db, feed_id, user)
 
     logger.info("fetch feed id=%s job finished", feed_id)
 

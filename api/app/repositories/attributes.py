@@ -2,6 +2,7 @@ import time
 from typing import Union
 
 from app.models import attribute as attribute_models
+from app.models import event as event_models
 from app.schemas import attribute as attribute_schemas
 from app.schemas import event as event_schemas
 from app.worker import tasks
@@ -163,3 +164,47 @@ def delete_attribute(db: Session, attribute_id: int) -> None:
     db.refresh(db_attribute)
 
     tasks.handle_deleted_attribute.delay(db_attribute.id, db_attribute.event_id)
+
+
+def create_event_attributes_from_fetched_event(
+    db: Session, local_event_id: int, event: event_schemas.Event
+) -> int:
+
+    attribute_count = 0
+    for attribute in event.attributes:
+        # TODO: process sharing group
+        # TODO: process tags
+
+        db_attribute = attribute_models.Attribute(
+            event_id=local_event_id,
+            category=attribute.category,
+            type=attribute.type,
+            value=str(attribute.value),
+            to_ids=attribute.to_ids,
+            uuid=attribute.uuid,
+            timestamp=attribute.timestamp.timestamp(),
+            distribution=event_models.DistributionLevel.INHERIT_EVENT,
+            comment=attribute.comment,
+            sharing_group_id=None,
+            deleted=attribute.deleted,
+            disable_correlation=attribute.disable_correlation,
+            object_id=None,
+            object_relation=getattr(attribute, "object_relation", None),
+            first_seen=(
+                int(attribute.first_seen.timestamp())
+                if hasattr(attribute, "first_seen")
+                else None
+            ),
+            last_seen=(
+                int(attribute.last_seen.timestamp())
+                if hasattr(attribute, "last_seen")
+                else None
+            ),
+        )
+
+        db.add(db_attribute)
+        attribute_count += 1
+
+    db.commit()
+
+    return attribute_count
