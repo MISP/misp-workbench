@@ -7,6 +7,7 @@ from datetime import datetime
 from app.database import SessionLocal
 from app.dependencies import get_opensearch_client
 from app.repositories import events as events_repository
+from app.repositories import feeds as feeds_repository
 from app.repositories import servers as servers_repository
 from app.repositories import users as users_repository
 from app.schemas import event as event_schemas
@@ -149,5 +150,18 @@ def index_event(event_uuid: uuid.UUID):
         raise Exception("Failed to index event.")
 
     logger.info("index event uuid=%s job finished", event_uuid)
+
+    return True
+
+
+@app.task
+def fetch_feed(feed_id: int, user_id: int):
+    logger.info("fetch feed id=%s job started", feed_id)
+
+    user = users_repository.get_user_by_id(db, user_id)
+
+    feeds_repository.fetch_feed(db, feed_id, user)
+
+    logger.info("fetch feed id=%s job finished", feed_id)
 
     return True

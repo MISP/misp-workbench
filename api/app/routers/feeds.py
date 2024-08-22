@@ -3,6 +3,7 @@ from app.dependencies import get_db
 from app.repositories import feeds as feeds_repository
 from app.schemas import feed as feed_schemas
 from app.schemas import user as user_schemas
+from app.worker import tasks
 from fastapi import APIRouter, Depends, HTTPException, Security, status
 from sqlalchemy.orm import Session
 
@@ -77,4 +78,12 @@ def fetch_feed(
     db: Session = Depends(get_db),
     user: user_schemas.User = Security(get_current_active_user, scopes=["feeds:fetch"]),
 ):
-    return feeds_repository.fetch_feed(db=db, feed_id=feed_id, user=user)
+    db_feed = feeds_repository.get_feed_by_id(db, feed_id=feed_id)
+    if db_feed is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Feed not found"
+        )
+
+    result = tasks.fetch_feed.delay(feed_id, user.id)
+
+    return {"task": {"id": result.id, "name": "fetch_feed", "status": result.status}}
