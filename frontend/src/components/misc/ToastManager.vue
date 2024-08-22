@@ -15,7 +15,7 @@ const removeToast = (id) => {
 
 <template>
     <div class="toast-container position-fixed bottom-0 end-0 p-3">
-        <div v-for="toast in toasts" :key="index" class="toast align-items-center border-0 show mb-2"
+        <div v-for="toast in toasts" :key="toast.id" class="toast align-items-center border-0 show mb-2"
             :class="toast.type" role="alert" aria-live="assertive" aria-atomic="true">
             <div class="d-flex">
                 <div class="toast-body">
