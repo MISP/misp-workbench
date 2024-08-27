@@ -1,5 +1,6 @@
 from app.database import Base
 from sqlalchemy import Boolean, Column, ForeignKey, Integer, String
+from sqlalchemy.orm import relationship
 
 
 class Tag(Base):
@@ -23,7 +24,9 @@ class EventTag(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     event_id = Column(Integer, ForeignKey("events.id"), nullable=False)
+    event = relationship("Event")
     tag_id = Column(Integer, ForeignKey("tags.id"), nullable=False)
+    tag = relationship("Tag")
     local = Column(Boolean, nullable=False, default=False)
 
 
@@ -32,6 +35,8 @@ class AttributeTag(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     attribute_id = Column(Integer, ForeignKey("attributes.id"), nullable=False)
+    attribute = relationship("Attribute")
     event_id = Column(Integer, ForeignKey("events.id"), nullable=False)
     tag_id = Column(Integer, ForeignKey("tags.id"), nullable=False)
+    tag = relationship("Tag")
     local = Column(Boolean, nullable=False, default=False)

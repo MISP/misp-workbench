@@ -4,6 +4,7 @@ import { useEventsStore } from "@/stores";
 import { RouterLink } from "vue-router";
 import Spinner from "@/components/misc/Spinner.vue";
 import DistributionLevel from "@/components/enums/DistributionLevel.vue";
+import TagsIndex from "@/components/tags/TagsIndex.vue";
 import DeleteEventModal from "@/components/events/DeleteEventModal.vue";
 import Paginate from "vuejs-paginate-next";
 const eventsStore = useEventsStore();
@@ -46,9 +47,10 @@ function handleEventDeleted(event) {
                 <tr>
                     <th scope="col">id</th>
                     <th scope="col" class="eventInfoColumn">info</th>
+                    <th scope="col">tags</th>
                     <th scope="col">date</th>
                     <th scope="col" class="d-none d-sm-table-cell">distribution</th>
-                    <th scope="col" class="text-end">actions</th>
+                    <th scope="col" width="20%" class="text-end">actions</th>
                 </tr>
             </thead>
             <tbody>
@@ -57,6 +59,9 @@ function handleEventDeleted(event) {
                         <RouterLink :to="`/events/${event.id}`">{{ event.id }}</RouterLink>
                     </td>
                     <td class="eventInfoColumn text-start">{{ event.info }}</td>
+                    <td>
+                        <TagsIndex :tags="event.tags" />
+                    </td>
                     <td>{{ event.date }}</td>
                     <td class="d-none d-sm-table-cell">
                         <DistributionLevel :distribution_level_id=event.distribution />

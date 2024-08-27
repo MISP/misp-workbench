@@ -2,6 +2,8 @@ import time
 from datetime import datetime
 
 from app.models import event as event_models
+from app.models import tag as tag_models
+from app.repositories import tags as tags_repository
 from app.schemas import event as event_schemas
 from app.schemas import user as user_schemas
 from fastapi import HTTPException, status
@@ -275,6 +277,34 @@ def create_event_from_fetched_event(
     )
 
     db.add(db_event)
+
+    # processs tags
+    for tag in fetched_event.tags:
+        db_tag = tags_repository.get_tag_by_name(db, tag.name)
+
+        if db_tag is None:
+            # create tag if not exists
+            db_tag = tag_models.Tag(
+                name=tag.name,
+                colour=tag.colour,
+                org_id=user.org_id,
+                user_id=user.id,
+                local_only=tag.local,
+                # exportable=tag.exportable,
+                # hide_tag=tag.hide_tag,
+                # numerical_value=tag.numerical_value,
+                # is_galaxy=tag.is_galaxy,
+                # is_custom_galaxy=tag.is_custom_galaxy,
+            )
+            db.add(db_tag)
+
+        db_event_tag = tag_models.EventTag(
+            event=db_event,
+            tag=db_tag,
+            local=tag.local,
+        )
+        db.add(db_event_tag)
+
     db.commit()
     db.flush()
     db.refresh(db_event)

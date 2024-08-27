@@ -3,6 +3,9 @@ from typing import Union
 
 from app.models import attribute as attribute_models
 from app.models import event as event_models
+from app.models import tag as tag_models
+from app.models import user as user_models
+from app.repositories import tags as tags_repository
 from app.schemas import attribute as attribute_schemas
 from app.schemas import event as event_schemas
 from app.worker import tasks
@@ -167,13 +170,12 @@ def delete_attribute(db: Session, attribute_id: int) -> None:
 
 
 def create_event_attributes_from_fetched_event(
-    db: Session, local_event_id: int, event: event_schemas.Event
+    db: Session, local_event_id: int, event: event_schemas.Event, user: user_models.User
 ) -> int:
 
     attribute_count = 0
+
     for attribute in event.attributes:
-        # TODO: process sharing group
-        # TODO: process tags
 
         db_attribute = attribute_models.Attribute(
             event_id=local_event_id,
@@ -204,6 +206,35 @@ def create_event_attributes_from_fetched_event(
 
         db.add(db_attribute)
         attribute_count += 1
+
+        for tag in attribute.tags:
+            db_tag = tags_repository.get_tag_by_name(db, tag.name)
+
+            if db_tag is None:
+                # create tag if not exists
+                db_tag = tag_models.Tag(
+                    name=tag.name,
+                    colour=tag.colour,
+                    org_id=user.org_id,
+                    user_id=user.id,
+                    local_only=tag.local,
+                    # exportable=tag.exportable,
+                    # hide_tag=tag.hide_tag,
+                    # numerical_value=tag.numerical_value,
+                    # is_galaxy=tag.is_galaxy,
+                    # is_custom_galaxy=tag.is_custom_galaxy,
+                )
+                db.add(db_tag)
+
+            db_attribute_tag = tag_models.AttributeTag(
+                attribute=db_attribute,
+                event_id=local_event_id,
+                tag=db_tag,
+                local=tag.local,
+            )
+            db.add(db_attribute_tag)
+
+        # TODO: process sharing group
 
     db.commit()
 
