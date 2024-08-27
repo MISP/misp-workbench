@@ -35,6 +35,10 @@ function handleEventDeleted(event) {
     text-overflow: ellipsis;
 
 }
+
+.btn-toolbar {
+    flex-wrap: nowrap !important;
+}
 </style>
 
 <template>

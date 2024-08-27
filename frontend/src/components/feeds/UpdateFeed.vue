@@ -86,15 +86,20 @@ function handleDistributionLevelUpdated(distributionLevel) {
                 </div>
                 <div class="mb-3">
                     <label for="feed.source_format">source_format</label>
-                    <Field class="form-control" id="feed.source_format" name="feed.source_format"
+                    <Field class="form-control" id="feed.source_format" name="feed.source_format" as="select"
                         v-model="feed.source_format" :class="{ 'is-invalid': errors['feed.source_format'] }">
+                        <option value="misp">MISP Feed</option>
+                        <option valie="csv">Freetext Parsed Feed</option>
+                        <option valie="freetext">Simple CSV Parsed Feed</option>
                     </Field>
                     <div class=" invalid-feedback">{{ errors['feed.source_format'] }}</div>
                 </div>
                 <div class="mb-3">
                     <label for="feed.input_source">input_source</label>
-                    <Field class="form-control" id="feed.input_source" name="feed.input_source"
+                    <Field class="form-control" id="feed.input_source" name="feed.input_source" as="select"
                         v-model="feed.input_source" :class="{ 'is-invalid': errors['feed.input_source'] }">
+                        <option value="network">Network</option>
+                        <option valie="local">Local</option>
                     </Field>
                     <div class=" invalid-feedback">{{ errors['feed.input_source'] }}</div>
                 </div>

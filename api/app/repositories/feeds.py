@@ -4,6 +4,7 @@ from asyncio import Semaphore
 
 import aiohttp
 import requests
+from app.models import event as event_models
 from app.models import feed as feed_models
 from app.repositories import attributes as attributes_repository
 from app.repositories import events as events_repository
@@ -221,32 +222,33 @@ def fetch_feed(db: Session, feed_id: int, user: user_schemas.User):
         req = requests.get(f"{db_feed.url}/manifest.json")
 
         if req.status_code == 200:
-            req.json()
+            manifest = req.json()
 
             # TODO: cache etag value in redis
-            req.headers.get("etag")
+            etag = req.headers.get("etag")
+            logger.info(f"Feed etag: {etag}")
 
-            # feed_events_uuids = manifest.keys()
-            # local_feed_events = (
-            #     db.query(event_models.Event)
-            #     .filter(event_models.Event.uuid.in_(feed_events_uuids))
-            #     .all()
-            # )
-            # local_feed_events_uuids = [event.uuid for event in local_feed_events]
+            feed_events_uuids = manifest.keys()
+            local_feed_events = (
+                db.query(event_models.Event)
+                .filter(event_models.Event.uuid.in_(feed_events_uuids))
+                .all()
+            )
+            local_feed_events_uuids = [event.uuid for event in local_feed_events]
 
-            # # filter out events that are already in the database and have the same timestamp
-            # skip_events = [
-            #     str(event.uuid)
-            #     for event in local_feed_events
-            #     if event.timestamp == manifest[str(event.uuid)]["timestamp"]
-            # ]
-            # feed_events_uuids = [
-            #     uuid for uuid in feed_events_uuids if uuid not in skip_events
-            # ]
+            # filter out events that are already in the database and have the same timestamp
+            skip_events = [
+                str(event.uuid)
+                for event in local_feed_events
+                if event.timestamp == manifest[str(event.uuid)]["timestamp"]
+            ]
+            feed_events_uuids = [
+                uuid for uuid in feed_events_uuids if uuid not in skip_events
+            ]
 
             # for testing purposes
-            feed_events_uuids = ["3dd18ce2-fa55-4f0d-b88e-7d4144cb0dcb"]
-            local_feed_events_uuids = []
+            # feed_events_uuids = ["3dd18ce2-fa55-4f0d-b88e-7d4144cb0dcb"]
+            # local_feed_events_uuids = []
 
             # TODO: check if event is blocked by blocklist or feed rules (tags, orgs)
 
