@@ -207,6 +207,7 @@ def create_event_attributes_from_fetched_event(
         db.add(db_attribute)
         attribute_count += 1
 
+        # process tags
         for tag in attribute.tags:
             db_tag = tags_repository.get_tag_by_name(db, tag.name)
 
@@ -234,7 +235,11 @@ def create_event_attributes_from_fetched_event(
             )
             db.add(db_attribute_tag)
 
+        # TODO: process shadow_attributes
+        # TODO: process attribute sightings
         # TODO: process sharing group
+        # TODO: process galaxies
+        # TODO: process analyst notes
 
     db.commit()
 

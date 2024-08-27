@@ -1,3 +1,4 @@
+import logging
 import time
 from datetime import datetime
 
@@ -10,6 +11,8 @@ from fastapi import HTTPException, status
 from fastapi_pagination.ext.sqlalchemy import paginate
 from pymisp import MISPEvent, MISPOrganisation
 from sqlalchemy.orm import Session
+
+logger = logging.getLogger(__name__)
 
 
 def get_events(db: Session, info: str = None, deleted: bool = None):
@@ -278,7 +281,7 @@ def create_event_from_fetched_event(
 
     db.add(db_event)
 
-    # processs tags
+    # process tags
     for tag in fetched_event.tags:
         db_tag = tags_repository.get_tag_by_name(db, tag.name)
 
@@ -305,8 +308,60 @@ def create_event_from_fetched_event(
         )
         db.add(db_event_tag)
 
+    # TODO: process galaxies
+    # TODO: process reports
+    # TODO: process analyst notes
+
     db.commit()
     db.flush()
     db.refresh(db_event)
 
     return db_event
+
+
+def update_event_from_fetched_event(
+    db: Session,
+    fetched_event: MISPEvent,
+    Orgc: MISPOrganisation,
+    user: user_schemas.User,
+):
+    db_event = get_event_by_uuid(db, fetched_event.uuid)
+
+    if db_event is None:
+        logger.error(f"Event {fetched_event.uuid} not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Event not found"
+        )
+
+    db_event.date = fetched_event.date
+    db_event.info = fetched_event.info
+    db_event.published = fetched_event.published
+    db_event.analysis = event_models.AnalysisLevel(fetched_event.analysis)
+    db_event.object_count = len(fetched_event.objects)
+    db_event.orgc_id = Orgc.id
+    db_event.timestamp = fetched_event.timestamp.timestamp()
+    db_event.distribution = (
+        event_models.DistributionLevel(fetched_event.distribution)
+        if fetched_event.distribution
+        else event_models.DistributionLevel.ORGANISATION_ONLY
+    )
+    db_event.sharing_group_id = getattr(fetched_event, "sharing_group_id", None)
+    db_event.locked = (
+        fetched_event.locked if hasattr(fetched_event, "locked") else False
+    )
+    db_event.threat_level = event_models.ThreatLevel(fetched_event.threat_level_id)
+    db_event.publish_timestamp = fetched_event.publish_timestamp.timestamp()
+    db_event.disable_correlation = getattr(fetched_event, "disable_correlation", False)
+    db_event.extends_uuid = (
+        fetched_event.extends_uuid
+        if hasattr(fetched_event, "extends_uuid") and fetched_event.extends_uuid != ""
+        else None
+    )
+
+    db.add(db_event)
+    db.commit()
+
+    # TODO: process tags
+    # TODO: process galaxies
+    # TODO: process reports
+    # TODO: process analyst notes

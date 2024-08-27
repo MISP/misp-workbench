@@ -227,6 +227,9 @@ def create_event_objects_from_fetched_event(
             ),
         )
 
+        # TODO: process shadow_objects
+        # TODO: process analyst notes
+
         db.add(db_object)
         db.commit()
         db.refresh(db_object)
@@ -261,6 +264,12 @@ def create_event_objects_from_fetched_event(
             )
             db.add(db_attribute)
             attribute_count += 1
+
+            # TODO: process shadow_attributes
+            # TODO: process attribute sightings
+            # TODO: process sharing group
+            # TODO: process galaxies
+            # TODO: process analyst notes
 
         db.commit()
 

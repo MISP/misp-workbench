@@ -130,19 +130,21 @@ async def process_feed_event(
             return None
 
         try:
+            orgc = organisations_repository.get_or_create_organisation_from_feed(
+                db, event.Orgc, user=user
+            )
+
             if event_uuid in local_feed_events_uuids:
-                # TODO: update event
-                pass
+                db_event = events_repository.update_event_from_fetched_event(
+                    db, event, orgc, user
+                )
+
             else:
                 # TODO: process tag_id and tag_collection_id
 
                 # TODO: process sharing_group_id
 
                 # TODO: apply feed rules (disable_correlation, unpublish_event)
-
-                orgc = organisations_repository.get_or_create_organisation_from_feed(
-                    db, event.Orgc, user=user
-                )
 
                 db_event = events_repository.create_event_from_fetched_event(
                     db, event, orgc, user
@@ -162,13 +164,6 @@ async def process_feed_event(
 
                 object_count = result["object_count"]
                 attribute_count += result["attribute_count"]
-
-                # TODO: process event galaxies
-                # TODO: process event sightings
-                # TODO: process event shadow_attributes
-                # TODO: process event shadow_objects
-                # TODO: process event reports
-                # TODO: process event analyst data
 
                 events_repository.increment_attribute_count(
                     db, db_event.id, attribute_count
@@ -229,12 +224,14 @@ def fetch_feed(db: Session, feed_id: int, user: user_schemas.User):
             logger.info(f"Feed etag: {etag}")
 
             feed_events_uuids = manifest.keys()
+            # feed_events_uuids = ["3dd18ce2-fa55-4f0d-b88e-7d4144cb0dcb"]  # TODO: REMOVE (for testing purposes)
+
             local_feed_events = (
                 db.query(event_models.Event)
                 .filter(event_models.Event.uuid.in_(feed_events_uuids))
                 .all()
             )
-            local_feed_events_uuids = [event.uuid for event in local_feed_events]
+            local_feed_events_uuids = [str(event.uuid) for event in local_feed_events]
 
             # filter out events that are already in the database and have the same timestamp
             skip_events = [
@@ -246,13 +243,13 @@ def fetch_feed(db: Session, feed_id: int, user: user_schemas.User):
                 uuid for uuid in feed_events_uuids if uuid not in skip_events
             ]
 
-            # for testing purposes
-            # feed_events_uuids = ["3dd18ce2-fa55-4f0d-b88e-7d4144cb0dcb"]
-            # local_feed_events_uuids = []
-
             # TODO: check if event is blocked by blocklist or feed rules (tags, orgs)
 
             # fetch events in parallel http requests
+
+            if not feed_events_uuids:
+                return {"result": "success", "message": "No new events to fetch"}
+
             asyncio.run(
                 fetch_feeds_async(
                     feed_events_uuids,
