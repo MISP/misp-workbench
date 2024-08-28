@@ -15,7 +15,7 @@ from sqlalchemy.orm import Session
 logger = logging.getLogger(__name__)
 
 
-def get_events(db: Session, info: str = None, deleted: bool = None):
+def get_events(db: Session, info: str = None, deleted: bool = None, uuid: str = None):
     query = db.query(event_models.Event)
 
     if info is not None:
@@ -24,6 +24,9 @@ def get_events(db: Session, info: str = None, deleted: bool = None):
 
     if deleted is not None:
         query = query.filter(event_models.Event.deleted == deleted)
+
+    if uuid is not None:
+        query = query.filter(event_models.Event.uuid == uuid)
 
     return paginate(query)
 
