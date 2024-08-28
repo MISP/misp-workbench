@@ -96,7 +96,7 @@ services:
     build:
       context: ./api
       dockerfile: Dockerfile
-    command: poetry run celery -A app.worker.tasks worker --loglevel=info
+    command: poetry run celery -A app.worker.tasks worker --loglevel=info --hostname worker@%h
     environment:
       POSTGRES_HOSTNAME: ${POSTGRES_HOSTNAME:-postgres}
       POSTGRES_PORT: ${POSTGRES_PORT:-5432}
@@ -126,7 +126,7 @@ services:
     build:
       context: ./api
       dockerfile: Dockerfile
-    command: poetry run celery -A app.worker.tasks flower --loglevel=info
+    command: poetry run celery -A app.worker.tasks flower --loglevel=info --persistent=True --auto_refresh=True
     ports:
       - "5555:5555"
     working_dir: /code
