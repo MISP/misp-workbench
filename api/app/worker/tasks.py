@@ -147,6 +147,11 @@ def index_event(event_uuid: uuid.UUID):
                 attribute["timestamp"]
             ).isoformat()
 
+        for reference in object["object_references"]:
+            reference["@timestamp"] = datetime.fromtimestamp(
+                reference["timestamp"]
+            ).isoformat()
+
     response = OpenSearchClient.index(
         index="misp-events", id=event.uuid, body=event_json, refresh=True
     )

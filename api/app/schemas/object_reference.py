@@ -17,6 +17,7 @@ class ObjectReferenceBase(BaseModel):
     relationship_type: Optional[str] = None
     comment: Optional[str] = None
     deleted: bool
+    model_config = ConfigDict(use_enum_values=True)
 
 
 class ObjectReference(ObjectReferenceBase):

@@ -36,4 +36,4 @@ class Attribute(Base):
     first_seen = Column(BigInteger(), index=True)
     last_seen = Column(BigInteger(), index=True)
 
-    tags = relationship("Tag", secondary="attribute_tags")
+    tags = relationship("Tag", secondary="attribute_tags", lazy="subquery")

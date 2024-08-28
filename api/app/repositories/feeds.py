@@ -12,6 +12,7 @@ from app.repositories import objects as objects_repository
 from app.repositories import organisations as organisations_repository
 from app.schemas import feed as feed_schemas
 from app.schemas import user as user_schemas
+from app.worker import tasks
 from fastapi import HTTPException, status
 from pymisp import MISPEvent
 from sqlalchemy.orm import Session
@@ -170,6 +171,8 @@ async def process_feed_event(
                 )
                 events_repository.increment_object_count(db, db_event.id, object_count)
                 db.commit()
+
+            tasks.index_event.delay(db_event.uuid)
 
         except Exception as e:
             logger.error(f"Failed to process event {event_uuid}: {e}")
