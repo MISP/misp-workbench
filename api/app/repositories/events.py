@@ -136,7 +136,6 @@ def update_event_from_pulled_event(
     existing_event.threat_level = event_models.ThreatLevel(pulled_event.threat_level_id)
     existing_event.disable_correlation = pulled_event.disable_correlation
     existing_event.extends_uuid = pulled_event.extends_uuid or None
-    db.add(existing_event)  # updates if exists
     db.commit()
     db.refresh(existing_event)
 
@@ -156,7 +155,6 @@ def update_event(db: Session, event_id: int, event: event_schemas.EventUpdate):
     for key, value in event_patch.items():
         setattr(db_event, key, value)
 
-    db.add(db_event)
     db.commit()
     db.refresh(db_event)
 
@@ -173,7 +171,6 @@ def delete_event(db: Session, event_id: int) -> None:
 
     db_event.deleted = True
 
-    db.add(db_event)
     db.commit()
     db.refresh(db_event)
 
@@ -190,7 +187,6 @@ def increment_attribute_count(
 
     db_event.attribute_count += attributes_count
 
-    db.add(db_event)
     db.commit()
     db.refresh(db_event)
 
@@ -207,7 +203,6 @@ def decrement_attribute_count(
 
     if db_event.attribute_count > 0:
         db_event.attribute_count -= attributes_count
-        db.add(db_event)
         db.commit()
         db.refresh(db_event)
 
@@ -222,7 +217,6 @@ def increment_object_count(db: Session, event_id: int, objects_count: int = 1) -
 
     db_event.object_count += objects_count
 
-    db.add(db_event)
     db.commit()
     db.refresh(db_event)
 
@@ -240,7 +234,6 @@ def decrement_object_count(db: Session, event_id: int, objects_count: int = 1) -
     if db_event.object_count < 0:
         db_event.object_count = 0
 
-    db.add(db_event)
     db.commit()
     db.refresh(db_event)
 
@@ -250,7 +243,7 @@ def create_event_from_fetched_event(
     fetched_event: MISPEvent,
     Orgc: MISPOrganisation,
     user: user_schemas.User,
-):
+) -> event_models.Event:
     db_event = event_models.Event(
         org_id=user.org_id,
         date=fetched_event.date,
@@ -327,7 +320,7 @@ def update_event_from_fetched_event(
     fetched_event: MISPEvent,
     Orgc: MISPOrganisation,
     user: user_schemas.User,
-):
+) -> event_models.Event:
     db_event = get_event_by_uuid(db, fetched_event.uuid)
 
     if db_event is None:
@@ -361,8 +354,11 @@ def update_event_from_fetched_event(
         else None
     )
 
-    db.add(db_event)
     db.commit()
+    db.flush()
+    db.refresh(db_event)
+
+    return db_event
 
     # TODO: process tags
     # TODO: process galaxies

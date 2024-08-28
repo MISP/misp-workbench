@@ -194,16 +194,13 @@ def delete_object(db: Session, object_id: int) -> object_models.Object:
     return db_object
 
 
-def create_event_objects_from_fetched_event(
-    db: Session, local_event_id: int, event: event_schemas.Event
-) -> int:
-
-    object_count = 0
-    attribute_count = 0
+def create_objects_from_fetched_event(
+    db: Session, local_event: event_models.Event, event: event_schemas.Event
+) -> event_models.Event:
 
     for object in event.objects:
         db_object = object_models.Object(
-            event_id=local_event_id,
+            event_id=local_event.id,
             name=object.name,
             meta_category=object["meta-category"],
             description=object.description,
@@ -233,11 +230,11 @@ def create_event_objects_from_fetched_event(
         db.add(db_object)
         db.commit()
         db.refresh(db_object)
-        object_count += 1
+        local_event.object_count += 1
 
         for object_attribute in object.attributes:
             db_attribute = attribute_models.Attribute(
-                event_id=local_event_id,
+                event_id=local_event.id,
                 object_id=db_object.id,
                 category=object_attribute.category,
                 type=object_attribute.type,
@@ -263,7 +260,7 @@ def create_event_objects_from_fetched_event(
                 ),
             )
             db.add(db_attribute)
-            attribute_count += 1
+            local_event.attribute_count += 1
 
             # TODO: process shadow_attributes
             # TODO: process attribute sightings
@@ -295,7 +292,7 @@ def create_event_objects_from_fetched_event(
 
             db_object_reference = object_reference_models.ObjectReference(
                 uuid=reference.uuid,
-                event_id=local_event_id,
+                event_id=local_event.id,
                 object_id=db_object.id,
                 referenced_uuid=referenced.uuid,
                 referenced_id=referenced.id,
@@ -312,4 +309,4 @@ def create_event_objects_from_fetched_event(
             db.add(db_object_reference)
         db.commit()
 
-    return {"object_count": object_count, "attribute_count": attribute_count}
+    return local_event

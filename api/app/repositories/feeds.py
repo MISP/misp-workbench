@@ -140,6 +140,11 @@ async def process_feed_event(
                     db, event, orgc, user
                 )
 
+                # process attributes
+                db_event = attributes_repository.update_attributes_from_fetched_event(
+                    db, db_event, event, user
+                )
+
             else:
                 # TODO: process tag_id and tag_collection_id
 
@@ -152,25 +157,23 @@ async def process_feed_event(
                 )
 
                 # process attributes
-                attribute_count = (
-                    attributes_repository.create_event_attributes_from_fetched_event(
-                        db, db_event.id, event, user
-                    )
+                db_event = attributes_repository.create_attributes_from_fetched_event(
+                    db, db_event, event.attributes, user
                 )
 
                 # process objects
-                result = objects_repository.create_event_objects_from_fetched_event(
-                    db, db_event.id, event
+                db_event = objects_repository.create_objects_from_fetched_event(
+                    db, db_event, event
                 )
 
-                object_count = result["object_count"]
-                attribute_count += result["attribute_count"]
-
-                events_repository.increment_attribute_count(
-                    db, db_event.id, attribute_count
-                )
-                events_repository.increment_object_count(db, db_event.id, object_count)
-                db.commit()
+            # update counters
+            events_repository.increment_attribute_count(
+                db, db_event.id, db_event.attribute_count
+            )
+            events_repository.increment_object_count(
+                db, db_event.id, db_event.object_count
+            )
+            db.commit()
 
             tasks.index_event.delay(db_event.uuid)
 
@@ -227,7 +230,9 @@ def fetch_feed(db: Session, feed_id: int, user: user_schemas.User):
             logger.info(f"Feed etag: {etag}")
 
             feed_events_uuids = manifest.keys()
-            # feed_events_uuids = ["3dd18ce2-fa55-4f0d-b88e-7d4144cb0dcb"]  # TODO: REMOVE (for testing purposes)
+            # feed_events_uuids = [
+            #     "5d71e617-63fc-4314-bbc3-29a606536f63"
+            # ]  # TODO: REMOVE (for testing purposes)
 
             local_feed_events = (
                 db.query(event_models.Event)
@@ -236,12 +241,13 @@ def fetch_feed(db: Session, feed_id: int, user: user_schemas.User):
             )
             local_feed_events_uuids = [str(event.uuid) for event in local_feed_events]
 
-            # filter out events that are already in the database and have the same timestamp
+            # filter out events that are already in the database and have the same or older timestamp
             skip_events = [
                 str(event.uuid)
                 for event in local_feed_events
-                if event.timestamp == manifest[str(event.uuid)]["timestamp"]
+                if event.timestamp >= manifest[str(event.uuid)]["timestamp"]
             ]
+
             feed_events_uuids = [
                 uuid for uuid in feed_events_uuids if uuid not in skip_events
             ]
