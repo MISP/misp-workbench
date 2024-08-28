@@ -8,6 +8,7 @@ import Spinner from "@/components/misc/Spinner.vue";
 import Paginate from "vuejs-paginate-next";
 import AddAttributeModal from "@/components/attributes/AddAttributeModal.vue";
 import AttributeActions from "@/components/attributes/AttributeActions.vue";
+import CopyToClipboard from "@/components/misc/CopyToClipboard.vue";
 import Timestamp from "@/components/misc/Timestamp.vue";
 import { Modal } from 'bootstrap';
 
@@ -41,6 +42,21 @@ function handleAttributesUpdated(event) {
 }
 </script>
 
+<style scoped>
+.table {
+    table-layout: fixed;
+}
+
+.value {
+    width: 30%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+</style>
+
 <template>
     <div class="table-responsive-sm">
 
@@ -60,7 +76,10 @@ function handleAttributesUpdated(event) {
             </thead>
             <tbody>
                 <tr :key="attribute.id" v-for="attribute in attributes.items">
-                    <td>{{ attribute.value }}</td>
+                    <td class="value">
+                        <CopyToClipboard :value="attribute.value" />
+                        {{ attribute.value }}
+                    </td>
                     <td class="d-none d-sm-table-cell">
                         <TagsIndex :tags="attribute.tags" />
                     </td>
