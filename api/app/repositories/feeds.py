@@ -145,7 +145,10 @@ async def process_feed_event(
                     db, db_event, event, feed, user
                 )
 
-                # TODO: process objects
+                # process objects
+                db_event = objects_repository.update_objects_from_fetched_event(
+                    db, db_event, event, feed, user
+                )
 
             else:
                 # TODO: process tag_id and tag_collection_id
@@ -165,7 +168,7 @@ async def process_feed_event(
 
                 # process objects
                 db_event = objects_repository.create_objects_from_fetched_event(
-                    db, db_event, event, feed
+                    db, db_event, event.objects, feed, user
                 )
 
             # update counters
