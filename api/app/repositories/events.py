@@ -3,6 +3,7 @@ import time
 from datetime import datetime
 
 from app.models import event as event_models
+from app.models import feed as feed_models
 from app.models import tag as tag_models
 from app.repositories import tags as tags_repository
 from app.schemas import event as event_schemas
@@ -242,6 +243,7 @@ def create_event_from_fetched_event(
     db: Session,
     fetched_event: MISPEvent,
     Orgc: MISPOrganisation,
+    feed: feed_models.Feed,
     user: user_schemas.User,
 ) -> event_models.Event:
     db_event = event_models.Event(
@@ -255,12 +257,8 @@ def create_event_from_fetched_event(
         object_count=len(fetched_event.objects),
         orgc_id=Orgc.id,
         timestamp=fetched_event.timestamp.timestamp(),
-        distribution=(
-            event_models.DistributionLevel(fetched_event.distribution)
-            if fetched_event.distribution
-            else event_models.DistributionLevel.ORGANISATION_ONLY
-        ),
-        sharing_group_id=getattr(fetched_event, "sharing_group_id", None),
+        distribution=feed.distribution,
+        sharing_group_id=feed.sharing_group_id,
         locked=(fetched_event.locked if hasattr(fetched_event, "locked") else False),
         threat_level=event_models.ThreatLevel(fetched_event.threat_level_id),
         publish_timestamp=fetched_event.publish_timestamp.timestamp(),
@@ -319,6 +317,7 @@ def update_event_from_fetched_event(
     db: Session,
     fetched_event: MISPEvent,
     Orgc: MISPOrganisation,
+    feed: feed_models.Feed,
     user: user_schemas.User,
 ) -> event_models.Event:
     db_event = get_event_by_uuid(db, fetched_event.uuid)
@@ -336,12 +335,8 @@ def update_event_from_fetched_event(
     db_event.object_count = len(fetched_event.objects)
     db_event.orgc_id = Orgc.id
     db_event.timestamp = fetched_event.timestamp.timestamp()
-    db_event.distribution = (
-        event_models.DistributionLevel(fetched_event.distribution)
-        if fetched_event.distribution
-        else event_models.DistributionLevel.ORGANISATION_ONLY
-    )
-    db_event.sharing_group_id = getattr(fetched_event, "sharing_group_id", None)
+    db_event.distribution = feed.distribution
+    db_event.sharing_group_id = feed.sharing_group_id
     db_event.locked = (
         fetched_event.locked if hasattr(fetched_event, "locked") else False
     )

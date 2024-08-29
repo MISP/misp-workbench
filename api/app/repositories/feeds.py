@@ -137,33 +137,33 @@ async def process_feed_event(
 
             if event_uuid in local_feed_events_uuids:
                 db_event = events_repository.update_event_from_fetched_event(
-                    db, event, orgc, user
+                    db, event, orgc, feed, user
                 )
 
                 # process attributes
                 db_event = attributes_repository.update_attributes_from_fetched_event(
-                    db, db_event, event, user
+                    db, db_event, event, feed, user
                 )
 
             else:
                 # TODO: process tag_id and tag_collection_id
 
-                # TODO: process sharing_group_id
+                # TODO: process feed.sharing_group_id
 
                 # TODO: apply feed rules (disable_correlation, unpublish_event)
 
                 db_event = events_repository.create_event_from_fetched_event(
-                    db, event, orgc, user
+                    db, event, orgc, feed, user
                 )
 
                 # process attributes
                 db_event = attributes_repository.create_attributes_from_fetched_event(
-                    db, db_event, event.attributes, user
+                    db, db_event, event.attributes, feed, user
                 )
 
                 # process objects
                 db_event = objects_repository.create_objects_from_fetched_event(
-                    db, db_event, event
+                    db, db_event, event, feed
                 )
 
             # update counters
@@ -227,12 +227,9 @@ def fetch_feed(db: Session, feed_id: int, user: user_schemas.User):
 
             # TODO: cache etag value in redis
             etag = req.headers.get("etag")
-            logger.info(f"Feed etag: {etag}")
+            logger.info(f"Fetching feed UUID {db_feed.uuid} ETag: {etag}")
 
             feed_events_uuids = manifest.keys()
-            # feed_events_uuids = [
-            #     "5d71e617-63fc-4314-bbc3-29a606536f63"
-            # ]  # TODO: REMOVE (for testing purposes)
 
             local_feed_events = (
                 db.query(event_models.Event)

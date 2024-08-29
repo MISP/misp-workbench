@@ -1,3 +1,5 @@
+from functools import lru_cache
+
 from app.models import attribute as attribute_models
 from app.models import event as event_models
 from app.models import tag as tag_models
@@ -146,6 +148,7 @@ def capture_tag(db: Session, tag: MISPTag, user: user_models.User) -> tag_models
     return db_tag
 
 
+@lru_cache
 def get_tag_by_name(db: Session, tag_name: str):
     return (
         db.query(tag_models.Tag)

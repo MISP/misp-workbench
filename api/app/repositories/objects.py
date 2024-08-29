@@ -3,6 +3,7 @@ import time
 
 from app.models import attribute as attribute_models
 from app.models import event as event_models
+from app.models import feed as feed_models
 from app.models import object as object_models
 from app.models import object_reference as object_reference_models
 from app.repositories import attributes as attributes_repository
@@ -195,7 +196,10 @@ def delete_object(db: Session, object_id: int) -> object_models.Object:
 
 
 def create_objects_from_fetched_event(
-    db: Session, local_event: event_models.Event, event: event_schemas.Event
+    db: Session,
+    local_event: event_models.Event,
+    event: event_schemas.Event,
+    feed: feed_models.Feed,
 ) -> event_models.Event:
 
     for object in event.objects:
@@ -243,8 +247,8 @@ def create_objects_from_fetched_event(
                 uuid=object_attribute.uuid,
                 timestamp=int(object_attribute.timestamp.timestamp()),
                 distribution=event_models.DistributionLevel.INHERIT_EVENT,
-                comment=object_attribute.comment,
                 sharing_group_id=None,
+                comment=object_attribute.comment,
                 deleted=object_attribute.deleted,
                 disable_correlation=object_attribute.disable_correlation,
                 object_relation=getattr(object_attribute, "object_relation", None),

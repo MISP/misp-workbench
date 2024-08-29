@@ -85,5 +85,4 @@ def fetch_feed(
         )
 
     result = tasks.fetch_feed.delay(feed_id, user.id)
-
     return {"task": {"id": result.id, "name": "fetch_feed", "status": result.status}}
