@@ -122,7 +122,7 @@ def index_event(event_uuid: uuid.UUID):
 
     OpenSearchClient = get_opensearch_client()
 
-    event_json = event.model_dump_json()
+    event_json = event.model_dump()
 
     # convert timestamp to datetime so it can be indexed
     event_json["@timestamp"] = datetime.fromtimestamp(

@@ -145,6 +145,8 @@ async def process_feed_event(
                     db, db_event, event, feed, user
                 )
 
+                # TODO: process objects
+
             else:
                 # TODO: process tag_id and tag_collection_id
 
@@ -204,6 +206,10 @@ async def fetch_feeds_async(
         await asyncio.gather(*tasks)
 
 
+def get_feed_manifest(feed: feed_models.Feed):
+    return requests.get(f"{feed.url}/manifest.json")
+
+
 def fetch_feed(db: Session, feed_id: int, user: user_schemas.User):
     db_feed = get_feed_by_id(db, feed_id=feed_id)
     if db_feed is None:
@@ -220,14 +226,14 @@ def fetch_feed(db: Session, feed_id: int, user: user_schemas.User):
 
     if db_feed.source_format == "misp":
         # TODO: check feed etag in redis cache
-        req = requests.get(f"{db_feed.url}/manifest.json")
+        req = get_feed_manifest(db_feed)
 
         if req.status_code == 200:
             manifest = req.json()
 
             # TODO: cache etag value in redis
-            etag = req.headers.get("etag")
-            logger.info(f"Fetching feed UUID {db_feed.uuid} ETag: {etag}")
+            # etag = req.headers.get("etag")
+            # logger.info(f"Fetching feed UUID {db_feed.uuid} ETag: {etag}")
 
             feed_events_uuids = manifest.keys()
 

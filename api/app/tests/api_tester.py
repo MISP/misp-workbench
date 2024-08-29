@@ -7,6 +7,7 @@ from app.dependencies import get_db
 from app.main import app
 from app.models import attribute as attribute_models
 from app.models import event as event_models
+from app.models import feed as feed_models
 from app.models import module as module_models
 from app.models import object as object_models
 from app.models import object_reference as object_reference_models
@@ -56,6 +57,7 @@ class ApiTester:
         yield get_settings()
 
     def teardown_db(self, db: Session):
+        db.query(feed_models.Feed).delete()
         db.query(tag_models.AttributeTag).delete()
         db.query(tag_models.EventTag).delete()
         db.query(tag_models.Tag).delete()
@@ -304,3 +306,39 @@ class ApiTester:
         db.refresh(module_1_settings)
 
         yield module_1_settings
+
+    @pytest.fixture(scope="class")
+    def feed_1(self, db: Session, organisation_1: organisation_models.Organisation):
+        feed_1 = feed_models.Feed(
+            name="test feed",
+            provider="test",
+            url="http://localhost/test-feed",
+            rules=None,
+            enabled=True,
+            distribution=event_models.DistributionLevel.ORGANISATION_ONLY,
+            sharing_group_id=None,
+            tag_id=None,
+            default=False,
+            source_format="misp",
+            fixed_event=False,
+            delta_merge=False,
+            event_id=None,
+            publish=False,
+            override_ids=False,
+            settings=None,
+            input_source="network",
+            delete_local_file=False,
+            lookup_visible=False,
+            headers=None,
+            caching_enabled=False,
+            force_to_ids=False,
+            orgc_id=organisation_1.id,
+            tag_collection_id=None,
+            cached_elements=0,
+            coverage_by_other_feeds=0,
+        )
+        db.add(feed_1)
+        db.commit()
+        db.refresh(feed_1)
+
+        yield feed_1

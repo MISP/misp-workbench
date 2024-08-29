@@ -24,9 +24,9 @@ class EventTag(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     event_id = Column(Integer, ForeignKey("events.id"), nullable=False)
-    event = relationship("Event", lazy="subquery", viewonly=True)
+    event = relationship("Event", lazy="subquery", overlaps="tags")
     tag_id = Column(Integer, ForeignKey("tags.id"), nullable=False)
-    tag = relationship("Tag", lazy="subquery", viewonly=True)
+    tag = relationship("Tag", lazy="subquery", overlaps="tags")
     local = Column(Boolean, nullable=False, default=False)
 
 
@@ -35,8 +35,8 @@ class AttributeTag(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     attribute_id = Column(Integer, ForeignKey("attributes.id"), nullable=False)
-    attribute = relationship("Attribute", lazy="subquery", viewonly=True)
+    attribute = relationship("Attribute", lazy="subquery", overlaps="tags")
     event_id = Column(Integer, ForeignKey("events.id"), nullable=False)
     tag_id = Column(Integer, ForeignKey("tags.id"), nullable=False)
-    tag = relationship("Tag", lazy="subquery", viewonly=True)
+    tag = relationship("Tag", lazy="subquery", overlaps="tags")
     local = Column(Boolean, nullable=False, default=False)

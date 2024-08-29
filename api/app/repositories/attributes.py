@@ -1,4 +1,3 @@
-import logging
 import time
 from typing import Union
 
@@ -15,8 +14,6 @@ from fastapi import HTTPException, status
 from fastapi_pagination.ext.sqlalchemy import paginate
 from pymisp import MISPAttribute, MISPTag
 from sqlalchemy.orm import Session
-
-logger = logging.getLogger(__name__)
 
 
 def get_attributes(
@@ -258,11 +255,6 @@ def create_attributes_from_fetched_event(
         # TODO: process shadow_attributes
 
     db.commit()
-
-    logger.debug(
-        "get_tag_by_name cache hits %s",
-        tags_repository.get_tag_by_name.cache_info().hits,
-    )
 
     return local_event
 
