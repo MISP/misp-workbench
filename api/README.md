@@ -79,7 +79,7 @@ Created user id=1
 
 ## Testing
 ```console
-git submodule update --init --recursive
+$ git submodule update --init --recursive
 $ docker-compose -f docker-compose.yml -f docker-compose.test.yml --env-file=".env.test" up -d
 ...
 $ docker-compose exec api poetry run pytest
@@ -119,25 +119,25 @@ First make sure Make sure the [Python VS Code extension](https://marketplace) is
     {
         "version": "0.2.0",
         "configurations": [
-        {
-            "name": "Pytest: Remote Attach",
-            "type": "python",
-            "request": "attach",
-            "justMyCode": false,
-            "connect": {
-                "host": "localhost",
-                "port": 5677
-            },
-            "pathMappings": [
-                {
-                    "localRoot": "${workspaceFolder}/api",
-                    "remoteRoot": "/code"
-                }
-            ],
-        },
             {
-                "name": "Python: Remote Attach",
-                "type": "python",
+                "name": "Pytest: Remote Attach (docker)",
+                "type": "debugpy",
+                "request": "attach",
+                "justMyCode": false,
+                "connect": {
+                    "host": "localhost",
+                    "port": 5677
+                },
+                "pathMappings": [
+                    {
+                        "localRoot": "${workspaceFolder}/api",
+                        "remoteRoot": "/code"
+                    }
+                ],
+            },
+            {
+                "name": "Python: Remote Attach (docker)",
+                "type": "debugpy",
                 "request": "attach",
                 "port": 5678,
                 "host": "localhost",
@@ -150,8 +150,8 @@ First make sure Make sure the [Python VS Code extension](https://marketplace) is
                 ]
             },
             {
-                "name": "Celery: Remote Attach",
-                "type": "python",
+                "name": "Celery: Remote Attach (docker)",
+                "type": "debugpy",
                 "request": "attach",
                 "justMyCode": false,
                 "connect": {
