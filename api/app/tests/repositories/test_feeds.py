@@ -1,5 +1,6 @@
 from unittest.mock import MagicMock, patch
 
+import pytest
 from app.models import attribute as attribute_models
 from app.models import event as event_models
 from app.models import feed as feed_models
@@ -139,7 +140,7 @@ feed_event = {
 
 class TestFeedsRepository(ApiTester):
 
-    def test_fetch_feed_by_id(
+    def test_fetch_feed_by_id_new_event(
         self,
         db: Session,
         feed_1: feed_models.Feed,
@@ -231,3 +232,11 @@ class TestFeedsRepository(ApiTester):
                 .all()
             )
             assert len(attribute_tags) == 1
+
+    def test_fetch_feed_by_id_existing_event(
+        self,
+        db: Session,
+        feed_1: feed_models.Feed,
+        user_1: user_models.User,
+    ):
+        pytest.skip("Not implemented")
