@@ -34,6 +34,10 @@ class TestServersRepository(ApiTester):
         user_1: user_models.User,
         scenario: dict,
     ):
+        # clear the database
+        db.query(tag_models.AttributeTag).delete()
+        db.query(tag_models.EventTag).delete()
+        db.query(tag_models.Tag).delete()
 
         # mock remote MISP API calls
         with patch(
@@ -140,11 +144,7 @@ class TestServersRepository(ApiTester):
             )
 
             # check the tags were created
-            tags = (
-                db.query(tag_models.Tag)
-                .filter(tag_models.Tag.name.in_(scenario["expected_result"]["tags"]))
-                .all()
-            )
+            tags = db.query(tag_models.Tag).all()
             assert len(tags) == len(scenario["expected_result"]["tags"])
 
             # check the event tags were created

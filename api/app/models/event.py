@@ -4,7 +4,7 @@ import uuid
 from app.database import Base
 from sqlalchemy import Boolean, Column, Date, Enum, ForeignKey, Integer, String
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 
 class DistributionLevel(enum.Enum):
@@ -53,8 +53,8 @@ class Event(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     uuid = Column(UUID(as_uuid=True), unique=True, default=uuid.uuid4)
     published = Column(Boolean, default=False, nullable=False)
-    analysis = Column(
-        Enum(AnalysisLevel),
+    analysis: Mapped[AnalysisLevel] = mapped_column(
+        Enum(AnalysisLevel, name="analysis_level"),
         nullable=False,
         default=AnalysisLevel.INITIAL,
     )
@@ -64,8 +64,8 @@ class Event(Base):
         Integer, ForeignKey("organisations.id"), index=True, nullable=False
     )
     timestamp = Column(Integer, nullable=False, default=0)
-    distribution = Column(
-        Enum(DistributionLevel),
+    distribution: Mapped[DistributionLevel] = mapped_column(
+        Enum(DistributionLevel, name="distribution_level"),
         nullable=False,
         default=DistributionLevel.ORGANISATION_ONLY,
     )
@@ -74,8 +74,8 @@ class Event(Base):
     )
     proposal_email_lock = Column(Boolean, nullable=False, default=False)
     locked = Column(Boolean, nullable=False, default=False)
-    threat_level = Column(
-        Enum(ThreatLevel),
+    threat_level: Mapped[ThreatLevel] = mapped_column(
+        Enum(ThreatLevel, name="threat_level"),
         nullable=False,
         default=ThreatLevel.UNDEFINED,
     )
@@ -86,7 +86,7 @@ class Event(Base):
     protected = Column(Boolean, nullable=False, default=False)
     deleted = Column(Boolean, nullable=False, default=False)
 
-    attributes = relationship("Attribute")
-    objects = relationship("Object")
-    sharing_group = relationship("SharingGroup")
-    tags = relationship("Tag", secondary="event_tags")
+    attributes = relationship("Attribute", lazy="subquery")
+    objects = relationship("Object", lazy="subquery")
+    sharing_group = relationship("SharingGroup", lazy="subquery")
+    tags = relationship("Tag", secondary="event_tags", lazy="subquery")

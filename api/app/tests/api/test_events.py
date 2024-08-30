@@ -60,7 +60,7 @@ class TestEventsResource(ApiTester):
             json={
                 "info": "test create event",
                 "date": "2020-01-01",
-                "analysis": 0,
+                "analysis": 1,
                 "distribution": 0,
                 "threat_level": 1,
             },

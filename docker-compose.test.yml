@@ -8,9 +8,11 @@ services:
       - "5677:5677"
       - "5678:5678"
     entrypoint: [ "bash", "-c", "./entrypoint.dev.sh" ]
+
   worker:
     volumes:
       - ./api:/code
+
   mailhog:
     image: mailhog/mailhog
     ports:

@@ -10,8 +10,12 @@ import ThreatLevel from "@/components/enums/ThreatLevel.vue";
 import AnalysisLevel from "@/components/enums/AnalysisLevel.vue";
 import DeleteEventModal from "@/components/events/DeleteEventModal.vue";
 import { router } from "@/router";
+import { useModulesStore } from "@/stores";
 
 const props = defineProps(['event_id', 'event', 'status']);
+
+const modulesStore = useModulesStore();
+modulesStore.get({ enabled: true });
 
 function handleEventDeleted(event) {
     router.push(`/events`);

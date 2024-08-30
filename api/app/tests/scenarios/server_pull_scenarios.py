@@ -23,7 +23,7 @@ test_cases = {
                 "published": True,
                 "uuid": "572503da-c87f-4520-a9bc-8de08b9c92e5",
                 "attribute_count": "5",
-                "analysis": "0",
+                "analysis": "1",
                 "timestamp": "1655364474",
                 "distribution": "2",
                 "proposal_email_lock": False,
@@ -256,7 +256,7 @@ test_cases = {
                     {
                         "id": "1",
                         "name": "tlp:red",
-                        "colour": "#CC0033",
+                        "colour": "#FF0000",
                         "exportable": True,
                         "user_id": "0",
                         "hide_tag": False,
@@ -290,7 +290,7 @@ test_cases = {
             "sharing_groups_uuids": ([]),
             "sharing_group_org_uuids": ([]),
             "sharing_groups_servers_uuids": ([]),
-            "tags": (["tlp:red"]),
+            "tags": (["tlp:red", "tlp:green"]),
             "event_tags": (["tlp:red"]),
             "attribute_tags": (
                 [
@@ -330,7 +330,7 @@ test_cases = {
                 "published": True,
                 "uuid": "4e637837-da9c-4d3a-badd-5eb5b98ec324",
                 "attribute_count": "1",
-                "analysis": "0",
+                "analysis": "1",
                 "timestamp": "1655364474",
                 "distribution": "4",
                 "proposal_email_lock": False,
@@ -507,7 +507,7 @@ test_cases = {
                 ]
             ),
             "sharing_groups_servers_uuids": (["81a93b6d-0f67-4696-abe0-42f5064610a3"]),
-            "tags": (["tlp:amber"]),
+            "tags": (["tlp:amber", "tlp:green"]),
             "event_tags": (["tlp:amber"]),
             "attribute_tags": (
                 [

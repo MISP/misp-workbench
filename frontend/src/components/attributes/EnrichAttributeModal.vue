@@ -11,13 +11,10 @@ const emit = defineEmits(['attribute-created', 'object-created', 'attribute-enri
 const modulesStore = useModulesStore();
 const objectsStore = useObjectsStore();
 const attributesStore = useAttributesStore();
-const { status, modules, modulesResponses } = storeToRefs(modulesStore);
+const { status, modulesResponses, modules } = storeToRefs(modulesStore);
 const allModules = ref(false);
 const allEnrichments = ref(false);
 const enrichErrors = ref([]);
-
-
-modulesStore.get({ enabled: true });
 
 function queryModules() {
     modulesResponses.value = [];
@@ -70,6 +67,7 @@ function enrichAttribute() {
         object.attributes = object.Attribute;
         delete object.Attribute;
         for (let attribute of object.attributes) {
+            attribute.value = attribute.value.toString();
             attribute.event_id = props.attribute.event_id;
             attribute.distribution = props.attribute.distribution;
             attribute.sharing_group_id = props.attribute.sharing_group_id;

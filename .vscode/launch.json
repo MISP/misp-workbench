@@ -5,8 +5,8 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Pytest: Remote Attach (local)",
-            "type": "python",
+            "name": "Pytest: Remote Attach (docker)",
+            "type": "debugpy",
             "request": "attach",
             "justMyCode": false,
             "connect": {
@@ -22,7 +22,7 @@
         },
         {
             "name": "Python: Remote Attach (docker)",
-            "type": "python",
+            "type": "debugpy",
             "request": "attach",
             "port": 5678,
             "host": "localhost",
@@ -35,8 +35,8 @@
             ]
         },
         {
-            "name": "Celery: Remote Attach",
-            "type": "python",
+            "name": "Celery: Remote Attach (docker)",
+            "type": "debugpy",
             "request": "attach",
             "justMyCode": false,
             "connect": {

@@ -4,6 +4,7 @@ from app.routers import (
     attributes,
     auth,
     events,
+    feeds,
     modules,
     object_templates,
     objects,
@@ -74,5 +75,8 @@ app.include_router(tags.router, tags=["Tags"])
 
 # Modules resource
 app.include_router(modules.router, tags=["Modules"])
+
+# Feeds resource
+app.include_router(feeds.router, tags=["Feeds"])
 
 add_pagination(app)

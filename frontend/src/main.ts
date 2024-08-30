@@ -6,12 +6,10 @@ import { router } from "@/router";
 
 import Popper from "vue3-popper";
 import "bootstrap/dist/css/bootstrap.min.css";
-import "bootstrap/dist/js/bootstrap.js"
-import "bootstrap/dist/js/bootstrap.bundle.js"
 import { library } from '@fortawesome/fontawesome-svg-core'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
-import { faPen, faEye, faTrash, faAngleUp, faAngleDoubleUp, faAngleDown, faAngleDoubleDown, faCopy, faBars, faEnvelopeOpenText, faBuilding, faUsers, faServer, faArrowRightFromBracket, faDownLong, faUpLong, faTags, faTag, faShapes, faCubesStacked, faArrowUp, faArrowDown, faCheck, faCheckDouble, faSync, faNetworkWired, faFileLines, faLink, faQuestion, faMoneyCheckDollar, faPerson, faSkullCrossbones, faCircleInfo, faFloppyDisk, faMagnifyingGlass, faPlay, faWandMagicSparkles, faArrowRight} from '@fortawesome/free-solid-svg-icons'
-library.add(faPen, faEye, faTrash, faAngleUp, faAngleDoubleUp, faAngleDown, faAngleDoubleDown, faCopy, faBars, faEnvelopeOpenText, faBuilding, faUsers, faServer, faArrowRightFromBracket, faDownLong, faUpLong, faTags, faTag, faShapes, faCubesStacked, faArrowUp, faArrowDown, faCheck, faCheckDouble, faSync, faNetworkWired, faFileLines, faLink, faQuestion, faMoneyCheckDollar, faPerson, faSkullCrossbones, faCircleInfo, faFloppyDisk, faMagnifyingGlass, faPlay, faWandMagicSparkles, faArrowRight);
+import { faPen, faEye, faTrash, faAngleUp, faAngleDoubleUp, faAngleDown, faAngleDoubleDown, faCopy, faBars, faEnvelopeOpenText, faBuilding, faUsers, faServer, faArrowRightFromBracket, faDownLong, faUpLong, faTags, faTag, faShapes, faCubesStacked, faArrowUp, faArrowDown, faCheck, faCheckDouble, faSync, faNetworkWired, faFileLines, faLink, faQuestion, faMoneyCheckDollar, faPerson, faSkullCrossbones, faCircleInfo, faFloppyDisk, faMagnifyingGlass, faPlay, faWandMagicSparkles, faArrowRight, faUpload, faDownload, faXmark, faGear, faCaretDown} from '@fortawesome/free-solid-svg-icons'
+library.add(faPen, faEye, faTrash, faAngleUp, faAngleDoubleUp, faAngleDown, faAngleDoubleDown, faCopy, faBars, faEnvelopeOpenText, faBuilding, faUsers, faServer, faArrowRightFromBracket, faDownLong, faUpLong, faTags, faTag, faShapes, faCubesStacked, faArrowUp, faArrowDown, faCheck, faCheckDouble, faSync, faNetworkWired, faFileLines, faLink, faQuestion, faMoneyCheckDollar, faPerson, faSkullCrossbones, faCircleInfo, faFloppyDisk, faMagnifyingGlass, faPlay, faWandMagicSparkles, faArrowRight, faUpload, faDownload, faXmark, faGear, faCaretDown);
 
 const app = createApp(App);
 app.component('font-awesome-icon', FontAwesomeIcon);

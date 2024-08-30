@@ -8,6 +8,7 @@ import Spinner from "@/components/misc/Spinner.vue";
 import Paginate from "vuejs-paginate-next";
 import AddAttributeModal from "@/components/attributes/AddAttributeModal.vue";
 import AttributeActions from "@/components/attributes/AttributeActions.vue";
+import CopyToClipboard from "@/components/misc/CopyToClipboard.vue";
 import Timestamp from "@/components/misc/Timestamp.vue";
 import { Modal } from 'bootstrap';
 
@@ -41,9 +42,24 @@ function handleAttributesUpdated(event) {
 }
 </script>
 
+<style scoped>
+.table {
+    table-layout: fixed;
+}
+
+.value {
+    width: 30%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+</style>
+
 <template>
     <div class="table-responsive-sm">
-        <Spinner v-if="status.loading" />
+
         <div v-if="status.error" class="text-danger">
             Error loading attributes: {{ status.error }}
         </div>
@@ -51,16 +67,19 @@ function handleAttributesUpdated(event) {
             <thead>
                 <tr>
                     <th style="width: 30%" scope="col">value</th>
-                    <th style="width: 20%" scope="col" class="d-none d-sm-table-cell">tags</th>
+                    <th style="width: 15%" scope="col" class="d-none d-sm-table-cell">tags</th>
                     <th style="width: 10%" scope="col">type</th>
                     <th style="width: 10%" scope="col" class="d-none d-sm-table-cell">timestamp</th>
-                    <th style="width: 10%" scope="col" class="d-none d-sm-table-cell">distribution</th>
+                    <th style="width: 15%" scope="col" class="d-none d-sm-table-cell">distribution</th>
                     <th style="width: 20%" scope="col" class="text-end">actions</th>
                 </tr>
             </thead>
             <tbody>
                 <tr :key="attribute.id" v-for="attribute in attributes.items">
-                    <td>{{ attribute.value }}</td>
+                    <td class="value">
+                        <CopyToClipboard :value="attribute.value" />
+                        {{ attribute.value }}
+                    </td>
                     <td class="d-none d-sm-table-cell">
                         <TagsIndex :tags="attribute.tags" />
                     </td>
@@ -77,6 +96,7 @@ function handleAttributesUpdated(event) {
                 </tr>
             </tbody>
         </table>
+        <Spinner v-if="status.loading" />
         <Paginate v-if="page_count > 1" :page-count="page_count" :click-handler="onPageChange" />
         <AddAttributeModal id="addAttributeModal" @attribute-created="handleAttributesUpdated"
             :modal="addAttributeModal" :event_id="event_id" />

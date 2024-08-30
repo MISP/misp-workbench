@@ -7,6 +7,7 @@ from app.dependencies import get_db
 from app.main import app
 from app.models import attribute as attribute_models
 from app.models import event as event_models
+from app.models import feed as feed_models
 from app.models import module as module_models
 from app.models import object as object_models
 from app.models import object_reference as object_reference_models
@@ -56,6 +57,7 @@ class ApiTester:
         yield get_settings()
 
     def teardown_db(self, db: Session):
+        db.query(feed_models.Feed).delete()
         db.query(tag_models.AttributeTag).delete()
         db.query(tag_models.EventTag).delete()
         db.query(tag_models.Tag).delete()
@@ -108,6 +110,7 @@ class ApiTester:
             nationality="test",
             created_by=1,
             local=False,
+            uuid="816e8f93-f169-49c1-bf15-efe2ab3211c8",
         )
         db.add(organisation_1)
         db.commit()
@@ -142,6 +145,8 @@ class ApiTester:
             orgc_id=1,
             org_id=organisation_1.id,
             date="2020-01-01",
+            uuid="ba4b11b6-dcce-4315-8fd0-67b69160ea76",
+            timestamp=1577836800,
         )
         db.add(event_1)
         db.commit()
@@ -156,6 +161,8 @@ class ApiTester:
             category="Network activity",
             type="ip-src",
             value="127.0.0.1",
+            uuid="7f2fd15d-3c63-47ba-8a39-2c4b0b3314b0",
+            timestamp=157783680,
         )
         db.add(attribute_1)
         db.commit()
@@ -167,9 +174,10 @@ class ApiTester:
     def object_1(self, db: Session, event_1: event_models.Event):
         object_1 = object_models.Object(
             event_id=event_1.id,
+            uuid="90e06ef6-26f8-40dd-9fb7-75897445e2a0",
             name="test object",
             template_version=0,
-            timestamp=0,
+            timestamp=1577836800,
             deleted=False,
         )
         db.add(object_1)
@@ -177,6 +185,25 @@ class ApiTester:
         db.refresh(object_1)
 
         yield object_1
+
+    @pytest.fixture(scope="class")
+    def object_attribute_1(
+        self, db: Session, event_1: event_models.Event, object_1: object_models.Object
+    ):
+        object_attribute_1 = attribute_models.Attribute(
+            event_id=event_1.id,
+            object_id=object_1.id,
+            category="Network activity",
+            type="ip-src",
+            value="127.0.0.2",
+            uuid="1355e435-aa0f-4f06-acd3-b44498131e82",
+            timestamp=1577836800,
+        )
+        db.add(object_attribute_1)
+        db.commit()
+        db.refresh(object_attribute_1)
+
+        yield object_attribute_1
 
     @pytest.fixture(scope="class")
     def server_1(self, db: Session, organisation_1: organisation_models.Organisation):
@@ -304,3 +331,39 @@ class ApiTester:
         db.refresh(module_1_settings)
 
         yield module_1_settings
+
+    @pytest.fixture(scope="class")
+    def feed_1(self, db: Session, organisation_1: organisation_models.Organisation):
+        feed_1 = feed_models.Feed(
+            name="test feed",
+            provider="test",
+            url="http://localhost/test-feed",
+            rules=None,
+            enabled=True,
+            distribution=event_models.DistributionLevel.ORGANISATION_ONLY,
+            sharing_group_id=None,
+            tag_id=None,
+            default=False,
+            source_format="misp",
+            fixed_event=False,
+            delta_merge=False,
+            event_id=None,
+            publish=False,
+            override_ids=False,
+            settings=None,
+            input_source="network",
+            delete_local_file=False,
+            lookup_visible=False,
+            headers=None,
+            caching_enabled=False,
+            force_to_ids=False,
+            orgc_id=organisation_1.id,
+            tag_collection_id=None,
+            cached_elements=0,
+            coverage_by_other_feeds=0,
+        )
+        db.add(feed_1)
+        db.commit()
+        db.refresh(feed_1)
+
+        yield feed_1

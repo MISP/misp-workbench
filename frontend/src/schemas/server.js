@@ -3,7 +3,7 @@ import * as Yup from "yup";
 export const ServerSchema = Yup.object().shape({
     server: Yup.object().shape({
         name: Yup.string().required(),
-        url: Yup.string().required(),
+        url: Yup.string().url().required(),
         authkey: Yup.string().required(),
         org_id: Yup.number().required(),
         push: Yup.boolean().required(),

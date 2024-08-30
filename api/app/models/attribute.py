@@ -4,7 +4,7 @@ from app.database import Base
 from app.models.event import DistributionLevel
 from sqlalchemy import BigInteger, Boolean, Column, Enum, ForeignKey, Integer, String
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 
 class Attribute(Base):
@@ -22,8 +22,10 @@ class Attribute(Base):
     to_ids = Column(Boolean, default=True)
     uuid = Column(UUID(as_uuid=True), unique=True, default=uuid.uuid4)
     timestamp = Column(Integer, nullable=False, default=0)
-    distribution = Column(
-        Enum(DistributionLevel), nullable=False, default=DistributionLevel.INHERIT_EVENT
+    distribution: Mapped[DistributionLevel] = mapped_column(
+        Enum(DistributionLevel, name="distribution_level"),
+        nullable=False,
+        default=DistributionLevel.INHERIT_EVENT,
     )
     sharing_group_id = Column(
         Integer, ForeignKey("sharing_groups.id"), index=True, nullable=True
@@ -34,4 +36,4 @@ class Attribute(Base):
     first_seen = Column(BigInteger(), index=True)
     last_seen = Column(BigInteger(), index=True)
 
-    tags = relationship("Tag", secondary="attribute_tags")
+    tags = relationship("Tag", secondary="attribute_tags", lazy="subquery")

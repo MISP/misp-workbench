@@ -4,7 +4,7 @@ from app.database import Base
 from app.models.event import DistributionLevel
 from sqlalchemy import Boolean, Column, Enum, ForeignKey, Integer, String
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 
 class Object(Base):
@@ -14,13 +14,13 @@ class Object(Base):
     name = Column(String)
     meta_category = Column(String)
     description = Column(String)
-    template_uuid = Column(UUID(as_uuid=True), unique=True)
+    template_uuid = Column(String)
     template_version = Column(Integer, nullable=False)
     event_id = Column(Integer, ForeignKey("events.id"), nullable=False)
     uuid = Column(UUID(as_uuid=True), unique=True, default=uuid.uuid4)
     timestamp = Column(Integer, nullable=False)
-    distribution = Column(
-        Enum(DistributionLevel),
+    distribution: Mapped[DistributionLevel] = mapped_column(
+        Enum(DistributionLevel, name="distribution_level"),
         nullable=False,
         default=DistributionLevel.INHERIT_EVENT,
     )
@@ -30,5 +30,5 @@ class Object(Base):
     first_seen = Column(Integer)
     last_seen = Column(Integer)
 
-    attributes = relationship("Attribute")
-    object_references = relationship("ObjectReference")
+    attributes = relationship("Attribute", lazy="subquery")
+    object_references = relationship("ObjectReference", lazy="subquery")

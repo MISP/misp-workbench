@@ -68,6 +68,12 @@ services:
       OAUTH2_ACCESS_TOKEN_EXPIRE_MINUTES: ${OAUTH2_ACCESS_TOKEN_EXPIRE_MINUTES:-30}
       CELERY_BROKER_URL: amqp://${RABBITMQ_DEFAULT_USER:-rabbitmq}:${RABBITMQ_DEFAULT_PASS:-rabbitmq}@${RABBITMQ_HOSTNAME:-rabbitmq}:5672/${RABBITMQ_DEFAULT_VHOST:-rabbitmq}
       CELERY_RESULT_BACKEND: redis://${REDIS_HOSTNAME:-redis}:${REDIS_PORT:-6379}/${REDIS_CELERY_DB:-0}
+      BROKER_POOL_LIMIT: None
+      BROKER_TRANSPORT_OPTIONS: "{'confirm_publish': True}"
+      BROKER_CONNECTION_TIMEOUT: 30
+      BROKER_CONNECTION_RETRY: True
+      BROKER_CONNECTION_MAX_RETRIES: 100
+      CELERY_TASK_TRACK_STARTED:  True
       MAIL_USERNAME: ${MAIL_USERNAME}
       MAIL_PASSWORD: ${MAIL_PASSWORD}
       MAIL_PORT: ${MAIL_PORT}
@@ -96,7 +102,7 @@ services:
     build:
       context: ./api
       dockerfile: Dockerfile
-    command: poetry run celery -A app.worker.tasks worker --loglevel=info
+    command: poetry run celery -A app.worker.tasks worker --loglevel=info --hostname worker@%h
     environment:
       POSTGRES_HOSTNAME: ${POSTGRES_HOSTNAME:-postgres}
       POSTGRES_PORT: ${POSTGRES_PORT:-5432}
@@ -110,6 +116,13 @@ services:
       OAUTH2_ACCESS_TOKEN_EXPIRE_MINUTES: ${OAUTH2_ACCESS_TOKEN_EXPIRE_MINUTES:-30}
       CELERY_BROKER_URL: amqp://${RABBITMQ_DEFAULT_USER:-rabbitmq}:${RABBITMQ_DEFAULT_PASS:-rabbitmq}@${RABBITMQ_HOSTNAME:-rabbitmq}:5672/${RABBITMQ_DEFAULT_VHOST:-rabbitmq}
       CELERY_RESULT_BACKEND: redis://${REDIS_HOSTNAME:-redis}:${REDIS_PORT:-6379}/${REDIS_CELERY_DB:-0}
+      BROKER_HEARTBEAT: 0
+      BROKER_POOL_LIMIT: None
+      BROKER_TRANSPORT_OPTIONS: "{'confirm_publish': True}"
+      BROKER_CONNECTION_TIMEOUT: 30
+      BROKER_CONNECTION_RETRY: True
+      BROKER_CONNECTION_MAX_RETRIES: 100
+      CELERY_TASK_TRACK_STARTED:  True
       MAIL_USERNAME: ${MAIL_USERNAME}
       MAIL_PASSWORD: ${MAIL_PASSWORD}
       MAIL_PORT: ${MAIL_PORT}
@@ -126,7 +139,7 @@ services:
     build:
       context: ./api
       dockerfile: Dockerfile
-    command: poetry run celery -A app.worker.tasks flower --loglevel=info
+    command: poetry run celery -A app.worker.tasks flower --loglevel=info --persistent=True --auto_refresh=True --state_save_interval=5
     ports:
       - "5555:5555"
     working_dir: /code
@@ -143,6 +156,13 @@ services:
       OAUTH2_ACCESS_TOKEN_EXPIRE_MINUTES: ${OAUTH2_ACCESS_TOKEN_EXPIRE_MINUTES:-30}
       CELERY_BROKER_URL: amqp://${RABBITMQ_DEFAULT_USER:-rabbitmq}:${RABBITMQ_DEFAULT_PASS:-rabbitmq}@${RABBITMQ_HOSTNAME:-rabbitmq}:5672/${RABBITMQ_DEFAULT_VHOST:-rabbitmq}
       CELERY_RESULT_BACKEND: redis://${REDIS_HOSTNAME:-redis}:${REDIS_PORT:-6379}/${REDIS_CELERY_DB:-0}
+      BROKER_HEARTBEAT: 0
+      BROKER_POOL_LIMIT: None
+      BROKER_TRANSPORT_OPTIONS: "{'confirm_publish': True}"
+      BROKER_CONNECTION_TIMEOUT: 30
+      BROKER_CONNECTION_RETRY: True
+      BROKER_CONNECTION_MAX_RETRIES: 100
+      CELERY_TASK_TRACK_STARTED:  True
       MAIL_USERNAME: ${MAIL_USERNAME}
       MAIL_PASSWORD: ${MAIL_PASSWORD}
       MAIL_PORT: ${MAIL_PORT}

@@ -3,14 +3,15 @@ import string
 from datetime import datetime, timedelta
 from typing import Union
 
+import bcrypt
+import jwt
 from app.dependencies import get_db
 from app.repositories import users as users_repository
 from app.schemas import user as user_schemas
 from app.settings import Settings, get_settings
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, SecurityScopes
-from jose import JWTError, jwt
-from passlib.context import CryptContext
+from jwt.exceptions import InvalidTokenError
 from pydantic import BaseModel, ValidationError
 from sqlalchemy.orm import Session
 
@@ -27,8 +28,6 @@ class TokenData(BaseModel):
     username: str = ""
     scopes: list[str] = []
 
-
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 oauth2_scheme = OAuth2PasswordBearer(
     tokenUrl="auth/token",
@@ -76,16 +75,22 @@ oauth2_scheme = OAuth2PasswordBearer(
         "modules:read": "Read misp-modules.",
         "modules:update": "Update misp-modules.",
         "modules:query": "Query misp-modules.",
+        "feeds:create": "Create feeds.",
+        "feeds:read": "Read feeds.",
+        "feeds:update": "Update feeds.",
+        "feeds:delete": "Delete feeds.",
+        "feeds:fetch": "Fetch feeds.",
+        "feeds:test": "Test feed connection by id.",
     },
 )
 
 
 def verify_password(plain_password, hashed_password):
-    return pwd_context.verify(plain_password, hashed_password)
+    return bcrypt.checkpw(plain_password.encode(), hashed_password.encode())
 
 
 def get_password_hash(password):
-    return pwd_context.hash(password)
+    return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
 
 
 def create_access_token(
@@ -129,7 +134,7 @@ async def get_current_user(
             raise credentials_exception
         token_scopes = payload.get("scopes", [])
         token_data = TokenData(scopes=token_scopes, username=username)
-    except (JWTError, ValidationError):
+    except (InvalidTokenError, ValidationError):
         raise credentials_exception
     user = users_repository.get_user_by_email(db, email=token_data.username)
     if user is None:

@@ -46,7 +46,7 @@ function handleRemoteOrgUpdated(orgId) {
         <div class="card-header border-bottom">
             <div class="row">
                 <div class="col-10">
-                    <h3>Create Server</h3>
+                    <h3>Add Server</h3>
                     {{ server.role_id }}
                 </div>
             </div>
