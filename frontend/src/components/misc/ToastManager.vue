@@ -1,17 +1,14 @@
 <script setup>
-import { ref } from 'vue';
 import { useToastsStore } from "@/stores";
+import { storeToRefs } from 'pinia'
 
 const toastsStore = useToastsStore();
-import { storeToRefs } from 'pinia'
 const { toasts } = storeToRefs(toastsStore);
 
 const removeToast = (id) => {
     toastsStore.remove(id);
 };
 </script>
-
-<style scoped></style>
 
 <template>
     <div class="toast-container position-fixed bottom-0 end-0 p-3">
