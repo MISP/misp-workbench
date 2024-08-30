@@ -142,7 +142,7 @@ async def process_feed_event(
 
                 # process attributes
                 db_event = attributes_repository.update_attributes_from_fetched_event(
-                    db, db_event, event, feed, user
+                    db, db_event, event.attributes, feed, user
                 )
 
                 # process objects

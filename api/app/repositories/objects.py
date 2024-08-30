@@ -13,7 +13,7 @@ from app.schemas import object as object_schemas
 from app.schemas import user as user_schemas
 from app.worker import tasks
 from fastapi import HTTPException, status
-from pymisp import MISPAttribute, MISPObject
+from pymisp import MISPObject
 from sqlalchemy.orm import Session
 
 logger = logging.getLogger(__name__)
@@ -196,56 +196,56 @@ def delete_object(db: Session, object_id: int) -> object_models.Object:
     return db_object
 
 
-def create_attributes_from_fetched_object(
-    db: Session,
-    local_event: event_models.Event,
-    object: object_models.Object,
-    attributes: list[MISPAttribute],
-    feed: feed_models.Feed,
-    user: user_schemas.User,
-) -> event_models.Event:
+# def create_attributes_from_fetched_object(
+#     db: Session,
+#     local_event: event_models.Event,
+#     object: object_models.Object,
+#     attributes: list[MISPAttribute],
+#     feed: feed_models.Feed,
+#     user: user_schemas.User,
+# ) -> event_models.Event:
 
-    for object_attribute in attributes:
-        db_attribute = attribute_models.Attribute(
-            event_id=local_event.id,
-            object_id=object.id,
-            category=object_attribute.category,
-            type=object_attribute.type,
-            value=str(object_attribute.value),
-            to_ids=object_attribute.to_ids,
-            uuid=object_attribute.uuid,
-            timestamp=int(object_attribute.timestamp.timestamp()),
-            distribution=event_models.DistributionLevel.INHERIT_EVENT,
-            sharing_group_id=None,
-            comment=object_attribute.comment,
-            deleted=object_attribute.deleted,
-            disable_correlation=object_attribute.disable_correlation,
-            object_relation=getattr(object_attribute, "object_relation", None),
-            first_seen=(
-                int(object_attribute.first_seen.timestamp())
-                if hasattr(object_attribute, "first_seen")
-                else None
-            ),
-            last_seen=(
-                int(object_attribute.last_seen.timestamp())
-                if hasattr(object_attribute, "last_seen")
-                else None
-            ),
-        )
-        db.add(db_attribute)
-        local_event.attribute_count += 1
+#     for object_attribute in attributes:
+#         db_attribute = attribute_models.Attribute(
+#             event_id=local_event.id,
+#             object_id=object.id,
+#             category=object_attribute.category,
+#             type=object_attribute.type,
+#             value=str(object_attribute.value),
+#             to_ids=object_attribute.to_ids,
+#             uuid=object_attribute.uuid,
+#             timestamp=int(object_attribute.timestamp.timestamp()),
+#             distribution=event_models.DistributionLevel.INHERIT_EVENT,
+#             sharing_group_id=None,
+#             comment=object_attribute.comment,
+#             deleted=object_attribute.deleted,
+#             disable_correlation=object_attribute.disable_correlation,
+#             object_relation=getattr(object_attribute, "object_relation", None),
+#             first_seen=(
+#                 int(object_attribute.first_seen.timestamp())
+#                 if hasattr(object_attribute, "first_seen")
+#                 else None
+#             ),
+#             last_seen=(
+#                 int(object_attribute.last_seen.timestamp())
+#                 if hasattr(object_attribute, "last_seen")
+#                 else None
+#             ),
+#         )
+#         db.add(db_attribute)
+#         local_event.attribute_count += 1
 
-        # process tags
-        attributes_repository.capture_attribute_tags(
-            db, db_attribute, object_attribute.tags, local_event, user
-        )
+#         # process tags
+#         attributes_repository.capture_attribute_tags(
+#             db, db_attribute, object_attribute.tags, local_event, user
+#         )
 
-        # TODO: process shadow_attributes
-        # TODO: process attribute sightings
-        # TODO: process galaxies
-        # TODO: process analyst notes
+#         # TODO: process shadow_attributes
+#         # TODO: process attribute sightings
+#         # TODO: process galaxies
+#         # TODO: process analyst notes
 
-    return local_event
+#     return local_event
 
 
 def create_objects_from_fetched_event(
@@ -290,8 +290,12 @@ def create_objects_from_fetched_event(
         db.refresh(db_object)
         local_event.object_count += 1
 
-        local_event = create_attributes_from_fetched_object(
-            db, local_event, db_object, object.attributes, feed, user
+        for attribute in object.attributes:
+            attribute.object_id = db_object.id
+            attribute.event_id = local_event.id
+
+        local_event = attributes_repository.create_attributes_from_fetched_event(
+            db, local_event, object.attributes, feed, user
         )
 
         # TODO: process galaxies
@@ -379,8 +383,8 @@ def update_objects_from_fetched_event(
         batch_uuids = updated_uuids[batch_start : batch_start + batch_size]
 
         db_objects = (
-            db.query(attribute_models.Attribute)
-            .filter(attribute_models.Attribute.uuid.in_(batch_uuids))
+            db.query(object_models.Object)
+            .filter(object_models.Object.uuid.in_(batch_uuids))
             .enable_eagerloads(False)
             .yield_per(batch_size)
         )
@@ -389,7 +393,6 @@ def update_objects_from_fetched_event(
 
         for db_object in db_objects:
             updated_object = updated_objects_dict[str(db_object.uuid)]
-            db_object.category = updated_object.category
             db_object.name = updated_object.name
             db_object.meta_category = updated_object["meta-category"]
             db_object.description = updated_object.description
@@ -397,7 +400,7 @@ def update_objects_from_fetched_event(
             db_object.template_version = updated_object.template_version
             db_object.timestamp = (updated_object.timestamp.timestamp(),)
             db_object.comment = (updated_object.comment,)
-            db_object.deleted = (updated_object.deleted,)
+            db_object.deleted = updated_object.deleted
             db_object.first_seen = (
                 (
                     updated_object.first_seen.timestamp()
@@ -413,14 +416,56 @@ def update_objects_from_fetched_event(
                 ),
             )
 
+            for attribute in updated_object.attributes:
+                attribute.object_id = db_object.id
+                attribute.event_id = local_event.id
+
             # process attributes
-            local_event = create_attributes_from_fetched_object(
-                db, local_event, db_object, object.attributes, feed, user
+            local_event = attributes_repository.update_attributes_from_fetched_event(
+                db, local_event, updated_object.attributes, feed, user
             )
 
             # TODO: process galaxies
             # TODO: process attribute sightings
             # TODO: process analyst notes
+
+        # process object references
+        for updated_object in updated_objects:
+            for reference in updated_object.references:
+                referenced = (
+                    db.query(object_models.Object)
+                    .filter_by(uuid=reference.referenced_uuid)
+                    .first()
+                )
+                if referenced is None:
+                    referenced = (
+                        db.query(attribute_models.Attribute)
+                        .filter_by(uuid=reference.referenced_uuid)
+                        .first()
+                    )
+                if referenced is None:
+                    logger.error(
+                        f"Referenced entity not found, skipping object reference uuid: {reference.uuid}"
+                    )
+                    break
+
+                db_object_reference = object_reference_models.ObjectReference(
+                    uuid=reference.uuid,
+                    event_id=local_event.id,
+                    object_id=db_object.id,
+                    referenced_uuid=referenced.uuid,
+                    referenced_id=referenced.id,
+                    relationship_type=reference.relationship_type,
+                    timestamp=int(reference.timestamp),
+                    referenced_type=(
+                        object_reference_models.ReferencedType.ATTRIBUTE
+                        if referenced.__class__.__name__ == "Attribute"
+                        else object_reference_models.ReferencedType.OBJECT
+                    ),
+                    comment=reference.comment,
+                    deleted=referenced.deleted,
+                )
+                db.add(db_object_reference)
 
         db.commit()
 

@@ -349,13 +349,47 @@ def update_event_from_fetched_event(
         else None
     )
 
+    # process tags
+    for tag in fetched_event.tags:
+        db_tag = tags_repository.get_tag_by_name(db, tag.name)
+
+        if db_tag is None:
+            # create tag if not exists
+            db_tag = tag_models.Tag(
+                name=tag.name,
+                colour=tag.colour,
+                org_id=user.org_id,
+                user_id=user.id,
+                local_only=tag.local,
+                # exportable=tag.exportable,
+                # hide_tag=tag.hide_tag,
+                # numerical_value=tag.numerical_value,
+                # is_galaxy=tag.is_galaxy,
+                # is_custom_galaxy=tag.is_custom_galaxy,
+            )
+            db.add(db_tag)
+
+        db_event_tag = tag_models.EventTag(
+            event=db_event,
+            tag=db_tag,
+            local=tag.local,
+        )
+        db.add(db_event_tag)
+
+    # remove tags that are not in fetched event
+    event_tags = db.query(tag_models.EventTag).filter(
+        tag_models.EventTag.event_id == db_event.id
+    )
+    for event_tag in event_tags:
+        if event_tag.tag.name not in [tag.name in fetched_event.tags]:
+            db.delete(event_tag)
+
+    # TODO: process galaxies
+    # TODO: process reports
+    # TODO: process analyst notes
+
     db.commit()
     db.flush()
     db.refresh(db_event)
 
     return db_event
-
-    # TODO: process tags
-    # TODO: process galaxies
-    # TODO: process reports
-    # TODO: process analyst notes

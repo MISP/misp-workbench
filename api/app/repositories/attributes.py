@@ -262,7 +262,7 @@ def create_attributes_from_fetched_event(
 def update_attributes_from_fetched_event(
     db: Session,
     local_event: event_models.Event,
-    event: event_schemas.Event,
+    attributes: list[MISPAttribute],
     feed: feed_models.Feed,
     user: user_models.User,
 ) -> event_models.Event:
@@ -278,13 +278,13 @@ def update_attributes_from_fetched_event(
 
     new_attributes = [
         attribute
-        for attribute in event.attributes
+        for attribute in attributes
         if attribute.uuid not in local_event_dict.keys()
     ]
 
     updated_attributes = [
         attribute
-        for attribute in event.attributes
+        for attribute in attributes
         if attribute.uuid in local_event_dict
         and attribute.timestamp.timestamp() > local_event_dict[attribute.uuid]
     ]
