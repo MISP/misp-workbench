@@ -34,7 +34,7 @@ services:
       [
         "sh",
         "-c",
-        "poetry run python -m debugpy --listen 0.0.0.0:5679 -m celery -A app.worker.tasks worker --loglevel=debug --concurrency=1 --pool=solo --hostname worker@%h"
+        "poetry run python -m debugpy --listen 0.0.0.0:5679 -m celery -A app.worker.tasks worker --loglevel=debug --concurrency=1 --pool=solo"
       ]
     volumes:
       - ./api:/code
@@ -44,7 +44,7 @@ services:
   flower:
     ports:
       - "5555:5555"
-    command: poetry run celery -A app.worker.tasks flower --loglevel=debug --persistent=True --auto_refresh=True
+    command: poetry run celery -A app.worker.tasks flower --loglevel=debug --persistent=True --auto_refresh=True --state_save_interval=5000
 
   rabbitmq:
     ports:
