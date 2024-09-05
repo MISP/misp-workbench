@@ -23,11 +23,3 @@ TODO
     cd frontend/ 
     npm run dev
     ```
-
-## Deployment
-### Docker
-To start the application run:
-
-```console
-$ docker-compose up -d
-```
