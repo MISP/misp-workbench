@@ -152,7 +152,7 @@ watch(selectedQuickTemplate, (newValue, oldValue) => {
 </style>
 
 <template>
-    <div id="addObjectModal" class="modal" aria-labelledby="addObjectModalLabel" aria-hidden="true">
+    <div id="addObjectModal" class="modal fade" aria-labelledby="addObjectModalLabel" aria-hidden="true">
         <Form @submit="createObject" v-slot="{ errors }">
             <div class="modal-dialog modal-xl">
                 <div class="modal-content">
