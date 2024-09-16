@@ -1,5 +1,6 @@
 <script setup>
 import DistributionLevelSelect from "@/components/enums/DistributionLevelSelect.vue";
+import { DISTRIBUTION_LEVEL, THREAT_LEVEL, ANALYSIS_LEVEL } from "@/helpers/constants";
 import ThreatLevelSelect from "@/components/enums/ThreatLevelSelect.vue";
 import AnalysisLevelSelect from "@/components/enums/AnalysisLevelSelect.vue";
 import { Form, Field } from "vee-validate";
@@ -11,7 +12,11 @@ import { EventSchema } from "@/schemas/event";
 const eventsStore = useEventsStore();
 const { status, error } = storeToRefs(eventsStore);
 
-let event = {};
+let event = {
+    distribution: DISTRIBUTION_LEVEL.ORGANISATION_ONLY,
+    threat_level: THREAT_LEVEL.UNDEFINED,
+    analysis: ANALYSIS_LEVEL.INITIAL,
+};
 
 function onSubmit(values, { setErrors }) {
     return eventsStore
