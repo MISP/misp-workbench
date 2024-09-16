@@ -10,6 +10,7 @@ import Spinner from "@/components/misc/Spinner.vue";
 import Paginate from "vuejs-paginate-next";
 
 const props = defineProps(['event_id', 'total_size', 'page_size']);
+const objectKeyIndex = ref(0);
 let page_count = Math.ceil(props.total_size / props.page_size);
 
 const objectsStore = useObjectsStore();
@@ -32,6 +33,7 @@ const selectedObject = ref(null);
 function handleObjectsUpdated(event) {
     // TODO FIXME: resets the page to 1 and reloads the objects, not the best way to do this, reload current page
     onPageChange(1);
+    objectKeyIndex.value++;
 }
 
 function openAddObjectModal() {
@@ -63,13 +65,14 @@ function openDeleteObjectModal(object) {
                     </button>
                 </div>
                 <div class="card-body">
-                    <ObjectAttributesList :attributes="object.attributes" :object_id="object.id" @attribute-enriched="handleObjectsUpdated" />
+                    <ObjectAttributesList :attributes="object.attributes" :object_id="object.id"
+                        @attribute-enriched="handleObjectsUpdated" />
                 </div>
             </div>
         </div>
     </div>
     <Paginate v-if="page_count > 1" :page-count="page_count" :click-handler="onPageChange" />
-    <AddObjectModal id="addObjectModal" :modal="addObjectModal" :event_id="event_id"
+    <AddObjectModal id="addObjectModal" :modal="addObjectModal" :event_id="event_id" :key="objectKeyIndex"
         @object-created="handleObjectsUpdated" />
     <DeleteObjectModal id="deleteObjectModal" :modal="deleteObjectModal" :object="selectedObject"
         @object-deleted="handleObjectsUpdated" />

@@ -20,7 +20,7 @@ const objectTemplateErrors = ref(null);
 const props = defineProps(['event_id', 'modal']);
 const emit = defineEmits(['object-created']);
 
-const object = ref({
+const getInitialObjectData = () => ({
     distribution: DISTRIBUTION_LEVEL.INHERIT_EVENT,
     meta_category: "network",
     template_uuid: null,
@@ -28,6 +28,8 @@ const object = ref({
     deleted: false,
     event_id: props.event_id,
 });
+
+const object = ref(getInitialObjectData());
 
 let selectedQuickTemplate = ref('');
 const activeTemplate = ref({
@@ -83,6 +85,7 @@ function createObject(values, { setErrors }) {
                 .then((response) => {
                     emit('object-created', { "object": response });
                     props.modal.hide();
+                    object = ref(getInitialObjectData());
                 })
                 .catch((errors) => {
                     apiError.value = errors;
@@ -102,6 +105,7 @@ function onClose() {
         template: null,
     };
     props.modal.hide();
+    object = ref(getInitialObjectData());
 }
 
 function handleObjectTemplateUpdated(templateUuid) {
@@ -158,7 +162,8 @@ watch(selectedQuickTemplate, (newValue, oldValue) => {
                 <div class="modal-content">
                     <div class="modal-header">
                         <h5 class="modal-title" id="addObjectModalLabel">Add Object</h5>
-                        <button type="button" class="btn-close btn-outline-s" data-bs-dismiss="modal" aria-label="Discard"></button>
+                        <button type="button" class="btn-close btn-outline-s" data-bs-dismiss="modal"
+                            aria-label="Discard"></button>
                     </div>
                     <div class="modal-body">
                         <ul class="nav nav-tabs" id="addObjectTabs" role="tablist">
@@ -309,8 +314,8 @@ watch(selectedQuickTemplate, (newValue, oldValue) => {
                         <span>{{ objectTemplateErrors }}</span>
                     </div>
                     <div class="modal-footer">
-                        <button id="closeModalButton" type="button" data-bs-dismiss="modal" class="btn btn-outline-secondary"
-                            @click="onClose()">Discard</button>
+                        <button id="closeModalButton" type="button" data-bs-dismiss="modal"
+                            class="btn btn-outline-secondary" @click="onClose()">Discard</button>
                         <button type="submit" class="btn btn-primary"
                             :disabled="status.loading || !activeTemplate.uuid">
                             <span v-show="status.loading">
