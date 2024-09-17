@@ -49,6 +49,14 @@ export const useObjectsStore = defineStore({
                 .then((object) => (this.object = object))
                 .finally(() => (this.status = { loading: false }));
         },
+        async update(object) {
+            this.status = { updating: true };
+            fetchWrapper
+                .patch(`${baseUrl}/${object.id}`, object)
+                .then((response) => (this.object = response))
+                .catch((error) => (this.error = error))
+                .finally(() => (this.status = { updating: false }));
+        },
         async delete(id) {
             this.status = { loading: true };
             return await fetchWrapper

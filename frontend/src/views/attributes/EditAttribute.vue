@@ -4,7 +4,6 @@ import { useAttributesStore } from "@/stores";
 import { useRoute } from "vue-router";
 import AttributeUpdate from "@/components/attributes/AttributeUpdate.vue";
 import Spinner from "@/components/misc/Spinner.vue";
-import { router } from "@/router";
 const route = useRoute()
 const attributesStore = useAttributesStore();
 const { attribute, status } = storeToRefs(attributesStore);
