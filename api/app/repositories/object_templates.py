@@ -43,4 +43,6 @@ def get_object_templates():
 
             templates.append(template)
 
+    templates = sorted(templates, key=lambda d: d['name'])
+
     return templates
