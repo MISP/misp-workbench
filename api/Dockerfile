@@ -1,4 +1,4 @@
-FROM python:3.11-slim as base
+FROM python:3.11-slim AS base
 
 ARG ENV_VARS
 
@@ -18,7 +18,7 @@ RUN poetry install
 COPY . /code
 
 # dev stage
-FROM base as dev
+FROM base AS dev
 
 ENV WATCHFILES_FORCE_POLLING=true \
     WATCHFILES_POLLING_INTERVAL=1
