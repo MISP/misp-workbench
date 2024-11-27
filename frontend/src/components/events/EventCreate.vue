@@ -47,13 +47,6 @@ function handleAnalysisLevelUpdated(analysisLevelId) {
         <div class="card-body d-flex flex-column">
             <Form @submit="onSubmit" :validation-schema="EventSchema" v-slot="{ errors, isSubmitting }">
                 <div class="mb-3">
-                    <label for="event.uuid">uuid</label>
-                    <Field class="form-control" id="event.uuid" name="event.uuid" v-model="event.uuid"
-                        :class="{ 'is-invalid': errors['event.uuid'] }">
-                    </Field>
-                    <div class=" invalid-feedback">{{ errors['event.uuid'] }}</div>
-                </div>
-                <div class="mb-3">
                     <label for="event.info">info</label>
                     <Field class="form-control" id="event.info" name="event.info" v-model="event.info"
                         :class="{ 'is-invalid': errors['event.info'] }">
