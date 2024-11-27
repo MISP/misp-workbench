@@ -10,6 +10,7 @@ import DistributionLevelSelect from "@/components/enums/DistributionLevelSelect.
 import ApiError from "@/components/misc/ApiError.vue";
 import AttributeCategorySelect from "@/components/enums/AttributeCategorySelect.vue";
 import AttributeTypeSelect from "@/components/enums/AttributeTypeSelect.vue";
+import Datepicker from "@/components/misc/Datepicker.vue";
 import { Form, Field } from "vee-validate";
 import * as Yup from "yup";
 
@@ -142,7 +143,7 @@ function handleDistributionLevelUpdated(distributionLevelId) {
               <div class="col text-start">
                 <div class="form-check">
                   <Field class="form-control" id="attribute.batch_import" name="attribute.batch_import"
-                    :value="attribute.push" v-model="attribute.batch_import"
+                    :value="attribute.batch_import" v-model="attribute.batch_import"
                     :class="{ 'is-invalid': errors['attribute.batch_import'] }">
                     <input class="form-check-input" type="checkbox" v-model="attribute.batch_import">
                   </Field>
@@ -154,7 +155,7 @@ function handleDistributionLevelUpdated(distributionLevelId) {
               <div class="col text-start">
                 <div class="form-check">
                   <Field class="form-control" id="attribute.disable_correlation" name="attribute.disable_correlation"
-                    :value="attribute.push" v-model="attribute.disable_correlation"
+                    :value="attribute.disable_correlation" v-model="attribute.disable_correlation"
                     :class="{ 'is-invalid': errors['attribute.disable_correlation'] }">
                     <input class="form-check-input" type="checkbox" v-model="attribute.disable_correlation">
                   </Field>
@@ -164,22 +165,12 @@ function handleDistributionLevelUpdated(distributionLevelId) {
             </div>
             <div class="row m-2">
               <div class="col col-6 text-start">
-                <label for="attribute.value">first seen</label>
-                <Field class="form-control" id="attribute.first_seen" name="attribute.first_seen"
-                  placeholder="DD/MM/YYYY HH:MM:SS.ssssss+TT:TT" v-model="attribute.first_seen"
-                  :class="{ 'is-invalid': errors['attribute.first_seen'] }">
-                </Field>
-                <div class=" invalid-feedback">{{ errors['attribute.first_seen'] }}
-                </div>
+                <label for="attribute.first_seen">first seen</label>
+                <Datepicker v-model="attribute.first_seen" name="attribute.first_seen" altFormat="Z" dateFormat="U" enableTime="true"/>
               </div>
               <div class="col col-6 text-start">
-                <label for="attribute.value">last seen</label>
-                <Field class="form-control" id="attribute.last_seen" name="attribute.last_seen"
-                  placeholder="DD/MM/YYYY HH:MM:SS.ssssss+TT:TT" v-model="attribute.last_seen"
-                  :class="{ 'is-invalid': errors['attribute.last_seen'] }">
-                </Field>
-                <div class=" invalid-feedback">{{ errors['attribute.last_seen'] }}
-                </div>
+                <label for="attribute.last_seen">last seen</label>
+                <Datepicker v-model="attribute.last_seen" name="attribute.last_seen" altFormat="Z" dateFormat="U" enableTime="true"/>
               </div>
             </div>
           </div>

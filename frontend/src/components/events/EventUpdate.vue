@@ -68,10 +68,6 @@ function handleAnalysisLevelUpdated(analysisLevelId) {
                 </div>
                 <div class="mb-3">
                     <label for="event.date">date</label>
-                    <!-- <Field class="form-control" id="event.date" name="event.date" v-model="event.date"
-                        :class="{ 'is-invalid': errors['event.date'] }">
-                    </Field>
-                    <div class=" invalid-feedback">{{ errors['event.date'] }}</div> -->
                     <Datepicker v-model="event.date" name="event.date" />
                 </div>
                 <div class="mb-3">

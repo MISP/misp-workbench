@@ -21,9 +21,17 @@
       type: String,
       required: true,
     },
-    format: {
+    dateFormat: {
       type: String,
       default: "Y-m-d",
+    },
+    altFormat: {
+      type: String,
+      default: "Y-m-d",
+    },
+    enableTime: {
+      type: Boolean,
+      default: false,
     },
     modelValue: {
       type: String,
@@ -40,8 +48,12 @@
   
   onMounted(() => {
     datepickerInstance = flatpickr(datepickerInput.value, {
-      dateFormat: props.format,
-      defaultDate: props.modelValue || null,
+      dateFormat: props.dateFormat,
+      altFormat: props.altFormat,
+      enableTime: props.enableTime,
+      altInput: true,
+      allowInput: true,
+      defaultDate: props.modelValue && props.dateFormat === "U" ? new Date(props.modelValue * 1000) : props.modelValue,
       onChange: (selectedDates, dateStr) => {
         fieldValue.value = dateStr;
         emit("update:modelValue", dateStr);
