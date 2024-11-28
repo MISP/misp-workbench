@@ -2,6 +2,7 @@
 import DistributionLevelSelect from "@/components/enums/DistributionLevelSelect.vue";
 import ThreatLevelSelect from "@/components/enums/ThreatLevelSelect.vue";
 import AnalysisLevelSelect from "@/components/enums/AnalysisLevelSelect.vue";
+import Datepicker from "@/components/misc/Datepicker.vue";
 import { Form, Field } from "vee-validate";
 import { storeToRefs } from 'pinia'
 import { useEventsStore } from "@/stores";
@@ -47,13 +48,6 @@ function handleAnalysisLevelUpdated(analysisLevelId) {
         <div class="card-body d-flex flex-column">
             <Form @submit="onSubmit" :validation-schema="EventSchema" v-slot="{ errors, isSubmitting }">
                 <div class="mb-3">
-                    <label for="event.uuid">uuid</label>
-                    <Field class="form-control" id="event.uuid" name="event.uuid" v-model="event.uuid"
-                        :class="{ 'is-invalid': errors['event.uuid'] }">
-                    </Field>
-                    <div class=" invalid-feedback">{{ errors['event.uuid'] }}</div>
-                </div>
-                <div class="mb-3">
                     <label for="event.info">info</label>
                     <Field class="form-control" id="event.info" name="event.info" v-model="event.info"
                         :class="{ 'is-invalid': errors['event.info'] }">
@@ -62,10 +56,7 @@ function handleAnalysisLevelUpdated(analysisLevelId) {
                 </div>
                 <div class="mb-3">
                     <label for="event.date">date</label>
-                    <Field class="form-control" id="event.date" name="event.date" v-model="event.date"
-                        :class="{ 'is-invalid': errors['event.date'] }">
-                    </Field>
-                    <div class=" invalid-feedback">{{ errors['event.date'] }}</div>
+                    <Datepicker v-model="event.date" name="event.date" />
                 </div>
                 <div class="mb-3">
                     <label for="event.distribution" class="form-label">distribution</label>

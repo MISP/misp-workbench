@@ -6,6 +6,7 @@ import { router } from "@/router";
 import { AttributeSchema } from "@/schemas/attribute";
 import DistributionLevelSelect from "@/components/enums/DistributionLevelSelect.vue";
 import AttributeTypeSelect from "@/components/enums/AttributeTypeSelect.vue";
+import Datepicker from "@/components/misc/Datepicker.vue";
 
 const attributesStore = useAttributesStore();
 const { attribute, status, error } = storeToRefs(attributesStore);
@@ -97,6 +98,16 @@ function handleDistributionLevelUpdated(distributionLevelId) {
                 </div>
                 <Field class="form-control" type="hidden" id="attribute.category" name="attribute.category"
                     v-model="attribute.category"></Field>
+                <div class="row">
+                    <div class="col col-6 text-start">
+                        <label for="attribute.first_seen">first seen</label>
+                        <Datepicker v-model="attribute.first_seen" name="attribute.first_seen" altFormat="Z" dateFormat="U" enableTime="true"/>
+                    </div>
+                    <div class="col col-6 text-start">
+                        <label for="attribute.last_seen">last seen</label>
+                        <Datepicker v-model="attribute.last_seen" name="attribute.last_seen" altFormat="Z" dateFormat="U" enableTime="true"/>
+                    </div>
+                </div>
                 <div v-if="errors.apiError" class="w-100 alert alert-danger mt-3 mb-3">
                     {{ errors.apiError }}
                 </div>
