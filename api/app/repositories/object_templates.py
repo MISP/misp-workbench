@@ -7,7 +7,6 @@ def get_object_templates():
 
     templates = []
     objects_dir = "app/submodules/misp-objects/objects"
-    os.getcwd()
 
     for root, dirs, __ in os.walk(objects_dir):
         for template_dir in dirs:
