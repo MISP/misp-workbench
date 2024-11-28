@@ -41,6 +41,10 @@ def upgrade():
         sa.Column("exclusive", sa.Boolean(), nullable=False),
         sa.Column("numerical_value", sa.Integer, index=True),
         sa.PrimaryKeyConstraint("id"),
+        sa.ForeignKeyConstraint(
+            ["taxonomy_id"],
+            ["taxonomies.id"],
+        ),
     )
 
     op.create_table(
@@ -53,10 +57,14 @@ def upgrade():
         sa.Column("description", sa.String()),
         sa.Column("numerical_value", sa.Integer, index=True),
         sa.PrimaryKeyConstraint("id"),
+        sa.ForeignKeyConstraint(
+            ["taxonomy_predicate_id"],
+            ["taxonomy_predicates.id"],
+        ),
     )
 
 
 def downgrade():
-    op.drop_table("taxonomy_entry")
+    op.drop_table("taxonomy_entries")
     op.drop_table("taxonomy_predicates")
     op.drop_table("taxonomies")

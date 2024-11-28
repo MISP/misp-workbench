@@ -1,5 +1,5 @@
 from app.database import Base
-from sqlalchemy import Boolean, Column, Integer, String
+from sqlalchemy import Boolean, Column, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
 
 
@@ -22,7 +22,9 @@ class TaxonomyPredicate(Base):
     __tablename__ = "taxonomy_predicates"
 
     id = Column(Integer, primary_key=True, index=True)
-    taxonomy_id = Column(Integer, index=True)
+    taxonomy_id = Column(
+        Integer, ForeignKey("taxonomies.id"), index=True, nullable=True
+    )
     value = Column(String, nullable=False)
     expanded = Column(String, nullable=False)
     colour = Column(String, nullable=False)
@@ -37,7 +39,9 @@ class TaxonomyEntry(Base):
     __tablename__ = "taxonomy_entries"
 
     id = Column(Integer, primary_key=True, index=True)
-    taxonomy_predicate_id = Column(Integer, index=True)
+    taxonomy_predicate_id = Column(
+        Integer, ForeignKey("taxonomy_predicates.id"), index=True, nullable=True
+    )
     value = Column(String, nullable=False)
     expanded = Column(String, nullable=False)
     colour = Column(String, nullable=False)
