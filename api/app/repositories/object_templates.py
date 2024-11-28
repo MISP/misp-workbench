@@ -1,13 +1,13 @@
 import json
 import os
-from functools import lru_cache
 
 
-@lru_cache
+# @lru_cache
 def get_object_templates():
 
     templates = []
-    objects_dir = "/code/app/submodules/misp-objects/objects"
+    objects_dir = "app/submodules/misp-objects/objects"
+    os.getcwd()
 
     for root, dirs, __ in os.walk(objects_dir):
         for template_dir in dirs:
@@ -43,6 +43,6 @@ def get_object_templates():
 
             templates.append(template)
 
-    templates = sorted(templates, key=lambda d: d['name'])
+    templates = sorted(templates, key=lambda d: d["name"])
 
     return templates
