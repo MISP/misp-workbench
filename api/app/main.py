@@ -13,6 +13,7 @@ from app.routers import (
     servers,
     sharing_groups,
     tags,
+    taxonomies,
     users,
 )
 from fastapi import FastAPI
@@ -72,6 +73,9 @@ app.include_router(sharing_groups.router, tags=["Sharing Groups"])
 
 # Tags resource
 app.include_router(tags.router, tags=["Tags"])
+
+# Taxonomies resource
+app.include_router(taxonomies.router, tags=["Taxonomies"])
 
 # Modules resource
 app.include_router(modules.router, tags=["Modules"])
