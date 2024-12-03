@@ -19,3 +19,13 @@ def get_taxonomies(
     ),
 ):
     return taxonomies_repository.get_taxonomies(db, skip=skip, limit=limit)
+
+
+@router.post("/taxonomies/update", response_model=list[taxonomies_schemas.Taxonomy])
+def update_taxonomies(
+    db: Session = Depends(get_db),
+    user: user_schemas.User = Security(
+        get_current_active_user, scopes=["taxonomies:update"]
+    ),
+):
+    return taxonomies_repository.update_taxonomies(db)
