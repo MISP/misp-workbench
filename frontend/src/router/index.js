@@ -27,6 +27,7 @@ import {
   AddFeed,
   ViewFeed,
   UpdateFeed,
+  IndexTaxonomies
 } from "@/views";
 
 export const router = createRouter({
@@ -54,6 +55,7 @@ export const router = createRouter({
     { path: "/servers/add", component: AddServer },
     { path: "/servers/update/:id", component: EditServer, props: true },
     { path: "/settings/modules", component: IndexModules },
+    { path: "/settings/taxonomies", component: IndexTaxonomies},
     { path: "/feeds", component: IndexFeeds },
     { path: "/feeds/:id", component: ViewFeed, props: true },
     { path: "/feeds/add", component: AddFeed },

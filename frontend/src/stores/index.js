@@ -9,3 +9,4 @@ export * from "./roles.store";
 export * from "./modules.store";
 export * from "./feeds.store";
 export * from "./toasts.store";
+export * from "./taxonomies.store";

@@ -2,11 +2,14 @@ import json
 import os
 
 from app.models import taxonomy as taxonomies_models
+from fastapi_pagination.ext.sqlalchemy import paginate
 from sqlalchemy.orm import Session
 
 
-def get_taxonomies(db: Session, skip: int = 0, limit: int = 100):
-    return db.query(taxonomies_models.Taxonomy).offset(skip).limit(limit).all()
+def get_taxonomies(db: Session):
+    query = db.query(taxonomies_models.Taxonomy)
+
+    return paginate(query)
 
 
 def update_taxonomies(db: Session):
