@@ -23,5 +23,20 @@ export const useTaxonomiesStore = defineStore({
                 .catch((error) => (this.status = { error }))
                 .finally(() => (this.status = { loading: false }));
         },
+        async delete(id) {
+            this.status = { loading: true };
+            return await fetchWrapper
+                .delete(`${baseUrl}/${id}`)
+                .catch((error) => (this.status = { error }))
+                .finally(() => (this.status = { loading: false }));
+        },
+        async toggle(property, taxonomy) {
+            this.status = { updating: true };
+            var patch = {};
+            patch[property] = !taxonomy[property];
+            return fetchWrapper
+                .patch(`${baseUrl}/${taxonomy.id}`, patch)
+                .finally(() => (this.status.updating = false));
+        },
     },
 });

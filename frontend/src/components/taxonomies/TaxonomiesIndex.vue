@@ -3,6 +3,7 @@ import { storeToRefs } from 'pinia'
 import { useTaxonomiesStore } from "@/stores";
 import Spinner from "@/components/misc/Spinner.vue";
 import Paginate from "vuejs-paginate-next";
+import TaxonomyActions from "@/components/taxonomies/TaxonomyActions.vue";
 
 const props = defineProps(['page_size']);
 
@@ -17,6 +18,19 @@ function onPageChange(page) {
 }
 onPageChange(1);
 
+function handleTaxonomiesUpdated(event) {
+    // TODO FIXME: resets the page to 1 and reloads the taxonomies, not the best way to do this, reload current page
+    onPageChange(1);
+}
+
+function toggle(property, taxonomy) {
+    taxonomiesStore
+        .toggle(property, taxonomy)
+        .then((response) => {
+            taxonomy[property] = !taxonomy[property];
+        })
+        .catch((errors) => (this.status.error = errors))
+}
 </script>
 
 <template>
@@ -44,13 +58,42 @@ onPageChange(1);
                     <td>
                         <RouterLink :to="`/taxonomies/${taxonomy.id}`">{{ taxonomy.id }}</RouterLink>
                     </td>
-                    <td>{{ taxonomy.namespace }}</td>
+                    <td class="text-start">{{ taxonomy.namespace }}</td>
                     <td>{{ taxonomy.version }}</td>
-                    <td>{{ taxonomy.enabled }}</td>
-                    <td>{{ taxonomy.required }}</td>
-                    <td>{{ taxonomy.highlighted }}</td>
+                    <td>
+                        <div class="flex-wrap btn-group me-2">
+                            <button type="button" class="btn" @click="toggle('enabled', taxonomy)"
+                                :class="{ 'btn-outline-success': taxonomy.enabled, 'btn-outline-danger': !taxonomy.enabled }"
+                                data-toggle="tooltip" data-placement="top" title="Toggle taxonomy">
+                                <font-awesome-icon v-if="taxonomy.enabled" icon="fa-solid fa-check" />
+                                <font-awesome-icon v-if="!taxonomy.enabled" icon="fa-solid fa-xmark" />
+                            </button>
+                        </div>
+                    </td>
+                    <td>
+                        <div class="flex-wrap btn-group me-2">
+                            <button type="button" class="btn" @click="toggle('required', taxonomy)"
+                                :class="{ 'btn-outline-success': taxonomy.required, 'btn-outline-danger': !taxonomy.required }"
+                                data-toggle="tooltip" data-placement="top" title="Toggle taxonomy">
+                                <font-awesome-icon v-if="taxonomy.required" icon="fa-solid fa-check" />
+                                <font-awesome-icon v-if="!taxonomy.required" icon="fa-solid fa-xmark" />
+                            </button>
+                        </div>
+                    </td>
+                    <td>
+                        <div class="flex-wrap btn-group me-2">
+                            <button type="button" class="btn" @click="toggle('highlighted', taxonomy)"
+                                :class="{ 'btn-outline-success': taxonomy.highlighted, 'btn-outline-danger': !taxonomy.highlighted }"
+                                data-toggle="tooltip" data-placement="top" title="Toggle taxonomy">
+                                <font-awesome-icon v-if="taxonomy.highlighted" icon="fa-solid fa-check" />
+                                <font-awesome-icon v-if="!taxonomy.highlighted" icon="fa-solid fa-xmark" />
+                            </button>
+                        </div>
+                    </td>
                     <td>-</td>
-                    <td>-</td>
+                    <td>
+                        <TaxonomyActions :taxonomy="taxonomy" @taxonomy-deleted="handleTaxonomiesUpdated" />
+                    </td>
                 </tr>
             </tbody>
         </table>

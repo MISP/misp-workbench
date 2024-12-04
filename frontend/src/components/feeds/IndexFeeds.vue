@@ -59,7 +59,6 @@ function toggleEnable(feed) {
                                 <font-awesome-icon v-if="!feed.enabled" icon="fa-solid fa-xmark" />
                             </button>
                         </div>
-
                     </td>
                     <td class="text-end">
                         <FeedActions :feed="feed" @feed-deleted="handleFeedDeleted" />

@@ -2,14 +2,25 @@ import json
 import os
 
 from app.models import taxonomy as taxonomies_models
+from app.schemas import taxonomy as taxonomies_schemas
+from fastapi import HTTPException, status
 from fastapi_pagination.ext.sqlalchemy import paginate
 from sqlalchemy.orm import Session
 
 
 def get_taxonomies(db: Session):
     query = db.query(taxonomies_models.Taxonomy)
+    query = query.order_by(taxonomies_models.Taxonomy.namespace)
 
     return paginate(query)
+
+
+def get_taxonomy_by_id(db: Session, taxonomy_id: int) -> taxonomies_models.Taxonomy:
+    return (
+        db.query(taxonomies_models.Taxonomy)
+        .filter(taxonomies_models.Taxonomy.id == taxonomy_id)
+        .first()
+    )
 
 
 def update_taxonomies(db: Session):
@@ -139,3 +150,26 @@ def update_taxonomies(db: Session):
                     entries.append(db_entry)
 
     return taxonomies
+
+
+def update_taxonomy(
+    db: Session,
+    taxonomy_id: int,
+    taxonomy: taxonomies_schemas.TaxonomyUpdate,
+) -> taxonomies_models.Taxonomy:
+    db_taxonomy = get_taxonomy_by_id(db, taxonomy_id=taxonomy_id)
+
+    if db_taxonomy is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Taxonomy not found"
+        )
+
+    taxonomy_patch = taxonomy.model_dump(exclude_unset=True)
+    for key, value in taxonomy_patch.items():
+        setattr(db_taxonomy, key, value)
+
+    db.add(db_taxonomy)
+    db.commit()
+    db.refresh(db_taxonomy)
+
+    return db_taxonomy

@@ -28,3 +28,17 @@ def update_taxonomies(
     ),
 ):
     return taxonomies_repository.update_taxonomies(db)
+
+
+@router.patch("/taxonomies/{taxonomy_id}", response_model=taxonomies_schemas.Taxonomy)
+def update_taxonomy(
+    taxonomy_id: int,
+    taxonomy: taxonomies_schemas.TaxonomyUpdate,
+    db: Session = Depends(get_db),
+    user: user_schemas.User = Security(
+        get_current_active_user, scopes=["taxonomies:update"]
+    ),
+) -> taxonomies_schemas.Taxonomy:
+    return taxonomies_repository.update_taxonomy(
+        db=db, taxonomy_id=taxonomy_id, taxonomy=taxonomy
+    )

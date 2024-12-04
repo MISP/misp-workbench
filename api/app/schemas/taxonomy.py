@@ -1,3 +1,5 @@
+from typing import Optional
+
 from pydantic import BaseModel, ConfigDict
 
 
@@ -14,6 +16,12 @@ class TaxonomyBase(BaseModel):
 class Taxonomy(TaxonomyBase):
     id: int
     model_config = ConfigDict(from_attributes=True)
+
+
+class TaxonomyUpdate(BaseModel):
+    enabled: Optional[bool] = None
+    highlighted: Optional[bool] = None
+    enabled: Optional[bool] = None
 
 
 class TaxonomyPredicateBase(BaseModel):
