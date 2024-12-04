@@ -47,6 +47,7 @@ function toggle(property, taxonomy) {
                     <!-- <th scope="col">description</th> -->
                     <th scope="col">version</th>
                     <th scope="col">enabled</th>
+                    <th scope="col">exclusive</th>
                     <th scope="col">required</th>
                     <th scope="col">highlighted</th>
                     <th scope="col">active tags</th>
@@ -67,6 +68,16 @@ function toggle(property, taxonomy) {
                                 data-toggle="tooltip" data-placement="top" title="Toggle taxonomy">
                                 <font-awesome-icon v-if="taxonomy.enabled" icon="fa-solid fa-check" />
                                 <font-awesome-icon v-if="!taxonomy.enabled" icon="fa-solid fa-xmark" />
+                            </button>
+                        </div>
+                    </td>
+                    <td>
+                        <div class="flex-wrap btn-group me-2">
+                            <button type="button" class="btn" @click="toggle('exclusive', taxonomy)"
+                                :class="{ 'btn-outline-success': taxonomy.exclusive, 'btn-outline-danger': !taxonomy.exclusive }"
+                                data-toggle="tooltip" data-placement="top" title="Toggle taxonomy">
+                                <font-awesome-icon v-if="taxonomy.exclusive" icon="fa-solid fa-check" />
+                                <font-awesome-icon v-if="!taxonomy.exclusive" icon="fa-solid fa-xmark" />
                             </button>
                         </div>
                     </td>

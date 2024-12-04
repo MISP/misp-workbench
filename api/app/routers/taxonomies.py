@@ -3,7 +3,7 @@ from app.dependencies import get_db
 from app.repositories import taxonomies as taxonomies_repository
 from app.schemas import taxonomy as taxonomies_schemas
 from app.schemas import user as user_schemas
-from fastapi import APIRouter, Depends, Security
+from fastapi import APIRouter, Depends, HTTPException, Security, status
 from fastapi_pagination import Page
 from sqlalchemy.orm import Session
 
@@ -18,6 +18,22 @@ def get_taxonomies(
     ),
 ):
     return taxonomies_repository.get_taxonomies(db)
+
+
+@router.get("/taxonomies/{taxonomy_id}", response_model=taxonomies_schemas.Taxonomy)
+def get_taxonomy_by_id(
+    taxonomy_id: int,
+    db: Session = Depends(get_db),
+    user: user_schemas.User = Security(
+        get_current_active_user, scopes=["taxonomies:read"]
+    ),
+) -> taxonomies_schemas.Taxonomy:
+    db_taxonomy = taxonomies_repository.get_taxonomy_by_id(db, taxonomy_id=taxonomy_id)
+    if db_taxonomy is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Attribute not found"
+        )
+    return db_taxonomy
 
 
 @router.post("/taxonomies/update", response_model=list[taxonomies_schemas.Taxonomy])

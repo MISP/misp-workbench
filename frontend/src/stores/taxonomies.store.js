@@ -23,6 +23,14 @@ export const useTaxonomiesStore = defineStore({
                 .catch((error) => (this.status = { error }))
                 .finally(() => (this.status = { loading: false }));
         },
+        async getById(id) {
+            this.status = { loading: true };
+            fetchWrapper
+                .get(`${baseUrl}/${id}`)
+                .then((taxonomy) => (this.taxonomy = taxonomy))
+                .catch((error) => (this.status = { error }))
+                .finally(() => (this.status = { loading: false }));
+        },
         async delete(id) {
             this.status = { loading: true };
             return await fetchWrapper

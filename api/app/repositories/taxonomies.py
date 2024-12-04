@@ -51,7 +51,11 @@ def update_taxonomies(db: Session):
                     description=raw_taxonomy["description"],
                     version=raw_taxonomy["version"],
                     enabled=False,
-                    exclusive=False,
+                    exclusive=(
+                        raw_taxonomy["exclusive"]
+                        if "exclusive" in raw_taxonomy
+                        else False
+                    ),
                     required=False,
                     highlighted=False,
                 )
@@ -93,6 +97,9 @@ def update_taxonomies(db: Session):
                             else raw_predicate["value"]
                         ),
                         value=raw_predicate["value"],
+                        colour=(
+                            raw_predicate["colour"] if "colour" in raw_predicate else ""
+                        ),
                     )
 
                     db.add(db_predicate)

@@ -13,13 +13,9 @@ class TaxonomyBase(BaseModel):
     highlighted: bool
 
 
-class Taxonomy(TaxonomyBase):
-    id: int
-    model_config = ConfigDict(from_attributes=True)
-
-
 class TaxonomyUpdate(BaseModel):
     enabled: Optional[bool] = None
+    exclusive: Optional[bool] = None
     highlighted: Optional[bool] = None
     enabled: Optional[bool] = None
 
@@ -28,26 +24,33 @@ class TaxonomyPredicateBase(BaseModel):
     taxonomy_id: int
     value: str
     expanded: str
-    colour: str
-    description: str
-    exclusive: bool
-    numerical_value: int
-
-
-class TaxonomyPredicate(TaxonomyPredicateBase):
-    id: int
-    model_config = ConfigDict(from_attributes=True)
+    colour: Optional[str]
+    description: Optional[str]
+    exclusive: Optional[bool]
+    numerical_value: Optional[int]
 
 
 class TaxonomyEntryBase(BaseModel):
     taxonomy_predicate_id: int
     value: str
     expanded: str
-    colour: str
-    description: str
-    numerical_value: int
+    colour: Optional[str]
+    description: Optional[str]
+    numerical_value: Optional[int]
 
 
 class TaxonomyEntry(TaxonomyEntryBase):
     id: int
+    model_config = ConfigDict(from_attributes=True)
+
+
+class TaxonomyPredicate(TaxonomyPredicateBase):
+    id: int
+    entries: list[TaxonomyEntry] = []
+    model_config = ConfigDict(from_attributes=True)
+
+
+class Taxonomy(TaxonomyBase):
+    id: int
+    predicates: list[TaxonomyPredicate] = []
     model_config = ConfigDict(from_attributes=True)
