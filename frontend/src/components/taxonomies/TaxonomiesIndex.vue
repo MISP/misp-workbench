@@ -57,7 +57,6 @@ function toggle(property, taxonomy) {
             </form>
         </div>
     </nav>
-    <Spinner v-if="status.loading" />
     <div v-if="status.error" class="text-danger">
         Error loading taxonomies: {{ status.error }}
     </div>
@@ -133,4 +132,5 @@ function toggle(property, taxonomy) {
         </table>
     </div>
     <Paginate v-if="page_count > 1" :page-count="page_count" :click-handler="onPageChange" />
+    <Spinner v-if="status.loading" />
 </template>

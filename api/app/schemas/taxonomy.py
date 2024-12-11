@@ -16,8 +16,8 @@ class TaxonomyBase(BaseModel):
 class TaxonomyUpdate(BaseModel):
     enabled: Optional[bool] = None
     exclusive: Optional[bool] = None
+    required: Optional[bool] = None
     highlighted: Optional[bool] = None
-    enabled: Optional[bool] = None
 
 
 class TaxonomyPredicateBase(BaseModel):

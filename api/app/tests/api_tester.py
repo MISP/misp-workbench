@@ -15,6 +15,7 @@ from app.models import organisation as organisation_models
 from app.models import server as server_models
 from app.models import sharing_groups as sharing_groups_models
 from app.models import tag as tag_models
+from app.models import taxonomy as taxonomy_models
 from app.models import user as user_models
 from app.settings import get_settings
 from fastapi.testclient import TestClient
@@ -72,6 +73,9 @@ class ApiTester:
         db.query(user_models.User).delete()
         db.query(organisation_models.Organisation).delete()
         db.query(module_models.ModuleSettings).delete()
+        db.query(taxonomy_models.TaxonomyEntry).delete()
+        db.query(taxonomy_models.TaxonomyPredicate).delete()
+        db.query(taxonomy_models.Taxonomy).delete()
 
     @pytest.fixture(scope="class", autouse=True)
     def cleanup(self, db: Session):
@@ -367,3 +371,49 @@ class ApiTester:
         db.refresh(feed_1)
 
         yield feed_1
+
+    @pytest.fixture(scope="class")
+    def tlp_taxonomy(
+        self,
+        db: Session,
+        organisation_1: organisation_models.Organisation,
+        user_1: user_models.User,
+    ):
+        tlp_taxonomy = taxonomy_models.Taxonomy(
+            namespace="tlp",
+            description="Traffic Light Protocol",
+            version=1,
+            enabled=True,
+            exclusive=True,
+            required=False,
+            highlighted=False,
+        )
+
+        db.add(tlp_taxonomy)
+        db.commit()
+        db.refresh(tlp_taxonomy)
+
+        return tlp_taxonomy
+
+    @pytest.fixture(scope="class")
+    def tlp_white_predicate(
+        self,
+        db: Session,
+        organisation_1: organisation_models.Organisation,
+        user_1: user_models.User,
+        tlp_taxonomy: taxonomy_models.Taxonomy,
+    ):
+
+        tlp_white_predicate = taxonomy_models.TaxonomyPredicate(
+            taxonomy_id=tlp_taxonomy.id,
+            value="white",
+            expanded="(TLP:WHITE) Information can be shared publicly in accordance with the law.",
+            colour="#FFFFFF",
+            description="Disclosure is not limited.  Sources may use TLP:WHITE when information carries minimal or no foreseeable risk of misuse, in accordance with applicable rules and procedures for public release. Subject to standard copyright rules, TLP:WHITE information may be distributed without restriction. The version 2.0 of TLP doesn't mention anymore this tag which is most probably compatible with new TLP:CLEAR tag.",
+        )
+
+        db.add(tlp_white_predicate)
+        db.commit()
+        db.refresh(tlp_white_predicate)
+
+        yield tlp_white_predicate
