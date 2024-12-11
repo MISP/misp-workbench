@@ -3,11 +3,17 @@ from app.dependencies import get_db
 from app.repositories import taxonomies as taxonomies_repository
 from app.schemas import taxonomy as taxonomies_schemas
 from app.schemas import user as user_schemas
-from fastapi import APIRouter, Depends, HTTPException, Security, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Security, status
 from fastapi_pagination import Page
+from fastapi_pagination.customization import CustomizedPage, UseModelConfig
 from sqlalchemy.orm import Session
 
 router = APIRouter()
+
+Page = CustomizedPage[
+    Page,
+    UseModelConfig(extra="allow"),
+]
 
 
 @router.get("/taxonomies/", response_model=Page[taxonomies_schemas.Taxonomy])
@@ -16,8 +22,9 @@ def get_taxonomies(
     user: user_schemas.User = Security(
         get_current_active_user, scopes=["taxonomies:read"]
     ),
+    filter: str = Query(None),
 ):
-    return taxonomies_repository.get_taxonomies(db)
+    return taxonomies_repository.get_taxonomies(db, filter=filter)
 
 
 @router.get("/taxonomies/{taxonomy_id}", response_model=taxonomies_schemas.Taxonomy)

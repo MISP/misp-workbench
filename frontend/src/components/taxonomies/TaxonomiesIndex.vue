@@ -1,4 +1,5 @@
 <script setup>
+import { ref, watch } from "vue"
 import { storeToRefs } from 'pinia'
 import { useTaxonomiesStore } from "@/stores";
 import Spinner from "@/components/misc/Spinner.vue";
@@ -9,14 +10,25 @@ const props = defineProps(['page_size']);
 
 const taxonomiesStore = useTaxonomiesStore();
 const { page_count, taxonomies, status } = storeToRefs(taxonomiesStore);
+const searchTerm = ref('');
 
 function onPageChange(page) {
     taxonomiesStore.get({
         page: page,
-        size: props.page_size
+        size: props.page_size,
+        filter: searchTerm.value,
     });
 }
 onPageChange(1);
+
+
+watch(
+    searchTerm,
+    () => {
+        onPageChange(1);
+    }
+);
+
 
 function handleTaxonomiesUpdated(event) {
     // TODO FIXME: resets the page to 1 and reloads the taxonomies, not the best way to do this, reload current page
@@ -34,6 +46,17 @@ function toggle(property, taxonomy) {
 </script>
 
 <template>
+    <nav class="navbar">
+        <div class="container-fluid">
+            <a class="navbar-brand">misp-taxonomies</a>
+            <form class="d-flex" role="search">
+                <div class="input-group d-flex">
+                    <span class="input-group-text"><font-awesome-icon icon="fa-solid fa-magnifying-glass" /></span>
+                    <input type="text" class="form-control " v-model="searchTerm" placeholder="Search">
+                </div>
+            </form>
+        </div>
+    </nav>
     <Spinner v-if="status.loading" />
     <div v-if="status.error" class="text-danger">
         Error loading taxonomies: {{ status.error }}

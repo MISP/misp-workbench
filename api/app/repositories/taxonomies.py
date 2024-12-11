@@ -3,16 +3,25 @@ import os
 
 from app.models import taxonomy as taxonomies_models
 from app.schemas import taxonomy as taxonomies_schemas
-from fastapi import HTTPException, status
+from fastapi import HTTPException, Query, status
 from fastapi_pagination.ext.sqlalchemy import paginate
 from sqlalchemy.orm import Session
 
 
-def get_taxonomies(db: Session):
+def get_taxonomies(
+    db: Session, filter: str = Query(None)
+) -> taxonomies_models.Taxonomy:
     query = db.query(taxonomies_models.Taxonomy)
+
+    if filter:
+        query = query.filter(taxonomies_models.Taxonomy.namespace.ilike(f"%{filter}%"))
+
     query = query.order_by(taxonomies_models.Taxonomy.namespace)
 
-    return paginate(query)
+    return paginate(
+        query,
+        additional_data={"query": {"filter": filter}},
+    )
 
 
 def get_taxonomy_by_id(db: Session, taxonomy_id: int) -> taxonomies_models.Taxonomy:
