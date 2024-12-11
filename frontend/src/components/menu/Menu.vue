@@ -43,6 +43,10 @@ export default {
                         </li>
                         <hr class="dropdown-divider">
                         <li>
+                            <RouterLink to="/settings/taxonomies" class="dropdown-item">taxonomies</RouterLink>
+                        </li>
+                        <hr class="dropdown-divider">
+                        <li>
                             <RouterLink to="/settings/internals" class="dropdown-item">internals</RouterLink>
                         </li>
                     </ul>

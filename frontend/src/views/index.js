@@ -23,3 +23,5 @@ export { default as IndexFeeds } from "./feeds/IndexFeeds.vue";
 export { default as AddFeed } from "./feeds/AddFeed.vue";
 export { default as ViewFeed } from "./feeds/ViewFeed.vue";
 export { default as UpdateFeed } from "./feeds/UpdateFeed.vue";
+export { default as IndexTaxonomies } from "./taxonomies/IndexTaxonomies.vue";
+export { default as ViewTaxonomy } from "./taxonomies/ViewTaxonomy.vue";

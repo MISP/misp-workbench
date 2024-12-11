@@ -1,3 +1,6 @@
 [submodule "api/app/submodules/misp-objects"]
 	path = api/app/submodules/misp-objects
 	url = https://github.com/MISP/misp-objects
+[submodule "api/app/submodules/misp-taxonomies"]
+	path = api/app/submodules/misp-taxonomies
+	url = https://github.com/MISP/misp-taxonomies
