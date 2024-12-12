@@ -4,3 +4,6 @@
 [submodule "api/app/submodules/misp-taxonomies"]
 	path = api/app/submodules/misp-taxonomies
 	url = https://github.com/MISP/misp-taxonomies
+[submodule "api/app/submodules/misp-galaxy"]
+	path = api/app/submodules/misp-galaxy
+	url = https://github.com/MISP/misp-galaxy
