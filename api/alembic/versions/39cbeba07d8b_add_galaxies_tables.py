@@ -30,7 +30,7 @@ def upgrade():
         sa.Column("namespace", sa.String(255), nullable=False),
         sa.Column("enabled", sa.Boolean(), nullable=False),
         sa.Column("local_only", sa.Boolean(), nullable=False),
-        sa.Column("kill_chain_order", sa.String(), nullable=True),
+        sa.Column("kill_chain_order", sa.JSON(), nullable=True, default={}),
         sa.Column("default", sa.Boolean(), nullable=False),
         sa.Column("org_id", sa.Integer(), nullable=False),
         sa.Column("orgc_id", sa.Integer(), nullable=False),
@@ -42,7 +42,6 @@ def upgrade():
             nullable=False,
         ),
         sa.PrimaryKeyConstraint("id"),
-        sa.UniqueConstraint("name"),
         sa.ForeignKeyConstraint(
             ["org_id"],
             ["organisations.id"],
@@ -64,7 +63,7 @@ def upgrade():
         sa.Column("description", sa.String(), nullable=False),
         sa.Column("galaxy_id", sa.Integer(), nullable=False),
         sa.Column("source", sa.String(255), nullable=False),
-        sa.Column("authors", sa.String(), nullable=False),
+        sa.Column("authors", sa.JSON(), nullable=False, default={}),
         sa.Column("version", sa.Integer(), nullable=True),
         sa.Column(
             "distribution",

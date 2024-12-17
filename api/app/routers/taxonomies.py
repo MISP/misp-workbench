@@ -38,7 +38,7 @@ def get_taxonomy_by_id(
     db_taxonomy = taxonomies_repository.get_taxonomy_by_id(db, taxonomy_id=taxonomy_id)
     if db_taxonomy is None:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Attribute not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Taxonomy not found"
         )
     return db_taxonomy
 

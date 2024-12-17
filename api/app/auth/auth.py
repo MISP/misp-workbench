@@ -85,6 +85,10 @@ oauth2_scheme = OAuth2PasswordBearer(
         "feeds:delete": "Delete feeds.",
         "feeds:fetch": "Fetch feeds.",
         "feeds:test": "Test feed connection by id.",
+        "galaxies:create": "Create galaxies.",
+        "galaxies:read": "Read galaxies.",
+        "galaxies:update": "Update galaxies.",
+        "galaxies:delete": "Delete galaxies.",
     },
 )
 
@@ -198,6 +202,8 @@ def get_scopes_for_user(user: user_schemas.User):
         scopes.add("sharing_groups:*")
         scopes.add("tags:*")
         scopes.add("modules:*")
+        scopes.add("taxonomies:*")
+        scopes.add("galaxies:*")
 
     if user.role.perm_auth:
         scopes.add("auth:login")
