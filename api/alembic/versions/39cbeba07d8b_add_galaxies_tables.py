@@ -62,7 +62,7 @@ def upgrade():
         sa.Column("tag_name", sa.String(255), nullable=False),
         sa.Column("description", sa.String(), nullable=False),
         sa.Column("galaxy_id", sa.Integer(), nullable=False),
-        sa.Column("source", sa.String(255), nullable=False),
+        sa.Column("source", sa.String(255), nullable=True),
         sa.Column("authors", sa.JSON(), nullable=False, default={}),
         sa.Column("version", sa.Integer(), nullable=True),
         sa.Column(
@@ -113,7 +113,7 @@ def upgrade():
         "galaxy_cluster_relations",
         sa.Column("id", sa.Integer, autoincrement=True, primary_key=True),
         sa.Column("galaxy_cluster_id", sa.Integer(), nullable=False),
-        sa.Column("referenced_galaxy_cluster_id", sa.Integer(), nullable=False),
+        sa.Column("referenced_galaxy_cluster_id", sa.Integer(), nullable=True),
         sa.Column(
             "referenced_galaxy_cluster_uuid",
             sa.types.Uuid(as_uuid=False),
@@ -127,7 +127,7 @@ def upgrade():
             nullable=False,
         ),
         sa.Column("sharing_group_id", sa.Integer(), nullable=True),
-        sa.Column("enabled", sa.Boolean(), nullable=False),
+        sa.Column("default", sa.Boolean(), nullable=False),
         sa.PrimaryKeyConstraint("id"),
         sa.ForeignKeyConstraint(
             ["galaxy_cluster_id"],
@@ -136,6 +136,18 @@ def upgrade():
         sa.ForeignKeyConstraint(
             ["sharing_group_id"],
             ["sharing_groups.id"],
+        ),
+    )
+
+    op.create_table(
+        "galaxy_cluster_relation_tags",
+        sa.Column("id", sa.Integer, autoincrement=True, primary_key=True),
+        sa.Column("galaxy_cluster_relation_id", sa.Integer(), nullable=False),
+        sa.Column("tag_id", sa.Integer, nullable=False),
+        sa.PrimaryKeyConstraint("id"),
+        sa.ForeignKeyConstraint(
+            ["galaxy_cluster_relation_id"],
+            ["galaxy_cluster_relations.id"],
         ),
     )
 
@@ -153,6 +165,7 @@ def upgrade():
 
 def downgrade():
     op.drop_table("galaxy_cluster_blocklists")
+    op.drop_table("galaxy_cluster_relation_tags")
     op.drop_table("galaxy_cluster_relations")
     op.drop_table("galaxy_elements")
     op.drop_table("galaxy_clusters")
