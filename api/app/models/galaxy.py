@@ -75,6 +75,12 @@ class GalaxyCluster(Base):
     extends_version = Column(Integer, nullable=True)
     published = Column(Boolean, nullable=False, default=False)
     deleted = Column(Boolean, nullable=False, default=False)
+    elements = relationship("GalaxyElement", lazy="subquery")
+    relations = relationship(
+        "GalaxyClusterRelation",
+        lazy="subquery",
+        foreign_keys="[GalaxyClusterRelation.galaxy_cluster_id]",
+    )
 
 
 class GalaxyElement(Base):
@@ -108,6 +114,7 @@ class GalaxyClusterRelation(Base):
         Integer, ForeignKey("sharing_groups.id"), index=True, nullable=True
     )
     default = Column(Boolean, nullable=False, default=False)
+    tags = relationship("GalaxyClusterRelationTag", lazy="subquery")
 
 
 class GalaxyClusterRelationTag(Base):
@@ -117,3 +124,4 @@ class GalaxyClusterRelationTag(Base):
         Integer, ForeignKey("galaxy_cluster_relations.id"), index=True, nullable=False
     )
     tag_id = Column(Integer, ForeignKey("tags.id"), index=True, nullable=False)
+    tag = relationship("Tag", lazy="subquery")
