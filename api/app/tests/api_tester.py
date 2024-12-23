@@ -8,6 +8,7 @@ from app.main import app
 from app.models import attribute as attribute_models
 from app.models import event as event_models
 from app.models import feed as feed_models
+from app.models import galaxy as galaxy_models
 from app.models import module as module_models
 from app.models import object as object_models
 from app.models import object_reference as object_reference_models
@@ -58,6 +59,11 @@ class ApiTester:
         yield get_settings()
 
     def teardown_db(self, db: Session):
+        db.query(galaxy_models.GalaxyElement).delete()
+        db.query(galaxy_models.GalaxyClusterRelationTag).delete()
+        db.query(galaxy_models.GalaxyClusterRelation).delete()
+        db.query(galaxy_models.GalaxyCluster).delete()
+        db.query(galaxy_models.Galaxy).delete()
         db.query(feed_models.Feed).delete()
         db.query(tag_models.AttributeTag).delete()
         db.query(tag_models.EventTag).delete()
@@ -71,11 +77,11 @@ class ApiTester:
         db.query(sharing_groups_models.SharingGroup).delete()
         db.query(server_models.Server).delete()
         db.query(user_models.User).delete()
-        db.query(organisation_models.Organisation).delete()
         db.query(module_models.ModuleSettings).delete()
         db.query(taxonomy_models.TaxonomyEntry).delete()
         db.query(taxonomy_models.TaxonomyPredicate).delete()
         db.query(taxonomy_models.Taxonomy).delete()
+        db.query(organisation_models.Organisation).delete()
 
     @pytest.fixture(scope="class", autouse=True)
     def cleanup(self, db: Session):
