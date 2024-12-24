@@ -5,6 +5,7 @@ from app.routers import (
     auth,
     events,
     feeds,
+    galaxies,
     modules,
     object_templates,
     objects,
@@ -82,5 +83,8 @@ app.include_router(modules.router, tags=["Modules"])
 
 # Feeds resource
 app.include_router(feeds.router, tags=["Feeds"])
+
+# Galaxies resource
+app.include_router(galaxies.router, tags=["Galaxies"])
 
 add_pagination(app)

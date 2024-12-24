@@ -118,7 +118,6 @@ def update_taxonomies(db: Session):
                 predicates.append(db_predicate)
 
             # process entries
-            entries = []
             if "values" not in raw_taxonomy:
                 continue
 
@@ -160,10 +159,7 @@ def update_taxonomies(db: Session):
                         )
 
                         db.add(db_entry)
-                        db.commit()
-                        db.refresh(db_entry)
-
-                    entries.append(db_entry)
+                db.commit()
 
     return taxonomies
 

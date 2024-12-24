@@ -1,17 +1,12 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import { Modal } from 'bootstrap';
-import { storeToRefs } from 'pinia'
-import { useModulesStore } from "@/stores";
 import DeleteTaxonomyModal from "@/components/taxonomies/DeleteTaxonomyModal.vue";
 
 const props = defineProps(['taxonomy']);
 const emit = defineEmits(['taxonomy-deleted']);
 
 const deleteTaxonomyModal = ref(null);
-const enrichTaxonomyModal = ref(null);
-const modulesStore = useModulesStore();
-const { modulesResponses } = storeToRefs(modulesStore);
 
 onMounted(() => {
     deleteTaxonomyModal.value = new Modal(document.getElementById(`deleteTaxonomyModal_${props.taxonomy.id}`));
