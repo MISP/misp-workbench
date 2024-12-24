@@ -399,7 +399,7 @@ class ApiTester:
         db.commit()
         db.refresh(tlp_taxonomy)
 
-        return tlp_taxonomy
+        yield tlp_taxonomy
 
     @pytest.fixture(scope="class")
     def tlp_white_predicate(
@@ -423,3 +423,68 @@ class ApiTester:
         db.refresh(tlp_white_predicate)
 
         yield tlp_white_predicate
+
+    @pytest.fixture(scope="class")
+    def threat_actor_galaxy(
+        self,
+        db: Session,
+        organisation_1: organisation_models.Organisation,
+        user_1: user_models.User,
+    ):
+        threat_actor_galaxy = galaxy_models.Galaxy(
+            name="Threat Actor",
+            type="threat-actor",
+            description="Threat actors are characteristics of malicious actors (or adversaries) representing a cyber attack threat including presumed intent and historically observed behaviour.",
+            version=3,
+            namespace="misp",
+            icon="user-secret",
+            enabled=True,
+            local_only=False,
+            default=False,
+            org_id=organisation_1.id,
+            orgc_id=organisation_1.id,
+            created="2020-01-01 01:01:01",
+            modified="2020-01-01 01:01:01",
+        )
+
+        db.add(threat_actor_galaxy)
+        db.commit()
+        db.refresh(threat_actor_galaxy)
+
+        yield threat_actor_galaxy
+
+    @pytest.fixture(scope="class")
+    def threat_actor_galaxy_cluster_apt29(
+        self,
+        db: Session,
+        organisation_1: organisation_models.Organisation,
+        user_1: user_models.User,
+        threat_actor_galaxy: galaxy_models.Galaxy,
+    ):
+
+        threat_actor_galaxy_cluster_apt29 = galaxy_models.GalaxyCluster(
+            collection_uuid="7cdff317-a673-4474-84ec-4f1754947823",
+            type="threat-actor",
+            value="APT29",
+            tag_name='misp-galaxy:threat-actor="APT29"',
+            description="APT29 description.",
+            galaxy_id=threat_actor_galaxy.id,
+            source="MISP Project",
+            authors=[
+                "Author 1",
+                "Author 2",
+            ],
+            version=1,
+            uuid="b2056ff0-00b9-482e-b11c-c771daa5f28a",
+            distribution=event_models.DistributionLevel.ALL_COMMUNITIES,
+            sharing_group_id=None,
+            org_id=organisation_1.id,
+            orgc_id=organisation_1.id,
+            published=True,
+        )
+
+        db.add(threat_actor_galaxy_cluster_apt29)
+        db.commit()
+        db.refresh(threat_actor_galaxy_cluster_apt29)
+
+        yield threat_actor_galaxy_cluster_apt29
