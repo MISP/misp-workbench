@@ -1,13 +1,13 @@
 <script setup>
 import { storeToRefs } from "pinia";
-import { useTaxonomiesStore } from "@/stores";
+import { useGalaxiesStore } from "@/stores";
 import { useRoute } from "vue-router";
-import TaxonomyView from "@/components/taxonomies/TaxonomyView.vue";
+import GalaxyView from "@/components/galaxies/GalaxyView.vue";
 import Spinner from "@/components/misc/Spinner.vue";
 const route = useRoute()
-const taxonomiesStore = useTaxonomiesStore();
-const { taxonomy, status } = storeToRefs(taxonomiesStore);
-taxonomiesStore.getById(route.params.id);
+const galaxiesStore = useGalaxiesStore();
+const { galaxy, status } = storeToRefs(galaxiesStore);
+galaxiesStore.getById(route.params.id);
 defineProps(['id']);
 </script>
 
@@ -23,8 +23,8 @@ defineProps(['id']);
 
 <template>
     <Spinner v-if="status.loading" />
-    <TaxonomyView v-show="!status.loading" :taxonomy="taxonomy" :status="status" />
+    <GalaxyView v-show="!status.loading" :galaxy="galaxy" :status="status" />
     <div v-if="status.error" class="text-danger">
-        Error loading taxonomy: {{ status.error }}
+        Error loading galaxy: {{ status.error }}
     </div>
 </template>

@@ -28,7 +28,9 @@ import {
   ViewFeed,
   UpdateFeed,
   IndexTaxonomies,
-  ViewTaxonomy
+  ViewTaxonomy,
+  IndexGalaxies,
+  ViewGalaxy
 } from "@/views";
 
 export const router = createRouter({
@@ -57,11 +59,13 @@ export const router = createRouter({
     { path: "/servers/update/:id", component: EditServer, props: true },
     { path: "/settings/modules", component: IndexModules },
     { path: "/settings/taxonomies", component: IndexTaxonomies},
+    { path: "/settings/galaxies", component: IndexGalaxies},
     { path: "/feeds", component: IndexFeeds },
     { path: "/feeds/:id", component: ViewFeed, props: true },
     { path: "/feeds/add", component: AddFeed },
     { path: "/feeds/update/:id", component: UpdateFeed, props: true },
     { path: "/taxonomies/:id", component: ViewTaxonomy, props: true },
+    { path: "/galaxies/:id", component: ViewGalaxy, props: true },
   ],
 });
 

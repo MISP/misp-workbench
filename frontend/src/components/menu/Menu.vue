@@ -45,6 +45,9 @@ export default {
                         <li>
                             <RouterLink to="/settings/taxonomies" class="dropdown-item">taxonomies</RouterLink>
                         </li>
+                        <li>
+                            <RouterLink to="/settings/galaxies" class="dropdown-item">galaxies</RouterLink>
+                        </li>
                         <hr class="dropdown-divider">
                         <li>
                             <RouterLink to="/settings/internals" class="dropdown-item">internals</RouterLink>
