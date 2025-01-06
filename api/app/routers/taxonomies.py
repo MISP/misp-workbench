@@ -22,9 +22,10 @@ def get_taxonomies(
     user: user_schemas.User = Security(
         get_current_active_user, scopes=["taxonomies:read"]
     ),
+    enabled: bool = Query(None),
     filter: str = Query(None),
 ):
-    return taxonomies_repository.get_taxonomies(db, filter=filter)
+    return taxonomies_repository.get_taxonomies(db, enabled=enabled, filter=filter)
 
 
 @router.get("/taxonomies/{taxonomy_id}", response_model=taxonomies_schemas.Taxonomy)

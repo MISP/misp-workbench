@@ -4,9 +4,9 @@ export const tagHelper = {
     getTag
 };
 
-function getTag(namspace, tag) {
-    if (!namspace || !tag) return "";
-    return `${namspace}:${tag}`;
+function getTag(namespace, tag) {
+    if (!namespace || !tag) return "";
+    return `${namespace}:${tag}`;
 }
 
 function getBackgroundColor(hex) {
