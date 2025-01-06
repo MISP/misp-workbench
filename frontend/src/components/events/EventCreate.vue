@@ -2,6 +2,7 @@
 import DistributionLevelSelect from "@/components/enums/DistributionLevelSelect.vue";
 import ThreatLevelSelect from "@/components/enums/ThreatLevelSelect.vue";
 import AnalysisLevelSelect from "@/components/enums/AnalysisLevelSelect.vue";
+import { THREAT_LEVEL, ANALYSIS_LEVEL, DISTRIBUTION_LEVEL } from "@/helpers/constants";
 import Datepicker from "@/components/misc/Datepicker.vue";
 import { Form, Field } from "vee-validate";
 import { storeToRefs } from 'pinia'
@@ -12,7 +13,11 @@ import { EventSchema } from "@/schemas/event";
 const eventsStore = useEventsStore();
 const { status, error } = storeToRefs(eventsStore);
 
-let event = {};
+let event = {
+    threat_level: THREAT_LEVEL.UNDEFINED,
+    distribution: DISTRIBUTION_LEVEL.ORGANISATION_ONLY,
+    analysis: ANALYSIS_LEVEL.INITIAL
+};
 
 function onSubmit(values, { setErrors }) {
     return eventsStore
