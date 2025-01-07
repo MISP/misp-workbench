@@ -9,18 +9,21 @@ from sqlalchemy.orm import Session
 
 
 def get_taxonomies(
-    db: Session, filter: str = Query(None)
+    db: Session, enabled: bool = Query(None), filter: str = Query(None)
 ) -> taxonomies_models.Taxonomy:
     query = db.query(taxonomies_models.Taxonomy)
 
     if filter:
         query = query.filter(taxonomies_models.Taxonomy.namespace.ilike(f"%{filter}%"))
 
+    if enabled is not None:
+        query = query.filter(taxonomies_models.Taxonomy.enabled == enabled)
+
     query = query.order_by(taxonomies_models.Taxonomy.namespace)
 
     return paginate(
         query,
-        additional_data={"query": {"filter": filter}},
+        additional_data={"query": {"enabled": enabled, "filter": filter}},
     )
 
 
