@@ -4,6 +4,7 @@ import Sparkline from "@/components/charts/Sparkline.vue";
 import AttributesIndex from "@/components/attributes/AttributesIndex.vue";
 import ObjectsIndex from "@/components/objects/ObjectsIndex.vue";
 import TagsIndex from "@/components/tags/TagsIndex.vue";
+import TaxonomiesSelect from "@/components/taxonomies/TaxonomiesSelect.vue";
 import DistributionLevel from "@/components/enums/DistributionLevel.vue";
 import UUID from "@/components/misc/UUID.vue";
 import ThreatLevel from "@/components/enums/ThreatLevel.vue";
@@ -137,6 +138,19 @@ div.row h3 {
                         </div>
                     </div>
                 </div>
+                <div class="mt-2">
+                    <div class="card h-100">
+                        <div class="card-header">
+                            <font-awesome-icon icon="fa-solid fa-tags" /> tags
+                        </div>
+                        <div class="card-body d-flex flex-column">
+                            <div class="card-text">
+                                <TagsIndex :tags="event.tags" />
+                                <TaxonomiesSelect />
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
             <div class="col col-sm-3">
                 <div class="mt-2">
@@ -203,18 +217,6 @@ div.row h3 {
                         <div class="card-body d-flex flex-column">
                             <div class="card-text">
                                 <img src="/images/pie-chart.png" class="card-img">
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="mt-2">
-                    <div class="card h-100">
-                        <div class="card-header">
-                            <font-awesome-icon icon="fa-solid fa-tags" /> tags
-                        </div>
-                        <div class="card-body d-flex flex-column">
-                            <div class="card-text">
-                                <TagsIndex :tags="event.tags" />
                             </div>
                         </div>
                     </div>

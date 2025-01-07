@@ -166,11 +166,13 @@ function handleDistributionLevelUpdated(distributionLevelId) {
             <div class="row m-2">
               <div class="col col-6 text-start">
                 <label for="attribute.first_seen">first seen</label>
-                <Datepicker v-model="attribute.first_seen" name="attribute.first_seen" altFormat="Z" dateFormat="U" enableTime="true"/>
+                <Datepicker v-model="attribute.first_seen" name="attribute.first_seen" altFormat="Z" dateFormat="U"
+                  enableTime />
               </div>
               <div class="col col-6 text-start">
                 <label for="attribute.last_seen">last seen</label>
-                <Datepicker v-model="attribute.last_seen" name="attribute.last_seen" altFormat="Z" dateFormat="U" enableTime="true"/>
+                <Datepicker v-model="attribute.last_seen" name="attribute.last_seen" altFormat="Z" dateFormat="U"
+                  enableTime />
               </div>
             </div>
           </div>
