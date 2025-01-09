@@ -80,6 +80,19 @@ def tag_attribute(
     attribute: attribute_models.Attribute,
     tag: tag_models.Tag,
 ):
+
+    db_attribute_tag = (
+        db.query(tag_models.AttributeTag)
+        .filter(
+            tag_models.AttributeTag.attribute_id == attribute.id,
+            tag_models.AttributeTag.tag_id == tag.id,
+        )
+        .first()
+    )
+
+    if db_attribute_tag is not None:
+        return db_attribute_tag
+
     db_attribute_tag = tag_models.AttributeTag(
         event_id=attribute.event_id,
         attribute_id=attribute.id,
@@ -91,6 +104,29 @@ def tag_attribute(
     db.refresh(db_attribute_tag)
 
     return db_attribute_tag
+
+
+def untag_attribute(
+    db: Session,
+    attribute: attribute_models.Attribute,
+    tag: tag_models.Tag,
+):
+    db_attribute_tag = (
+        db.query(tag_models.AttributeTag)
+        .filter(
+            tag_models.AttributeTag.attribute_id == attribute.id,
+            tag_models.AttributeTag.tag_id == tag.id,
+        )
+        .first()
+    )
+
+    if db_attribute_tag is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="AttributeTag not found"
+        )
+
+    db.delete(db_attribute_tag)
+    db.commit()
 
 
 def tag_event(

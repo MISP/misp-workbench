@@ -6,6 +6,7 @@ from app.models import tag as tag_models
 from app.tests.api_tester import ApiTester
 from fastapi import status
 from fastapi.testclient import TestClient
+from sqlalchemy.orm import Session
 
 
 class TestAttributesResource(ApiTester):
@@ -137,10 +138,50 @@ class TestAttributesResource(ApiTester):
         attribute_1: attribute_models.Attribute,
         tlp_white_tag: tag_models.Tag,
         auth_token: auth.Token,
+        db: Session,
     ):
         response = client.post(
-            f"/attributes/{attribute_1.id}/tag/{tlp_white_tag.id}",
+            f"/attributes/{attribute_1.id}/tag/{tlp_white_tag.name}",
             headers={"Authorization": "Bearer " + auth_token},
         )
 
         assert response.status_code == status.HTTP_201_CREATED
+
+        attribute_tag = (
+            db.query(tag_models.AttributeTag)
+            .filter(
+                tag_models.AttributeTag.attribute_id == attribute_1.id,
+                tag_models.AttributeTag.tag_id == tlp_white_tag.id,
+            )
+            .first()
+        )
+
+        assert attribute_tag is not None
+
+    @pytest.mark.parametrize("scopes", [["attributes:update"]])
+    def test_untag_event(
+        self,
+        client: TestClient,
+        event_1: event_models.Event,
+        attribute_1: attribute_models.Attribute,
+        tlp_white_tag: tag_models.Tag,
+        auth_token: auth.Token,
+        db: Session,
+    ):
+        response = client.delete(
+            f"/attributes/{attribute_1.id}/tag/{tlp_white_tag.name}",
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+
+        assert response.status_code == status.HTTP_204_NO_CONTENT
+
+        attribute_tag = (
+            db.query(tag_models.AttributeTag)
+            .filter(
+                tag_models.AttributeTag.attribute_id == attribute_1.id,
+                tag_models.AttributeTag.tag_id == tlp_white_tag.id,
+            )
+            .first()
+        )
+
+        assert attribute_tag is None

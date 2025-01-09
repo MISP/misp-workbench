@@ -2,6 +2,7 @@
 import { ref } from 'vue';
 import DistributionLevel from "@/components/enums/DistributionLevel.vue";
 import TagsIndex from "@/components/tags/TagsIndex.vue";
+import TagsSelect from "@/components/tags/TagsSelect.vue";
 import Timestamp from "@/components/misc/Timestamp.vue";
 import CopyToClipboard from "@/components/misc/CopyToClipboard.vue";
 import AttributeActions from "@/components/attributes/AttributeActions.vue";
@@ -57,7 +58,7 @@ function handleAttributeEnriched(attribute_id) {
                     {{ attribute.value }}
                 </td>
                 <td style="width: 20%" class="d-none d-sm-table-cell">
-                    <TagsIndex :tags="attribute.tags" />
+                    <TagsSelect :modelClass="'attribute'" :model="attribute" :tags="attribute.tags"/>
                 </td>
                 <td style="width: 10%">{{ attribute.type }}</td>
                 <td style="width: 10%" class="d-none d-sm-table-cell">

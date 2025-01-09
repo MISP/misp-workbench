@@ -1,13 +1,9 @@
 <script setup>
-import { ref, onMounted, computed, nextTick } from 'vue';
+import { ref, onMounted } from 'vue';
 import { tagHelper } from "@/helpers";
 import TomSelect from 'tom-select';
-import 'tom-select/dist/css/tom-select.bootstrap5.min.css';
 import { fetchWrapper } from "@/helpers";
-
-import { useEventsStore } from "@/stores";
-import { storeToRefs } from 'pinia'
-import { faCropSimple } from '@fortawesome/free-solid-svg-icons';
+import { useAttributesStore, useEventsStore } from "@/stores";
 
 const props = defineProps({
     modelClass: {
@@ -25,11 +21,10 @@ const props = defineProps({
 });
 
 const eventsStore = useEventsStore();
-const { status } = storeToRefs(eventsStore);
+const attributesStore = useAttributesStore();
 
 const selectElement = ref(null);
-
-const baseUrl = `${import.meta.env.VITE_API_URL}/taxonomies`;
+const taxonomiesBaseUrl = `${import.meta.env.VITE_API_URL}/taxonomies`;
 
 onMounted(() => {
     new TomSelect(selectElement.value, {
@@ -38,7 +33,7 @@ onMounted(() => {
         valueField: 'name',
         labelField: 'name',
         searchField: 'name',
-        options: [],
+        items: ["tlp:red"],
         plugins: {
             remove_button: {
                 title: 'Remove this tag',
@@ -47,7 +42,7 @@ onMounted(() => {
         preload: true,
         load: function (query, callback) {
             fetchWrapper
-                .get(baseUrl + "/?" + new URLSearchParams({
+                .get(taxonomiesBaseUrl + "/?" + new URLSearchParams({
                     enabled: true,
                     query: query,
                 }).toString())
@@ -70,10 +65,9 @@ onMounted(() => {
         },
         onLoad() {
             // add already selected tags
-            console.log(props.tags);
-            for (let tag of props.tags) {
-                selectElement.value.tomselect.addItem(tag.name);
-            }
+            // using `items` doest not work because options do not exist yet
+            // TODO: find a better way to do this, as this is triggering onItemAdd event
+            selectElement.value.tomselect.setValue(props.tags.map(tag => tag.name), false);
         },
         render: {
             option: function (data, escape) {
@@ -92,21 +86,22 @@ onMounted(() => {
                 eventsStore.untag(props.model.id, tag);
                 return;
             }
+            if (props.modelClass == "attribute") {
+                attributesStore.untag(props.model.id, tag);
+                return;
+            }
         },
         onItemAdd: function (tag) {
+            console.log("tag added", tag);
             if (props.modelClass == "event") {
                 eventsStore.tag(props.model.id, tag);
                 return;
             }
+            if (props.modelClass == "attribute") {
+                attributesStore.tag(props.model.id, tag);
+                return;
+            }
         },
-    });
-
-    // force load all enabled taxonomies
-    nextTick(() => {
-        // selectElement.value.tomselect.load('');
-
-        // // add already selected tags
-
     });
 });
 

@@ -52,6 +52,18 @@ export const useAttributesStore = defineStore({
                 .delete(`${baseUrl}/${id}`)
                 .catch((error) => (this.status = { error }))
                 .finally(() => (this.status = { loading: false }));
+        },
+        async tag(id, tag) {
+            return await fetchWrapper
+                .post(`${baseUrl}/${id}/tag/${tag}`)
+                .catch((error) => (this.status = { error }))
+                .finally(() => (this.status = { loading: false }));
+        },
+        async untag(id, tag) {
+            return await fetchWrapper
+                .delete(`${baseUrl}/${id}/tag/${tag}`)
+                .catch((error) => (this.status = { error }))
+                .finally(() => (this.status = { loading: false }));
         }
     },
 });

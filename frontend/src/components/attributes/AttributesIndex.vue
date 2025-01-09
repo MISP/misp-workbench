@@ -3,7 +3,7 @@ import { ref, onMounted } from "vue";
 import { storeToRefs } from 'pinia'
 import { useAttributesStore } from "@/stores";
 import DistributionLevel from "@/components/enums/DistributionLevel.vue";
-import TagsIndex from "@/components/tags/TagsIndex.vue";
+import TagsSelect from "@/components/tags/TagsSelect.vue";
 import Spinner from "@/components/misc/Spinner.vue";
 import Paginate from "vuejs-paginate-next";
 import AddAttributeModal from "@/components/attributes/AddAttributeModal.vue";
@@ -81,7 +81,7 @@ function handleAttributesUpdated(event) {
                         {{ attribute.value }}
                     </td>
                     <td class="d-none d-sm-table-cell">
-                        <TagsIndex :tags="attribute.tags" />
+                        <TagsSelect :modelClass="'attribute'" :model="attribute" :tags="attribute.tags"/>
                     </td>
                     <td>{{ attribute.type }}</td>
                     <td class="d-none d-sm-table-cell">
