@@ -15,7 +15,7 @@ export const useTaxonomiesStore = defineStore({
         }
     }),
     actions: {
-        async get(params = { page: 1, size: 10}) {
+        async get(params = { page: 1, size: 10 }) {
             this.status = { loading: true };
             fetchWrapper
                 .get(baseUrl + "/?" + new URLSearchParams(params).toString())
@@ -45,6 +45,6 @@ export const useTaxonomiesStore = defineStore({
             return fetchWrapper
                 .patch(`${baseUrl}/${taxonomy.id}`, patch)
                 .finally(() => (this.status.updating = false));
-        },
+        }
     },
 });

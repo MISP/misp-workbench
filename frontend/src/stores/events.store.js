@@ -53,14 +53,26 @@ export const useEventsStore = defineStore({
         async create(user) {
             this.status = { creating: true };
             return await fetchWrapper
-              .post(baseUrl, user)
-              .then((response) => (this.event = response))
-              .finally(() => (this.status = { creating: false }));
-          },
+                .post(baseUrl, user)
+                .then((response) => (this.event = response))
+                .finally(() => (this.status = { creating: false }));
+        },
         async delete(id) {
             this.status = { loading: true };
             return await fetchWrapper
                 .delete(`${baseUrl}/${id}`)
+                .catch((error) => (this.status = { error }))
+                .finally(() => (this.status = { loading: false }));
+        },
+        async tag(id, tag) {
+            return await fetchWrapper
+                .post(`${baseUrl}/${id}/tag/${tag}`)
+                .catch((error) => (this.status = { error }))
+                .finally(() => (this.status = { loading: false }));
+        },
+        async untag(id, tag) {
+            return await fetchWrapper
+                .delete(`${baseUrl}/${id}/tag/${tag}`)
                 .catch((error) => (this.status = { error }))
                 .finally(() => (this.status = { loading: false }));
         }

@@ -1,6 +1,7 @@
 import json
 import os
 
+from app.models import tag as tags_models
 from app.models import taxonomy as taxonomies_models
 from app.schemas import taxonomy as taxonomies_schemas
 from fastapi import HTTPException, Query, status
@@ -120,6 +121,31 @@ def update_taxonomies(db: Session):
 
                 predicates.append(db_predicate)
 
+                # check if the predicate exists in the tags table
+                predicate_tag = f'{db_taxonomy.namespace}:{raw_predicate["value"]}'
+                db_predicate_tag = (
+                    db.query(tags_models.Tag)
+                    .filter(
+                        tags_models.Tag.name == predicate_tag,
+                    )
+                    .first()
+                )
+
+                if db_predicate_tag is None:
+                    db_predicate_tag = tags_models.Tag(
+                        name=predicate_tag,
+                        colour=(
+                            raw_predicate["colour"] if "colour" in raw_predicate else ""
+                        ),
+                        exportable=False,
+                        hide_tag=False,
+                        is_galaxy=False,
+                        is_custom_galaxy=False,
+                        local_only=False,
+                    )
+
+                    db.add(db_predicate_tag)
+
             # process entries
             if "values" not in raw_taxonomy:
                 continue
@@ -162,6 +188,34 @@ def update_taxonomies(db: Session):
                         )
 
                         db.add(db_entry)
+
+                    # check if the predicate entry exists in the tags table
+                    predicate_entry_tag = f'{predicate_tag}:{raw_entry["value"]}'
+                    db_predicate_entry_tag = (
+                        db.query(tags_models.Tag)
+                        .filter(
+                            tags_models.Tag.name == predicate_entry_tag,
+                        )
+                        .first()
+                    )
+
+                    if db_predicate_entry_tag is None:
+                        predicate_entry_tag = tags_models.Tag(
+                            name=predicate_entry_tag,
+                            colour=(
+                                raw_entry["colour"]
+                                if "colour" in raw_entry
+                                else db_predicate.colour
+                            ),
+                            exportable=False,
+                            hide_tag=False,
+                            is_galaxy=False,
+                            is_custom_galaxy=False,
+                            local_only=False,
+                        )
+
+                        db.add(predicate_entry_tag)
+
                 db.commit()
 
     return taxonomies

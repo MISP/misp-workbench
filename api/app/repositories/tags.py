@@ -98,6 +98,19 @@ def tag_event(
     event: event_models.Event,
     tag: tag_models.Tag,
 ):
+
+    db_event_tag = (
+        db.query(tag_models.EventTag)
+        .filter(
+            tag_models.EventTag.event_id == event.id,
+            tag_models.EventTag.tag_id == tag.id,
+        )
+        .first()
+    )
+
+    if db_event_tag is not None:
+        return db_event_tag
+
     db_event_tag = tag_models.EventTag(
         event_id=event.id,
         tag_id=tag.id,
@@ -108,6 +121,29 @@ def tag_event(
     db.refresh(db_event_tag)
 
     return db_event_tag
+
+
+def untag_event(
+    db: Session,
+    event: event_models.Event,
+    tag: tag_models.Tag,
+):
+    db_event_tag = (
+        db.query(tag_models.EventTag)
+        .filter(
+            tag_models.EventTag.event_id == event.id,
+            tag_models.EventTag.tag_id == tag.id,
+        )
+        .first()
+    )
+
+    if db_event_tag is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="EventTag not found"
+        )
+
+    db.delete(db_event_tag)
+    db.commit()
 
 
 def capture_tag(db: Session, tag: MISPTag, user: user_models.User) -> tag_models.Tag:

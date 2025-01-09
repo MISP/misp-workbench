@@ -97,12 +97,12 @@ def delete_event(
 
 
 @router.post(
-    "/events/{event_id}/tag/{tag_id}",
+    "/events/{event_id}/tag/{tag}",
     status_code=status.HTTP_201_CREATED,
 )
 def tag_event(
     event_id: int,
-    tag_id: int,
+    tag: str,
     db: Session = Depends(get_db),
     user: user_schemas.User = Security(
         get_current_active_user, scopes=["events:update"]
@@ -114,7 +114,7 @@ def tag_event(
             status_code=status.HTTP_404_NOT_FOUND, detail="Event not found"
         )
 
-    tag = tags_repository.get_tag_by_id(db, tag_id=tag_id)
+    tag = tags_repository.get_tag_by_name(db, tag_name=tag)
     if tag is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Tag not found"
@@ -123,3 +123,32 @@ def tag_event(
     tags_repository.tag_event(db=db, event=event, tag=tag)
 
     return Response(status_code=status.HTTP_201_CREATED)
+
+
+@router.delete(
+    "/events/{event_id}/tag/{tag}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+def untag_event(
+    event_id: int,
+    tag: str,
+    db: Session = Depends(get_db),
+    user: user_schemas.User = Security(
+        get_current_active_user, scopes=["events:update"]
+    ),
+):
+    event = events_repository.get_event_by_id(db, event_id=event_id)
+    if event is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Event not found"
+        )
+
+    tag = tags_repository.get_tag_by_name(db, tag_name=tag)
+    if tag is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Tag not found"
+        )
+
+    tags_repository.untag_event(db=db, event=event, tag=tag)
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
