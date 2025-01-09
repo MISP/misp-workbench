@@ -170,7 +170,7 @@ class TestEventsResource(ApiTester):
         auth_token: auth.Token,
     ):
         response = client.post(
-            f"/events/{event_1.id}/tag/{tlp_white_tag.id}",
+            f"/events/{event_1.id}/tag/{tlp_white_tag.name}",
             headers={"Authorization": "Bearer " + auth_token},
         )
 
