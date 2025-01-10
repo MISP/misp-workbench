@@ -7,8 +7,8 @@ class TagBase(BaseModel):
     name: str
     colour: str
     exportable: bool
-    org_id: int
-    user_id: int
+    org_id: Optional[int] = None
+    user_id: Optional[int] = None
     hide_tag: bool
     numerical_value: Optional[int] = None
     is_galaxy: bool

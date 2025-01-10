@@ -8,6 +8,7 @@ from app.models import user as user_models
 from app.tests.api_tester import ApiTester
 from fastapi import status
 from fastapi.testclient import TestClient
+from sqlalchemy.orm import Session
 
 
 class TestEventsResource(ApiTester):
@@ -168,10 +169,47 @@ class TestEventsResource(ApiTester):
         event_1: event_models.Event,
         tlp_white_tag: tag_models.Tag,
         auth_token: auth.Token,
+        db: Session,
     ):
         response = client.post(
-            f"/events/{event_1.id}/tag/{tlp_white_tag.id}",
+            f"/events/{event_1.id}/tag/{tlp_white_tag.name}",
             headers={"Authorization": "Bearer " + auth_token},
         )
 
         assert response.status_code == status.HTTP_201_CREATED
+
+        event_tag = (
+            db.query(tag_models.EventTag)
+            .filter(
+                tag_models.EventTag.event_id == event_1.id,
+                tag_models.EventTag.tag_id == tlp_white_tag.id,
+            )
+            .first()
+        )
+        assert event_tag is not None
+
+    @pytest.mark.parametrize("scopes", [["events:update"]])
+    def test_untag_event(
+        self,
+        client: TestClient,
+        event_1: event_models.Event,
+        tlp_white_tag: tag_models.Tag,
+        auth_token: auth.Token,
+        db: Session,
+    ):
+        response = client.delete(
+            f"/events/{event_1.id}/tag/{tlp_white_tag.name}",
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+
+        assert response.status_code == status.HTTP_204_NO_CONTENT
+
+        event_tag = (
+            db.query(tag_models.EventTag)
+            .filter(
+                tag_models.EventTag.event_id == event_1.id,
+                tag_models.EventTag.tag_id == tlp_white_tag.id,
+            )
+            .first()
+        )
+        assert event_tag is None

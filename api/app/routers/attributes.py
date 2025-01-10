@@ -115,12 +115,12 @@ def delete_attribute(
 
 
 @router.post(
-    "/attributes/{attribute_id}/tag/{tag_id}",
+    "/attributes/{attribute_id}/tag/{tag}",
     status_code=status.HTTP_201_CREATED,
 )
 def tag_attribute(
     attribute_id: int,
-    tag_id: int,
+    tag: str,
     db: Session = Depends(get_db),
     user: user_schemas.User = Security(
         get_current_active_user, scopes=["attributes:update"]
@@ -132,7 +132,7 @@ def tag_attribute(
             status_code=status.HTTP_404_NOT_FOUND, detail="Attribute not found"
         )
 
-    tag = tags_repository.get_tag_by_id(db, tag_id=tag_id)
+    tag = tags_repository.get_tag_by_name(db, tag_name=tag)
     if tag is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Tag not found"
@@ -141,3 +141,32 @@ def tag_attribute(
     tags_repository.tag_attribute(db=db, attribute=attribute, tag=tag)
 
     return Response(status_code=status.HTTP_201_CREATED)
+
+
+@router.delete(
+    "/attributes/{attribute_id}/tag/{tag}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+def untag_attribute(
+    attribute_id: int,
+    tag: str,
+    db: Session = Depends(get_db),
+    user: user_schemas.User = Security(
+        get_current_active_user, scopes=["attributes:update"]
+    ),
+):
+    attribute = attributes_repository.get_attribute_by_id(db, attribute_id=attribute_id)
+    if attribute is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Attribute not found"
+        )
+
+    tag = tags_repository.get_tag_by_name(db, tag_name=tag)
+    if tag is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Tag not found"
+        )
+
+    tags_repository.untag_attribute(db=db, attribute=attribute, tag=tag)
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

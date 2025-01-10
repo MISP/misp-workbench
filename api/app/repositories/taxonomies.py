@@ -1,6 +1,7 @@
 import json
 import os
 
+from app.models import tag as tags_models
 from app.models import taxonomy as taxonomies_models
 from app.schemas import taxonomy as taxonomies_schemas
 from fastapi import HTTPException, Query, status
@@ -9,18 +10,21 @@ from sqlalchemy.orm import Session
 
 
 def get_taxonomies(
-    db: Session, filter: str = Query(None)
+    db: Session, enabled: bool = Query(None), filter: str = Query(None)
 ) -> taxonomies_models.Taxonomy:
     query = db.query(taxonomies_models.Taxonomy)
 
     if filter:
         query = query.filter(taxonomies_models.Taxonomy.namespace.ilike(f"%{filter}%"))
 
+    if enabled is not None:
+        query = query.filter(taxonomies_models.Taxonomy.enabled == enabled)
+
     query = query.order_by(taxonomies_models.Taxonomy.namespace)
 
     return paginate(
         query,
-        additional_data={"query": {"filter": filter}},
+        additional_data={"query": {"enabled": enabled, "filter": filter}},
     )
 
 
@@ -30,6 +34,108 @@ def get_taxonomy_by_id(db: Session, taxonomy_id: int) -> taxonomies_models.Taxon
         .filter(taxonomies_models.Taxonomy.id == taxonomy_id)
         .first()
     )
+
+
+def get_or_create_predicate(db: Session, db_taxonomy, raw_predicate):
+    db_predicate = (
+        db.query(taxonomies_models.TaxonomyPredicate)
+        .filter(
+            taxonomies_models.TaxonomyPredicate.taxonomy_id == db_taxonomy.id,
+            taxonomies_models.TaxonomyPredicate.value == raw_predicate["value"],
+        )
+        .first()
+    )
+
+    if db_predicate is None:
+        db_predicate = taxonomies_models.TaxonomyPredicate(
+            taxonomy_id=db_taxonomy.id,
+            expanded=(
+                raw_predicate["expanded"]
+                if "expanded" in raw_predicate
+                else raw_predicate["value"]
+            ),
+            value=raw_predicate["value"],
+            colour=(raw_predicate["colour"] if "colour" in raw_predicate else ""),
+        )
+    return db_predicate
+
+
+def get_or_create_predicate_tag(db: Session, db_taxonomy, raw_predicate):
+    predicate_tag = f'{db_taxonomy.namespace}:{raw_predicate["value"]}'
+    db_predicate_tag = (
+        db.query(tags_models.Tag)
+        .filter(
+            tags_models.Tag.name == predicate_tag,
+        )
+        .first()
+    )
+
+    if db_predicate_tag is None:
+        db_predicate_tag = tags_models.Tag(
+            name=predicate_tag,
+            colour=(raw_predicate["colour"] if "colour" in raw_predicate else ""),
+            exportable=False,
+            hide_tag=False,
+            is_galaxy=False,
+            is_custom_galaxy=False,
+            local_only=False,
+        )
+        db.add(db_predicate_tag)
+        db.commit()
+        db.refresh(db_predicate_tag)
+
+    return db_predicate_tag
+
+
+def get_or_create_entry(db: Session, db_predicate, raw_entry):
+    db_entry = (
+        db.query(taxonomies_models.TaxonomyEntry)
+        .filter(
+            taxonomies_models.TaxonomyEntry.taxonomy_predicate_id == db_predicate.id,
+            taxonomies_models.TaxonomyEntry.value == raw_entry["value"],
+        )
+        .first()
+    )
+
+    if db_entry is None:
+        db_entry = taxonomies_models.TaxonomyEntry(
+            taxonomy_predicate_id=db_predicate.id,
+            expanded=(
+                raw_entry["expanded"] if "expanded" in raw_entry else raw_entry["value"]
+            ),
+            value=raw_entry["value"],
+            description=(
+                raw_entry["description"] if "description" in raw_entry else ""
+            ),
+        )
+    return db_entry
+
+
+def get_or_create_predicate_entry_tag(
+    db: Session, db_predicate_tag, raw_entry, db_predicate
+):
+    predicate_entry_tag = f'{db_predicate_tag}:{raw_entry["value"]}'
+    db_predicate_entry_tag = (
+        db.query(tags_models.Tag)
+        .filter(
+            tags_models.Tag.name == predicate_entry_tag,
+        )
+        .first()
+    )
+
+    if db_predicate_entry_tag is None:
+        db_predicate_entry_tag = tags_models.Tag(
+            name=predicate_entry_tag,
+            colour=(
+                raw_entry["colour"] if "colour" in raw_entry else db_predicate.colour
+            ),
+            exportable=False,
+            hide_tag=False,
+            is_galaxy=False,
+            is_custom_galaxy=False,
+            local_only=False,
+        )
+    return db_predicate_entry_tag
 
 
 def update_taxonomies(db: Session):
@@ -84,45 +190,25 @@ def update_taxonomies(db: Session):
             if "predicates" not in raw_taxonomy:
                 continue
             for raw_predicate in raw_taxonomy["predicates"]:
-
                 # check if the predicate exists
-                db_predicate = (
-                    db.query(taxonomies_models.TaxonomyPredicate)
-                    .filter(
-                        taxonomies_models.TaxonomyPredicate.taxonomy_id
-                        == db_taxonomy.id,
-                        taxonomies_models.TaxonomyPredicate.value
-                        == raw_predicate["value"],
-                    )
-                    .first()
-                )
-
-                if db_predicate is None:
-                    db_predicate = taxonomies_models.TaxonomyPredicate(
-                        taxonomy_id=db_taxonomy.id,
-                        expanded=(
-                            raw_predicate["expanded"]
-                            if "expanded" in raw_predicate
-                            else raw_predicate["value"]
-                        ),
-                        value=raw_predicate["value"],
-                        colour=(
-                            raw_predicate["colour"] if "colour" in raw_predicate else ""
-                        ),
-                    )
-
-                    db.add(db_predicate)
-                    db.commit()
-                    db.refresh(db_predicate)
+                db_predicate = get_or_create_predicate(db, db_taxonomy, raw_predicate)
+                db.add(db_predicate)
+                db.commit()
+                db.refresh(db_predicate)
 
                 predicates.append(db_predicate)
+
+                # check if the predicate exists in the tags table
+                db_predicate_tag = get_or_create_predicate_tag(
+                    db, db_taxonomy, raw_predicate
+                )
+                db.add(db_predicate_tag)
 
             # process entries
             if "values" not in raw_taxonomy:
                 continue
 
             for raw_predicate_entries in raw_taxonomy["values"]:
-
                 # get the predicate
                 db_predicate = [
                     p
@@ -132,33 +218,15 @@ def update_taxonomies(db: Session):
 
                 for raw_entry in raw_predicate_entries["entry"]:
                     # check if the entry exists
-                    db_entry = (
-                        db.query(taxonomies_models.TaxonomyEntry)
-                        .filter(
-                            taxonomies_models.TaxonomyEntry.taxonomy_predicate_id
-                            == db_predicate.id,
-                            taxonomies_models.TaxonomyEntry.value == raw_entry["value"],
-                        )
-                        .first()
+                    db_entry = get_or_create_entry(db, db_predicate, raw_entry)
+                    db.add(db_entry)
+
+                    # check if the predicate entry exists in the tags table
+                    db_predicate_entry_tag = get_or_create_predicate_entry_tag(
+                        db, db_predicate_tag, raw_entry, db_predicate
                     )
+                    db.add(db_predicate_entry_tag)
 
-                    if db_entry is None:
-                        db_entry = taxonomies_models.TaxonomyEntry(
-                            taxonomy_predicate_id=db_predicate.id,
-                            expanded=(
-                                raw_entry["expanded"]
-                                if "expanded" in raw_entry
-                                else raw_entry["value"]
-                            ),
-                            value=raw_entry["value"],
-                            description=(
-                                raw_entry["description"]
-                                if "description" in raw_entry
-                                else ""
-                            ),
-                        )
-
-                        db.add(db_entry)
                 db.commit()
 
     return taxonomies

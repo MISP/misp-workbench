@@ -48,7 +48,13 @@ function toggle(property, taxonomy) {
 <template>
     <nav class="navbar">
         <div class="container-fluid">
-            <a class="navbar-brand">misp-taxonomies</a>
+            <a class="navbar-brand">
+                <button type="button" class="btn btn-outline-primary" @click="taxonomiesStore.update()"
+                    :disabled="status.updating"> <span v-show="status.updating">
+                        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                    </span>
+                    <span v-show="!status.updating">Update Taxonomies</span></button>
+            </a>
             <form class="d-flex" role="search">
                 <div class="input-group d-flex">
                     <span class="input-group-text"><font-awesome-icon icon="fa-solid fa-magnifying-glass" /></span>
