@@ -1,8 +1,7 @@
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, nextTick } from 'vue';
 import { tagHelper } from "@/helpers";
 import TomSelect from 'tom-select';
-import { fetchWrapper } from "@/helpers";
 import { useAttributesStore, useEventsStore } from "@/stores";
 
 const props = defineProps({
@@ -18,56 +17,42 @@ const props = defineProps({
         type: Array,
         default: () => [],
     },
+    taxonomies: {
+        type: Object,
+        default: () => {},
+    },
 });
 
 const eventsStore = useEventsStore();
 const attributesStore = useAttributesStore();
 
 const selectElement = ref(null);
-const taxonomiesBaseUrl = `${import.meta.env.VITE_API_URL}/taxonomies`;
 
 onMounted(() => {
+    let enabledTags = [];
+    props.taxonomies.map((taxonomy) => {
+        taxonomy.predicates.map((predicate) => {
+            enabledTags.push({
+                id: predicate.id,
+                name: tagHelper.getTag(taxonomy.namespace, predicate.value),
+                color: tagHelper.getContrastColor(predicate.colour),
+                backgroundColor: predicate.colour,
+            });
+        });
+    });
+
     new TomSelect(selectElement.value, {
         create: false,
         placeholder: 'Click to add a tag...',
         valueField: 'name',
         labelField: 'name',
         searchField: 'name',
-        items: ["tlp:red"],
+        options: enabledTags,
+        items: props.tags.map(tag => tag.name),
         plugins: {
             remove_button: {
                 title: 'Remove this tag',
             }
-        },
-        preload: true,
-        load: function (query, callback) {
-            fetchWrapper
-                .get(taxonomiesBaseUrl + "/?" + new URLSearchParams({
-                    enabled: true,
-                    query: query,
-                }).toString())
-                .then((response) => {
-                    let tags = [];
-                    response.items.map((taxonomy) => {
-                        taxonomy.predicates.map((predicate) => {
-                            tags.push({
-                                id: predicate.id,
-                                name: tagHelper.getTag(taxonomy.namespace, predicate.value),
-                                color: tagHelper.getContrastColor(predicate.colour),
-                                backgroundColor: predicate.colour,
-                            });
-                        });
-                    });
-                    callback(tags);
-                }).catch(() => {
-                    callback();
-                });
-        },
-        onLoad() {
-            // add already selected tags
-            // using `items` doest not work because options do not exist yet
-            // TODO: find a better way to do this, as this is triggering onItemAdd event
-            selectElement.value.tomselect.setValue(props.tags.map(tag => tag.name), false);
         },
         render: {
             option: function (data, escape) {
@@ -92,7 +77,6 @@ onMounted(() => {
             }
         },
         onItemAdd: function (tag) {
-            console.log("tag added", tag);
             if (props.modelClass == "event") {
                 eventsStore.tag(props.model.id, tag);
                 return;
@@ -104,8 +88,6 @@ onMounted(() => {
         },
     });
 });
-
-
 </script>
 
 <template>

@@ -5,7 +5,11 @@ from app.schemas import taxonomy as taxonomies_schemas
 from app.schemas import user as user_schemas
 from fastapi import APIRouter, Depends, HTTPException, Query, Security, status
 from fastapi_pagination import Page
-from fastapi_pagination.customization import CustomizedPage, UseModelConfig
+from fastapi_pagination.customization import (
+    CustomizedPage,
+    UseModelConfig,
+    UseParamsFields,
+)
 from sqlalchemy.orm import Session
 
 router = APIRouter()
@@ -13,6 +17,7 @@ router = APIRouter()
 Page = CustomizedPage[
     Page,
     UseModelConfig(extra="allow"),
+    UseParamsFields(size=Query(le=1000, default=20)),
 ]
 
 

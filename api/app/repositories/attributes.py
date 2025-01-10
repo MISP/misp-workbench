@@ -27,7 +27,8 @@ def get_attributes(
     if deleted is not None:
         query = query.filter(attribute_models.Attribute.deleted == deleted)
 
-    query = query.filter(attribute_models.Attribute.object_id == object_id)
+    if object_id is not None:
+        query = query.filter(attribute_models.Attribute.object_id == object_id)
 
     return paginate(query)
 

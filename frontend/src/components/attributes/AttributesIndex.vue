@@ -12,7 +12,7 @@ import CopyToClipboard from "@/components/misc/CopyToClipboard.vue";
 import Timestamp from "@/components/misc/Timestamp.vue";
 import { Modal } from 'bootstrap';
 
-const props = defineProps(['event_id', 'page_size']);
+const props = defineProps(['event_id', 'taxonomies', 'page_size']);
 const attributesStore = useAttributesStore();
 const { page_count, attributes, status } = storeToRefs(attributesStore);
 
@@ -31,7 +31,6 @@ function onPageChange(page) {
         page: page,
         size: props.page_size,
         event_id: props.event_id,
-        deleted: false
     });
 }
 onPageChange(1);
@@ -59,7 +58,6 @@ function handleAttributesUpdated(event) {
 
 <template>
     <div class="table-responsive-sm">
-
         <div v-if="status.error" class="text-danger">
             Error loading attributes: {{ status.error }}
         </div>
@@ -81,7 +79,8 @@ function handleAttributesUpdated(event) {
                         {{ attribute.value }}
                     </td>
                     <td class="d-none d-sm-table-cell">
-                        <TagsSelect :modelClass="'attribute'" :model="attribute" :tags="attribute.tags"/>
+                        <TagsSelect :modelClass="'attribute'" :model="attribute" :tags="attribute.tags"
+                            :taxonomies="taxonomies" />
                     </td>
                     <td>{{ attribute.type }}</td>
                     <td class="d-none d-sm-table-cell">

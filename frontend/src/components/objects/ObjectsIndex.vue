@@ -9,7 +9,7 @@ import DeleteObjectModal from "@/components/objects/DeleteObjectModal.vue";
 import Spinner from "@/components/misc/Spinner.vue";
 import Paginate from "vuejs-paginate-next";
 
-const props = defineProps(['event_id', 'total_size', 'page_size']);
+const props = defineProps(['event_id','taxonomies', 'total_size', 'page_size']);
 let page_count = Math.ceil(props.total_size / props.page_size);
 
 const objectsStore = useObjectsStore();
@@ -63,7 +63,7 @@ function openDeleteObjectModal(object) {
                     </button>
                 </div>
                 <div class="card-body">
-                    <ObjectAttributesList :attributes="object.attributes" :object_id="object.id" @attribute-enriched="handleObjectsUpdated" />
+                    <ObjectAttributesList :attributes="object.attributes" :object_id="object.id" :taxonomies=taxonomies @attribute-enriched="handleObjectsUpdated" />
                 </div>
             </div>
         </div>

@@ -1,5 +1,5 @@
 <script setup>
-import { toRef } from 'vue';
+import { storeToRefs } from 'pinia';
 import Sparkline from "@/components/charts/Sparkline.vue";
 import AttributesIndex from "@/components/attributes/AttributesIndex.vue";
 import ObjectsIndex from "@/components/objects/ObjectsIndex.vue";
@@ -10,12 +10,17 @@ import ThreatLevel from "@/components/enums/ThreatLevel.vue";
 import AnalysisLevel from "@/components/enums/AnalysisLevel.vue";
 import DeleteEventModal from "@/components/events/DeleteEventModal.vue";
 import { router } from "@/router";
-import { useModulesStore } from "@/stores";
+import { useModulesStore, useTaxonomiesStore } from "@/stores";
 
 const props = defineProps(['event_id', 'event', 'status']);
 
 const modulesStore = useModulesStore();
 modulesStore.get({ enabled: true });
+
+const taxonomiesStore = useTaxonomiesStore();
+taxonomiesStore.get({ enabled: true, size: 1000 }); // FIXME: get all taxonomies
+
+const { taxonomies } = storeToRefs(taxonomiesStore);
 
 function handleEventDeleted(event) {
     router.push(`/events`);
@@ -144,7 +149,8 @@ div.row h3 {
                         </div>
                         <div class="card-body d-flex flex-column">
                             <div class="card-text">
-                                <TagsSelect :modelClass="'event'" :model="event" :tags="event.tags"/>
+                                <TagsSelect v-if="taxonomies.items" :modelClass="'event'" :model="event"
+                                    :tags="event.tags" :taxonomies="taxonomies.items" />
                             </div>
                         </div>
                     </div>
@@ -228,7 +234,8 @@ div.row h3 {
                         <font-awesome-icon icon="fa-solid fa-shapes" /> objects
                     </div>
                     <div class="card-body d-flex flex-column">
-                        <ObjectsIndex :event_id="event_id" :total_size="event.object_count" :page_size="10" />
+                        <ObjectsIndex :event_id="event_id" :taxonomies="taxonomies.items"
+                            :total_size="event.object_count" :page_size="10" />
                     </div>
                 </div>
             </div>
@@ -240,7 +247,7 @@ div.row h3 {
                         <font-awesome-icon icon="fa-solid fa-cubes-stacked" /> attributes
                     </div>
                     <div class="card-body d-flex flex-column">
-                        <AttributesIndex :event_id="event_id" :page_size="10" />
+                        <AttributesIndex :event_id="event_id" :taxonomies="taxonomies.items" :page_size="10" />
                     </div>
                 </div>
             </div>
