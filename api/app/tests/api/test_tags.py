@@ -23,7 +23,7 @@ class TestTagsResource(ApiTester):
 
         assert response.status_code == status.HTTP_200_OK
 
-        assert len(data) == 1
+        assert len(data["items"]) == 1
         assert data["items"][0]["id"] == tlp_white_tag.id
         assert data["items"][0]["name"] == tlp_white_tag.name
         assert data["items"][0]["colour"] == tlp_white_tag.colour
