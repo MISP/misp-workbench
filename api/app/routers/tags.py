@@ -3,20 +3,30 @@ from app.dependencies import get_db
 from app.repositories import tags as tags_repository
 from app.schemas import tag as tag_schemas
 from app.schemas import user as user_schemas
-from fastapi import APIRouter, Depends, HTTPException, Security, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Security, status
+from fastapi_pagination import Page
+from fastapi_pagination.customization import (
+    CustomizedPage,
+    UseModelConfig,
+    UseParamsFields,
+)
 from sqlalchemy.orm import Session
 
 router = APIRouter()
 
+Page = CustomizedPage[
+    Page,
+    UseModelConfig(extra="allow"),
+    UseParamsFields(size=Query(le=1000, default=20)),
+]
 
-@router.get("/tags/", response_model=list[tag_schemas.Tag])
+
+@router.get("/tags/", response_model=Page[tag_schemas.Tag])
 def get_tags(
-    skip: int = 0,
-    limit: int = 100,
     db: Session = Depends(get_db),
     user: user_schemas.User = Security(get_current_active_user, scopes=["tags:read"]),
 ):
-    return tags_repository.get_tags(db, skip=skip, limit=limit)
+    return tags_repository.get_tags(db)
 
 
 @router.get("/tags/{tag_id}", response_model=tag_schemas.Tag)

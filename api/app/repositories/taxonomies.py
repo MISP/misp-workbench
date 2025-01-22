@@ -60,8 +60,8 @@ def get_or_create_predicate(db: Session, db_taxonomy, raw_predicate):
     return db_predicate
 
 
-def get_or_create_predicate_tag(db: Session, db_taxonomy, raw_predicate):
-    predicate_tag = f'{db_taxonomy.namespace}:{raw_predicate["value"]}'
+def get_or_create_predicate_tag(db: Session, db_taxonomy, db_predicate):
+    predicate_tag = f"{db_taxonomy.namespace}:{db_predicate.value}"
     db_predicate_tag = (
         db.query(tags_models.Tag)
         .filter(
@@ -73,7 +73,7 @@ def get_or_create_predicate_tag(db: Session, db_taxonomy, raw_predicate):
     if db_predicate_tag is None:
         db_predicate_tag = tags_models.Tag(
             name=predicate_tag,
-            colour=(raw_predicate["colour"] if "colour" in raw_predicate else ""),
+            colour=db_predicate.colour,
             exportable=False,
             hide_tag=False,
             is_galaxy=False,
@@ -108,13 +108,16 @@ def get_or_create_entry(db: Session, db_predicate, raw_entry):
                 raw_entry["description"] if "description" in raw_entry else ""
             ),
         )
+
     return db_entry
 
 
 def get_or_create_predicate_entry_tag(
-    db: Session, db_predicate_tag, raw_entry, db_predicate
+    db: Session, db_taxonomy, db_predicate, db_predicate_entry
 ):
-    predicate_entry_tag = f'{db_predicate_tag}:{raw_entry["value"]}'
+    predicate_entry_tag = (
+        f"{db_taxonomy.namespace}:{db_predicate.value}:{db_predicate_entry.value}"
+    )
     db_predicate_entry_tag = (
         db.query(tags_models.Tag)
         .filter(
@@ -126,15 +129,14 @@ def get_or_create_predicate_entry_tag(
     if db_predicate_entry_tag is None:
         db_predicate_entry_tag = tags_models.Tag(
             name=predicate_entry_tag,
-            colour=(
-                raw_entry["colour"] if "colour" in raw_entry else db_predicate.colour
-            ),
+            colour=db_predicate_entry.colour,
             exportable=False,
             hide_tag=False,
             is_galaxy=False,
             is_custom_galaxy=False,
             local_only=False,
         )
+
     return db_predicate_entry_tag
 
 
@@ -198,12 +200,6 @@ def update_taxonomies(db: Session):
 
                 predicates.append(db_predicate)
 
-                # check if the predicate exists in the tags table
-                db_predicate_tag = get_or_create_predicate_tag(
-                    db, db_taxonomy, raw_predicate
-                )
-                db.add(db_predicate_tag)
-
             # process entries
             if "values" not in raw_taxonomy:
                 continue
@@ -221,15 +217,43 @@ def update_taxonomies(db: Session):
                     db_entry = get_or_create_entry(db, db_predicate, raw_entry)
                     db.add(db_entry)
 
-                    # check if the predicate entry exists in the tags table
-                    db_predicate_entry_tag = get_or_create_predicate_entry_tag(
-                        db, db_predicate_tag, raw_entry, db_predicate
-                    )
-                    db.add(db_predicate_entry_tag)
-
                 db.commit()
 
     return taxonomies
+
+
+def enable_taxonomy_tags(db: Session, db_taxonomy):
+
+    for db_predicate in db_taxonomy.predicates:
+        # check if the predicate exists in the tags table
+        db_predicate_tag = get_or_create_predicate_tag(db, db_taxonomy, db_predicate)
+        db.add(db_predicate_tag)
+
+        for db_predicate_entry in db_predicate.entries:
+            # check if the predicate entry exists in the tags table
+            db_predicate_entry_tag = get_or_create_predicate_entry_tag(
+                db,
+                db_taxonomy,
+                db_predicate,
+                db_predicate_entry,
+            )
+            db.add(db_predicate_entry_tag)
+
+    db.commit()
+
+
+def disable_taxonomy_tags(db: Session, db_taxonomy):
+    # delete all tags from the taxonomy
+    db_taxonomy_tags = (
+        db.query(tags_models.Tag)
+        .filter(tags_models.Tag.name.ilike(f"{db_taxonomy.namespace}:%"))
+        .all()
+    )
+
+    for tag in db_taxonomy_tags:
+        db.delete(tag)
+
+    db.commit()
 
 
 def update_taxonomy(
@@ -247,6 +271,12 @@ def update_taxonomy(
     taxonomy_patch = taxonomy.model_dump(exclude_unset=True)
     for key, value in taxonomy_patch.items():
         setattr(db_taxonomy, key, value)
+
+    # if taxonomy is enabled, update the tags
+    if db_taxonomy.enabled and taxonomy_patch["enabled"]:
+        enable_taxonomy_tags(db, db_taxonomy)
+    elif not db_taxonomy.enabled and not taxonomy_patch["enabled"]:
+        disable_taxonomy_tags(db, db_taxonomy)
 
     db.add(db_taxonomy)
     db.commit()

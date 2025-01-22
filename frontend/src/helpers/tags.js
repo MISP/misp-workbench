@@ -5,7 +5,10 @@ export const tagHelper = {
 };
 
 function getTag(namspace, tag) {
-    if (!namspace || !tag) return "";
+    if (!tag) return "";
+
+    if (!namspace) return tag;
+
     return `${namspace}:${tag}`;
 }
 

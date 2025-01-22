@@ -11,3 +11,4 @@ export * from "./feeds.store";
 export * from "./toasts.store";
 export * from "./taxonomies.store";
 export * from "./galaxies.store";
+export * from "./tags.store";

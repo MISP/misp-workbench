@@ -9,7 +9,7 @@ import DeleteObjectModal from "@/components/objects/DeleteObjectModal.vue";
 import Spinner from "@/components/misc/Spinner.vue";
 import Paginate from "vuejs-paginate-next";
 
-const props = defineProps(['event_id','taxonomies', 'total_size', 'page_size']);
+const props = defineProps(['event_id','total_size', 'page_size']);
 let page_count = Math.ceil(props.total_size / props.page_size);
 
 const objectsStore = useObjectsStore();

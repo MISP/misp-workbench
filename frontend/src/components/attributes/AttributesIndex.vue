@@ -12,7 +12,7 @@ import CopyToClipboard from "@/components/misc/CopyToClipboard.vue";
 import Timestamp from "@/components/misc/Timestamp.vue";
 import { Modal } from 'bootstrap';
 
-const props = defineProps(['event_id', 'taxonomies', 'page_size']);
+const props = defineProps(['event_id', 'page_size']);
 const attributesStore = useAttributesStore();
 const { page_count, attributes, status } = storeToRefs(attributesStore);
 
@@ -79,8 +79,7 @@ function handleAttributesUpdated(event) {
                         {{ attribute.value }}
                     </td>
                     <td class="d-none d-sm-table-cell">
-                        <TagsSelect :modelClass="'attribute'" :model="attribute" :tags="attribute.tags"
-                            :taxonomies="taxonomies" />
+                        <TagsSelect :modelClass="'attribute'" :model="attribute" :selectedTags="attribute.tags" />
                     </td>
                     <td>{{ attribute.type }}</td>
                     <td class="d-none d-sm-table-cell">
