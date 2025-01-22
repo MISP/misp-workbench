@@ -3,17 +3,20 @@ from app.models import event as event_models
 from app.models import tag as tag_models
 from app.models import user as user_models
 from app.schemas import tag as tag_schemas
-from fastapi import HTTPException, status
+from fastapi import HTTPException, Query, status
 from fastapi_pagination.ext.sqlalchemy import paginate
 from pymisp import MISPTag
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 
-def get_tags(
-    db: Session,
-):
+def get_tags(db: Session, hidden: bool = Query(None)):
     query = db.query(tag_models.Tag)
+
+    if hidden is not None:
+        query = query.filter(tag_models.Tag.hide_tag == hidden)
+
+    query = query.order_by(tag_models.Tag.name)
 
     return paginate(query)
 

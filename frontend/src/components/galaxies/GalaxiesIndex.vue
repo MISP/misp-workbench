@@ -48,7 +48,13 @@ function toggle(property, galaxy) {
 <template>
     <nav class="navbar">
         <div class="container-fluid">
-            <a class="navbar-brand">misp-galaxies</a>
+            <a class="navbar-brand">
+                <button type="button" class="btn btn-outline-primary" @click="galaxiesStore.update()"
+                    :disabled="status.updating"> <span v-show="status.updating">
+                        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                    </span>
+                    <span v-show="!status.updating">Update Galaxies</span></button>
+            </a>
             <form class="d-flex" role="search">
                 <div class="input-group d-flex">
                     <span class="input-group-text"><font-awesome-icon icon="fa-solid fa-magnifying-glass" /></span>
@@ -65,7 +71,7 @@ function toggle(property, galaxy) {
             <thead>
                 <tr>
                     <th scope="col">id</th>
-                    <th scope="col">namespace</th>
+                    <th scope="col">name</th>
                     <!-- <th scope="col">description</th> -->
                     <th scope="col">version</th>
                     <th scope="col">enabled</th>
@@ -79,7 +85,7 @@ function toggle(property, galaxy) {
                     <td>
                         <RouterLink :to="`/galaxies/${galaxy.id}`">{{ galaxy.id }}</RouterLink>
                     </td>
-                    <td class="text-start">{{ galaxy.namespace }}</td>
+                    <td class="text-start">{{ galaxy.name }}</td>
                     <td>{{ galaxy.version }}</td>
                     <td>
                         <div class="flex-wrap btn-group me-2">

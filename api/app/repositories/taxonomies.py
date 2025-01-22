@@ -80,9 +80,6 @@ def get_or_create_predicate_tag(db: Session, db_taxonomy, db_predicate):
             is_custom_galaxy=False,
             local_only=False,
         )
-        db.add(db_predicate_tag)
-        db.commit()
-        db.refresh(db_predicate_tag)
 
     return db_predicate_tag
 
@@ -239,7 +236,7 @@ def enable_taxonomy_tags(db: Session, db_taxonomy):
             )
             db.add(db_predicate_entry_tag)
 
-    db.commit()
+        db.commit()
 
 
 def disable_taxonomy_tags(db: Session, db_taxonomy):
@@ -251,7 +248,8 @@ def disable_taxonomy_tags(db: Session, db_taxonomy):
     )
 
     for tag in db_taxonomy_tags:
-        db.delete(tag)
+        tag.hide_tag = True
+        db.add(tag)
 
     db.commit()
 

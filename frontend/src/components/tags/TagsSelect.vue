@@ -16,15 +16,7 @@ const props = defineProps({
     selectedTags: {
         type: Array,
         default: () => [],
-    },
-    tags: {
-        type: Array,
-        default: () => [],
-    },
-    taxonomies: {
-        type: Object,
-        default: () => { },
-    },
+    }
 });
 const tagsStore = useTagsStore();
 const eventsStore = useEventsStore();
@@ -34,7 +26,7 @@ const selectElement = ref(null);
 
 onMounted(() => {
     let enabledTags = [];
-    tagsStore.get().then((response) => {
+    tagsStore.get({hidden: false}).then((response) => {
         response.items.map((tag) => {
             enabledTags.push({
                 id: tag.id,

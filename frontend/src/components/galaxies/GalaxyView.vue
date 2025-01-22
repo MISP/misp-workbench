@@ -1,5 +1,6 @@
 <script setup>
 import Badge from "@/components/misc/Badge.vue";
+import CopyToClipboard from "@/components/misc/CopyToClipboard.vue";
 const props = defineProps(['galaxy', 'status']);
 
 function handleGalaxyDeleted(event) {
@@ -86,8 +87,8 @@ div.row h3 {
                                             <tr>
                                                 <th scope="col">id</th>
                                                 <th scope="col">value</th>
-                                                <th scope="col">description</th>
-                                                <th scope="col">default</th>
+                                                <th scope="col">connector_tag</th>
+                                                <th scope="col">deleted</th>
                                                 <th scope="col">published</th>
                                             </tr>
                                         </thead>
@@ -95,8 +96,10 @@ div.row h3 {
                                             <tr v-for="cluster in galaxy.clusters" :key="cluster.id">
                                                 <td>{{ cluster.id }}</td>
                                                 <td>{{ cluster.value }}</td>
-                                                <td>{{ cluster.description }}</td>
-                                                <td>{{ galaxy.default }}</td>
+                                                <td>
+                                                    <Badge :value="cluster.tag_name" /> <CopyToClipboard :value="cluster.tag_name" />
+                                                </td>
+                                                <td>{{ cluster.deleted }}</td>
                                                 <td>{{ cluster.published }}</td>
                                             </tr>
                                         </tbody>

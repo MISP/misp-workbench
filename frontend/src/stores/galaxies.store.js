@@ -15,7 +15,7 @@ export const useGalaxiesStore = defineStore({
         }
     }),
     actions: {
-        async get(params = { page: 1, size: 10}) {
+        async get(params = { page: 1, size: 10 }) {
             this.status = { loading: true };
             fetchWrapper
                 .get(baseUrl + "/?" + new URLSearchParams(params).toString())
@@ -44,6 +44,13 @@ export const useGalaxiesStore = defineStore({
             patch[property] = !galaxy[property];
             return fetchWrapper
                 .patch(`${baseUrl}/${galaxy.id}`, patch)
+                .finally(() => (this.status.updating = false));
+        },
+        async update(id) {
+            this.status = { updating: true };
+            return await fetchWrapper
+                .post(`${baseUrl}/update`)
+                .catch((error) => (this.status = { error }))
                 .finally(() => (this.status.updating = false));
         },
     },

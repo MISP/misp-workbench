@@ -63,7 +63,7 @@ function openDeleteObjectModal(object) {
                     </button>
                 </div>
                 <div class="card-body">
-                    <ObjectAttributesList :attributes="object.attributes" :object_id="object.id" :taxonomies=taxonomies @attribute-enriched="handleObjectsUpdated" />
+                    <ObjectAttributesList :attributes="object.attributes" :object_id="object.id" @attribute-enriched="handleObjectsUpdated" />
                 </div>
             </div>
         </div>
