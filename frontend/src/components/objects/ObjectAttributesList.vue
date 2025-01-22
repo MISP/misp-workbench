@@ -57,7 +57,7 @@ function handleAttributeEnriched(attribute_id) {
                     {{ attribute.value }}
                 </td>
                 <td style="width: 20%" class="d-none d-sm-table-cell">
-                    <TagsSelect :modelClass="'attribute'" :model="attribute" :selectedTags="attribute.tags" >
+                    <TagsSelect :modelClass="'attribute'" :model="attribute" :selectedTags="attribute.tags" />
                 </td>
                 <td style="width: 10%">{{ attribute.type }}</td>
                 <td style="width: 10%" class="d-none d-sm-table-cell">
