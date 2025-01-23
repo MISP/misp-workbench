@@ -8,20 +8,21 @@ from fastapi_pagination.ext.sqlalchemy import paginate
 from pymisp import MISPTag
 from sqlalchemy import func
 from sqlalchemy.orm import Session
+from sqlalchemy.sql import select
 
 
 def get_tags(db: Session, hidden: bool = Query(None), filter: str = Query(None)):
-    query = db.query(tag_models.Tag)
+    query = select(tag_models.Tag)
 
     if hidden is not None:
-        query = query.filter(tag_models.Tag.hide_tag == hidden)
+        query = query.where(tag_models.Tag.hide_tag == hidden)
 
     if filter:
-        query = query.filter(tag_models.Tag.name.ilike(f"%{filter}%"))
+        query = query.where(tag_models.Tag.name.ilike(f"%{filter}%"))
 
     query = query.order_by(tag_models.Tag.name)
 
-    return paginate(query)
+    return paginate(db, query)
 
 
 def get_tag_by_id(db: Session, tag_id: int):

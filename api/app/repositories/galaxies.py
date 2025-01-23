@@ -13,6 +13,7 @@ from app.schemas import user as users_schemas
 from fastapi import HTTPException, Query, status
 from fastapi_pagination.ext.sqlalchemy import paginate
 from sqlalchemy.orm import Session
+from sqlalchemy.sql import select
 
 logger = logging.getLogger(__name__)
 
@@ -20,17 +21,18 @@ logger = logging.getLogger(__name__)
 def get_galaxies(
     db: Session, enabled: bool = Query(None), filter: str = Query(None)
 ) -> galaxies_models.Galaxy:
-    query = db.query(galaxies_models.Galaxy)
+    query = select(galaxies_models.Galaxy)
 
     if filter:
-        query = query.filter(galaxies_models.Galaxy.name.ilike(f"%{filter}%"))
+        query = query.where(galaxies_models.Galaxy.name.ilike(f"%{filter}%"))
 
     if enabled is not None:
-        query = query.filter(galaxies_models.Galaxy.enabled == enabled)
+        query = query.where(galaxies_models.Galaxy.enabled == enabled)
 
     query = query.order_by(galaxies_models.Galaxy.name)
 
     return paginate(
+        db,
         query,
         additional_data={"query": {"filter": filter}},
     )

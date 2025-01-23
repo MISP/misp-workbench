@@ -14,23 +14,24 @@ from fastapi import HTTPException, status
 from fastapi_pagination.ext.sqlalchemy import paginate
 from pymisp import MISPAttribute, MISPTag
 from sqlalchemy.orm import Session
+from sqlalchemy.sql import select
 
 
 def get_attributes(
     db: Session, event_id: int = None, deleted: bool = None, object_id: int = None
 ):
-    query = db.query(attribute_models.Attribute)
+    query = select(attribute_models.Attribute)
 
     if event_id is not None:
-        query = query.filter(attribute_models.Attribute.event_id == event_id)
+        query = query.where(attribute_models.Attribute.event_id == event_id)
 
     if deleted is not None:
-        query = query.filter(attribute_models.Attribute.deleted == deleted)
+        query = query.where(attribute_models.Attribute.deleted == deleted)
 
     if object_id is not None:
-        query = query.filter(attribute_models.Attribute.object_id == object_id)
+        query = query.where(attribute_models.Attribute.object_id == object_id)
 
-    return paginate(query)
+    return paginate(db, query)
 
 
 def get_attribute_by_id(

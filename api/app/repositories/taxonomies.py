@@ -7,22 +7,24 @@ from app.schemas import taxonomy as taxonomies_schemas
 from fastapi import HTTPException, Query, status
 from fastapi_pagination.ext.sqlalchemy import paginate
 from sqlalchemy.orm import Session
+from sqlalchemy.sql import select
 
 
 def get_taxonomies(
     db: Session, enabled: bool = Query(None), filter: str = Query(None)
 ) -> taxonomies_models.Taxonomy:
-    query = db.query(taxonomies_models.Taxonomy)
+    query = select(taxonomies_models.Taxonomy)
 
     if filter:
-        query = query.filter(taxonomies_models.Taxonomy.namespace.ilike(f"%{filter}%"))
+        query = query.where(taxonomies_models.Taxonomy.namespace.ilike(f"%{filter}%"))
 
     if enabled is not None:
-        query = query.filter(taxonomies_models.Taxonomy.enabled == enabled)
+        query = query.where(taxonomies_models.Taxonomy.enabled == enabled)
 
     query = query.order_by(taxonomies_models.Taxonomy.namespace)
 
     return paginate(
+        db,
         query,
         additional_data={"query": {"enabled": enabled, "filter": filter}},
     )
