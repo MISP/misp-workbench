@@ -7,7 +7,7 @@ license = "AGPL-3.0"
 
 [tool.poetry.dependencies]
 python = "^3.9"
-fastapi = "^0.111.0"
+fastapi = "0.115.7"
 uvicorn = "^0.29.0"
 pymisp = "^2.4.159"
 pydantic = "^2.7.1"
