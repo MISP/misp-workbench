@@ -12,24 +12,25 @@ from fastapi import HTTPException, status
 from fastapi_pagination.ext.sqlalchemy import paginate
 from pymisp import MISPEvent, MISPOrganisation
 from sqlalchemy.orm import Session
+from sqlalchemy.sql import select
 
 logger = logging.getLogger(__name__)
 
 
 def get_events(db: Session, info: str = None, deleted: bool = None, uuid: str = None):
-    query = db.query(event_models.Event)
+    query = select(event_models.Event)
 
     if info is not None:
         search = f"%{info}%"
-        query = query.filter(event_models.Event.info.like(search))
+        query = query.where(event_models.Event.info.like(search))
 
     if deleted is not None:
-        query = query.filter(event_models.Event.deleted == deleted)
+        query = query.where(event_models.Event.deleted == deleted)
 
     if uuid is not None:
-        query = query.filter(event_models.Event.uuid == uuid)
+        query = query.where(event_models.Event.uuid == uuid)
 
-    return paginate(query)
+    return paginate(db, query)
 
 
 def get_event_by_id(db: Session, event_id: int):
