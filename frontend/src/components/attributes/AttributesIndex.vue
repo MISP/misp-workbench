@@ -64,12 +64,12 @@ function handleAttributesUpdated(event) {
         <table class="table table-striped">
             <thead>
                 <tr>
-                    <th style="width: 30%" scope="col">value</th>
-                    <th style="width: 15%" scope="col" class="d-none d-sm-table-cell">tags</th>
-                    <th style="width: 10%" scope="col">type</th>
-                    <th style="width: 10%" scope="col" class="d-none d-sm-table-cell">timestamp</th>
-                    <th style="width: 15%" scope="col" class="d-none d-sm-table-cell">distribution</th>
-                    <th style="width: 20%" scope="col" class="text-end">actions</th>
+                    <th scope="col">value</th>
+                    <th style="width: 400px;" scope="col" class="d-none d-sm-table-cell">tags</th>
+                    <th scope="col">type</th>
+                    <th scope="col" class="d-none d-sm-table-cell">timestamp</th>
+                    <th scope="col" class="d-none d-sm-table-cell">distribution</th>
+                    <th scope="col" class="text-end">actions</th>
                 </tr>
             </thead>
             <tbody>

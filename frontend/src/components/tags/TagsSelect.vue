@@ -68,18 +68,19 @@ onMounted(() => {
         },
         render: {
             option: function (data, escape) {
-                return '<span class="badge mx-1 tag" style="color: ' + escape(data.color) + '; background-color: ' + escape(data.backgroundColor) + '" title="' + escape(data.name) + '">' +
+                return '<span class="badge mx-1 tag" style="color: ' + escape(data.color) + '; background-color: ' + escape(data.backgroundColor) + ';" title="' + escape(data.name) + '">' +
                     escape(data.name) +
                     '</span>';
             },
             item: function (data, escape) {
-                return '<span class="badge mx-1 tag" style="color: ' + escape(data.color) + '; background-color: ' + escape(data.backgroundColor) + '" title="' + escape(data.name) + '">' +
+                return '<span class="badge mx-1 tag" style="display:block; color: ' + escape(data.color) + '; background-color: ' + escape(data.backgroundColor) + ';" title="' + escape(data.name) + '"><span class="tag-label">' +
                     escape(data.name) +
-                    '</span>';
+                    '<span/></span>';
             }
         },
         onLoad() {
-            selectElement.value.tomselect.setValue(props.selectedTags.map(tag => tag.name), true);
+            let tags = props.selectedTags ? props.selectedTags.map(tag => tag.name) : [];
+            selectElement.value.tomselect.setValue(tags, true);
             initialising = false;
         },
         onItemRemove: function (tag) {
@@ -97,7 +98,6 @@ onMounted(() => {
             if (initialising) {
                 return;
             }
-            console.log(item);
             if (props.modelClass == "event") {
                 eventsStore.tag(props.model.id, tag);
                 return;
@@ -112,6 +112,8 @@ onMounted(() => {
 });
 
 </script>
+
+<style></style>
 
 <template>
     <select ref="selectElement" multiple>
