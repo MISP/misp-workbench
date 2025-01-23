@@ -25,67 +25,92 @@ const attributesStore = useAttributesStore();
 const selectElement = ref(null);
 
 onMounted(() => {
-    let enabledTags = [];
-    tagsStore.get({hidden: false}).then((response) => {
-        response.items.map((tag) => {
-            enabledTags.push({
-                id: tag.id,
-                name: tag.name,
-                color: tagHelper.getContrastColor(tag.colour),
-                backgroundColor: tag.colour,
+    var initialising = true;
+    new TomSelect(selectElement.value, {
+        create: false,
+        placeholder: 'Click to add a tag...',
+        valueField: 'name',
+        labelField: 'name',
+        searchField: 'name',
+        preload: true,
+        load: function (query, callback) {
+            // add already selected tags to the list first
+            let tags = [];
+            for (let i = 0; i < props.selectedTags.length; i++) {
+                tags.push({
+                    id: props.selectedTags[i].id,
+                    name: props.selectedTags[i].name,
+                    color: tagHelper.getContrastColor(props.selectedTags[i].colour),
+                    backgroundColor: props.selectedTags[i].colour,
+                }, false);
+            }
+
+            // add tags from the database to the list
+            tagsStore.get({ filter: query, hidden: false }).then((response) => {
+                for (let i = 0; i < response.items.length; i++) {
+                    tags.push({
+                        id: response.items[i].id,
+                        name: response.items[i].name,
+                        color: tagHelper.getContrastColor(response.items[i].colour),
+                        backgroundColor: response.items[i].colour,
+                    });
+                }
+                callback(tags);
+            }).catch(() => {
+                callback();
             });
-        });
-
-        new TomSelect(selectElement.value, {
-            create: false,
-            placeholder: 'Click to add a tag...',
-            valueField: 'name',
-            labelField: 'name',
-            searchField: 'name',
-            options: enabledTags,
-            items: props.selectedTags.map(tag => tag.name),
-            plugins: {
-                remove_button: {
-                    title: 'Remove this tag',
-                }
+        },
+        items: props.selectedTags.map(tag => tag.name),
+        plugins: {
+            remove_button: {
+                title: 'Remove this tag',
+            }
+        },
+        render: {
+            option: function (data, escape) {
+                return '<span class="badge mx-1 tag" style="color: ' + escape(data.color) + '; background-color: ' + escape(data.backgroundColor) + '" title="' + escape(data.name) + '">' +
+                    escape(data.name) +
+                    '</span>';
             },
-            render: {
-                option: function (data, escape) {
-                    return '<span class="badge mx-1 tag" style="color: ' + escape(data.color) + '; background-color: ' + escape(data.backgroundColor) + '" title="' + escape(data.name) + '">' +
-                        escape(data.name) +
-                        '</span>';
-                },
-                item: function (data, escape) {
-                    return '<span class="badge mx-1 tag" style="color: ' + escape(data.color) + '; background-color: ' + escape(data.backgroundColor) + '" title="' + escape(data.name) + '">' +
-                        escape(data.name) +
-                        '</span>';
-                }
-            },
-            onItemRemove: function (tag) {
-                if (props.modelClass == "event") {
-                    eventsStore.untag(props.model.id, tag);
-                    return;
-                }
-                if (props.modelClass == "attribute") {
-                    attributesStore.untag(props.model.id, tag);
-                    return;
-                }
-            },
-            onItemAdd: function (tag) {
-                if (props.modelClass == "event") {
-                    eventsStore.tag(props.model.id, tag);
-                    return;
-                }
-                if (props.modelClass == "attribute") {
-                    attributesStore.tag(props.model.id, tag);
-                    return;
-                }
-            },
-        });
-
+            item: function (data, escape) {
+                return '<span class="badge mx-1 tag" style="color: ' + escape(data.color) + '; background-color: ' + escape(data.backgroundColor) + '" title="' + escape(data.name) + '">' +
+                    escape(data.name) +
+                    '</span>';
+            }
+        },
+        onLoad() {
+            selectElement.value.tomselect.setValue(props.selectedTags.map(tag => tag.name), true);
+            initialising = false;
+        },
+        onItemRemove: function (tag) {
+            if (props.modelClass == "event") {
+                eventsStore.untag(props.model.id, tag);
+                return;
+            }
+            if (props.modelClass == "attribute") {
+                attributesStore.untag(props.model.id, tag);
+                return;
+            }
+        },
+        onItemAdd: function (tag, item) {
+            // ignore when adding items programmatically on initialisation
+            if (initialising) {
+                return;
+            }
+            console.log(item);
+            if (props.modelClass == "event") {
+                eventsStore.tag(props.model.id, tag);
+                return;
+            }
+            if (props.modelClass == "attribute") {
+                attributesStore.tag(props.model.id, tag);
+                return;
+            }
+        },
     });
 
 });
+
 </script>
 
 <template>
