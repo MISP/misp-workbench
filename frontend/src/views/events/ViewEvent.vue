@@ -4,7 +4,6 @@ import { useEventsStore } from "@/stores";
 import { RouterLink, useRoute } from "vue-router";
 import EventView from "@/components/events/EventView.vue";
 import Spinner from "@/components/misc/Spinner.vue";
-import { router } from "@/router";
 const route = useRoute()
 const eventsStore = useEventsStore();
 const { event, status } = storeToRefs(eventsStore);
