@@ -12,7 +12,7 @@ const authStore = useAuthStore();
   <div class="app-container">
     <ToastManager />
     <Menu v-if="authStore.isAuthenticated()" />
-    <div class="container pt-4 pb-4">
+    <div class="container-fluid pt-4 pb-4">
       <RouterView />
     </div>
   </div>
