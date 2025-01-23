@@ -3,5 +3,5 @@ import ModulesIndex from "@/components/settings/modules/ModulesIndex.vue";
 </script>
 
 <template>
-    <ModulesIndex />
+  <ModulesIndex />
 </template>

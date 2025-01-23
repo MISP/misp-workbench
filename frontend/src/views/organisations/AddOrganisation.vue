@@ -3,7 +3,7 @@ import OrganisationCreate from "@/components/organisations/OrganisationCreate.vu
 </script>
 
 <template>
-    <div>
-        <OrganisationCreate />
-    </div>
+  <div>
+    <OrganisationCreate />
+  </div>
 </template>

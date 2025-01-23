@@ -4,6 +4,6 @@ import AddServerButton from "@/components/servers/AddServerButton.vue";
 </script>
 
 <template>
-    <AddServerButton />
-    <ServersIndex />
+  <AddServerButton />
+  <ServersIndex />
 </template>

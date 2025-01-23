@@ -9,7 +9,8 @@ export const useAuthStore = defineStore({
   id: "auth",
   state: () => ({
     access_token: localStorage.getItem("access_token"),
-    decoded_access_token: JSON.parse(localStorage.getItem("decoded_access_token")) || {},
+    decoded_access_token:
+      JSON.parse(localStorage.getItem("decoded_access_token")) || {},
     returnUrl: null,
   }),
   actions: {
@@ -19,25 +20,26 @@ export const useAuthStore = defineStore({
       this.access_token = response.access_token;
       this.decoded_access_token = jwt_decode(this.access_token);
 
-      localStorage.setItem(
-        "access_token",
-        this.access_token
-      );
+      localStorage.setItem("access_token", this.access_token);
 
       localStorage.setItem(
         "decoded_access_token",
-        JSON.stringify(this.decoded_access_token)
+        JSON.stringify(this.decoded_access_token),
       );
 
       router.push("/");
     },
     isAuthenticated() {
-      return !!this.access_token && !!this.decoded_access_token && this.decoded_access_token.exp > Date.now() / 1000;
+      return (
+        !!this.access_token &&
+        !!this.decoded_access_token &&
+        this.decoded_access_token.exp > Date.now() / 1000
+      );
     },
     logout() {
       localStorage.removeItem("access_token");
       this.$reset();
       router.push("/login");
     },
-  }
+  },
 });

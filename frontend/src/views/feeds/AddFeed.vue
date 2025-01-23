@@ -3,7 +3,7 @@ import AddFeed from "@/components/feeds/AddFeed.vue";
 </script>
 
 <template>
-    <div>
-        <AddFeed />
-    </div>
+  <div>
+    <AddFeed />
+  </div>
 </template>

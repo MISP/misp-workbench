@@ -1,10 +1,12 @@
 <script setup>
 import Badge from "@/components/misc/Badge.vue";
-import { tagHelper } from "@/helpers";
 
-defineProps(['tags']);
-
-
+defineProps({
+  tags: {
+    type: Array,
+    required: true,
+  },
+});
 </script>
 
 <style scoped>
@@ -17,22 +19,17 @@ defineProps(['tags']);
   margin: 0.1em;
 }
 </style>
+
 <template>
   <div class="col-auto">
-    <Badge v-for="tag in tags" :key="tag.name" :value="tag.name" :colour="tag.colour" />
+    <Badge
+      v-for="tag in tags"
+      :key="tag.name"
+      :value="tag.name"
+      :colour="tag.colour"
+    />
   </div>
 </template>
-
-<script>
-export default {
-  props: {
-    tags: {
-      type: Array,
-      required: true,
-    },
-  }
-};
-</script>
 
 <style scoped>
 .badge {

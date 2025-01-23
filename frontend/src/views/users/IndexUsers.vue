@@ -4,6 +4,6 @@ import AddUserButton from "@/components/users/AddUserButton.vue";
 </script>
 
 <template>
-    <AddUserButton />
-    <UsersIndex />
+  <AddUserButton />
+  <UsersIndex />
 </template>

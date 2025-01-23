@@ -58,19 +58,32 @@ function onSubmit(values, { setErrors }) {
 </style>
 
 <template>
-  <div id="login-container" class="form-signin d-flex flex-column min-vh-100 justify-content-center align-items-center">
-    <Form @submit="onSubmit" :validation-schema="schema" v-slot="{ errors, isSubmitting }">
-      <img class="mb-4" src="/images/misp-logo-pixel.png" alt="" width="120">
+  <div
+    id="login-container"
+    class="form-signin d-flex flex-column min-vh-100 justify-content-center align-items-center"
+  >
+    <Form @submit="onSubmit" :validation-schema="schema" v-slot="{ errors }">
+      <img class="mb-4" src="/images/misp-logo-pixel.png" alt="" width="120" />
 
       <div class="form-floating">
-        <Field id="username" name="username" type="text" class="form-control"
-          :class="{ 'is-invalid': errors.username }" />
+        <Field
+          id="username"
+          name="username"
+          type="text"
+          class="form-control"
+          :class="{ 'is-invalid': errors.username }"
+        />
         <label for="username">Email address</label>
         <div class="invalid-feedback">{{ errors.username }}</div>
       </div>
 
       <div class="form-floating">
-        <Field name="password" type="password" class="form-control" :class="{ 'is-invalid': errors.password }" />
+        <Field
+          name="password"
+          type="password"
+          class="form-control"
+          :class="{ 'is-invalid': errors.password }"
+        />
         <label>Password</label>
         <div class="invalid-feedback">{{ errors.password }}</div>
       </div>
@@ -79,7 +92,9 @@ function onSubmit(values, { setErrors }) {
         {{ errors.apiError }}
       </div>
 
-      <button class="w-100 btn btn-lg btn-outline-primary" type="submit">Sign in</button>
+      <button class="w-100 btn btn-lg btn-outline-primary" type="submit">
+        Sign in
+      </button>
       <p class="mt-3 mb-3 text-muted">&copy; 2024</p>
     </Form>
   </div>
