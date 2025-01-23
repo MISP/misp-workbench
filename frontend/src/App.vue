@@ -12,9 +12,6 @@ const authStore = useAuthStore();
 
 
 
-
-
-
 </script>
 
 <template>
