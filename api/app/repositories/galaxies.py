@@ -247,7 +247,7 @@ def update_galaxies(
 
 def enable_galaxy_tags(db: Session, galaxy: galaxies_models.Galaxy):
     for cluster in galaxy.clusters:
-        galaxy_cluster_tag = f"misp-galaxy:{galaxy.type}={cluster.value}"
+        galaxy_cluster_tag = f'misp-galaxy:{galaxy.type}="{cluster.value}"'
         db_galaxy_cluster_tag = (
             db.query(tags_models.Tag)
             .filter(
