@@ -25,9 +25,10 @@ Page = CustomizedPage[
 def get_tags(
     db: Session = Depends(get_db),
     hidden: bool = Query(None),
+    filter: str = Query(None),
     user: user_schemas.User = Security(get_current_active_user, scopes=["tags:read"]),
 ):
-    return tags_repository.get_tags(db, hidden=hidden)
+    return tags_repository.get_tags(db, hidden=hidden, filter=filter)
 
 
 @router.get("/tags/{tag_id}", response_model=tag_schemas.Tag)

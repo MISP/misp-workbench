@@ -10,11 +10,14 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 
-def get_tags(db: Session, hidden: bool = Query(None)):
+def get_tags(db: Session, hidden: bool = Query(None), filter: str = Query(None)):
     query = db.query(tag_models.Tag)
 
     if hidden is not None:
         query = query.filter(tag_models.Tag.hide_tag == hidden)
+
+    if filter:
+        query = query.filter(tag_models.Tag.name.ilike(f"%{filter}%"))
 
     query = query.order_by(tag_models.Tag.name)
 
