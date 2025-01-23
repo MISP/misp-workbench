@@ -4,7 +4,18 @@ import { RouterView } from "vue-router";
 import { useAuthStore } from "@/stores";
 import ToastManager from "./components/misc/ToastManager.vue";
 
-const authStore = useAuthStore();</script>
+const authStore = useAuthStore();
+
+
+
+
+
+
+
+
+
+
+</script>
 
 <template>
   <div class="app-container">
