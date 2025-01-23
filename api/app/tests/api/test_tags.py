@@ -23,16 +23,16 @@ class TestTagsResource(ApiTester):
 
         assert response.status_code == status.HTTP_200_OK
 
-        assert len(data) == 1
-        assert data[0]["id"] == tlp_white_tag.id
-        assert data[0]["name"] == tlp_white_tag.name
-        assert data[0]["colour"] == tlp_white_tag.colour
-        assert data[0]["exportable"] == tlp_white_tag.exportable
-        assert data[0]["hide_tag"] == tlp_white_tag.hide_tag
-        assert data[0]["is_galaxy"] == tlp_white_tag.is_galaxy
-        assert data[0]["is_custom_galaxy"] == tlp_white_tag.is_custom_galaxy
-        assert data[0]["numerical_value"] == tlp_white_tag.numerical_value
-        assert data[0]["local_only"] == tlp_white_tag.local_only
+        assert len(data["items"]) == 1
+        assert data["items"][0]["id"] == tlp_white_tag.id
+        assert data["items"][0]["name"] == tlp_white_tag.name
+        assert data["items"][0]["colour"] == tlp_white_tag.colour
+        assert data["items"][0]["exportable"] == tlp_white_tag.exportable
+        assert data["items"][0]["hide_tag"] == tlp_white_tag.hide_tag
+        assert data["items"][0]["is_galaxy"] == tlp_white_tag.is_galaxy
+        assert data["items"][0]["is_custom_galaxy"] == tlp_white_tag.is_custom_galaxy
+        assert data["items"][0]["numerical_value"] == tlp_white_tag.numerical_value
+        assert data["items"][0]["local_only"] == tlp_white_tag.local_only
 
     @pytest.mark.parametrize("scopes", [["tags:read"]])
     def test_get_tag_by_id(

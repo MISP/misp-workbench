@@ -6,6 +6,7 @@ from uuid import UUID
 
 from app.models import event as events_models
 from app.models import galaxy as galaxies_models
+from app.models import tag as tags_models
 from app.repositories import tags as tags_repository
 from app.schemas import galaxy as galaxies_schemas
 from app.schemas import user as users_schemas
@@ -16,13 +17,18 @@ from sqlalchemy.orm import Session
 logger = logging.getLogger(__name__)
 
 
-def get_galaxies(db: Session, filter: str = Query(None)) -> galaxies_models.Galaxy:
+def get_galaxies(
+    db: Session, enabled: bool = Query(None), filter: str = Query(None)
+) -> galaxies_models.Galaxy:
     query = db.query(galaxies_models.Galaxy)
 
     if filter:
-        query = query.filter(galaxies_models.Galaxy.namespace.ilike(f"%{filter}%"))
+        query = query.filter(galaxies_models.Galaxy.name.ilike(f"%{filter}%"))
 
-    query = query.order_by(galaxies_models.Galaxy.namespace)
+    if enabled is not None:
+        query = query.filter(galaxies_models.Galaxy.enabled == enabled)
+
+    query = query.order_by(galaxies_models.Galaxy.name)
 
     return paginate(
         query,
@@ -239,6 +245,47 @@ def update_galaxies(
     return galaxies
 
 
+def enable_galaxy_tags(db: Session, galaxy: galaxies_models.Galaxy):
+    for cluster in galaxy.clusters:
+        galaxy_cluster_tag = f'misp-galaxy:{galaxy.type}="{cluster.value}"'
+        db_galaxy_cluster_tag = (
+            db.query(tags_models.Tag)
+            .filter(
+                tags_models.Tag.name == galaxy_cluster_tag,
+            )
+            .first()
+        )
+
+        if db_galaxy_cluster_tag is None:
+            db_galaxy_cluster_tag = tags_models.Tag(
+                name=galaxy_cluster_tag,
+                colour="#BBBBBB",
+                exportable=False,
+                hide_tag=False,
+                is_galaxy=True,
+                is_custom_galaxy=False,
+                local_only=False,
+            )
+
+            db.add(db_galaxy_cluster_tag)
+            db.commit()
+
+
+def disable_galaxy_tags(db: Session, galaxy: galaxies_models.Galaxy):
+    # delete all tags from the galaxy
+    db_galaxy_tags = (
+        db.query(tags_models.Tag)
+        .filter(tags_models.Tag.name.ilike(f"misp-galaxy:{galaxy.type}%"))
+        .all()
+    )
+
+    for tag in db_galaxy_tags:
+        tag.hide_tag = True
+        db.add(tag)
+
+    db.commit()
+
+
 def update_galaxy(
     db: Session,
     galaxy_id: int,
@@ -254,6 +301,12 @@ def update_galaxy(
     galaxy_patch = galaxy.model_dump(exclude_unset=True)
     for key, value in galaxy_patch.items():
         setattr(db_galaxy, key, value)
+
+    # if galaxy is enabled, update the tags
+    if db_galaxy.enabled and galaxy_patch["enabled"]:
+        enable_galaxy_tags(db, db_galaxy)
+    elif not db_galaxy.enabled and not galaxy_patch["enabled"]:
+        disable_galaxy_tags(db, db_galaxy)
 
     db.add(db_galaxy)
     db.commit()

@@ -5,7 +5,11 @@ from app.schemas import galaxy as galaxies_schemas
 from app.schemas import user as user_schemas
 from fastapi import APIRouter, Depends, HTTPException, Query, Security, status
 from fastapi_pagination import Page
-from fastapi_pagination.customization import CustomizedPage, UseModelConfig
+from fastapi_pagination.customization import (
+    CustomizedPage,
+    UseModelConfig,
+    UseParamsFields,
+)
 from sqlalchemy.orm import Session
 
 router = APIRouter()
@@ -13,6 +17,7 @@ router = APIRouter()
 Page = CustomizedPage[
     Page,
     UseModelConfig(extra="allow"),
+    UseParamsFields(size=Query(le=1000, default=20)),
 ]
 
 
@@ -22,9 +27,10 @@ def get_galaxies(
     user: user_schemas.User = Security(
         get_current_active_user, scopes=["galaxies:read"]
     ),
+    enabled: bool = Query(None),
     filter: str = Query(None),
 ):
-    return galaxies_repository.get_galaxies(db, filter=filter)
+    return galaxies_repository.get_galaxies(db, enabled=enabled, filter=filter)
 
 
 @router.get("/galaxies/{galaxy_id}", response_model=galaxies_schemas.Galaxy)

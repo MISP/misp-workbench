@@ -6,7 +6,7 @@ import Timestamp from "@/components/misc/Timestamp.vue";
 import CopyToClipboard from "@/components/misc/CopyToClipboard.vue";
 import AttributeActions from "@/components/attributes/AttributeActions.vue";
 
-const props = defineProps(['object_id', 'attributes', 'taxonomies']);
+const props = defineProps(['object_id', 'attributes']);
 const emit = defineEmits(['attribute-created', 'attribute-updated', 'attribute-deleted', 'object-created', 'attribute-enriched']);
 
 const attributes = ref(props.attributes);
@@ -42,12 +42,12 @@ function handleAttributeEnriched(attribute_id) {
     <table class="table table-striped">
         <thead>
             <tr>
-                <th style="width: 30%" scope="col">value</th>
-                <th style="width: 15%" scope="col" class="d-none d-sm-table-cell">tags</th>
-                <th style="width: 10%" scope="col">type</th>
-                <th style="width: 10%" scope="col" class="d-none d-sm-table-cell">timestamp</th>
-                <th style="width: 15%" scope="col" class="d-none d-sm-table-cell">distribution</th>
-                <th style="width: 20%" scope="col" class="text-end">actions</th>
+                <th scope="col">value</th>
+                <th style="width: 400px" scope="col" class="d-none d-sm-table-cell">tags</th>
+                <th scope="col">type</th>
+                <th scope="col" class="d-none d-sm-table-cell">timestamp</th>
+                <th scope="col" class="d-none d-sm-table-cell">distribution</th>
+                <th scope="col" class="text-end">actions</th>
             </tr>
         </thead>
         <tbody>
@@ -57,7 +57,7 @@ function handleAttributeEnriched(attribute_id) {
                     {{ attribute.value }}
                 </td>
                 <td style="width: 20%" class="d-none d-sm-table-cell">
-                    <TagsSelect :modelClass="'attribute'" :model="attribute" :tags="attribute.tags" :taxonomies="taxonomies"/>
+                    <TagsSelect :modelClass="'attribute'" :model="attribute" :selectedTags="attribute.tags" />
                 </td>
                 <td style="width: 10%">{{ attribute.type }}</td>
                 <td style="width: 10%" class="d-none d-sm-table-cell">
