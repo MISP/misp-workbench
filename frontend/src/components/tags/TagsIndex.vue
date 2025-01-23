@@ -2,9 +2,7 @@
 import Badge from "@/components/misc/Badge.vue";
 import { tagHelper } from "@/helpers";
 
-defineProps(['tags']);
-
-
+defineProps(["tags"]);
 </script>
 
 <style scoped>
@@ -19,7 +17,12 @@ defineProps(['tags']);
 </style>
 <template>
   <div class="col-auto">
-    <Badge v-for="tag in tags" :key="tag.name" :value="tag.name" :colour="tag.colour" />
+    <Badge
+      v-for="tag in tags"
+      :key="tag.name"
+      :value="tag.name"
+      :colour="tag.colour"
+    />
   </div>
 </template>
 
@@ -30,7 +33,7 @@ export default {
       type: Array,
       required: true,
     },
-  }
+  },
 };
 </script>
 

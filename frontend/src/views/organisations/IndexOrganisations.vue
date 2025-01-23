@@ -4,6 +4,6 @@ import AddOrganisationButton from "@/components/organisations/AddOrganisationBut
 </script>
 
 <template>
-    <AddOrganisationButton />
-    <OrganisationsIndex />
+  <AddOrganisationButton />
+  <OrganisationsIndex />
 </template>

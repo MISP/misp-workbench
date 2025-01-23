@@ -4,6 +4,6 @@ import AddEventButton from "@/components/events/AddEventButton.vue";
 </script>
 
 <template>
-    <AddEventButton />
-    <EventsIndex :page_size="10" />
+  <AddEventButton />
+  <EventsIndex :page_size="10" />
 </template>

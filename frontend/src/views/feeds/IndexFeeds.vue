@@ -4,6 +4,6 @@ import AddFeedButton from "@/components/feeds/AddFeedButton.vue";
 </script>
 
 <template>
-    <AddFeedButton />
-    <IndexFeeds />
+  <AddFeedButton />
+  <IndexFeeds />
 </template>

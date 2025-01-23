@@ -12,8 +12,8 @@ export const useUsersStore = defineStore({
     status: {
       loading: false,
       creating: false,
-      error: false
-    }
+      error: false,
+    },
   }),
   actions: {
     async getAll() {
@@ -53,6 +53,6 @@ export const useUsersStore = defineStore({
         .delete(`${baseUrl}/${id}`)
         .catch((error) => (this.status = { error }))
         .finally(() => (this.status = { loading: false }));
-    }
+    },
   },
 });

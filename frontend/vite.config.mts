@@ -20,6 +20,6 @@ export default defineConfig({
     port: 3001,
   },
   optimizeDeps: {
-    include: ['tom-select'],
+    include: ["tom-select"],
   },
 });

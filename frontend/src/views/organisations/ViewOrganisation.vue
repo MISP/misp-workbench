@@ -5,17 +5,17 @@ import { RouterLink, useRoute } from "vue-router";
 import OrganisationView from "@/components/organisations/OrganisationView.vue";
 import Spinner from "@/components/misc/Spinner.vue";
 import { router } from "@/router";
-const route = useRoute()
+const route = useRoute();
 const organisationsStore = useOrganisationsStore();
 const { organisation, status } = storeToRefs(organisationsStore);
 organisationsStore.getById(route.params.id);
-defineProps(['id']);
+defineProps(["id"]);
 </script>
 
 <template>
-    <Spinner v-if="status.loading" />
-    <OrganisationView v-show="!status.loading" :organisation="organisation" />
-    <div v-if="status.error" class="text-danger">
-        Error loading organisation: {{ status.error }}
-    </div>
+  <Spinner v-if="status.loading" />
+  <OrganisationView v-show="!status.loading" :organisation="organisation" />
+  <div v-if="status.error" class="text-danger">
+    Error loading organisation: {{ status.error }}
+  </div>
 </template>

@@ -30,7 +30,7 @@ import {
   IndexTaxonomies,
   ViewTaxonomy,
   IndexGalaxies,
-  ViewGalaxy
+  ViewGalaxy,
 } from "@/views";
 
 export const router = createRouter({
@@ -52,14 +52,18 @@ export const router = createRouter({
     { path: "/organisations", component: IndexOrganisations },
     { path: "/organisations/:id", component: ViewOrganisation, props: true },
     { path: "/organisations/add", component: AddOrganisation },
-    { path: "/organisations/update/:id", component: EditOrganisation, props: true },
+    {
+      path: "/organisations/update/:id",
+      component: EditOrganisation,
+      props: true,
+    },
     { path: "/servers", component: IndexServers },
     { path: "/servers/:id", component: ViewServer, props: true },
     { path: "/servers/add", component: AddServer },
     { path: "/servers/update/:id", component: EditServer, props: true },
     { path: "/settings/modules", component: IndexModules },
-    { path: "/settings/taxonomies", component: IndexTaxonomies},
-    { path: "/settings/galaxies", component: IndexGalaxies},
+    { path: "/settings/taxonomies", component: IndexTaxonomies },
+    { path: "/settings/galaxies", component: IndexGalaxies },
     { path: "/feeds", component: IndexFeeds },
     { path: "/feeds/:id", component: ViewFeed, props: true },
     { path: "/feeds/add", component: AddFeed },
