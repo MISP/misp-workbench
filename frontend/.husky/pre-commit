@@ -1,1 +1,2 @@
-npx eslint . --ignore-path .gitignore --fix
+cd frontend/
+npx eslint .

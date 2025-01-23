@@ -20,6 +20,8 @@ function handleSelectChange(event) {
     @change="handleSelectChange"
     :value="props.selected"
   >
-    <option v-for="(id, name) in THREAT_LEVEL" :value="id">{{ name }}</option>
+    <option v-for="(id, name) in THREAT_LEVEL" :value="id" :key="id">
+      {{ name }}
+    </option>
   </Field>
 </template>

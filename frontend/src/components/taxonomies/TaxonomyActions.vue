@@ -10,7 +10,7 @@ const deleteTaxonomyModal = ref(null);
 
 onMounted(() => {
   deleteTaxonomyModal.value = new Modal(
-    document.getElementById(`deleteTaxonomyModal_${props.taxonomy.id}`)
+    document.getElementById(`deleteTaxonomyModal_${props.taxonomy.id}`),
   );
 });
 
@@ -38,7 +38,6 @@ function handleTaxonomyDeleted() {
     >
       <RouterLink
         :to="`/taxonomies/${taxonomy.id}`"
-        tag="button"
         class="btn btn-outline-primary"
       >
         <font-awesome-icon icon="fa-solid fa-eye" />

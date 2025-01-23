@@ -55,7 +55,7 @@ function handleRemoteOrgUpdated(orgId) {
       <Form
         @submit="onSubmit"
         :validation-schema="ServerSchema"
-        v-slot="{ errors, isSubmitting }"
+        v-slot="{ errors }"
       >
         <div class="mb-3">
           <label for="server.name">name</label>

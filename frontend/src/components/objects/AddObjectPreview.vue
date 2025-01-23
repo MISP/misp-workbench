@@ -24,7 +24,7 @@ const props = defineProps(["object", "template"]);
           </tr>
         </thead>
         <tbody>
-          <tr v-for="attribute in object.attributes">
+          <tr v-for="attribute in object.attributes" :key="attribute.id">
             <td>{{ attribute.value }}</td>
             <td>{{ attribute.type }}</td>
             <td>{{ attribute.disable_correlation }}</td>

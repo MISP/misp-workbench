@@ -22,10 +22,10 @@ const { modulesResponses } = storeToRefs(modulesStore);
 
 onMounted(() => {
   deleteAttributeModal.value = new Modal(
-    document.getElementById(`deleteAttributeModal_${props.attribute.id}`)
+    document.getElementById(`deleteAttributeModal_${props.attribute.id}`),
   );
   enrichAttributeModal.value = new Modal(
-    document.getElementById(`enrichAttributeModal_${props.attribute.id}`)
+    document.getElementById(`enrichAttributeModal_${props.attribute.id}`),
   );
 });
 
@@ -62,7 +62,6 @@ function handleAttributeEnriched() {
     >
       <RouterLink
         :to="`/attributes/${attribute.id}`"
-        tag="button"
         class="btn btn-outline-primary"
       >
         <font-awesome-icon icon="fa-solid fa-eye" />
@@ -76,7 +75,6 @@ function handleAttributeEnriched() {
       </button>
       <RouterLink
         :to="`/attributes/update/${attribute.id}`"
-        tag="button"
         class="btn btn-outline-primary"
       >
         <font-awesome-icon icon="fa-solid fa-pen" />

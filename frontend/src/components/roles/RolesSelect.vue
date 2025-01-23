@@ -25,6 +25,8 @@ function handleSelectChange(event) {
     @change="handleSelectChange"
     :value="props.selected"
   >
-    <option v-for="role in roles" :value="role.id">{{ role.name }}</option>
+    <option v-for="role in roles" :value="role.id" :key="role.id">
+      {{ role.name }}
+    </option>
   </Field>
 </template>

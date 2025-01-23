@@ -33,6 +33,7 @@ function handleSelectChange(event) {
       v-for="template in objectTemplates"
       :value="template.uuid"
       :uuid="template.uuid"
+      :key="template.uuid"
     >
       {{ template.name }}
     </option>

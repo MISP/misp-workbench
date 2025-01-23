@@ -108,11 +108,7 @@ div.row h3 {
                         v-for="predicate in taxonomy.predicates"
                         :key="predicate.id"
                       >
-                        <tr
-                          v-if="predicate.entries.length"
-                          v-for="entry in predicate.entries"
-                          :key="entry.id"
-                        >
+                        <tr v-for="entry in predicate.entries" :key="entry.id">
                           <td>{{ entry.id }}</td>
                           <td>
                             <Badge
@@ -123,7 +119,7 @@ div.row h3 {
                           </td>
                           <td>{{ entry.expanded }}</td>
                         </tr>
-                        <tr v-if="!predicate.entries.length">
+                        <tr>
                           <td>{{ predicate.id }}</td>
                           <td>
                             <Badge

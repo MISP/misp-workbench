@@ -31,7 +31,7 @@ function onSubmit(values, { setErrors }) {
       <Form
         @submit="onSubmit"
         :validation-schema="OrganisationSchema"
-        v-slot="{ errors, isSubmitting }"
+        v-slot="{ errors }"
       >
         <div class="mb-3">
           <label for="organisation.id">id</label>

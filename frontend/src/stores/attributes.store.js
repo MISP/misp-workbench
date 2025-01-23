@@ -23,7 +23,7 @@ export const useAttributesStore = defineStore({
           (response) => (
             (this.attributes = response),
             (this.page_count = Math.ceil(response.total / params.size))
-          )
+          ),
         )
         .catch((error) => (this.status = { error }))
         .finally(() => (this.status = { loading: false }));

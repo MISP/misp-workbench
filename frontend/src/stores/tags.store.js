@@ -17,7 +17,7 @@ export const useTagsStore = defineStore({
     async get(params = { page: 1, size: 100 }) {
       this.status = { loading: true };
       return fetchWrapper.get(
-        baseUrl + "/?" + new URLSearchParams(params).toString()
+        baseUrl + "/?" + new URLSearchParams(params).toString(),
       );
     },
   },

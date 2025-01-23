@@ -68,7 +68,7 @@ function clearModuleSettings() {
           ></button>
         </div>
         <div class="modal-body">
-          <div v-for="setting in settings">
+          <div v-for="setting in settings" :key="setting">
             <form class="row align-items-center">
               <div class="col">
                 <label :for="setting" class="col-form-label">{{

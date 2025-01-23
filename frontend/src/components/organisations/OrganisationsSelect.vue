@@ -26,6 +26,8 @@ function handleSelectChange(event) {
     @change="handleSelectChange"
     :value="props.selected"
   >
-    <option v-for="org in organisations" :value="org.id">{{ org.name }}</option>
+    <option v-for="org in organisations" :value="org.id" :key="org.id">
+      {{ org.name }}
+    </option>
   </Field>
 </template>

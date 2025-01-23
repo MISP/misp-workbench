@@ -79,7 +79,6 @@ div.row h3 {
             >
               <RouterLink
                 :to="`/events/update/${event.id}`"
-                tag="button"
                 class="btn btn-outline-primary"
               >
                 <FontAwesomeIcon :icon="faPen" />

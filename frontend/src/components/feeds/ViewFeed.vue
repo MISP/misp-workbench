@@ -10,7 +10,7 @@ const deleteFeedModal = ref(null);
 
 onMounted(() => {
   deleteFeedModal.value = new Modal(
-    document.getElementById(`deleteFeedModal_${props.feed.id}`)
+    document.getElementById(`deleteFeedModal_${props.feed.id}`),
   );
 });
 
@@ -42,7 +42,6 @@ function openDeleteFeedModal() {
             >
               <RouterLink
                 :to="`/feeds/update/${feed.id}`"
-                tag="button"
                 class="btn btn-outline-primary"
               >
                 <font-awesome-icon icon="fa-solid fa-pen" />

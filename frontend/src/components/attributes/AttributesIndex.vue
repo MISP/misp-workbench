@@ -20,7 +20,7 @@ const addAttributeModal = ref(null);
 
 onMounted(() => {
   addAttributeModal.value = new Modal(
-    document.getElementById("addAttributeModal")
+    document.getElementById("addAttributeModal"),
   );
 });
 

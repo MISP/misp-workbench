@@ -41,7 +41,7 @@ export const useObjectsStore = defineStore({
     },
     getObjectTemplateByUuid(uuid) {
       return this.objectTemplates.find(
-        (objectTemplate) => objectTemplate.uuid === uuid
+        (objectTemplate) => objectTemplate.uuid === uuid,
       );
     },
     async create(attribute) {

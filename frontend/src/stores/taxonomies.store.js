@@ -23,7 +23,7 @@ export const useTaxonomiesStore = defineStore({
           (response) => (
             (this.taxonomies = response),
             (this.page_count = Math.ceil(response.total / params.size))
-          )
+          ),
         )
         .catch((error) => (this.status = { error }))
         .finally(() => (this.status = { loading: false }));

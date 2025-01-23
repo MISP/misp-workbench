@@ -44,7 +44,7 @@ onMounted(() => {
             color: tagHelper.getContrastColor(props.selectedTags[i].colour),
             backgroundColor: props.selectedTags[i].colour,
           },
-          false
+          false,
         );
       }
 

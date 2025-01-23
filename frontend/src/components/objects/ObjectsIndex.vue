@@ -42,7 +42,7 @@ function openAddObjectModal() {
 function openDeleteObjectModal(object) {
   selectedObject.value = object;
   deleteObjectModal.value = new Modal(
-    document.getElementById("deleteObjectModal")
+    document.getElementById("deleteObjectModal"),
   );
   deleteObjectModal.value.show();
 }

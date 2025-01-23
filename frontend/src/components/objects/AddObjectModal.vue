@@ -39,13 +39,13 @@ function getObjectTemplateSchema() {
     attributes: Yup.array().test(
       "at-least-one-required-type",
       `The object must contain at least one attribute with a type matching one of the following: ${activeTemplate.value.requiredOneOf.join(
-        ", "
+        ", ",
       )}`,
       (attributes) =>
         attributes &&
         attributes.some((attribute) =>
-          activeTemplate.value.requiredOneOf.includes(attribute.template_type)
-        )
+          activeTemplate.value.requiredOneOf.includes(attribute.template_type),
+        ),
     ),
   });
 }
@@ -133,7 +133,7 @@ watch(selectedQuickTemplate, (newValue, oldValue) => {
   if (defaultObjectTemplates[newValue]) {
     object.value.template_uuid = defaultObjectTemplates[newValue];
     activeTemplate.value = objectsStore.getObjectTemplateByUuid(
-      defaultObjectTemplates[newValue]
+      defaultObjectTemplates[newValue],
     );
   }
 });

@@ -26,7 +26,7 @@ export const useEventsStore = defineStore({
           (response) => (
             (this.events = response),
             (this.page_count = Math.ceil(response.total / params.size))
-          )
+          ),
         )
         .catch((error) => (this.status = { error }))
         .finally(() => (this.status = { loading: false }));

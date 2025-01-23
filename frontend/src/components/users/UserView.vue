@@ -32,7 +32,6 @@ function handleUserDeleted(event) {
             </button>
             <RouterLink
               :to="`/users/update/${user.id}`"
-              tag="button"
               class="btn btn-outline-primary"
             >
               <font-awesome-icon icon="fa-solid fa-pen" />

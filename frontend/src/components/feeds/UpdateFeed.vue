@@ -49,7 +49,7 @@ function handleDistributionLevelUpdated(distributionLevel) {
       <Form
         @submit="updateFeed"
         :validation-schema="FeedSchema"
-        v-slot="{ errors, isSubmitting }"
+        v-slot="{ errors }"
       >
         <div class="mb-3">
           <label for="feed.id">id</label>

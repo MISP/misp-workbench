@@ -9,7 +9,7 @@ export const EventSchema = Yup.object().shape({
     threat_level: Yup.number().required(),
     date: Yup.lazy((value) => (value ? Yup.date() : Yup.string().nullable())),
     extends_uuid: Yup.lazy((value) =>
-      value ? Yup.string().uuid() : Yup.string().nullable()
+      value ? Yup.string().uuid() : Yup.string().nullable(),
     ),
   }),
 });

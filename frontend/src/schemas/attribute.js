@@ -23,7 +23,7 @@ export const getAttributeTypeValidationSchema = (type) => {
             .matches(ipRegex({ exact: true }), "Invalid IP address.")
             .required(),
         }),
-      })
+      }),
     );
   }
 
@@ -33,7 +33,7 @@ export const getAttributeTypeValidationSchema = (type) => {
         attribute: Yup.object().shape({
           value: Yup.string().email().required(),
         }),
-      })
+      }),
     );
   }
 
@@ -43,7 +43,7 @@ export const getAttributeTypeValidationSchema = (type) => {
         attribute: Yup.object().shape({
           value: Yup.string().url().required(),
         }),
-      })
+      }),
     );
   }
 

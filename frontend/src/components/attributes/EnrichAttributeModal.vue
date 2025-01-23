@@ -192,7 +192,7 @@ function toggleAllModules() {
                 </tr>
               </thead>
               <tbody>
-                <tr scope="row" v-for="module in modules">
+                <tr scope="row" v-for="module in modules" :key="module.name">
                   <td>{{ module.name }}</td>
                   <td>{{ module.meta.description }}</td>
                   <td>
@@ -245,7 +245,10 @@ function toggleAllModules() {
                   </div>
                 </div>
               </div>
-              <div v-for="moduleResults in modulesResponses">
+              <div
+                v-for="moduleResults in modulesResponses"
+                :key="moduleResults.module"
+              >
                 <h5>{{ moduleResults.module }}</h5>
                 <div
                   v-if="!moduleResults.response.results"
@@ -255,7 +258,10 @@ function toggleAllModules() {
                   No enrichment results available.
                 </div>
                 <div v-if="moduleResults.response.results">
-                  <div v-for="attr in moduleResults.response.results.Attribute">
+                  <div
+                    v-for="attr in moduleResults.response.results.Attribute"
+                    :key="attr.uuid"
+                  >
                     <div class="card mt-2" v-if="attr.uuid != attribute.uuid">
                       <div class="card-header">
                         Attribute
@@ -288,7 +294,10 @@ function toggleAllModules() {
                       </div>
                     </div>
                   </div>
-                  <div v-for="object in moduleResults.response.results.Object">
+                  <div
+                    v-for="object in moduleResults.response.results.Object"
+                    :key="object.uuid"
+                  >
                     <div class="card mt-2">
                       <div class="card-header">
                         Object
@@ -306,7 +315,10 @@ function toggleAllModules() {
                       <div class="card-body">
                         <div v-if="object.ObjectReference">
                           <h6>references:</h6>
-                          <div v-for="reference in object.ObjectReference">
+                          <div
+                            v-for="reference in object.ObjectReference"
+                            :key="reference.uuid"
+                          >
                             <UUID :uuid="reference.object_uuid" />
                             <font-awesome-icon icon="fa-solid fa-arrow-right" />
                             {{ reference.relationship_type }}
@@ -327,6 +339,7 @@ function toggleAllModules() {
                             <tr
                               scope="row"
                               v-for="attribute in object.Attribute"
+                              :key="attribute.uuid"
                             >
                               <td>{{ attribute.value }}</td>
                               <td>{{ attribute.type }}</td>

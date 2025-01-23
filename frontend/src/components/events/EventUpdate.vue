@@ -47,7 +47,7 @@ function handleAnalysisLevelUpdated(analysisLevelId) {
       <Form
         @submit="onSubmit"
         :validation-schema="EventSchema"
-        v-slot="{ errors, isSubmitting }"
+        v-slot="{ errors }"
       >
         <div class="mb-3">
           <label for="event.id">id</label>

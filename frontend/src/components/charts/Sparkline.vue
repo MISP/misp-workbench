@@ -36,7 +36,7 @@ export default {
       }
       const path = [];
       coordinates.forEach((point) =>
-        path.push(["L", point.x, point.y].join(" "))
+        path.push(["L", point.x, point.y].join(" ")),
       );
       return ["M" + coordinates[0].x, coordinates[0].y, ...path].join(" ");
     },

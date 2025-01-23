@@ -36,7 +36,6 @@ function handleServerDeleted(event) {
             </button>
             <RouterLink
               :to="`/servers/update/${server.id}`"
-              tag="button"
               class="btn btn-outline-primary"
             >
               <font-awesome-icon icon="fa-solid fa-pen" />

@@ -28,6 +28,6 @@ if (ATTRIBUTE_CATEGORIES[props.category] === undefined) {
     @change="handleSelectChange"
     :value="props.selected"
   >
-    <option v-for="type in types" :value="type">{{ type }}</option>
+    <option v-for="type in types" :value="type" :key="type">{{ type }}</option>
   </Field>
 </template>

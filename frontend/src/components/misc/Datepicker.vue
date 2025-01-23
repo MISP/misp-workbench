@@ -76,7 +76,7 @@ watch(
     if (datepickerInstance) {
       datepickerInstance.setDate(newValue, false);
     }
-  }
+  },
 );
 
 const error = computed(() => errorMessage.value);

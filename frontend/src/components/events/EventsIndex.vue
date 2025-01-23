@@ -81,14 +81,12 @@ function handleEventDeleted(event) {
               >
                 <RouterLink
                   :to="`/events/${event.id}`"
-                  tag="button"
                   class="btn btn-outline-primary"
                 >
                   <font-awesome-icon icon="fa-solid fa-eye" />
                 </RouterLink>
                 <RouterLink
                   :to="`/events/update/${event.id}`"
-                  tag="button"
                   class="btn btn-outline-primary"
                 >
                   <font-awesome-icon icon="fa-solid fa-pen" />

@@ -75,7 +75,7 @@ function handleDistributionLevelUpdated(distributionLevelId) {
       <Form
         @submit="addAttribute"
         :validation-schema="AttributeSchema"
-        v-slot="{ errors, isSubmitting }"
+        v-slot="{ errors }"
       >
         <div class="modal-content">
           <div class="modal-header">

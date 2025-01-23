@@ -84,7 +84,7 @@ export const useModulesStore = defineStore({
               module: module.name,
               response: response,
               error: false,
-            })
+            }),
           )
           .catch((error) => {
             this.status = { error };

@@ -10,7 +10,7 @@ const deleteGalaxyModal = ref(null);
 
 onMounted(() => {
   deleteGalaxyModal.value = new Modal(
-    document.getElementById(`deleteGalaxyModal_${props.galaxy.id}`)
+    document.getElementById(`deleteGalaxyModal_${props.galaxy.id}`),
   );
 });
 
@@ -38,7 +38,6 @@ function handleGalaxyDeleted() {
     >
       <RouterLink
         :to="`/galaxies/${galaxy.id}`"
-        tag="button"
         class="btn btn-outline-primary"
       >
         <font-awesome-icon icon="fa-solid fa-eye" />

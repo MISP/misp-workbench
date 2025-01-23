@@ -53,7 +53,6 @@ div.row h3 {
             </button>
             <RouterLink
               :to="`/attributes/update/${attribute.id}`"
-              tag="button"
               class="btn btn-outline-primary"
             >
               <font-awesome-icon icon="fa-solid fa-pen" />

@@ -1,7 +1,7 @@
 <script setup>
 import { storeToRefs } from "pinia";
 import { useFeedsStore } from "@/stores";
-import { RouterLink, useRoute } from "vue-router";
+import { useRoute } from "vue-router";
 import ViewFeed from "@/components/feeds/ViewFeed.vue";
 import Spinner from "@/components/misc/Spinner.vue";
 const route = useRoute();

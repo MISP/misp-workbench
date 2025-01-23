@@ -36,7 +36,6 @@ function handleOrganisationDeleted(event) {
             </button>
             <RouterLink
               :to="`/organisations/update/${organisation.id}`"
-              tag="button"
               class="btn btn-outline-primary"
             >
               <font-awesome-icon icon="fa-solid fa-pen" />

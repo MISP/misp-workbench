@@ -97,7 +97,6 @@ function handleAttributeTypeChanged(type, attribute) {
     <div class="form-floating">
       <ObjectTemplateAttributeTypeSelect
         :name="`attribute_${attribute.id}.type`"
-        v-model="attribute.template_type"
         :template="template"
         @attribute-template-type-changed="
           handleAttributeTypeChanged($event, attribute)

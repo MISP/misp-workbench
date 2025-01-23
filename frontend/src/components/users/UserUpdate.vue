@@ -40,7 +40,7 @@ function handleOrganisationUpdated(orgId) {
       <Form
         @submit="onSubmit"
         :validation-schema="UserSchema"
-        v-slot="{ errors, isSubmitting }"
+        v-slot="{ errors }"
       >
         <div class="mb-3">
           <label for="user.id">id</label>

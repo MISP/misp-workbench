@@ -24,7 +24,7 @@ export const useAuthStore = defineStore({
 
       localStorage.setItem(
         "decoded_access_token",
-        JSON.stringify(this.decoded_access_token)
+        JSON.stringify(this.decoded_access_token),
       );
 
       router.push("/");

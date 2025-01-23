@@ -14,7 +14,7 @@ const toastsStore = useToastsStore();
 
 onMounted(() => {
   deleteFeedModal.value = new Modal(
-    document.getElementById(`deleteFeedModal_${props.feed.id}`)
+    document.getElementById(`deleteFeedModal_${props.feed.id}`),
   );
 });
 
@@ -76,16 +76,11 @@ function fetchFeed(feed) {
         role="group"
         aria-label="Feed Actions"
       >
-        <RouterLink
-          :to="`/feeds/${feed.id}`"
-          tag="button"
-          class="btn btn-outline-primary"
-        >
+        <RouterLink :to="`/feeds/${feed.id}`" class="btn btn-outline-primary">
           <font-awesome-icon icon="fa-solid fa-eye" />
         </RouterLink>
         <RouterLink
           :to="`/feeds/update/${feed.id}`"
-          tag="button"
           class="btn btn-outline-primary"
         >
           <font-awesome-icon icon="fa-solid fa-pen" />

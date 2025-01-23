@@ -19,7 +19,7 @@ function handleSelectChange(event) {
     @change="handleSelectChange"
     :value="props.selected"
   >
-    <option v-for="(id, name) in DISTRIBUTION_LEVEL" :value="id">
+    <option v-for="(id, name) in DISTRIBUTION_LEVEL" :value="id" :key="id">
       {{ name }}
     </option>
   </Field>

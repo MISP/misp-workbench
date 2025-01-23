@@ -20,7 +20,11 @@ function handleSelectChange(event) {
     @change="handleSelectChange"
     :value="props.selected"
   >
-    <option v-for="(_, name) in OBJECT_META_CATEGORIES" :value="name">
+    <option
+      v-for="(_, name) in OBJECT_META_CATEGORIES"
+      :value="name"
+      :key="name"
+    >
       {{ name }}
     </option>
   </Field>

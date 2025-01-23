@@ -63,7 +63,7 @@ function addAttribute(values, { resetForm }) {
 
 function handleObjectAttributeDeleted(event) {
   object.value.attributes = object.value.attributes.filter(
-    (a) => a !== event.attribute
+    (a) => a !== event.attribute,
   );
   emit("object-attribute-deleted", { attribute: event.attribute });
 }
@@ -91,7 +91,7 @@ function handleAttributeTypeChanged(type) {
   });
 
   AttributeTypeSchema.value = getAttributeTypeValidationSchema(
-    newAttribute.value.type
+    newAttribute.value.type,
   );
 }
 
@@ -134,12 +134,15 @@ function handleAttributeValueChanged(value) {
         </div>
         <span class="fw-bold">requires one of:</span>
         <ul>
-          <li v-for="attribute in template.requiredOneOf">{{ attribute }}</li>
+          <li v-for="attribute in template.requiredOneOf" :key="attribute.id">
+            {{ attribute }}
+          </li>
         </ul>
       </div>
     </div>
     <AddObjectAttributeRow
       v-for="attribute in object.attributes"
+      :key="attribute.id"
       :attribute="attribute"
       :template="template"
       @object-attribute-deleted="handleObjectAttributeDeleted"

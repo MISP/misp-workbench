@@ -5,11 +5,6 @@ import { useAuthStore } from "@/stores";
 import ToastManager from "./components/misc/ToastManager.vue";
 
 const authStore = useAuthStore();
-
-
-
-
-
 </script>
 
 <template>
