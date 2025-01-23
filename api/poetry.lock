@@ -914,36 +914,35 @@ standard = ["email-validator (>=2.0.0)", "fastapi-cli[standard] (>=0.0.5)", "htt
 
 [[package]]
 name = "fastapi-pagination"
-version = "0.12.24"
+version = "0.12.34"
 description = "FastAPI pagination"
 optional = false
 python-versions = "<4.0,>=3.8"
 files = [
-    {file = "fastapi_pagination-0.12.24-py3-none-any.whl", hash = "sha256:a639df7301a89414244c6763bb97cff043815cb839070b8a38c58c007cf75d48"},
-    {file = "fastapi_pagination-0.12.24.tar.gz", hash = "sha256:c9c6508e0182aab679a13b1de261d4923e3b530b410500dcb271638ff714fb14"},
+    {file = "fastapi_pagination-0.12.34-py3-none-any.whl", hash = "sha256:089d1078aae1784395b4dbd923d0c8246641ddcc291c5ec6d92a30edb92ecbdd"},
+    {file = "fastapi_pagination-0.12.34.tar.gz", hash = "sha256:05ee8c0bc572072160f7f30900bfd87869e1880c87bc5797922fec2e49e65f11"},
 ]
 
 [package.dependencies]
-fastapi = ">=0.93.0"
 pydantic = ">=1.9.1"
 typing-extensions = ">=4.8.0,<5.0.0"
 
 [package.extras]
-all = ["SQLAlchemy (>=1.3.20)", "asyncpg (>=0.24.0)", "beanie (>=1.25.0)", "bunnet (>=1.1.0,<2.0.0)", "databases (>=0.6.0)", "django (<5.0.0)", "mongoengine (>=0.23.1,<0.29.0)", "motor (>=2.5.1,<4.0.0)", "orm (>=0.3.1)", "ormar (>=0.11.2)", "piccolo (>=0.89,<0.122)", "pony (>=0.7.16,<0.8.0)", "scylla-driver (>=3.25.6,<4.0.0)", "sqlakeyset (>=2.0.1680321678,<3.0.0)", "sqlmodel (>=0.0.8,<0.0.15)", "tortoise-orm (>=0.16.18,<0.21.0)"]
+all = ["SQLAlchemy (>=1.3.20)", "asyncpg (>=0.24.0)", "beanie (>=1.25.0)", "bunnet (>=1.1.0,<2.0.0)", "databases (>=0.6.0)", "django (<5.0.0)", "mongoengine (>=0.23.1,<0.30.0)", "motor (>=3.6.0,<4.0.0)", "odmantic (>=1.0.2,<2.0.0)", "orm (>=0.3.1)", "piccolo (>=0.89,<1.22)", "pony (>=0.7.16,<0.8.0)", "scylla-driver (>=3.25.6,<4.0.0)", "sqlakeyset (>=2.0.1680321678,<3.0.0)", "sqlmodel (>=0.0.22)", "tortoise-orm (>=0.22.0)"]
 asyncpg = ["SQLAlchemy (>=1.3.20)", "asyncpg (>=0.24.0)"]
 beanie = ["beanie (>=1.25.0)"]
 bunnet = ["bunnet (>=1.1.0,<2.0.0)"]
 databases = ["databases (>=0.6.0)"]
 django = ["databases (>=0.6.0)", "django (<5.0.0)"]
-mongoengine = ["mongoengine (>=0.23.1,<0.29.0)"]
-motor = ["motor (>=2.5.1,<4.0.0)"]
+mongoengine = ["mongoengine (>=0.23.1,<0.30.0)"]
+motor = ["motor (>=3.6.0,<4.0.0)"]
+odmantic = ["odmantic (>=1.0.2,<2.0.0)"]
 orm = ["databases (>=0.6.0)", "orm (>=0.3.1)"]
-ormar = ["ormar (>=0.11.2)"]
-piccolo = ["piccolo (>=0.89,<0.122)"]
+piccolo = ["piccolo (>=0.89,<1.22)"]
 scylla-driver = ["scylla-driver (>=3.25.6,<4.0.0)"]
 sqlalchemy = ["SQLAlchemy (>=1.3.20)", "sqlakeyset (>=2.0.1680321678,<3.0.0)"]
-sqlmodel = ["sqlakeyset (>=2.0.1680321678,<3.0.0)", "sqlmodel (>=0.0.8,<0.0.15)"]
-tortoise = ["tortoise-orm (>=0.16.18,<0.21.0)"]
+sqlmodel = ["sqlakeyset (>=2.0.1680321678,<3.0.0)", "sqlmodel (>=0.0.22)"]
+tortoise = ["tortoise-orm (>=0.22.0)"]
 
 [[package]]
 name = "filelock"
