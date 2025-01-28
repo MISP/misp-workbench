@@ -3,13 +3,13 @@ import { ref, watch } from "vue";
 import { useObjectsStore } from "@/stores";
 import { errorHandler } from "@/helpers";
 import { storeToRefs } from "pinia";
-import { ObjectSchema } from "@/schemas/object";
 import { DISTRIBUTION_LEVEL } from "@/helpers/constants";
 import ObjectTemplateSelect from "@/components/enums/ObjectTemplateSelect.vue";
 import ApiError from "@/components/misc/ApiError.vue";
 import AddObjectAttributesForm from "@/components/objects/AddObjectAttributesForm.vue";
 import AddObjectPreview from "@/components/objects/AddObjectPreview.vue";
 import DisplayObjectTemplate from "@/components/objects/DisplayObjectTemplate.vue";
+import { objectTemplatesHelper } from "@/helpers";
 import { Form } from "vee-validate";
 import * as Yup from "yup";
 
@@ -34,40 +34,9 @@ const activeTemplate = ref({
   requiredOneOf: [],
 });
 
-function getObjectTemplateSchema() {
-  return Yup.object().shape({
-    attributes: Yup.array().test(
-      "at-least-one-required-type",
-      `The object must contain at least one attribute with a type matching one of the following: ${activeTemplate.value.requiredOneOf.join(
-        ", ",
-      )}`,
-      (attributes) =>
-        attributes &&
-        attributes.some((attribute) =>
-          activeTemplate.value.requiredOneOf.includes(attribute.template_type),
-        ),
-    ),
-  });
-}
-
-const validateObject = (object) => {
-  return new Promise((resolve, reject) => {
-    const schema = getObjectTemplateSchema();
-    ObjectSchema.concat(schema)
-      .validate(object)
-      .then((validObject) => {
-        objectTemplateErrors.value = null;
-        resolve(validObject);
-      })
-      .catch((error) => {
-        objectTemplateErrors.value = error;
-        reject(error);
-      });
-  });
-};
 
 function handleAttributesUpdated() {
-  validateObject(object.value)
+  objectTemplatesHelper.validateObject(activeTemplate.value, object.value)
     .then((validObject) => {
       objectTemplateErrors.value = null;
     })
@@ -82,7 +51,7 @@ function createObject(values, { setErrors }) {
   object.value.deleted = false;
   object.value.timestamp = parseInt(Date.now() / 1000);
 
-  validateObject(object.value)
+  objectTemplatesHelper.validateObject(activeTemplate.value, object.value)
     .then((validObject) => {
       return objectsStore
         .create(object.value)
@@ -113,7 +82,7 @@ function onClose() {
 function handleObjectTemplateUpdated(templateUuid) {
   object.value.template_uuid = templateUuid;
   activeTemplate.value = objectsStore.getObjectTemplateByUuid(templateUuid);
-  ObjectTemplateSchema.value = getObjectTemplateSchema();
+  ObjectTemplateSchema.value = objectTemplatesHelper.getObjectTemplateSchema(activeTemplate.value);
 
   validateObjectTemplate();
 
