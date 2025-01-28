@@ -1,6 +1,6 @@
 <script setup>
 import { ref } from "vue";
-import AddObjectAttributeRow from "@/components/objects/AddObjectAttributeRow.vue";
+import AddOrEditObjectAttributeRow from "@/components/objects/AddOrEditObjectAttributeRow.vue";
 import ObjectTemplateAttributeTypeSelect from "@/components/objects/ObjectTemplateAttributeTypeSelect.vue";
 import ObjectAttributeValueInput from "@/components/objects/ObjectAttributeValueInput.vue";
 import {
@@ -140,14 +140,6 @@ function handleAttributeValueChanged(value) {
         </ul>
       </div>
     </div>
-    <AddObjectAttributeRow
-      v-for="attribute in object.attributes"
-      :key="attribute.id"
-      :attribute="attribute"
-      :template="template"
-      @object-attribute-deleted="handleObjectAttributeDeleted"
-      @object-attribute-updated="handleObjectAttributeUpdated"
-    />
     <Form
       @submit="addAttribute"
       :validation-schema="AttributeSchema"
@@ -226,5 +218,13 @@ function handleAttributeValueChanged(value) {
         </div>
       </div>
     </Form>
+    <AddOrEditObjectAttributeRow
+      v-for="attribute in object.attributes"
+      :key="attribute.id"
+      :attribute="attribute"
+      :template="template"
+      @object-attribute-deleted="handleObjectAttributeDeleted"
+      @object-attribute-updated="handleObjectAttributeUpdated"
+    />
   </div>
 </template>

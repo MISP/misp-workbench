@@ -4,6 +4,7 @@ import { storeToRefs } from "pinia";
 import { useObjectsStore } from "@/stores";
 import { Modal } from "bootstrap";
 import ObjectAttributesList from "@/components/objects/ObjectAttributesList.vue";
+import ObjectActions from "@/components/objects/ObjectActions.vue";
 import AddObjectModal from "@/components/objects/AddObjectModal.vue";
 import DeleteObjectModal from "@/components/objects/DeleteObjectModal.vue";
 import Spinner from "@/components/misc/Spinner.vue";
@@ -38,14 +39,6 @@ function openAddObjectModal() {
   addObjectModal.value = new Modal(document.getElementById("addObjectModal"));
   addObjectModal.value.show();
 }
-
-function openDeleteObjectModal(object) {
-  selectedObject.value = object;
-  deleteObjectModal.value = new Modal(
-    document.getElementById("deleteObjectModal"),
-  );
-  deleteObjectModal.value.show();
-}
 </script>
 
 <template>
@@ -58,13 +51,10 @@ function openDeleteObjectModal(object) {
       <div class="card" v-if="!object.deleted">
         <div class="card-header">
           {{ object.name }}
-          <button
-            type="button"
-            class="btn btn-danger text-center float-end"
-            @click="openDeleteObjectModal(object)"
-          >
-            <font-awesome-icon icon="fa-solid fa-trash" />
-          </button>
+          <ObjectActions
+            :object="object"
+            @object-deleted="handleObjectsUpdated"
+          />
         </div>
         <div class="card-body">
           <ObjectAttributesList

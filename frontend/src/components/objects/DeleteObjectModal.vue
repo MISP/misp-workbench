@@ -5,14 +5,14 @@ import { storeToRefs } from "pinia";
 const objectsStore = useObjectsStore();
 const { status } = storeToRefs(objectsStore);
 
-const props = defineProps(["object", "modal"]);
+const props = defineProps(["object_id", "modal"]);
 const emit = defineEmits(["object-deleted"]);
 
 function deleteObject() {
   return objectsStore
-    .delete(props.object.id)
+    .delete(props.object_id)
     .then((response) => {
-      emit("object-deleted", { object: props.object.id });
+      emit("object-deleted", { object_id: props.object_id });
       props.modal.hide();
     })
     .catch((error) => (status.error = error));
@@ -20,16 +20,11 @@ function deleteObject() {
 </script>
 
 <template>
-  <div
-    id="deleteObjectModal"
-    class="modal"
-    aria-labelledby="deleteObjectModal"
-    aria-hidden="true"
-  >
+  <div :id="`deleteObjectModal_${object_id}`" class="modal">
     <div class="modal-dialog modal-lg">
-      <div v-if="object" class="modal-content">
+      <div class="modal-content">
         <div class="modal-header">
-          <h5 class="modal-title">Delete Object #{{ object.id }}</h5>
+          <h5 class="modal-title">Delete Object #{{ object_id }}</h5>
           <button
             type="button"
             class="btn-close"

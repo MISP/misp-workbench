@@ -31,6 +31,8 @@ import {
   ViewTaxonomy,
   IndexGalaxies,
   ViewGalaxy,
+  ViewObject,
+  EditObject,
 } from "@/views";
 
 export const router = createRouter({
@@ -45,6 +47,8 @@ export const router = createRouter({
     { path: "/events/add", component: AddEvent },
     { path: "/attributes/:id", component: ViewAttribute, props: true },
     { path: "/attributes/update/:id", component: EditAttribute, props: true },
+    { path: "/objects/:id", component: ViewObject, props: true },
+    { path: "/objects/update/:id", component: EditObject, props: true },
     { path: "/users", component: IndexUsers },
     { path: "/users/add", component: AddUser },
     { path: "/users/:id", component: ViewUser, props: true },

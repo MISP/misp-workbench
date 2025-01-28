@@ -9,8 +9,8 @@ export const AttributeSchema = Yup.object().shape({
     disable_correlation: Yup.boolean().required(),
     category: Yup.string().required(),
     type: Yup.string().required(),
-    first_seen: Yup.string(),
-    last_seen: Yup.string(),
+    first_seen: Yup.string().nullable(),
+    last_seen: Yup.string().nullable(),
   }),
 });
 
