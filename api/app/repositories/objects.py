@@ -154,7 +154,6 @@ def create_object_from_pulled_object(
 def update_object(
     db: Session, object_id: int, object: object_schemas.ObjectUpdate
 ) -> object_models.Object:
-    # TODO: MISPObject::beforeValidate() && MISPObject::$validate
     db_object = get_object_by_id(db, object_id=object_id)
 
     if db_object is None:
@@ -165,6 +164,16 @@ def update_object(
     object_patch = object.model_dump(exclude_unset=True)
     for key, value in object_patch.items():
         setattr(db_object, key, value)
+        
+    for attribute in object.attributes:
+        if attribute.id is None:
+            # new attribute
+            attribute.object_id = db_object.id
+            attribute.event_id = db_object.event_id
+        else:
+            # existing attribute
+            attributes_repository.update_attribute(db, attribute.id, attribute)
+        
 
     db.add(db_object)
     db.commit()

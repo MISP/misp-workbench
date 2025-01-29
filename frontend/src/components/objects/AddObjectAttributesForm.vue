@@ -2,6 +2,7 @@
 import { ref } from "vue";
 import AddOrEditObjectAttributeRow from "@/components/objects/AddOrEditObjectAttributeRow.vue";
 import ObjectTemplateAttributeTypeSelect from "@/components/objects/ObjectTemplateAttributeTypeSelect.vue";
+import ObjectTemplateAttributeObjectRelationSelect from "@/components/objects/ObjectTemplateAttributeObjectRelationSelect.vue";
 import ObjectAttributeValueInput from "@/components/objects/ObjectAttributeValueInput.vue";
 import {
   AttributeSchema,
@@ -15,6 +16,7 @@ const props = defineProps(["template", "object"]);
 const emit = defineEmits([
   "object-attribute-added",
   "object-attribute-deleted",
+  "object-attribute-updated",
 ]);
 const object = ref(props.object);
 const template = ref(props.template);
@@ -63,25 +65,25 @@ function addAttribute(values, { resetForm }) {
 
 function handleObjectAttributeDeleted(event) {
   object.value.attributes = object.value.attributes.filter(
-    (a) => a !== event.attribute,
+    (attribute) => attribute !== event.attribute,
   );
   emit("object-attribute-deleted", { attribute: event.attribute });
 }
 
 function handleObjectAttributeUpdated(event) {
   // replace old attribute with new attribute
-  object.value.attributes = object.value.attributes.map((a) => {
-    if (a === event.old_attribute) {
+  object.value.attributes = object.value.attributes.map((attribute) => {
+    if (attribute === event.old_attribute) {
       return event.new_attribute.value;
     }
-    return a;
+    return attribute;
   });
+  emit("object-attribute-updated", { attribute: event.new_attribute });
 }
 
-function handleAttributeTypeChanged(type) {
-  newAttribute.value.template_type = type;
+function handleAttributeObjectRelationChanged(object_relation) {
   template.value.attributes.forEach((templateAttribute) => {
-    if (templateAttribute.name === type) {
+    if (templateAttribute.name === object_relation) {
       selectedTemplateAttribute.value = templateAttribute;
       newAttribute.value.type =
         selectedTemplateAttribute.value["misp_attribute"];
@@ -90,6 +92,12 @@ function handleAttributeTypeChanged(type) {
     }
   });
 
+  AttributeTypeSchema.value = getAttributeTypeValidationSchema(
+    newAttribute.value.type,
+  );
+}
+
+function handleAttributeTypeChanged(type) {
   AttributeTypeSchema.value = getAttributeTypeValidationSchema(
     newAttribute.value.type,
   );
@@ -150,16 +158,29 @@ function handleAttributeValueChanged(value) {
         <ObjectAttributeValueInput
           id="attribute.value"
           name="attribute.value"
-          :attribyte_type="selectedTemplateAttribute"
+          :attribute_type="selectedTemplateAttribute"
           v-model="newAttribute.value"
           :errors="errors['newAttribute.value']"
           @attribute-value-changed="handleAttributeValueChanged"
         />
+        <label class="input-group-text" for="attribute.object_relation"
+          >relation</label
+        >
+        <ObjectTemplateAttributeObjectRelationSelect
+          id="attribute.object_relation"
+          name="attribute.object_relation"
+          v-model="newAttribute.object_relation"
+          :errors="errors['newAttribute.object_relation']"
+          :template="template"
+          @attribute-template-object-relation-changed="
+            handleAttributeObjectRelationChanged
+          "
+        />
         <label class="input-group-text" for="attribute.type">type</label>
         <ObjectTemplateAttributeTypeSelect
-          id="attribute.template_type"
-          name="attribute.template_type"
-          v-model="newAttribute.template_type"
+          id="attribute.type"
+          name="attribute.type"
+          v-model="newAttribute.type"
           :errors="errors['newAttribute.type']"
           :template="template"
           @attribute-template-type-changed="handleAttributeTypeChanged"
@@ -198,7 +219,8 @@ function handleAttributeValueChanged(value) {
           id="attribute.type"
           name="attribute.type"
           v-model="newAttribute.type"
-        ></Field>
+        >
+        </Field>
         <label
           v-if="newAttribute.type"
           class="input-group-text"

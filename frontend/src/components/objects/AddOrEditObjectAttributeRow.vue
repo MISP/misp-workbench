@@ -4,6 +4,7 @@ import DistributionLevelSelect from "@/components/enums/DistributionLevelSelect.
 import ToIDSSelect from "@/components/enums/ToIDSSelect.vue";
 import DisableCorrelationSelect from "@/components/enums/DisableCorrelationSelect.vue";
 import ObjectTemplateAttributeTypeSelect from "@/components/objects/ObjectTemplateAttributeTypeSelect.vue";
+import ObjectTemplateAttributeObjectRelationSelect from "@/components/objects/ObjectTemplateAttributeObjectRelationSelect.vue";
 import {
   AttributeSchema,
   getAttributeTypeValidationSchema,
@@ -48,14 +49,24 @@ function saveObjectAttribute() {
     });
 }
 
-function handleAttributeTypeChanged(type, attribute) {
+function handleAttributeObjecRelationChanged(relation, attribute) {
   props.template.attributes.forEach((templateAttribute) => {
-    if (templateAttribute.name === type) {
+    if (templateAttribute.name === relation) {
       selectedTemplateAttribute.value = templateAttribute;
-      attribute.type = selectedTemplateAttribute.value["misp_attribute"];
+      attributeCopy.value.type =
+        selectedTemplateAttribute.value["misp_attribute"];
     }
   });
-  AttributeTypeSchema.value = getAttributeTypeValidationSchema(attribute.type);
+  AttributeTypeSchema.value = getAttributeTypeValidationSchema(
+    attributeCopy.value.type,
+  );
+}
+
+function handleAttributeTypeChanged(type, attribute) {
+  attributeCopy.value.type = type;
+  AttributeTypeSchema.value = getAttributeTypeValidationSchema(
+    attributeCopy.value.type,
+  );
 }
 </script>
 
@@ -95,9 +106,24 @@ function handleAttributeTypeChanged(type, attribute) {
       <label>disable_correlation</label>
     </div>
     <div class="form-floating">
+      <ObjectTemplateAttributeObjectRelationSelect
+        :name="`attribute_${attribute.id}.object_relation`"
+        :template="template"
+        :selected="attributeCopy.object_relation"
+        v-model="attributeCopy.object_relation"
+        @attribute-template-object-relation-changed="
+          handleAttributeObjecRelationChanged($event, attribute)
+        "
+        :disabled="!editMode"
+      />
+      <label>relation</label>
+    </div>
+    <div class="form-floating">
       <ObjectTemplateAttributeTypeSelect
         :name="`attribute_${attribute.id}.type`"
         :template="template"
+        :selected="attributeCopy.type"
+        v-model="attributeCopy.type"
         @attribute-template-type-changed="
           handleAttributeTypeChanged($event, attribute)
         "

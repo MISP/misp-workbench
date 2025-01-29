@@ -16,7 +16,6 @@ const feedSettings = ref(JSON.stringify(feed.value.settings || {}, null, 2));
 const feedHeaders = ref(JSON.stringify(feed.value.headers || {}, null, 2));
 
 function updateFeed(values, { setErrors }) {
-  console.log(values);
   values.feed.rules = JSON.parse(feedRules.value) || {};
   values.feed.settings = JSON.parse(feedSettings.value) || {};
   values.feed.headers = JSON.parse(feedHeaders.value) || {};

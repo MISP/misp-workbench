@@ -11,7 +11,6 @@ import AddObjectPreview from "@/components/objects/AddObjectPreview.vue";
 import DisplayObjectTemplate from "@/components/objects/DisplayObjectTemplate.vue";
 import { objectTemplatesHelper } from "@/helpers";
 import { Form } from "vee-validate";
-import * as Yup from "yup";
 
 const objectsStore = useObjectsStore();
 const { status } = storeToRefs(objectsStore);
@@ -34,9 +33,9 @@ const activeTemplate = ref({
   requiredOneOf: [],
 });
 
-
 function handleAttributesUpdated() {
-  objectTemplatesHelper.validateObject(activeTemplate.value, object.value)
+  objectTemplatesHelper
+    .validateObject(activeTemplate.value, object.value)
     .then((validObject) => {
       objectTemplateErrors.value = null;
     })
@@ -51,7 +50,8 @@ function createObject(values, { setErrors }) {
   object.value.deleted = false;
   object.value.timestamp = parseInt(Date.now() / 1000);
 
-  objectTemplatesHelper.validateObject(activeTemplate.value, object.value)
+  objectTemplatesHelper
+    .validateObject(activeTemplate.value, object.value)
     .then((validObject) => {
       return objectsStore
         .create(object.value)
@@ -82,7 +82,9 @@ function onClose() {
 function handleObjectTemplateUpdated(templateUuid) {
   object.value.template_uuid = templateUuid;
   activeTemplate.value = objectsStore.getObjectTemplateByUuid(templateUuid);
-  ObjectTemplateSchema.value = objectTemplatesHelper.getObjectTemplateSchema(activeTemplate.value);
+  ObjectTemplateSchema.value = objectTemplatesHelper.getObjectTemplateSchema(
+    activeTemplate.value,
+  );
 
   validateObjectTemplate();
 

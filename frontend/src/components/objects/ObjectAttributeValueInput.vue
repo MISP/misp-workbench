@@ -1,7 +1,7 @@
 <script setup>
 import { Field } from "vee-validate";
 
-const props = defineProps(["name", "attribyte_type", "errors"]);
+const props = defineProps(["name", "attribute_type", "errors"]);
 const emit = defineEmits(["attribute-value-changed"]);
 
 function handleValueChange(event) {
@@ -12,7 +12,7 @@ function handleValueChange(event) {
 <template>
   <div>
     <Field
-      v-if="!attribyte_type.sane_default"
+      v-if="!attribute_type.sane_default"
       class="form-control"
       id="attribute.value"
       name="attribute.value"
@@ -23,7 +23,7 @@ function handleValueChange(event) {
 
     <!-- If the attribute type has sane_default, change input to a datalist -->
     <Field
-      v-if="attribyte_type.sane_default"
+      v-if="attribute_type.sane_default"
       class="form-control"
       list="objectAttributeSaneDefaultOptions"
       id="objectAttributeSaneDefaultSelect"
@@ -34,7 +34,7 @@ function handleValueChange(event) {
     >
     </Field>
     <datalist id="objectAttributeSaneDefaultOptions">
-      <option v-for="option in attribyte_type.sane_default">
+      <option v-for="option in attribute_type.sane_default">
         {{ option }}
       </option>
     </datalist>

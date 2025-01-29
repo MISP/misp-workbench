@@ -51,3 +51,4 @@ class ObjectUpdate(BaseModel):
     deleted: Optional[bool] = None
     first_seen: Optional[int] = None
     last_seen: Optional[int] = None
+    attributes: Optional[list[Attribute]] = []
