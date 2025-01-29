@@ -24,7 +24,6 @@ const template = ref(props.template);
 const AttributeTypeSchema = ref(getAttributeTypeValidationSchema("text"));
 
 const attributeErrors = ref(null);
-let attributeCount = 0;
 
 const newAttribute = ref({
   event_id: object.value.event_id,
@@ -40,13 +39,11 @@ const selectedTemplateAttribute = ref({});
 function addAttribute(values, { resetForm }) {
   validateAttributeValue(values, AttributeTypeSchema.value)
     .then((validAttribute) => {
-      attributeCount++;
-      newAttribute.value.id = attributeCount;
       object.value.attributes = [
         ...object.value.attributes,
         { ...newAttribute.value },
       ];
-      emit("object-attribute-added", { attribute: newAttribute.value });
+      emit("object-attribute-added", { attribute: { ...newAttribute.value } });
 
       // reset defaults
       newAttribute.value.value = "";
@@ -241,7 +238,9 @@ function handleAttributeValueChanged(value) {
       </div>
     </Form>
     <AddOrEditObjectAttributeRow
-      v-for="attribute in object.attributes"
+      v-for="attribute in object.attributes.filter(
+        (attribute) => !attribute.deleted,
+      )"
       :key="attribute.id"
       :attribute="attribute"
       :template="template"

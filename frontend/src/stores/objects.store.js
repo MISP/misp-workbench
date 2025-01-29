@@ -44,10 +44,17 @@ export const useObjectsStore = defineStore({
         (objectTemplate) => objectTemplate.uuid === uuid,
       );
     },
-    async create(attribute) {
+    async create(object) {
       this.status = { loading: true };
       return await fetchWrapper
-        .post(baseUrl, attribute)
+        .post(baseUrl, object)
+        .then((object) => (this.object = object))
+        .finally(() => (this.status = { loading: false }));
+    },
+    async update(object) {
+      this.status = { loading: true };
+      return await fetchWrapper
+        .patch(`${baseUrl}/${object.id}`, object)
         .then((object) => (this.object = object))
         .finally(() => (this.status = { loading: false }));
     },

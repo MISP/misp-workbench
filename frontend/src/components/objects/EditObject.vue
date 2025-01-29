@@ -2,11 +2,16 @@
 import { ref } from "vue";
 import ApiError from "@/components/misc/ApiError.vue";
 import AddObjectAttributesForm from "@/components/objects/AddObjectAttributesForm.vue";
+import { useObjectsStore } from "@/stores";
 import { objectTemplatesHelper } from "@/helpers";
 
 const props = defineProps(["object", "template", "status"]);
 const objectTemplateErrors = ref(null);
 const apiError = ref(null);
+const objectsStore = useObjectsStore();
+const newAttributes = ref([]);
+const updateAttributes = ref([]);
+const deletedAttributes = ref([]);
 
 function handleObjectUpdated(event) {
   objectTemplatesHelper
@@ -20,14 +25,23 @@ function handleObjectUpdated(event) {
 }
 
 function handleObjectAttributeAdded(event) {
+  newAttributes.value.push(event.attribute);
   handleObjectUpdated(event);
 }
 
 function handleObjectAttributeUpdated(event) {
+  updateAttributes.value.push(event.attribute);
   handleObjectUpdated(event);
 }
 
 function handleObjectAttributeDeleted(event) {
+  if (event.attribute.id) {
+    deletedAttributes.value.push(event.attribute.id);
+  } else {
+    newAttributes.value = newAttributes.value.filter(
+      (attribute) => attribute.value !== event.attribute.value,
+    );
+  }
   handleObjectUpdated(event);
 }
 
@@ -36,10 +50,17 @@ function updateObject() {
     .validateObject(props.template, props.object)
     .then((validObject) => {
       return objectsStore
-        .create(object.value)
+        .update({
+          ...props.object,
+          new_attributes: newAttributes.value,
+          update_attributes: updateAttributes.value,
+          delete_attributes: deletedAttributes.value,
+        })
         .then((response) => {
-          object.value = response.data;
           objectTemplateErrors.value = null;
+          newAttributes.value = [];
+          updateAttributes.value = [];
+          deletedAttributes.value = [];
         })
         .catch((errors) => {
           apiError.value = errors;
@@ -68,7 +89,7 @@ function updateObject() {
   <div class="text-center mt-3">
     <button
       type="submit"
-      @submit="updateObject"
+      @click="updateObject"
       class="btn btn-primary"
       :disabled="status.loading || objectTemplateErrors"
     >

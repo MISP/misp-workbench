@@ -1,5 +1,6 @@
 import logging
 import time
+import uuid
 
 from app.models import attribute as attribute_models
 from app.models import event as event_models
@@ -163,17 +164,25 @@ def update_object(
 
     object_patch = object.model_dump(exclude_unset=True)
     for key, value in object_patch.items():
+        if key == "attributes":
+            continue
         setattr(db_object, key, value)
         
-    for attribute in object.attributes:
-        if attribute.id is None:
-            # new attribute
+    # new attribute
+    for attribute in object.new_attributes:
             attribute.object_id = db_object.id
             attribute.event_id = db_object.event_id
-        else:
-            # existing attribute
-            attributes_repository.update_attribute(db, attribute.id, attribute)
+            attribute.uuid = str(uuid.uuid4())
+            attributes_repository.create_attribute(db, attribute)
+
+
+    # existing attribute
+    for attribute in object.update_attributes:
+        attributes_repository.update_attribute(db, attribute.id, attribute)
         
+    # delete attribute
+    for attribute_id in object.delete_attributes:
+        attributes_repository.delete_attribute(db, attribute_id)
 
     db.add(db_object)
     db.commit()
