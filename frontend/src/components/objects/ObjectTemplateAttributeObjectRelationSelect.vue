@@ -1,12 +1,11 @@
 <script setup>
 import { Field } from "vee-validate";
-import { ATTRIBUTE_TYPES } from "@/helpers/constants";
 
 const props = defineProps(["name", "selected", "errors", "template"]);
-const emit = defineEmits(["attribute-template-type-changed"]);
+const emit = defineEmits(["attribute-template-object-relation-changed"]);
 
 function handleSelectChange(event) {
-  emit("attribute-template-type-changed", event.target.value);
+  emit("attribute-template-object-relation-changed", event.target.value);
 }
 </script>
 
@@ -19,8 +18,8 @@ function handleSelectChange(event) {
     @change="handleSelectChange"
     :value="props.selected"
   >
-    <option v-for="type in ATTRIBUTE_TYPES" :value="type" :key="type">
-      {{ type }}
+    <option v-for="attribute in template.attributes" :value="attribute.name">
+      {{ attribute.name }}
     </option>
   </Field>
 </template>

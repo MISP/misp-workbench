@@ -19,6 +19,6 @@ function handleSelectChange(event) {
     :value="props.selected"
   >
     <option value="true">true</option>
-    <option valie="false">false</option>
+    <option value="false">false</option>
   </Field>
 </template>

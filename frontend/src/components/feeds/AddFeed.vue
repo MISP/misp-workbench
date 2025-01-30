@@ -118,8 +118,8 @@ function handleDistributionLevelUpdated(distributionLevelId) {
             :class="{ 'is-invalid': errors['feed.source_format'] }"
           >
             <option value="misp">MISP Feed</option>
-            <option valie="csv">Freetext Parsed Feed</option>
-            <option valie="freetext">Simple CSV Parsed Feed</option>
+            <option value="csv">Freetext Parsed Feed</option>
+            <option value="freetext">Simple CSV Parsed Feed</option>
           </Field>
           <div class="invalid-feedback">{{ errors["feed.source_format"] }}</div>
         </div>
@@ -134,7 +134,7 @@ function handleDistributionLevelUpdated(distributionLevelId) {
             :class="{ 'is-invalid': errors['feed.input_source'] }"
           >
             <option value="network">Network</option>
-            <option valie="local">Local</option>
+            <option value="local">Local</option>
           </Field>
           <div class="invalid-feedback">{{ errors["feed.input_source"] }}</div>
         </div>

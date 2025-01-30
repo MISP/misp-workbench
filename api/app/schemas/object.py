@@ -2,7 +2,7 @@ from typing import Optional
 from uuid import UUID
 
 from app.models.event import DistributionLevel
-from app.schemas.attribute import Attribute, AttributeCreate
+from app.schemas.attribute import Attribute, AttributeCreate, AttributeUpdate
 from app.schemas.object_reference import ObjectReference, ObjectReferenceCreate
 from pydantic import BaseModel, ConfigDict
 
@@ -51,3 +51,6 @@ class ObjectUpdate(BaseModel):
     deleted: Optional[bool] = None
     first_seen: Optional[int] = None
     last_seen: Optional[int] = None
+    new_attributes: Optional[list[AttributeCreate]] = []
+    update_attributes: Optional[list[AttributeCreate]] = []
+    delete_attributes: Optional[list[int]] = []
