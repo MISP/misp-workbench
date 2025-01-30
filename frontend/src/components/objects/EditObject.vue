@@ -1,9 +1,15 @@
 <script setup>
 import { ref } from "vue";
 import ApiError from "@/components/misc/ApiError.vue";
+import { ObjectSchema } from "@/schemas/object";
+import { Form, Field } from "vee-validate";
 import AddObjectAttributesForm from "@/components/objects/AddObjectAttributesForm.vue";
+import DistributionLevelSelect from "@/components/enums/DistributionLevelSelect.vue";
+import DisplayObjectTemplate from "@/components/objects/DisplayObjectTemplate.vue";
 import { useObjectsStore } from "@/stores";
 import { objectTemplatesHelper } from "@/helpers";
+import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
+import { faCubesStacked } from "@fortawesome/free-solid-svg-icons";
 
 const props = defineProps(["object", "template", "status"]);
 const objectTemplateErrors = ref(null);
@@ -13,9 +19,11 @@ const newAttributes = ref([]);
 const updateAttributes = ref([]);
 const deletedAttributes = ref([]);
 
+let object = ref(props.object);
+
 function handleObjectUpdated(event) {
   objectTemplatesHelper
-    .validateObject(props.template, props.object)
+    .validateObject(props.template, object.value)
     .then((validObject) => {
       objectTemplateErrors.value = null;
     })
@@ -45,13 +53,17 @@ function handleObjectAttributeDeleted(event) {
   handleObjectUpdated(event);
 }
 
+function handleDistributionLevelUpdated(distributionLevelId) {
+  object.value.distribution = parseInt(distributionLevelId);
+}
+
 function updateObject() {
   objectTemplatesHelper
-    .validateObject(props.template, props.object)
+    .validateObject(props.template, object.value)
     .then((validObject) => {
       return objectsStore
         .update({
-          ...props.object,
+          ...object.value,
           new_attributes: newAttributes.value,
           update_attributes: updateAttributes.value,
           delete_attributes: deletedAttributes.value,
@@ -72,35 +84,106 @@ function updateObject() {
 }
 </script>
 <template>
-  <AddObjectAttributesForm
-    :object="object"
-    :key="template.uuid"
-    :template="template"
-    @object-attribute-added="handleObjectAttributeAdded"
-    @object-attribute-updated="handleObjectAttributeUpdated"
-    @object-attribute-deleted="handleObjectAttributeDeleted"
-  />
-  <div v-if="objectTemplateErrors" class="w-100 alert alert-danger mt-3 mb-3">
-    {{ objectTemplateErrors }}
-  </div>
-  <div v-if="apiError" class="w-100 alert alert-danger mt-3 mb-3">
-    <ApiError :errors="apiError" />
-  </div>
-  <div class="text-center mt-3">
-    <button
-      type="submit"
-      @click="updateObject"
-      class="btn btn-primary"
-      :disabled="status.loading || objectTemplateErrors"
-    >
-      <span v-show="status.loading">
-        <span
-          class="spinner-border spinner-border-sm"
-          role="status"
-          aria-hidden="true"
-        ></span>
-      </span>
-      <span v-show="!status.loading">Save Object</span>
-    </button>
+  <div class="card">
+    <div class="card-header border-bottom">
+      <div class="row">
+        <div class="col-10">
+          <h3>Update Object</h3>
+        </div>
+      </div>
+    </div>
+
+    <div class="card-body d-flex flex-column">
+      <div>
+        <DisplayObjectTemplate :template="template" />
+      </div>
+      <div>
+        <div class="card-body d-flex flex-column">
+          <Form :validation-schema="ObjectSchema" v-slot="{ errors }">
+            <div class="mb-3">
+              <label for="object.id">id</label>
+              <Field
+                class="form-control"
+                id="object.id"
+                name="object.id"
+                v-model="object.id"
+                :class="{ 'is-invalid': errors['object.id'] }"
+                disabled
+              >
+              </Field>
+              <div class="invalid-feedback">{{ errors["object.id"] }}</div>
+            </div>
+            <div class="mb-3">
+              <label for="object.uuid">uuid</label>
+              <Field
+                class="form-control"
+                id="object.uuid"
+                name="object.uuid"
+                v-model="object.uuid"
+                :class="{ 'is-invalid': errors['object.uuid'] }"
+                disabled
+              >
+              </Field>
+              <div class="invalid-feedback">{{ errors["object.uuid"] }}</div>
+            </div>
+            <div class="mb-3">
+              <label for="attribute.distribution" class="form-label"
+                >distribution</label
+              >
+              <DistributionLevelSelect
+                name="object.distribution"
+                :selected="object.distribution"
+                @distribution-level-updated="handleDistributionLevelUpdated"
+                :errors="errors['object.distribution']"
+              />
+              <div class="invalid-feedback">
+                {{ errors["object.distribution"] }}
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-header">
+                <FontAwesomeIcon :icon="faCubesStacked" /> attributes
+              </div>
+              <div class="card-body d-flex flex-column">
+                <AddObjectAttributesForm
+                  :object="object"
+                  :key="template.uuid"
+                  :template="template"
+                  @object-attribute-added="handleObjectAttributeAdded"
+                  @object-attribute-updated="handleObjectAttributeUpdated"
+                  @object-attribute-deleted="handleObjectAttributeDeleted"
+                />
+              </div>
+            </div>
+            <div
+              v-if="objectTemplateErrors"
+              class="w-100 alert alert-danger mt-3 mb-3"
+            >
+              {{ objectTemplateErrors }}
+            </div>
+            <div v-if="apiError" class="w-100 alert alert-danger mt-3 mb-3">
+              <ApiError :errors="apiError" />
+            </div>
+            <div class="text-center mt-3">
+              <button
+                type="submit"
+                @click="updateObject"
+                class="btn btn-primary"
+                :disabled="status.loading || objectTemplateErrors"
+              >
+                <span v-show="status.loading">
+                  <span
+                    class="spinner-border spinner-border-sm"
+                    role="status"
+                    aria-hidden="true"
+                  ></span>
+                </span>
+                <span v-show="!status.loading">Save Object</span>
+              </button>
+            </div>
+          </Form>
+        </div>
+      </div>
+    </div>
   </div>
 </template>

@@ -13,30 +13,44 @@ const template = ref(props.template);
     <span class="badge bg-secondary">{{ template.meta_category }}</span>
     <div>{{ template.description }}</div>
   </div>
-  <table class="table">
-    <thead>
-      <tr>
-        <th style="width: 30%" scope="col">type</th>
-        <th style="width: 30%" scope="col">MISP type</th>
-        <th style="width: 30%" scope="col">correlate</th>
-        <th style="width: 30%" scope="col">multiple</th>
-      </tr>
-    </thead>
-    <tbody>
-      <template :key="attribute.id" v-for="attribute in template.attributes">
+  <p>
+    <a
+      class="btn-primary"
+      data-bs-toggle="collapse"
+      href="#templateDetails"
+      role="button"
+      aria-expanded="false"
+      aria-controls="advancedSettings"
+    >
+      Template details <font-awesome-icon icon="fa-solid fa-caret-down" />
+    </a>
+  </p>
+  <div class="collapse" id="templateDetails">
+    <table class="table">
+      <thead>
         <tr>
-          <td>{{ attribute.name }}</td>
-          <td>{{ attribute.misp_attribute }}</td>
-          <td>{{ attribute.disable_correlation }}</td>
-          <td>{{ attribute.multiple }}</td>
+          <th style="width: 30%" scope="col">type</th>
+          <th style="width: 30%" scope="col">MISP type</th>
+          <th style="width: 30%" scope="col">correlate</th>
+          <th style="width: 30%" scope="col">multiple</th>
         </tr>
-        <tr>
-          <td></td>
-          <td colspan="3" class="text-secondary">
-            {{ attribute.description }}
-          </td>
-        </tr>
-      </template>
-    </tbody>
-  </table>
+      </thead>
+      <tbody>
+        <template :key="attribute.id" v-for="attribute in template.attributes">
+          <tr>
+            <td>{{ attribute.name }}</td>
+            <td>{{ attribute.misp_attribute }}</td>
+            <td>{{ attribute.disable_correlation }}</td>
+            <td>{{ attribute.multiple }}</td>
+          </tr>
+          <tr>
+            <td></td>
+            <td colspan="3" class="text-secondary">
+              {{ attribute.description }}
+            </td>
+          </tr>
+        </template>
+      </tbody>
+    </table>
+  </div>
 </template>

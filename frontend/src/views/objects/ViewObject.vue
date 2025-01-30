@@ -7,8 +7,9 @@ import Spinner from "@/components/misc/Spinner.vue";
 const route = useRoute();
 const objectStore = useObjectsStore();
 const { object, status } = storeToRefs(objectStore);
-objectStore.getById(route.params.id);
 defineProps(["id"]);
+
+objectStore.getById(route.params.id);
 </script>
 
 <style>

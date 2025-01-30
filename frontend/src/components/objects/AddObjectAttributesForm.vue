@@ -120,7 +120,7 @@ function handleAttributeValueChanged(value) {
 
 <template>
   <div>
-    <div class="mt-3 mb-3">
+    <!-- <div class="mt-3 mb-3">
       <div class="card card-body">
         <div>
           <span class="fw-bold">{{ template.name }} </span>
@@ -144,7 +144,7 @@ function handleAttributeValueChanged(value) {
           </li>
         </ul>
       </div>
-    </div>
+    </div> -->
     <Form
       @submit="addAttribute"
       :validation-schema="AttributeSchema"
