@@ -6,6 +6,7 @@ import { Form, Field } from "vee-validate";
 import AddObjectAttributesForm from "@/components/objects/AddObjectAttributesForm.vue";
 import DistributionLevelSelect from "@/components/enums/DistributionLevelSelect.vue";
 import DisplayObjectTemplate from "@/components/objects/DisplayObjectTemplate.vue";
+import Datepicker from "@/components/misc/Datepicker.vue";
 import { useObjectsStore } from "@/stores";
 import { objectTemplatesHelper } from "@/helpers";
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
@@ -138,6 +139,61 @@ function updateObject() {
               />
               <div class="invalid-feedback">
                 {{ errors["object.distribution"] }}
+              </div>
+            </div>
+            <div class="mb-3">
+              <label for="object.timestamp">timestamp</label>
+              <Datepicker
+                v-model="object.timestamp"
+                name="object.timestamp"
+                altFormat="Z"
+                dateFormat="U"
+                enableTime
+              />
+              <div class="invalid-feedback">
+                {{ errors["object.timestamp"] }}
+              </div>
+            </div>
+            <div class="mb-3">
+              <label for="object.last_seen">first seen</label>
+              <Datepicker
+                v-model="object.first_seen"
+                name="object.first_seen"
+                altFormat="Z"
+                dateFormat="U"
+                enableTime
+              />
+              <div class="invalid-feedback">
+                {{ errors["object.first_seen"] }}
+              </div>
+            </div>
+            <div class="mb-3">
+              <label for="object.last_seen">last seen</label>
+              <Datepicker
+                v-model="object.last_seen"
+                name="object.last_seen"
+                altFormat="Z"
+                dateFormat="U"
+                enableTime
+              />
+              <div class="invalid-feedback">
+                {{ errors["object.last_seen"] }}
+              </div>
+            </div>
+            <div class="mb-3">
+              <label for="object.comment">comment</label>
+              <Field
+                class="form-control"
+                id="object.comment"
+                name="object.comment"
+                as="textarea"
+                v-model="object.comment"
+                style="height: 100px"
+                :class="{ 'is-invalid': errors['object.comment'] }"
+              >
+              </Field>
+              <div class="invalid-feedback">
+                {{ errors["object.comment"] }}
               </div>
             </div>
             <div class="card">
