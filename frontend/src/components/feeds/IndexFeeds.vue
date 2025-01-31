@@ -10,14 +10,14 @@ const { feeds, status } = storeToRefs(feedsStore);
 
 feedsStore.getAll();
 
-function handleFeedDeleted(event) {
+function handleFeedDeleted() {
   feedsStore.getAll();
 }
 
 function toggleEnable(feed) {
   feedsStore
     .toggleEnable(feed)
-    .then((response) => {
+    .then(() => {
       feed.enabled = !feed.enabled;
     })
     .catch((errors) => (this.status.error = errors));

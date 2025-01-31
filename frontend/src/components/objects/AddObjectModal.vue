@@ -36,7 +36,7 @@ const activeTemplate = ref({
 function handleAttributesUpdated() {
   objectTemplatesHelper
     .validateObject(activeTemplate.value, object.value)
-    .then((validObject) => {
+    .then(() => {
       objectTemplateErrors.value = null;
     })
     .catch((error) => {
@@ -52,7 +52,7 @@ function createObject(values, { setErrors }) {
 
   objectTemplatesHelper
     .validateObject(activeTemplate.value, object.value)
-    .then((validObject) => {
+    .then(() => {
       return objectsStore
         .create(object.value)
         .then((response) => {
@@ -100,7 +100,7 @@ const defaultObjectTemplates = {
   personal: "a15b0477-e9d1-4b9c-9546-abe78a4f4248",
 };
 
-watch(selectedQuickTemplate, (newValue, oldValue) => {
+watch(selectedQuickTemplate, (newValue) => {
   if (defaultObjectTemplates[newValue]) {
     object.value.template_uuid = defaultObjectTemplates[newValue];
     activeTemplate.value = objectsStore.getObjectTemplateByUuid(

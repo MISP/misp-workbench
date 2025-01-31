@@ -5,7 +5,7 @@ import { router } from "@/router";
 
 defineProps(["server"]);
 
-function handleServerDeleted(event) {
+function handleServerDeleted() {
   router.push(`/servers`);
 }
 </script>

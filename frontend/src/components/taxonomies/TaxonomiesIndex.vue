@@ -6,7 +6,7 @@ import Spinner from "@/components/misc/Spinner.vue";
 import Paginate from "vuejs-paginate-next";
 import TaxonomyActions from "@/components/taxonomies/TaxonomyActions.vue";
 
-const props = defineProps(["page_size"]);
+defineProps(["page_size"]);
 
 const taxonomiesStore = useTaxonomiesStore();
 const { page_count, taxonomies, status } = storeToRefs(taxonomiesStore);
@@ -25,7 +25,7 @@ watch(searchTerm, () => {
   onPageChange(1);
 });
 
-function handleTaxonomiesUpdated(event) {
+function handleTaxonomiesUpdated() {
   // TODO FIXME: resets the page to 1 and reloads the taxonomies, not the best way to do this, reload current page
   onPageChange(1);
 }
@@ -33,7 +33,7 @@ function handleTaxonomiesUpdated(event) {
 function toggle(property, taxonomy) {
   taxonomiesStore
     .toggle(property, taxonomy)
-    .then((response) => {
+    .then(() => {
       taxonomy[property] = !taxonomy[property];
     })
     .catch((errors) => (this.status.error = errors));

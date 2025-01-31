@@ -1,14 +1,11 @@
 <script setup>
-import { ref, watch } from "vue";
+import { ref } from "vue";
 import DistributionLevelSelect from "@/components/enums/DistributionLevelSelect.vue";
 import ToIDSSelect from "@/components/enums/ToIDSSelect.vue";
 import DisableCorrelationSelect from "@/components/enums/DisableCorrelationSelect.vue";
 import ObjectTemplateAttributeTypeSelect from "@/components/objects/ObjectTemplateAttributeTypeSelect.vue";
 import ObjectTemplateAttributeObjectRelationSelect from "@/components/objects/ObjectTemplateAttributeObjectRelationSelect.vue";
-import {
-  AttributeSchema,
-  getAttributeTypeValidationSchema,
-} from "@/schemas/attribute";
+import { getAttributeTypeValidationSchema } from "@/schemas/attribute";
 
 const props = defineProps(["attribute", "template"]);
 const emit = defineEmits([
@@ -36,7 +33,7 @@ function saveObjectAttribute() {
   const attributeFormObject = { attribute: attributeCopy.value };
   AttributeTypeSchema.value
     .validate(attributeFormObject)
-    .then((validAttribute) => {
+    .then(() => {
       errors.value = null;
       editMode.value = false;
       emit("object-attribute-updated", {
@@ -49,7 +46,7 @@ function saveObjectAttribute() {
     });
 }
 
-function handleAttributeObjecRelationChanged(relation, attribute) {
+function handleAttributeObjecRelationChanged(relation) {
   props.template.attributes.forEach((templateAttribute) => {
     if (templateAttribute.name === relation) {
       selectedTemplateAttribute.value = templateAttribute;
@@ -62,7 +59,7 @@ function handleAttributeObjecRelationChanged(relation, attribute) {
   );
 }
 
-function handleAttributeTypeChanged(type, attribute) {
+function handleAttributeTypeChanged(type) {
   attributeCopy.value.type = type;
   AttributeTypeSchema.value = getAttributeTypeValidationSchema(
     attributeCopy.value.type,

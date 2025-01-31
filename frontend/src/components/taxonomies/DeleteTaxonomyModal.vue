@@ -11,7 +11,7 @@ const emit = defineEmits(["taxonomy-deleted"]);
 function deleteTaxonomy() {
   return taxonomiesStore
     .delete(props.taxonomy_id)
-    .then((response) => {
+    .then(() => {
       emit("taxonomy-deleted", { taxonomy_id: props.taxonomy_id });
       props.modal.hide();
     })

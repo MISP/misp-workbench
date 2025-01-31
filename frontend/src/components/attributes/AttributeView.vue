@@ -2,12 +2,11 @@
 import Sparkline from "@/components/charts/Sparkline.vue";
 import TagsIndex from "@/components/tags/TagsIndex.vue";
 import DistributionLevel from "@/components/enums/DistributionLevel.vue";
-import ThreatLevel from "@/components/enums/ThreatLevel.vue";
 import DeleteAttributeModal from "@/components/attributes/DeleteAttributeModal.vue";
 
-const props = defineProps(["attribute", "status"]);
+defineProps(["attribute", "status"]);
 
-function handleAttributeDeleted(event) {
+function handleAttributeDeleted() {
   router.go(-1);
 }
 </script>

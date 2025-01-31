@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, nextTick } from "vue";
+import { ref, onMounted } from "vue";
 import { tagHelper } from "@/helpers";
 import TomSelect from "tom-select";
 import { useTagsStore, useAttributesStore, useEventsStore } from "@/stores";
@@ -117,7 +117,7 @@ onMounted(() => {
         return;
       }
     },
-    onItemAdd: function (tag, item) {
+    onItemAdd: function (tag) {
       // ignore when adding items programmatically on initialisation
       if (initialising) {
         return;

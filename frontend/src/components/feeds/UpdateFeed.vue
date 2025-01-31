@@ -21,7 +21,7 @@ function updateFeed(values, { setErrors }) {
   values.feed.headers = JSON.parse(feedHeaders.value) || {};
   return feedsStore
     .update(values.feed)
-    .then((response) => {
+    .then(() => {
       router.push(`/feeds/${values.feed.id}`);
     })
     .catch((error) => setErrors({ apiError: error }));

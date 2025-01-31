@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from "vue";
+import { ref } from "vue";
 import { useModulesStore, useObjectsStore, useAttributesStore } from "@/stores";
 import { storeToRefs } from "pinia";
 import UUID from "@/components/misc/UUID.vue";

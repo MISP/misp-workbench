@@ -1,8 +1,8 @@
 <script setup>
 import Badge from "@/components/misc/Badge.vue";
-const props = defineProps(["taxonomy", "status"]);
+defineProps(["taxonomy", "status"]);
 
-function handleTaxonomyDeleted(event) {
+function handleTaxonomyDeleted() {
   router.go(-1);
 }
 </script>

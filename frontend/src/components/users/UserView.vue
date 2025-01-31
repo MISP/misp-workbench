@@ -1,7 +1,7 @@
 <script setup>
 import DeleteUserModal from "@/components/users/DeleteUserModal.vue";
-const props = defineProps(["user_id", "user"]);
-function handleUserDeleted(event) {
+defineProps(["user_id", "user"]);
+function handleUserDeleted() {
   router.push(`/users`);
 }
 </script>

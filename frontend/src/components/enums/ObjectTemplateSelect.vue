@@ -1,5 +1,4 @@
 <script setup>
-import { OBJECT_META_CATEGORIES } from "@/helpers/constants";
 import { Field } from "vee-validate";
 import { useObjectsStore } from "@/stores";
 import { storeToRefs } from "pinia";

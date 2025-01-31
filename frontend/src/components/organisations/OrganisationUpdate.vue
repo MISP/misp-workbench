@@ -6,12 +6,12 @@ import { router } from "@/router";
 import { OrganisationSchema } from "@/schemas/organisation";
 
 const organisationsStore = useOrganisationsStore();
-const { organisation, status, error } = storeToRefs(organisationsStore);
+const { organisation, status } = storeToRefs(organisationsStore);
 
 function onSubmit(values, { setErrors }) {
   return organisationsStore
     .update(values.organisation)
-    .then((response) => {
+    .then(() => {
       router.push(`/organisations/${values.organisation.id}`);
     })
     .catch((error) => setErrors({ apiError: error }));

@@ -1,14 +1,14 @@
 <script setup>
 import { Form, Field } from "vee-validate";
 import { storeToRefs } from "pinia";
-import { useUsersStore, useRolesStore } from "@/stores";
+import { useUsersStore } from "@/stores";
 import { router } from "@/router";
 import { UserSchema } from "@/schemas/user";
 import RolesSelect from "@/components/roles/RolesSelect.vue";
 import OrganisationsSelect from "@/components/organisations/OrganisationsSelect.vue";
 
 const usersStore = useUsersStore();
-const { status, error } = storeToRefs(usersStore);
+const { status } = storeToRefs(usersStore);
 
 const user = {};
 

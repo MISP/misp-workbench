@@ -30,7 +30,7 @@ const addObjectModal = ref(null);
 const deleteObjectModal = ref(null);
 const selectedObject = ref(null);
 
-function handleObjectsUpdated(event) {
+function handleObjectsUpdated() {
   // TODO FIXME: resets the page to 1 and reloads the objects, not the best way to do this, reload current page
   onPageChange(1);
 }

@@ -54,7 +54,7 @@ export const useGalaxiesStore = defineStore({
     async update(id) {
       this.status = { updating: true };
       return await fetchWrapper
-        .post(`${baseUrl}/update`)
+        .post(`${baseUrl}/update/${id}`)
         .catch((error) => (this.status = { error }))
         .finally(() => (this.status.updating = false));
     },

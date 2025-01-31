@@ -12,19 +12,20 @@ configureVueProject({
 });
 
 export default defineConfigWithVueTs(
+  {
+    name: "app/files-to-lint",
+    files: ["**/*.{ts,mts,tsx,vue}"],
+  },
+  {
+    name: "app/files-to-ignore",
+    ignores: ["**/dist/**", "**/dist-ssr/**", "**/coverage/**"],
+  },
   pluginVue.configs["flat/essential"],
   vueTsConfigs.base,
   pluginPrettierRecommendedConfigs,
-  // vueTsConfigs.recommended,
+  vueTsConfigs.recommended,
   {
-    name: "app/files-to-ignore",
-    ignores: [
-      "**/node_modules/**",
-      "**/dist/**",
-      "**/dist/assets/**",
-      "**/dist-ssr/**",
-      "**/coverage/**",
-    ],
+    name: "app/rules",
     rules: {
       "vue/multi-word-component-names": "off",
       "vue/require-v-for-key": "off",

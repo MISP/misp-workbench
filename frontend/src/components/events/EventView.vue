@@ -20,13 +20,12 @@ import {
   faTrash,
   faPen,
   faDownLong,
-  faGlobe,
   faTags,
   faShapes,
   faCubesStacked,
 } from "@fortawesome/free-solid-svg-icons";
 
-const props = defineProps(["event_id", "event", "status"]);
+defineProps(["event_id", "event", "status"]);
 
 const modulesStore = useModulesStore();
 modulesStore.get({ enabled: true });
@@ -38,9 +37,8 @@ const galaxiesStore = useGalaxiesStore();
 galaxiesStore.get({ enabled: true, size: 1000 }); // FIXME: get all galaxies
 
 const { taxonomies } = storeToRefs(taxonomiesStore);
-const { galaxies } = storeToRefs(galaxiesStore);
 
-function handleEventDeleted(event) {
+function handleEventDeleted() {
   router.push(`/events`);
 }
 </script>

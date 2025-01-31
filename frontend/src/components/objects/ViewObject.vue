@@ -6,9 +6,9 @@ import ObjectActions from "@/components/objects/ObjectActions.vue";
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
 import { faCubesStacked } from "@fortawesome/free-solid-svg-icons";
 
-const props = defineProps(["object", "status"]);
+defineProps(["object", "status"]);
 
-function handleObjectDeleted(event) {
+function handleObjectDeleted() {
   router.go(-1);
 }
 </script>

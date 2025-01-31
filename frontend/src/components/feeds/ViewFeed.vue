@@ -14,7 +14,7 @@ onMounted(() => {
   );
 });
 
-function handleFeedDeleted(event) {
+function handleFeedDeleted() {
   router.push(`/feeds`);
 }
 

@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import Menu from "./components/menu/Menu.vue";
 import { RouterView } from "vue-router";
 import { useAuthStore } from "@/stores";

@@ -1,7 +1,7 @@
 <script setup>
 import { Field } from "vee-validate";
 
-const props = defineProps(["name", "attribute_type", "errors"]);
+defineProps(["name", "attribute_type", "errors"]);
 const emit = defineEmits(["attribute-value-changed"]);
 
 function handleValueChange(event) {

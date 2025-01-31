@@ -99,7 +99,7 @@ library.add(
   faDownload,
   faXmark,
   faGear,
-  faCaretDown
+  faCaretDown,
 );
 
 const app = createApp(App);
