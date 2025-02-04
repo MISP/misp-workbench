@@ -11,7 +11,6 @@ import AttributeCategorySelect from "@/components/enums/AttributeCategorySelect.
 import AttributeTypeSelect from "@/components/enums/AttributeTypeSelect.vue";
 import Datepicker from "@/components/misc/Datepicker.vue";
 import { Form, Field } from "vee-validate";
-import * as Yup from "yup";
 
 const attributesStore = useAttributesStore();
 const { status } = storeToRefs(attributesStore);

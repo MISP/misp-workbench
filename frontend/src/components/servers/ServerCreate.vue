@@ -7,7 +7,7 @@ import { ServerSchema } from "@/schemas/server";
 import OrganisationsSelect from "@/components/organisations/OrganisationsSelect.vue";
 
 const serversStore = useServersStore();
-const { status, error } = storeToRefs(serversStore);
+const { status } = storeToRefs(serversStore);
 
 const server = {
   push: false,

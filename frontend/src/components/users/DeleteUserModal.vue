@@ -1,7 +1,6 @@
 <script setup>
 import { useUsersStore } from "@/stores";
 import { storeToRefs } from "pinia";
-import * as Yup from "yup";
 
 const usersStore = useUsersStore();
 const { status } = storeToRefs(usersStore);
@@ -12,7 +11,7 @@ const emit = defineEmits(["user-deleted"]);
 function onSubmit() {
   return usersStore
     .delete(props.user_id)
-    .then((response) => {
+    .then(() => {
       emit("user-deleted", { user_id: props.user_id });
       document.getElementById("closeModalButton").click();
     })

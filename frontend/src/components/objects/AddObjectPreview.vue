@@ -1,7 +1,7 @@
 <script setup>
 import UUID from "@/components/misc/UUID.vue";
 
-const props = defineProps(["object", "template"]);
+defineProps(["object", "template"]);
 </script>
 
 <template>

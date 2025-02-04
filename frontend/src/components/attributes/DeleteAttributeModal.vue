@@ -11,7 +11,7 @@ const emit = defineEmits(["attribute-deleted"]);
 function deleteAttribute() {
   return attributesStore
     .delete(props.attribute_id)
-    .then((response) => {
+    .then(() => {
       emit("attribute-deleted", { attribute_id: props.attribute_id });
       props.modal.hide();
     })

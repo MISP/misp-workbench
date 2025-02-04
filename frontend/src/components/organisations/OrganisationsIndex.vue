@@ -10,7 +10,7 @@ const { organisations, status } = storeToRefs(organisationsStore);
 
 organisationsStore.getAll();
 
-function handleOrganisationDeleted(event) {
+function handleOrganisationDeleted() {
   organisationsStore.getAll();
 }
 </script>

@@ -26,7 +26,7 @@ function configureModuleSettings() {
   submittedData.value = { ...formData };
   return modulesStore
     .configure(props.module.name, submittedData.value)
-    .then((response) => {
+    .then(() => {
       emit("module-config-updated", {
         module: props.module.name,
         config: submittedData.value,
@@ -40,7 +40,7 @@ function clearModuleSettings() {
   submittedData.value = { ...formData };
   return modulesStore
     .configure(props.module.name, {})
-    .then((response) => {
+    .then(() => {
       emit("module-config-updated", { module: props.module.name, config: {} });
       props.modal.hide();
     })

@@ -1,7 +1,7 @@
 <script setup>
 import { storeToRefs } from "pinia";
 import { useEventsStore } from "@/stores";
-import { RouterLink, useRoute } from "vue-router";
+import { useRoute } from "vue-router";
 import EventView from "@/components/events/EventView.vue";
 import Spinner from "@/components/misc/Spinner.vue";
 const route = useRoute();
@@ -9,7 +9,7 @@ const eventsStore = useEventsStore();
 const { event, status } = storeToRefs(eventsStore);
 
 eventsStore.getById(route.params.id);
-const props = defineProps(["id"]);
+defineProps(["id"]);
 </script>
 
 <style>

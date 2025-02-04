@@ -1,9 +1,8 @@
 <script setup>
 import { ref, onMounted } from "vue";
 import { Modal } from "bootstrap";
-import { storeToRefs } from "pinia";
-import { useModulesStore } from "@/stores";
 import DeleteObjectModal from "@/components/objects/DeleteObjectModal.vue";
+// import { useModulesStore } from "@/stores";
 // import EnrichObjectModal from "@/components/objects/EnrichObjectModal.vue";
 
 const props = defineProps(["object"]);
@@ -16,9 +15,9 @@ const emit = defineEmits([
 ]);
 
 const deleteObjectModal = ref(null);
-const enrichObjectModal = ref(null);
-const modulesStore = useModulesStore();
-const { modulesResponses } = storeToRefs(modulesStore);
+// const enrichObjectModal = ref(null);
+// const modulesStore = useModulesStore();
+// const { modulesResponses } = storeToRefs(modulesStore);
 
 onMounted(() => {
   deleteObjectModal.value = new Modal(

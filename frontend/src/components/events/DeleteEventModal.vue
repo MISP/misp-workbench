@@ -1,7 +1,6 @@
 <script setup>
 import { useEventsStore } from "@/stores";
 import { storeToRefs } from "pinia";
-import * as Yup from "yup";
 
 const eventsStore = useEventsStore();
 const { status } = storeToRefs(eventsStore);
@@ -12,7 +11,7 @@ const emit = defineEmits(["event-deleted"]);
 function onSubmit() {
   return eventsStore
     .delete(props.event_id)
-    .then((response) => {
+    .then(() => {
       emit("event-deleted", { event_id: props.event_id });
       document.getElementById("closeModalButton").click();
     })

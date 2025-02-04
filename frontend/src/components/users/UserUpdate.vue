@@ -8,12 +8,12 @@ import RolesSelect from "@/components/roles/RolesSelect.vue";
 import OrganisationsSelect from "@/components/organisations/OrganisationsSelect.vue";
 
 const usersStore = useUsersStore();
-const { user, status, error } = storeToRefs(usersStore);
+const { user, status } = storeToRefs(usersStore);
 
 function onSubmit(values, { setErrors }) {
   return usersStore
     .update(values.user)
-    .then((response) => {
+    .then(() => {
       router.push(`/users/${values.user.id}`);
     })
     .catch((error) => setErrors({ apiError: error }));

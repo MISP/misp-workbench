@@ -15,7 +15,7 @@ import { router } from "@/router";
 import { EventSchema } from "@/schemas/event";
 
 const eventsStore = useEventsStore();
-const { status, error } = storeToRefs(eventsStore);
+const { status } = storeToRefs(eventsStore);
 
 const event = {
   threat_level: THREAT_LEVEL.UNDEFINED,

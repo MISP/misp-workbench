@@ -1,7 +1,6 @@
 <script setup>
 import { OBJECT_META_CATEGORIES } from "@/helpers/constants";
 import { Field } from "vee-validate";
-import { toRef } from "vue";
 
 const props = defineProps(["name", "selected", "errors"]);
 const emit = defineEmits(["object-meta-category-updated"]);

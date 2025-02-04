@@ -4,7 +4,6 @@ import { useServersStore } from "@/stores";
 import { useRoute } from "vue-router";
 import ServerUpdate from "@/components/servers/ServerUpdate.vue";
 import Spinner from "@/components/misc/Spinner.vue";
-import { router } from "@/router";
 const route = useRoute();
 const serversStore = useServersStore();
 const { server, status } = storeToRefs(serversStore);

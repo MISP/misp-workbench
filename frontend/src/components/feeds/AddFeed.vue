@@ -9,7 +9,7 @@ import OrganisationsSelect from "@/components/organisations/OrganisationsSelect.
 import DistributionLevelSelect from "@/components/enums/DistributionLevelSelect.vue";
 
 const feedsStore = useFeedsStore();
-const { status, error } = storeToRefs(feedsStore);
+const { status } = storeToRefs(feedsStore);
 
 const feed = {};
 

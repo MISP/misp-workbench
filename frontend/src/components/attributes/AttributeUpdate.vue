@@ -9,12 +9,12 @@ import AttributeTypeSelect from "@/components/enums/AttributeTypeSelect.vue";
 import Datepicker from "@/components/misc/Datepicker.vue";
 
 const attributesStore = useAttributesStore();
-const { attribute, status, error } = storeToRefs(attributesStore);
+const { attribute, status } = storeToRefs(attributesStore);
 
 function onSubmit(values, { setErrors }) {
   return attributesStore
     .update(values.attribute)
-    .then((response) => {
+    .then(() => {
       router.push(`/attributes/${values.attribute.id}`);
     })
     .catch((error) => setErrors({ apiError: error }));
@@ -131,6 +131,7 @@ function handleDistributionLevelUpdated(distributionLevelId) {
             :category="attribute.category"
             :selected="attribute.type"
             @attribute-type-updated="handleAttributeTypeUpdated"
+            @attribute-category-updated="handleAttributeCategoryUpdated"
             :errors="errors['attribute.type']"
           />
           <div class="invalid-feedback">{{ errors["attribute.type"] }}</div>

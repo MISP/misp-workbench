@@ -4,7 +4,6 @@ import { useOrganisationsStore } from "@/stores";
 import { useRoute } from "vue-router";
 import OrganisationUpdate from "@/components/organisations/OrganisationUpdate.vue";
 import Spinner from "@/components/misc/Spinner.vue";
-import { router } from "@/router";
 const route = useRoute();
 const organisationsStore = useOrganisationsStore();
 const { organisation, status } = storeToRefs(organisationsStore);

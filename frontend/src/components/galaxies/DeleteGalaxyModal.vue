@@ -11,7 +11,7 @@ const emit = defineEmits(["galaxy-deleted"]);
 function deleteGalaxy() {
   return galaxiesStore
     .delete(props.galaxy_id)
-    .then((response) => {
+    .then(() => {
       emit("galaxy-deleted", { galaxy_id: props.galaxy_id });
       props.modal.hide();
     })

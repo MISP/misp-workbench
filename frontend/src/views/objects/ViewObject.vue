@@ -1,7 +1,7 @@
 <script setup>
 import { storeToRefs } from "pinia";
 import { useObjectsStore } from "@/stores";
-import { RouterLink, useRoute } from "vue-router";
+import { useRoute } from "vue-router";
 import ViewObject from "@/components/objects/ViewObject.vue";
 import Spinner from "@/components/misc/Spinner.vue";
 const route = useRoute();

@@ -1,8 +1,7 @@
 <script setup>
-import Badge from "@/components/misc/Badge.vue";
-const props = defineProps(["galaxy", "status"]);
+defineProps(["galaxy", "status"]);
 
-function handleGalaxyDeleted(event) {
+function handleGalaxyDeleted() {
   router.go(-1);
 }
 </script>

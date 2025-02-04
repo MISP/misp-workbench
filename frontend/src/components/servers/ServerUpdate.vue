@@ -7,12 +7,12 @@ import { ServerSchema } from "@/schemas/server";
 import OrganisationsSelect from "@/components/organisations/OrganisationsSelect.vue";
 
 const serversStore = useServersStore();
-const { server, status, error } = storeToRefs(serversStore);
+const { server, status } = storeToRefs(serversStore);
 
 function onSubmit(values, { setErrors }) {
   return serversStore
     .update(values.server)
-    .then((response) => {
+    .then(() => {
       router.push(`/servers/${values.server.id}`);
     })
     .catch((error) => setErrors({ apiError: error }));

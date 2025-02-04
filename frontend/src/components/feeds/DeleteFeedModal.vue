@@ -11,7 +11,7 @@ const emit = defineEmits(["feed-deleted"]);
 function deleteFeed() {
   return feedsStore
     .delete(props.feed_id)
-    .then((response) => {
+    .then(() => {
       emit("feed-deleted", { feed_id: props.feed_id });
       props.modal.hide();
     })

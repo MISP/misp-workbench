@@ -1,10 +1,9 @@
 <script setup>
 import { storeToRefs } from "pinia";
 import { useOrganisationsStore } from "@/stores";
-import { RouterLink, useRoute } from "vue-router";
+import { useRoute } from "vue-router";
 import OrganisationView from "@/components/organisations/OrganisationView.vue";
 import Spinner from "@/components/misc/Spinner.vue";
-import { router } from "@/router";
 const route = useRoute();
 const organisationsStore = useOrganisationsStore();
 const { organisation, status } = storeToRefs(organisationsStore);

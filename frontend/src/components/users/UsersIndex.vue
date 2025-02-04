@@ -8,7 +8,7 @@ const usersStore = useUsersStore();
 const { users, status } = storeToRefs(usersStore);
 usersStore.getAll();
 
-function handleUserDeleted(event) {
+function handleUserDeleted() {
   usersStore.getAll();
 }
 </script>

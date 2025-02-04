@@ -6,7 +6,7 @@ import { router } from "@/router";
 import { OrganisationSchema } from "@/schemas/organisation";
 
 const organisationsStore = useOrganisationsStore();
-const { status, error } = storeToRefs(organisationsStore);
+const { status } = storeToRefs(organisationsStore);
 
 const organisation = {
   local: true,

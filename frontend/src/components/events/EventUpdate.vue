@@ -10,12 +10,12 @@ import { router } from "@/router";
 import { EventSchema } from "@/schemas/event";
 
 const eventsStore = useEventsStore();
-const { event, status, error } = storeToRefs(eventsStore);
+const { event, status } = storeToRefs(eventsStore);
 
 function onSubmit(values, { setErrors }) {
   return eventsStore
     .update(values.event)
-    .then((response) => {
+    .then(() => {
       router.push(`/events/${values.event.id}`);
     })
     .catch((error) => setErrors({ apiError: error }));

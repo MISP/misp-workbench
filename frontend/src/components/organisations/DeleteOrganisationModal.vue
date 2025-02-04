@@ -1,7 +1,6 @@
 <script setup>
 import { useOrganisationsStore } from "@/stores";
 import { storeToRefs } from "pinia";
-import * as Yup from "yup";
 
 const organisationsStore = useOrganisationsStore();
 const { status } = storeToRefs(organisationsStore);
@@ -12,7 +11,7 @@ const emit = defineEmits(["organisation-deleted"]);
 function onSubmit() {
   return organisationsStore
     .delete(props.organisation_id)
-    .then((response) => {
+    .then(() => {
       emit("organisation-deleted", { organisation_id: props.organisation_id });
       document.getElementById("closeModalButton").click();
     })

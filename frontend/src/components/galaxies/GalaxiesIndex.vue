@@ -25,7 +25,7 @@ watch(searchTerm, () => {
   onPageChange(1);
 });
 
-function handleGalaxiesUpdated(event) {
+function handleGalaxiesUpdated() {
   // TODO FIXME: resets the page to 1 and reloads the galaxies, not the best way to do this, reload current page
   onPageChange(1);
 }
@@ -33,7 +33,7 @@ function handleGalaxiesUpdated(event) {
 function toggle(property, galaxy) {
   galaxiesStore
     .toggle(property, galaxy)
-    .then((response) => {
+    .then(() => {
       galaxy[property] = !galaxy[property];
     })
     .catch((errors) => (this.status.error = errors));

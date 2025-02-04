@@ -1,7 +1,6 @@
 <script setup>
 import { useServersStore } from "@/stores";
 import { storeToRefs } from "pinia";
-import * as Yup from "yup";
 
 const serversStore = useServersStore();
 const { status } = storeToRefs(serversStore);
@@ -12,7 +11,7 @@ const emit = defineEmits(["server-deleted"]);
 function onSubmit() {
   return serversStore
     .delete(props.server_id)
-    .then((response) => {
+    .then(() => {
       emit("server-deleted", { server_id: props.server_id });
       document.getElementById("closeModalButton").click();
     })

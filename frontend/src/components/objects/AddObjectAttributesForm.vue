@@ -8,9 +8,7 @@ import {
   AttributeSchema,
   getAttributeTypeValidationSchema,
 } from "@/schemas/attribute";
-import UUID from "@/components/misc/UUID.vue";
 import { Form, Field } from "vee-validate";
-import * as Yup from "yup";
 
 const props = defineProps(["template", "object"]);
 const emit = defineEmits([
@@ -38,7 +36,7 @@ const selectedTemplateAttribute = ref({});
 
 function addAttribute(values, { resetForm }) {
   validateAttributeValue(values, AttributeTypeSchema.value)
-    .then((validAttribute) => {
+    .then(() => {
       object.value.attributes = [
         ...object.value.attributes,
         { ...newAttribute.value },
@@ -95,9 +93,7 @@ function handleAttributeObjectRelationChanged(object_relation) {
 }
 
 function handleAttributeTypeChanged(type) {
-  AttributeTypeSchema.value = getAttributeTypeValidationSchema(
-    newAttribute.value.type,
-  );
+  AttributeTypeSchema.value = getAttributeTypeValidationSchema(type);
 }
 
 const validateAttributeValue = (object, schema) => {

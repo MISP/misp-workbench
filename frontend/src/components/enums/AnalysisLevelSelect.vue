@@ -1,7 +1,6 @@
 <script setup>
 import { ANALYSIS_LEVEL } from "@/helpers/constants";
 import { Field } from "vee-validate";
-import { toRef } from "vue";
 
 const props = defineProps(["name", "selected", "errors"]);
 const emit = defineEmits(["analysis-level-updated"]);

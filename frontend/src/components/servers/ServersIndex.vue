@@ -10,7 +10,7 @@ const { servers, status } = storeToRefs(serversStore);
 
 serversStore.getAll();
 
-function handleServerDeleted(event) {
+function handleServerDeleted() {
   serversStore.getAll();
 }
 

@@ -4,7 +4,6 @@ import { useUsersStore } from "@/stores";
 import { useRoute } from "vue-router";
 import UserUpdate from "@/components/users/UserUpdate.vue";
 import Spinner from "@/components/misc/Spinner.vue";
-import { router } from "@/router";
 const route = useRoute();
 const usersStore = useUsersStore();
 const { user, status } = storeToRefs(usersStore);

@@ -20,12 +20,12 @@ const newAttributes = ref([]);
 const updateAttributes = ref([]);
 const deletedAttributes = ref([]);
 
-let object = ref(props.object);
+const object = ref(props.object);
 
-function handleObjectUpdated(event) {
+function handleObjectUpdated() {
   objectTemplatesHelper
     .validateObject(props.template, object.value)
-    .then((validObject) => {
+    .then(() => {
       objectTemplateErrors.value = null;
     })
     .catch((error) => {
@@ -61,7 +61,7 @@ function handleDistributionLevelUpdated(distributionLevelId) {
 function updateObject() {
   objectTemplatesHelper
     .validateObject(props.template, object.value)
-    .then((validObject) => {
+    .then(() => {
       return objectsStore
         .update({
           ...object.value,
@@ -69,7 +69,7 @@ function updateObject() {
           update_attributes: updateAttributes.value,
           delete_attributes: deletedAttributes.value,
         })
-        .then((response) => {
+        .then(() => {
           objectTemplateErrors.value = null;
           newAttributes.value = [];
           updateAttributes.value = [];

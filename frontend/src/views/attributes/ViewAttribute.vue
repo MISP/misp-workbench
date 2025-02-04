@@ -1,10 +1,9 @@
 <script setup>
 import { storeToRefs } from "pinia";
 import { useAttributesStore } from "@/stores";
-import { RouterLink, useRoute } from "vue-router";
+import { useRoute } from "vue-router";
 import AttributeView from "@/components/attributes/AttributeView.vue";
 import Spinner from "@/components/misc/Spinner.vue";
-import { router } from "@/router";
 const route = useRoute();
 const attributeStore = useAttributesStore();
 const { attribute, status } = storeToRefs(attributeStore);

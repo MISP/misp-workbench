@@ -5,7 +5,7 @@ import { router } from "@/router";
 
 defineProps(["organisation"]);
 
-function handleOrganisationDeleted(event) {
+function handleOrganisationDeleted() {
   router.push(`/organisations`);
 }
 </script>
