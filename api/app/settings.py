@@ -33,10 +33,25 @@ class ModuleSettings(BaseModel):
 
 
 class MinioSettings(BaseModel):
-    host: str = os.environ["MINIO_HOST"]
-    access_key: str = os.environ["MINIO_ROOT_USER"]
-    secret_key: str = os.environ["MINIO_ROOT_PASSWORD"]
-    bucket: str = os.environ["MINIO_BUCKET"]
+    host: str = (
+        os.environ["MINIO_HOST"] if os.environ["STORAGE_ENGINE"] == "minio" else ""
+    )
+    access_key: str = (
+        os.environ["MINIO_ROOT_USER"] if os.environ["STORAGE_ENGINE"] == "minio" else ""
+    )
+    secret_key: str = (
+        os.environ["MINIO_ROOT_PASSWORD"]
+        if os.environ["STORAGE_ENGINE"] == "minio"
+        else ""
+    )
+    bucket: str = (
+        os.environ["MINIO_BUCKET"] if os.environ["STORAGE_ENGINE"] == "minio" else ""
+    )
+    secure: bool = (
+        os.environ["MINIO_SECURE"] == "true"
+        if os.environ["STORAGE_ENGINE"] == "minio"
+        else ""
+    )
 
 
 class StorageSettings(BaseModel):
