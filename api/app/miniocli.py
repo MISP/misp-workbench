@@ -1,4 +1,3 @@
-import os
 from minio import Minio
 from app.settings import get_settings
 
@@ -12,6 +11,6 @@ MinioClient = Minio(
     secure=Settings.Storage.minio.secure,
 )
 
-found = MinioClient.bucket_exists(os.environ["MINIO_BUCKET"])
+found = MinioClient.bucket_exists(Settings.Storage.minio.bucket)
 if not found:
-    MinioClient.make_bucket(os.environ["MINIO_BUCKET"])
+    MinioClient.make_bucket(Settings.Storage.minio.bucket)

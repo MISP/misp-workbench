@@ -26,8 +26,6 @@ def upload_attachment_to_event(
     settings: Settings = get_settings()
 ) -> object_schemas.Object:
 
-    MinioClient = get_minio_client()
-
     try:
         # TODO get the object template from the json file
         file_object = object_schemas.ObjectCreate(
@@ -115,6 +113,7 @@ def upload_attachment_to_event(
 
         # upload file to minio
         if settings.Storage.engine == "minio":
+            MinioClient = get_minio_client()
             MinioClient.fput_object(
                 settings.Storage.minio.bucket,
                 sha256,
