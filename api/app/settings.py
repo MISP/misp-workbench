@@ -32,11 +32,24 @@ class ModuleSettings(BaseModel):
     port: int = int(os.environ["MODULES_PORT"]) or 6666
 
 
+class MinioSettings(BaseModel):
+    host: str = os.environ["MINIO_HOST"]
+    access_key: str = os.environ["MINIO_ROOT_USER"]
+    secret_key: str = os.environ["MINIO_ROOT_PASSWORD"]
+    bucket: str = os.environ["MINIO_BUCKET"]
+
+
+class StorageSettings(BaseModel):
+    engine: str = os.environ["STORAGE_ENGINE"] or "local"
+    minio: MinioSettings = MinioSettings()
+
+
 class Settings(BaseSettings):
     MISP: MISPSettings = MISPSettings()
     OAuth2: OAuth2Settings = OAuth2Settings()
     Mail: MailSettings = MailSettings()
     Modules: ModuleSettings = ModuleSettings()
+    Storage: StorageSettings = StorageSettings()
 
 
 @lru_cache

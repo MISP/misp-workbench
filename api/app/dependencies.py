@@ -1,5 +1,6 @@
 from app.database import SessionLocal
 from app.opensearch import OpenSearchClient
+from app.miniocli import MinioClient
 
 
 async def get_db():
@@ -12,3 +13,6 @@ async def get_db():
 
 def get_opensearch_client():
     return OpenSearchClient
+
+def get_minio_client():
+    return MinioClient

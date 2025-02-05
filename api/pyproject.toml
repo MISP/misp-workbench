@@ -30,6 +30,7 @@ pydantic-settings = "^2.2.1"
 aiohttp = "^3.10.11"
 bcrypt = "^4.2.0"
 pyjwt = "^2.9.0"
+minio = "^7.2.15"
 
 [tool.poetry.dev-dependencies]
 pytest = "^7.1.2"

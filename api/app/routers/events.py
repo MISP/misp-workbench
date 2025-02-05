@@ -4,13 +4,23 @@ from app.auth.auth import get_current_active_user
 from app.dependencies import get_db
 from app.repositories import events as events_repository
 from app.repositories import tags as tags_repository
+from app.repositories import attachments as attachments_repository
 from app.schemas import event as event_schemas
 from app.schemas import user as user_schemas
 from app.worker import tasks
-from fastapi import APIRouter, Depends, HTTPException, Response, Security
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+    Response,
+    Security,
+    File,
+    UploadFile,
+)
 from fastapi_pagination import Page
 from sqlalchemy.orm import Session
 from starlette import status
+from fastapi.responses import JSONResponse
 
 router = APIRouter()
 
@@ -152,3 +162,25 @@ def untag_event(
     tags_repository.untag_event(db=db, event=event, tag=tag)
 
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post(
+    "/events/{event_id}/upload_attachment/",
+    status_code=status.HTTP_200_OK,
+)
+async def upload_attachment(
+    event_id: int,
+    attachment: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    user: user_schemas.User = Security(
+        get_current_active_user, scopes=["events:update"]
+    ),
+):
+    # ) -> object_schemas.Object:
+    event = events_repository.get_event_by_id(db, event_id=event_id)
+    if event is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Event not found"
+        )
+
+    return attachments_repository.upload_attachment_to_event(db=db, event=event, attachment=attachment)
