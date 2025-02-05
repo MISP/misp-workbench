@@ -33,6 +33,7 @@ function onPageChange(page) {
     page: page,
     size: props.page_size,
     event_id: props.event_id,
+    deleted: false,
   });
 }
 onPageChange(1);
