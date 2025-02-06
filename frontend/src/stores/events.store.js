@@ -14,6 +14,7 @@ export const useEventsStore = defineStore({
       loading: false,
       updating: false,
       creating: false,
+      uploading: false,
       error: false,
     },
   }),
@@ -80,6 +81,13 @@ export const useEventsStore = defineStore({
         .delete(`${baseUrl}/${id}/tag/${tag}`)
         .catch((error) => (this.status = { error }))
         .finally(() => (this.status = { loading: false }));
+    },
+    async upload_attachments(id, files) {
+      this.status = { uploading: true };
+      return await fetchWrapper
+        .postFormData(`${baseUrl}/${id}/upload_attachments`, files)
+        .catch((error) => (this.status = { error }))
+        .finally(() => (this.status = { uploading: false }));
     },
   },
 });

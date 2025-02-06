@@ -7,6 +7,7 @@ from app.repositories import tags as tags_repository
 from app.repositories import attachments as attachments_repository
 from app.schemas import event as event_schemas
 from app.schemas import user as user_schemas
+from app.schemas import object as object_schemas
 from app.worker import tasks
 from fastapi import (
     APIRouter,
@@ -165,22 +166,23 @@ def untag_event(
 
 
 @router.post(
-    "/events/{event_id}/upload_attachment/",
+    "/events/{event_id}/upload_attachments/",
     status_code=status.HTTP_200_OK,
 )
 async def upload_attachment(
     event_id: int,
-    attachment: UploadFile = File(...),
+    attachments: list[UploadFile],
     db: Session = Depends(get_db),
     user: user_schemas.User = Security(
         get_current_active_user, scopes=["events:update"]
     ),
-):
-    # ) -> object_schemas.Object:
+) -> list[object_schemas.Object]:
     event = events_repository.get_event_by_id(db, event_id=event_id)
     if event is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Event not found"
         )
 
-    return attachments_repository.upload_attachment_to_event(db=db, event=event, attachment=attachment)
+    return attachments_repository.upload_attachments_to_event(
+        db=db, event=event, attachments=attachments
+    )

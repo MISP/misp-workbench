@@ -9,6 +9,7 @@ import UUID from "@/components/misc/UUID.vue";
 import ThreatLevel from "@/components/enums/ThreatLevel.vue";
 import AnalysisLevel from "@/components/enums/AnalysisLevel.vue";
 import DeleteEventModal from "@/components/events/DeleteEventModal.vue";
+import UploadAttachmentsWidget from "@/components/events/UploadAttachmentsWidget.vue";
 import { router } from "@/router";
 import {
   useModulesStore,
@@ -199,6 +200,9 @@ div.row h3 {
               </div>
             </div>
           </div>
+        </div>
+        <div class="mt-2">
+          <UploadAttachmentsWidget :event_id="event.id" />
         </div>
       </div>
       <div class="col col-sm-3">
