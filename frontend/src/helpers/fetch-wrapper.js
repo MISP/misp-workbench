@@ -29,9 +29,8 @@ function postFormData(url, body) {
   const requestOptions = {
     method: "POST",
     headers: authHeader(url),
+    body: body,
   };
-  requestOptions.headers["Content-Type"] = "form-data";
-  requestOptions.body = body;
   return fetch(url, requestOptions).then(handleResponse);
 }
 

@@ -1,4 +1,5 @@
 <script setup>
+import Spinner from "@/components/misc/Spinner.vue";
 import { storeToRefs } from "pinia";
 import Sparkline from "@/components/charts/Sparkline.vue";
 import AttributesIndex from "@/components/attributes/AttributesIndex.vue";
@@ -12,6 +13,7 @@ import DeleteEventModal from "@/components/events/DeleteEventModal.vue";
 import UploadAttachmentsWidget from "@/components/events/UploadAttachmentsWidget.vue";
 import { router } from "@/router";
 import {
+  useEventsStore,
   useModulesStore,
   useTaxonomiesStore,
   useGalaxiesStore,
@@ -26,7 +28,11 @@ import {
   faCubesStacked,
 } from "@fortawesome/free-solid-svg-icons";
 
-defineProps(["event_id", "event", "status"]);
+const props = defineProps(["event_id"]);
+
+const eventsStore = useEventsStore();
+const { event, status } = storeToRefs(eventsStore);
+eventsStore.getById(props.event_id);
 
 const modulesStore = useModulesStore();
 modulesStore.get({ enabled: true });
@@ -41,6 +47,10 @@ const { taxonomies } = storeToRefs(taxonomiesStore);
 
 function handleEventDeleted() {
   router.push(`/events`);
+}
+
+function handleObjectAdded() {
+  eventsStore.getById(props.event_id);
 }
 </script>
 
@@ -60,7 +70,11 @@ div.row h3 {
 }
 </style>
 <template>
-  <div class="card">
+  <Spinner v-if="status.loading" />
+  <div v-if="status.error" class="text-danger">
+    Error loading event: {{ status.error }}
+  </div>
+  <div v-if="!status.loading && event" class="card">
     <div class="event-title card-header border-bottom">
       <div class="row">
         <div class="col-10">
@@ -202,7 +216,10 @@ div.row h3 {
           </div>
         </div>
         <div class="mt-2">
-          <UploadAttachmentsWidget :event_id="event.id" />
+          <UploadAttachmentsWidget
+            :event_id="event.id"
+            @object-added="handleObjectAdded"
+          />
         </div>
       </div>
       <div class="col col-sm-3">
@@ -305,6 +322,7 @@ div.row h3 {
               :event_id="event_id"
               :total_size="event.object_count"
               :page_size="10"
+              :key="event.object_count"
             />
           </div>
         </div>

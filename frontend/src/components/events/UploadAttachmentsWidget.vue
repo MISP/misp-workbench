@@ -6,6 +6,7 @@ import { useEventsStore } from "@/stores";
 import { faPaperclip } from "@fortawesome/free-solid-svg-icons";
 
 const props = defineProps(["event_id"]);
+const emit = defineEmits(["object-added"]);
 
 const eventsStore = useEventsStore();
 const { status } = storeToRefs(eventsStore);
@@ -49,19 +50,29 @@ const uploadFiles = () => {
     formData.append("attachments", file);
   });
 
-  eventsStore.upload_attachments(props.event_id, formData);
+  eventsStore
+    .upload_attachments(props.event_id, formData)
+    .then((response) => {
+      files.value = [];
+      status.value = { uploading: false };
+      response.forEach((object) => {
+        emit("object-added", object);
+      });
+    })
+    .catch((error) => {
+      status.value = { uploading: false, error: error };
+    })
+    .finally(() => {
+      status.value = { uploading: false };
+    });
 };
 </script>
 
 <style>
-.border {
-  border: 2px dashed #007bff;
-  cursor: pointer;
-}
-
 .drop-zone {
-  border-style: dotted;
+  cursor: pointer;
   padding: 30px;
+  border-style: dashed !important;
 }
 </style>
 <template>
@@ -70,46 +81,51 @@ const uploadFiles = () => {
       <FontAwesomeIcon :icon="faPaperclip" /> attachments
     </div>
     <div class="card-body">
-      {{ status }}
-      <div class="justify-content-between align-items-center">
-        <div
-          class="border drop-zone m-2"
-          @dragover.prevent="dragOver"
-          @drop.prevent="dropFile"
-          @click="selectFile"
+      <div
+        class="drop-zone border-3 dary m-2 border-light"
+        @dragover.prevent="dragOver"
+        @drop.prevent="dropFile"
+        @click="selectFile"
+      >
+        <input
+          type="file"
+          multiple
+          @change="handleFileSelect"
+          ref="fileInput"
+          hidden
+        />
+        <p class="text-center text-secondary">
+          Drag & Drop files here or click to upload file attachments
+        </p>
+      </div>
+      <ul class="list-group mt-3" v-if="files.length">
+        <li
+          class="list-group-item d-flex justify-content-between align-items-center"
+          v-for="(file, index) in files"
+          :key="index"
         >
-          <input
-            type="file"
-            multiple
-            @change="handleFileSelect"
-            ref="fileInput"
-            hidden
-          />
-          <p class="text-center">
-            Drag & Drop files here or click to upload attachments
-          </p>
-        </div>
-        <ul class="list-group mt-3" v-if="files.length">
-          <li
-            class="list-group-item d-flex justify-content-between align-items-center"
-            v-for="(file, index) in files"
-            :key="index"
-          >
-            {{ file.name }} ({{ formatSize(file.size) }})
-            <button class="btn btn-danger btn-sm" @click="removeFile(index)">
-              Remove
-            </button>
-          </li>
-        </ul>
-        <div class="text-center mt-3">
-          <button
-            class="btn btn-primary"
-            @click="uploadFiles"
-            :disabled="files.length === 0"
-          >
-            Upload Attachments
+          {{ file.name }} ({{ formatSize(file.size) }})
+          <button class="btn btn-danger btn-sm" @click="removeFile(index)">
+            Remove
           </button>
-        </div>
+        </li>
+      </ul>
+      <div class="text-center mt-3">
+        <button
+          class="btn btn-primary"
+          @click="uploadFiles"
+          :disabled="files.length === 0 || status.uploading"
+        >
+          <span v-if="status.uploading">
+            <span
+              class="spinner-border spinner-border-sm"
+              role="status"
+              aria-hidden="true"
+            >
+            </span>
+          </span>
+          <span v-if="!status.uploading">Upload Files</span>
+        </button>
       </div>
     </div>
   </div>
