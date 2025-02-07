@@ -23,6 +23,7 @@ def upload_attachments_to_event(
     db: Session,
     event: event_schemas.Event,
     attachments: list[UploadFile],
+    attachments_meta: dict = None,
     settings: Settings = get_settings(),
 ) -> list[object_schemas.Object]:
 
@@ -30,7 +31,9 @@ def upload_attachments_to_event(
 
     try:
         for attachment in attachments:
-
+            
+            attachment_meta = attachments_meta.get(attachment.filename)
+            
             # TODO get the object template from the json file
             file_object = object_schemas.ObjectCreate(
                 name="file",
@@ -44,7 +47,7 @@ def upload_attachments_to_event(
             filename_attribute = attribute_schemas.AttributeCreate(
                 event_id=event.id,
                 object_relation="filename",
-                category="External analysis",
+                category=attachment_meta.get("category", "External analysis"),
                 type="filename",
                 value=attachment.filename,
                 timestamp=int(time.time()),
@@ -112,6 +115,20 @@ def upload_attachments_to_event(
                 distribution=event_schemas.DistributionLevel.INHERIT_EVENT,
             )
             file_object.attributes.append(size_attribute)
+            
+            
+            # malware analysis
+            if attachment_meta.get("is_malware", False):
+                malware_attribute = attribute_schemas.AttributeCreate(
+                    event_id=event.id,
+                    object_relation="malware",
+                    category="External analysis",
+                    type="malware",
+                    value="true",
+                    timestamp=int(time.time()),
+                    distribution=event_schemas.DistributionLevel.INHERIT_EVENT,
+                )
+                file_object.attributes.append(malware_attribute)
 
             db_file_object = objects_repository.create_object(db, file_object)
 

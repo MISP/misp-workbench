@@ -29,6 +29,8 @@ const dropFile = (event) => {
 const addFiles = (fileList) => {
   for (const file of fileList) {
     if (!files.value.some((f) => f.name === file.name)) {
+      file.is_malware = false;
+      file.category = "Payload delivery";
       files.value.push(file);
     }
   }
@@ -45,10 +47,16 @@ const formatSize = (size) => {
 const uploadFiles = () => {
   if (files.value.length === 0) return;
 
+  const attachments_meta = {};
   const formData = new FormData();
   files.value.forEach((file) => {
     formData.append("attachments", file);
+    attachments_meta[file.name] = {
+      is_malware: file.is_malware,
+      category: file.category,
+    };
   });
+  formData.append("attachments_meta", JSON.stringify(attachments_meta));
 
   eventsStore
     .upload_attachments(props.event_id, formData)
@@ -98,18 +106,45 @@ const uploadFiles = () => {
           Drag & Drop files here or click to upload file attachments
         </p>
       </div>
-      <ul class="list-group mt-3" v-if="files.length">
-        <li
-          class="list-group-item d-flex justify-content-between align-items-center"
-          v-for="(file, index) in files"
-          :key="index"
-        >
-          {{ file.name }} ({{ formatSize(file.size) }})
-          <button class="btn btn-danger btn-sm" @click="removeFile(index)">
-            Remove
-          </button>
-        </li>
-      </ul>
+      <div class="mt-3" v-for="(file, index) in files" :key="index">
+        <div>
+          <div class="input-group mb-3">
+            <span
+              class="input-group-text"
+              id="basic-addon1"
+              style="width: 50%"
+              >{{ file.name }}</span
+            >
+            <span class="input-group-text" id="basic-addon1">{{
+              formatSize(file.size)
+            }}</span>
+            <label class="input-group-text" for="file.is_malware"
+              >malware</label
+            >
+            <div class="input-group-text">
+              <input
+                class="form-check-input mt-0"
+                type="checkbox"
+                v-model="file.is_malware"
+                aria-label="Checkbox for following text input"
+              />
+            </div>
+            <select
+              class="form-select"
+              aria-label="Default select example"
+              v-model="file.category"
+            >
+              <option>Payload delivery</option>
+              <option>Artifacts dropped</option>
+              <option>Payload installation</option>
+              <option>External analysis</option>
+            </select>
+            <button class="btn btn-danger btn-sm" @click="removeFile(index)">
+              Remove
+            </button>
+          </div>
+        </div>
+      </div>
       <div class="text-center mt-3">
         <button
           class="btn btn-primary"

@@ -1,4 +1,6 @@
-from typing import Optional
+import json
+
+from typing import Optional, Annotated
 
 from app.auth.auth import get_current_active_user
 from app.dependencies import get_db
@@ -15,8 +17,8 @@ from fastapi import (
     HTTPException,
     Response,
     Security,
-    File,
     UploadFile,
+    Form,
 )
 from fastapi_pagination import Page
 from sqlalchemy.orm import Session
@@ -172,6 +174,7 @@ def untag_event(
 async def upload_attachment(
     event_id: int,
     attachments: list[UploadFile],
+    attachments_meta: Annotated[str, Form()],
     db: Session = Depends(get_db),
     user: user_schemas.User = Security(
         get_current_active_user, scopes=["events:update"]
@@ -183,6 +186,9 @@ async def upload_attachment(
             status_code=status.HTTP_404_NOT_FOUND, detail="Event not found"
         )
 
+    if attachments_meta:
+        attachments_meta = json.loads(attachments_meta)
+
     return attachments_repository.upload_attachments_to_event(
-        db=db, event=event, attachments=attachments
+        db=db, event=event, attachments=attachments, attachments_meta=attachments_meta
     )
