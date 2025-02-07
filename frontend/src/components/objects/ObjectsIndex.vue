@@ -18,8 +18,8 @@ const { objects, status } = storeToRefs(objectsStore);
 
 function onPageChange(page) {
   objectsStore.get({
-    skip: (page - 1) * props.page_size,
-    limit: props.page_size,
+    page: page,
+    size: props.page_size,
     event_id: props.event_id,
     deleted: false,
   });
@@ -47,7 +47,7 @@ function openAddObjectModal() {
     Error loading objects: {{ status.error }}
   </div>
   <div class="table-responsive-sm">
-    <div class="mt-2" :key="object.id" v-for="object in objects">
+    <div class="mt-2" :key="object.id" v-for="object in objects.items">
       <div class="card" v-if="!object.deleted">
         <div class="card-header">
           {{ object.name }}

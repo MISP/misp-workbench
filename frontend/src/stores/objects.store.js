@@ -9,6 +9,7 @@ export const useObjectsStore = defineStore({
     objects: {},
     object: {},
     objectTemplates: {},
+    page_count: 0,
     status: {
       loading: false,
       error: false,
@@ -19,7 +20,12 @@ export const useObjectsStore = defineStore({
       this.status = { loading: true };
       fetchWrapper
         .get(baseUrl + "/?" + new URLSearchParams(params).toString())
-        .then((objects) => (this.objects = objects))
+        .then(
+          (response) => (
+            (this.objects = response),
+            (this.page_count = Math.ceil(response.total / params.size))
+          ),
+        )
         .catch((error) => (this.objects = { error }))
         .finally(() => (this.status = { loading: false }));
     },

@@ -14,6 +14,7 @@ from app.schemas import object as object_schemas
 from app.schemas import user as user_schemas
 from app.worker import tasks
 from fastapi import HTTPException, status
+from fastapi_pagination.ext.sqlalchemy import paginate
 from pymisp import MISPObject
 from sqlalchemy.orm import Session
 
@@ -22,19 +23,21 @@ logger = logging.getLogger(__name__)
 
 def get_objects(
     db: Session,
-    skip: int = 0,
-    limit: int = 100,
     event_id: int = None,
     deleted: bool = False,
+    template_uuid: list[uuid.UUID] = None
 ) -> list[object_models.Object]:
     query = db.query(object_models.Object)
 
     if event_id is not None:
         query = query.filter(object_models.Object.event_id == event_id)
+        
+    if template_uuid is not None:
+        query = query.filter(object_models.Object.template_uuid.in_(template_uuid))
 
     query = query.filter(object_models.Object.deleted.is_(bool(deleted)))
 
-    return query.offset(skip).limit(limit).all()
+    return paginate(db, query)
 
 
 def get_object_by_id(db: Session, object_id: int):

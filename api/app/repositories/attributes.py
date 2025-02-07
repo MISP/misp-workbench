@@ -15,11 +15,12 @@ from fastapi_pagination.ext.sqlalchemy import paginate
 from pymisp import MISPAttribute, MISPTag
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import select
+from fastapi_pagination import Page
 
 
 def get_attributes(
     db: Session, event_id: int = None, deleted: bool = None, object_id: int = None
-):
+)-> Page[attribute_schemas.Attribute]:
     query = select(attribute_models.Attribute)
 
     if event_id is not None:
