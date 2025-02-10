@@ -10,7 +10,7 @@ import UUID from "@/components/misc/UUID.vue";
 import ThreatLevel from "@/components/enums/ThreatLevel.vue";
 import AnalysisLevel from "@/components/enums/AnalysisLevel.vue";
 import DeleteEventModal from "@/components/events/DeleteEventModal.vue";
-import UploadAttachmentsWidget from "@/components/events/UploadAttachmentsWidget.vue";
+import UploadAttachmentsWidget from "@/components/attachments/UploadAttachmentsWidget.vue";
 import { router } from "@/router";
 import {
   useEventsStore,

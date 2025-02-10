@@ -12,7 +12,6 @@ from sqlalchemy.orm import Session
 from app.settings import Settings, get_settings
 from fastapi import (
     HTTPException,
-    File,
     UploadFile,
 )
 

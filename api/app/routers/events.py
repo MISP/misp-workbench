@@ -172,7 +172,7 @@ def untag_event(
     "/events/{event_id}/upload_attachments/",
     status_code=status.HTTP_200_OK,
 )
-async def upload_attachment(
+async def upload_attachments(
     event_id: int,
     attachments: list[UploadFile],
     attachments_meta: Annotated[str, Form()],

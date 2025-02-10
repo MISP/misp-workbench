@@ -2,14 +2,17 @@
 import { ref } from "vue";
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
 import { storeToRefs } from "pinia";
-import { useEventsStore } from "@/stores";
-import { faPaperclip } from "@fortawesome/free-solid-svg-icons";
+import { useAttachmentsStore } from "@/stores";
+import { faCloudArrowUp, faPaperclip } from "@fortawesome/free-solid-svg-icons";
+import AttachmentIcon from "@/components/attachments/AttachmentIcon.vue";
 
 const props = defineProps(["event_id"]);
 const emit = defineEmits(["object-added"]);
 
-const eventsStore = useEventsStore();
-const { status } = storeToRefs(eventsStore);
+const attachmentsStore = useAttachmentsStore();
+const { attachments, status } = storeToRefs(attachmentsStore);
+
+attachmentsStore.getEventAttachments(props.event_id);
 
 const files = ref([]);
 const fileInput = ref(null);
@@ -58,8 +61,8 @@ const uploadFiles = () => {
   });
   formData.append("attachments_meta", JSON.stringify(attachments_meta));
 
-  eventsStore
-    .upload_attachments(props.event_id, formData)
+  attachmentsStore
+    .uploadAttachments(props.event_id, formData)
     .then((response) => {
       files.value = [];
       status.value = { uploading: false };
@@ -89,6 +92,13 @@ const uploadFiles = () => {
       <FontAwesomeIcon :icon="faPaperclip" /> attachments
     </div>
     <div class="card-body">
+      <div class="row" v-if="attachments.length > 0">
+        <AttachmentIcon
+          v-for="attachment in attachments"
+          :key="attachment.id"
+          :attachment="attachment"
+        />
+      </div>
       <div
         class="drop-zone border-3 dary m-2 border-light"
         @dragover.prevent="dragOver"
@@ -103,7 +113,8 @@ const uploadFiles = () => {
           hidden
         />
         <p class="text-center text-secondary">
-          Drag & Drop files here or click to upload file attachments
+          <FontAwesomeIcon :icon="faCloudArrowUp" class="fa-2xl" /> Drag & Drop
+          files here or click to upload file attachments
         </p>
       </div>
       <div class="mt-3" v-for="(file, index) in files" :key="index">

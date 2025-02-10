@@ -82,12 +82,5 @@ export const useEventsStore = defineStore({
         .catch((error) => (this.status = { error }))
         .finally(() => (this.status = { loading: false }));
     },
-    async upload_attachments(id, files) {
-      this.status = { uploading: true };
-      return await fetchWrapper.postFormData(
-        `${baseUrl}/${id}/upload_attachments`,
-        files,
-      );
-    },
   },
 });
