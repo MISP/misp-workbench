@@ -169,7 +169,7 @@ def delete_attribute(db: Session, attribute_id: int) -> None:
     db.commit()
     db.refresh(db_attribute)
 
-    tasks.handle_deleted_attribute.delay(db_attribute.id, db_attribute.event_id)
+    tasks.handle_deleted_attribute.delay(db_attribute.id, db_attribute.object_id, db_attribute.event_id)
 
 
 def capture_attribute_tags(
