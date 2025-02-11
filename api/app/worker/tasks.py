@@ -49,19 +49,21 @@ def server_pull_by_id(server_id: int, user_id: int, technique: str):
 
 
 @app.task
-def handle_created_attribute(attribute_id: int, event_id: int):
+def handle_created_attribute(attribute_id: int, object_id: int | None, event_id: int):
     logger.info("handling created attribute id=%s job started", attribute_id)
     with Session(engine) as db:
-        events_repository.increment_attribute_count(db, event_id)
+        if object_id is None:
+            events_repository.increment_attribute_count(db, event_id)
 
     return True
 
 
 @app.task
-def handle_deleted_attribute(attribute_id: int, event_id: int):
+def handle_deleted_attribute(attribute_id: int, , object_id: int | None, event_id: int):
     logger.info("handling deleted attribute id=%s job started", attribute_id)
     with Session(engine) as db:
-        events_repository.decrement_attribute_count(db, event_id)
+        if object_id is None:
+            events_repository.decrement_attribute_count(db, event_id)
 
     return True
 
