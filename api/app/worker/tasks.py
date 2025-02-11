@@ -59,7 +59,7 @@ def handle_created_attribute(attribute_id: int, object_id: int | None, event_id:
 
 
 @app.task
-def handle_deleted_attribute(attribute_id: int, , object_id: int | None, event_id: int):
+def handle_deleted_attribute(attribute_id: int, object_id: int | None, event_id: int):
     logger.info("handling deleted attribute id=%s job started", attribute_id)
     with Session(engine) as db:
         if object_id is None:
