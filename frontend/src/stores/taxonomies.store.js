@@ -51,10 +51,10 @@ export const useTaxonomiesStore = defineStore({
         .patch(`${baseUrl}/${taxonomy.id}`, patch)
         .finally(() => (this.status.updating = false));
     },
-    async update(id) {
+    async update() {
       this.status = { updating: true };
       return await fetchWrapper
-        .post(`${baseUrl}/update/${id}`)
+        .post(`${baseUrl}/update`)
         .catch((error) => (this.status = { error }))
         .finally(() => (this.status.updating = false));
     },

@@ -5,9 +5,10 @@ import { storeToRefs } from "pinia";
 import { useAttachmentsStore } from "@/stores";
 import { faCloudArrowUp, faPaperclip } from "@fortawesome/free-solid-svg-icons";
 import AttachmentIcon from "@/components/attachments/AttachmentIcon.vue";
+import Spinner from "@/components/misc/Spinner.vue";
 
 const props = defineProps(["event_id"]);
-const emit = defineEmits(["object-added"]);
+const emit = defineEmits(["object-added", "object-deleted"]);
 
 const attachmentsStore = useAttachmentsStore();
 const { attachments, status } = storeToRefs(attachmentsStore);
@@ -77,6 +78,16 @@ const uploadFiles = () => {
       status.value = { uploading: false };
     });
 };
+
+function handleAttachmentDeleted(attachment_id) {
+  attachments.value = attachments.value.filter(
+    (attachment) => attachment.id !== attachment_id,
+  );
+}
+
+function handleObjectDeleted(object_id) {
+  emit("object-deleted", object_id);
+}
 </script>
 
 <style>
@@ -92,11 +103,14 @@ const uploadFiles = () => {
       <FontAwesomeIcon :icon="faPaperclip" /> attachments
     </div>
     <div class="card-body">
+      <Spinner v-if="status.loading" />
       <div class="row" v-if="attachments.length > 0">
         <AttachmentIcon
           v-for="attachment in attachments"
           :key="attachment.id"
           :attachment="attachment"
+          @object-deleted="handleObjectDeleted"
+          @attachment-deleted="handleAttachmentDeleted"
         />
       </div>
       <div

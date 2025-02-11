@@ -1,7 +1,8 @@
 <script setup>
 import { computed } from "vue";
-import { ref } from "vue";
-
+import { Modal } from "bootstrap";
+import { ref, onMounted } from "vue";
+import DeleteObjectModal from "@/components/objects/DeleteObjectModal.vue";
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
 import {
   faFile,
@@ -52,6 +53,25 @@ const icons = {
   default: faFile,
 };
 
+const emit = defineEmits(["object-deleted", "attachment-deleted"]);
+
+const deleteObjectModal = ref(null);
+
+onMounted(() => {
+  deleteObjectModal.value = new Modal(
+    document.getElementById(`deleteObjectModal_${props.attachment.id}`),
+  );
+});
+
+function openDeleteObjectModal() {
+  deleteObjectModal.value.show();
+}
+
+function handleObjectDeleted() {
+  emit("object-deleted", props.attachment.id);
+  emit("attachment-deleted", props.attachment.id);
+}
+
 const filename = computed(
   () =>
     attachment.value.attributes.find(
@@ -100,8 +120,8 @@ const size = computed(() => {
   font-weight: bold;
   text-overflow: ellipsis;
   overflow: hidden;
-  width: 100px;
   white-space: nowrap;
+  width: 100px;
 }
 
 .size {
@@ -113,17 +133,24 @@ const size = computed(() => {
 <template>
   <div class="file-item card m-2">
     <div class="card-body">
-      <div class="icon">
-        <FontAwesomeIcon
-          :icon="fileIcon"
-          class="fa-2xl"
-          :class="{ 'text-danger': isMalware }"
-        />
-      </div>
-      <div class="details">
-        <div class="name small">{{ filename }}</div>
-        <div class="size">{{ size }}</div>
-      </div>
+      <RouterLink :to="`/objects/${attachment.id}`">
+        <div
+          class="icon"
+          data-toggle="tooltip"
+          data-placement="bottom"
+          :title="filename"
+        >
+          <FontAwesomeIcon
+            :icon="fileIcon"
+            class="fa-2xl"
+            :class="{ 'text-danger': isMalware }"
+          />
+        </div>
+        <div class="details">
+          <div class="name small">{{ filename }}</div>
+          <div class="size">{{ size }}</div>
+        </div>
+      </RouterLink>
     </div>
     <div class="card-footer">
       <div
@@ -134,10 +161,21 @@ const size = computed(() => {
         <button type="button" class="btn btn-outline-primary">
           <FontAwesomeIcon :icon="faDownload" />
         </button>
-        <button type="button" class="btn btn-danger">
+        <button
+          type="button"
+          class="btn btn-danger"
+          @click="openDeleteObjectModal"
+        >
           <FontAwesomeIcon :icon="faTrash" />
         </button>
       </div>
+      <DeleteObjectModal
+        :key="attachment.id"
+        :id="`deleteObjectModal_${attachment.id}`"
+        @object-deleted="handleObjectDeleted"
+        :modal="deleteObjectModal"
+        :object_id="attachment.id"
+      />
     </div>
   </div>
 </template>

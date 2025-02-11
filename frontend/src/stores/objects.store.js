@@ -3,13 +3,15 @@ import { fetchWrapper } from "@/helpers";
 
 const baseUrl = `${import.meta.env.VITE_API_URL}/objects`;
 
-export const useObjectsStore = defineStore({
-  id: "objects",
+export const useObjectsStore = defineStore("objects", {
   state: () => ({
     objects: {},
     object: {},
     objectTemplates: {},
-    page_count: 0,
+    total: 0,
+    pages: 0,
+    page: 0,
+    size: 0,
     status: {
       loading: false,
       error: false,
@@ -23,7 +25,11 @@ export const useObjectsStore = defineStore({
         .then(
           (response) => (
             (this.objects = response),
-            (this.page_count = Math.ceil(response.total / params.size))
+            (this.total = response.total),
+            (this.pages = response.pages),
+            (this.total = response.total),
+            (this.page = response.page),
+            (this.size = response.size)
           ),
         )
         .catch((error) => (this.objects = { error }))

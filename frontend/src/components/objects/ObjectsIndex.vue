@@ -10,11 +10,10 @@ import DeleteObjectModal from "@/components/objects/DeleteObjectModal.vue";
 import Spinner from "@/components/misc/Spinner.vue";
 import Paginate from "vuejs-paginate-next";
 
-const props = defineProps(["event_id", "total_size", "page_size"]);
-const page_count = Math.ceil(props.total_size / props.page_size);
+const props = defineProps(["event_id", "page_size"]);
 
 const objectsStore = useObjectsStore();
-const { objects, status } = storeToRefs(objectsStore);
+const { objects, pages, status } = storeToRefs(objectsStore);
 
 function onPageChange(page) {
   objectsStore.get({
@@ -67,8 +66,8 @@ function openAddObjectModal() {
     </div>
   </div>
   <Paginate
-    v-if="page_count > 1"
-    :page-count="page_count"
+    v-if="pages > 1"
+    :page-count="pages"
     :click-handler="onPageChange"
   />
   <AddObjectModal

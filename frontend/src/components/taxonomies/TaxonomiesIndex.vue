@@ -6,7 +6,7 @@ import Spinner from "@/components/misc/Spinner.vue";
 import Paginate from "vuejs-paginate-next";
 import TaxonomyActions from "@/components/taxonomies/TaxonomyActions.vue";
 
-defineProps(["page_size"]);
+const props = defineProps(["page_size"]);
 
 const taxonomiesStore = useTaxonomiesStore();
 const { page_count, taxonomies, status } = storeToRefs(taxonomiesStore);

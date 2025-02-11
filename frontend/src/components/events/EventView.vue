@@ -12,12 +12,7 @@ import AnalysisLevel from "@/components/enums/AnalysisLevel.vue";
 import DeleteEventModal from "@/components/events/DeleteEventModal.vue";
 import UploadAttachmentsWidget from "@/components/attachments/UploadAttachmentsWidget.vue";
 import { router } from "@/router";
-import {
-  useEventsStore,
-  useModulesStore,
-  useTaxonomiesStore,
-  useGalaxiesStore,
-} from "@/stores";
+import { useEventsStore, useModulesStore } from "@/stores";
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
 import {
   faTrash,
@@ -37,20 +32,16 @@ eventsStore.getById(props.event_id);
 const modulesStore = useModulesStore();
 modulesStore.get({ enabled: true });
 
-const taxonomiesStore = useTaxonomiesStore();
-taxonomiesStore.get({ enabled: true, size: 1000 }); // FIXME: get all taxonomies
-
-const galaxiesStore = useGalaxiesStore();
-galaxiesStore.get({ enabled: true, size: 1000 }); // FIXME: get all galaxies
-
-const { taxonomies } = storeToRefs(taxonomiesStore);
-
 function handleEventDeleted() {
   router.push(`/events`);
 }
 
 function handleObjectAdded() {
-  eventsStore.getById(props.event_id);
+  event.value.object_count += 1;
+}
+
+function handleObjectDeleted() {
+  event.value.object_count -= 1;
 }
 </script>
 
@@ -206,7 +197,6 @@ div.row h3 {
             <div class="card-body d-flex flex-column">
               <div class="card-text">
                 <TagsSelect
-                  v-if="taxonomies.items"
                   :modelClass="'event'"
                   :model="event"
                   :selectedTags="event.tags"
@@ -218,7 +208,9 @@ div.row h3 {
         <div class="mt-2">
           <UploadAttachmentsWidget
             :event_id="event.id"
+            :key="event.object_count"
             @object-added="handleObjectAdded"
+            @object-deleted="handleObjectDeleted"
           />
         </div>
       </div>
@@ -320,7 +312,6 @@ div.row h3 {
           <div class="card-body d-flex flex-column">
             <ObjectsIndex
               :event_id="event_id"
-              :total_size="event.object_count"
               :page_size="10"
               :key="event.object_count"
             />
