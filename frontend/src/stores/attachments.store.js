@@ -44,5 +44,10 @@ export const useAttachmentsStore = defineStore({
         .catch((error) => (this.status = { error }))
         .finally(() => (this.status = { loading: false }));
     },
+    async downloadAttachment(id) {
+      return await fetchWrapper.downloadAttachment(
+        `${baseUrl}/attachments/${id}`,
+      );
+    },
   },
 });

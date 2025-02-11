@@ -1,6 +1,7 @@
 import logging.config
 
 from app.routers import (
+    attachments,
     attributes,
     auth,
     events,
@@ -86,5 +87,8 @@ app.include_router(feeds.router, tags=["Feeds"])
 
 # Galaxies resource
 app.include_router(galaxies.router, tags=["Galaxies"])
+
+# Attachments resource
+app.include_router(attachments.router, tags=["Attachments"])
 
 add_pagination(app)

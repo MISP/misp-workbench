@@ -1,7 +1,12 @@
 import time
 import logging
 import hashlib
+import io
+import os
 
+
+from fastapi.responses import StreamingResponse
+from datetime import timedelta
 from app.dependencies import get_minio_client
 from starlette import status
 import app.schemas.event as event_schemas
@@ -30,9 +35,9 @@ def upload_attachments_to_event(
 
     try:
         for attachment in attachments:
-            
+
             attachment_meta = attachments_meta.get(attachment.filename)
-            
+
             # TODO get the object template from the json file
             file_object = object_schemas.ObjectCreate(
                 name="file",
@@ -114,8 +119,7 @@ def upload_attachments_to_event(
                 distribution=event_schemas.DistributionLevel.INHERIT_EVENT,
             )
             file_object.attributes.append(size_attribute)
-            
-            
+
             # malware analysis
             if attachment_meta.get("is_malware", False):
                 malware_attribute = attribute_schemas.AttributeCreate(
@@ -137,8 +141,8 @@ def upload_attachments_to_event(
                 MinioClient.put_object(
                     settings.Storage.minio.bucket,
                     sha256,
-                    attachment.file,
-                    length=-1,
+                    io.BytesIO(file_content),
+                    length=len(file_content),
                     part_size=10 * 1024 * 1024,
                 )
 
@@ -156,4 +160,54 @@ def upload_attachments_to_event(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Error uploading attachment",
+        )
+
+
+def download_attachment(
+    db: Session,
+    attachment_id: int,
+    settings: Settings = get_settings(),
+) -> StreamingResponse:
+
+    db_object = objects_repository.get_object_by_id(db, attachment_id)
+
+    if not db_object:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Object not found",
+        )
+
+    for attribute in db_object.attributes:
+        if attribute.type == "sha256":
+            sha256 = attribute.value
+            break
+
+    for attribute in db_object.attributes:
+        if attribute.type == "filename":
+            file_name = attribute.value
+            break
+
+    if not sha256:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="SHA256 attribute not found",
+        )
+
+    # get attachment from minio
+    if settings.Storage.engine == "minio":
+        MinioClient = get_minio_client()
+
+        data = MinioClient.get_object(settings.Storage.minio.bucket, sha256)
+        return StreamingResponse(
+            io.BytesIO(data.read()),
+            media_type="application/octet-stream",
+            headers={
+                "Content-Disposition": f'attachment; filename="{file_name or sha256}"'
+            },
+        )
+    else:
+        # TODO: implement local storage download
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error getting attachment download url",
         )

@@ -59,6 +59,10 @@ div.row h3 {
 .single-stat-card .card-body p {
   margin-bottom: 0;
 }
+
+.table.table-striped {
+  margin-bottom: 0;
+}
 </style>
 <template>
   <Spinner v-if="status.loading" />
@@ -189,34 +193,10 @@ div.row h3 {
             </div>
           </div>
         </div>
-        <div class="mt-2">
-          <div class="card h-100">
-            <div class="card-header">
-              <FontAwesomeIcon :icon="faTags" /> tags
-            </div>
-            <div class="card-body d-flex flex-column">
-              <div class="card-text">
-                <TagsSelect
-                  :modelClass="'event'"
-                  :model="event"
-                  :selectedTags="event.tags"
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="mt-2">
-          <UploadAttachmentsWidget
-            :event_id="event.id"
-            :key="event.object_count"
-            @object-added="handleObjectAdded"
-            @object-deleted="handleObjectDeleted"
-          />
-        </div>
       </div>
       <div class="col col-sm-3">
         <div class="mt-2">
-          <div class="card bg-light">
+          <div class="card bg-light h-100">
             <div class="card-body">
               <div class="d-flex justify-content-between align-items-center">
                 <div>
@@ -293,19 +273,41 @@ div.row h3 {
       </div>
       <div class="col-xs-12 col-sm-12 col-md-12 col-lg-6 col-xl-3">
         <div class="mt-2">
-          <div class="card bg-light">
+          <div class="card">
+            <div class="card-header">
+              <FontAwesomeIcon :icon="faTags" /> tags
+            </div>
             <div class="card-body d-flex flex-column">
               <div class="card-text">
-                <img src="/images/pie-chart.png" class="card-img" />
+                <TagsSelect
+                  :modelClass="'event'"
+                  :model="event"
+                  :selectedTags="event.tags"
+                />
               </div>
             </div>
           </div>
         </div>
+        <!-- <div class="mt-2">
+          <div class="card bg-light">
+            <div class="card-body">
+              <div class="card-text">
+                <img src="/images/pie-chart.png" style="height: 346x; width: 346px;" class="card-img" />
+              </div>
+            </div>
+          </div>
+        </div> -->
       </div>
     </div>
     <div class="row m-1">
       <div class="col-12">
-        <div class="card">
+        <UploadAttachmentsWidget
+          :event_id="event.id"
+          :key="event.object_count"
+          @object-added="handleObjectAdded"
+          @object-deleted="handleObjectDeleted"
+        />
+        <div class="card mt-2">
           <div class="card-header">
             <FontAwesomeIcon :icon="faShapes" /> objects
           </div>

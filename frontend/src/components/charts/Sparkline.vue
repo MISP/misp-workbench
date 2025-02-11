@@ -5,7 +5,7 @@ export default {
     return {
       stroke: 3,
       width: 256,
-      height: 80,
+      height: 96,
     };
   },
   computed: {

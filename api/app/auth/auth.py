@@ -89,6 +89,9 @@ oauth2_scheme = OAuth2PasswordBearer(
         "galaxies:read": "Read galaxies.",
         "galaxies:update": "Update galaxies.",
         "galaxies:delete": "Delete galaxies.",
+        "attachments:download": "Download attachments.",
+        "attachments:upload": "Upload attachments.",
+        "attachments:delete": "Delete attachments.",
     },
 )
 

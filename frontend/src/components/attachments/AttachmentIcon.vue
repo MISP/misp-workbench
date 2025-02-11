@@ -3,6 +3,7 @@ import { computed } from "vue";
 import { Modal } from "bootstrap";
 import { ref, onMounted } from "vue";
 import DeleteObjectModal from "@/components/objects/DeleteObjectModal.vue";
+import { useAttachmentsStore } from "@/stores";
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
 import {
   faFile,
@@ -55,6 +56,8 @@ const icons = {
 
 const emit = defineEmits(["object-deleted", "attachment-deleted"]);
 
+const attachmentsStore = useAttachmentsStore();
+
 const deleteObjectModal = ref(null);
 
 onMounted(() => {
@@ -76,7 +79,7 @@ const filename = computed(
   () =>
     attachment.value.attributes.find(
       (attr) => attr.object_relation === "filename",
-    )?.value || "",
+    )?.value || "attachment",
 );
 
 const isMalware = computed(() => {
@@ -103,6 +106,31 @@ const size = computed(() => {
   );
   return sizeAttr ? `${(parseInt(sizeAttr.value) / 1024).toFixed(2)} KB` : "?";
 });
+
+async function downloadAttachment() {
+  try {
+    const response = await attachmentsStore.downloadAttachment(
+      attachment.value.id,
+    );
+
+    if (!response.ok) {
+      throw new Error("Failed to download file");
+    }
+
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename.value;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+  } catch (error) {
+    console.error("Download failed:", error);
+  }
+}
 </script>
 
 <style scoped>
@@ -158,7 +186,11 @@ const size = computed(() => {
         role="group"
         aria-label="Attachment actions"
       >
-        <button type="button" class="btn btn-outline-primary">
+        <button
+          type="button"
+          class="btn btn-outline-primary"
+          @click="downloadAttachment"
+        >
           <FontAwesomeIcon :icon="faDownload" />
         </button>
         <button

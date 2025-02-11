@@ -9,6 +9,7 @@ export const fetchWrapper = {
   delete: request("DELETE"),
   authenticate: authenticate(),
   postFormData: postFormData,
+  downloadAttachment: downloadAttachment,
 };
 
 function request(method) {
@@ -32,6 +33,14 @@ function postFormData(url, body) {
     body: body,
   };
   return fetch(url, requestOptions).then(handleResponse);
+}
+
+function downloadAttachment(url) {
+  const requestOptions = {
+    method: "GET",
+    headers: authHeader(url),
+  };
+  return fetch(url, requestOptions);
 }
 
 function authenticate() {
