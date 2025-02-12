@@ -92,8 +92,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    # volumes:
-    #   - attachments-data:/tmp/attachments
+    volumes:
+      - attachments-data:/tmp/attachments
 
   frontend:
     build:
@@ -148,8 +148,8 @@ services:
       - postgres
       - rabbitmq
       - api
-    # volumes:
-    #   - attachments-data:/tmp/attachments
+    volumes:
+      - attachments-data:/tmp/attachments
 
   flower:
     build:
@@ -195,8 +195,8 @@ services:
       - worker
       - rabbitmq
       - redis
-    # volumes:
-    #   - attachments-data:/tmp/attachments
+    volumes:
+      - attachments-data:/tmp/attachments
 
   redis:
     image: redis:7-alpine
