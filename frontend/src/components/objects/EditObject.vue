@@ -69,11 +69,12 @@ function updateObject() {
           update_attributes: updateAttributes.value,
           delete_attributes: deletedAttributes.value,
         })
-        .then(() => {
+        .then((response) => {
           objectTemplateErrors.value = null;
           newAttributes.value = [];
           updateAttributes.value = [];
           deletedAttributes.value = [];
+          object.value = response;
         })
         .catch((errors) => {
           apiError.value = errors;

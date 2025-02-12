@@ -137,3 +137,4 @@ jobs:
           MAIL_SERVER: localhost
           MODULES_HOST: localhost
           MODULES_PORT: 6666
+          STORAGE_ENGINE: local

@@ -74,9 +74,11 @@ def create_attribute(
             status_code=status.HTTP_404_NOT_FOUND, detail="Event not found"
         )
 
+    db_attribute = attributes_repository.create_attribute(db=db, attribute=attribute)
+
     tasks.index_event.delay(event.uuid)
 
-    return attributes_repository.create_attribute(db=db, attribute=attribute)
+    return db_attribute
 
 
 @router.patch("/attributes/{attribute_id}", response_model=attribute_schemas.Attribute)

@@ -1,3 +1,4 @@
+from uuid import UUID
 from typing import Optional
 
 from app.auth.auth import get_current_active_user
@@ -9,29 +10,29 @@ from app.schemas import user as user_schemas
 from app.worker import tasks
 from fastapi import APIRouter, Depends, HTTPException, Security, status
 from sqlalchemy.orm import Session
+from fastapi_pagination import Page
 
 router = APIRouter()
 
 
 async def get_objects_parameters(
-    skip: int = 0,
-    limit: int = 100,
     event_id: Optional[int] = None,
     deleted: Optional[bool] = False,
+    template_uuid: list[UUID] = None,
 ):
-    return {"skip": skip, "limit": limit, "event_id": event_id, "deleted": deleted}
+    return {"event_id": event_id, "deleted": deleted, "template_uuid": template_uuid}
 
 
-@router.get("/objects/", response_model=list[object_schemas.Object])
+@router.get("/objects/", response_model=Page[object_schemas.Object])
 def get_objects(
     params: dict = Depends(get_objects_parameters),
     db: Session = Depends(get_db),
     user: user_schemas.User = Security(
         get_current_active_user, scopes=["objects:read"]
     ),
-):
+) -> Page[object_schemas.Object]:
     return objects_repository.get_objects(
-        db, params["skip"], params["limit"], params["event_id"], params["deleted"]
+        db, params["event_id"], params["deleted"], params["template_uuid"]
     )
 
 

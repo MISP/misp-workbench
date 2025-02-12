@@ -1,16 +1,30 @@
-from typing import Optional
+import json
+
+from typing import Optional, Annotated
 
 from app.auth.auth import get_current_active_user
 from app.dependencies import get_db
 from app.repositories import events as events_repository
 from app.repositories import tags as tags_repository
+from app.repositories import attachments as attachments_repository
+from app.repositories import objects as objects_repository
 from app.schemas import event as event_schemas
 from app.schemas import user as user_schemas
+from app.schemas import object as object_schemas
 from app.worker import tasks
-from fastapi import APIRouter, Depends, HTTPException, Response, Security
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+    Response,
+    Security,
+    UploadFile,
+    Form,
+)
 from fastapi_pagination import Page
 from sqlalchemy.orm import Session
 from starlette import status
+from fastapi.responses import JSONResponse
 
 router = APIRouter()
 
@@ -152,3 +166,54 @@ def untag_event(
     tags_repository.untag_event(db=db, event=event, tag=tag)
 
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post(
+    "/events/{event_id}/upload_attachments/",
+    status_code=status.HTTP_200_OK,
+)
+async def upload_attachments(
+    event_id: int,
+    attachments: list[UploadFile],
+    attachments_meta: Annotated[str, Form()],
+    db: Session = Depends(get_db),
+    user: user_schemas.User = Security(
+        get_current_active_user, scopes=["events:update"]
+    ),
+) -> list[object_schemas.Object]:
+    event = events_repository.get_event_by_id(db, event_id=event_id)
+    if event is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Event not found"
+        )
+
+    if attachments_meta:
+        attachments_meta = json.loads(attachments_meta)
+
+    return attachments_repository.upload_attachments_to_event(
+        db=db, event=event, attachments=attachments, attachments_meta=attachments_meta
+    )
+
+
+@router.get(
+    "/events/{event_id}/attachments", response_model=Page[object_schemas.Object]
+)
+def get_event_attachments(
+    event_id: int,
+    db: Session = Depends(get_db),
+    user: user_schemas.User = Security(get_current_active_user, scopes=["events:read"]),
+) -> Page[object_schemas.Object]:
+    db_event = events_repository.get_event_by_id(db, event_id=event_id)
+    if db_event is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Event not found"
+        )
+
+    return objects_repository.get_objects(
+        db,
+        event_id=event_id,
+        deleted=False,
+        template_uuid=[
+            "688c46fb-5edb-40a3-8273-1af7923e2215"  # TODO: get the object template from the json file
+        ],
+    )

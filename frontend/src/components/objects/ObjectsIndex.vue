@@ -10,16 +10,15 @@ import DeleteObjectModal from "@/components/objects/DeleteObjectModal.vue";
 import Spinner from "@/components/misc/Spinner.vue";
 import Paginate from "vuejs-paginate-next";
 
-const props = defineProps(["event_id", "total_size", "page_size"]);
-const page_count = Math.ceil(props.total_size / props.page_size);
+const props = defineProps(["event_id", "page_size"]);
 
 const objectsStore = useObjectsStore();
-const { objects, status } = storeToRefs(objectsStore);
+const { objects, pages, status } = storeToRefs(objectsStore);
 
 function onPageChange(page) {
   objectsStore.get({
-    skip: (page - 1) * props.page_size,
-    limit: props.page_size,
+    page: page,
+    size: props.page_size,
     event_id: props.event_id,
     deleted: false,
   });
@@ -47,7 +46,7 @@ function openAddObjectModal() {
     Error loading objects: {{ status.error }}
   </div>
   <div class="table-responsive-sm">
-    <div class="mt-2" :key="object.id" v-for="object in objects">
+    <div class="mt-2" :key="object.id" v-for="object in objects.items">
       <div class="card" v-if="!object.deleted">
         <div class="card-header">
           {{ object.name }}
@@ -67,8 +66,8 @@ function openAddObjectModal() {
     </div>
   </div>
   <Paginate
-    v-if="page_count > 1"
-    :page-count="page_count"
+    v-if="pages > 1"
+    :page-count="pages"
     :click-handler="onPageChange"
   />
   <AddObjectModal

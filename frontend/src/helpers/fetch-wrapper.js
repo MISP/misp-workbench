@@ -8,6 +8,8 @@ export const fetchWrapper = {
   put: request("PUT"),
   delete: request("DELETE"),
   authenticate: authenticate(),
+  postFormData: postFormData,
+  downloadAttachment: downloadAttachment,
 };
 
 function request(method) {
@@ -22,6 +24,23 @@ function request(method) {
     }
     return fetch(url, requestOptions).then(handleResponse);
   };
+}
+
+function postFormData(url, body) {
+  const requestOptions = {
+    method: "POST",
+    headers: authHeader(url),
+    body: body,
+  };
+  return fetch(url, requestOptions).then(handleResponse);
+}
+
+function downloadAttachment(url) {
+  const requestOptions = {
+    method: "GET",
+    headers: authHeader(url),
+  };
+  return fetch(url, requestOptions);
 }
 
 function authenticate() {

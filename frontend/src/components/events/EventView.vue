@@ -1,4 +1,5 @@
 <script setup>
+import Spinner from "@/components/misc/Spinner.vue";
 import { storeToRefs } from "pinia";
 import Sparkline from "@/components/charts/Sparkline.vue";
 import AttributesIndex from "@/components/attributes/AttributesIndex.vue";
@@ -9,12 +10,9 @@ import UUID from "@/components/misc/UUID.vue";
 import ThreatLevel from "@/components/enums/ThreatLevel.vue";
 import AnalysisLevel from "@/components/enums/AnalysisLevel.vue";
 import DeleteEventModal from "@/components/events/DeleteEventModal.vue";
+import UploadAttachmentsWidget from "@/components/attachments/UploadAttachmentsWidget.vue";
 import { router } from "@/router";
-import {
-  useModulesStore,
-  useTaxonomiesStore,
-  useGalaxiesStore,
-} from "@/stores";
+import { useEventsStore, useModulesStore } from "@/stores";
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
 import {
   faTrash,
@@ -25,21 +23,25 @@ import {
   faCubesStacked,
 } from "@fortawesome/free-solid-svg-icons";
 
-defineProps(["event_id", "event", "status"]);
+const props = defineProps(["event_id"]);
+
+const eventsStore = useEventsStore();
+const { event, status } = storeToRefs(eventsStore);
+eventsStore.getById(props.event_id);
 
 const modulesStore = useModulesStore();
 modulesStore.get({ enabled: true });
 
-const taxonomiesStore = useTaxonomiesStore();
-taxonomiesStore.get({ enabled: true, size: 1000 }); // FIXME: get all taxonomies
-
-const galaxiesStore = useGalaxiesStore();
-galaxiesStore.get({ enabled: true, size: 1000 }); // FIXME: get all galaxies
-
-const { taxonomies } = storeToRefs(taxonomiesStore);
-
 function handleEventDeleted() {
   router.push(`/events`);
+}
+
+function handleObjectAdded() {
+  event.value.object_count += 1;
+}
+
+function handleObjectDeleted() {
+  event.value.object_count -= 1;
 }
 </script>
 
@@ -57,9 +59,17 @@ div.row h3 {
 .single-stat-card .card-body p {
   margin-bottom: 0;
 }
+
+.table.table-striped {
+  margin-bottom: 0;
+}
 </style>
 <template>
-  <div class="card">
+  <Spinner v-if="status.loading" />
+  <div v-if="status.error" class="text-danger">
+    Error loading event: {{ status.error }}
+  </div>
+  <div v-if="!status.loading && event" class="card">
     <div class="event-title card-header border-bottom">
       <div class="row">
         <div class="col-10">
@@ -183,27 +193,10 @@ div.row h3 {
             </div>
           </div>
         </div>
-        <div class="mt-2">
-          <div class="card h-100">
-            <div class="card-header">
-              <FontAwesomeIcon :icon="faTags" /> tags
-            </div>
-            <div class="card-body d-flex flex-column">
-              <div class="card-text">
-                <TagsSelect
-                  v-if="taxonomies.items"
-                  :modelClass="'event'"
-                  :model="event"
-                  :selectedTags="event.tags"
-                />
-              </div>
-            </div>
-          </div>
-        </div>
       </div>
       <div class="col col-sm-3">
         <div class="mt-2">
-          <div class="card bg-light">
+          <div class="card bg-light h-100">
             <div class="card-body">
               <div class="d-flex justify-content-between align-items-center">
                 <div>
@@ -280,27 +273,49 @@ div.row h3 {
       </div>
       <div class="col-xs-12 col-sm-12 col-md-12 col-lg-6 col-xl-3">
         <div class="mt-2">
-          <div class="card bg-light">
+          <div class="card">
+            <div class="card-header">
+              <FontAwesomeIcon :icon="faTags" /> tags
+            </div>
             <div class="card-body d-flex flex-column">
               <div class="card-text">
-                <img src="/images/pie-chart.png" class="card-img" />
+                <TagsSelect
+                  :modelClass="'event'"
+                  :model="event"
+                  :selectedTags="event.tags"
+                />
               </div>
             </div>
           </div>
         </div>
+        <!-- <div class="mt-2">
+          <div class="card bg-light">
+            <div class="card-body">
+              <div class="card-text">
+                <img src="/images/pie-chart.png" style="height: 346x; width: 346px;" class="card-img" />
+              </div>
+            </div>
+          </div>
+        </div> -->
       </div>
     </div>
     <div class="row m-1">
       <div class="col-12">
-        <div class="card">
+        <UploadAttachmentsWidget
+          :event_id="event.id"
+          :key="event.object_count"
+          @object-added="handleObjectAdded"
+          @object-deleted="handleObjectDeleted"
+        />
+        <div class="card mt-2">
           <div class="card-header">
             <FontAwesomeIcon :icon="faShapes" /> objects
           </div>
           <div class="card-body d-flex flex-column">
             <ObjectsIndex
               :event_id="event_id"
-              :total_size="event.object_count"
               :page_size="10"
+              :key="event.object_count"
             />
           </div>
         </div>

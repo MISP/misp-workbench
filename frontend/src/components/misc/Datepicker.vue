@@ -34,7 +34,6 @@ const props = defineProps({
     default: false,
   },
   modelValue: {
-    type: String,
     default: "",
   },
 });

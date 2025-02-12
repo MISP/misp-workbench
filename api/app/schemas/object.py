@@ -19,7 +19,7 @@ class ObjectBase(BaseModel):
     distribution: Optional[DistributionLevel] = None
     sharing_group_id: Optional[int] = None
     comment: Optional[str] = None
-    deleted: bool
+    deleted: Optional[bool] = False
     first_seen: Optional[int] = None
     last_seen: Optional[int] = None
     model_config = ConfigDict(use_enum_values=True)

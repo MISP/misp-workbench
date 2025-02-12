@@ -80,12 +80,20 @@ services:
       MAIL_SERVER: ${MAIL_SERVER}
       MODULES_HOST: ${MODULES_HOST:-modules}
       MODULES_PORT: ${MODULES_PORT:-6666}
+      STORAGE_ENGINE: ${STORAGE_ENGINE:-local}
+      MINIO_HOST: ${MINIO_HOST:-minio:9000}
+      MINIO_BUCKET: ${MINIO_BUCKET:-attachments}
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      MINIO_SECURE: ${MINIO_SECURE:-true}
     entrypoint: [ "bash", "-c", "./entrypoint.sh" ]
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
+    # volumes:
+    #   - attachments-data:/tmp/attachments
 
   frontend:
     build:
@@ -129,11 +137,19 @@ services:
       MAIL_SERVER: ${MAIL_SERVER}
       MODULES_HOST: ${MODULES_HOST:-modules}
       MODULES_PORT: ${MODULES_PORT:-6666}
+      STORAGE_ENGINE: ${STORAGE_ENGINE:-local}
+      MINIO_HOST: ${MINIO_HOST:-minio:9000}
+      MINIO_BUCKET: ${MINIO_BUCKET:-attachments}
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      MINIO_SECURE: ${MINIO_SECURE:-true}
     depends_on:
       - redis
       - postgres
       - rabbitmq
       - api
+    # volumes:
+    #   - attachments-data:/tmp/attachments
 
   flower:
     build:
@@ -169,10 +185,18 @@ services:
       MAIL_SERVER: ${MAIL_SERVER}
       MODULES_HOST: ${MODULES_HOST:-modules}
       MODULES_PORT: ${MODULES_PORT:-6666}
+      STORAGE_ENGINE: ${STORAGE_ENGINE:-local}
+      MINIO_HOST: ${MINIO_HOST:-minio:9000}
+      MINIO_BUCKET: ${MINIO_BUCKET:-attachments}
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      MINIO_SECURE: ${MINIO_SECURE:-true}
     depends_on:
       - worker
       - rabbitmq
       - redis
+    # volumes:
+    #   - attachments-data:/tmp/attachments
 
   redis:
     image: redis:7-alpine
@@ -208,6 +232,28 @@ services:
       redis:
         condition: service_healthy
 
+  minio:
+    image: quay.io/minio/minio:latest
+    container_name: minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+    ports:
+      - "9000:9000" # S3 API
+      - "9001:9001" # Web UI
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: [ "CMD", "mc", "alias", "set", "minio", "http://minio:9000", "${MINIO_ROOT_USER}", "${MINIO_ROOT_PASSWORD}" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: always
+
+
 volumes:
   opensearch-data:
   postgres-data:
+  minio-data:
+  attachments-data:

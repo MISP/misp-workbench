@@ -14,6 +14,7 @@ export const useEventsStore = defineStore({
       loading: false,
       updating: false,
       creating: false,
+      uploading: false,
       error: false,
     },
   }),

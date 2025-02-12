@@ -15,11 +15,12 @@ from fastapi_pagination.ext.sqlalchemy import paginate
 from pymisp import MISPAttribute, MISPTag
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import select
+from fastapi_pagination import Page
 
 
 def get_attributes(
     db: Session, event_id: int = None, deleted: bool = None, object_id: int = None
-):
+)-> Page[attribute_schemas.Attribute]:
     query = select(attribute_models.Attribute)
 
     if event_id is not None:
@@ -28,8 +29,7 @@ def get_attributes(
     if deleted is not None:
         query = query.where(attribute_models.Attribute.deleted == deleted)
 
-    if object_id is not None:
-        query = query.where(attribute_models.Attribute.object_id == object_id)
+    query = query.where(attribute_models.Attribute.object_id == object_id)
 
     return paginate(db, query)
 
@@ -74,7 +74,7 @@ def create_attribute(
     db.commit()
     db.refresh(db_attribute)
 
-    tasks.handle_created_attribute.delay(db_attribute.id, db_attribute.event_id)
+    tasks.handle_created_attribute.delay(db_attribute.id, db_attribute.object_id, db_attribute.event_id)
 
     return db_attribute
 
@@ -128,7 +128,7 @@ def create_attribute_from_pulled_attribute(
     pulled_attribute.id = db_attribute.id
     pulled_attribute.event_id = local_event_id
 
-    tasks.handle_created_attribute.delay(pulled_attribute.id, pulled_attribute.event_id)
+    tasks.handle_created_attribute.delay(pulled_attribute.id, pulled_attribute.object_id, pulled_attribute.event_id)
 
     return pulled_attribute
 
@@ -169,7 +169,7 @@ def delete_attribute(db: Session, attribute_id: int) -> None:
     db.commit()
     db.refresh(db_attribute)
 
-    tasks.handle_deleted_attribute.delay(db_attribute.id, db_attribute.event_id)
+    tasks.handle_deleted_attribute.delay(db_attribute.id, db_attribute.object_id, db_attribute.event_id)
 
 
 def capture_attribute_tags(
