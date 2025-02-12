@@ -10,6 +10,7 @@ export const useServersStore = defineStore({
     servers: {},
     server: {},
     testConnection: {},
+    remote_events: {},
     status: {
       loading: false,
       updating: false,
@@ -64,6 +65,17 @@ export const useServersStore = defineStore({
     async pull(id) {
       return await fetchWrapper
         .post(`${baseUrl}/${id}/pull`)
+        .catch((error) => (this.status = { error }));
+    },
+    async get_remote_server_events_index(id) {
+      return await fetchWrapper
+        .get(`${baseUrl}/${id}/events-index`)
+        .then((events) => (this.remote_events = events))
+        .catch((error) => (this.status = { error }));
+    },
+    async pull_remote_misp_event(id, uuid) {
+      return await fetchWrapper
+        .post(`${baseUrl}/${id}/events/${uuid}/pull`)
         .catch((error) => (this.status = { error }));
     },
   },

@@ -111,3 +111,14 @@ def test_server(
     ),
 ):
     return servers_repository.test_server_connection(db=db, server_id=server_id)
+
+
+@router.get("/servers/{server_id}/events-index")
+def events_index(
+    server_id: int,
+    db: Session = Depends(get_db),
+    user: user_schemas.User = Security(
+        get_current_active_user, scopes=["servers:index"]
+    ),
+):
+    return servers_repository.get_remote_server_events_index(db=db, server_id=server_id)

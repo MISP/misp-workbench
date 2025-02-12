@@ -659,3 +659,22 @@ def test_server_connection(db: Session, server_id: int) -> None:
             status="error",
             error=ex.detail,
         )
+
+
+def get_remote_server_events_index(db: Session, server_id: int) -> None:
+    db_server = get_server_by_id(db, server_id=server_id)
+
+    if db_server is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Server not found"
+        )
+
+    try:
+        remote_misp = get_remote_misp_connection(db_server)
+
+        return remote_misp.search_index(published=True)
+
+    except Exception as ex:
+        raise HTTPException(
+            status_code=500, detail="Remote MISP instance not reachable"
+        )

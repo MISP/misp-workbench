@@ -49,7 +49,7 @@ function handleEventDeleted() {
       <thead>
         <tr>
           <th scope="col">id</th>
-          <th scope="col" class="eventInfoColumn">info</th>
+          <th scope="col">info</th>
           <th scope="col">tags</th>
           <th scope="col">date</th>
           <th scope="col" class="d-none d-sm-table-cell">distribution</th>

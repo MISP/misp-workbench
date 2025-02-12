@@ -16,6 +16,7 @@ export { default as IndexServers } from "./servers/IndexServers.vue";
 export { default as ViewServer } from "./servers/ViewServer.vue";
 export { default as AddServer } from "./servers/AddServer.vue";
 export { default as EditServer } from "./servers/EditServer.vue";
+export { default as ExploreServer } from "./servers/ExploreServer.vue";
 export { default as ViewAttribute } from "./attributes/ViewAttribute.vue";
 export { default as EditAttribute } from "./attributes/EditAttribute.vue";
 export { default as IndexModules } from "./settings/modules/IndexModules.vue";
