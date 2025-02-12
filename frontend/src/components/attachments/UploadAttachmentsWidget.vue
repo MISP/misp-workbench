@@ -70,12 +70,10 @@ const uploadFiles = () => {
       response.forEach((object) => {
         emit("object-added", object);
       });
+      status.value = { uploading: false };
     })
     .catch((error) => {
       status.value = { uploading: false, error: error };
-    })
-    .finally(() => {
-      status.value = { uploading: false };
     });
 };
 
@@ -169,6 +167,9 @@ function handleObjectDeleted(object_id) {
             </button>
           </div>
         </div>
+      </div>
+      <div v-if="status.error" class="w-100 alert alert-danger mt-3 mb-3">
+        {{ status.error }}
       </div>
       <div class="text-center mt-3">
         <button

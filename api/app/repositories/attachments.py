@@ -148,6 +148,9 @@ def upload_attachments_to_event(
 
             # upload file to local storage
             if settings.Storage.engine == "local":
+                if os.path.exists("/tmp/attachments") is False:
+                    os.makedirs("/tmp/attachments")
+
                 with open(f"/tmp/attachments/{sha256}", "wb") as f:
                     f.write(file_content)
 
@@ -194,20 +197,32 @@ def download_attachment(
         )
 
     # get attachment from minio
-    if settings.Storage.engine == "minio":
-        MinioClient = get_minio_client()
+    try:
+        if settings.Storage.engine == "minio":
+            MinioClient = get_minio_client()
 
-        data = MinioClient.get_object(settings.Storage.minio.bucket, sha256)
-        return StreamingResponse(
-            io.BytesIO(data.read()),
-            media_type="application/octet-stream",
-            headers={
-                "Content-Disposition": f'attachment; filename="{file_name or sha256}"'
-            },
-        )
-    else:
-        # TODO: implement local storage download
+            data = MinioClient.get_object(settings.Storage.minio.bucket, sha256)
+            return StreamingResponse(
+                io.BytesIO(data.read()),
+                media_type="application/octet-stream",
+                headers={
+                    "Content-Disposition": f'attachment; filename="{file_name or sha256}"'
+                },
+            )
+
+        # get attachment from local storage
+        if settings.Storage.engine == "local":
+            with open(f"/tmp/attachments/{sha256}", "rb") as f:
+                return StreamingResponse(
+                    io.BytesIO(f.read()),
+                    media_type="application/octet-stream",
+                    headers={
+                        "Content-Disposition": f'attachment; filename="{file_name or sha256}"'
+                    },
+                )
+    except Exception as e:
+        logger.error(f"Error fetching attachment: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Error getting attachment download url",
+            detail="Error fetching attachment",
         )
