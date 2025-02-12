@@ -104,7 +104,7 @@ function handleObjectDeleted(object_id) {
     </div>
     <div class="card-body">
       <Spinner v-if="status.loading" />
-      <div class="row" v-if="attachments.length > 0">
+      <div class="row row-cols-1 row-cols-md-2">
         <AttachmentIcon
           v-for="attachment in attachments"
           :key="attachment.id"

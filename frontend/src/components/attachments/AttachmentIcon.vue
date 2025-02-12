@@ -134,11 +134,6 @@ async function downloadAttachment() {
 </script>
 
 <style scoped>
-.file-item {
-  background: #f9f9f9;
-  width: 140px;
-}
-
 .details {
   display: flex;
   flex-direction: column;
@@ -149,7 +144,6 @@ async function downloadAttachment() {
   text-overflow: ellipsis;
   overflow: hidden;
   white-space: nowrap;
-  width: 100px;
 }
 
 .size {
@@ -159,55 +153,55 @@ async function downloadAttachment() {
 </style>
 
 <template>
-  <div class="file-item card m-2">
-    <div class="card-body">
-      <RouterLink :to="`/objects/${attachment.id}`">
-        <div
-          class="icon"
-          data-toggle="tooltip"
-          data-placement="bottom"
-          :title="filename"
-        >
-          <FontAwesomeIcon
-            :icon="fileIcon"
-            class="fa-2xl"
-            :class="{ 'text-danger': isMalware }"
+  <div class="col-12 col-md-6 col-lg-2 col-xl-2">
+    <div class="card m-2 file-card">
+      <div class="card-body">
+        <RouterLink :to="`/objects/${attachment.id}`">
+          <div
+            class="icon"
+            data-toggle="tooltip"
+            data-placement="bottom"
+            :title="filename"
+          >
+            <FontAwesomeIcon
+              :icon="fileIcon"
+              class="fa-2xl"
+              :class="{ 'text-danger': isMalware }"
+            />
+          </div>
+          <div class="details small">
+            <div class="name">{{ filename }}</div>
+            <div class="size">{{ size }}</div>
+          </div>
+        </RouterLink>
+      </div>
+      <div class="card-footer">
+        <div class="text-end">
+          <div class="btn-group" role="group" aria-label="Attachment actions">
+            <button
+              type="button"
+              class="btn btn-outline-primary"
+              @click="downloadAttachment"
+            >
+              <FontAwesomeIcon :icon="faDownload" />
+            </button>
+            <button
+              type="button"
+              class="btn btn-danger"
+              @click="openDeleteObjectModal"
+            >
+              <FontAwesomeIcon :icon="faTrash" />
+            </button>
+          </div>
+          <DeleteObjectModal
+            :key="attachment.id"
+            :id="`deleteObjectModal_${attachment.id}`"
+            @object-deleted="handleObjectDeleted"
+            :modal="deleteObjectModal"
+            :object_id="attachment.id"
           />
         </div>
-        <div class="details">
-          <div class="name small">{{ filename }}</div>
-          <div class="size">{{ size }}</div>
-        </div>
-      </RouterLink>
-    </div>
-    <div class="card-footer">
-      <div
-        class="btn-group text-center"
-        role="group"
-        aria-label="Attachment actions"
-      >
-        <button
-          type="button"
-          class="btn btn-outline-primary"
-          @click="downloadAttachment"
-        >
-          <FontAwesomeIcon :icon="faDownload" />
-        </button>
-        <button
-          type="button"
-          class="btn btn-danger"
-          @click="openDeleteObjectModal"
-        >
-          <FontAwesomeIcon :icon="faTrash" />
-        </button>
       </div>
-      <DeleteObjectModal
-        :key="attachment.id"
-        :id="`deleteObjectModal_${attachment.id}`"
-        @object-deleted="handleObjectDeleted"
-        :modal="deleteObjectModal"
-        :object_id="attachment.id"
-      />
     </div>
   </div>
 </template>
