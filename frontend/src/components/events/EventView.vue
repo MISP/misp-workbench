@@ -196,7 +196,7 @@ div.row h3 {
       </div>
       <div class="col col-sm-3">
         <div class="mt-2">
-          <div class="card bg-light h-100">
+          <div class="card h-100">
             <div class="card-body">
               <div class="d-flex justify-content-between align-items-center">
                 <div>
@@ -217,7 +217,7 @@ div.row h3 {
           </div>
         </div>
         <div class="mt-2">
-          <div class="card bg-light">
+          <div class="card">
             <div class="card-body">
               <div class="d-flex justify-content-between align-items-center">
                 <div>
@@ -245,7 +245,7 @@ div.row h3 {
         </div>
         <div class="mt-2">
           <div class="card">
-            <div class="card-body bg-light">
+            <div class="card-body">
               <div class="d-flex justify-content-between align-items-center">
                 <div>
                   <p class="mb-0 text-muted">sightings</p>
@@ -289,7 +289,7 @@ div.row h3 {
           </div>
         </div>
         <!-- <div class="mt-2">
-          <div class="card bg-light">
+          <div class="card">
             <div class="card-body">
               <div class="card-text">
                 <img src="/images/pie-chart.png" style="height: 346x; width: 346px;" class="card-img" />
