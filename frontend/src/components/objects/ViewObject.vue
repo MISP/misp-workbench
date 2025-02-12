@@ -106,7 +106,7 @@ div.row h3 {
           </div>
         </div>
         <div class="col-xs-12 col-sm-12 col-md-12 col-lg-6 col-xl-3">
-          <div class="mt-2 card bg-light">
+          <div class="mt-2 card">
             <div class="card-body">
               <div class="d-flex justify-content-between align-items-center">
                 <div>
@@ -126,7 +126,7 @@ div.row h3 {
             </div>
           </div>
           <div class="mt-2 card">
-            <div class="card-body bg-light">
+            <div class="card-body">
               <div class="d-flex justify-content-between align-items-center">
                 <div>
                   <p class="mb-0 text-muted">sightings</p>
