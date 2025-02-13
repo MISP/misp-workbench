@@ -102,8 +102,8 @@ function searchRemoteMISPEvents() {
 </style>
 
 <template>
-  <h4 class="text-muted text-start">
-    browsing MISP events from <i>{{ server.name }}</i>
+  <h4 class="text-muted text-center">
+    Remote MISP events from <i>{{ server.name }}</i>
   </h4>
   <nav class="navbar">
     <div class="card">
