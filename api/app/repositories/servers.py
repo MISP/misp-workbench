@@ -662,7 +662,19 @@ def test_server_connection(db: Session, server_id: int) -> None:
 
 
 def get_remote_server_events_index(
-    db: Session, server_id: int, limit: int, page: int
+    db: Session,
+    server_id: int,
+    limit: int,
+    page: int,
+    event_info: str = None,
+    attribute_value: str = None,
+    event_uuid: str = None,
+    organisation: str = None,
+    tags: str = None,
+    threat_level: str = None,
+    analysis_level: str = None,
+    timestamp_from: str = None,
+    timestamp_to: str = None,
 ) -> None:
     db_server = get_server_by_id(db, server_id=server_id)
 
@@ -674,7 +686,20 @@ def get_remote_server_events_index(
     try:
         remote_misp = get_remote_misp_connection(db_server)
 
-        return remote_misp.search_index(published=True, limit=limit, page=page)
+        timestamp = (timestamp_from, timestamp_to) if timestamp_from and timestamp_to else timestamp_from or timestamp_to
+
+        return remote_misp.search_index(
+            published=True,
+            limit=limit,
+            page=page,
+            eventinfo=event_info,
+            timestamp=timestamp,
+            eventid=event_uuid,
+            org=organisation,
+            tags=tags,
+            # threat_level=threat_level,
+            # analysis=analysis_level,
+        )
     except Exception as ex:
         raise HTTPException(
             status_code=500, detail="Remote MISP instance not reachable"

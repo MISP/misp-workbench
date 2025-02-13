@@ -118,9 +118,32 @@ def events_index(
     server_id: int,
     limit: int = 10,
     page: int = 0,
+    event_info: str = None,
+    attribute_value: str = None,
+    event_uuid: str = None,
+    organisation: str = None,
+    tags: str = None,
+    threat_level: str = None,
+    analysis_level: str = None,
+    timestamp_from: str = None,
+    timestamp_to: str = None,
     db: Session = Depends(get_db),
     user: user_schemas.User = Security(
         get_current_active_user, scopes=["servers:index"]
     ),
 ):
-    return servers_repository.get_remote_server_events_index(db=db, server_id=server_id, limit=limit, page=page)
+    return servers_repository.get_remote_server_events_index(
+        db=db,
+        server_id=server_id,
+        limit=limit,
+        page=page,
+        event_info=event_info,
+        timestamp_from=timestamp_from,
+        timestamp_to=timestamp_to,
+        attribute_value=attribute_value,
+        event_uuid=event_uuid,
+        organisation=organisation,
+        tags=tags,
+        threat_level=threat_level,
+        analysis_level=analysis_level,
+    )
