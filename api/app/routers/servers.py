@@ -116,9 +116,11 @@ def test_server(
 @router.get("/servers/{server_id}/events-index")
 def events_index(
     server_id: int,
+    limit: int = 10,
+    page: int = 0,
     db: Session = Depends(get_db),
     user: user_schemas.User = Security(
         get_current_active_user, scopes=["servers:index"]
     ),
 ):
-    return servers_repository.get_remote_server_events_index(db=db, server_id=server_id)
+    return servers_repository.get_remote_server_events_index(db=db, server_id=server_id, limit=limit, page=page)

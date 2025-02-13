@@ -13,3 +13,4 @@ export * from "./taxonomies.store";
 export * from "./galaxies.store";
 export * from "./tags.store";
 export * from "./attachments.store";
+export * from "./remote-misp-events.store";
