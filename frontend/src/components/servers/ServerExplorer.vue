@@ -70,6 +70,7 @@ function handleNextPage() {
   remoteMISPEventsStore.get_remote_server_events_index(props.server.id, {
     page: page.value,
     limit: size.value,
+    ...filters,
   });
 }
 
@@ -82,6 +83,7 @@ function handlePrevPage() {
   remoteMISPEventsStore.get_remote_server_events_index(props.server.id, {
     page: page.value,
     limit: size.value,
+    ...filters,
   });
 }
 
