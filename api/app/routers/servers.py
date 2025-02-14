@@ -114,7 +114,7 @@ def test_server(
 
 
 @router.get("/servers/{server_id}/events-index")
-def events_index(
+def remote_events_index(
     server_id: int,
     limit: int = 10,
     page: int = 0,
@@ -129,10 +129,10 @@ def events_index(
     timestamp_to: str = None,
     db: Session = Depends(get_db),
     user: user_schemas.User = Security(
-        get_current_active_user, scopes=["servers:index"]
+        get_current_active_user, scopes=["servers:events_index"]
     ),
 ):
-    return servers_repository.get_remote_server_events_index(
+    return servers_repository.get_remote_events_index(
         db=db,
         server_id=server_id,
         limit=limit,
@@ -146,4 +146,43 @@ def events_index(
         tags=tags,
         threat_level=threat_level,
         analysis_level=analysis_level,
+    )
+
+
+@router.get("/servers/{server_id}/events/{event_uuid}/attributes")
+def get_remote_event_attributes(
+    server_id: int,
+    event_uuid: str,
+    limit: int = 10,
+    page: int = 0,
+    db: Session = Depends(get_db),
+    user: user_schemas.User = Security(
+        get_current_active_user, scopes=["servers:events_index"]
+    ),
+):
+    return servers_repository.get_remote_event_attributes(
+        db=db,
+        server_id=server_id,
+        limit=limit,
+        page=page,
+        event_uuid=event_uuid,
+    )
+
+@router.get("/servers/{server_id}/events/{event_uuid}/objects")
+def get_remote_event_attributes(
+    server_id: int,
+    event_uuid: str,
+    limit: int = 10,
+    page: int = 0,
+    db: Session = Depends(get_db),
+    user: user_schemas.User = Security(
+        get_current_active_user, scopes=["servers:events_index"]
+    ),
+):
+    return servers_repository.get_remote_event_objects(
+        db=db,
+        server_id=server_id,
+        limit=limit,
+        page=page,
+        event_uuid=event_uuid,
     )

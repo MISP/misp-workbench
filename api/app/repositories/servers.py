@@ -661,7 +661,7 @@ def test_server_connection(db: Session, server_id: int) -> None:
         )
 
 
-def get_remote_server_events_index(
+def get_remote_events_index(
     db: Session,
     server_id: int,
     limit: int,
@@ -675,7 +675,7 @@ def get_remote_server_events_index(
     analysis_level: str = None,
     timestamp_from: str = None,
     timestamp_to: str = None,
-) -> None:
+):
     db_server = get_server_by_id(db, server_id=server_id)
 
     if db_server is None:
@@ -686,21 +686,72 @@ def get_remote_server_events_index(
     try:
         remote_misp = get_remote_misp_connection(db_server)
 
-        timestamp = (timestamp_from, timestamp_to) if timestamp_from and timestamp_to else timestamp_from or timestamp_to
+        timestamp = (
+            (timestamp_from, timestamp_to)
+            if timestamp_from and timestamp_to
+            else timestamp_from or timestamp_to
+        )
 
         return remote_misp.search_index(
             published=True,
             limit=limit,
             page=page,
+            attribute=attribute_value,
             eventinfo=event_info,
             timestamp=timestamp,
             eventid=event_uuid,
             org=organisation,
             tags=tags,
-            # threat_level=threat_level,
-            # analysis=analysis_level,
+            threatlevel=threat_level,
+            analysis=analysis_level,
         )
     except Exception as ex:
         raise HTTPException(
             status_code=500, detail="Remote MISP instance not reachable"
         )
+
+
+def get_remote_event_attributes(
+    db: Session, server_id: int, event_uuid: str, limit: int, page: int
+):
+
+    db_server = get_server_by_id(db, server_id=server_id)
+
+    if db_server is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Server not found"
+        )
+
+    try:
+        remote_misp = get_remote_misp_connection(db_server)
+    except Exception as ex:
+        raise HTTPException(
+            status_code=500, detail="Remote MISP instance not reachable"
+        )
+
+    return remote_misp.search(
+        controller="attributes", eventid=event_uuid, limit=limit, page=page
+    )
+
+
+def get_remote_event_objects(
+    db: Session, server_id: int, event_uuid: str, limit: int, page: int
+):
+
+    db_server = get_server_by_id(db, server_id=server_id)
+
+    if db_server is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Server not found"
+        )
+
+    try:
+        remote_misp = get_remote_misp_connection(db_server)
+    except Exception as ex:
+        raise HTTPException(
+            status_code=500, detail="Remote MISP instance not reachable"
+        )
+
+    return remote_misp.search(
+        controller="objects", eventid=event_uuid, limit=limit, page=page
+    )
