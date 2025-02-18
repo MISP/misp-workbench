@@ -1,9 +1,9 @@
 <script setup>
-import EventViewRemote from "@/components/events/EventViewRemote.vue";
+import EventView from "@/components/events/EventView.vue";
 
-defineProps(["server_id", "uuid"]);
+defineProps(["id"]);
 </script>
 
 <template>
-  <EventViewRemote :server_id="server_id" :event_uuid="uuid" />
+  <EventView :event_id="id" />
 </template>
