@@ -230,7 +230,7 @@ def create_attributes_from_fetched_event(
             comment=attribute.comment,
             deleted=attribute.deleted,
             disable_correlation=attribute.disable_correlation,
-            object_id=attribute.object_id if attribute.object_id is not None and attribute.object_id > 0 else None,
+            object_id=None,
             object_relation=getattr(attribute, "object_relation", None),
             first_seen=(
                 int(attribute.first_seen.timestamp())
