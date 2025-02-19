@@ -14,3 +14,5 @@ export * from "./galaxies.store";
 export * from "./tags.store";
 export * from "./attachments.store";
 export * from "./remote-misp-events.store";
+export * from "./remote-misp-attributes.store";
+export * from "./remote-misp-objects.store";

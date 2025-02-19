@@ -3,6 +3,8 @@ import Spinner from "@/components/misc/Spinner.vue";
 import { storeToRefs } from "pinia";
 import TagsIndex from "@/components/tags/TagsIndex.vue";
 import DistributionLevel from "@/components/enums/DistributionLevel.vue";
+import AttributesIndexRemote from "@/components/attributes/AttributesIndexRemote.vue";
+import ObjectsIndexRemote from "@/components/objects/ObjectsIndexRemote.vue";
 import UUID from "@/components/misc/UUID.vue";
 import ThreatLevel from "@/components/enums/ThreatLevel.vue";
 import AnalysisLevel from "@/components/enums/AnalysisLevel.vue";
@@ -18,31 +20,12 @@ import {
 const props = defineProps(["server_id", "event_uuid"]);
 
 const remoteMISPEventsStore = useRemoteMISPEventsStore();
-const { remote_events, remote_event_attributes, remote_event_objects, status } =
-  storeToRefs(remoteMISPEventsStore);
+const { remote_events, status } = storeToRefs(remoteMISPEventsStore);
 
 remoteMISPEventsStore.get_remote_server_events_index(props.server_id, {
   event_uuid: props.event_uuid,
   limit: 1,
 });
-
-remoteMISPEventsStore.get_remote_server_event_attributes(
-  props.server_id,
-  props.event_uuid,
-  {
-    limit: 10,
-    page: 0,
-  },
-);
-
-remoteMISPEventsStore.get_remote_server_event_objects(
-  props.server_id,
-  props.event_uuid,
-  {
-    limit: 10,
-    page: 0,
-  },
-);
 </script>
 
 <style>
@@ -211,8 +194,10 @@ div.row h3 {
             <FontAwesomeIcon :icon="faShapes" /> objects
           </div>
           <div class="card-body d-flex flex-column">
-            <Spinner v-if="status.loading_objects" />
-            {{ remote_event_objects }}
+            <ObjectsIndexRemote
+              :server_id="server_id"
+              :event_uuid="remote_events[0].uuid"
+            />
           </div>
         </div>
       </div>
@@ -224,8 +209,11 @@ div.row h3 {
             <FontAwesomeIcon :icon="faCubesStacked" /> attributes
           </div>
           <div class="card-body d-flex flex-column">
-            <Spinner v-if="status.loading_attributes" />
-            {{ remote_event_attributes }}
+            <AttributesIndexRemote
+              v-if="remote_events[0].attribute_count"
+              :server_id="server_id"
+              :event_uuid="remote_events[0].uuid"
+            />
           </div>
         </div>
       </div>

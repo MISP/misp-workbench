@@ -15,6 +15,7 @@ import {
 import ThreatLevelSelect from "../enums/ThreatLevelSelect.vue";
 import AnalysisLevelSelect from "../enums/AnalysisLevelSelect.vue";
 import Datepicker from "@/components/misc/Datepicker.vue";
+import ApiError from "@/components/misc/ApiError.vue";
 
 const remoteMISPEventsStore = useRemoteMISPEventsStore();
 
@@ -272,6 +273,12 @@ function searchRemoteMISPEvents() {
       </table>
       <div class="text-center">
         <Spinner v-if="status.loading" />
+      </div>
+      <div
+        v-if="status.error"
+        class="w-100 alert alert-danger mt-3 mb-3 text-center"
+      >
+        <ApiError :errors="status.error" />
       </div>
     </div>
   </div>

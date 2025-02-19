@@ -1,12 +1,41 @@
 <script setup>
-import { ref, onMounted } from "vue";
+import { authHelper } from "@/helpers";
+import { ref, onMounted, computed } from "vue";
 import { Modal } from "bootstrap";
 import { storeToRefs } from "pinia";
-import { useModulesStore } from "@/stores";
+import { useModulesStore, useAuthStore } from "@/stores";
 import DeleteAttributeModal from "@/components/attributes/DeleteAttributeModal.vue";
 import EnrichAttributeModal from "@/components/attributes/EnrichAttributeModal.vue";
 
-const props = defineProps(["attribute"]);
+const authStore = useAuthStore();
+const { scopes } = storeToRefs(authStore);
+
+const props = defineProps({
+  attribute: Object,
+  default_actions: {
+    type: Object,
+    default: () => ({}),
+  },
+});
+
+const actions = computed(() => ({
+  view:
+    props.default_actions.view ??
+    authHelper.hasScope(scopes.value, "attributes:view"),
+  enrich:
+    props.default_actions.enrich ??
+    authHelper.hasScope(scopes.value, "attributes:enrich"),
+  update:
+    props.default_actions.update ??
+    authHelper.hasScope(scopes.value, "attributes:update"),
+  delete:
+    props.default_actions.delete ??
+    authHelper.hasScope(scopes.value, "attributes:delete"),
+  tag:
+    props.default_actions.tag ??
+    authHelper.hasScope(scopes.value, "attributes:tag"),
+}));
+
 const emit = defineEmits([
   "attribute-created",
   "attribute-updated",
@@ -61,12 +90,14 @@ function handleAttributeEnriched() {
       aria-label="Attribute Actions"
     >
       <RouterLink
+        v-if="actions.view"
         :to="`/attributes/${attribute.id}`"
         class="btn btn-outline-primary"
       >
         <font-awesome-icon icon="fa-solid fa-eye" />
       </RouterLink>
       <button
+        v-if="actions.enrich"
         type="button"
         class="btn btn-outline-primary"
         @click="openEnrichAttributeModal"
@@ -74,6 +105,7 @@ function handleAttributeEnriched() {
         <font-awesome-icon icon="fa-solid fa-magic-wand-sparkles" />
       </button>
       <RouterLink
+        v-if="actions.update"
         :to="`/attributes/update/${attribute.id}`"
         class="btn btn-outline-primary"
       >
@@ -82,6 +114,7 @@ function handleAttributeEnriched() {
     </div>
     <div class="btn-group me-2" role="group">
       <button
+        v-if="actions.delete"
         type="button"
         class="btn btn-danger"
         @click="openDeleteAttributeModal"
