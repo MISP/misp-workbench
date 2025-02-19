@@ -5,6 +5,7 @@ from app.schemas import server as server_schemas
 from app.schemas import task as task_schemas
 from app.schemas import user as user_schemas
 from app.worker import tasks
+from app.settings import Settings
 from fastapi import APIRouter, Depends, HTTPException, Security, status
 from sqlalchemy.orm import Session
 
@@ -168,6 +169,7 @@ def get_remote_event_attributes(
         event_uuid=event_uuid,
     )
 
+
 @router.get("/servers/{server_id}/events/{event_uuid}/objects")
 def get_remote_event_attributes(
     server_id: int,
@@ -185,4 +187,31 @@ def get_remote_event_attributes(
         limit=limit,
         page=page,
         event_uuid=event_uuid,
+    )
+
+
+@router.post("/servers/{server_id}/events/{event_uuid}/pull")
+def pull_remote_event_by_uuid(
+    server_id: int,
+    event_uuid: str,
+    limit: int = 10,
+    page: int = 0,
+    db: Session = Depends(get_db),
+    user: user_schemas.User = Security(
+        get_current_active_user, scopes=["servers:pull"]
+    ),
+):
+    server = servers_repository.get_server_by_id(db, server_id)
+    if server is None:
+        raise Exception("Server not found")
+
+    remote_misp = servers_repository.get_remote_misp_connection(server)
+
+    return servers_repository.pull_event_by_uuid(
+        db=db,
+        server=server,
+        event_uuid=event_uuid,
+        remote_misp=remote_misp,
+        settings=Settings(),
+        user=user,
     )

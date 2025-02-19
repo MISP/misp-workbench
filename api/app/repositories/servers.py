@@ -151,7 +151,7 @@ def pull_server_by_id_full(
 
     # pull each of the events sequentially
     for event_id in event_ids:
-        pull_event_by_id(db, settings, server, event_id, remote_misp, user)
+        pull_event_by_uuid(db, settings, server, event_id, remote_misp, user)
 
     return {
         "message": "Pulling server ID: %s" % server.id,
@@ -173,7 +173,7 @@ def get_event_ids_from_server(server: server_schemas.Server, remote_misp: PyMISP
     return event_ids
 
 
-def pull_event_by_id(
+def pull_event_by_uuid(
     db: Session,
     settings: Settings,
     server: server_schemas.Server,
@@ -310,7 +310,10 @@ def update_pulled_attribute_before_insert(attribute: MISPAttribute) -> MISPAttri
     # TODO: handle MISP.enable_synchronisation_filtering_on_type / attributes pullRules
 
     attribute.distribution = downgrade_distribution(attribute.distribution)
-
+    
+    if attribute.object_id == "0":
+        attribute.object_id = None
+        
     # remove local tags obtained via pull
     attribute.tags = [tag for tag in attribute.tags if not tag.local]
 
@@ -382,6 +385,8 @@ def create_or_update_pulled_event(
             event.sharing_group_id = create_pulled_event_sharing_group(
                 db, event.SharingGroup, server, user
             )
+        else:
+            event.sharing_group_id = None
 
         created = events_repository.create_event_from_pulled_event(db, event)
         if created:
@@ -422,6 +427,8 @@ def create_or_update_pulled_event(
 
             if sharing_group_id > 0:
                 event.sharing_group_id = sharing_group_id
+            else:
+                event.sharing_group_id = None
 
         updated = events_repository.update_event_from_pulled_event(
             db, existing_event, event
@@ -730,7 +737,7 @@ def get_remote_event_attributes(
         )
 
     return remote_misp.search(
-        controller="attributes", eventid=event_uuid, limit=limit, page=page
+        controller="attributes", eventid=event_uuid, limit=limit, page=page,
     )
 
 

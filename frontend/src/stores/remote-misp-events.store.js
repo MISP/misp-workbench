@@ -37,11 +37,9 @@ export const useRemoteMISPEventsStore = defineStore("remote-misp-events", {
         .finally(() => (this.status.loading = false));
     },
     async pull_remote_misp_event(server_id, event_uuid) {
-      this.status.loading = true;
       return await fetchWrapper
         .post(`${baseUrl}/${server_id}/events/${event_uuid}/pull`)
-        .catch((error) => (this.status = { error }))
-        .finally(() => (this.status.loading = false));
+        .catch((error) => (this.status = { error }));
     },
   },
 });

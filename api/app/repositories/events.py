@@ -134,7 +134,9 @@ def update_event_from_pulled_event(
     existing_event.distribution = event_models.DistributionLevel(
         pulled_event.distribution
     )
-    existing_event.sharing_group_id = pulled_event.sharing_group_id
+    existing_event.sharing_group_id = pulled_event.sharing_group_id if int(
+        pulled_event.sharing_group_id
+    ) > 0 else None
     existing_event.threat_level = event_models.ThreatLevel(pulled_event.threat_level_id)
     existing_event.disable_correlation = pulled_event.disable_correlation
     existing_event.extends_uuid = pulled_event.extends_uuid or None

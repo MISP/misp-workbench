@@ -8,7 +8,7 @@ import ObjectsIndexRemote from "@/components/objects/ObjectsIndexRemote.vue";
 import UUID from "@/components/misc/UUID.vue";
 import ThreatLevel from "@/components/enums/ThreatLevel.vue";
 import AnalysisLevel from "@/components/enums/AnalysisLevel.vue";
-import { useRemoteMISPEventsStore } from "@/stores";
+import { useRemoteMISPEventsStore, useToastsStore } from "@/stores";
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
 import {
   faShapes,
@@ -19,6 +19,8 @@ import {
 
 const props = defineProps(["server_id", "event_uuid"]);
 
+const toastsStore = useToastsStore();
+
 const remoteMISPEventsStore = useRemoteMISPEventsStore();
 const { remote_events, status } = storeToRefs(remoteMISPEventsStore);
 
@@ -26,6 +28,12 @@ remoteMISPEventsStore.get_remote_server_events_index(props.server_id, {
   event_uuid: props.event_uuid,
   limit: 1,
 });
+
+function pullRemoteMISPEvent(event) {
+  // toastsStore.push("Event pull enqueued. Task ID: " + response.task.id);
+  toastsStore.push("Event pull enqueued.");
+  remoteMISPEventsStore.pull_remote_misp_event(props.server_id, event.uuid);
+}
 </script>
 
 <style>
@@ -64,8 +72,8 @@ div.row h3 {
               <button
                 type="button"
                 class="btn btn-outline-primary"
-                data-bs-toggle="modal"
-                :data-bs-target="'#deleteEventModal-' + remote_events[0].id"
+                title="Pull Remote Event"
+                @click="pullRemoteMISPEvent(remote_events[0].uuid)"
               >
                 <FontAwesomeIcon :icon="faDownload" />
               </button>

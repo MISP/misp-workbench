@@ -1,7 +1,7 @@
 <script setup>
 import Timestamp from "@/components/misc/Timestamp.vue";
 import Pagination from "@/components/misc/Pagination.vue";
-import { useRemoteMISPEventsStore } from "@/stores";
+import { useRemoteMISPEventsStore, useToastsStore } from "@/stores";
 import { reactive, computed } from "vue";
 import { storeToRefs } from "pinia";
 import Spinner from "@/components/misc/Spinner.vue";
@@ -23,6 +23,8 @@ const props = defineProps(["server"]);
 const { remote_events, page, size, status } = storeToRefs(
   remoteMISPEventsStore,
 );
+
+const toastsStore = useToastsStore();
 
 remoteMISPEventsStore.get_remote_server_events_index(props.server.id);
 
@@ -61,8 +63,9 @@ const resetFilters = () => {
   remoteMISPEventsStore.get_remote_server_events_index(props.server.id);
 };
 
-function pullRemoteMISPEvent(event_uuid) {
-  remoteMISPEventsStore.pull_remote_misp_event(props.server.id, event_uuid);
+function pullRemoteMISPEvent(event) {
+  toastsStore.push("Event pull enqueued.");
+  remoteMISPEventsStore.pull_remote_misp_event(props.server.id, event.uuid);
 }
 
 function handleNextPage() {
