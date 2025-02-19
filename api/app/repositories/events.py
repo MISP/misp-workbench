@@ -101,7 +101,7 @@ def create_event_from_pulled_event(db: Session, pulled_event: MISPEvent):
         distribution=event_models.DistributionLevel(pulled_event.distribution),
         sharing_group_id=(
             pulled_event.sharing_group_id
-            if int(pulled_event.sharing_group_id) > 0
+            if pulled_event.sharing_group_id is not None and int(pulled_event.sharing_group_id) > 0
             else None
         ),
         proposal_email_lock=pulled_event.proposal_email_lock,
