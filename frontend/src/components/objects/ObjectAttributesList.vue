@@ -105,12 +105,15 @@ function handleAttributeEnriched(attribute_id) {
           {{ attribute.value }}
         </td>
         <td style="width: 20%" class="d-none d-sm-table-cell">
-          <TagsIndex v-if="!actions.tag" :tags="attribute.tags" />
+          <TagsIndex
+            v-if="!actions.tag"
+            :tags="attribute.tags || attribute.AttributeTag || []"
+          />
           <TagsSelect
             v-if="actions.tag"
             :modelClass="'attribute'"
             :model="attribute"
-            :selectedTags="attribute.tags"
+            :selectedTags="attribute.tags || attribute.AttributeTag || []"
           />
         </td>
         <td style="width: 10%">{{ attribute.type }}</td>
