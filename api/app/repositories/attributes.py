@@ -50,7 +50,7 @@ def create_attribute(
     # TODO: Attribute::beforeValidate() && Attribute::$validate
     db_attribute = attribute_models.Attribute(
         event_id=attribute.event_id,
-        object_id=attribute.object_id if attribute.object_id > 0 else None,
+        object_id=attribute.object_id if attribute.object_id is not None and attribute.object_id > 0 else None,
         object_relation=attribute.object_relation,
         category=attribute.category,
         type=attribute.type,
@@ -104,7 +104,7 @@ def create_attribute_from_pulled_attribute(
             ),
             deleted=pulled_attribute.deleted,
             disable_correlation=pulled_attribute.disable_correlation,
-            object_id=pulled_attribute.object_id if pulled_attribute.object_id > 0 else None,
+            object_id=pulled_attribute.object_id if pulled_attribute.object_id is not None and pulled_attribute.object_id > 0 else None,
             object_relation=getattr(pulled_attribute, "object_relation", None),
             first_seen=(
                 pulled_attribute.first_seen.timestamp()
@@ -230,7 +230,7 @@ def create_attributes_from_fetched_event(
             comment=attribute.comment,
             deleted=attribute.deleted,
             disable_correlation=attribute.disable_correlation,
-            object_id=attribute.object_id if attribute.object_id > 0 else None,
+            object_id=attribute.object_id if attribute.object_id is not None and attribute.object_id > 0 else None,
             object_relation=getattr(attribute, "object_relation", None),
             first_seen=(
                 int(attribute.first_seen.timestamp())
