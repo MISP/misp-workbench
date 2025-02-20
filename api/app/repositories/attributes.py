@@ -403,7 +403,7 @@ def update_attributes_from_fetched_event(
 
             # process tags
             capture_attribute_tags(
-                db, db_attribute, updated_attribute.tags, local_event, user
+                db, db_attribute, updated_attribute.tags, local_event.id, user
             )
 
             # TODO: process galaxies
