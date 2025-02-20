@@ -194,8 +194,6 @@ def get_remote_event_attributes(
 def pull_remote_event_by_uuid(
     server_id: int,
     event_uuid: str,
-    limit: int = 10,
-    page: int = 0,
     db: Session = Depends(get_db),
     user: user_schemas.User = Security(
         get_current_active_user, scopes=["servers:pull"]

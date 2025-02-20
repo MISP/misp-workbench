@@ -434,12 +434,11 @@ def create_or_update_pulled_event(
             db, existing_event, event
         )
         if updated:
-            # TODO: process attribute updates
-            # TODO: process object updates
-
+            update_pulled_event_attributes(db, updated.id, event.attributes, server, user)
+            update_pulled_event_objects(db, updated.id, event.objects, server, user)
             create_pulled_event_tags(db, updated, event.tags, server, user)
-            create_pulled_attributes_tags(db, updated, event.attributes, server, user)
-            create_pulled_objects_tags(db, updated, event.objects, server, user)
+            # create_pulled_attributes_tags(db, updated, event.attributes, server, user)
+            # create_pulled_objects_tags(db, updated, event.objects, server, user)
 
             # TODO: publish event update to ZMQ
             logger.info("Updated event %s" % event.uuid)
@@ -486,18 +485,71 @@ def create_pulled_event_attributes(
         ).hexdigest()
         if hash not in hashes_dict:
             # see: app/Model/Attribute.php::captureAttribute()
-            pulled_attribute = (
+            local_attribute = (
                 attributes_repository.create_attribute_from_pulled_attribute(
-                    db, attribute, local_event_id
+                    db, attribute, local_event_id, user
                 )
             )
             attribute.event_id = local_event_id
-            attribute.id = pulled_attribute.id
+            attribute.id = local_attribute.id
 
             hashes_dict[hash] = True
 
     return attributes
 
+
+def update_pulled_event_attributes(
+    db: Session,
+    local_event_id: int,
+    attributes: list[MISPAttribute],
+    server: server_schemas.Server,
+    user: user_models.User,
+) -> None:
+    """
+    see: app/Model/Attribute.php::captureAttribute()
+    see: app/Model/Tag.php::captureTag()
+    see: app/Model/Tag.php::captureTagWithCache()
+    """
+
+    for pulled_attribute in attributes:
+        # see: app/Model/Attribute.php::captureAttribute()
+        local_attribute = attributes_repository.get_attribute_by_uuid(db, pulled_attribute.uuid)
+        
+        if local_attribute is None:
+            attributes_repository.create_attribute_from_pulled_attribute(
+                db, pulled_attribute, local_event_id, user
+            )
+        else:
+            # see: app/Model/Attribute.php::edit()
+            attributes_repository.update_attribute_from_pulled_attribute(
+                db, local_attribute, pulled_attribute, local_event_id, user
+            )
+            
+def update_pulled_event_objects(
+    db: Session,
+    local_event_id: int,
+    objects: list[MISPObject],
+    server: server_schemas.Server,
+    user: user_models.User,
+) -> None:
+    """
+    see: app/Model/MispObject.php::captureObject()
+    see: app/Model/MispObject.php::checkForDuplicateObjects()
+    """
+
+    for object in objects:
+        # see: app/Model/MispObject.php::captureObject()
+        local_object = objects_repository.get_object_by_uuid(db, object.uuid)
+        
+        if local_object is None:
+            objects_repository.create_object_from_pulled_object(
+                db, object, local_event_id, user
+            )
+        else:
+            # see: app/Model/MispObject.php::edit()
+            objects_repository.update_object_from_pulled_object(
+                db, local_object, object, local_event_id, user
+            )
 
 def create_pulled_event_objects(
     db: Session,
@@ -514,7 +566,7 @@ def create_pulled_event_objects(
         # see: app/Model/MispObject.php::captureObject()
         # TODO: app/Model/MispObject.php::checkForDuplicateObjects()
         db_object = objects_repository.create_object_from_pulled_object(
-            db, object, local_event_id
+            db, object, local_event_id, user
         )
         object.id = db_object.id
         object.event_id = local_event_id

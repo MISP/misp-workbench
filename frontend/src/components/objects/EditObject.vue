@@ -44,8 +44,8 @@ function handleObjectAttributeUpdated(event) {
 }
 
 function handleObjectAttributeDeleted(event) {
-  if (event.attribute.id) {
-    deletedAttributes.value.push(event.attribute.id);
+  if (event.attribute.uuid) {
+    deletedAttributes.value.push(event.attribute.uuid);
   } else {
     newAttributes.value = newAttributes.value.filter(
       (attribute) => attribute.value !== event.attribute.value,

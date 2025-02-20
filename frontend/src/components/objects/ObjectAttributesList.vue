@@ -99,7 +99,10 @@ function handleAttributeEnriched(attribute_id) {
       </tr>
     </thead>
     <tbody>
-      <tr :key="attribute.id" v-for="attribute in attributes">
+      <tr
+        :key="attribute.id"
+        v-for="attribute in attributes.filter((a) => !a.deleted)"
+      >
         <td class="value">
           <CopyToClipboard :value="attribute.value" />
           {{ attribute.value }}
