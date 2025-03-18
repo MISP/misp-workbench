@@ -163,7 +163,7 @@ def create_object_from_pulled_object(
 
 
 def update_object_from_pulled_object(
-    db: Session, local_object: object_models.Object, pulled_object: MISPObject, local_event_id: int, user: user_models.User) -> MISPObject:
+    db: Session, local_object: object_models.Object, pulled_object: MISPObject, local_event_id: int, user: user_models.User):
     
     if local_object.timestamp < pulled_object.timestamp.timestamp():
         # find object attributes to delete
