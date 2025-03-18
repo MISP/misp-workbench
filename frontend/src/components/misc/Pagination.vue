@@ -1,6 +1,16 @@
 <script setup>
 const emit = defineEmits(["prevPageClick", "nextPageClick"]);
 defineProps(["currentPage", "hasPrevPage", "hasNextPage"]);
+
+function nextPageClick(event) {
+  event.preventDefault();
+  emit("nextPageClick");
+}
+
+function prevPageClick(event) {
+  event.preventDefault();
+  emit("prevPageClick");
+}
 </script>
 
 <style>
@@ -16,7 +26,7 @@ ul.pagination {
         <a
           class="page-link"
           href="#"
-          @click="emit('prevPageClick')"
+          @click="prevPageClick($event)"
           :class="{ disabled: !hasPrevPage }"
           >Previous</a
         >
@@ -26,7 +36,7 @@ ul.pagination {
         <a
           class="page-link"
           href="#"
-          @click="emit('nextPageClick')"
+          @click="nextPageClick($event)"
           :class="{ disabled: !hasNextPage }"
           >Next</a
         >
