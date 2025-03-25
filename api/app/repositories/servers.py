@@ -81,9 +81,9 @@ def get_remote_misp_connection(server: server_models.Server):
     try:
         remote_misp = PyMISP(url=server.url, key=server.authkey, ssl=verify_cert)
         remote_misp_version = remote_misp.misp_instance_version
-    except Exception:
+    except Exception as ex:
         raise HTTPException(
-            status_code=500, detail="Remote MISP instance not reachable"
+            status_code=500, detail="Remote MISP instance not reachable: %s" % ex
         )
     # check sync permissions
     if not remote_misp_version["perm_sync"]:
@@ -192,6 +192,7 @@ def pull_event_by_uuid(
         "includeEventCorrelations": 0,
         "includeFeedCorrelations": 0,
         "includeWarninglistHits": 0,
+        "withAttachments": 1
     }
 
     if server.internal:
@@ -437,8 +438,6 @@ def create_or_update_pulled_event(
             update_pulled_event_attributes(db, updated.id, event.attributes, server, user)
             update_pulled_event_objects(db, updated.id, event.objects, server, user)
             create_pulled_event_tags(db, updated, event.tags, server, user)
-            # create_pulled_attributes_tags(db, updated, event.attributes, server, user)
-            # create_pulled_objects_tags(db, updated, event.objects, server, user)
 
             # TODO: publish event update to ZMQ
             logger.info("Updated event %s" % event.uuid)
@@ -766,7 +765,7 @@ def get_remote_events_index(
         )
     except Exception as ex:
         raise HTTPException(
-            status_code=500, detail="Remote MISP instance not reachable"
+            status_code=500, detail="Remote MISP instance not reachable: %s" % ex
         )
 
 
@@ -785,11 +784,11 @@ def get_remote_event_attributes(
         remote_misp = get_remote_misp_connection(db_server)
     except Exception as ex:
         raise HTTPException(
-            status_code=500, detail="Remote MISP instance not reachable"
+            status_code=500, detail="Remote MISP instance not reachable: %s" % ex
         )
 
     return remote_misp.search(
-        controller="attributes", eventid=event_uuid, limit=limit, page=page,
+        controller="attributes", eventid=event_uuid, with_attachments=True, deleted=["0"], limit=limit, page=page
     )
 
 
@@ -808,9 +807,9 @@ def get_remote_event_objects(
         remote_misp = get_remote_misp_connection(db_server)
     except Exception as ex:
         raise HTTPException(
-            status_code=500, detail="Remote MISP instance not reachable"
+            status_code=500, detail="Remote MISP instance not reachable: %s" % ex
         )
 
     return remote_misp.search(
-        controller="objects", eventid=event_uuid, limit=limit, page=page
+        controller="objects", eventid=event_uuid, with_attachments=True, deleted=["0"], limit=limit, page=page
     )

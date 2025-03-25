@@ -8,6 +8,7 @@ from app.models import feed as feed_models
 from app.models import tag as tag_models
 from app.models import user as user_models
 from app.repositories import tags as tags_repository
+from app.repositories import attachments as attachments_repository
 from app.schemas import attribute as attribute_schemas
 from app.schemas import event as event_schemas
 from app.worker import tasks
@@ -127,6 +128,11 @@ def create_attribute_from_pulled_attribute(
             ),
         ),
     )
+    
+    if pulled_attribute.data is not None:
+        # store file
+        md5 = local_attribute.value.split("|")[1]
+        attachments_repository.store_attachment(pulled_attribute.data.getvalue(), md5)
 
     # TODO: process sigthings
     # TODO: process galaxies
@@ -180,6 +186,11 @@ def update_attribute_from_pulled_attribute(
             ))
         update_attribute(db, local_attribute.id, attribute_patch) 
     
+    if pulled_attribute.data is not None:
+        # store file
+        md5 = local_attribute.split("|")[1]
+        attachments_repository.store_attachment(pulled_attribute.data.getvalue(), md5)
+        
     capture_attribute_tags(db, local_attribute, pulled_attribute.tags, local_event_id, user)
     
     # TODO: process sigthings
