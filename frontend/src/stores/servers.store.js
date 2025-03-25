@@ -10,8 +10,14 @@ export const useServersStore = defineStore({
     servers: {},
     server: {},
     testConnection: {},
+    remote_events: {},
+    pages: 0,
+    page: 0,
+    size: 10,
+    total: 0,
     status: {
       loading: false,
+      loading_events: false,
       updating: false,
       creating: false,
       error: false,
@@ -24,7 +30,7 @@ export const useServersStore = defineStore({
         .get(baseUrl)
         .then((servers) => (this.servers = servers))
         .catch((error) => (this.status = { error }))
-        .finally(() => (this.status = { loading: false }));
+        .finally(() => (this.status.loading = false));
     },
     async getById(id) {
       this.status = { loading: true };
@@ -32,14 +38,14 @@ export const useServersStore = defineStore({
         .get(`${baseUrl}/${id}`)
         .then((server) => (this.server = server))
         .catch((error) => (this.status = { error }))
-        .finally(() => (this.status = { loading: false }));
+        .finally(() => (this.status.loading = false));
     },
     async create(server) {
       this.status = { creating: true };
       return await fetchWrapper
         .post(baseUrl, server)
         .then((response) => (this.server = response))
-        .finally(() => (this.status = { creating: false }));
+        .finally(() => (this.status.creating = false));
     },
     async update(server) {
       this.status = { updating: true };
@@ -47,7 +53,7 @@ export const useServersStore = defineStore({
         .patch(`${baseUrl}/${server.id}`, server)
         .then((response) => (this.server = response))
         .catch((error) => (this.error = error))
-        .finally(() => (this.status = { updating: false }));
+        .finally(() => (this.status.updating = false));
     },
     async delete(id) {
       this.status = { loading: true };

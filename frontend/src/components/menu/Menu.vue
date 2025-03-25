@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from "vue";
+import { ref, watchEffect } from "vue";
 import { useAuthStore } from "@/stores";
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
 import {
@@ -23,6 +23,10 @@ function setTheme(newTheme) {
   document.documentElement.setAttribute("data-bs-theme", newTheme);
   localStorage.setItem("theme", newTheme);
 }
+
+watchEffect(() => {
+  setTheme(theme.value);
+});
 
 function switchTheme() {
   setTheme(theme.value === "light" ? "dark" : "light");
@@ -101,7 +105,7 @@ function switchTheme() {
       <form class="d-flex">
         <button
           @click="authStore.logout()"
-          class="btn btn-sm btn-outline"
+          class="btn btn-sm btn-outline text-danger"
           type="button"
         >
           <FontAwesomeIcon :icon="faRightFromBracket" class="fa-xl" />

@@ -19,6 +19,7 @@ function handleSelectChange(event) {
     @change="handleSelectChange"
     :value="props.selected"
   >
+    <option value="" key="0"></option>
     <option v-for="(id, name) in ANALYSIS_LEVEL" :value="id" :key="id">
       {{ name }}
     </option>

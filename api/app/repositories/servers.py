@@ -81,9 +81,9 @@ def get_remote_misp_connection(server: server_models.Server):
     try:
         remote_misp = PyMISP(url=server.url, key=server.authkey, ssl=verify_cert)
         remote_misp_version = remote_misp.misp_instance_version
-    except Exception:
+    except Exception as ex:
         raise HTTPException(
-            status_code=500, detail="Remote MISP instance not reachable"
+            status_code=500, detail="Remote MISP instance not reachable: %s" % ex
         )
     # check sync permissions
     if not remote_misp_version["perm_sync"]:
@@ -151,7 +151,7 @@ def pull_server_by_id_full(
 
     # pull each of the events sequentially
     for event_id in event_ids:
-        pull_event_by_id(db, settings, server, event_id, remote_misp, user)
+        pull_event_by_uuid(db, settings, server, event_id, remote_misp, user)
 
     return {
         "message": "Pulling server ID: %s" % server.id,
@@ -173,7 +173,7 @@ def get_event_ids_from_server(server: server_schemas.Server, remote_misp: PyMISP
     return event_ids
 
 
-def pull_event_by_id(
+def pull_event_by_uuid(
     db: Session,
     settings: Settings,
     server: server_schemas.Server,
@@ -192,6 +192,7 @@ def pull_event_by_id(
         "includeEventCorrelations": 0,
         "includeFeedCorrelations": 0,
         "includeWarninglistHits": 0,
+        "withAttachments": 1
     }
 
     if server.internal:
@@ -310,7 +311,10 @@ def update_pulled_attribute_before_insert(attribute: MISPAttribute) -> MISPAttri
     # TODO: handle MISP.enable_synchronisation_filtering_on_type / attributes pullRules
 
     attribute.distribution = downgrade_distribution(attribute.distribution)
-
+    
+    if attribute.object_id == "0":
+        attribute.object_id = None
+        
     # remove local tags obtained via pull
     attribute.tags = [tag for tag in attribute.tags if not tag.local]
 
@@ -382,6 +386,8 @@ def create_or_update_pulled_event(
             event.sharing_group_id = create_pulled_event_sharing_group(
                 db, event.SharingGroup, server, user
             )
+        else:
+            event.sharing_group_id = None
 
         created = events_repository.create_event_from_pulled_event(db, event)
         if created:
@@ -422,17 +428,16 @@ def create_or_update_pulled_event(
 
             if sharing_group_id > 0:
                 event.sharing_group_id = sharing_group_id
+            else:
+                event.sharing_group_id = None
 
         updated = events_repository.update_event_from_pulled_event(
             db, existing_event, event
         )
         if updated:
-            # TODO: process attribute updates
-            # TODO: process object updates
-
+            update_pulled_event_attributes(db, updated.id, event.attributes, server, user)
+            update_pulled_event_objects(db, updated.id, event.objects, server, user)
             create_pulled_event_tags(db, updated, event.tags, server, user)
-            create_pulled_attributes_tags(db, updated, event.attributes, server, user)
-            create_pulled_objects_tags(db, updated, event.objects, server, user)
 
             # TODO: publish event update to ZMQ
             logger.info("Updated event %s" % event.uuid)
@@ -479,18 +484,71 @@ def create_pulled_event_attributes(
         ).hexdigest()
         if hash not in hashes_dict:
             # see: app/Model/Attribute.php::captureAttribute()
-            pulled_attribute = (
+            local_attribute = (
                 attributes_repository.create_attribute_from_pulled_attribute(
-                    db, attribute, local_event_id
+                    db, attribute, local_event_id, user
                 )
             )
             attribute.event_id = local_event_id
-            attribute.id = pulled_attribute.id
+            attribute.id = local_attribute.id
 
             hashes_dict[hash] = True
 
     return attributes
 
+
+def update_pulled_event_attributes(
+    db: Session,
+    local_event_id: int,
+    attributes: list[MISPAttribute],
+    server: server_schemas.Server,
+    user: user_models.User,
+) -> None:
+    """
+    see: app/Model/Attribute.php::captureAttribute()
+    see: app/Model/Tag.php::captureTag()
+    see: app/Model/Tag.php::captureTagWithCache()
+    """
+
+    for pulled_attribute in attributes:
+        # see: app/Model/Attribute.php::captureAttribute()
+        local_attribute = attributes_repository.get_attribute_by_uuid(db, pulled_attribute.uuid)
+        
+        if local_attribute is None:
+            attributes_repository.create_attribute_from_pulled_attribute(
+                db, pulled_attribute, local_event_id, user
+            )
+        else:
+            # see: app/Model/Attribute.php::edit()
+            attributes_repository.update_attribute_from_pulled_attribute(
+                db, local_attribute, pulled_attribute, local_event_id, user
+            )
+            
+def update_pulled_event_objects(
+    db: Session,
+    local_event_id: int,
+    objects: list[MISPObject],
+    server: server_schemas.Server,
+    user: user_models.User,
+) -> None:
+    """
+    see: app/Model/MispObject.php::captureObject()
+    see: app/Model/MispObject.php::checkForDuplicateObjects()
+    """
+
+    for object in objects:
+        # see: app/Model/MispObject.php::captureObject()
+        local_object = objects_repository.get_object_by_uuid(db, object.uuid)
+        
+        if local_object is None:
+            objects_repository.create_object_from_pulled_object(
+                db, object, local_event_id, user
+            )
+        else:
+            # see: app/Model/MispObject.php::edit()
+            objects_repository.update_object_from_pulled_object(
+                db, local_object, object, local_event_id, user
+            )
 
 def create_pulled_event_objects(
     db: Session,
@@ -507,7 +565,7 @@ def create_pulled_event_objects(
         # see: app/Model/MispObject.php::captureObject()
         # TODO: app/Model/MispObject.php::checkForDuplicateObjects()
         db_object = objects_repository.create_object_from_pulled_object(
-            db, object, local_event_id
+            db, object, local_event_id, user
         )
         object.id = db_object.id
         object.event_id = local_event_id
@@ -659,3 +717,99 @@ def test_server_connection(db: Session, server_id: int) -> None:
             status="error",
             error=ex.detail,
         )
+
+
+def get_remote_events_index(
+    db: Session,
+    server_id: int,
+    limit: int,
+    page: int,
+    event_info: str = None,
+    attribute_value: str = None,
+    event_uuid: str = None,
+    organisation: str = None,
+    tags: str = None,
+    threat_level: str = None,
+    analysis_level: str = None,
+    timestamp_from: str = None,
+    timestamp_to: str = None,
+):
+    db_server = get_server_by_id(db, server_id=server_id)
+
+    if db_server is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Server not found"
+        )
+
+    try:
+        remote_misp = get_remote_misp_connection(db_server)
+
+        timestamp = (
+            (timestamp_from, timestamp_to)
+            if timestamp_from and timestamp_to
+            else timestamp_from or timestamp_to
+        )
+
+        return remote_misp.search_index(
+            published=True,
+            limit=limit,
+            page=page,
+            attribute=attribute_value,
+            eventinfo=event_info,
+            timestamp=timestamp,
+            eventid=event_uuid,
+            org=organisation,
+            tags=tags,
+            threatlevel=threat_level,
+            analysis=analysis_level,
+        )
+    except Exception as ex:
+        raise HTTPException(
+            status_code=500, detail="Remote MISP instance not reachable: %s" % ex
+        )
+
+
+def get_remote_event_attributes(
+    db: Session, server_id: int, event_uuid: str, limit: int, page: int
+):
+
+    db_server = get_server_by_id(db, server_id=server_id)
+
+    if db_server is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Server not found"
+        )
+
+    try:
+        remote_misp = get_remote_misp_connection(db_server)
+    except Exception as ex:
+        raise HTTPException(
+            status_code=500, detail="Remote MISP instance not reachable: %s" % ex
+        )
+
+    return remote_misp.search(
+        controller="attributes", eventid=event_uuid, with_attachments=True, deleted=["0"], limit=limit, page=page
+    )
+
+
+def get_remote_event_objects(
+    db: Session, server_id: int, event_uuid: str, limit: int, page: int
+):
+
+    db_server = get_server_by_id(db, server_id=server_id)
+
+    if db_server is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Server not found"
+        )
+
+    try:
+        remote_misp = get_remote_misp_connection(db_server)
+    except Exception as ex:
+        raise HTTPException(
+            status_code=500, detail="Remote MISP instance not reachable: %s" % ex
+        )
+
+    return remote_misp.search(
+        controller="objects", eventid=event_uuid, with_attachments=True, deleted=["0"], limit=limit, page=page
+    )

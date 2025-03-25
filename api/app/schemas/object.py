@@ -53,4 +53,4 @@ class ObjectUpdate(BaseModel):
     last_seen: Optional[int] = None
     new_attributes: Optional[list[AttributeCreate]] = []
     update_attributes: Optional[list[AttributeCreate]] = []
-    delete_attributes: Optional[list[int]] = []
+    delete_attributes: Optional[list[str]] = []

@@ -6,7 +6,6 @@ import os
 
 
 from fastapi.responses import StreamingResponse
-from datetime import timedelta
 from app.dependencies import get_minio_client
 from starlette import status
 import app.schemas.event as event_schemas
@@ -22,13 +21,42 @@ from fastapi import (
 
 logger = logging.getLogger(__name__)
 
+def store_attachment(
+    file_content,
+    md5: str,
+    settings: Settings = get_settings(),
+) -> str:
+    try:
+        # upload file to minio
+        if settings.Storage.engine == "minio":
+            MinioClient = get_minio_client()
+            MinioClient.put_object(
+                settings.Storage.minio.bucket,
+                md5,
+                io.BytesIO(file_content),
+                length=len(file_content),
+                part_size=10 * 1024 * 1024,
+            )
+
+        # upload file to local storage
+        if settings.Storage.engine == "local":
+            if os.path.exists("/tmp/attachments") is False:
+                os.makedirs("/tmp/attachments")
+
+            with open(f"/tmp/attachments/{md5}", "wb") as f:
+                f.write(file_content)
+    except Exception as e:
+        logger.error(f"Error storing attachment: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error storing attachment",
+        )
 
 def upload_attachments_to_event(
     db: Session,
     event: event_schemas.Event,
     attachments: list[UploadFile],
     attachments_meta: dict = None,
-    settings: Settings = get_settings(),
 ) -> list[object_schemas.Object]:
 
     file_objects = []
@@ -135,24 +163,7 @@ def upload_attachments_to_event(
 
             db_file_object = objects_repository.create_object(db, file_object)
 
-            # upload file to minio
-            if settings.Storage.engine == "minio":
-                MinioClient = get_minio_client()
-                MinioClient.put_object(
-                    settings.Storage.minio.bucket,
-                    sha256,
-                    io.BytesIO(file_content),
-                    length=len(file_content),
-                    part_size=10 * 1024 * 1024,
-                )
-
-            # upload file to local storage
-            if settings.Storage.engine == "local":
-                if os.path.exists("/tmp/attachments") is False:
-                    os.makedirs("/tmp/attachments")
-
-                with open(f"/tmp/attachments/{sha256}", "wb") as f:
-                    f.write(file_content)
+            store_attachment(file_content, md5)
 
             file_objects.append(db_file_object)
 
@@ -181,8 +192,8 @@ def download_attachment(
         )
 
     for attribute in db_object.attributes:
-        if attribute.type == "sha256":
-            sha256 = attribute.value
+        if attribute.type == "md5":
+            md5 = attribute.value
             break
 
     for attribute in db_object.attributes:
@@ -190,10 +201,10 @@ def download_attachment(
             file_name = attribute.value
             break
 
-    if not sha256:
+    if not md5:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="SHA256 attribute not found",
+            detail="MD5 attribute not found",
         )
 
     # get attachment from minio
@@ -201,23 +212,23 @@ def download_attachment(
         if settings.Storage.engine == "minio":
             MinioClient = get_minio_client()
 
-            data = MinioClient.get_object(settings.Storage.minio.bucket, sha256)
+            data = MinioClient.get_object(settings.Storage.minio.bucket, md5)
             return StreamingResponse(
                 io.BytesIO(data.read()),
                 media_type="application/octet-stream",
                 headers={
-                    "Content-Disposition": f'attachment; filename="{file_name or sha256}"'
+                    "Content-Disposition": f'attachment; filename="{file_name or md5}"'
                 },
             )
 
         # get attachment from local storage
         if settings.Storage.engine == "local":
-            with open(f"/tmp/attachments/{sha256}", "rb") as f:
+            with open(f"/tmp/attachments/{md5}", "rb") as f:
                 return StreamingResponse(
                     io.BytesIO(f.read()),
                     media_type="application/octet-stream",
                     headers={
-                        "Content-Disposition": f'attachment; filename="{file_name or sha256}"'
+                        "Content-Disposition": f'attachment; filename="{file_name or md5}"'
                     },
                 )
     except Exception as e:

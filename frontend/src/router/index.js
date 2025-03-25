@@ -18,6 +18,7 @@ import {
   ViewServer,
   EditServer,
   AddServer,
+  ExploreServer,
   EditEvent,
   AddEvent,
   ViewAttribute,
@@ -34,6 +35,7 @@ import {
   ViewObject,
   EditObject,
 } from "@/views";
+import EventViewRemote from "../components/events/EventViewRemote.vue";
 
 export const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -65,6 +67,12 @@ export const router = createRouter({
     { path: "/servers/:id", component: ViewServer, props: true },
     { path: "/servers/add", component: AddServer },
     { path: "/servers/update/:id", component: EditServer, props: true },
+    { path: "/servers/explore/:id", component: ExploreServer, props: true },
+    {
+      path: "/servers/explore/:server_id/events/:event_uuid",
+      component: EventViewRemote,
+      props: true,
+    },
     { path: "/settings/modules", component: IndexModules },
     { path: "/settings/taxonomies", component: IndexTaxonomies },
     { path: "/settings/galaxies", component: IndexGalaxies },

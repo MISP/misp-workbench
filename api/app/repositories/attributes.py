@@ -1,5 +1,6 @@
 import time
 from typing import Union
+from uuid import UUID
 
 from app.models import attribute as attribute_models
 from app.models import event as event_models
@@ -7,6 +8,7 @@ from app.models import feed as feed_models
 from app.models import tag as tag_models
 from app.models import user as user_models
 from app.repositories import tags as tags_repository
+from app.repositories import attachments as attachments_repository
 from app.schemas import attribute as attribute_schemas
 from app.schemas import event as event_schemas
 from app.worker import tasks
@@ -43,6 +45,14 @@ def get_attribute_by_id(
         .first()
     )
 
+def get_attribute_by_uuid(
+    db: Session, attribute_uuid: UUID
+) -> Union[attribute_models.Attribute, None]:
+    return (
+        db.query(attribute_models.Attribute)
+        .filter(attribute_models.Attribute.uuid == attribute_uuid)
+        .first()
+    )
 
 def create_attribute(
     db: Session, attribute: attribute_schemas.AttributeCreate
@@ -50,7 +60,7 @@ def create_attribute(
     # TODO: Attribute::beforeValidate() && Attribute::$validate
     db_attribute = attribute_models.Attribute(
         event_id=attribute.event_id,
-        object_id=attribute.object_id,
+        object_id=attribute.object_id if attribute.object_id is not None and attribute.object_id > 0 else None,
         object_relation=attribute.object_relation,
         category=attribute.category,
         type=attribute.type,
@@ -80,12 +90,12 @@ def create_attribute(
 
 
 def create_attribute_from_pulled_attribute(
-    db: Session, pulled_attribute: MISPAttribute, local_event_id: int
-) -> MISPAttribute:
+    db: Session, pulled_attribute: MISPAttribute, local_event_id: int, user: user_models.User
+) -> attribute_models.Attribute:
     # TODO: process sharing group // captureSG
     # TODO: enforce warninglist
 
-    db_attribute = create_attribute(
+    local_attribute = create_attribute(
         db,
         attribute_models.Attribute(
             event_id=local_event_id,
@@ -104,7 +114,7 @@ def create_attribute_from_pulled_attribute(
             ),
             deleted=pulled_attribute.deleted,
             disable_correlation=pulled_attribute.disable_correlation,
-            object_id=pulled_attribute.object_id,
+            object_id=pulled_attribute.object_id if pulled_attribute.object_id is not None and int(pulled_attribute.object_id) > 0 else None,
             object_relation=getattr(pulled_attribute, "object_relation", None),
             first_seen=(
                 pulled_attribute.first_seen.timestamp()
@@ -118,20 +128,78 @@ def create_attribute_from_pulled_attribute(
             ),
         ),
     )
+    
+    if pulled_attribute.data is not None:
+        # store file
+        md5 = local_attribute.value.split("|")[1]
+        attachments_repository.store_attachment(pulled_attribute.data.getvalue(), md5)
 
     # TODO: process sigthings
+    # TODO: process galaxies
 
-    db.add(db_attribute)
+    db.add(local_attribute)
     db.commit()
-    db.refresh(db_attribute)
+    db.refresh(local_attribute)
+    
+    capture_attribute_tags(db, local_attribute, pulled_attribute.tags, local_event_id, user)
 
-    pulled_attribute.id = db_attribute.id
+    pulled_attribute.id = local_attribute.id
     pulled_attribute.event_id = local_event_id
 
     tasks.handle_created_attribute.delay(pulled_attribute.id, pulled_attribute.object_id, pulled_attribute.event_id)
 
-    return pulled_attribute
+    return local_attribute
 
+def update_attribute_from_pulled_attribute(
+    db: Session, local_attribute: attribute_models.Attribute, pulled_attribute: MISPAttribute, local_event_id: int, user: user_models.User) -> attribute_models.Attribute:
+    
+    pulled_attribute.id = local_attribute.id
+    pulled_attribute.event_id = local_event_id
+    
+    if local_attribute.timestamp < pulled_attribute.timestamp.timestamp():
+        attribute_patch = attribute_schemas.AttributeUpdate(
+            event_id=local_event_id,
+            category=pulled_attribute.category,
+            type=pulled_attribute.type,
+            value=pulled_attribute.value,
+            to_ids=pulled_attribute.to_ids,
+            timestamp=pulled_attribute.timestamp.timestamp(),
+            distribution=event_schemas.DistributionLevel(pulled_attribute.distribution),
+            comment=pulled_attribute.comment,
+            sharing_group_id=(
+                pulled_attribute.sharing_group_id
+                if int(pulled_attribute.sharing_group_id) > 0
+                else local_attribute.sharing_group_id
+            ),
+            deleted=pulled_attribute.deleted,
+            disable_correlation=pulled_attribute.disable_correlation,
+            object_relation=getattr(pulled_attribute, "object_relation", local_attribute.object_relation),
+            first_seen=(
+                pulled_attribute.first_seen.timestamp()
+                if hasattr(pulled_attribute, "first_seen")
+                else local_attribute.first_seen
+            ),
+            last_seen=(
+                pulled_attribute.last_seen.timestamp()
+                if hasattr(pulled_attribute, "last_seen")
+                else local_attribute.last_seen
+            ))
+        update_attribute(db, local_attribute.id, attribute_patch) 
+    
+    if pulled_attribute.data is not None:
+        # store file
+        md5 = local_attribute.split("|")[1]
+        attachments_repository.store_attachment(pulled_attribute.data.getvalue(), md5)
+        
+    capture_attribute_tags(db, local_attribute, pulled_attribute.tags, local_event_id, user)
+    
+    # TODO: process sigthings
+    # TODO: process galaxies
+    
+    
+    return local_attribute
+            
+        
 
 def update_attribute(
     db: Session, attribute_id: int, attribute: attribute_schemas.AttributeUpdate
@@ -155,8 +223,12 @@ def update_attribute(
     return db_attribute
 
 
-def delete_attribute(db: Session, attribute_id: int) -> None:
-    db_attribute = get_attribute_by_id(db, attribute_id=attribute_id)
+def delete_attribute(db: Session, attribute_id: int|str) -> None:
+    
+    if isinstance(attribute_id, str):
+        db_attribute = get_attribute_by_uuid(db, attribute_uuid=UUID(attribute_id))
+    else:
+        db_attribute = get_attribute_by_id(db, attribute_id=attribute_id)
 
     if db_attribute is None:
         raise HTTPException(
@@ -176,7 +248,7 @@ def capture_attribute_tags(
     db: Session,
     db_attribute: attribute_models.Attribute,
     tags: list[MISPTag],
-    local_event: event_models.Event,
+    local_event_id: int,
     user: user_models.User,
 ):
     for tag in tags:
@@ -200,7 +272,7 @@ def capture_attribute_tags(
 
         db_attribute_tag = tag_models.AttributeTag(
             attribute=db_attribute,
-            event_id=local_event.id,
+            event_id=local_event_id,
             tag=db_tag,
             local=tag.local,
         )
@@ -252,7 +324,7 @@ def create_attributes_from_fetched_event(
         local_event.attribute_count += 1
 
         # process tags
-        capture_attribute_tags(db, db_attribute, attribute.tags, local_event, user)
+        capture_attribute_tags(db, db_attribute, attribute.tags, local_event.id, user)
 
         # TODO: process shadow_attributes
 
@@ -342,7 +414,7 @@ def update_attributes_from_fetched_event(
 
             # process tags
             capture_attribute_tags(
-                db, db_attribute, updated_attribute.tags, local_event, user
+                db, db_attribute, updated_attribute.tags, local_event.id, user
             )
 
             # TODO: process galaxies

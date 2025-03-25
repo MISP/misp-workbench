@@ -4,6 +4,7 @@ import { RouterLink } from "vue-router";
 import Spinner from "@/components/misc/Spinner.vue";
 import { useServersStore } from "@/stores";
 import DeleteServerModal from "@/components/servers/DeleteServerModal.vue";
+import ServerSyncActions from "@/components/servers/ServerSyncActions.vue";
 
 const serversStore = useServersStore();
 const { servers, status } = storeToRefs(serversStore);
@@ -12,33 +13,6 @@ serversStore.getAll();
 
 function handleServerDeleted() {
   serversStore.getAll();
-}
-
-function testServerConnection(server) {
-  server.testingConnection = true;
-  serversStore
-    .testConnection(server.id)
-    .then((response) => {
-      if (response.status == "ok") {
-        server.connectionSucceeded = true;
-      } else {
-        server.connectionSucceeded = false;
-        server.connectionFailed = true;
-        server.connectionError = response.error;
-      }
-      server.testingConnection = false;
-    })
-    .catch((error) => {
-      server.connectionSucceeded = false;
-      setErrors({ apiError: error });
-    })
-    .finally(() => {
-      server.testingConnection = false;
-    });
-}
-
-function pullServer(server) {
-  serversStore.pull(server.id);
 }
 </script>
 
@@ -70,74 +44,7 @@ function pullServer(server) {
           <td v-if="!$isMobile">{{ server.url }}</td>
           <td v-if="!$isMobile">{{ server.org_id }}</td>
           <td>
-            <div class="flex-wrap btn-group" aria-label="Sync Actions">
-              <button
-                v-if="
-                  !server.testingConnection &&
-                  !server.connectionSucceeded &&
-                  !server.connectionFailed
-                "
-                type="button"
-                class="btn btn-outline-primary"
-                @click="testServerConnection(server)"
-                data-toggle="tooltip"
-                data-placement="top"
-                title="Check connection"
-              >
-                <font-awesome-icon icon="fa-solid fa-check" />
-              </button>
-              <button
-                v-if="server.testingConnection"
-                type="button"
-                class="btn btn-light"
-              >
-                <font-awesome-icon icon="fa-solid fa-sync" spin />
-              </button>
-              <button
-                v-if="
-                  !server.testingConnection &&
-                  server.connectionFailed &&
-                  !server.connectionSucceeded
-                "
-                type="button"
-                class="btn btn-danger"
-                @click="testServerConnection(server)"
-                data-toggle="tooltip"
-                data-placement="top"
-                :title="'Connection failed: ' + server.connectionError"
-              >
-                <font-awesome-icon icon="fa-solid fa-xmark" />
-              </button>
-              <button
-                v-if="server.connectionSucceeded"
-                type="button"
-                class="btn btn-success"
-                data-toggle="tooltip"
-                data-placement="top"
-                title="Connection succeed"
-              >
-                <font-awesome-icon icon="fa-solid fa-check" />
-              </button>
-              <button
-                type="button"
-                class="btn btn-outline-primary"
-                disabled
-                data-toggle="tooltip"
-                data-placement="top"
-                title="Push"
-              >
-                <font-awesome-icon icon="fa-solid fa-upload" />
-              </button>
-              <button
-                type="button"
-                class="btn btn-outline-primary"
-                data-placement="top"
-                title="Pull"
-                @click="pullServer(server)"
-              >
-                <font-awesome-icon icon="fa-solid fa-download" />
-              </button>
-            </div>
+            <ServerSyncActions :server="server" />
           </td>
           <td class="text-end">
             <div class="btn-toolbar float-end" role="toolbar">

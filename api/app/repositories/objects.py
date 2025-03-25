@@ -6,6 +6,7 @@ from app.models import attribute as attribute_models
 from app.models import event as event_models
 from app.models import feed as feed_models
 from app.models import object as object_models
+from app.models import user as user_models
 from app.models import object_reference as object_reference_models
 from app.repositories import attributes as attributes_repository
 from app.repositories import object_references as object_references_repository
@@ -47,6 +48,12 @@ def get_object_by_id(db: Session, object_id: int):
         .first()
     )
 
+def get_object_by_uuid(db: Session, object_uuid: uuid.UUID):
+    return (
+        db.query(object_models.Object)
+        .filter(object_models.Object.uuid == object_uuid)
+        .first()
+    )
 
 def create_object(
     db: Session, object: object_schemas.ObjectCreate
@@ -95,7 +102,7 @@ def create_object(
 
 
 def create_object_from_pulled_object(
-    db: Session, pulled_object: MISPObject, local_event_id: int
+    db: Session, pulled_object: MISPObject, local_event_id: int, user: user_models.User
 ) -> MISPObject:
     # TODO: process sharing group // captureSG
     # TODO: enforce warninglist
@@ -142,7 +149,7 @@ def create_object_from_pulled_object(
         pulled_attribute.object_id = db_object.id
         pulled_attribute.event_id = local_event_id
         db_attribute = attributes_repository.create_attribute_from_pulled_attribute(
-            db, pulled_attribute, local_event_id
+            db, pulled_attribute, local_event_id, user
         )
         pulled_attribute.id = db_attribute.id
 
@@ -153,6 +160,60 @@ def create_object_from_pulled_object(
         )
 
     return pulled_object
+
+
+def update_object_from_pulled_object(
+    db: Session, local_object: object_models.Object, pulled_object: MISPObject, local_event_id: int, user: user_models.User):
+    
+    if local_object.timestamp < pulled_object.timestamp.timestamp():
+        # find object attributes to delete
+        local_object_attribute_uuids = [attribute.uuid for attribute in local_object.attributes]
+        pulled_object_attribute_uuids = [attribute.uuid for attribute in pulled_object.attributes]
+        delete_attributes = [str(uuid) for uuid in local_object_attribute_uuids if uuid not in pulled_object_attribute_uuids]
+
+        for pulled_object_attribute in pulled_object.attributes:
+            pulled_object_attribute.object_id = local_object.id
+            local_attribute = attributes_repository.get_attribute_by_uuid(db, pulled_object_attribute.uuid)
+            if local_attribute is None:
+                local_attribute = attributes_repository.create_attribute_from_pulled_attribute(
+                    db, pulled_object_attribute, local_event_id, user
+                )
+            else:
+                pulled_object_attribute.id = local_attribute.id
+                attributes_repository.update_attribute_from_pulled_attribute(
+                    db, local_attribute, pulled_object_attribute, local_event_id, user
+                )
+                
+        object_patch = object_schemas.ObjectUpdate(
+            event_id=local_event_id,
+            name=pulled_object.name,
+            meta_category=pulled_object["meta-category"],
+            description=pulled_object.description,
+            template_uuid=pulled_object.template_uuid,
+            template_version=pulled_object.template_version,
+            timestamp=pulled_object.timestamp.timestamp(),
+            distribution=event_schemas.DistributionLevel(pulled_object.distribution),
+            sharing_group_id=(
+                pulled_object.sharing_group_id
+                if int(pulled_object.sharing_group_id) > 0
+                else None
+            ),
+            comment=pulled_object.comment,
+            deleted=pulled_object.deleted,
+            first_seen=(
+                pulled_object.first_seen.timestamp()
+                if hasattr(pulled_object, "first_seen")
+                else local_object.first_seen
+            ),
+            last_seen=(
+                pulled_object.last_seen.timestamp()
+                if hasattr(pulled_object, "last_seen")
+                else local_object.last_seen
+            ),
+            delete_attributes=delete_attributes,
+        )
+        
+        update_object(db, local_object.id, object_patch)
 
 
 def update_object(

@@ -38,9 +38,18 @@ div.row h3 {
       ></span>
     </span>
     <div v-if="!status.loading">
-      <div class="card-header">
-        <span class="h4"> {{ object.name }} #{{ object.id }} </span>
-        <ObjectActions :object="object" @object-deleted="handleObjectDeleted" />
+      <div class="event-title card-header border-bottom">
+        <div class="row">
+          <div class="col-10">
+            <h3>{{ object.name }} #{{ object.id }}</h3>
+          </div>
+          <div class="col-2 text-end">
+            <ObjectActions
+              :object="object"
+              @object-deleted="handleObjectDeleted"
+            />
+          </div>
+        </div>
       </div>
       <div class="row m-1">
         <div class="col-sm-6 mt-2">

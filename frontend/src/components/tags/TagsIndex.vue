@@ -24,9 +24,9 @@ defineProps({
   <div class="col-auto">
     <Badge
       v-for="tag in tags"
-      :key="tag.name"
-      :value="tag.name"
-      :colour="tag.colour"
+      :key="tag.name || tag.Tag.name"
+      :value="tag.name || tag.Tag.name"
+      :colour="tag.colour || tag.Tag.colour"
     />
   </div>
 </template>

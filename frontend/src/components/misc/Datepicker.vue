@@ -1,20 +1,10 @@
-<template>
-  <div>
-    <input
-      ref="datepickerInput"
-      class="form-control"
-      :class="{ 'is-invalid': error }"
-      @blur="setTouched"
-    />
-    <span v-if="error" class="error-message">{{ error }}</span>
-  </div>
-</template>
-
 <script setup>
 import { ref, onMounted, onUnmounted, computed, watch } from "vue";
 import flatpickr from "flatpickr";
 import "flatpickr/dist/flatpickr.min.css";
 import { useField } from "vee-validate";
+import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
+import { faCalendar, faDeleteLeft } from "@fortawesome/free-solid-svg-icons";
 
 const props = defineProps({
   name: {
@@ -91,3 +81,29 @@ const error = computed(() => errorMessage.value);
   font-size: 0.875rem;
 }
 </style>
+
+<template>
+  <div>
+    <div class="input-group d-flex">
+      <span class="input-group-text">
+        <FontAwesomeIcon :icon="faCalendar" />
+      </span>
+      <input
+        ref="datepickerInput"
+        class="form-control"
+        :class="{ 'is-invalid': error }"
+        @blur="setTouched"
+      />
+
+      <span
+        class="input-group-text"
+        v-if="datepickerInstance && datepickerInstance.selectedDates.length"
+      >
+        <a href="#" @click="datepickerInstance.clear()" aria-label="Clear date">
+          <FontAwesomeIcon :icon="faDeleteLeft" class="text-danger" />
+        </a>
+      </span>
+      <span v-if="error" class="error-message">{{ error }}</span>
+    </div>
+  </div>
+</template>

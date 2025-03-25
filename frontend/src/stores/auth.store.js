@@ -11,6 +11,8 @@ export const useAuthStore = defineStore({
     access_token: localStorage.getItem("access_token"),
     decoded_access_token:
       JSON.parse(localStorage.getItem("decoded_access_token")) || {},
+    scopes:
+      JSON.parse(localStorage.getItem("decoded_access_token")).scopes || [],
     returnUrl: null,
   }),
   actions: {
@@ -19,6 +21,7 @@ export const useAuthStore = defineStore({
 
       this.access_token = response.access_token;
       this.decoded_access_token = jwt_decode(this.access_token);
+      this.scopes = this.decoded_access_token.scopes;
 
       localStorage.setItem("access_token", this.access_token);
 
