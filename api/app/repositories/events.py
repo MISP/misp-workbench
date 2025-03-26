@@ -2,6 +2,7 @@ import logging
 import time
 from datetime import datetime
 
+from app.dependencies import get_opensearch_client
 from app.models import event as event_models
 from app.models import feed as feed_models
 from app.models import tag as tag_models
@@ -32,6 +33,27 @@ def get_events(db: Session, info: str = None, deleted: bool = None, uuid: str = 
 
     return paginate(db, query)
 
+
+def search_events(query: str = None, page: int = 0 , from_value: int = 0, size: int = 10):
+    OpenSearchClient = get_opensearch_client()
+    search_body = {
+        "query": {
+            "query_string": {
+                "query": query,
+                "default_field": "info"
+            }
+        },
+        "from": from_value,
+        "size": size
+    }
+    response = OpenSearchClient.search(index="misp-events", body=search_body)
+    
+    return {
+        "page": page,
+        "size": size,
+        "total": response["hits"]["total"]["value"],  # Total number of matches
+        "results": response["hits"]["hits"]
+    }
 
 def get_event_by_id(db: Session, event_id: int):
     return (

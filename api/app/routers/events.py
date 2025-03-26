@@ -20,6 +20,7 @@ from fastapi import (
     Security,
     UploadFile,
     Form,
+    Query
 )
 from fastapi_pagination import Page
 from sqlalchemy.orm import Session
@@ -36,7 +37,6 @@ async def get_events_parameters(
 ):
     return {"info": info, "deleted": deleted, "uuid": uuid}
 
-
 @router.get("/events/", response_model=Page[event_schemas.Event])
 async def get_events(
     params: dict = Depends(get_events_parameters),
@@ -47,6 +47,17 @@ async def get_events(
         db, params["info"], params["deleted"], params["uuid"]
     )
 
+@router.get("/events/search")
+async def search_events(
+    query: str = Query(..., min_length=1),
+    page: int = Query(1, ge=1),
+    size: int = Query(10, ge=1, le=100),
+    user: user_schemas.User = Security(get_current_active_user, scopes=["events:read"]),
+):
+    
+    from_value = (page - 1) * size
+    
+    return events_repository.search_events(query, page, from_value, size)
 
 @router.get("/events/{event_id}", response_model=event_schemas.Event)
 def get_event_by_id(
@@ -190,9 +201,12 @@ async def upload_attachments(
     if attachments_meta:
         attachments_meta = json.loads(attachments_meta)
 
-    return attachments_repository.upload_attachments_to_event(
+    objects = attachments_repository.upload_attachments_to_event(
         db=db, event=event, attachments=attachments, attachments_meta=attachments_meta
     )
+    tasks.index_event.delay(event.uuid)
+    
+    return objects
 
 
 @router.get(
