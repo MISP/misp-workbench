@@ -57,7 +57,7 @@ def get_or_create_predicate(db: Session, db_taxonomy, raw_predicate):
                 else raw_predicate["value"]
             ),
             value=raw_predicate["value"],
-            colour=(raw_predicate["colour"] if "colour" in raw_predicate else ""),
+            colour=(raw_predicate["colour"] if "colour" in raw_predicate else "#ffffff"),
         )
     return db_predicate
 
@@ -75,7 +75,7 @@ def get_or_create_predicate_tag(db: Session, db_taxonomy, db_predicate):
     if db_predicate_tag is None:
         db_predicate_tag = tags_models.Tag(
             name=predicate_tag,
-            colour=db_predicate.colour,
+            colour=db_predicate.colour or "#ffffff",
             exportable=False,
             hide_tag=False,
             is_galaxy=False,
@@ -128,7 +128,7 @@ def get_or_create_predicate_entry_tag(
     if db_predicate_entry_tag is None:
         db_predicate_entry_tag = tags_models.Tag(
             name=predicate_entry_tag,
-            colour=db_predicate_entry.colour,
+            colour=db_predicate_entry.colour or "#ffffff",
             exportable=False,
             hide_tag=False,
             is_galaxy=False,
