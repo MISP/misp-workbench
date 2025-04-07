@@ -19,7 +19,7 @@ cryptography = "^43.0.1"
 aiofiles = "^0.8.0"
 celery = "^5.2.7"
 flower = "^1.0.0"
-Jinja2 = "^3.1.5"
+Jinja2 = "^3.1.6"
 redis = "^4.3.3"
 typer = {extras = ["all"], version = "^0.12.3"}
 fastapi-pagination = "^0.12.24"
