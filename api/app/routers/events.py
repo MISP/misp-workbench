@@ -20,7 +20,7 @@ from fastapi import (
     Security,
     UploadFile,
     Form,
-    Query
+    Query,
 )
 from fastapi_pagination import Page
 from sqlalchemy.orm import Session
@@ -37,6 +37,7 @@ async def get_events_parameters(
 ):
     return {"info": info, "deleted": deleted, "uuid": uuid}
 
+
 @router.get("/events/", response_model=Page[event_schemas.Event])
 async def get_events(
     params: dict = Depends(get_events_parameters),
@@ -47,6 +48,7 @@ async def get_events(
         db, params["info"], params["deleted"], params["uuid"]
     )
 
+
 @router.get("/events/search")
 async def search_events(
     query: str = Query(..., min_length=1),
@@ -54,10 +56,11 @@ async def search_events(
     size: int = Query(10, ge=1, le=100),
     user: user_schemas.User = Security(get_current_active_user, scopes=["events:read"]),
 ):
-    
+
     from_value = (page - 1) * size
-    
+
     return events_repository.search_events(query, page, from_value, size)
+
 
 @router.get("/events/{event_id}", response_model=event_schemas.Event)
 def get_event_by_id(
@@ -205,7 +208,7 @@ async def upload_attachments(
         db=db, event=event, attachments=attachments, attachments_meta=attachments_meta
     )
     tasks.index_event.delay(event.uuid)
-    
+
     return objects
 
 
@@ -230,4 +233,26 @@ def get_event_attachments(
         template_uuid=[
             "688c46fb-5edb-40a3-8273-1af7923e2215"  # TODO: get the object template from the json file
         ],
+    )
+
+
+@router.post(
+    "/events/force-index",
+    status_code=status.HTTP_201_CREATED,
+)
+async def force_index(
+    params: dict = Depends(get_events_parameters),
+    db: Session = Depends(get_db),
+    user: user_schemas.User = Security(
+        get_current_active_user, scopes=["events:update"]
+    ),
+):
+
+    uuids = events_repository.get_event_uuids(db)
+
+    for uuid in uuids:
+        tasks.index_event.delay(uuid[0])
+    return JSONResponse(
+        content={"message": "Indexing started for all events."},
+        status_code=status.HTTP_202_ACCEPTED,
     )

@@ -1,6 +1,7 @@
 import logging
 import time
 from datetime import datetime
+from uuid import UUID
 
 from app.dependencies import get_opensearch_client
 from app.models import event as event_models
@@ -418,3 +419,6 @@ def update_event_from_fetched_event(
     db.refresh(db_event)
 
     return db_event
+
+def get_event_uuids(db: Session) -> list[UUID]:
+    return db.query(event_models.Event.uuid).all()
