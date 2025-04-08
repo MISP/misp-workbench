@@ -4,7 +4,9 @@
         {
             "script": {
                 "lang": "painless",
-                "source": "if (ctx.type == 'ip-src' || ctx.type == 'ip-dst' ) { if (ctx.expanded == null) { ctx.expanded = new HashMap(); } ctx.expanded.ip_field = ctx.value; }"
+                "source": "if (ctx.type == 'ip-src' || ctx.type == 'ip-dst' ) { if (ctx.expanded == null) { ctx.expanded = new HashMap(); } ctx.expanded.ip_field = ctx.value; }",
+                "ignore_missing": true,
+                "ignore_failure": true
             }
         }
     ]

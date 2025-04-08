@@ -4,7 +4,9 @@
     {
       "geoip": {
         "field": "expanded.ip_field",
-        "target_field": "expanded.ip2geo"
+        "target_field": "expanded.ip2geo",
+        "ignore_missing": true,
+        "ignore_failure": true
       }
     }
   ]
