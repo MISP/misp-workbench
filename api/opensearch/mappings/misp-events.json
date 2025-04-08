@@ -1,0 +1,121 @@
+{
+    "mappings": {
+        "properties": {
+            "@timestamp": {
+                "type": "date"
+            },
+            "analysis": {
+                "type": "long"
+            },
+            "attribute_count": {
+                "type": "long"
+            },
+            "date": {
+                "type": "date"
+            },
+            "deleted": {
+                "type": "boolean"
+            },
+            "disable_correlation": {
+                "type": "boolean"
+            },
+            "distribution": {
+                "type": "long"
+            },
+            "id": {
+                "type": "long"
+            },
+            "info": {
+                "type": "text",
+                "fields": {
+                    "keyword": {
+                        "type": "keyword",
+                        "ignore_above": 256
+                    }
+                }
+            },
+            "locked": {
+                "type": "boolean"
+            },
+            "object_count": {
+                "type": "long"
+            },
+            "org_id": {
+                "type": "long"
+            },
+            "orgc_id": {
+                "type": "long"
+            },
+            "proposal_email_lock": {
+                "type": "boolean"
+            },
+            "protected": {
+                "type": "boolean"
+            },
+            "publish_timestamp": {
+                "type": "long"
+            },
+            "published": {
+                "type": "boolean"
+            },
+            "tags": {
+                "properties": {
+                    "colour": {
+                        "type": "text",
+                        "fields": {
+                            "keyword": {
+                                "type": "keyword",
+                                "ignore_above": 256
+                            }
+                        }
+                    },
+                    "exportable": {
+                        "type": "boolean"
+                    },
+                    "hide_tag": {
+                        "type": "boolean"
+                    },
+                    "id": {
+                        "type": "long"
+                    },
+                    "is_custom_galaxy": {
+                        "type": "boolean"
+                    },
+                    "is_galaxy": {
+                        "type": "boolean"
+                    },
+                    "local_only": {
+                        "type": "boolean"
+                    },
+                    "name": {
+                        "type": "text",
+                        "fields": {
+                            "keyword": {
+                                "type": "keyword",
+                                "ignore_above": 256
+                            }
+                        }
+                    }
+                }
+            },
+            "threat_level": {
+                "type": "long"
+            },
+            "timestamp": {
+                "type": "long"
+            },
+            "user_id": {
+                "type": "long"
+            },
+            "uuid": {
+                "type": "text",
+                "fields": {
+                    "keyword": {
+                        "type": "keyword",
+                        "ignore_above": 256
+                    }
+                }
+            }
+        }
+    }
+}

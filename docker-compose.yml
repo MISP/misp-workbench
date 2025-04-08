@@ -18,23 +18,33 @@ services:
 
   opensearch:
     image: opensearchproject/opensearch:2.19.1
-    container_name: opensearch-misp1
     environment:
       OPENSEARCH_HOSTNAME: ${OPENSEARCH_HOSTNAME:-opensearch}
       OPENSEARCH_PORT: ${OPENSEARCH_PORT:-9200}
       OPENSEARCH_INITIAL_ADMIN_PASSWORD: ${OPENSEARCH_INITIAL_ADMIN_PASSWORD}
       cluster.name: opensearch-cluster
       node.name: opensearch-misp1
-      discovery.type: single-node
       bootstrap.memory_lock: true
       OPENSEARCH_JAVA_OPTS: "-Xms512m -Xmx512m"
-      plugins.security.disabled: true
     ulimits:
       memlock:
         soft: -1
         hard: -1
     volumes:
       - opensearch-data:/usr/share/opensearch/data
+
+  setup-opensearch:
+    image: curlimages/curl:latest
+    depends_on:
+      opensearch:
+        condition: service_healthy
+    volumes:
+      - ./api/opensearch/mappings:/mappings
+      - ./api/opensearch/entrypoint.sh:/entrypoint.sh
+    entrypoint: ["/bin/sh", "/entrypoint.sh"]
+    environment:
+      OPENSEARCH_HOSTNAME: ${OPENSEARCH_HOSTNAME:-opensearch}
+      OPENSEARCH_PORT: ${OPENSEARCH_PORT:-9200}
 
   dashboards:
     image: opensearchproject/opensearch-dashboards:2.19.1
