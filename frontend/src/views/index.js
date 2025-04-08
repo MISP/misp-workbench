@@ -30,3 +30,5 @@ export { default as ViewTaxonomy } from "./taxonomies/ViewTaxonomy.vue";
 export { default as ViewGalaxy } from "./galaxies/ViewGalaxy.vue";
 export { default as ViewObject } from "./objects/ViewObject.vue";
 export { default as EditObject } from "./objects/EditObject.vue";
+export { default as ViewRemoteEvent } from "./events/ViewRemoteEvent.vue";
+export { default as ExploreEvents } from "./explore/ExploreEvents.vue";

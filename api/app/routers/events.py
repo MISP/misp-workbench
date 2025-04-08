@@ -51,7 +51,7 @@ async def get_events(
 
 @router.get("/events/search")
 async def search_events(
-    query: str = Query(..., min_length=1),
+    query: str = Query(..., min_length=0),
     page: int = Query(1, ge=1),
     size: int = Query(10, ge=1, le=100),
     user: user_schemas.User = Security(get_current_active_user, scopes=["events:read"]),

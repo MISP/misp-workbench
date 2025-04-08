@@ -82,5 +82,18 @@ export const useEventsStore = defineStore({
         .catch((error) => (this.status = { error }))
         .finally(() => (this.status = { loading: false }));
     },
+    async search(params = { query: "", page: 1, size: 10 }) {
+      this.status = { loading: true };
+      fetchWrapper
+        .get(baseUrl + "/search?" + new URLSearchParams(params).toString())
+        .then(
+          (response) => (
+            (this.events = response),
+            (this.page_count = Math.ceil(response.total / params.size))
+          ),
+        )
+        .catch((error) => (this.status = { error }))
+        .finally(() => (this.status = { loading: false }));
+    },
   },
 });
