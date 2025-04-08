@@ -1,0 +1,11 @@
+{
+  "description": "Enrich IP with GeoIP",
+  "processors": [
+    {
+      "geoip": {
+        "field": "expanded.ip_field",
+        "target_field": "expanded.ip2geo"
+      }
+    }
+  ]
+}
