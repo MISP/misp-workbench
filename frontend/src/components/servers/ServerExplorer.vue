@@ -254,7 +254,7 @@ function searchRemoteMISPEvents() {
                   aria-label="Remote Event Actions"
                 >
                   <RouterLink
-                    :to="`/servers/explore/${server.id}/events/${event.uuid}`"
+                    :to="`/servers/explore/${server.id}/events/${event.id}`"
                     class="btn btn-outline-primary"
                   >
                     <FontAwesomeIcon :icon="faEye" />

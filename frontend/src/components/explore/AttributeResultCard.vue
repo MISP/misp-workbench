@@ -9,7 +9,7 @@ defineProps(["attribute"]);
 <template>
   <div class="card mb-2">
     <div class="card-header">
-      <a :href="`/attributes/${attribute._source.uuid}`">
+      <a :href="`/attributes/${attribute._source.id}`">
         {{ attribute._source.uuid }}
       </a>
     </div>
