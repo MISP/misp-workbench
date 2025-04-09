@@ -2,6 +2,8 @@ import json
 
 from typing import Optional, Annotated
 
+from typing import Union
+from uuid import UUID
 from app.auth.auth import get_current_active_user
 from app.dependencies import get_db
 from app.repositories import events as events_repository
@@ -52,6 +54,7 @@ async def get_events(
 @router.get("/events/search")
 async def search_events(
     query: str = Query(..., min_length=0),
+    searchAttributes: Optional[bool] = Query(False),
     page: int = Query(1, ge=1),
     size: int = Query(10, ge=1, le=100),
     user: user_schemas.User = Security(get_current_active_user, scopes=["events:read"]),
@@ -59,16 +62,23 @@ async def search_events(
 
     from_value = (page - 1) * size
 
-    return events_repository.search_events(query, page, from_value, size)
+    return events_repository.search_events(
+        query, searchAttributes, page, from_value, size
+    )
 
 
 @router.get("/events/{event_id}", response_model=event_schemas.Event)
 def get_event_by_id(
-    event_id: int,
+    event_id: Union[int, UUID],
     db: Session = Depends(get_db),
     user: user_schemas.User = Security(get_current_active_user, scopes=["events:read"]),
 ) -> event_schemas.Event:
-    db_event = events_repository.get_event_by_id(db, event_id=event_id)
+
+    if isinstance(event_id, int):
+        db_event = events_repository.get_event_by_id(db, event_id=event_id)
+    else:
+        db_event = events_repository.get_event_by_uuid(db, event_uuid=event_id)
+
     if db_event is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Event not found"
