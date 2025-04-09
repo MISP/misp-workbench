@@ -63,6 +63,9 @@ def search_events(
         "page": page,
         "size": size,
         "total": response["hits"]["total"]["value"],
+        "took": response["took"],
+        "timed_out": response["timed_out"],
+        "max_score": response["hits"]["max_score"],
         "results": response["hits"]["hits"],
     }
 
