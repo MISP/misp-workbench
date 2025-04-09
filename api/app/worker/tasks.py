@@ -15,6 +15,7 @@ from app.settings import get_settings
 from celery import Celery
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
+from opensearchpy import helpers as opensearch_helpers
 
 # Celery configuration
 app = Celery()
@@ -124,38 +125,22 @@ def index_event(event_uuid: uuid.UUID):
 
     OpenSearchClient = get_opensearch_client()
 
-    event_json = event.model_dump()
-
+    event_raw = event.model_dump()
+    attributes = event_raw.pop("attributes")
+    objects = event_raw.pop("objects")
+    
     # convert timestamp to datetime so it can be indexed
-    event_json["@timestamp"] = datetime.fromtimestamp(
-        event_json["timestamp"]
+    event_raw["@timestamp"] = datetime.fromtimestamp(
+        event_raw["timestamp"]
     ).isoformat()
 
-    if event_json["publish_timestamp"]:
-        event_json["@publish_timestamp"] = datetime.fromtimestamp(
-            event_json["publish_timestamp"]
+    if event_raw["publish_timestamp"]:
+        event_raw["@publish_timestamp"] = datetime.fromtimestamp(
+            event_raw["publish_timestamp"]
         ).isoformat()
-
-    for attribute in event_json["attributes"]:
-        attribute["@timestamp"] = datetime.fromtimestamp(
-            attribute["timestamp"]
-        ).isoformat()
-
-    for object in event_json["objects"]:
-        object["@timestamp"] = datetime.fromtimestamp(object["timestamp"]).isoformat()
-
-        for attribute in object["attributes"]:
-            attribute["@timestamp"] = datetime.fromtimestamp(
-                attribute["timestamp"]
-            ).isoformat()
-
-        for reference in object["object_references"]:
-            reference["@timestamp"] = datetime.fromtimestamp(
-                reference["timestamp"]
-            ).isoformat()
 
     response = OpenSearchClient.index(
-        index="misp-events", id=event.uuid, body=event_json, refresh=True
+        index="misp-events", id=event.uuid, body=event_raw, refresh=True
     )
 
     if response["result"] not in ["created", "updated"]:
@@ -163,6 +148,66 @@ def index_event(event_uuid: uuid.UUID):
             "Failed to index event uuid=%s. Response: %s", event_uuid, response
         )
         raise Exception("Failed to index event.")
+    
+    
+    logger.info("indexed event uuid=%s", event_uuid)
+    
+    # index attributes
+    attributes_docs = []
+    for attribute in attributes:
+        attribute["@timestamp"] = datetime.fromtimestamp(
+            attribute["timestamp"]
+        ).isoformat()
+        attribute["event_uuid"] = event.uuid
+        attribute["data"] = '' # do not index file contents
+        
+        attributes_docs.append(
+            {
+                "_id": attribute["uuid"],
+                "_index": "misp-attributes",
+                "_source": attribute,
+            }
+        )
+        
+    success, failed = opensearch_helpers.bulk(OpenSearchClient, attributes_docs, refresh=True)
+    if failed:
+        logger.error("Failed to index attributes. Failed: %s", failed)
+        raise Exception("Failed to index attributes.")
+    logger.info("indexed attributes of event uuid=%s, indexed %s attributes", event_uuid, len(attributes_docs))
+    
+
+    # index objects
+    objects_docs = []
+    for object in objects:
+        object["@timestamp"] = datetime.fromtimestamp(object["timestamp"]).isoformat()
+
+        for attribute in object["attributes"]:
+            attribute["@timestamp"] = datetime.fromtimestamp(
+                attribute["timestamp"]
+            ).isoformat()
+            attribute["event_uuid"] = event.uuid
+            attribute["data"] = '' # do not index file contents
+
+        for reference in object["object_references"]:
+            reference["@timestamp"] = datetime.fromtimestamp(
+                reference["timestamp"]
+            ).isoformat()
+
+        object["event_uuid"] = event.uuid
+
+        objects_docs.append(
+            {
+                "_id": object["uuid"],
+                "_index": "misp-objects",
+                "_source": object,
+            }
+        )
+        
+    success, failed = opensearch_helpers.bulk(OpenSearchClient, objects_docs, refresh=True)
+    if failed:
+        logger.error("Failed to index objects. Failed: %s", failed)
+        raise Exception("Failed to index objects.")
+    logger.info("indexed objects of event uuid=%s, indexed %s objects", event_uuid, len(objects_docs))
 
     logger.info("index event uuid=%s job finished", event_uuid)
 

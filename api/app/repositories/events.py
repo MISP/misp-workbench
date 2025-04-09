@@ -1,7 +1,9 @@
 import logging
 import time
 from datetime import datetime
+from uuid import UUID
 
+from app.dependencies import get_opensearch_client
 from app.models import event as event_models
 from app.models import feed as feed_models
 from app.models import tag as tag_models
@@ -31,6 +33,41 @@ def get_events(db: Session, info: str = None, deleted: bool = None, uuid: str = 
         query = query.where(event_models.Event.uuid == uuid)
 
     return paginate(db, query)
+
+
+def search_events(
+    query: str = None,
+    searchAttributes: bool = False,
+    page: int = 0,
+    from_value: int = 0,
+    size: int = 10,
+):
+    OpenSearchClient = get_opensearch_client()
+
+    if searchAttributes:
+        search_body = {
+            "query": {"query_string": {"query": query, "default_field": "value"}},
+            "from": from_value,
+            "size": size,
+        }
+        response = OpenSearchClient.search(index="misp-attributes", body=search_body)
+    else:
+        search_body = {
+            "query": {"query_string": {"query": query, "default_field": "info"}},
+            "from": from_value,
+            "size": size,
+        }
+        response = OpenSearchClient.search(index="misp-events", body=search_body)
+
+    return {
+        "page": page,
+        "size": size,
+        "total": response["hits"]["total"]["value"],
+        "took": response["took"],
+        "timed_out": response["timed_out"],
+        "max_score": response["hits"]["max_score"],
+        "results": response["hits"]["hits"],
+    }
 
 
 def get_event_by_id(db: Session, event_id: int):
@@ -101,7 +138,8 @@ def create_event_from_pulled_event(db: Session, pulled_event: MISPEvent):
         distribution=event_models.DistributionLevel(pulled_event.distribution),
         sharing_group_id=(
             pulled_event.sharing_group_id
-            if pulled_event.sharing_group_id is not None and int(pulled_event.sharing_group_id) > 0
+            if pulled_event.sharing_group_id is not None
+            and int(pulled_event.sharing_group_id) > 0
             else None
         ),
         proposal_email_lock=pulled_event.proposal_email_lock,
@@ -134,9 +172,11 @@ def update_event_from_pulled_event(
     existing_event.distribution = event_models.DistributionLevel(
         pulled_event.distribution
     )
-    existing_event.sharing_group_id = pulled_event.sharing_group_id if int(
+    existing_event.sharing_group_id = (
         pulled_event.sharing_group_id
-    ) > 0 else None
+        if int(pulled_event.sharing_group_id) > 0
+        else None
+    )
     existing_event.threat_level = event_models.ThreatLevel(pulled_event.threat_level_id)
     existing_event.disable_correlation = pulled_event.disable_correlation
     existing_event.extends_uuid = pulled_event.extends_uuid or None
@@ -396,3 +436,7 @@ def update_event_from_fetched_event(
     db.refresh(db_event)
 
     return db_event
+
+
+def get_event_uuids(db: Session) -> list[UUID]:
+    return db.query(event_models.Event.uuid).all()

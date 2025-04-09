@@ -1,5 +1,7 @@
 from typing import Optional
 
+from typing import Union
+from uuid import UUID
 from app.auth.auth import get_current_active_user
 from app.dependencies import get_db
 from app.repositories import attributes as attributes_repository
@@ -38,15 +40,22 @@ def get_attributes(
 
 @router.get("/attributes/{attribute_id}", response_model=attribute_schemas.Attribute)
 def get_attribute_by_id(
-    attribute_id: int,
+    attribute_id: Union[int, UUID],
     db: Session = Depends(get_db),
     user: user_schemas.User = Security(
         get_current_active_user, scopes=["attributes:read"]
     ),
 ) -> attribute_schemas.Attribute:
-    db_attribute = attributes_repository.get_attribute_by_id(
-        db, attribute_id=attribute_id
-    )
+
+    if isinstance(attribute_id, UUID):
+        db_attribute = attributes_repository.get_attribute_by_uuid(
+            db, attribute_uuid=attribute_id
+        )
+    else:
+        db_attribute = attributes_repository.get_attribute_by_id(
+            db, attribute_id=attribute_id
+        )
+
     if db_attribute is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Attribute not found"

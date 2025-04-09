@@ -754,14 +754,14 @@ def get_remote_events_index(
             published=True,
             limit=limit,
             page=page,
-            attribute=attribute_value,
-            eventinfo=event_info,
-            timestamp=timestamp,
-            eventid=event_uuid,
-            org=organisation,
-            tags=tags,
-            threatlevel=threat_level,
-            analysis=analysis_level,
+            attribute=attribute_value or None,
+            eventinfo=event_info or None,
+            timestamp=timestamp or None,
+            eventid=event_uuid or None,
+            org=organisation or None,
+            tags=tags or None,
+            threatlevel=threat_level or None,
+            analysis=analysis_level or None,
         )
     except Exception as ex:
         raise HTTPException(

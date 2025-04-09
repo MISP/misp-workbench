@@ -34,8 +34,9 @@ import {
   ViewGalaxy,
   ViewObject,
   EditObject,
+  ViewRemoteEvent,
+  ExploreEvents,
 } from "@/views";
-import EventViewRemote from "../components/events/EventViewRemote.vue";
 
 export const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -70,7 +71,7 @@ export const router = createRouter({
     { path: "/servers/explore/:id", component: ExploreServer, props: true },
     {
       path: "/servers/explore/:server_id/events/:event_uuid",
-      component: EventViewRemote,
+      component: ViewRemoteEvent,
       props: true,
     },
     { path: "/settings/modules", component: IndexModules },
@@ -82,6 +83,7 @@ export const router = createRouter({
     { path: "/feeds/update/:id", component: UpdateFeed, props: true },
     { path: "/taxonomies/:id", component: ViewTaxonomy, props: true },
     { path: "/galaxies/:id", component: ViewGalaxy, props: true },
+    { path: "/explore", component: ExploreEvents },
   ],
 });
 

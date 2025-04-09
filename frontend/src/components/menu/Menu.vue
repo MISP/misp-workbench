@@ -48,6 +48,7 @@ function switchTheme() {
         <RouterLink to="/" class="nav-item nav-link">
           <img src="/images/misp-logo-pixel.png" alt="" height="30" />
         </RouterLink>
+        <RouterLink to="/explore" class="nav-item nav-link">explore</RouterLink>
         <RouterLink to="/events" class="nav-item nav-link">events</RouterLink>
         <RouterLink to="/organisations" class="nav-item nav-link"
           >organisations</RouterLink
