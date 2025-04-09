@@ -3,7 +3,7 @@
   "processors": [
     {
       "geoip": {
-        "field": "expanded.ip_field",
+        "field": "expanded.ip",
         "target_field": "expanded.ip2geo",
         "ignore_missing": true,
         "ignore_failure": true

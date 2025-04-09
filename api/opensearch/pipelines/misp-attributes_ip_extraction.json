@@ -1,10 +1,10 @@
 {
-    "description": "Extract IP addresses from specific types and store in expanded.ip_field",
+    "description": "Extract IP addresses from specific types and store in expanded.ip",
     "processors": [
         {
             "script": {
                 "lang": "painless",
-                "source": "if (ctx.type == 'ip-src' || ctx.type == 'ip-dst' ) { if (ctx.expanded == null) { ctx.expanded = new HashMap(); } ctx.expanded.ip_field = ctx.value; }",
+                "source": "if (ctx.type == 'ip-src' || ctx.type == 'ip-dst' ) { if (ctx.expanded == null) { ctx.expanded = new HashMap(); } ctx.expanded.ip = ctx.value; }",
                 "ignore_failure": true
             }
         }
