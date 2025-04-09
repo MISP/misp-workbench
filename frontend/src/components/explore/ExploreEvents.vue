@@ -8,7 +8,13 @@ import ApiError from "@/components/misc/ApiError.vue";
 import { faMagnifyingGlass } from "@fortawesome/free-solid-svg-icons";
 import Paginate from "vuejs-paginate-next";
 
+import { useLocalStorageRef } from "@/helpers";
+
+import AttributeResultCard from "./AttributeResultCard.vue";
+import EventResultCard from "./EventResultCard.vue";
+
 const searchQuery = ref("");
+const searchAttributes = useLocalStorageRef("exploreSearchAttributes", false);
 const eventsStore = useEventsStore();
 const { events, status, page_count } = storeToRefs(eventsStore);
 const props = defineProps({
@@ -23,6 +29,7 @@ function onPageChange(page) {
     page: page,
     size: props.page_size,
     query: searchQuery.value,
+    searchAttributes: searchAttributes.value,
   });
 }
 onPageChange(1);
@@ -32,6 +39,7 @@ function search() {
     page: 1,
     size: props.page_size,
     query: searchQuery.value,
+    searchAttributes: searchAttributes.value,
   });
 }
 </script>
@@ -57,20 +65,43 @@ body {
           <FontAwesomeIcon :icon="faMagnifyingGlass" />
         </button>
       </div>
+      <div class="form-check form-switch mb-3">
+        <input
+          class="form-check-input"
+          type="checkbox"
+          id="searchAttributesSwitch"
+          v-model="searchAttributes"
+          @change="search"
+        />
+        <label class="form-check-label" for="searchAttributesSwitch"
+          >search attributes</label
+        >
+      </div>
     </div>
   </div>
   <div>
     <div id="results">
       <Spinner v-if="status.loading" />
-      <div v-for="event in events.results">
-        <div>{{ event._source.info }}</div>
+      <div v-for="result in events.results">
+        <div v-if="!searchAttributes">
+          <EventResultCard :event="result" />
+        </div>
+        <div v-if="searchAttributes">
+          <AttributeResultCard :attribute="result" />
+        </div>
       </div>
     </div>
-    <div v-if="status.error" class="w-100 alert alert-danger mt-3 mb-3">
+    <div v-if="status.error" class="mt-2 w-100 alert alert-danger mt-3 mb-3">
       <ApiError :errors="status.error" />
     </div>
     <div v-if="!events || events.total == 0">
-      <p class="text-center">No results found</p>
+      <p class="text-center mt-2">No results found.</p>
+      <p
+        v-if="events.timed_out"
+        class="mt-2 text-center w-100 alert alert-danger mt-3 mb-3"
+      >
+        Timed out.
+      </p>
     </div>
     <div v-if="events && events.total > 0">
       <Paginate
@@ -78,7 +109,9 @@ body {
         :page-count="page_count"
         :click-handler="onPageChange"
       />
-      <p class="text-center">{{ events.total }} results found.</p>
+      <p class="text-center mt-2">
+        {{ events.total }} results found in {{ events.took }}ms
+      </p>
     </div>
   </div>
 </template>
