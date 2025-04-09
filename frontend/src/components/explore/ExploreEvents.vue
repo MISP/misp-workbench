@@ -15,6 +15,7 @@ import EventResultCard from "./EventResultCard.vue";
 
 const searchQuery = ref("");
 const searchAttributes = useLocalStorageRef("exploreSearchAttributes", false);
+const storedExploreSearches = useLocalStorageRef("storedExploreSearches", []);
 const eventsStore = useEventsStore();
 const { events, status, page_count } = storeToRefs(eventsStore);
 const props = defineProps({
@@ -41,6 +42,16 @@ function search() {
     query: searchQuery.value,
     searchAttributes: searchAttributes.value,
   });
+
+  if (
+    searchQuery.value &&
+    !storedExploreSearches.value.includes(searchQuery.value)
+  ) {
+    storedExploreSearches.value.push(searchQuery.value);
+  }
+  if (storedExploreSearches.value.length > 10) {
+    storedExploreSearches.value.shift();
+  }
 }
 </script>
 
@@ -57,10 +68,16 @@ body {
         <input
           type="text"
           class="form-control"
+          list="previous-searches"
           placeholder="Search something (Lucene Query Syntax) ..."
           v-model="searchQuery"
           v-on:keyup.enter="search"
         />
+
+        <datalist id="previous-searches">
+          <option v-for="term in storedExploreSearches">{{ term }}</option>
+        </datalist>
+
         <button class="btn btn-primary btn-lg" type="button" @click="search">
           <FontAwesomeIcon :icon="faMagnifyingGlass" />
         </button>
@@ -100,7 +117,7 @@ body {
         v-if="events.timed_out"
         class="mt-2 text-center w-100 alert alert-danger mt-3 mb-3"
       >
-        Timed out.
+        Request timed out.
       </p>
     </div>
     <div v-if="events && events.total > 0">
