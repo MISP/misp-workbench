@@ -64,6 +64,7 @@ function fetchFeed(feed) {
           data-toggle="tooltip"
           data-placement="top"
           title="Preview"
+          disabled
         >
           <font-awesome-icon icon="fa-solid fa-magnifying-glass" />
         </button>

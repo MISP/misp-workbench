@@ -269,15 +269,16 @@ def update_pulled_event_before_insert(
         # remove local tags obtained via pull
         event.tags = [tag for tag in event.tags if not tag.local]
 
+        # process objects
+        if event.objects:
+            for object in event.objects:
+                object = update_pulled_object_before_insert(object)
+
         # process attributes
         if event.attributes:
             for attribute in event.attributes:
                 attribute = update_pulled_attribute_before_insert(attribute)
 
-        # process objects
-        if event.objects:
-            for object in event.objects:
-                object = update_pulled_object_before_insert(object)
 
         # process event reports
         if event.event_reports:

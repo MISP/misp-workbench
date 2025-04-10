@@ -377,10 +377,9 @@ def create_objects_from_fetched_event(
             attribute.event_id = local_event.id
 
         local_event = attributes_repository.create_attributes_from_fetched_event(
-            db, local_event, object.attributes, feed, user
+            db, local_event, object.attributes, db_object.id, feed, user
         )
 
-        # TODO: process galaxies
         # TODO: process analyst notes
 
         db.commit()

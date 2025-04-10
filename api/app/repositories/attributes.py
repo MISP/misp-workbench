@@ -131,8 +131,7 @@ def create_attribute_from_pulled_attribute(
     
     if pulled_attribute.data is not None:
         # store file
-        md5 = local_attribute.value.split("|")[1]
-        attachments_repository.store_attachment(pulled_attribute.data.getvalue(), md5)
+        attachments_repository.store_attachment(pulled_attribute.data.getvalue())
 
     # TODO: process sigthings
     # TODO: process galaxies
@@ -188,8 +187,7 @@ def update_attribute_from_pulled_attribute(
     
     if pulled_attribute.data is not None:
         # store file
-        md5 = local_attribute.split("|")[1]
-        attachments_repository.store_attachment(pulled_attribute.data.getvalue(), md5)
+        attachments_repository.store_attachment(pulled_attribute.data.getvalue())
         
     capture_attribute_tags(db, local_attribute, pulled_attribute.tags, local_event_id, user)
     
@@ -283,12 +281,12 @@ def create_attributes_from_fetched_event(
     db: Session,
     local_event: event_models.Event,
     attributes: list[MISPAttribute],
+    object_id: int | None,
     feed: feed_models.Feed,
     user: user_models.User,
 ) -> event_models.Event:
 
     for attribute in attributes:
-
         db_attribute = attribute_models.Attribute(
             event_id=local_event.id,
             category=attribute.category,
@@ -302,7 +300,7 @@ def create_attributes_from_fetched_event(
             comment=attribute.comment,
             deleted=attribute.deleted,
             disable_correlation=attribute.disable_correlation,
-            object_id=None,
+            object_id=object_id,
             object_relation=getattr(attribute, "object_relation", None),
             first_seen=(
                 int(attribute.first_seen.timestamp())
@@ -315,6 +313,11 @@ def create_attributes_from_fetched_event(
                 else None
             ),
         )
+
+        # store attachments
+        if attribute.data is not None:
+            # store file
+            attachments_repository.store_attachment(attribute.data.getvalue())
 
         # TODO: process galaxies
         # TODO: process attribute sightings
@@ -365,7 +368,7 @@ def update_attributes_from_fetched_event(
 
     # add new attributes
     local_event = create_attributes_from_fetched_event(
-        db, local_event, new_attributes, feed, user
+        db, local_event, new_attributes, None, feed, user
     )
 
     # update existing attributes
@@ -416,6 +419,10 @@ def update_attributes_from_fetched_event(
             capture_attribute_tags(
                 db, db_attribute, updated_attribute.tags, local_event.id, user
             )
+
+            if updated_attribute.data is not None:
+                # store file
+                attachments_repository.store_attachment(updated_attribute.data.getvalue())
 
             # TODO: process galaxies
             # TODO: process attribute sightings

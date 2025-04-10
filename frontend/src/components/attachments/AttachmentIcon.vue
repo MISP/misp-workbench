@@ -97,7 +97,7 @@ const fileIcon = computed(() => {
 
   const parts = filename.value.split(".");
   const extension = parts[parts.length - 1].toLowerCase();
-  return icons[extension];
+  return icons[extension] || icons.default;
 });
 
 const size = computed(() => {

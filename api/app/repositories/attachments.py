@@ -23,16 +23,19 @@ logger = logging.getLogger(__name__)
 
 def store_attachment(
     file_content,
-    md5: str,
+    filename: str | None = None,
     settings: Settings = get_settings(),
 ) -> str:
     try:
+        if not filename:
+            filename = hashlib.md5(file_content).hexdigest()
+
         # upload file to minio
         if settings.Storage.engine == "minio":
             MinioClient = get_minio_client()
             MinioClient.put_object(
                 settings.Storage.minio.bucket,
-                md5,
+                filename,
                 io.BytesIO(file_content),
                 length=len(file_content),
                 part_size=10 * 1024 * 1024,
@@ -43,7 +46,7 @@ def store_attachment(
             if os.path.exists("/tmp/attachments") is False:
                 os.makedirs("/tmp/attachments")
 
-            with open(f"/tmp/attachments/{md5}", "wb") as f:
+            with open(f"/tmp/attachments/{filename}", "wb") as f:
                 f.write(file_content)
     except Exception as e:
         logger.error(f"Error storing attachment: {str(e)}")
@@ -121,15 +124,13 @@ def upload_attachments_to_event(
             file_object.attributes.append(sha256_attribute)
 
             # get file md5
-            md5 = hashlib.md5()
-            md5.update(file_content)
-            md5 = md5.hexdigest()
+            md5sum = hashlib.md5(file_content.getbuffer()).hexdigest()
             md5_attribute = attribute_schemas.AttributeCreate(
                 event_id=event.id,
                 object_relation="md5",
                 category="External analysis",
                 type="md5",
-                value=md5,
+                value=md5sum,
                 timestamp=int(time.time()),
                 distribution=event_schemas.DistributionLevel.INHERIT_EVENT,
             )
@@ -163,7 +164,7 @@ def upload_attachments_to_event(
 
             db_file_object = objects_repository.create_object(db, file_object)
 
-            store_attachment(file_content, md5)
+            store_attachment(file_content, md5sum)
 
             file_objects.append(db_file_object)
 

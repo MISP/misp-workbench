@@ -126,12 +126,13 @@ def update_event(
 @router.delete("/events/{event_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_event(
     event_id: int,
+    force: Optional[bool] = Query(False),
     db: Session = Depends(get_db),
     user: user_schemas.User = Security(
         get_current_active_user, scopes=["events:delete"]
     ),
 ):
-    return events_repository.delete_event(db=db, event_id=event_id)
+    return events_repository.delete_event(db=db, event_id=event_id, force=force)
 
 
 @router.post(

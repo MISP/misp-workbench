@@ -86,7 +86,7 @@ class Event(Base):
     protected = Column(Boolean, nullable=False, default=False)
     deleted = Column(Boolean, nullable=False, default=False)
 
-    attributes = relationship("Attribute", lazy="subquery")
-    objects = relationship("Object", lazy="subquery")
+    attributes = relationship("Attribute", lazy="subquery", cascade="all, delete-orphan")
+    objects = relationship("Object", lazy="subquery", cascade="all, delete-orphan")
     sharing_group = relationship("SharingGroup", lazy="subquery")
     tags = relationship("Tag", secondary="event_tags", lazy="subquery")

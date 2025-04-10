@@ -30,5 +30,5 @@ class Object(Base):
     first_seen = Column(Integer)
     last_seen = Column(Integer)
 
-    attributes = relationship("Attribute", lazy="subquery")
-    object_references = relationship("ObjectReference", lazy="subquery")
+    attributes = relationship("Attribute", lazy="subquery", cascade="all, delete-orphan")
+    object_references = relationship("ObjectReference", lazy="subquery", cascade="all, delete-orphan")

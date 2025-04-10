@@ -140,14 +140,14 @@ async def process_feed_event(
                     db, event, orgc, feed, user
                 )
 
-                # process attributes
-                db_event = attributes_repository.update_attributes_from_fetched_event(
-                    db, db_event, event.attributes, feed, user
-                )
-
                 # process objects
                 db_event = objects_repository.update_objects_from_fetched_event(
                     db, db_event, event, feed, user
+                )
+
+                # process attributes
+                db_event = attributes_repository.update_attributes_from_fetched_event(
+                    db, db_event, event.attributes, feed, user
                 )
 
             else:
@@ -161,14 +161,14 @@ async def process_feed_event(
                     db, event, orgc, feed, user
                 )
 
-                # process attributes
-                db_event = attributes_repository.create_attributes_from_fetched_event(
-                    db, db_event, event.attributes, feed, user
-                )
-
                 # process objects
                 db_event = objects_repository.create_objects_from_fetched_event(
                     db, db_event, event.objects, feed, user
+                )
+
+                # process attributes
+                db_event = attributes_repository.create_attributes_from_fetched_event(
+                    db, db_event, event.attributes, None, feed, user
                 )
 
             # update counters

@@ -205,7 +205,7 @@ def update_event(db: Session, event_id: int, event: event_schemas.EventUpdate):
     return db_event
 
 
-def delete_event(db: Session, event_id: int) -> None:
+def delete_event(db: Session, event_id: int, force: bool = False) -> None:
     db_event = get_event_by_id(db, event_id=event_id)
 
     if db_event is None:
@@ -214,6 +214,11 @@ def delete_event(db: Session, event_id: int) -> None:
         )
 
     db_event.deleted = True
+
+    if force:
+        db.delete(db_event)
+        db.commit()
+        return
 
     db.commit()
     db.refresh(db_event)
