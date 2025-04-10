@@ -104,7 +104,7 @@ def upgrade():
         sa.Column("event_id", sa.Integer, nullable=False),
         sa.Column("source_uuid", sa.types.Uuid(as_uuid=True)),
         sa.Column("referenced_uuid", sa.types.Uuid(as_uuid=True)),
-        sa.Column("referenced_id", sa.Integer, nullable=False),
+        sa.Column("referenced_id", sa.Integer, nullable=True),
         sa.Column(
             "referenced_type",
             postgresql.ENUM(
