@@ -399,17 +399,16 @@ def create_objects_from_fetched_event(
                     .first()
                 )
             if referenced is None:
-                logger.error(
-                    f"Referenced entity not found, skipping object reference uuid: {reference.uuid}"
+                logger.warning(
+                    f"Referenced entity not found, reference uuid: {reference.uuid}"
                 )
-                break
 
             db_object_reference = object_reference_models.ObjectReference(
                 uuid=reference.uuid,
                 event_id=local_event.id,
                 object_id=db_object.id,
-                referenced_uuid=referenced.uuid,
-                referenced_id=referenced.id,
+                referenced_uuid=reference.referenced_uuid,
+                referenced_id=referenced.id if referenced else None,
                 relationship_type=reference.relationship_type,
                 timestamp=int(reference.timestamp),
                 referenced_type=(

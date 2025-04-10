@@ -26,7 +26,7 @@ class ObjectReference(Base):
     event_id = Column(Integer, ForeignKey("events.id"), nullable=False)
     source_uuid = Column(UUID(as_uuid=True))
     referenced_uuid = Column(UUID(as_uuid=True))
-    referenced_id = Column(Integer, nullable=False)
+    referenced_id = Column(Integer, nullable=True)
     referenced_type: Mapped[ReferencedType] = mapped_column(
         Enum(ReferencedType, name="referenced_type"), nullable=False
     )
