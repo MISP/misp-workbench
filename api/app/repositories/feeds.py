@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 MAX_CONCURRENT_CONNECTIONS = 5
 MAX_CONCURRENT_CONNECTIONS_PER_HOST = 5
 MAX_CONCURRENT_REQUESTS = 5
-USER_AGENT = "misp-lite/" + os.environ["APP_VERSION"]
+USER_AGENT = "misp-lite/" + os.environ.get("APP_VERSION", "")
 
 
 def get_feeds(db: Session, skip: int = 0, limit: int = 100):

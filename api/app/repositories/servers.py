@@ -25,6 +25,7 @@ from pymisp import (
     PyMISP,
 )
 from sqlalchemy.orm import Session
+from app.worker import tasks
 
 logger = logging.getLogger(__name__)
 
@@ -80,7 +81,7 @@ def get_remote_misp_connection(server: server_models.Server):
     verify_cert = not server.self_signed
 
     try:
-        remote_misp = PyMISP(url=server.url, key=server.authkey, ssl=verify_cert, http_headers={"User-Agent": "misp-lite/" + os.environ["APP_VERSION"]})
+        remote_misp = PyMISP(url=server.url, key=server.authkey, ssl=verify_cert, http_headers={"User-Agent": "misp-lite/" + os.environ.get("APP_VERSION", "")})
         remote_misp_version = remote_misp.misp_instance_version
     except Exception as ex:
         raise HTTPException(
@@ -241,6 +242,8 @@ def pull_event_by_uuid(
     # TODO: process sightings, see app/Model/Event.php::_add()
 
     # TODO: process tag collection, see app/Model/Event.php::_add()
+    
+    tasks.index_event.delay(db_event.uuid)
 
     return True
 
@@ -393,11 +396,11 @@ def create_or_update_pulled_event(
 
         created = events_repository.create_event_from_pulled_event(db, event)
         if created:
-            event.attributes = create_pulled_event_attributes(
-                db, created.id, event.attributes, server, user
-            )
             event.objects = create_pulled_event_objects(
                 db, created.id, event.objects, server, user
+            )
+            event.attributes = create_pulled_event_attributes(
+                db, created.id, event.attributes, server, user
             )
             create_pulled_event_tags(db, created, event.tags, server, user)
             create_pulled_attributes_tags(db, created, event.attributes, server, user)
@@ -437,8 +440,8 @@ def create_or_update_pulled_event(
             db, existing_event, event
         )
         if updated:
-            update_pulled_event_attributes(db, updated.id, event.attributes, server, user)
             update_pulled_event_objects(db, updated.id, event.objects, server, user)
+            update_pulled_event_attributes(db, updated.id, event.attributes, server, user)
             create_pulled_event_tags(db, updated, event.tags, server, user)
 
             # TODO: publish event update to ZMQ
