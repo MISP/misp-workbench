@@ -1,3 +1,4 @@
+import os
 import logging
 from hashlib import sha1
 from typing import Union
@@ -79,7 +80,7 @@ def get_remote_misp_connection(server: server_models.Server):
     verify_cert = not server.self_signed
 
     try:
-        remote_misp = PyMISP(url=server.url, key=server.authkey, ssl=verify_cert)
+        remote_misp = PyMISP(url=server.url, key=server.authkey, ssl=verify_cert, http_headers={"User-Agent": "misp-lite/" + os.environ["APP_VERSION"]})
         remote_misp_version = remote_misp.misp_instance_version
     except Exception as ex:
         raise HTTPException(
