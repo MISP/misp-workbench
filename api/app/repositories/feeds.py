@@ -1,3 +1,4 @@
+import os
 import asyncio
 import logging
 from asyncio import Semaphore
@@ -22,6 +23,7 @@ logger = logging.getLogger(__name__)
 MAX_CONCURRENT_CONNECTIONS = 5
 MAX_CONCURRENT_CONNECTIONS_PER_HOST = 5
 MAX_CONCURRENT_REQUESTS = 5
+USER_AGENT = "misp-lite/" + os.environ["APP_VERSION"]
 
 
 def get_feeds(db: Session, skip: int = 0, limit: int = 100):
@@ -199,7 +201,7 @@ async def fetch_feeds_async(
     )
     semaphore = Semaphore(MAX_CONCURRENT_REQUESTS)
 
-    async with aiohttp.ClientSession(connector=connector) as session:
+    async with aiohttp.ClientSession(connector=connector, headers={"User-Agent": USER_AGENT}) as session:
         tasks = [
             process_feed_event(
                 event_uuid, local_feed_events_uuids, feed, user, session, db, semaphore
