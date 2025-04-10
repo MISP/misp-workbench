@@ -415,9 +415,9 @@ def create_objects_from_fetched_event(
                     object_reference_models.ReferencedType.ATTRIBUTE
                     if referenced.__class__.__name__ == "Attribute"
                     else object_reference_models.ReferencedType.OBJECT
-                ),
+                )  if referenced else None,
                 comment=reference.comment,
-                deleted=referenced.deleted,
+                deleted=referenced.deleted if referenced else False,
             )
             db.add(db_object_reference)
         db.commit()
