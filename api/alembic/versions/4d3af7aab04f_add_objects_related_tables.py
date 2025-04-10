@@ -112,11 +112,11 @@ def upgrade():
                 "OBJECT",
                 name="referenced_type",
             ),
-            nullable=False,
+            nullable=True,
         ),
         sa.Column("relationship_type", sa.String(255)),
         sa.Column("comment", sa.String(), nullable=False),
-        sa.Column("deleted", sa.Boolean(), nullable=False),
+        sa.Column("deleted", sa.Boolean(), nullable=True),
         sa.ForeignKeyConstraint(
             ["event_id"],
             ["events.id"],
