@@ -19,9 +19,6 @@ from sqlalchemy.orm import Session
 from sqlalchemy.sql import select
 from fastapi_pagination import Page
 
-tags_name_id_map = {}
-
-
 def get_attributes(
     db: Session, event_id: int = None, deleted: bool = None, object_id: int = None
 ) -> Page[attribute_schemas.Attribute]:
@@ -267,36 +264,32 @@ def capture_attribute_tags(
             # if tag is local, skip it
             continue
 
-        if tags_name_id_map.get(tag.name):
-            # if tag name is already in the map, use it
-            db_tag = tags_name_id_map[tag.name]
-        else:
-            # get tag from DB
-            db_tag = tags_repository.get_tag_by_name(db, tag.name)
+        # get tag from DB
+        db_tag = tags_repository.get_tag_by_name(db, tag.name)
 
-            if db_tag is None:
-                # create tag if not exists
-                db_tag = tag_models.Tag(
-                    name=tag.name,
-                    colour=tag.colour,
-                    org_id=user.org_id,
-                    user_id=user.id,
-                    local_only=False,
-                    # exportable=tag.exportable,
-                    # hide_tag=tag.hide_tag,
-                    # numerical_value=tag.numerical_value,
-                    # is_galaxy=tag.is_galaxy,
-                    # is_custom_galaxy=tag.is_custom_galaxy,
-                )
-                db.add(db_tag)
+        if db_tag is None:
+            # create tag if not exists
+            db_tag = tag_models.Tag(
+                name=tag.name,
+                colour=tag.colour,
+                org_id=user.org_id,
+                user_id=user.id,
+                local_only=False,
+                # exportable=tag.exportable,
+                # hide_tag=tag.hide_tag,
+                # numerical_value=tag.numerical_value,
+                # is_galaxy=tag.is_galaxy,
+                # is_custom_galaxy=tag.is_custom_galaxy,
+            )
+            db.add(db_tag)
+            db.commit()
+            db.refresh(db_tag)
 
-            # store tag id in the map
-            tags_name_id_map[tag.name] = db_tag
 
         db_attribute_tag = tag_models.AttributeTag(
             attribute=db_attribute,
             event_id=local_event_id,
-            tag=db_tag,
+            tag_id=db_tag.id,
             local=tag.local,
         )
         db.add(db_attribute_tag)
