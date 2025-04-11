@@ -38,6 +38,7 @@ class TestServersRepository(ApiTester):
         db.query(tag_models.AttributeTag).delete()
         db.query(tag_models.EventTag).delete()
         db.query(tag_models.Tag).delete()
+        db.commit()
 
         # mock remote MISP API calls
         with patch(
