@@ -107,60 +107,48 @@ def create_object_from_pulled_object(
     # TODO: process sharing group // captureSG
     # TODO: enforce warninglist
 
-    db_object = create_object(
-        db,
-        object_models.Object(
-            event_id=local_event_id,
-            name=pulled_object.name,
-            meta_category=pulled_object["meta-category"],
-            description=pulled_object.description,
-            template_uuid=pulled_object.template_uuid,
-            template_version=pulled_object.template_version,
-            uuid=pulled_object.uuid,
-            timestamp=pulled_object.timestamp.timestamp(),
-            distribution=event_schemas.DistributionLevel(pulled_object.distribution),
-            sharing_group_id=(
-                pulled_object.sharing_group_id
-                if int(pulled_object.sharing_group_id) > 0
-                else None
-            ),
-            comment=pulled_object.comment,
-            deleted=pulled_object.deleted,
-            first_seen=(
-                pulled_object.first_seen.timestamp()
-                if hasattr(pulled_object, "first_seen")
-                else None
-            ),
-            last_seen=(
-                pulled_object.last_seen.timestamp()
-                if hasattr(pulled_object, "last_seen")
-                else None
-            ),
+    db_object = object_models.Object(
+        event_id=local_event_id,
+        name=pulled_object.name,
+        meta_category=pulled_object["meta-category"],
+        description=pulled_object.description,
+        template_uuid=pulled_object.template_uuid,
+        template_version=pulled_object.template_version,
+        uuid=pulled_object.uuid,
+        timestamp=pulled_object.timestamp.timestamp(),
+        distribution=event_schemas.DistributionLevel(pulled_object.distribution),
+        sharing_group_id=(
+            pulled_object.sharing_group_id
+            if int(pulled_object.sharing_group_id) > 0
+            else None
+        ),
+        comment=pulled_object.comment,
+        deleted=pulled_object.deleted,
+        first_seen=(
+            pulled_object.first_seen.timestamp()
+            if hasattr(pulled_object, "first_seen")
+            else None
+        ),
+        last_seen=(
+            pulled_object.last_seen.timestamp()
+            if hasattr(pulled_object, "last_seen")
+            else None
         ),
     )
 
-    db.add(db_object)
-    db.commit()
-    db.refresh(db_object)
-
-    pulled_object.id = db_object.id
-
     for pulled_attribute in pulled_object.attributes:
-        pulled_attribute.object_id = db_object.id
-        pulled_attribute.event_id = local_event_id
-        db_attribute = attributes_repository.create_attribute_from_pulled_attribute(
+        local_object_attribute = attributes_repository.create_attribute_from_pulled_attribute(
             db, pulled_attribute, local_event_id, user
         )
-        pulled_attribute.id = db_attribute.id
+        db_object.attributes.append(local_object_attribute)
 
     for pulled_object_reference in pulled_object.ObjectReference:
-        pulled_object_reference.object_id = db_object.id
-        object_references_repository.create_object_reference_from_pulled_object_reference(
+        local_object_reference = object_references_repository.create_object_reference_from_pulled_object_reference(
             db, pulled_object_reference, local_event_id
         )
+        db_object.object_references.append(local_object_reference)
 
-    return pulled_object
-
+    db.add(db_object)
 
 def update_object_from_pulled_object(
     db: Session, local_object: object_models.Object, pulled_object: MISPObject, local_event_id: int, user: user_models.User):
@@ -276,59 +264,6 @@ def delete_object(db: Session, object_id: int) -> object_models.Object:
     tasks.handle_deleted_object.delay(db_object.id, db_object.event_id)
 
     return db_object
-
-
-# def create_attributes_from_fetched_object(
-#     db: Session,
-#     local_event: event_models.Event,
-#     object: object_models.Object,
-#     attributes: list[MISPAttribute],
-#     feed: feed_models.Feed,
-#     user: user_schemas.User,
-# ) -> event_models.Event:
-
-#     for object_attribute in attributes:
-#         db_attribute = attribute_models.Attribute(
-#             event_id=local_event.id,
-#             object_id=object.id,
-#             category=object_attribute.category,
-#             type=object_attribute.type,
-#             value=str(object_attribute.value),
-#             to_ids=object_attribute.to_ids,
-#             uuid=object_attribute.uuid,
-#             timestamp=int(object_attribute.timestamp.timestamp()),
-#             distribution=event_models.DistributionLevel.INHERIT_EVENT,
-#             sharing_group_id=None,
-#             comment=object_attribute.comment,
-#             deleted=object_attribute.deleted,
-#             disable_correlation=object_attribute.disable_correlation,
-#             object_relation=getattr(object_attribute, "object_relation", None),
-#             first_seen=(
-#                 int(object_attribute.first_seen.timestamp())
-#                 if hasattr(object_attribute, "first_seen")
-#                 else None
-#             ),
-#             last_seen=(
-#                 int(object_attribute.last_seen.timestamp())
-#                 if hasattr(object_attribute, "last_seen")
-#                 else None
-#             ),
-#         )
-#         db.add(db_attribute)
-#         local_event.attribute_count += 1
-
-#         # process tags
-#         attributes_repository.capture_attribute_tags(
-#             db, db_attribute, object_attribute.tags, local_event, user
-#         )
-
-#         # TODO: process shadow_attributes
-#         # TODO: process attribute sightings
-#         # TODO: process galaxies
-#         # TODO: process analyst notes
-
-#     return local_event
-
 
 def create_objects_from_fetched_event(
     db: Session,
