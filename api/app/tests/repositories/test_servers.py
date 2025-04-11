@@ -35,10 +35,9 @@ class TestServersRepository(ApiTester):
         scenario: dict,
     ):
         # clear the database
-        db.query(tag_models.AttributeTag).delete()
-        db.query(tag_models.EventTag).delete()
-        db.query(tag_models.Tag).delete()
-        db.commit()
+        # db.query(tag_models.AttributeTag).delete()
+        # db.query(tag_models.EventTag).delete()
+        # db.query(tag_models.Tag).delete()
 
         # mock remote MISP API calls
         with patch(
