@@ -469,7 +469,7 @@ def update_objects_from_fetched_event(
                     event_id=local_event.id,
                     object_id=db_object.id,
                     referenced_uuid=referenced.uuid,
-                    referenced_id=referenced.id,
+                    referenced_id=referenced.id if referenced else None,
                     relationship_type=reference.relationship_type,
                     timestamp=int(reference.timestamp),
                     referenced_type=(
