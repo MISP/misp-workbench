@@ -259,32 +259,40 @@ def capture_attribute_tags(
     local_event_id: int,
     user: user_models.User,
 ):
+    tag_name_to_db_tag = {}
+
+    tag_names = [tag.name for tag in tags if not tag.local]
+
+    existing_tags = db.query(tag_models.Tag).filter(tag_models.Tag.name.in_(tag_names)).all()
+
+    for tag in existing_tags:
+        tag_name_to_db_tag[tag.name] = tag
+
+    new_tags = []
     for tag in tags:
         if tag.local:
-            # if tag is local, skip it
             continue
 
-        # get tag from DB
-        db_tag = tags_repository.get_tag_by_name(db, tag.name)
-
-        if db_tag is None:
-            # create tag if not exists
-            db_tag = tag_models.Tag(
+        if tag.name not in tag_name_to_db_tag:
+            new_tag = tag_models.Tag(
                 name=tag.name,
                 colour=tag.colour,
                 org_id=user.org_id,
                 user_id=user.id,
                 local_only=False,
-                # exportable=tag.exportable,
-                # hide_tag=tag.hide_tag,
-                # numerical_value=tag.numerical_value,
-                # is_galaxy=tag.is_galaxy,
-                # is_custom_galaxy=tag.is_custom_galaxy,
             )
-            db.add(db_tag)
-            db.commit()
-            db.refresh(db_tag)
+            new_tags.append(new_tag)
+            tag_name_to_db_tag[tag.name] = new_tag
 
+    if new_tags:
+        db.add_all(new_tags)
+        db.commit()
+
+    for tag in tags:
+        if tag.local:
+            continue
+
+        db_tag = tag_name_to_db_tag[tag.name]
 
         db_attribute_tag = tag_models.AttributeTag(
             attribute=db_attribute,
@@ -293,6 +301,9 @@ def capture_attribute_tags(
             local=tag.local,
         )
         db.add(db_attribute_tag)
+
+    db.commit()
+
 
 
 def create_attributes_from_fetched_event(
