@@ -12,7 +12,7 @@ class ObjectReferenceBase(BaseModel):
     source_uuid: Optional[UUID] = None
     referenced_uuid: Optional[UUID] = None
     timestamp: int
-    referenced_id: int
+    referenced_id: Optional[int] = None
     referenced_type: ReferencedType
     relationship_type: Optional[str] = None
     comment: Optional[str] = None
