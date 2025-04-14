@@ -202,6 +202,12 @@ To restart the worker container run:
 $ docker-compose restart worker
 ```
 
+
+#### purge tasks
+```
+docker-compose exec worker poetry run celery -A app.worker.tasks purge
+``` 
+
 ## TODO
 
 ### CRUD

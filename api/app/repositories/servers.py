@@ -7,6 +7,8 @@ from app.models import event as event_models
 from app.models import server as server_models
 from app.models import tag as tag_models
 from app.models import user as user_models
+from app.models import attribute as attribute_models
+from app.models import object as object_models
 from app.models.event import DistributionLevel
 from app.repositories import attributes as attributes_repository
 from app.repositories import events as events_repository
@@ -396,17 +398,15 @@ def create_or_update_pulled_event(
 
         created = events_repository.create_event_from_pulled_event(db, event)
         if created:
-            event.objects = create_pulled_event_objects(
-                db, created.id, event.objects, server, user
-            )
-            event.attributes = create_pulled_event_attributes(
+            create_pulled_event_attributes(
                 db, created.id, event.attributes, server, user
             )
+            create_pulled_event_objects(
+                db, created.id, event.objects, server, user
+            )
             create_pulled_event_tags(db, created, event.tags, server, user)
-            create_pulled_attributes_tags(db, created, event.attributes, server, user)
-            create_pulled_objects_tags(db, created, event.objects, server, user)
 
-            # TODO: publish event creation to ZMQ
+            # TODO: publish event creation to RabbitMQ
             logger.info(f"Event {event.uuid} created")
             return created
     else:
@@ -473,31 +473,31 @@ def create_pulled_event_sharing_group(
 def create_pulled_event_attributes(
     db: Session,
     local_event_id: int,
-    attributes: list[MISPAttribute],
+    attributes: list[attribute_models.Attribute],
     server: server_schemas.Server,
     user: user_models.User,
-) -> list[MISPAttribute]:
+):
     """
     see: app/Model/Event.php::_add()
     """
 
     # TODO: extract this logic somewhere reusable
     hashes_dict = {}
+    local_attributes = []
     for attribute in attributes:
         hash = sha1(
             (str(attribute.value) + attribute.type + attribute.category).encode("utf-8")
         ).hexdigest()
         if hash not in hashes_dict:
             # see: app/Model/Attribute.php::captureAttribute()
-            local_attribute = (
-                attributes_repository.create_attribute_from_pulled_attribute(
-                    db, attribute, local_event_id, user
-                )
+            local_attribute = attributes_repository.create_attribute_from_pulled_attribute(
+                db, attribute, local_event_id, user
             )
-            attribute.event_id = local_event_id
-            attribute.id = local_attribute.id
-
             hashes_dict[hash] = True
+            db.add(local_attribute)
+            
+    # insert attributes into the database
+    db.commit()
 
     return attributes
 
@@ -520,9 +520,10 @@ def update_pulled_event_attributes(
         local_attribute = attributes_repository.get_attribute_by_uuid(db, pulled_attribute.uuid)
         
         if local_attribute is None:
-            attributes_repository.create_attribute_from_pulled_attribute(
+            local_attribute = attributes_repository.create_attribute_from_pulled_attribute(
                 db, pulled_attribute, local_event_id, user
             )
+            db.add(local_attribute)
         else:
             # see: app/Model/Attribute.php::edit()
             attributes_repository.update_attribute_from_pulled_attribute(
@@ -558,10 +559,10 @@ def update_pulled_event_objects(
 def create_pulled_event_objects(
     db: Session,
     local_event_id: int,
-    objects: list[MISPObject],
+    objects: list[object_models.Object],
     server: server_schemas.Server,
     user: user_models.User,
-) -> list[MISPObject]:
+):
     """
     see: app/Model/Event.php::_add()
     """
@@ -569,15 +570,15 @@ def create_pulled_event_objects(
     for object in objects:
         # see: app/Model/MispObject.php::captureObject()
         # TODO: app/Model/MispObject.php::checkForDuplicateObjects()
-        db_object = objects_repository.create_object_from_pulled_object(
+        objects_repository.create_object_from_pulled_object(
             db, object, local_event_id, user
         )
-        object.id = db_object.id
-        object.event_id = local_event_id
 
     # see: app/Model/ObjectReference.php::captureReference()
 
-    return objects
+    # insert attributes into the database
+    db.commit()
+
 
 
 def create_pulled_tags(
