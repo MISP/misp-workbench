@@ -16,3 +16,4 @@ export * from "./attachments.store";
 export * from "./remote-misp-events.store";
 export * from "./remote-misp-attributes.store";
 export * from "./remote-misp-objects.store";
+export * from "./remote-misp-reports.store";

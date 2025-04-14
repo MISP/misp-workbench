@@ -8,6 +8,7 @@ import Popper from "vue3-popper";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "flatpickr/dist/flatpickr.min.css";
 import "tom-select/dist/css/tom-select.bootstrap5.min.css";
+import "github-markdown-css/github-markdown-light.css";
 
 import { library } from "@fortawesome/fontawesome-svg-core";
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";

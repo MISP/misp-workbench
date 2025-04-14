@@ -4,6 +4,7 @@ import { storeToRefs } from "pinia";
 import TagsIndex from "@/components/tags/TagsIndex.vue";
 import DistributionLevel from "@/components/enums/DistributionLevel.vue";
 import AttributesIndexRemote from "@/components/attributes/AttributesIndexRemote.vue";
+import ReportsIndexRemote from "@/components/reports/ReportsIndexRemote.vue";
 import ObjectsIndexRemote from "@/components/objects/ObjectsIndexRemote.vue";
 import UUID from "@/components/misc/UUID.vue";
 import ThreatLevel from "@/components/enums/ThreatLevel.vue";
@@ -15,6 +16,7 @@ import {
   faTags,
   faCubesStacked,
   faDownload,
+  faRectangleList,
 } from "@fortawesome/free-solid-svg-icons";
 
 const props = defineProps(["server_id", "event_uuid"]);
@@ -179,8 +181,24 @@ div.row h3 {
           </div>
         </div>
       </div>
-      <div class="col col-sm-3"></div>
-      <div class="col-xs-12 col-sm-12 col-md-12 col-lg-6 col-xl-6">
+      <div class="col-sm-6 mt-2">
+        <div class="card h-100">
+          <div class="card-header">
+            <FontAwesomeIcon :icon="faRectangleList" /> reports
+          </div>
+          <div class="card-body d-flex flex-column">
+            <div class="card-text">
+              <ReportsIndexRemote
+                :server_id="server_id"
+                :event_id="remote_events[0].id"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="row m-1">
+      <div class="col-12">
         <div class="mt-2">
           <div class="card">
             <div class="card-header">
