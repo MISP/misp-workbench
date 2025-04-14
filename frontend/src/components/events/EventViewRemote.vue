@@ -86,7 +86,7 @@ div.row h3 {
     </div>
     <div class="row m-1">
       <div class="col-sm-6 mt-2">
-        <div class="card">
+        <div class="card" style="height: 800px">
           <div class="card-body d-flex flex-column">
             <div class="table-responsive-sm">
               <table class="table table-striped">
@@ -178,11 +178,21 @@ div.row h3 {
                 </tbody>
               </table>
             </div>
+            <div class="card mt-3">
+              <div class="card-header">
+                <FontAwesomeIcon :icon="faTags" /> tags
+              </div>
+              <div class="card-body d-flex flex-column">
+                <div class="card-text">
+                  <TagsIndex :tags="remote_events[0].EventTag" />
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
       <div class="col-sm-6 mt-2">
-        <div class="card h-100">
+        <div class="card" style="height: 800px">
           <div class="card-header">
             <FontAwesomeIcon :icon="faRectangleList" /> reports
           </div>
@@ -192,22 +202,6 @@ div.row h3 {
                 :server_id="server_id"
                 :event_id="remote_events[0].id"
               />
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-    <div class="row m-1">
-      <div class="col-12">
-        <div class="mt-2">
-          <div class="card">
-            <div class="card-header">
-              <FontAwesomeIcon :icon="faTags" /> tags
-            </div>
-            <div class="card-body d-flex flex-column">
-              <div class="card-text">
-                <TagsIndex :tags="remote_events[0].EventTag" />
-              </div>
             </div>
           </div>
         </div>

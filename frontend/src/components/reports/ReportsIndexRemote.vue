@@ -20,7 +20,11 @@ remoteMISPReportsStore.get_remote_server_event_reports(
     Error loading reports: {{ status.error }}
   </div>
   <div class="table-responsive-sm">
-    <div class="accordion" id="eventReporstAccordion">
+    <div
+      class="accordion"
+      id="eventReporstAccordion"
+      style="max-height: 800px; overflow-y: auto"
+    >
       <div
         class="accordion-item"
         :key="report.EventReport.id"
