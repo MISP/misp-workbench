@@ -442,8 +442,8 @@ def create_or_update_pulled_event(
             else:
                 event.sharing_group_id = None
 
-        # if event.timestamp.timestamp() <= existing_event.timestamp:
-        #     return
+        if event.timestamp.timestamp() <= existing_event.timestamp:
+            return
 
         updated = events_repository.update_event_from_pulled_event(
             db, existing_event, event
