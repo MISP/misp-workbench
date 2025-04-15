@@ -19,11 +19,16 @@ remoteMISPReportsStore.get_remote_server_event_reports(
   <div v-if="status.error" class="text-danger">
     Error loading reports: {{ status.error }}
   </div>
+  <div v-if="!status.loading && remote_event_reports.length === 0">
+    <div class="alert alert-info" role="alert">
+      No reports found for this event.
+    </div>
+  </div>
   <div class="table-responsive-sm">
     <div
       class="accordion"
       id="eventReporstAccordion"
-      style="max-height: 800px; overflow-y: auto"
+      style="max-height: 720px; overflow-y: auto"
     >
       <div
         class="accordion-item"

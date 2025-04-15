@@ -85,7 +85,7 @@ div.row h3 {
       </div>
     </div>
     <div class="row m-1">
-      <div class="col-sm-6 mt-2">
+      <div class="col-sm-4 mt-2">
         <div class="card" style="height: 800px">
           <div class="card-body d-flex flex-column">
             <div class="table-responsive-sm">
@@ -178,7 +178,7 @@ div.row h3 {
                 </tbody>
               </table>
             </div>
-            <div class="card mt-3">
+            <div class="card mt-3" style="height: 280px">
               <div class="card-header">
                 <FontAwesomeIcon :icon="faTags" /> tags
               </div>
@@ -191,7 +191,7 @@ div.row h3 {
           </div>
         </div>
       </div>
-      <div class="col-sm-6 mt-2">
+      <div class="col-sm-8 mt-2">
         <div class="card" style="height: 800px">
           <div class="card-header">
             <FontAwesomeIcon :icon="faRectangleList" /> reports
