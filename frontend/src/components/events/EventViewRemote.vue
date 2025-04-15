@@ -16,7 +16,6 @@ import {
   faTags,
   faCubesStacked,
   faDownload,
-  faRectangleList,
 } from "@fortawesome/free-solid-svg-icons";
 
 const props = defineProps(["server_id", "event_uuid"]);
@@ -191,18 +190,13 @@ div.row h3 {
           </div>
         </div>
       </div>
-      <div class="col-sm-8 mt-2">
-        <div class="card" style="height: 800px">
-          <div class="card-header">
-            <FontAwesomeIcon :icon="faRectangleList" /> reports
-          </div>
-          <div class="card-body d-flex flex-column">
-            <div class="card-text">
-              <ReportsIndexRemote
-                :server_id="server_id"
-                :event_id="remote_events[0].id"
-              />
-            </div>
+      <div class="col-sm-8">
+        <div class="card-body d-flex flex-column">
+          <div class="card-text">
+            <ReportsIndexRemote
+              :server_id="server_id"
+              :event_id="remote_events[0].id"
+            />
           </div>
         </div>
       </div>

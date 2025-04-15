@@ -25,13 +25,10 @@ remoteMISPReportsStore.get_remote_server_event_reports(
     </div>
   </div>
   <div class="table-responsive-sm">
-    <div
-      class="accordion"
-      id="eventReporstAccordion"
-      style="max-height: 720px; overflow-y: auto"
-    >
+    <div class="accordion" id="eventReporstAccordion" style="overflow-y: auto">
       <div
         class="accordion-item"
+        style="max-height: 800px; overflow-y: auto"
         :key="report.EventReport.id"
         v-for="report in remote_event_reports"
       >
