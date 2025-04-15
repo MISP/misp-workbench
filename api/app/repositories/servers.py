@@ -2,7 +2,9 @@ import os
 import logging
 from hashlib import sha1
 from typing import Union
+from uuid import UUID
 
+from datetime import datetime
 from app.models import event as event_models
 from app.models import server as server_models
 from app.models import tag as tag_models
@@ -29,6 +31,7 @@ from pymisp import (
 )
 from sqlalchemy.orm import Session
 from app.worker import tasks
+from app.dependencies import get_opensearch_client
 
 logger = logging.getLogger(__name__)
 
@@ -398,18 +401,16 @@ def create_or_update_pulled_event(
         created = events_repository.create_event_from_pulled_event(db, event)
         if created:
             create_pulled_event_tags(db, created, event.tags, server, user)
-            
+
             create_pulled_event_reports(
-                db, created.id, event.event_reports, server, user
-            )
-            
-            create_pulled_event_attributes(
-                db, created.id, event.attributes, server, user
+                db, created.uuid, event.event_reports, server, user
             )
             create_pulled_event_objects(
                 db, created.id, event.objects, server, user
             )
-            
+            create_pulled_event_attributes(
+                db, created.id, event.attributes, server, user
+            )
 
             # TODO: publish event creation to RabbitMQ
             logger.info(f"Event {event.uuid} created")
@@ -441,13 +442,18 @@ def create_or_update_pulled_event(
             else:
                 event.sharing_group_id = None
 
+        # if event.timestamp.timestamp() <= existing_event.timestamp:
+        #     return
+
         updated = events_repository.update_event_from_pulled_event(
             db, existing_event, event
         )
         if updated:
+            
             create_pulled_event_tags(db, updated, event.tags, server, user)
-            update_pulled_event_attributes(db, updated.id, event.attributes, server, user)
+            create_pulled_event_reports(db, updated.uuid, event.event_reports, server, user)
             update_pulled_event_objects(db, updated.id, event.objects, server, user)
+            update_pulled_event_attributes(db, updated.id, event.attributes, server, user)
 
             # TODO: publish event update to ZMQ
             logger.info("Updated event %s" % event.uuid)
@@ -585,17 +591,40 @@ def update_pulled_event_objects(
                 db, local_object, object, local_event_id, user
             )
 
-
-
-
 def create_pulled_event_reports(
         db: Session,
-    local_event_id: int,
+    local_event_uuid: UUID,
     event_reports: list[MISPEventReport],
     server: server_schemas.Server,
     user: user_models.User,
 ) -> None:
-    pass
+    
+    if event_reports is None or len(event_reports) == 0:
+        return
+    
+    OpenSearchClient = get_opensearch_client()
+    
+    for event_report in event_reports:
+        
+        event_report_raw = event_report.to_dict()
+        
+        event_report_raw["@timestamp"] = datetime.fromtimestamp(
+            int(event_report_raw["timestamp"])
+        ).isoformat()
+        
+        event_report_raw["event_uuid"] = str(local_event_uuid)
+        
+        response = OpenSearchClient.index(
+            index="misp-event-reports", id=event_report.uuid, body=event_report_raw, refresh=True
+        )
+
+        if response["result"] not in ["created", "updated"]:
+            logger.error(
+                "Failed to index event report uuid=%s. Response: %s", event_report.uuid, response
+            )
+            raise Exception("Failed to index event report.")
+
+    
 
 def create_pulled_tags(
     db: Session,

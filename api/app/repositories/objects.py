@@ -106,7 +106,7 @@ def create_object_from_pulled_object(
 ) -> MISPObject:
     # TODO: process sharing group // captureSG
     # TODO: enforce warninglist
-
+    
     db_object = object_models.Object(
         event_id=local_event_id,
         name=pulled_object.name,

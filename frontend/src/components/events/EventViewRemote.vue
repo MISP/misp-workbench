@@ -84,7 +84,7 @@ div.row h3 {
       </div>
     </div>
     <div class="row m-1">
-      <div class="col-sm-4 mt-2">
+      <div class="col-sm-4 mt-3">
         <div class="card" style="height: 800px">
           <div class="card-body d-flex flex-column">
             <div class="table-responsive-sm">

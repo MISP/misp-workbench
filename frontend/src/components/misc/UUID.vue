@@ -7,7 +7,7 @@ function copyUuidToClipboard() {
 </script>
 
 <template>
-  <span class="badge bg-light text-dark">{{ uuid }} </span>
+  <span class="badge bg-light text-dark shadow-sm">{{ uuid }} </span>
   <button type="button" class="btn">
     <font-awesome-icon
       class="text-primary"

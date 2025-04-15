@@ -1,17 +1,14 @@
 <script setup>
 import { storeToRefs } from "pinia";
-import { useRemoteMISPReportsStore } from "@/stores";
+import { useReportsStore } from "@/stores";
 import Spinner from "@/components/misc/Spinner.vue";
 import { marked } from "marked";
 
-const props = defineProps(["server_id", "event_id"]);
-const remoteMISPReportsStore = useRemoteMISPReportsStore();
-const { remote_event_reports, status } = storeToRefs(remoteMISPReportsStore);
+const props = defineProps(["event_id"]);
+const reportsStore = useReportsStore();
+const { reports, status } = storeToRefs(reportsStore);
 
-remoteMISPReportsStore.get_remote_server_event_reports(
-  props.server_id,
-  props.event_id,
-);
+reportsStore.getReportsByEventId(props.event_id);
 </script>
 
 <template>
@@ -19,7 +16,7 @@ remoteMISPReportsStore.get_remote_server_event_reports(
   <div v-if="status.error" class="text-danger">
     Error loading reports: {{ status.error }}
   </div>
-  <div v-if="!status.loading && remote_event_reports.length === 0">
+  <div v-if="!status.loading && reports.length === 0">
     <div class="alert alert-info" role="alert">
       No event reports found for this event.
     </div>
@@ -29,36 +26,35 @@ remoteMISPReportsStore.get_remote_server_event_reports(
       <div
         class="accordion-item"
         style="max-height: 800px; overflow-y: auto"
-        :key="report.EventReport.id"
-        v-for="report in remote_event_reports"
+        :key="report._source.id"
+        v-for="report in reports"
       >
         <h2
           class="accordion-header"
-          :id="`eventReportHeading${report.EventReport.id}`"
+          :id="`eventReportHeading${report._source.id}`"
         >
           <button
             class="accordion-button"
             type="button"
             data-bs-toggle="collapse"
-            :data-bs-target="`#eventReport${report.EventReport.id}`"
+            :data-bs-target="`#eventReport${report._source.id}`"
             aria-expanded="true"
           >
-            <strong>{{ report.EventReport.name }} </strong>
+            <strong>{{ report._source.name }} </strong>
           </button>
         </h2>
         <div
-          :id="`eventReport${report.EventReport.id}`"
+          :id="`eventReport${report._source.id}`"
           class="accordion-collapse collapse"
           :class="{
-            show:
-              report.EventReport.id === remote_event_reports[0].EventReport.id,
+            show: report._source.id === reports[0]._source.id,
           }"
           data-bs-parent="#eventReporstAccordion"
         >
           <div class="accordion-body">
             <div
               class="markdown-body"
-              v-html="marked(report.EventReport.content)"
+              v-html="marked(report._source.content)"
             ></div>
           </div>
         </div>

@@ -17,6 +17,7 @@ from app.routers import (
     tags,
     taxonomies,
     users,
+    reports
 )
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -90,5 +91,8 @@ app.include_router(galaxies.router, tags=["Galaxies"])
 
 # Attachments resource
 app.include_router(attachments.router, tags=["Attachments"])
+
+# Reports resource
+app.include_router(reports.router, tags=["Event Reports"])
 
 add_pagination(app)
