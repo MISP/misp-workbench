@@ -54,7 +54,7 @@ services:
       [
         "sh",
         "-c",
-        "poetry run python -m debugpy --listen 0.0.0.0:5679 -m celery -A app.worker.tasks worker --loglevel=debug --concurrency=1 --pool=solo"
+        "poetry run python -m debugpy --listen 0.0.0.0:5679 -m celery -A app.worker.tasks worker --loglevel=debug --hostname=worker1@%h --concurrency=1 --pool=solo -E"
       ]
     volumes:
       - ./api:/code
