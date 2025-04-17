@@ -126,7 +126,7 @@ def pull_server_by_id(
         raise Exception("Server pull technique `update` not implemented yet.")
 
     if technique == "full":
-        return pull_server_by_id_full(db, settings, server, remote_misp, user)
+        return pull_server_by_id_full(db, server, remote_misp, user)
 
     raise Exception("Unknown server pull technique `%s` not implemented yet." % technique)
 
