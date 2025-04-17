@@ -36,8 +36,7 @@ services:
   setup-opensearch:
     image: curlimages/curl:latest
     depends_on:
-      opensearch:
-        condition: service_healthy
+      - opensearch
     volumes:
       - ./api/opensearch/mappings:/mappings
       - ./api/opensearch/entrypoint.sh:/entrypoint.sh
@@ -120,7 +119,7 @@ services:
     build:
       context: ./api
       dockerfile: Dockerfile
-    command: poetry run celery -A app.worker.tasks worker --loglevel=info --hostname worker@%h
+    command: poetry run celery -A app.worker.tasks worker --loglevel=info --hostname worker@%h -E
     environment:
       POSTGRES_HOSTNAME: ${POSTGRES_HOSTNAME:-postgres}
       POSTGRES_PORT: ${POSTGRES_PORT:-5432}
@@ -165,7 +164,7 @@ services:
     build:
       context: ./api
       dockerfile: Dockerfile
-    command: poetry run celery -A app.worker.tasks flower --loglevel=info --persistent=True --auto_refresh=True --state_save_interval=5
+    command: poetry run celery -A app.worker.tasks flower --loglevel=info --persistent=True --auto_refresh=True --state_save_interval=5 --broker-api=amqp://${RABBITMQ_DEFAULT_USER:-rabbitmq}:${RABBITMQ_DEFAULT_PASS:-rabbitmq}@${RABBITMQ_HOSTNAME:-rabbitmq}:15672/${RABBITMQ_DEFAULT_VHOST:-rabbitmq}/api
     ports:
       - "5555:5555"
     working_dir: /code

@@ -4,7 +4,7 @@ import { fetchWrapper } from "@/helpers";
 const baseUrl = `${import.meta.env.VITE_API_URL}/roles`;
 
 export const useRolesStore = defineStore({
-  id: "objects",
+  id: "roles",
   state: () => ({
     roles: {},
     role: {},

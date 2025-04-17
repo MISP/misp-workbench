@@ -9,6 +9,10 @@ services:
       - "5678:5678"
     entrypoint: [ "bash", "-c", "./entrypoint.dev.sh" ]
 
+  postgres:
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-misp_test}
+
   worker:
     volumes:
       - ./api:/code

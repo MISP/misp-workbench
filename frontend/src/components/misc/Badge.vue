@@ -18,7 +18,7 @@ const props = defineProps({
 
 <template>
   <span
-    class="badge mx-1 tag"
+    class="badge mx-1 tag shadow-sm"
     :style="{
       backgroundColor: tagHelper.getBackgroundColor(props.colour),
       color: tagHelper.getContrastColor(props.colour),

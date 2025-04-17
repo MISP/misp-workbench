@@ -12,16 +12,12 @@ defineProps({
 <style scoped>
 .tag {
   float: left;
-  max-width: 200px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
   margin: 0.1em;
 }
 </style>
 
 <template>
-  <div class="col-auto">
+  <div class="d-flex flex-wrap overflow-auto" style="max-height: 200px">
     <Badge
       v-for="tag in tags"
       :key="tag.name || tag.Tag.name"

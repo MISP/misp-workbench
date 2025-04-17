@@ -1,10 +1,10 @@
 <script setup>
 import Spinner from "@/components/misc/Spinner.vue";
 import { storeToRefs } from "pinia";
-import Sparkline from "@/components/charts/Sparkline.vue";
 import AttributesIndex from "@/components/attributes/AttributesIndex.vue";
 import ObjectsIndex from "@/components/objects/ObjectsIndex.vue";
 import TagsSelect from "@/components/tags/TagsSelect.vue";
+import ReportsIndex from "@/components/reports/ReportsIndex.vue";
 import DistributionLevel from "@/components/enums/DistributionLevel.vue";
 import UUID from "@/components/misc/UUID.vue";
 import ThreatLevel from "@/components/enums/ThreatLevel.vue";
@@ -17,7 +17,6 @@ import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
 import {
   faTrash,
   faPen,
-  faDownLong,
   faTags,
   faShapes,
   faCubesStacked,
@@ -107,7 +106,7 @@ div.row h3 {
       </div>
     </div>
     <div class="row m-1">
-      <div class="col-sm-6 mt-2">
+      <div class="col-sm-4 mt-2">
         <div class="card">
           <div class="card-body d-flex flex-column">
             <div class="table-responsive-sm">
@@ -191,154 +190,62 @@ div.row h3 {
                 </tbody>
               </table>
             </div>
-          </div>
-        </div>
-      </div>
-      <div class="col col-sm-3">
-        <div class="mt-2">
-          <div class="card h-100">
-            <div class="card-body">
-              <div class="d-flex justify-content-between align-items-center">
-                <div>
-                  <p class="mb-0 text-muted">activity</p>
-                  <Sparkline :data="[2, 3, 5, 7, 18, 8, 6, 15, 23, 20, 21]" />
+            <div class="card mt-3">
+              <div class="card-header">
+                <FontAwesomeIcon :icon="faTags" /> tags
+              </div>
+              <div class="card-body d-flex flex-column">
+                <div class="card-text">
+                  <TagsSelect
+                    :modelClass="'event'"
+                    :model="event"
+                    :selectedTags="event.tags"
+                  />
                 </div>
               </div>
-            </div>
-            <div class="card-footer text-muted">
-              <p class="card-text fst-italic fw-light">
-                <small class="text-muted"
-                  >last day/week/<span class="fw-bold text-decoration-underline"
-                    >month</span
-                  ></small
-                >
-              </p>
-            </div>
-          </div>
-        </div>
-        <div class="mt-2">
-          <div class="card">
-            <div class="card-body">
-              <div class="d-flex justify-content-between align-items-center">
-                <div>
-                  <p class="mb-0 text-muted">correlations</p>
-                  <h2>8,523</h2>
-                </div>
-                <span
-                  class="badge badge-pill badge-cyan badge-red bg-warning fs-5"
-                >
-                  <FontAwesomeIcon :icon="faDownLong" />
-                  <span class="font-weight-semibold ml-1">6.71%</span>
-                </span>
-              </div>
-            </div>
-            <div class="card-footer text-muted">
-              <p class="card-text fst-italic fw-light">
-                <small class="text-muted"
-                  >last day/<span class="fw-bold text-decoration-underline"
-                    >week</span
-                  >/month</small
-                >
-              </p>
-            </div>
-          </div>
-        </div>
-        <div class="mt-2">
-          <div class="card">
-            <div class="card-body">
-              <div class="d-flex justify-content-between align-items-center">
-                <div>
-                  <p class="mb-0 text-muted">sightings</p>
-                  <h2>423</h2>
-                </div>
-                <span
-                  class="badge badge-pill badge-cyan badge-red bg-danger fs-5"
-                >
-                  <FontAwesomeIcon :icon="faDownLong" />
-                  <span class="font-weight-semibold ml-1">16.71%</span>
-                </span>
-              </div>
-            </div>
-            <div class="card-footer text-muted">
-              <p class="card-text fst-italic fw-light">
-                <small class="text-muted"
-                  >last day/week/<span class="fw-bold text-decoration-underline"
-                    >month</span
-                  ></small
-                >
-              </p>
             </div>
           </div>
         </div>
       </div>
-      <div class="col-xs-12 col-sm-12 col-md-12 col-lg-6 col-xl-3">
-        <div class="mt-2">
-          <div class="card">
+      <div class="col col-sm-8 mt-2">
+        <ReportsIndex :event_id="event.id" />
+      </div>
+    </div>
+    <div class="row">
+      <div class="row m-1">
+        <div class="col-12">
+          <UploadAttachmentsWidget
+            :event_id="event.id"
+            :key="event.object_count"
+            @object-added="handleObjectAdded"
+            @object-deleted="handleObjectDeleted"
+          />
+          <div class="card mt-2">
             <div class="card-header">
-              <FontAwesomeIcon :icon="faTags" /> tags
+              <FontAwesomeIcon :icon="faShapes" /> objects
             </div>
             <div class="card-body d-flex flex-column">
-              <div class="card-text">
-                <TagsSelect
-                  :modelClass="'event'"
-                  :model="event"
-                  :selectedTags="event.tags"
-                />
-              </div>
+              <ObjectsIndex
+                :event_id="event_id"
+                :page_size="10"
+                :key="event.object_count"
+              />
             </div>
           </div>
         </div>
-        <!-- <div class="mt-2">
+      </div>
+      <div class="row m-1">
+        <div class="col-12">
           <div class="card">
-            <div class="card-body">
-              <div class="card-text">
-                <img src="/images/pie-chart.png" style="height: 346x; width: 346px;" class="card-img" />
-              </div>
+            <div class="card-header">
+              <FontAwesomeIcon :icon="faCubesStacked" /> attributes
+            </div>
+            <div class="card-body d-flex flex-column">
+              <AttributesIndex :event_id="event_id" :page_size="10" />
             </div>
           </div>
-        </div> -->
-      </div>
-    </div>
-    <div class="row m-1">
-      <div class="col-12">
-        <UploadAttachmentsWidget
-          :event_id="event.id"
-          :key="event.object_count"
-          @object-added="handleObjectAdded"
-          @object-deleted="handleObjectDeleted"
-        />
-        <div class="card mt-2">
-          <div class="card-header">
-            <FontAwesomeIcon :icon="faShapes" /> objects
-          </div>
-          <div class="card-body d-flex flex-column">
-            <ObjectsIndex
-              :event_id="event_id"
-              :page_size="10"
-              :key="event.object_count"
-            />
-          </div>
         </div>
       </div>
-    </div>
-    <div class="row m-1">
-      <div class="col-12">
-        <div class="card">
-          <div class="card-header">
-            <FontAwesomeIcon :icon="faCubesStacked" /> attributes
-          </div>
-          <div class="card-body d-flex flex-column">
-            <AttributesIndex :event_id="event_id" :page_size="10" />
-          </div>
-        </div>
-      </div>
-    </div>
-    <div class="card-footer text-muted">
-      <p class="card-text">
-        <small class="text-muted"
-          >last updated 3 mins ago by <a href="/users/123">adulau</a></small
-        >
-      </p>
     </div>
     <DeleteEventModal
       @event-deleted="handleEventDeleted"

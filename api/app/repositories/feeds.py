@@ -1,13 +1,11 @@
 import os
-import asyncio
 import logging
-from asyncio import Semaphore
 
-import aiohttp
 import requests
 from app.models import event as event_models
 from app.models import feed as feed_models
 from app.repositories import attributes as attributes_repository
+from app.repositories import sync as sync_repository
 from app.repositories import events as events_repository
 from app.repositories import objects as objects_repository
 from app.repositories import organisations as organisations_repository
@@ -20,9 +18,6 @@ from sqlalchemy.orm import Session
 
 logger = logging.getLogger(__name__)
 
-MAX_CONCURRENT_CONNECTIONS = 5
-MAX_CONCURRENT_CONNECTIONS_PER_HOST = 5
-MAX_CONCURRENT_REQUESTS = 5
 USER_AGENT = "misp-lite/" + os.environ.get("APP_VERSION", "")
 
 
@@ -106,110 +101,87 @@ def delete_feed(db: Session, feed_id: int) -> None:
     db.commit()
 
 
-async def fetch_feed_event_by_uuid(feed, event_uuid, session):
+def fetch_feed_event_by_uuid(feed, event_uuid):
     url = f"{feed.url}/{event_uuid}.json"
-    async with session.get(url) as response:
-        return await response.json()
+    response = requests.get(url, headers={"User-Agent": USER_AGENT})
+    if response.status_code == 200:
+        return response.json()
+    else:
+        raise HTTPException(
+            status_code=response.status_code,
+            detail=f"Failed to fetch event {event_uuid}: {response.text}",
+        )
 
 
-async def process_feed_event(
+def process_feed_event(
+    db: Session,
     event_uuid: str,
-    local_feed_events_uuids: list[str],
     feed: feed_models.Feed,
     user: user_schemas.User,
-    session,
-    db: Session,
-    semaphore: Semaphore,
 ):
-    async with semaphore:
-        logging.info(f"Fetching event {feed.url}/{event_uuid}")
-        try:
-            event_raw = await fetch_feed_event_by_uuid(feed, event_uuid, session)
-            event = MISPEvent()
-            event.load(event_raw)
+    logging.info(f"Fetching event {feed.url}/{event_uuid}")
+    event_raw = fetch_feed_event_by_uuid(feed, event_uuid)
+    event = MISPEvent()
+    event.load(event_raw)
 
-        except Exception as e:
-            logger.error(f"Failed to fetch event {event_uuid}: {str(e)}")
-            return None
-
-        try:
-            orgc = organisations_repository.get_or_create_organisation_from_feed(
-                db, event.Orgc, user=user
-            )
-
-            if event_uuid in local_feed_events_uuids:
-                db_event = events_repository.update_event_from_fetched_event(
-                    db, event, orgc, feed, user
-                )
-
-                # process attributes
-                db_event = attributes_repository.update_attributes_from_fetched_event(
-                    db, db_event, event.attributes, feed, user
-                )
-                
-                # process objects
-                db_event = objects_repository.update_objects_from_fetched_event(
-                    db, db_event, event, feed, user
-                )
-
-            else:
-                # TODO: process tag_id and tag_collection_id
-
-                # TODO: process feed.sharing_group_id
-
-                # TODO: apply feed rules (disable_correlation, unpublish_event)
-
-                db_event = events_repository.create_event_from_fetched_event(
-                    db, event, orgc, feed, user
-                )
-
-                # process attributes
-                db_event = attributes_repository.create_attributes_from_fetched_event(
-                    db, db_event, event.attributes, None, feed, user
-                )
-                
-                # process objects
-                db_event = objects_repository.create_objects_from_fetched_event(
-                    db, db_event, event.objects, feed, user
-                )
-
-
-            # update counters
-            events_repository.increment_attribute_count(
-                db, db_event.id, db_event.attribute_count
-            )
-            events_repository.increment_object_count(
-                db, db_event.id, db_event.object_count
-            )
-            db.commit()
-
-            tasks.index_event.delay(db_event.uuid)
-
-        except Exception as e:
-            logger.error(f"Failed to process event {event_uuid}: {e}")
-
-
-async def fetch_feeds_async(
-    events_uuids: list[str],
-    local_feed_events_uuids: list[str],
-    feed: feed_models.Feed,
-    user: user_schemas.User,
-    db: Session,
-):
-    connector = aiohttp.TCPConnector(
-        limit=MAX_CONCURRENT_CONNECTIONS,
-        limit_per_host=MAX_CONCURRENT_CONNECTIONS_PER_HOST,
+    orgc = organisations_repository.get_or_create_organisation_from_feed(
+        db, event.Orgc, user=user
     )
-    semaphore = Semaphore(MAX_CONCURRENT_REQUESTS)
 
-    async with aiohttp.ClientSession(connector=connector, headers={"User-Agent": USER_AGENT}) as session:
-        tasks = [
-            process_feed_event(
-                event_uuid, local_feed_events_uuids, feed, user, session, db, semaphore
-            )
-            for event_uuid in events_uuids
-        ]
-        await asyncio.gather(*tasks)
+    local_event = events_repository.get_event_by_uuid(db, event_uuid)
+
+    # TODO: process tag_id and tag_collection_id
+    # TODO: process feed.sharing_group_id
+    # TODO: apply feed rules (disable_correlation, unpublish_event)
+
+    if local_event is None:
+
+        local_event = events_repository.create_event_from_fetched_event(
+            db, event, orgc, feed, user
+        )
+
+        sync_repository.create_pulled_event_tags(db, local_event, event.tags, user)
+
+        sync_repository.create_pulled_event_reports(
+            db, local_event.uuid, event.event_reports, user
+        )
+
+        # process objects
+        sync_repository.create_pulled_event_objects(
+            db, local_event.id, event.objects, user
+        )
+
+        # process attributes
+        sync_repository.create_pulled_event_attributes(
+            db, local_event.id, event.attributes, user
+        )
+    else:
+
+        local_event = events_repository.update_event_from_fetched_event(
+            db, event, orgc, feed, user
+        )
+
+        sync_repository.create_pulled_event_tags(db, local_event, event.tags, user)
+
+        sync_repository.create_pulled_event_reports(
+            db, local_event.uuid, event.event_reports, user
+        )
+
+        # process objects
+        sync_repository.update_pulled_event_objects(
+            db, local_event.id, event.objects, user
+        )
+
+        # process attributes
+        sync_repository.update_pulled_event_attributes(
+            db, local_event.id, event.attributes, user
+        )
+
+    db.commit()
+
+    tasks.index_event.delay(local_event.uuid)
+
+    return {"result": "success", "message": "Event processed"}
 
 
 def get_feed_manifest(feed: feed_models.Feed):
@@ -217,15 +189,19 @@ def get_feed_manifest(feed: feed_models.Feed):
 
 
 def fetch_feed(db: Session, feed_id: int, user: user_schemas.User):
+    logger.info("fetch feed id=%s job started", feed_id)
+
     db_feed = get_feed_by_id(db, feed_id=feed_id)
+
+    if db_feed is None:
+        raise Exception("Feed not found")
+
+    if not db_feed.enabled:
+        raise Exception("Feed is not enabled")
+
     if db_feed is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Feed not found"
-        )
-
-    if not db_feed.enabled:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Feed is not enabled"
         )
 
     logger.info(f"Fetching feed {db_feed.id} {db_feed.name}")
@@ -243,12 +219,9 @@ def fetch_feed(db: Session, feed_id: int, user: user_schemas.User):
 
             feed_events_uuids = manifest.keys()
 
-            local_feed_events = (
-                db.query(event_models.Event)
-                .filter(event_models.Event.uuid.in_(feed_events_uuids))
-                .all()
+            local_feed_events = events_repository.get_events_by_uuids(
+                db, feed_events_uuids
             )
-            local_feed_events_uuids = [str(event.uuid) for event in local_feed_events]
 
             # filter out events that are already in the database and have the same or older timestamp
             skip_events = [
@@ -268,16 +241,11 @@ def fetch_feed(db: Session, feed_id: int, user: user_schemas.User):
             if not feed_events_uuids:
                 return {"result": "success", "message": "No new events to fetch"}
 
-            asyncio.run(
-                fetch_feeds_async(
-                    feed_events_uuids,
-                    local_feed_events_uuids,
-                    db_feed,
-                    user,
-                    db,
-                )
-            )
+            for event_uuid in feed_events_uuids:
+                tasks.fetch_feed_event.delay(event_uuid, db_feed.id, user.id)
 
-            return {"result": "success", "message": "Feed fetched"}
-
-    return []
+    logger.info("fetch feed id=%s all event fetch tasks enqueued.", feed_id)
+    return {
+        "result": "success",
+        "message": "All feed id=%s events to fetch enqueued." % feed_id,
+    }

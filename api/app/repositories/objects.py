@@ -106,7 +106,7 @@ def create_object_from_pulled_object(
 ) -> MISPObject:
     # TODO: process sharing group // captureSG
     # TODO: enforce warninglist
-
+    
     db_object = object_models.Object(
         event_id=local_event_id,
         name=pulled_object.name,
@@ -117,11 +117,7 @@ def create_object_from_pulled_object(
         uuid=pulled_object.uuid,
         timestamp=pulled_object.timestamp.timestamp(),
         distribution=event_schemas.DistributionLevel(pulled_object.distribution),
-        sharing_group_id=(
-            pulled_object.sharing_group_id
-            if int(pulled_object.sharing_group_id) > 0
-            else None
-        ),
+        sharing_group_id=None,
         comment=pulled_object.comment,
         deleted=pulled_object.deleted,
         first_seen=(
@@ -181,11 +177,7 @@ def update_object_from_pulled_object(
             template_version=pulled_object.template_version,
             timestamp=pulled_object.timestamp.timestamp(),
             distribution=event_schemas.DistributionLevel(pulled_object.distribution),
-            sharing_group_id=(
-                pulled_object.sharing_group_id
-                if int(pulled_object.sharing_group_id) > 0
-                else None
-            ),
+            sharing_group_id=None,
             comment=pulled_object.comment,
             deleted=pulled_object.deleted,
             first_seen=(
@@ -200,6 +192,23 @@ def update_object_from_pulled_object(
             ),
             delete_attributes=delete_attributes,
         )
+        
+        for pulled_object_reference in pulled_object.ObjectReference:
+            local_object_reference = object_references_repository.get_object_reference_by_uuid(
+                db, pulled_object_reference.uuid
+            )
+            
+            if local_object_reference is None:
+                local_object_reference = object_references_repository.create_object_reference_from_pulled_object_reference(
+                    db, pulled_object_reference, local_event_id
+                )
+                local_object.object_references.append(local_object_reference)
+            else:
+                if local_object_reference.timestamp < pulled_object.timestamp.timestamp():
+                    pulled_object_reference.id = local_object_reference.id
+                    local_object_reference = object_references_repository.update_object_reference_from_pulled_object_reference(
+                        db, local_object_reference, pulled_object_reference, local_event_id
+                    )
         
         update_object(db, local_object.id, object_patch)
 
@@ -271,93 +280,12 @@ def create_objects_from_fetched_event(
     objects: list[MISPObject],
     feed: feed_models.Feed,
     user: user_schemas.User,
-) -> event_models.Event:
+):
 
     for object in objects:
-        db_object = object_models.Object(
-            event_id=local_event.id,
-            name=object.name,
-            meta_category=object["meta-category"],
-            description=object.description,
-            template_uuid=object.template_uuid,
-            template_version=object.template_version,
-            uuid=object.uuid,
-            timestamp=object.timestamp.timestamp(),
-            distribution=event_schemas.DistributionLevel.INHERIT_EVENT,
-            sharing_group_id=None,
-            comment=object.comment,
-            deleted=object.deleted,
-            first_seen=(
-                int(object.first_seen.timestamp())
-                if hasattr(object, "first_seen")
-                else None
-            ),
-            last_seen=(
-                int(object.last_seen.timestamp())
-                if hasattr(object, "last_seen")
-                else None
-            ),
+         create_object_from_pulled_object(
+            db, object, local_event.id, user
         )
-
-        # TODO: process shadow_objects
-        # TODO: process analyst notes
-
-        db.add(db_object)
-        db.commit()
-        db.refresh(db_object)
-        local_event.object_count += 1
-
-        for attribute in object.attributes:
-            attribute.object_id = db_object.id
-            attribute.event_id = local_event.id
-
-        local_event = attributes_repository.create_attributes_from_fetched_event(
-            db, local_event, object.attributes, db_object.id, feed, user
-        )
-
-        # TODO: process analyst notes
-
-        db.commit()
-
-    # process object references
-    for object in objects:
-        for reference in object.references:
-            referenced = (
-                db.query(object_models.Object)
-                .filter_by(uuid=reference.referenced_uuid)
-                .first()
-            )
-            if referenced is None:
-                referenced = (
-                    db.query(attribute_models.Attribute)
-                    .filter_by(uuid=reference.referenced_uuid)
-                    .first()
-                )
-            if referenced is None:
-                logger.warning(
-                    f"Referenced entity not found, reference uuid: {reference.uuid}"
-                )
-
-            db_object_reference = object_reference_models.ObjectReference(
-                uuid=reference.uuid,
-                event_id=local_event.id,
-                object_id=db_object.id,
-                referenced_uuid=reference.referenced_uuid,
-                referenced_id=referenced.id if referenced else None,
-                relationship_type=reference.relationship_type,
-                timestamp=int(reference.timestamp),
-                referenced_type=(
-                    object_reference_models.ReferencedType.ATTRIBUTE
-                    if referenced.__class__.__name__ == "Attribute"
-                    else object_reference_models.ReferencedType.OBJECT
-                )  if referenced else None,
-                comment=reference.comment,
-                deleted=referenced.deleted if referenced else False,
-            )
-            db.add(db_object_reference)
-        db.commit()
-
-    return local_event
 
 
 def update_objects_from_fetched_event(

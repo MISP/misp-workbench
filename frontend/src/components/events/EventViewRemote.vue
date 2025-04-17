@@ -4,6 +4,7 @@ import { storeToRefs } from "pinia";
 import TagsIndex from "@/components/tags/TagsIndex.vue";
 import DistributionLevel from "@/components/enums/DistributionLevel.vue";
 import AttributesIndexRemote from "@/components/attributes/AttributesIndexRemote.vue";
+import ReportsIndexRemote from "@/components/reports/ReportsIndexRemote.vue";
 import ObjectsIndexRemote from "@/components/objects/ObjectsIndexRemote.vue";
 import UUID from "@/components/misc/UUID.vue";
 import ThreatLevel from "@/components/enums/ThreatLevel.vue";
@@ -83,8 +84,8 @@ div.row h3 {
       </div>
     </div>
     <div class="row m-1">
-      <div class="col-sm-6 mt-2">
-        <div class="card">
+      <div class="col-sm-4 mt-3">
+        <div class="card" style="height: 800px">
           <div class="card-body d-flex flex-column">
             <div class="table-responsive-sm">
               <table class="table table-striped">
@@ -176,21 +177,26 @@ div.row h3 {
                 </tbody>
               </table>
             </div>
+            <div class="card mt-3" style="height: 280px">
+              <div class="card-header">
+                <FontAwesomeIcon :icon="faTags" /> tags
+              </div>
+              <div class="card-body d-flex flex-column">
+                <div class="card-text">
+                  <TagsIndex :tags="remote_events[0].EventTag" />
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
-      <div class="col col-sm-3"></div>
-      <div class="col-xs-12 col-sm-12 col-md-12 col-lg-6 col-xl-6">
-        <div class="mt-2">
-          <div class="card">
-            <div class="card-header">
-              <FontAwesomeIcon :icon="faTags" /> tags
-            </div>
-            <div class="card-body d-flex flex-column">
-              <div class="card-text">
-                <TagsIndex :tags="remote_events[0].EventTag" />
-              </div>
-            </div>
+      <div class="col-sm-8">
+        <div class="card-body d-flex flex-column">
+          <div class="card-text">
+            <ReportsIndexRemote
+              :server_id="server_id"
+              :event_id="remote_events[0].id"
+            />
           </div>
         </div>
       </div>

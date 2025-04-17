@@ -4,7 +4,7 @@ export default {
   data() {
     return {
       stroke: 3,
-      width: 256,
+      width: 240, // Initial default value
       height: 96,
     };
   },
@@ -44,28 +44,26 @@ export default {
       return `V ${this.height} L 4 ${this.height} Z`;
     },
   },
+  mounted() {
+    this.observeResize();
+  },
+  beforeUnmount() {
+    if (this.resizeObserver) {
+      this.resizeObserver.disconnect();
+    }
+  },
+  methods: {
+    observeResize() {
+      const el = this.$el.parentNode;
+      this.resizeObserver = new ResizeObserver((entries) => {
+        for (const entry of entries) {
+          if (entry.contentRect) {
+            this.width = entry.contentRect.width;
+          }
+        }
+      });
+      this.resizeObserver.observe(el);
+    },
+  },
 };
 </script>
-
-<style>
-svg {
-  stroke: #1f8ceb;
-  fill: rgba(31, 140, 235, 0.06);
-  transition: all 1s ease-in-out;
-}
-
-svg path {
-  box-sizing: border-box;
-}
-</style>
-
-<template>
-  <svg class="sparkline" :width="width" :height="height" :stroke-width="stroke">
-    <path class="sparkline--line" :d="shape" fill="none"></path>
-    <path
-      class="sparkline--fill"
-      :d="[shape, fillEndPath].join(' ')"
-      stroke="none"
-    ></path>
-  </svg>
-</template>

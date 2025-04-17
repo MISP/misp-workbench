@@ -171,7 +171,7 @@ def get_remote_event_attributes(
 
 
 @router.get("/servers/{server_id}/events/{event_uuid}/objects")
-def get_remote_event_attributes(
+def get_remote_event_objects(
     server_id: int,
     event_uuid: str,
     limit: int = 10,
@@ -187,6 +187,23 @@ def get_remote_event_attributes(
         limit=limit,
         page=page,
         event_uuid=event_uuid,
+    )
+
+@router.get("/servers/{server_id}/events/{event_id}/reports")
+def get_remote_event_reports(
+    server_id: int,
+    event_id: int,
+    limit: int = 10,
+    page: int = 0,
+    db: Session = Depends(get_db),
+    user: user_schemas.User = Security(
+        get_current_active_user, scopes=["servers:events_index"]
+    ),
+):
+    return servers_repository.get_remote_event_reports(
+        db=db,
+        server_id=server_id,
+        event_id=event_id,
     )
 
 
@@ -207,9 +224,8 @@ def pull_remote_event_by_uuid(
 
     return servers_repository.pull_event_by_uuid(
         db=db,
-        server=server,
         event_uuid=event_uuid,
-        remote_misp=remote_misp,
-        settings=Settings(),
+        server=server,
         user=user,
+        settings=Settings(),
     )
