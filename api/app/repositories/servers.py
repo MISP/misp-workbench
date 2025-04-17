@@ -1,23 +1,13 @@
 import os
 import logging
-from hashlib import sha1
 from typing import Union
-from uuid import UUID
 
-from datetime import datetime
-from app.models import event as event_models
 from app.models import server as server_models
-from app.models import tag as tag_models
 from app.models import user as user_models
-from app.models import attribute as attribute_models
-from app.models import object as object_models
 from app.models.event import DistributionLevel
-from app.repositories import attributes as attributes_repository
 from app.repositories import sync as sync_repository
 from app.repositories import events as events_repository
-from app.repositories import objects as objects_repository
 from app.repositories import sharing_groups as sharing_groups_repository
-from app.repositories import tags as tags_repository
 from app.schemas import server as server_schemas
 from app.settings import Settings
 from fastapi import HTTPException, status
@@ -26,13 +16,10 @@ from pymisp import (
     MISPEvent,
     MISPObject,
     MISPSharingGroup,
-    MISPTag,
-    MISPEventReport,
     PyMISP,
 )
 from sqlalchemy.orm import Session
 from app.worker import tasks
-from app.dependencies import get_opensearch_client
 
 logger = logging.getLogger(__name__)
 
@@ -101,7 +88,6 @@ def get_remote_misp_connection(server: server_models.Server):
 
 def pull_server_by_id(
     db: Session,
-    settings: Settings,
     server_id: int,
     user: user_models.User,
     technique: str = "full",
@@ -434,10 +420,10 @@ def create_or_update_pulled_event(
             db, existing_event, event
         )
         if updated:
-            sync_repository.create_pulled_event_tags(db, updated, event.tags, server, user)
-            sync_repository.create_pulled_event_reports(db, updated.uuid, event.event_reports, server, user)
-            sync_repository.update_pulled_event_objects(db, updated.id, event.objects, server, user)
-            sync_repository.update_pulled_event_attributes(db, updated.id, event.attributes, server, user)
+            sync_repository.create_pulled_event_tags(db, updated, event.tags, user)
+            sync_repository.create_pulled_event_reports(db, updated.uuid, event.event_reports, user)
+            sync_repository.update_pulled_event_objects(db, updated.id, event.objects, user)
+            sync_repository.update_pulled_event_attributes(db, updated.id, event.attributes, user)
 
             # TODO: publish event update to ZMQ
             logger.info("Updated event %s" % event.uuid)

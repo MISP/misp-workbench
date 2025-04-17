@@ -101,12 +101,6 @@ def delete_feed(db: Session, feed_id: int) -> None:
     db.commit()
 
 
-async def fetch_feed_event_by_uuid_async(feed, event_uuid, session):
-    url = f"{feed.url}/{event_uuid}.json"
-    async with session.get(url) as response:
-        return await response.json()
-
-
 def fetch_feed_event_by_uuid(feed, event_uuid):
     url = f"{feed.url}/{event_uuid}.json"
     response = requests.get(url, headers={"User-Agent": USER_AGENT})
@@ -145,10 +139,12 @@ def process_feed_event(
         local_event = events_repository.create_event_from_fetched_event(
             db, event, orgc, feed, user
         )
-        
+
         sync_repository.create_pulled_event_tags(db, local_event, event.tags, user)
-        
-        sync_repository.create_pulled_event_reports(db, local_event.uuid, event.event_reports, user)
+
+        sync_repository.create_pulled_event_reports(
+            db, local_event.uuid, event.event_reports, user
+        )
 
         # process objects
         sync_repository.create_pulled_event_objects(
@@ -166,9 +162,11 @@ def process_feed_event(
         )
 
         sync_repository.create_pulled_event_tags(db, local_event, event.tags, user)
-        
-        sync_repository.create_pulled_event_reports(db, local_event.uuid, event.event_reports, user)
-            
+
+        sync_repository.create_pulled_event_reports(
+            db, local_event.uuid, event.event_reports, user
+        )
+
         # process objects
         sync_repository.update_pulled_event_objects(
             db, local_event.id, event.objects, user
@@ -188,3 +186,66 @@ def process_feed_event(
 
 def get_feed_manifest(feed: feed_models.Feed):
     return requests.get(f"{feed.url}/manifest.json")
+
+
+def fetch_feed(db: Session, feed_id: int, user: user_schemas.User):
+    logger.info("fetch feed id=%s job started", feed_id)
+
+    db_feed = get_feed_by_id(db, feed_id=feed_id)
+
+    if db_feed is None:
+        raise Exception("Feed not found")
+
+    if not db_feed.enabled:
+        raise Exception("Feed is not enabled")
+
+    if db_feed is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Feed not found"
+        )
+
+    logger.info(f"Fetching feed {db_feed.id} {db_feed.name}")
+
+    if db_feed.source_format == "misp":
+        # TODO: check feed etag in redis cache
+        req = get_feed_manifest(db_feed)
+
+        if req.status_code == 200:
+            manifest = req.json()
+
+            # TODO: cache etag value in redis
+            # etag = req.headers.get("etag")
+            # logger.info(f"Fetching feed UUID {db_feed.uuid} ETag: {etag}")
+
+            feed_events_uuids = manifest.keys()
+
+            local_feed_events = events_repository.get_events_by_uuids(
+                db, feed_events_uuids
+            )
+
+            # filter out events that are already in the database and have the same or older timestamp
+            skip_events = [
+                str(event.uuid)
+                for event in local_feed_events
+                if event.timestamp >= manifest[str(event.uuid)]["timestamp"]
+            ]
+
+            feed_events_uuids = [
+                uuid for uuid in feed_events_uuids if uuid not in skip_events
+            ]
+
+            # TODO: check if event is blocked by blocklist or feed rules (tags, orgs)
+
+            # fetch events in parallel http requests
+
+            if not feed_events_uuids:
+                return {"result": "success", "message": "No new events to fetch"}
+
+            for event_uuid in feed_events_uuids:
+                tasks.fetch_feed_event.delay(event_uuid, db_feed.id, user.id)
+
+    logger.info("fetch feed id=%s all event fetch tasks enqueued.", feed_id)
+    return {
+        "result": "success",
+        "message": "All feed id=%s events to fetch enqueued." % feed_id,
+    }

@@ -38,7 +38,9 @@ class TestFeedsRepository(ApiTester):
             # mock remote Feed API calls
             mock_fetch_event_by_uuid.return_value = feed_fetch_scenarios.feed_new_event
 
-            feeds_repository.fetch_feed(db, feed_1.id, user_1)
+            feeds_repository.process_feed_event(
+                db, "988ce14e-0802-4aa3-92ca-8ca1104e0b38", feed_1, user_1
+            )
 
             # check that the events were created
             events = (
@@ -142,6 +144,9 @@ class TestFeedsRepository(ApiTester):
             )
 
             feeds_repository.fetch_feed(db, feed_1.id, user_1)
+            feeds_repository.process_feed_event(
+                db, "ba4b11b6-dcce-4315-8fd0-67b69160ea76", feed_1, user_1
+            )
 
             # check that the events was updated
             event = (

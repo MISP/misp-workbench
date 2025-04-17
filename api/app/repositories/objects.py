@@ -193,6 +193,23 @@ def update_object_from_pulled_object(
             delete_attributes=delete_attributes,
         )
         
+        for pulled_object_reference in pulled_object.ObjectReference:
+            local_object_reference = object_references_repository.get_object_reference_by_uuid(
+                db, pulled_object_reference.uuid
+            )
+            
+            if local_object_reference is None:
+                local_object_reference = object_references_repository.create_object_reference_from_pulled_object_reference(
+                    db, pulled_object_reference, local_event_id
+                )
+                local_object.object_references.append(local_object_reference)
+            else:
+                if local_object_reference.timestamp < pulled_object.timestamp.timestamp():
+                    pulled_object_reference.id = local_object_reference.id
+                    local_object_reference = object_references_repository.update_object_reference_from_pulled_object_reference(
+                        db, local_object_reference, pulled_object_reference, local_event_id
+                    )
+        
         update_object(db, local_object.id, object_patch)
 
 

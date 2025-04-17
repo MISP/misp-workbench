@@ -133,7 +133,6 @@ def update_pulled_event_objects(
     db: Session,
     local_event_id: int,
     objects: list[MISPObject],
-    server: server_schemas.Server,
     user: user_models.User,
 ) -> None:
     for object in objects:

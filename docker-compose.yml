@@ -36,8 +36,7 @@ services:
   setup-opensearch:
     image: curlimages/curl:latest
     depends_on:
-      opensearch:
-        condition: service_healthy
+      - opensearch
     volumes:
       - ./api/opensearch/mappings:/mappings
       - ./api/opensearch/entrypoint.sh:/entrypoint.sh

@@ -29,7 +29,6 @@ class TestServersRepository(ApiTester):
     def test_pull_server_by_id(
         self,
         db: Session,
-        settings: Settings,
         server_1: server_models.Server,
         user_1: user_models.User,
         scenario: dict,
@@ -59,7 +58,14 @@ class TestServersRepository(ApiTester):
             )
 
             servers_repository.pull_server_by_id(
-                db, settings, server_1.id, user_1, scenario["pull_technique"]
+                db, server_1.id, user_1, scenario["pull_technique"]
+            )
+            servers_repository.pull_event_by_uuid(
+                db,
+                scenario["expected_result"]["event_uuids"][0],
+                server_1,
+                user_1,
+                Settings()
             )
 
             # check that the events were created

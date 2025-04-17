@@ -1,6 +1,7 @@
 import time
 from typing import Union
 from uuid import UUID
+from app.models.event import DistributionLevel
 
 from app.models import attribute as attribute_models
 from app.models import tag as tag_models
@@ -166,7 +167,7 @@ def update_attribute_from_pulled_attribute(
             value=pulled_attribute.value,
             to_ids=pulled_attribute.to_ids,
             timestamp=pulled_attribute.timestamp.timestamp(),
-            distribution=event_schemas.DistributionLevel(pulled_attribute.distribution),
+            distribution=event_schemas.DistributionLevel(pulled_attribute.distribution or DistributionLevel.INHERIT_EVENT),
             comment=pulled_attribute.comment,
             sharing_group_id=None,
             deleted=pulled_attribute.deleted,
