@@ -13,7 +13,7 @@ from app.schemas import user as user_schemas
 from fastapi import HTTPException, status
 from fastapi_pagination.ext.sqlalchemy import paginate
 from pymisp import MISPEvent, MISPOrganisation
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, noload
 from sqlalchemy.sql import select
 
 logger = logging.getLogger(__name__)
@@ -445,3 +445,12 @@ def update_event_from_fetched_event(
 
 def get_event_uuids(db: Session) -> list[UUID]:
     return db.query(event_models.Event.uuid).all()
+
+
+def get_events_by_uuids(db: Session, uuids: list[UUID]) -> list[event_models.Event]:
+    return (
+        db.query(event_models.Event)
+        .options(noload("*"))
+        .filter(event_models.Event.uuid.in_(uuids))
+        .all()
+    )

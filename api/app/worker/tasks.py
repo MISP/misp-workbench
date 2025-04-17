@@ -16,6 +16,7 @@ from celery import Celery
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 from opensearchpy import helpers as opensearch_helpers
+from fastapi import HTTPException, status
 
 # Celery configuration
 app = Celery()
@@ -45,6 +46,24 @@ def server_pull_by_id(server_id: int, user_id: int, technique: str):
             db, get_settings(), server_id, user, technique
         )
         logger.info("pull server_id=%s job finished", server_id)
+
+    return True
+
+@app.task
+def pull_event_by_uuid(event_uuid: uuid.UUID, server_id: int, user_id: int):
+    logger.info("pull event uuid=%s from server id=%s, job started", event_uuid, server_id)
+
+    with Session(engine) as db:
+        user = users_repository.get_user_by_id(db, user_id)
+        if user is None:
+            raise Exception("User not found")
+        
+        server = servers_repository.get_server_by_id(db, server_id)
+        if server is None:
+            raise Exception("Server not found")
+
+        servers_repository.pull_event_by_uuid(db, event_uuid, server, user, get_settings())
+        logger.info("pull event uuid=%s from server id=%s, job finished", event_uuid, server_id)
 
     return True
 
@@ -128,11 +147,9 @@ def index_event(event_uuid: uuid.UUID):
     event_raw = event.model_dump()
     attributes = event_raw.pop("attributes")
     objects = event_raw.pop("objects")
-    
+
     # convert timestamp to datetime so it can be indexed
-    event_raw["@timestamp"] = datetime.fromtimestamp(
-        event_raw["timestamp"]
-    ).isoformat()
+    event_raw["@timestamp"] = datetime.fromtimestamp(event_raw["timestamp"]).isoformat()
 
     if event_raw["publish_timestamp"]:
         event_raw["@publish_timestamp"] = datetime.fromtimestamp(
@@ -148,10 +165,9 @@ def index_event(event_uuid: uuid.UUID):
             "Failed to index event uuid=%s. Response: %s", event_uuid, response
         )
         raise Exception("Failed to index event.")
-    
-    
+
     logger.info("indexed event uuid=%s", event_uuid)
-    
+
     # index attributes
     attributes_docs = []
     for attribute in attributes:
@@ -159,8 +175,8 @@ def index_event(event_uuid: uuid.UUID):
             attribute["timestamp"]
         ).isoformat()
         attribute["event_uuid"] = event.uuid
-        attribute["data"] = '' # do not index file contents
-        
+        attribute["data"] = ""  # do not index file contents
+
         attributes_docs.append(
             {
                 "_id": attribute["uuid"],
@@ -168,13 +184,18 @@ def index_event(event_uuid: uuid.UUID):
                 "_source": attribute,
             }
         )
-        
-    success, failed = opensearch_helpers.bulk(OpenSearchClient, attributes_docs, refresh=True)
+
+    success, failed = opensearch_helpers.bulk(
+        OpenSearchClient, attributes_docs, refresh=True
+    )
     if failed:
         logger.error("Failed to index attributes. Failed: %s", failed)
         raise Exception("Failed to index attributes.")
-    logger.info("indexed attributes of event uuid=%s, indexed %s attributes", event_uuid, len(attributes_docs))
-    
+    logger.info(
+        "indexed attributes of event uuid=%s, indexed %s attributes",
+        event_uuid,
+        len(attributes_docs),
+    )
 
     # index objects
     objects_docs = []
@@ -186,7 +207,7 @@ def index_event(event_uuid: uuid.UUID):
                 attribute["timestamp"]
             ).isoformat()
             attribute["event_uuid"] = event.uuid
-            attribute["data"] = '' # do not index file contents
+            attribute["data"] = ""  # do not index file contents
 
         for reference in object["object_references"]:
             reference["@timestamp"] = datetime.fromtimestamp(
@@ -202,12 +223,18 @@ def index_event(event_uuid: uuid.UUID):
                 "_source": object,
             }
         )
-        
-    success, failed = opensearch_helpers.bulk(OpenSearchClient, objects_docs, refresh=True)
+
+    success, failed = opensearch_helpers.bulk(
+        OpenSearchClient, objects_docs, refresh=True
+    )
     if failed:
         logger.error("Failed to index objects. Failed: %s", failed)
         raise Exception("Failed to index objects.")
-    logger.info("indexed objects of event uuid=%s, indexed %s objects", event_uuid, len(objects_docs))
+    logger.info(
+        "indexed objects of event uuid=%s, indexed %s objects",
+        event_uuid,
+        len(objects_docs),
+    )
 
     logger.info("index event uuid=%s job finished", event_uuid)
 
@@ -215,7 +242,7 @@ def index_event(event_uuid: uuid.UUID):
 
 
 @app.task
-def fetch_feed(feed_id: int, user_id: int):
+def fetch_feed_async(feed_id: int, user_id: int):
     logger.info("fetch feed id=%s job started", feed_id)
 
     with Session(engine) as db:
@@ -225,3 +252,78 @@ def fetch_feed(feed_id: int, user_id: int):
     logger.info("fetch feed id=%s job finished", feed_id)
 
     return True
+
+
+@app.task
+def fetch_feed(feed_id: int, user_id: int):
+    logger.info("fetch feed id=%s job started", feed_id)
+
+    with Session(engine) as db:
+        db_feed = feeds_repository.get_feed_by_id(db, feed_id=feed_id)
+    
+    if db_feed is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Feed not found"
+        )
+
+    if not db_feed.enabled:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Feed is not enabled"
+        )
+
+    logger.info(f"Fetching feed {db_feed.id} {db_feed.name}")
+
+    if db_feed.source_format == "misp":
+        # TODO: check feed etag in redis cache
+        req = feeds_repository.get_feed_manifest(db_feed)
+
+        if req.status_code == 200:
+            manifest = req.json()
+
+            # TODO: cache etag value in redis
+            # etag = req.headers.get("etag")
+            # logger.info(f"Fetching feed UUID {db_feed.uuid} ETag: {etag}")
+
+            feed_events_uuids = manifest.keys()
+
+            local_feed_events = events_repository.get_events_by_uuids(
+                db, feed_events_uuids
+            )
+
+            # filter out events that are already in the database and have the same or older timestamp
+            skip_events = [
+                str(event.uuid)
+                for event in local_feed_events
+                if event.timestamp >= manifest[str(event.uuid)]["timestamp"]
+            ]
+
+            feed_events_uuids = [
+                uuid for uuid in feed_events_uuids if uuid not in skip_events
+            ]
+
+            # TODO: check if event is blocked by blocklist or feed rules (tags, orgs)
+
+            # fetch events in parallel http requests
+
+            if not feed_events_uuids:
+                return {"result": "success", "message": "No new events to fetch"}
+
+            for event_uuid in feed_events_uuids:
+                fetch_feed_event.delay(event_uuid, db_feed.id, user_id)
+
+    logger.info("fetch feed id=%s all event fetch tasks enqueued.", feed_id)
+    return {"result": "success", "message": "All feed id=%s events to fetch enqueued." % feed_id}
+
+
+@app.task
+def fetch_feed_event(event_uuid: uuid.UUID, feed_id: int, user_id: int):
+    logger.info("fetch feed event uuid=%s job started", event_uuid)
+
+    with Session(engine) as db:
+        user = users_repository.get_user_by_id(db, user_id)
+        db_feed = feeds_repository.get_feed_by_id(db, feed_id=feed_id)
+
+        result = feeds_repository.process_feed_event(db, event_uuid, db_feed, user)
+
+    logger.info("fetch feed event uuid=%s job finished", event_uuid)
+    return result

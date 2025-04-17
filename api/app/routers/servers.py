@@ -224,9 +224,8 @@ def pull_remote_event_by_uuid(
 
     return servers_repository.pull_event_by_uuid(
         db=db,
-        server=server,
         event_uuid=event_uuid,
-        remote_misp=remote_misp,
-        settings=Settings(),
+        server=server,
         user=user,
+        settings=Settings(),
     )

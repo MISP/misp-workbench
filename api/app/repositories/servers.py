@@ -13,6 +13,7 @@ from app.models import attribute as attribute_models
 from app.models import object as object_models
 from app.models.event import DistributionLevel
 from app.repositories import attributes as attributes_repository
+from app.repositories import sync as sync_repository
 from app.repositories import events as events_repository
 from app.repositories import objects as objects_repository
 from app.repositories import sharing_groups as sharing_groups_repository
@@ -90,14 +91,10 @@ def get_remote_misp_connection(server: server_models.Server):
         remote_misp = PyMISP(url=server.url, key=server.authkey, ssl=verify_cert, http_headers={"User-Agent": "misp-lite/" + os.environ.get("APP_VERSION", "")})
         remote_misp_version = remote_misp.misp_instance_version
     except Exception as ex:
-        raise HTTPException(
-            status_code=500, detail="Remote MISP instance not reachable: %s" % ex
-        )
+        raise Exception("Remote MISP instance not reachable: %s" % ex)
     # check sync permissions
     if not remote_misp_version["perm_sync"]:
-        raise HTTPException(
-            status_code=401, detail="Not authorized to sync from remote MISP instance"
-        )
+        raise Exception("Not authorized to sync from remote MISP instance")
 
     return remote_misp
 
@@ -122,53 +119,40 @@ def pull_server_by_id(
 
     if technique == "pull_relevant_clusters":
         # TODO implement pull_relevant_clusters server pull technique
-        raise HTTPException(
-            status_code=501,
-            detail="Server pull technique `pull_relevant_clusters` not implemented yet.",
-        )
+        raise Exception("Server pull technique `pull_relevant_clusters` not implemented yet.")
 
     if technique == "update":
         # TODO implement update server pull technique
-        raise HTTPException(
-            status_code=501,
-            detail="Server pull technique `update` not implemented yet.",
-        )
+        raise Exception("Server pull technique `update` not implemented yet.")
 
     if technique == "full":
         return pull_server_by_id_full(db, settings, server, remote_misp, user)
 
-    raise HTTPException(
-        status_code=400,
-        detail="Unknown server pull technique `%s` not implemented yet." % technique,
-    )
+    raise Exception("Unknown server pull technique `%s` not implemented yet." % technique)
 
 
 def pull_server_by_id_full(
     db: Session,
-    settings: Settings,
     server: server_schemas.Server,
     remote_misp: PyMISP,
     user: user_models.User,
 ):
 
     # get a list of the event_ids on the server
-    event_ids = get_event_ids_from_server(server, remote_misp)
+    event_uuids = get_event_uuids_from_server(server, remote_misp)
 
     # TODO apply MISP.enableEventBlocklisting / removeBlockedEvents
     # TODO apply MISP.enableOrgBlocklisting / removeBlockedEvents
 
-    # pull each of the events sequentially
-    for event_id in event_ids:
-        pull_event_by_uuid(db, settings, server, event_id, remote_misp, user)
+    # pull each of the events in different tasks
+    for event_uuid in event_uuids:
+        tasks.pull_event_by_uuid.delay(event_uuid, server.id, user.id)
 
-    return {
-        "message": "Pulling server ID: %s" % server.id,
-        "technique": "full",
-        "event_ids": event_ids,
-    }
+    logger.info("server pull id=%s all event fetch tasks enqueued.", server.id)
+    return {"result": "success", "message": "All server id=%s events to pull enqueued." % server.id}
 
 
-def get_event_ids_from_server(server: server_schemas.Server, remote_misp: PyMISP):
+def get_event_uuids_from_server(server: server_schemas.Server, remote_misp: PyMISP):
     """
     see: app/Model/Server.php::getEventIndexFromServer()
     """
@@ -183,15 +167,16 @@ def get_event_ids_from_server(server: server_schemas.Server, remote_misp: PyMISP
 
 def pull_event_by_uuid(
     db: Session,
-    settings: Settings,
-    server: server_schemas.Server,
     event_uuid: str,
-    remote_misp: PyMISP,
+    server: server_schemas.Server,
     user: user_models.User,
+    settings: Settings,
 ):
     """
     see: app/Model/Server.php::__pullEvent()
     """
+    
+    remote_misp = get_remote_misp_connection(server)
 
     # fetch event from remote server
     data = {
@@ -400,16 +385,16 @@ def create_or_update_pulled_event(
 
         created = events_repository.create_event_from_pulled_event(db, event)
         if created:
-            create_pulled_event_tags(db, created, event.tags, server, user)
+            sync_repository.create_pulled_event_tags(db, created, event.tags, user)
 
-            create_pulled_event_reports(
-                db, created.uuid, event.event_reports, server, user
+            sync_repository.create_pulled_event_reports(
+                db, created.uuid, event.event_reports, user
             )
-            create_pulled_event_objects(
-                db, created.id, event.objects, server, user
+            sync_repository.create_pulled_event_objects(
+                db, created.id, event.objects, user
             )
-            create_pulled_event_attributes(
-                db, created.id, event.attributes, server, user
+            sync_repository.create_pulled_event_attributes(
+                db, created.id, event.attributes, user
             )
 
             # TODO: publish event creation to RabbitMQ
@@ -449,11 +434,10 @@ def create_or_update_pulled_event(
             db, existing_event, event
         )
         if updated:
-            
-            create_pulled_event_tags(db, updated, event.tags, server, user)
-            create_pulled_event_reports(db, updated.uuid, event.event_reports, server, user)
-            update_pulled_event_objects(db, updated.id, event.objects, server, user)
-            update_pulled_event_attributes(db, updated.id, event.attributes, server, user)
+            sync_repository.create_pulled_event_tags(db, updated, event.tags, server, user)
+            sync_repository.create_pulled_event_reports(db, updated.uuid, event.event_reports, server, user)
+            sync_repository.update_pulled_event_objects(db, updated.id, event.objects, server, user)
+            sync_repository.update_pulled_event_attributes(db, updated.id, event.attributes, server, user)
 
             # TODO: publish event update to ZMQ
             logger.info("Updated event %s" % event.uuid)
@@ -479,235 +463,6 @@ def create_pulled_event_sharing_group(
         return sharing_group_id
 
     return None
-
-
-def create_pulled_event_attributes(
-    db: Session,
-    local_event_id: int,
-    attributes: list[attribute_models.Attribute],
-    server: server_schemas.Server,
-    user: user_models.User,
-):
-    """
-    see: app/Model/Event.php::_add()
-    """
-
-    # TODO: extract this logic somewhere reusable
-    hashes_dict = {}
-    local_attributes = []
-    for attribute in attributes:
-        hash = sha1(
-            (str(attribute.value) + attribute.type + attribute.category).encode("utf-8")
-        ).hexdigest()
-        if hash not in hashes_dict:
-            # see: app/Model/Attribute.php::captureAttribute()
-            local_attribute = attributes_repository.create_attribute_from_pulled_attribute(
-                db, attribute, local_event_id, user
-            )
-            hashes_dict[hash] = True
-            db.add(local_attribute)
-            
-    # insert attributes into the database
-    db.commit()
-
-    return attributes
-
-
-def update_pulled_event_attributes(
-    db: Session,
-    local_event_id: int,
-    attributes: list[MISPAttribute],
-    server: server_schemas.Server,
-    user: user_models.User,
-) -> None:
-    """
-    see: app/Model/Attribute.php::captureAttribute()
-    see: app/Model/Tag.php::captureTag()
-    see: app/Model/Tag.php::captureTagWithCache()
-    """
-
-    for pulled_attribute in attributes:
-        # see: app/Model/Attribute.php::captureAttribute()
-        local_attribute = attributes_repository.get_attribute_by_uuid(db, pulled_attribute.uuid)
-        
-        if local_attribute is None:
-            local_attribute = attributes_repository.create_attribute_from_pulled_attribute(
-                db, pulled_attribute, local_event_id, user
-            )
-            db.add(local_attribute)
-        else:
-            # see: app/Model/Attribute.php::edit()
-            attributes_repository.update_attribute_from_pulled_attribute(
-                db, local_attribute, pulled_attribute, local_event_id, user
-            )
-
-def create_pulled_event_objects(
-    db: Session,
-    local_event_id: int,
-    objects: list[object_models.Object],
-    server: server_schemas.Server,
-    user: user_models.User,
-):
-    """
-    see: app/Model/Event.php::_add()
-    """
-
-    for object in objects:
-        # see: app/Model/MispObject.php::captureObject()
-        # TODO: app/Model/MispObject.php::checkForDuplicateObjects()
-        objects_repository.create_object_from_pulled_object(
-            db, object, local_event_id, user
-        )
-
-    # see: app/Model/ObjectReference.php::captureReference()
-
-    # insert attributes into the database
-    db.commit()
-
-
-def update_pulled_event_objects(
-    db: Session,
-    local_event_id: int,
-    objects: list[MISPObject],
-    server: server_schemas.Server,
-    user: user_models.User,
-) -> None:
-    """
-    see: app/Model/MispObject.php::captureObject()
-    see: app/Model/MispObject.php::checkForDuplicateObjects()
-    """
-
-    for object in objects:
-        # see: app/Model/MispObject.php::captureObject()
-        local_object = objects_repository.get_object_by_uuid(db, object.uuid)
-        
-        if local_object is None:
-            objects_repository.create_object_from_pulled_object(
-                db, object, local_event_id, user
-            )
-        else:
-            # see: app/Model/MispObject.php::edit()
-            objects_repository.update_object_from_pulled_object(
-                db, local_object, object, local_event_id, user
-            )
-
-def create_pulled_event_reports(
-        db: Session,
-    local_event_uuid: UUID,
-    event_reports: list[MISPEventReport],
-    server: server_schemas.Server,
-    user: user_models.User,
-) -> None:
-    
-    if event_reports is None or len(event_reports) == 0:
-        return
-    
-    OpenSearchClient = get_opensearch_client()
-    
-    for event_report in event_reports:
-        
-        event_report_raw = event_report.to_dict()
-        
-        event_report_raw["@timestamp"] = datetime.fromtimestamp(
-            int(event_report_raw["timestamp"])
-        ).isoformat()
-        
-        event_report_raw["event_uuid"] = str(local_event_uuid)
-        
-        response = OpenSearchClient.index(
-            index="misp-event-reports", id=event_report.uuid, body=event_report_raw, refresh=True
-        )
-
-        if response["result"] not in ["created", "updated"]:
-            logger.error(
-                "Failed to index event report uuid=%s. Response: %s", event_report.uuid, response
-            )
-            raise Exception("Failed to index event report.")
-
-    
-
-def create_pulled_tags(
-    db: Session,
-    event: event_models.Event,
-    pulled_tags: list[MISPTag],
-    server: server_schemas.Server,
-    user: user_models.User,
-) -> list[tag_models.Tag]:
-    """
-    see: app/Model/Event.php::__captureObjects()
-    see: app/Model/Tag.php::captureTag()
-    see: app/Model/Tag.php::captureTagWithCache()
-    """
-
-    tags = []
-
-    for tag in pulled_tags:
-        # TODO: cache capture_tag()
-        tag = tags_repository.capture_tag(db, tag, user)
-        if tag:
-            tags.append(tag)
-
-    return tags
-
-
-def create_pulled_event_tags(
-    db: Session,
-    event: event_models.Event,
-    pulled_tags: list[MISPTag],
-    server: server_schemas.Server,
-    user: user_models.User,
-) -> None:
-
-    tags = create_pulled_tags(db, event, pulled_tags, server, user)
-
-    # TODO: bulk insert
-    for tag in tags:
-        tags_repository.tag_event(db, event, tag)
-
-
-def create_pulled_attributes_tags(
-    db: Session,
-    event: event_models.Event,
-    attributes: list[MISPAttribute],
-    server: server_schemas.Server,
-    user: user_models.User,
-) -> None:
-    """
-    see: app/Model/Event.php::__captureObjects()
-    see: app/Model/Event.php::__captureAttributeTags()
-    see: app/Model/Tag.php::captureTag()
-    see: app/Model/Tag.php::captureTagWithCache()
-    """
-
-    for attribute in attributes:
-        tags = create_pulled_tags(db, event, attribute.tags, server, user)
-
-        # TODO: bulk insert
-        for tag in tags:
-            tags_repository.tag_attribute(db, attribute, tag)
-
-
-def create_pulled_objects_tags(
-    db: Session,
-    event: event_models.Event,
-    objects: list[MISPObject],
-    server: server_schemas.Server,
-    user: user_models.User,
-) -> None:
-    """
-    see: app/Model/Event.php::__captureObjects()
-    see: app/Model/Event.php::__captureAttributeTags()
-    see: app/Model/Tag.php::captureTag()
-    see: app/Model/Tag.php::captureTagWithCache()
-    """
-
-    for object in objects:
-        for attribute in object.attributes:
-            tags = create_pulled_tags(db, event, attribute.tags, server, user)
-
-            # TODO: bulk insert
-            for tag in tags:
-                tags_repository.tag_attribute(db, attribute, tag)
 
 
 def update_server(
