@@ -3,6 +3,7 @@ import { storeToRefs } from "pinia";
 import { useRemoteMISPReportsStore } from "@/stores";
 import Spinner from "@/components/misc/Spinner.vue";
 import { marked } from "marked";
+import DOMPurify from "dompurify";
 
 const props = defineProps(["server_id", "event_id"]);
 const remoteMISPReportsStore = useRemoteMISPReportsStore();
@@ -58,7 +59,7 @@ remoteMISPReportsStore.get_remote_server_event_reports(
           <div class="accordion-body">
             <div
               class="markdown-body"
-              v-html="marked(report.EventReport.content)"
+              v-html="DOMPurify.sanitize(marked(report.EventReport.content))"
             ></div>
           </div>
         </div>
