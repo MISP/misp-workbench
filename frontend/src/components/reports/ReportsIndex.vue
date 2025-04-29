@@ -3,6 +3,7 @@ import { storeToRefs } from "pinia";
 import { useReportsStore } from "@/stores";
 import Spinner from "@/components/misc/Spinner.vue";
 import { marked } from "marked";
+import DOMPurify from "dompurify";
 
 const props = defineProps(["event_id"]);
 const reportsStore = useReportsStore();
@@ -54,7 +55,7 @@ reportsStore.getReportsByEventId(props.event_id);
           <div class="accordion-body">
             <div
               class="markdown-body"
-              v-html="marked(report._source.content)"
+              v-html="DOMPurify.sanitize(marked(report._source.content))"
             ></div>
           </div>
         </div>
