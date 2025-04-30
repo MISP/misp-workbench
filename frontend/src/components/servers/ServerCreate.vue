@@ -1,10 +1,12 @@
 <script setup>
+import { ref, watch } from "vue";
 import { Form, Field } from "vee-validate";
 import { storeToRefs } from "pinia";
 import { useServersStore } from "@/stores";
 import { router } from "@/router";
 import { ServerSchema } from "@/schemas/server";
 import OrganisationsSelect from "@/components/organisations/OrganisationsSelect.vue";
+import PullRulesEditor from "@/components/servers/PullRulesEditor.vue";
 
 const serversStore = useServersStore();
 const { status } = storeToRefs(serversStore);
@@ -12,6 +14,7 @@ const { status } = storeToRefs(serversStore);
 const server = {
   push: false,
   pull: false,
+  pull_rules: "{}",
   push_galaxy_clusters: false,
   pull_galaxy_clusters: false,
   push_sightings: false,
@@ -23,6 +26,14 @@ const server = {
   caching_enabled: false,
   priority: 0,
 };
+
+const pullRules = ref("{}");
+watch(pullRules, (newVal) => {
+  try {
+    const rules = JSON.parse(newVal);
+    server.value.pull_rules = rules;
+  } catch {}
+});
 
 function onSubmit(values, { setErrors }) {
   return serversStore
@@ -40,6 +51,16 @@ function handleRemoteOrgUpdated(orgId) {
   server.remote_org_id = orgId;
 }
 </script>
+
+<style>
+.editor-container .cm-editor {
+  height: 200px;
+  width: 600px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-family: monospace;
+}
+</style>
 
 <template>
   <div class="card">
@@ -156,7 +177,26 @@ function handleRemoteOrgUpdated(orgId) {
           </Field>
           <div class="invalid-feedback">{{ errors["server.pull"] }}</div>
         </div>
+        <div class="mb-3">
+          <label for="server.pull_rules">pull_rules</label>
+          <Field
+            class="form-control"
+            type="hidden"
+            id="server.pull_rules"
+            name="server.pull_rules"
+            v-model="server.pull_rules"
+          ></Field>
+          <PullRulesEditor v-model="pullRules" />
+          <div class="invalid-feedback">{{ errors["server.pull_rules"] }}</div>
+        </div>
         <p>
+          <button
+            type="button"
+            class="btn btn-primary"
+            @click="pullRules = JSON.stringify(server.pull_rules, null, 2)"
+          >
+            Format
+          </button>
           <a
             class="btn-primary"
             data-bs-toggle="collapse"

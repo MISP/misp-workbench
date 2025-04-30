@@ -2,7 +2,7 @@
 import Timestamp from "@/components/misc/Timestamp.vue";
 import Pagination from "@/components/misc/Pagination.vue";
 import { useRemoteMISPEventsStore, useToastsStore } from "@/stores";
-import { reactive, computed } from "vue";
+import { ref, reactive, computed } from "vue";
 import { storeToRefs } from "pinia";
 import Spinner from "@/components/misc/Spinner.vue";
 import TagsIndex from "@/components/tags/TagsIndex.vue";
@@ -40,6 +40,8 @@ const filters = reactive({
   timestamp_to: "",
 });
 
+const applyPullRules = ref(false);
+
 const activeFilters = computed(() => {
   return Object.values(filters).filter((f) => f).length;
 });
@@ -62,6 +64,21 @@ const resetFilters = () => {
   });
   remoteMISPEventsStore.get_remote_server_events_index(props.server.id);
 };
+
+function toggleApplyPullRules() {
+  // TODO: improve logic and extend to all possible MISP pull rules
+  applyPullRules.value = !applyPullRules.value;
+  if (applyPullRules.value) {
+    if (props.server.pull_rules.timestamp) {
+      filters.timestamp_from = props.server.pull_rules.timestamp;
+    }
+  } else {
+    if (props.server.pull_rules.timestamp) {
+      filters.timestamp_from = "";
+    }
+  }
+  searchRemoteMISPEvents();
+}
 
 function pullRemoteMISPEvent(event) {
   toastsStore.push("Event pull enqueued.");
@@ -221,6 +238,21 @@ function searchRemoteMISPEvents() {
           </div>
         </form>
       </div>
+    </div>
+    <div class="form-check form-switch">
+      <label class="form-check-label" for="applyPullRulesSwitch">
+        Apply pull rules
+      </label>
+      <input
+        id="applyPullRulesSwitch"
+        class="form-check-input"
+        type="checkbox"
+        data-toggle="tooltip"
+        data-placement="top"
+        :title="JSON.stringify(server.pull_rules, null, 2)"
+        @change="toggleApplyPullRules"
+        :checked="applyPullRules"
+      />
     </div>
   </nav>
   <div class="mb-3">
