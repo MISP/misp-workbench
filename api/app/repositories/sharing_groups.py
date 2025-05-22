@@ -336,7 +336,7 @@ def capture_sharing_group_existing(
     # see: app/Model/SharingGroup.php::captureSGExisting
 
     if (
-        not is_authorised(db, user, existing_sharing_group.id)
+        not is_authorised(db, user, existing_sharing_group.uuid)
         and not user.role.perm_sync
     ):
         return False
@@ -436,11 +436,11 @@ def capture_sharing_group(
 
     # capture sharing group organisations
     sharing_group.SharingGroupOrg = capture_sharing_group_organisations(
-        db, user, sharing_group_id, sharing_group.SharingGroupOrg
+        db, user, sharing_group_id, sharing_group.sharing_group_organisations
     )
 
     # capture sharing group servers
-    # capture_sharing_group_servers(db, sharing_group_id, sharing_group.SharingGroupServer) # TODO: MISPSharingGroup does not have this
+    # capture_sharing_group_servers(db, sharing_group_id, sharing_group.sharing_group_servers)
 
     # app/Model/SharingGroup.php::captureCreatorOrg()
 
