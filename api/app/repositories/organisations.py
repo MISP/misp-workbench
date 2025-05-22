@@ -108,15 +108,15 @@ def capture_sharing_group_organisation(
     # TODO: app/Model/Organisation.php::captureOrg
 
     db_organisation = get_organisation_by_uuid(
-        db, organisation_uuid=sharing_group_organisation.organisation.uuid
+        db, organisation_uuid=sharing_group_organisation.Organisation.uuid
     )
 
     if db_organisation is None:
         db_organisation = create_organisation(
             db=db,
             organisation=organisations_schemas.OrganisationCreate(
-                name=sharing_group_organisation.organisation.name,
-                uuid=sharing_group_organisation.organisation.uuid,
+                name=sharing_group_organisation.Organisation.name,
+                uuid=sharing_group_organisation.Organisation.uuid,
                 local=False,
                 created_by=user_id,
             ),
@@ -126,7 +126,7 @@ def capture_sharing_group_organisation(
             db,
             db_organisation.id,
             organisations_schemas.OrganisationUpdate(
-                name=sharing_group_organisation.organisation.name,
+                name=sharing_group_organisation.Organisation.name,
             ),
         )
 
