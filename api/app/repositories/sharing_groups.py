@@ -436,11 +436,11 @@ def capture_sharing_group(
 
     # capture sharing group organisations
     sharing_group.SharingGroupOrg = capture_sharing_group_organisations(
-        db, user, sharing_group_id, sharing_group.sharing_group_organisations
+        db, user, sharing_group_id, sharing_group.SharingGroupOrg or sharing_group.sharing_group_organisations
     )
 
     # capture sharing group servers
-    # capture_sharing_group_servers(db, sharing_group_id, sharing_group.sharing_group_servers)
+    # capture_sharing_group_servers(db, sharing_group_id, sharing_group.SharingGroupServer) # TODO: MISPSharingGroup does not have this
 
     # app/Model/SharingGroup.php::captureCreatorOrg()
 
