@@ -436,7 +436,7 @@ def capture_sharing_group(
 
     # capture sharing group organisations
     sharing_group.SharingGroupOrg = capture_sharing_group_organisations(
-        db, user, sharing_group_id, sharing_group.SharingGroupOrg or sharing_group.sharing_group_organisations
+        db, user, sharing_group_id, sharing_group.SharingGroupOrg
     )
 
     # capture sharing group servers
