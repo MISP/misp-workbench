@@ -101,10 +101,10 @@ body {
       <Spinner v-if="status.loading" />
       <div v-for="result in events.results">
         <div v-if="!searchAttributes">
-          <EventResultCard :event="result" />
+          <EventResultCard :event="result" :key="result._source.uuid" />
         </div>
         <div v-if="searchAttributes">
-          <AttributeResultCard :attribute="result" :key="result._source.uuid"/>
+          <AttributeResultCard :attribute="result" :key="result._source.uuid" />
         </div>
       </div>
     </div>
