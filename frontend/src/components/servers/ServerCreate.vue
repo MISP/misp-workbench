@@ -14,7 +14,7 @@ const { status } = storeToRefs(serversStore);
 const server = {
   push: false,
   pull: false,
-  pull_rules: "{}",
+  pull_rules: {},
   push_galaxy_clusters: false,
   pull_galaxy_clusters: false,
   push_sightings: false,
@@ -27,11 +27,11 @@ const server = {
   priority: 0,
 };
 
-const pullRules = ref("{}");
+const pullRules = ref(JSON.stringify(server.pull_rules, null, 2));
 watch(pullRules, (newVal) => {
   try {
     const rules = JSON.parse(newVal);
-    server.value.pull_rules = rules;
+    server.pull_rules = rules;
   } catch {}
 });
 
@@ -190,13 +190,6 @@ function handleRemoteOrgUpdated(orgId) {
           <div class="invalid-feedback">{{ errors["server.pull_rules"] }}</div>
         </div>
         <p>
-          <button
-            type="button"
-            class="btn btn-primary"
-            @click="pullRules = JSON.stringify(server.pull_rules, null, 2)"
-          >
-            Format
-          </button>
           <a
             class="btn-primary"
             data-bs-toggle="collapse"

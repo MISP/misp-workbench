@@ -21,6 +21,7 @@ import {
   faShapes,
   faCubesStacked,
 } from "@fortawesome/free-solid-svg-icons";
+import Timestamp from "@/components/misc/Timestamp.vue";
 
 const props = defineProps(["event_id"]);
 
@@ -146,6 +147,10 @@ div.row h3 {
                   <tr>
                     <th>date</th>
                     <td>{{ event.date }}</td>
+                  </tr>
+                  <tr>
+                    <th>timestamp</th>
+                    <td><Timestamp :timestamp="event.timestamp" /></td>
                   </tr>
                   <tr>
                     <th>threat level</th>
