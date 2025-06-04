@@ -143,9 +143,11 @@ def get_event_uuids_from_server(server: server_schemas.Server, remote_misp: PyMI
     see: app/Model/Server.php::getEventIndexFromServer()
     """
 
-    # TODO: apply filter rules / ignoreFilterRules
     # TODO: use restSearch and pagination
-    events = remote_misp.search_index(minimal=True, published=True)
+
+    timestamp = server.pull_rules.get("timestamp", None)
+
+    events = remote_misp.search_index(minimal=True, published=True, timestamp=timestamp)
     event_ids = [event["uuid"] for event in events]
 
     return event_ids
@@ -405,7 +407,7 @@ def create_or_update_pulled_event(
                 return False
 
             sharing_group_id = sharing_groups_repository.capture_sharing_group(
-                existing_event.sharing_group, user, server
+                db, existing_event.sharing_group, user, server
             )
 
             if sharing_group_id > 0:

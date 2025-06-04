@@ -104,7 +104,7 @@ body {
           <EventResultCard :event="result" />
         </div>
         <div v-if="searchAttributes">
-          <AttributeResultCard :attribute="result" />
+          <AttributeResultCard :attribute="result" :key="result._source.uuid"/>
         </div>
       </div>
     </div>

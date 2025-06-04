@@ -1,13 +1,23 @@
 <script setup>
+import { ref, watch } from "vue";
 import { Form, Field } from "vee-validate";
 import { storeToRefs } from "pinia";
 import { useServersStore } from "@/stores";
 import { router } from "@/router";
 import { ServerSchema } from "@/schemas/server";
 import OrganisationsSelect from "@/components/organisations/OrganisationsSelect.vue";
+import PullRulesEditor from "@/components/servers/PullRulesEditor.vue";
 
 const serversStore = useServersStore();
 const { server, status } = storeToRefs(serversStore);
+
+const pullRules = ref(JSON.stringify(server.value.pull_rules, null, 2));
+watch(pullRules, (newVal) => {
+  try {
+    const rules = JSON.parse(newVal);
+    server.value.pull_rules = rules;
+  } catch {}
+});
 
 function onSubmit(values, { setErrors }) {
   return serversStore
@@ -102,6 +112,18 @@ function handleRemoteOrgUpdated(orgId) {
           <div class="invalid-feedback">{{ errors["server.org_id"] }}</div>
         </div>
         <div class="mb-3">
+          <label for="server.remote_org_id">remote organisation</label>
+          <OrganisationsSelect
+            name="server.remote_org_id"
+            :selected="server.remote_org_id"
+            @organisation-updated="handleRemoteOrgUpdated"
+            :errors="errors['server.remote_org_id']"
+          />
+          <div class="invalid-feedback">
+            {{ errors["server.remote_org_id"] }}
+          </div>
+        </div>
+        <div class="mb-3">
           <label for="server.push">push</label>
           <Field
             class="form-control"
@@ -140,6 +162,18 @@ function handleRemoteOrgUpdated(orgId) {
             </div>
           </Field>
           <div class="invalid-feedback">{{ errors["server.pull"] }}</div>
+        </div>
+        <div class="mb-3">
+          <label for="server.pull_rules">pull_rules</label>
+          <Field
+            class="form-control"
+            type="hidden"
+            id="server.pull_rules"
+            name="server.pull_rules"
+            v-model="server.pull_rules"
+          ></Field>
+          <PullRulesEditor v-model="pullRules" />
+          <div class="invalid-feedback">{{ errors["server.pull_rules"] }}</div>
         </div>
         <div class="mb-3">
           <label for="server.push_sightings">push_sightings</label>
@@ -205,18 +239,6 @@ function handleRemoteOrgUpdated(orgId) {
           </Field>
           <div class="invalid-feedback">
             {{ errors["server.pull_galaxy_clusters"] }}
-          </div>
-        </div>
-        <div class="mb-3">
-          <label for="server.remote_org_id">remote organisation</label>
-          <OrganisationsSelect
-            name="server.remote_org_id"
-            :selected="server.remote_org_id"
-            @organisation-updated="handleRemoteOrgUpdated"
-            :errors="errors['server.remote_org_id']"
-          />
-          <div class="invalid-feedback">
-            {{ errors["server.remote_org_id"] }}
           </div>
         </div>
         <div class="mb-3">

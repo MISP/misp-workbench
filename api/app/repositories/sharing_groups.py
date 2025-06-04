@@ -336,7 +336,7 @@ def capture_sharing_group_existing(
     # see: app/Model/SharingGroup.php::captureSGExisting
 
     if (
-        not is_authorised(db, user, existing_sharing_group.id)
+        not is_authorised(db, user, existing_sharing_group.uuid)
         and not user.role.perm_sync
     ):
         return False

@@ -82,6 +82,10 @@ div.row h3 {
                     </td>
                   </tr>
                   <tr>
+                    <th>event_id</th>
+                    <td>{{ attribute.event_id }}</td>
+                  </tr>
+                  <tr>
                     <th>category</th>
                     <td>{{ attribute.category }}</td>
                   </tr>

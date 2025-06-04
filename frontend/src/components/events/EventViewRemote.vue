@@ -128,6 +128,10 @@ div.row h3 {
                     <td>{{ remote_events[0].date }}</td>
                   </tr>
                   <tr>
+                    <th>timestamp</th>
+                    <td>{{ remote_events[0].timestamp }}</td>
+                  </tr>
+                  <tr>
                     <th>threat level</th>
                     <td>
                       <ThreatLevel

@@ -8,6 +8,7 @@ export const ServerSchema = Yup.object().shape({
     org_id: Yup.number().required(),
     push: Yup.boolean().required(),
     pull: Yup.boolean().required(),
+    pull_rules: Yup.object().required(),
     push_sightings: Yup.boolean().required(),
     push_galaxy_clusters: Yup.boolean().required(),
     pull_galaxy_clusters: Yup.boolean().required(),
