@@ -88,9 +88,9 @@ def get_event_by_uuid(db: Session, event_uuid: str):
 def get_event_by_uuid(db: Session, event_uuid: str):
     return db.query(event_models.Event).options(
         selectinload(event_models.Event.sharing_group)
-            .selectinload(sharing_groups_models.sharing_group_organisations),
+            .selectinload(sharing_groups_models.SharingGroupOrganisation),
         selectinload(event_models.Event.sharing_group)
-            .selectinload(sharing_groups_models.SharingGroup.sharing_group_servers),
+            .selectinload(sharing_groups_models.SharingGroupServer),
     ).filter(event_models.Event.uuid == event_uuid).first()
 
 
