@@ -36,6 +36,7 @@ import {
   EditObject,
   ViewRemoteEvent,
   ExploreEvents,
+  TasksIndex,
 } from "@/views";
 
 export const router = createRouter({
@@ -84,6 +85,7 @@ export const router = createRouter({
     { path: "/taxonomies/:id", component: ViewTaxonomy, props: true },
     { path: "/galaxies/:id", component: ViewGalaxy, props: true },
     { path: "/explore", component: ExploreEvents },
+    { path: "/tasks", component: TasksIndex },
   ],
 });
 

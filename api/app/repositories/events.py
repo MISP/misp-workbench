@@ -7,13 +7,14 @@ from app.dependencies import get_opensearch_client
 from app.models import event as event_models
 from app.models import feed as feed_models
 from app.models import tag as tag_models
+from app.models import sharing_groups as sharing_groups_models
 from app.repositories import tags as tags_repository
 from app.schemas import event as event_schemas
 from app.schemas import user as user_schemas
 from fastapi import HTTPException, status
 from fastapi_pagination.ext.sqlalchemy import paginate
 from pymisp import MISPEvent, MISPOrganisation
-from sqlalchemy.orm import Session, noload
+from sqlalchemy.orm import Session, noload, selectinload
 from sqlalchemy.sql import select
 
 logger = logging.getLogger(__name__)
@@ -82,6 +83,15 @@ def get_event_by_uuid(db: Session, event_uuid: str):
         .filter(event_models.Event.uuid == event_uuid)
         .first()
     )
+
+
+def get_event_by_uuid(db: Session, event_uuid: str):
+    return db.query(event_models.Event).options(
+        selectinload(event_models.Event.sharing_group)
+            .selectinload(sharing_groups_models.sharing_group_organisations),
+        selectinload(event_models.Event.sharing_group)
+            .selectinload(sharing_groups_models.SharingGroup.sharing_group_servers),
+    ).filter(event_models.Event.uuid == event_uuid).first()
 
 
 def get_user_by_info(db: Session, info: str):
