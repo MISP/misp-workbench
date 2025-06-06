@@ -64,7 +64,7 @@ services:
   flower:
     ports:
       - "5555:5555"
-    command: poetry run celery -A app.worker.tasks flower --loglevel=debug --persistent=True --auto_refresh=True --state_save_interval=5000
+    command: poetry run celery -A app.worker.tasks flower --loglevel=debug --persistent=True --auto_refresh=True --state_save_interval=5000 -n worker1@%h
 
   rabbitmq:
     ports:

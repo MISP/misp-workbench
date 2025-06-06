@@ -16,12 +16,24 @@ def get_workers():
 
     return response.json()
 
+
 def get_tasks():
     response = FlowerClient.get(f"{flower_url}/tasks")
     if response.status_code != 200:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to retrieve tasks from Flower API.",
+        )
+
+    return response.json()
+
+
+def restart_worker(worker_id: str):
+    response = FlowerClient.post(f"{flower_url}/worker/pool/restart/{worker_id}")
+    if response.status_code != 200:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to restart worker {worker_id}. ",
         )
 
     return response.json()

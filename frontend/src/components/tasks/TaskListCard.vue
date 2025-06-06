@@ -20,9 +20,13 @@ const totalPages = computed(() =>
   Math.ceil(Object.values(props.tasks).length / props.pageSize),
 );
 
+const sortedTasks = computed(() =>
+  Object.values(props.tasks).sort((a, b) => b.timestamp - a.timestamp),
+);
+
 const paginatedTasks = computed(() => {
   const start = (currentPage.value - 1) * props.pageSize;
-  return Object.values(props.tasks).slice(start, start + props.pageSize);
+  return sortedTasks.value.slice(start, start + props.pageSize);
 });
 
 const taskTotalCount = computed(() => Object.keys(props.tasks).length);

@@ -31,13 +31,10 @@ export const useTasksStore = defineStore({
         .catch((error) => (this.status = { error }))
         .finally(() => (this.status = { loading: false }));
     },
-    async getTaskById(id) {
-      this.status = { loading: true };
-      fetchWrapper
-        .get(`${baseUrl}/${id}`)
-        .then((task) => (this.task = task))
-        .catch((error) => (this.status = { error }))
-        .finally(() => (this.status = { loading: false }));
+    async restart_worker(workerId) {
+      return await fetchWrapper
+        .post(`${baseUrl}/workers/${workerId}/restart`)
+        .catch((error) => (this.status = { error }));
     },
   },
 });

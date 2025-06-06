@@ -1,4 +1,6 @@
 <script setup>
+import WorkerActions from "@/components/tasks/WorkerActions.vue";
+
 defineProps({
   workerName: String,
   worker: Object,
@@ -7,8 +9,11 @@ defineProps({
 
 <template>
   <div class="card my-3 shadow">
-    <div class="card-header bg-primary text-white">
+    <div class="card-header d-flex">
       <h5 class="mb-0">{{ workerName }}</h5>
+      <div class="ms-auto">
+        <WorkerActions :worker_id="workerName" />
+      </div>
     </div>
     <div class="card-body">
       <div class="row mb-3">

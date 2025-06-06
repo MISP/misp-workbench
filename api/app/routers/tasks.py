@@ -21,3 +21,12 @@ def get_workers(
 ):
     return tasks_repository.get_workers()
 
+@router.post("/tasks/workers/{worker_id}/restart")
+def restart_worker_by_id(
+    worker_id: str,
+    user: user_schemas.User = Security(
+        get_current_active_user, scopes=["tasks:read"]
+    )
+):
+    return tasks_repository.restart_worker(worker_id=worker_id)
+
