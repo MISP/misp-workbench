@@ -138,3 +138,4 @@ jobs:
           MODULES_HOST: localhost
           MODULES_PORT: 6666
           STORAGE_ENGINE: local
+          FLOWER_BASIC_AUTH: flower:flower

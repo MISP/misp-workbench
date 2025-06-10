@@ -252,17 +252,24 @@ def get_event_attachments(
     status_code=status.HTTP_201_CREATED,
 )
 async def force_index(
-    params: dict = Depends(get_events_parameters),
+    event_uuid: Optional[UUID] = Query(None, alias="uuid"),
     db: Session = Depends(get_db),
     user: user_schemas.User = Security(
         get_current_active_user, scopes=["events:update"]
     ),
 ):
 
-    uuids = events_repository.get_event_uuids(db)
+    if event_uuid:
+        tasks.index_event.delay(event_uuid)
+        return JSONResponse(
+            content={"message": f"Indexing started for event {event_uuid}."},
+            status_code=status.HTTP_202_ACCEPTED,
+        )
 
+    uuids = events_repository.get_event_uuids(db)
     for uuid in uuids:
         tasks.index_event.delay(uuid[0])
+    
     return JSONResponse(
         content={"message": "Indexing started for all events."},
         status_code=status.HTTP_202_ACCEPTED,

@@ -18,3 +18,4 @@ export * from "./remote-misp-attributes.store";
 export * from "./remote-misp-objects.store";
 export * from "./remote-misp-reports.store";
 export * from "./reports.store";
+export * from "./tasks.store";

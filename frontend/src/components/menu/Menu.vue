@@ -50,12 +50,7 @@ function switchTheme() {
         </RouterLink>
         <RouterLink to="/explore" class="nav-item nav-link">explore</RouterLink>
         <RouterLink to="/events" class="nav-item nav-link">events</RouterLink>
-        <RouterLink to="/organisations" class="nav-item nav-link"
-          >organisations</RouterLink
-        >
         <RouterLink to="/users" class="nav-item nav-link">users</RouterLink>
-        <RouterLink to="/servers" class="nav-item nav-link">servers</RouterLink>
-        <RouterLink to="/feeds" class="nav-item nav-link">feeds</RouterLink>
         <div class="nav-item dropdown">
           <a
             class="nav-link dropdown-toggle"
@@ -65,9 +60,41 @@ function switchTheme() {
             data-bs-toggle="dropdown"
             aria-expanded="false"
           >
-            settings
+            sync
           </a>
           <ul class="dropdown-menu" aria-labelledby="navbarScrollingDropdown">
+            <li>
+              <RouterLink to="/servers" class="nav-item nav-link"
+                >servers</RouterLink
+              >
+            </li>
+            <hr class="dropdown-divider" />
+            <li>
+              <RouterLink to="/feeds" class="nav-item nav-link"
+                >feeds</RouterLink
+              >
+            </li>
+          </ul>
+        </div>
+
+        <div class="nav-item dropdown">
+          <a
+            class="nav-link dropdown-toggle"
+            href="#"
+            id="navbarScrollingDropdown"
+            role="button"
+            data-bs-toggle="dropdown"
+            aria-expanded="false"
+          >
+            internals
+          </a>
+          <ul class="dropdown-menu" aria-labelledby="navbarScrollingDropdown">
+            <li>
+              <RouterLink to="/organisations" class="dropdown-item"
+                >organisations</RouterLink
+              >
+            </li>
+            <hr class="dropdown-divider" />
             <li>
               <RouterLink to="/settings/modules" class="dropdown-item"
                 >modules</RouterLink
@@ -86,9 +113,13 @@ function switchTheme() {
             </li>
             <hr class="dropdown-divider" />
             <li>
-              <RouterLink to="/settings/internals" class="dropdown-item"
-                >internals</RouterLink
+              <RouterLink to="/settings/settings" class="dropdown-item"
+                >settings</RouterLink
               >
+            </li>
+            <hr class="dropdown-divider" />
+            <li>
+              <RouterLink to="/tasks" class="dropdown-item">tasks</RouterLink>
             </li>
           </ul>
         </div>

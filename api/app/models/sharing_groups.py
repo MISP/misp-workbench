@@ -23,8 +23,8 @@ class SharingGroup(Base):
     local = Column(Boolean, nullable=False, default=False)
     roaming = Column(Boolean, nullable=False, default=False)
 
-    sharing_group_organisations = relationship("SharingGroupOrganisation")
-    sharing_group_servers = relationship("SharingGroupServer")
+    sharing_group_organisations = relationship("SharingGroupOrganisation", lazy="joined")
+    sharing_group_servers = relationship("SharingGroupServer", lazy="joined")
 
 
 class SharingGroupOrganisation(Base):

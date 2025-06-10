@@ -26,6 +26,7 @@ app.conf.update(
     task_serializer="json",
     result_serializer="json",
     accept_content=["json"],
+    worker_pool_restarts=True,
 )
 
 logger = logging.getLogger(__name__)

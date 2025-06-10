@@ -95,6 +95,7 @@ services:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
       MINIO_SECURE: ${MINIO_SECURE:-true}
+      FLOWER_BASIC_AUTH: ${FLOWER_BASIC_AUTH:-flower:flower}
     entrypoint: [ "bash", "-c", "./entrypoint.sh" ]
     depends_on:
       postgres:
@@ -119,7 +120,7 @@ services:
     build:
       context: ./api
       dockerfile: Dockerfile
-    command: poetry run celery -A app.worker.tasks worker --loglevel=info --hostname worker@%h -E
+    command: poetry run celery -A app.worker.tasks worker --loglevel=info --hostname worker@%h -E --autoscale=4,10
     environment:
       POSTGRES_HOSTNAME: ${POSTGRES_HOSTNAME:-postgres}
       POSTGRES_PORT: ${POSTGRES_PORT:-5432}
@@ -152,6 +153,7 @@ services:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
       MINIO_SECURE: ${MINIO_SECURE:-true}
+      FLOWER_BASIC_AUTH: ${FLOWER_BASIC_AUTH:-flower:flower}
     depends_on:
       - redis
       - postgres
@@ -200,6 +202,7 @@ services:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
       MINIO_SECURE: ${MINIO_SECURE:-true}
+      FLOWER_BASIC_AUTH: ${FLOWER_BASIC_AUTH:-flower:flower}
     depends_on:
       - worker
       - rabbitmq

@@ -88,5 +88,5 @@ class Event(Base):
 
     attributes = relationship("Attribute", lazy="subquery", cascade="all, delete-orphan")
     objects = relationship("Object", lazy="subquery", cascade="all, delete-orphan")
-    sharing_group = relationship("SharingGroup", lazy="subquery")
-    tags = relationship("Tag", secondary="event_tags", lazy="subquery")
+    sharing_group = relationship("SharingGroup", lazy="joined")
+    tags = relationship("Tag", secondary="event_tags", lazy="joined")
