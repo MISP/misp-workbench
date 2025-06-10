@@ -5,7 +5,7 @@ import { storeToRefs } from "pinia";
 const eventsStore = useEventsStore();
 const { status } = storeToRefs(eventsStore);
 
-const props = defineProps(["event_id"]);
+const props = defineProps(["event_id", "modal"]);
 const emit = defineEmits(["event-deleted"]);
 
 function onSubmit() {
@@ -13,7 +13,7 @@ function onSubmit() {
     .delete(props.event_id)
     .then(() => {
       emit("event-deleted", { event_id: props.event_id });
-      document.getElementById("closeModalButton").click();
+      props.modal.hide();
     })
     .catch((error) => (status.error = error));
 }
@@ -21,7 +21,7 @@ function onSubmit() {
 
 <template>
   <div
-    :id="'deleteEventModal-' + event_id"
+    :id="'deleteEventModal_' + event_id"
     class="modal fade"
     tabindex="-1"
     aria-labelledby="deleteEventModal"
@@ -58,7 +58,7 @@ function onSubmit() {
           <button
             type="submit"
             @click="onSubmit"
-            class="btn btn-outline-danger"
+            class="btn btn-danger"
             :class="{ disabled: status.loading }"
           >
             <span v-if="status.loading">
