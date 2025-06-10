@@ -12,7 +12,7 @@ defineProps({
     <div class="card-header d-flex">
       <h5 class="mb-0">{{ workerName }}</h5>
       <div class="ms-auto">
-        <WorkerActions :worker_id="workerName" />
+        <WorkerActions :worker_id="workerName" :worker="worker" />
       </div>
     </div>
     <div class="card-body">

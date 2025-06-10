@@ -120,7 +120,7 @@ services:
     build:
       context: ./api
       dockerfile: Dockerfile
-    command: poetry run celery -A app.worker.tasks worker --loglevel=info --hostname worker@%h -E
+    command: poetry run celery -A app.worker.tasks worker --loglevel=info --hostname worker@%h -E --autoscale=4,10
     environment:
       POSTGRES_HOSTNAME: ${POSTGRES_HOSTNAME:-postgres}
       POSTGRES_PORT: ${POSTGRES_PORT:-5432}

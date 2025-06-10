@@ -1,14 +1,16 @@
 <script setup>
 import { useTasksStore } from "@/stores";
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
-import { faRefresh } from "@fortawesome/free-solid-svg-icons";
+import { faRefresh, faCog } from "@fortawesome/free-solid-svg-icons";
 import { useToastsStore } from "@/stores";
+import ManageWorkerModal from "@/components/tasks/ManageWorkerModal.vue";
 
 const toastsStore = useToastsStore();
 const tasksStore = useTasksStore();
 
 defineProps({
   worker_id: String,
+  worker: Object,
 });
 
 function restartWorker(worker_id) {
@@ -26,6 +28,12 @@ function restartWorker(worker_id) {
       toastsStore.push(response, "error");
       console.error("Error restarting worker:", error);
     });
+
+  tasksStore.get_workers();
+}
+
+function handleWorkerUpdate() {
+  tasksStore.get_workers();
 }
 </script>
 
@@ -34,13 +42,28 @@ function restartWorker(worker_id) {
     <div class="btn-group me-2" role="group">
       <button
         type="button"
-        class="btn btn-success"
+        class="btn btn-outline-primary"
         data-placement="top"
         title="Restart"
         @click="restartWorker(worker_id)"
       >
         <FontAwesomeIcon :icon="faRefresh" />
       </button>
+      <button
+        type="button"
+        class="btn btn-outline-primary"
+        data-placement="top"
+        title="Mange Worker Pool"
+        data-bs-toggle="modal"
+        :data-bs-target="'#manageWorkerModal-' + worker_id"
+      >
+        <FontAwesomeIcon :icon="faCog" />
+      </button>
     </div>
+    <ManageWorkerModal
+      @worker-updated="handleWorkerUpdate"
+      :worker_id="worker_id"
+      :worker="worker"
+    />
   </div>
 </template>
