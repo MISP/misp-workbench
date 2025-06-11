@@ -3,11 +3,22 @@ import { authHelper } from "@/helpers";
 import { ref, computed, onMounted } from "vue";
 import { Modal } from "bootstrap";
 import { storeToRefs } from "pinia";
-import { useAuthStore } from "@/stores";
+import { useAuthStore, useEventsStore } from "@/stores";
 import DeleteEventModal from "@/components/events/DeleteEventModal.vue";
+import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
+import {
+  faTrash,
+  faEye,
+  faPen,
+  faFileArrowUp,
+  faSync,
+} from "@fortawesome/free-solid-svg-icons";
 
 const authStore = useAuthStore();
 const { scopes } = storeToRefs(authStore);
+
+const eventsStore = useEventsStore();
+const { status } = storeToRefs(eventsStore);
 
 const props = defineProps({
   event_id: Number,
@@ -18,6 +29,9 @@ const props = defineProps({
 });
 
 const actions = computed(() => ({
+  index:
+    props.default_actions.index ??
+    authHelper.hasScope(scopes.value, "events:index"),
   view:
     props.default_actions.view ??
     authHelper.hasScope(scopes.value, "events:view"),
@@ -49,6 +63,10 @@ const emit = defineEmits(["event-updated", "event-deleted"]);
 function handleEventDeleted(event) {
   emit("event-deleted", event);
 }
+
+function indexEventDocument() {
+  eventsStore.forceIndex(props.event_id);
+}
 </script>
 
 <style scoped>
@@ -68,16 +86,37 @@ function handleEventDeleted(event) {
         v-if="actions.view"
         :to="`/events/${event_id}`"
         class="btn btn-outline-primary"
+        data-placement="top"
+        data-toggle="tooltip"
+        title="View Event"
       >
-        <font-awesome-icon icon="fa-solid fa-eye" />
+        <FontAwesomeIcon :icon="faEye" />
       </RouterLink>
       <RouterLink
         v-if="actions.update"
         :to="`/events/update/${event_id}`"
         class="btn btn-outline-primary"
+        data-placement="top"
+        data-toggle="tooltip"
+        title="Update Event"
       >
-        <font-awesome-icon icon="fa-solid fa-pen" />
+        <FontAwesomeIcon :icon="faPen" />
       </RouterLink>
+    </div>
+    <div class="btn-group me-2" role="group">
+      <button
+        v-if="actions.index"
+        :disabled="status.indexing"
+        type="button"
+        class="btn btn-outline-primary"
+        data-placement="top"
+        data-toggle="tooltip"
+        title="Index Event"
+        @click="indexEventDocument"
+      >
+        <FontAwesomeIcon v-if="!status.indexing" :icon="faFileArrowUp" />
+        <FontAwesomeIcon v-if="status.indexing" :icon="faSync" spin />
+      </button>
     </div>
     <div class="btn-group me-2" role="group">
       <button
@@ -85,10 +124,11 @@ function handleEventDeleted(event) {
         type="button"
         class="btn btn-danger"
         data-placement="top"
+        data-toggle="tooltip"
         title="Delete Event"
         @click="openDeleteEventModal"
       >
-        <font-awesome-icon icon="fa-solid fa-trash" />
+        <FontAwesomeIcon :icon="faTrash" />
       </button>
     </div>
   </div>

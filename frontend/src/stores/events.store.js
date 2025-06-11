@@ -16,6 +16,7 @@ export const useEventsStore = defineStore({
       creating: false,
       uploading: false,
       deleting: false,
+      indexing: false,
       error: false,
     },
   }),
@@ -82,6 +83,13 @@ export const useEventsStore = defineStore({
         .delete(`${baseUrl}/${id}/tag/${tag}`)
         .catch((error) => (this.status = { error }))
         .finally(() => (this.status = { loading: false }));
+    },
+    async forceIndex(id) {
+      this.status = { indexing: true };
+      return await fetchWrapper
+        .post(`${baseUrl}/force-index?id=${id}`)
+        .catch((error) => (this.status = { error }))
+        .finally(() => (this.status = { indexing: false }));
     },
     async search(params = { query: "", page: 1, size: 10 }) {
       this.status = { loading: true };
