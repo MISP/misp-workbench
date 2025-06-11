@@ -59,16 +59,16 @@ function onSubmit() {
             type="submit"
             @click="onSubmit"
             class="btn btn-danger"
-            :class="{ disabled: status.loading }"
+            :class="{ disabled: status.deleting }"
           >
-            <span v-if="status.loading">
+            <span v-if="status.deleting">
               <span
                 class="spinner-border spinner-border-sm"
                 role="status"
                 aria-hidden="true"
               ></span>
             </span>
-            <span v-if="!status.loading">Delete</span>
+            <span v-if="!status.deleting">Delete</span>
           </button>
         </div>
       </div>

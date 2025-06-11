@@ -15,6 +15,7 @@ export const useEventsStore = defineStore({
       updating: false,
       creating: false,
       uploading: false,
+      deleting: false,
       error: false,
     },
   }),
@@ -64,11 +65,11 @@ export const useEventsStore = defineStore({
         .finally(() => (this.status = { creating: false }));
     },
     async delete(id) {
-      this.status = { loading: true };
+      this.status = { deleting: true };
       return await fetchWrapper
         .delete(`${baseUrl}/${id}`)
         .catch((error) => (this.status = { error }))
-        .finally(() => (this.status = { loading: false }));
+        .finally(() => (this.status = { deleting: false }));
     },
     async tag(id, tag) {
       return await fetchWrapper
