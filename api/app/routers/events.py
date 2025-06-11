@@ -253,6 +253,7 @@ def get_event_attachments(
 )
 async def force_index(
     event_uuid: Optional[UUID] = Query(None, alias="uuid"),
+    event_id: Optional[int] = Query(None, alias="id"),
     db: Session = Depends(get_db),
     user: user_schemas.User = Security(
         get_current_active_user, scopes=["events:update"]
@@ -263,6 +264,18 @@ async def force_index(
         tasks.index_event.delay(event_uuid)
         return JSONResponse(
             content={"message": f"Indexing started for event {event_uuid}."},
+            status_code=status.HTTP_202_ACCEPTED,
+        )
+        
+    if event_id:
+        db_event = events_repository.get_event_by_id(db, event_id=event_id)
+        if db_event is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Event not found"
+            )
+        tasks.index_event.delay(db_event.uuid)
+        return JSONResponse(
+            content={"message": f"Indexing started for event {db_event.uuid}."},
             status_code=status.HTTP_202_ACCEPTED,
         )
 

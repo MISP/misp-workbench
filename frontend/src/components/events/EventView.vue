@@ -9,14 +9,12 @@ import DistributionLevel from "@/components/enums/DistributionLevel.vue";
 import UUID from "@/components/misc/UUID.vue";
 import ThreatLevel from "@/components/enums/ThreatLevel.vue";
 import AnalysisLevel from "@/components/enums/AnalysisLevel.vue";
-import DeleteEventModal from "@/components/events/DeleteEventModal.vue";
+import EventActions from "@/components/events/EventActions.vue";
 import UploadAttachmentsWidget from "@/components/attachments/UploadAttachmentsWidget.vue";
 import { router } from "@/router";
 import { useEventsStore, useModulesStore } from "@/stores";
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
 import {
-  faTrash,
-  faPen,
   faTags,
   faShapes,
   faCubesStacked,
@@ -76,33 +74,10 @@ div.row h3 {
           <h3>{{ event.info }}</h3>
         </div>
         <div class="col-2 text-end">
-          <div class="btn-toolbar float-end" role="toolbar">
-            <div
-              class="flex-wrap"
-              :class="{
-                'btn-group-vertical': $isMobile,
-                'btn-group me-2': !$isMobile,
-              }"
-              aria-label="Event Actions"
-            >
-              <RouterLink
-                :to="`/events/update/${event.id}`"
-                class="btn btn-outline-primary"
-              >
-                <FontAwesomeIcon :icon="faPen" />
-              </RouterLink>
-            </div>
-            <div class="btn-group" role="group">
-              <button
-                type="button"
-                class="btn btn-danger"
-                data-bs-toggle="modal"
-                :data-bs-target="'#deleteEventModal-' + event.id"
-              >
-                <FontAwesomeIcon :icon="faTrash" />
-              </button>
-            </div>
-          </div>
+          <EventActions
+            :event_id="event.id"
+            @event-deleted="handleEventDeleted"
+          />
         </div>
       </div>
     </div>
@@ -252,9 +227,5 @@ div.row h3 {
         </div>
       </div>
     </div>
-    <DeleteEventModal
-      @event-deleted="handleEventDeleted"
-      :event_id="event.id"
-    />
   </div>
 </template>
