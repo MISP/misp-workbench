@@ -137,15 +137,11 @@ def correlate_document(doc):
 
     for match_type in match_types:
         if match_type == "cidr":
-            if (
-                doc["_source"]["type"] in POSSIBLE_CIDR_ATTRIBUTES_TYPES
-                and "/" in value
-            ):
-                query = build_cidr_query(doc["_id"], doc)
-            else:
+            if doc["_source"]["type"] not in POSSIBLE_CIDR_ATTRIBUTES_TYPES or "/" not in value:
                 continue
+            query = build_cidr_query(doc_id, doc)
         else:
-            query = build_query(doc["_id"], value, match_type)
+            query = build_query(doc_id, value, match_type)
 
         res = OpenSearchClient.search(
             index="misp-attributes",
