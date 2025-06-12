@@ -108,13 +108,13 @@ function handleAttributeEnriched() {
     >
       <button
         type="button"
-        class="btn btn-outline-primary"
+        class="btn"
         @click="openCorrelationsModal"
         data-placement="top"
         data-toggle="tooltip"
         title="View Correlations"
       >
-        <FontAwesomeIcon :icon="faSitemap" />
+        <FontAwesomeIcon :icon="faSitemap" class="text-warning" />
       </button>
     </div>
     <div
