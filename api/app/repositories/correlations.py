@@ -4,6 +4,9 @@ from opensearchpy import helpers as opensearch_helpers
 import datetime
 
 MAX_CORRELATIONS_PER_DOC = 1000
+CORRELATION_PREFIX_LENGTH = 10
+CORRELATION_MIN_SCORE = 2
+CORRELATION_FUZZYNESS = "AUTO"
 POSSIBLE_CIDR_ATTRIBUTES_TYPES = [
     "ip-src",
     "ip-src|port",
@@ -38,7 +41,7 @@ def get_all_attributes():
     scroll = opensearch_helpers.scan(
         client=OpenSearchClient,
         index="misp-attributes",
-        query={"query": {"match_all": {}}},
+        query={"query": {"bool": {"must": [{"term": {"disable_correlation": False}}]}}},
         scroll="2m",
         size=500,
     )
@@ -46,33 +49,29 @@ def get_all_attributes():
         yield doc
 
 
-def build_query(value, match_type):
+def build_query(uuid, value, match_type):
+
+    query = {
+        "query": {"bool": {"must": [], "must_not": [{"term": {"uuid.keyword": uuid}}]}}
+    }
+
     if match_type == "term":
-        return {"term": {"value.keyword": value}}
+        query["query"]["bool"]["must"] = [{"term": {"value.keyword": value}}]
     elif match_type == "prefix":
-        return {"prefix": {"value.keyword": value[:10]}}  # safety limit
+        query["query"]["bool"]["must"] = [
+            {"prefix": {"value.keyword": value[:CORRELATION_PREFIX_LENGTH]}}
+        ]
     elif match_type == "fuzzy":
-        return {"fuzzy": {"value": {"value": value, "fuzziness": "AUTO"}}}
-    elif match_type == "wildcard":
-        return {"wildcard": {"value.keyword": f"*{value}*"}}
+        query["query"]["bool"]["must"] = [
+            {"fuzzy": {"value": {"value": value, "fuzziness": CORRELATION_FUZZYNESS}}}
+        ]
     else:
         raise ValueError(f"Unsupported match_type: {match_type}")
 
-
-def store_correlation(source_id, target_id, match_type, score):
-    OpenSearchClient = get_opensearch_client()
-
-    correlation_doc = {
-        "source_id": source_id,
-        "target_id": target_id,
-        "match_type": match_type,
-        "score": score,
-        "@timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
-    }
-    OpenSearchClient.index(index="misp-attribute-correlations", body=correlation_doc)
+    return query
 
 
-def build_cidr_query(doc):
+def build_cidr_query(uuid, doc):
     if (
         doc["_source"]["type"] in ["ip-src", "ip-dst"]
         and "/" in doc["_source"]["value"]
@@ -88,7 +87,40 @@ def build_cidr_query(doc):
     if "/" not in cidr:
         raise ValueError(f"Invalid CIDR format: {cidr}")
 
-    return {"term": {"expanded.ip": cidr}}
+    return {
+        "query": {
+            "bool": {
+                "must": [{"term": {"expanded.ip": cidr}}],
+                "must_not": [{"term": {"uuid.keyword": uuid}}],
+            }
+        }
+    }
+
+
+def store_correlations_bulk(source_id, hits, match_type):
+    if not hits:
+        return
+
+    OpenSearchClient = get_opensearch_client()
+
+    correlations = []
+
+    for hit in hits:
+        correlation_doc = {
+            "_index": "misp-attribute-correlations",
+            "_id": f"{source_id}|{hit['_id']}",
+            "_source": {
+                "source_id": source_id,
+                "target_id": hit["_id"],
+                "match_type": match_type,
+                "score": hit["_score"],
+                "@timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+            },
+        }
+
+        correlations.append(correlation_doc)
+
+    opensearch_helpers.bulk(OpenSearchClient, correlations)
 
 
 def correlate_document(doc):
@@ -100,7 +132,7 @@ def correlate_document(doc):
     if not value:
         return
 
-    # match_types = ["term", "fuzzy", "prefix", "cidr"]  # customizable
+    # match_types = ["term", "fuzzy", "prefix", "cidr", "phrase"]  # customizable
     match_types = ["term", "cidr"]
 
     for match_type in match_types:
@@ -109,25 +141,27 @@ def correlate_document(doc):
                 doc["_source"]["type"] in POSSIBLE_CIDR_ATTRIBUTES_TYPES
                 and "/" in value
             ):
-                query = build_cidr_query(doc)
+                query = build_cidr_query(doc["_id"], doc)
             else:
                 continue
         else:
-            query = build_query(value, match_type)
+            query = build_query(doc["_id"], value, match_type)
 
         res = OpenSearchClient.search(
             index="misp-attributes",
-            body={"query": query},
+            body=query,
             size=MAX_CORRELATIONS_PER_DOC,
         )
 
-        for hit in res["hits"]["hits"]:
-            if hit["_id"] == doc_id:
-                continue  # skip self
-
-            store_correlation(doc_id, hit["_id"], match_type, hit["_score"])
+        store_correlations_bulk(doc_id, res["hits"]["hits"], match_type)
 
 
 def run_correlations():
+
     for doc in get_all_attributes():
         correlate_document(doc)
+
+    return {
+        "status": "success",
+        "message": "Correlations generated successfully.",
+    }
