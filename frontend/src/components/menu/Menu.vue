@@ -6,6 +6,7 @@ import {
   faArrowRightFromBracket,
   faBars,
   faBuilding,
+  faCog,
   faEnvelopeOpenText,
   faMoon,
   faRightFromBracket,
@@ -113,12 +114,6 @@ function switchTheme() {
             </li>
             <hr class="dropdown-divider" />
             <li>
-              <RouterLink to="/settings/settings" class="dropdown-item"
-                >settings</RouterLink
-              >
-            </li>
-            <hr class="dropdown-divider" />
-            <li>
               <RouterLink to="/tasks" class="dropdown-item">tasks</RouterLink>
             </li>
           </ul>
@@ -132,6 +127,11 @@ function switchTheme() {
             class="fa-xl"
           />
           <FontAwesomeIcon v-if="theme == 'dark'" :icon="faSun" class="fa-xl" />
+        </button>
+      </div>
+      <div class="m-2">
+        <button type="button" class="btn btn-outline">
+          <FontAwesomeIcon :icon="faCog" class="fa-xl" />
         </button>
       </div>
       <form class="d-flex">
