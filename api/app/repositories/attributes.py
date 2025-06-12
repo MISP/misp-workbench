@@ -17,7 +17,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.sql import select
 from fastapi_pagination import Page
 from collections import defaultdict
-
+from opensearchpy.exceptions import NotFoundError
 
 def enrich_attributes_page_with_correlations(
     attributes_page: Page[attribute_schemas.Attribute],
@@ -33,8 +33,13 @@ def enrich_attributes_page_with_correlations(
         "size": 10000,  # results should be less than MAX_CORRELATIONS_PER_DOC * page_size
     }
 
-    response = OpenSearchClient.search(index="misp-attribute-correlations", body=query)
-    hits = response["hits"]["hits"]
+    try:
+        response = OpenSearchClient.search(index="misp-attribute-correlations", body=query)
+        hits = response["hits"]["hits"]
+    except NotFoundError:
+        for attr in attributes_page.items:
+            attr.correlations = []
+        return attributes_page
 
     correlation_map = defaultdict(list)
     for hit in hits:
