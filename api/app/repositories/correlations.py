@@ -108,7 +108,7 @@ def store_correlations_bulk(source_id, hits, match_type):
     for hit in hits:
         correlation_doc = {
             "_index": "misp-attribute-correlations",
-            "_id": f"{source_id}|{hit['_id']}",
+            "_id": f"{source_id}|{hit['_id']|{match_type}}",
             "_source": {
                 "source_id": source_id,
                 "target_id": hit["_id"],
