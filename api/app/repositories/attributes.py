@@ -2,7 +2,7 @@ import time
 from typing import Union
 from uuid import UUID
 from app.models.event import DistributionLevel
-
+from app.dependencies import get_opensearch_client
 from app.models import attribute as attribute_models
 from app.models import tag as tag_models
 from app.models import user as user_models
@@ -16,6 +16,35 @@ from pymisp import MISPAttribute, MISPTag
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import select
 from fastapi_pagination import Page
+from collections import defaultdict
+
+
+def enrich_attributes_page_with_correlations(
+    attributes_page: Page[attribute_schemas.Attribute],
+) -> Page[attribute_schemas.Attribute]:
+    OpenSearchClient = get_opensearch_client()
+
+    uuids = [attr.uuid for attr in attributes_page.items]
+    if not uuids:
+        return attributes_page
+
+    query = {
+        "query": {"terms": {"source_id.keyword": uuids}},
+        "size": 10000,  # results should be less than MAX_CORRELATIONS_PER_DOC * page_size
+    }
+
+    response = OpenSearchClient.search(index="misp-attribute-correlations", body=query)
+    hits = response["hits"]["hits"]
+
+    correlation_map = defaultdict(list)
+    for hit in hits:
+        source_id = hit["_source"]["source_id"]
+        correlation_map[source_id].append(hit)
+
+    for attr in attributes_page.items:
+        attr.correlations = correlation_map.get(str(attr.uuid), [])
+
+    return attributes_page
 
 
 def get_attributes(
@@ -31,7 +60,9 @@ def get_attributes(
 
     query = query.where(attribute_models.Attribute.object_id == object_id)
 
-    return paginate(db, query)
+    page_results = paginate(db, query)
+
+    return enrich_attributes_page_with_correlations(page_results)
 
 
 def get_attribute_by_id(
@@ -167,7 +198,9 @@ def update_attribute_from_pulled_attribute(
             value=pulled_attribute.value,
             to_ids=pulled_attribute.to_ids,
             timestamp=pulled_attribute.timestamp.timestamp(),
-            distribution=event_schemas.DistributionLevel(pulled_attribute.distribution or DistributionLevel.INHERIT_EVENT),
+            distribution=event_schemas.DistributionLevel(
+                pulled_attribute.distribution or DistributionLevel.INHERIT_EVENT
+            ),
             comment=pulled_attribute.comment,
             sharing_group_id=None,
             deleted=pulled_attribute.deleted,

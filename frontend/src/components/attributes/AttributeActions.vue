@@ -6,6 +6,15 @@ import { storeToRefs } from "pinia";
 import { useModulesStore, useAuthStore } from "@/stores";
 import DeleteAttributeModal from "@/components/attributes/DeleteAttributeModal.vue";
 import EnrichAttributeModal from "@/components/attributes/EnrichAttributeModal.vue";
+import AttributeCorrelationsModal from "@/components/attributes/AttributeCorrelationsModal.vue";
+import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
+import {
+  faTrash,
+  faEye,
+  faPen,
+  faMagicWandSparkles,
+  faSitemap,
+} from "@fortawesome/free-solid-svg-icons";
 
 const authStore = useAuthStore();
 const { scopes } = storeToRefs(authStore);
@@ -46,6 +55,7 @@ const emit = defineEmits([
 
 const deleteAttributeModal = ref(null);
 const enrichAttributeModal = ref(null);
+const atributeCorrelationsModal = ref(null);
 const modulesStore = useModulesStore();
 const { modulesResponses } = storeToRefs(modulesStore);
 
@@ -56,6 +66,9 @@ onMounted(() => {
   enrichAttributeModal.value = new Modal(
     document.getElementById(`enrichAttributeModal_${props.attribute.id}`),
   );
+  atributeCorrelationsModal.value = new Modal(
+    document.getElementById(`attributeCorrelationsModal_${props.attribute.id}`),
+  );
 });
 
 function openDeleteAttributeModal() {
@@ -65,6 +78,10 @@ function openDeleteAttributeModal() {
 function openEnrichAttributeModal() {
   modulesResponses.value = [];
   enrichAttributeModal.value.show();
+}
+
+function openCorrelationsModal() {
+  atributeCorrelationsModal.value.show();
 }
 
 function handleAttributeDeleted() {
@@ -85,6 +102,22 @@ function handleAttributeEnriched() {
 <template>
   <div class="btn-toolbar float-end" role="toolbar">
     <div
+      v-if="Object(attribute.correlations).length > 0"
+      class="btn-group me-2"
+      role="group"
+    >
+      <button
+        type="button"
+        class="btn btn-outline-primary"
+        @click="openCorrelationsModal"
+        data-placement="top"
+        data-toggle="tooltip"
+        title="View Correlations"
+      >
+        <FontAwesomeIcon :icon="faSitemap" />
+      </button>
+    </div>
+    <div
       :class="{ 'btn-group-vertical': $isMobile, 'btn-group me-2': !$isMobile }"
       role="group"
       aria-label="Attribute Actions"
@@ -93,23 +126,32 @@ function handleAttributeEnriched() {
         v-if="actions.view"
         :to="`/attributes/${attribute.id}`"
         class="btn btn-outline-primary"
+        data-placement="top"
+        data-toggle="tooltip"
+        title="View Attribute"
       >
-        <font-awesome-icon icon="fa-solid fa-eye" />
+        <FontAwesomeIcon :icon="faEye" />
       </RouterLink>
       <button
         v-if="actions.enrich"
         type="button"
         class="btn btn-outline-primary"
         @click="openEnrichAttributeModal"
+        data-placement="top"
+        data-toggle="tooltip"
+        title="Enrich Attribute"
       >
-        <font-awesome-icon icon="fa-solid fa-magic-wand-sparkles" />
+        <FontAwesomeIcon :icon="faMagicWandSparkles" />
       </button>
       <RouterLink
         v-if="actions.update"
         :to="`/attributes/update/${attribute.id}`"
         class="btn btn-outline-primary"
+        data-placement="top"
+        data-toggle="tooltip"
+        title="Update Attribute"
       >
-        <font-awesome-icon icon="fa-solid fa-pen" />
+        <FontAwesomeIcon :icon="faPen" />
       </RouterLink>
     </div>
     <div class="btn-group me-2" role="group">
@@ -118,8 +160,11 @@ function handleAttributeEnriched() {
         type="button"
         class="btn btn-danger"
         @click="openDeleteAttributeModal"
+        data-placement="top"
+        data-toggle="tooltip"
+        title="Delete Attribute"
       >
-        <font-awesome-icon icon="fa-solid fa-trash" />
+        <FontAwesomeIcon :icon="faTrash" />
       </button>
     </div>
   </div>
@@ -135,6 +180,12 @@ function handleAttributeEnriched() {
     :id="`enrichAttributeModal_${attribute.id}`"
     @attribute-enriched="handleAttributeEnriched"
     :modal="enrichAttributeModal"
+    :attribute="attribute"
+  />
+  <AttributeCorrelationsModal
+    :key="attribute.id"
+    :id="`attributeCorrelationsModal_${attribute.id}`"
+    :modal="AttributeCorrelationsModal"
     :attribute="attribute"
   />
 </template>
