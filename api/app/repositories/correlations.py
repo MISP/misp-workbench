@@ -16,12 +16,45 @@ POSSIBLE_CIDR_ATTRIBUTES_TYPES = [
 ]
 
 
-def get_correlations(page: int = 0, from_value: int = 0, size: int = 100):
+def get_correlations(params: dict, page: int = 0, from_value: int = 0, size: int = 100):
     OpenSearchClient = get_opensearch_client()
+
+    query = {
+        "from": from_value,
+        "size": size,
+        "query": {
+            "bool": {
+                "must": [],
+            },
+        },
+    }
+
+    if params.get("source_attribute_uuid"):
+        query["query"]["bool"]["must"].append(
+            {"term": {"source_id.keyword": params["source_attribute_uuid"]}}
+        )
+    if params.get("source_event_uuid"):
+        query["query"]["bool"]["must"].append(
+            {"term": {"source_event_uuid.keyword": params["source_event_uuid"]}}
+        )
+    if params.get("target_attribute_uuid"):
+        query["query"]["bool"]["must"].append(
+            {"term": {"target_id.keyword": params["target_attribute_uuid"]}}
+        )
+    if params.get("target_event_uuid"):
+        query["query"]["bool"]["must"].append(
+            {"term": {"target_event_uuid.keyword": params["target_event_uuid"]}}
+        )
+    if params.get("match_type"):
+        query["query"]["bool"]["must"].append(
+            {"term": {"match_type.keyword": params["match_type"]}}
+        )
+    if not query["query"]["bool"]["must"]:
+        query = {"query": {"match_all": {}}, "from": from_value, "size": size}
 
     response = OpenSearchClient.search(
         index="misp-attribute-correlations",
-        body={"query": {"match_all": {}}, "from": from_value, "size": size},
+        body=query,
     )
 
     return {
@@ -97,7 +130,7 @@ def build_cidr_query(uuid, doc):
     }
 
 
-def store_correlations_bulk(source_id, hits, match_type):
+def store_correlations_bulk(attribute_uuid, event_uuid, hits, match_type):
     if not hits:
         return
 
@@ -108,10 +141,12 @@ def store_correlations_bulk(source_id, hits, match_type):
     for hit in hits:
         correlation_doc = {
             "_index": "misp-attribute-correlations",
-            "_id": f"{source_id}|{hit['_id']}|{match_type}",
+            "_id": f"{attribute_uuid}|{hit['_id']}|{match_type}",
             "_source": {
-                "source_id": source_id,
+                "source_id": attribute_uuid,
+                "source_event_uuid": event_uuid,
                 "target_id": hit["_id"],
+                "target_event_uuid": hit["_source"]["event_uuid"],
                 "match_type": match_type,
                 "score": hit["_score"],
                 "@timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
@@ -127,7 +162,6 @@ def correlate_document(doc):
     OpenSearchClient = get_opensearch_client()
 
     value = doc["_source"].get("value")
-    doc_id = doc["_id"]
 
     if not value:
         return
@@ -137,11 +171,14 @@ def correlate_document(doc):
 
     for match_type in match_types:
         if match_type == "cidr":
-            if doc["_source"]["type"] not in POSSIBLE_CIDR_ATTRIBUTES_TYPES or "/" not in value:
+            if (
+                doc["_source"]["type"] not in POSSIBLE_CIDR_ATTRIBUTES_TYPES
+                or "/" not in value
+            ):
                 continue
-            query = build_cidr_query(doc_id, doc)
+            query = build_cidr_query(doc["_id"], doc)
         else:
-            query = build_query(doc_id, value, match_type)
+            query = build_query(doc["_id"], value, match_type)
 
         res = OpenSearchClient.search(
             index="misp-attributes",
@@ -149,7 +186,9 @@ def correlate_document(doc):
             size=MAX_CORRELATIONS_PER_DOC,
         )
 
-        store_correlations_bulk(doc_id, res["hits"]["hits"], match_type)
+        store_correlations_bulk(
+            doc["_id"], doc["_source"]["event_uuid"], res["hits"]["hits"], match_type
+        )
 
 
 def run_correlations():

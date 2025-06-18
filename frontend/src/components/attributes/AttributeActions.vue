@@ -185,7 +185,7 @@ function handleAttributeEnriched() {
   <AttributeCorrelationsModal
     :key="attribute.id"
     :id="`attributeCorrelationsModal_${attribute.id}`"
-    :modal="AttributeCorrelationsModal"
+    :modal="atributeCorrelationsModal"
     :attribute="attribute"
   />
 </template>

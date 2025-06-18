@@ -67,7 +67,6 @@ function handleAttributeEnriched(attribute_id) {
 }
 
 .value {
-  width: 30%;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -81,10 +80,10 @@ function handleAttributeEnriched(attribute_id) {
     <thead>
       <tr>
         <th scope="col">value</th>
+        <th scope="col">type</th>
         <th style="width: 400px" scope="col" class="d-none d-sm-table-cell">
           tags
         </th>
-        <th scope="col">type</th>
         <th scope="col" class="d-none d-sm-table-cell">timestamp</th>
         <th scope="col" class="d-none d-sm-table-cell">distribution</th>
         <th
@@ -107,6 +106,7 @@ function handleAttributeEnriched(attribute_id) {
           <CopyToClipboard :value="attribute.value" />
           {{ attribute.value }}
         </td>
+        <td style="width: 10%">{{ attribute.type }}</td>
         <td style="width: 20%" class="d-none d-sm-table-cell">
           <TagsIndex
             v-if="!actions.tag"
@@ -119,7 +119,6 @@ function handleAttributeEnriched(attribute_id) {
             :selectedTags="attribute.tags || attribute.AttributeTag || []"
           />
         </td>
-        <td style="width: 10%">{{ attribute.type }}</td>
         <td style="width: 10%" class="d-none d-sm-table-cell">
           <Timestamp :timestamp="attribute.timestamp" />
         </td>

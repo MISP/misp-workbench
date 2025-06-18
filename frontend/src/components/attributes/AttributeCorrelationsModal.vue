@@ -1,5 +1,12 @@
 <script setup>
-defineProps(["attribute", "modal"]);
+import { router } from "@/router";
+
+const props = defineProps(["attribute", "modal"]);
+
+function goToAttribute(id) {
+  props.modal.hide();
+  router.push(`/attributes/${id}`);
+}
 </script>
 
 <template>
@@ -28,12 +35,26 @@ defineProps(["attribute", "modal"]);
                 <div class="card-body">
                   <ul class="list-group list-group-flush">
                     <li class="list-group-item">
-                      <strong>Source ID:</strong>
-                      {{ correlation._source.source_id }}
+                      <strong>Source: </strong>
+                      <a
+                        href="#"
+                        @click.prevent="
+                          goToAttribute(correlation._source.source_id)
+                        "
+                      >
+                        {{ correlation._source.source_id }}
+                      </a>
                     </li>
                     <li class="list-group-item">
-                      <strong>Target ID:</strong>
-                      {{ correlation._source.target_id }}
+                      <strong>Target: </strong>
+                      <a
+                        href="#"
+                        @click.prevent="
+                          goToAttribute(correlation._source.target_id)
+                        "
+                      >
+                        {{ correlation._source.target_id }}
+                      </a>
                     </li>
                     <li class="list-group-item">
                       <strong>Match Type:</strong>
