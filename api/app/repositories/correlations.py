@@ -31,7 +31,7 @@ def get_correlations(params: dict, page: int = 0, from_value: int = 0, size: int
 
     if params.get("source_attribute_uuid"):
         query["query"]["bool"]["must"].append(
-            {"term": {"source_id.keyword": params["source_attribute_uuid"]}}
+            {"term": {"source_attribute_uuid.keyword": params["source_attribute_uuid"]}}
         )
     if params.get("source_event_uuid"):
         query["query"]["bool"]["must"].append(
@@ -39,7 +39,7 @@ def get_correlations(params: dict, page: int = 0, from_value: int = 0, size: int
         )
     if params.get("target_attribute_uuid"):
         query["query"]["bool"]["must"].append(
-            {"term": {"target_id.keyword": params["target_attribute_uuid"]}}
+            {"term": {"target_attribute_uuid.keyword": params["target_attribute_uuid"]}}
         )
     if params.get("target_event_uuid"):
         query["query"]["bool"]["must"].append(
@@ -143,9 +143,12 @@ def store_correlations_bulk(attribute_uuid, event_uuid, hits, match_type):
             "_index": "misp-attribute-correlations",
             "_id": f"{attribute_uuid}|{hit['_id']}|{match_type}",
             "_source": {
-                "source_id": attribute_uuid,
+                "source_attribute_uuid": attribute_uuid,
+                "source_attribute_type": hit["_source"]["type"],
                 "source_event_uuid": event_uuid,
-                "target_id": hit["_id"],
+                "target_attribute_uuid": hit["_id"],
+                "target_attribute_type": hit["_source"]["type"],
+                "target_attribute_value": hit["_source"]["value"],
                 "target_event_uuid": hit["_source"]["event_uuid"],
                 "match_type": match_type,
                 "score": hit["_score"],

@@ -29,7 +29,7 @@ def enrich_attributes_page_with_correlations(
         return attributes_page
 
     query = {
-        "query": {"terms": {"source_id.keyword": uuids}},
+        "query": {"terms": {"source_attribute_uuid.keyword": uuids}},
         "size": 10000,  # results should be less than MAX_CORRELATIONS_PER_DOC * page_size
     }
 
@@ -43,8 +43,8 @@ def enrich_attributes_page_with_correlations(
 
     correlation_map = defaultdict(list)
     for hit in hits:
-        source_id = hit["_source"]["source_id"]
-        correlation_map[source_id].append(hit)
+        source_attribute_uuid = hit["_source"]["source_attribute_uuid"]
+        correlation_map[source_attribute_uuid].append(hit)
 
     for attr in attributes_page.items:
         attr.correlations = correlation_map.get(str(attr.uuid), [])

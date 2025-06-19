@@ -7,6 +7,11 @@ function goToAttribute(id) {
   props.modal.hide();
   router.push(`/attributes/${id}`);
 }
+
+function goToEvent(id) {
+  props.modal.hide();
+  router.push(`/events/${id}`);
+}
 </script>
 
 <template>
@@ -35,38 +40,40 @@ function goToAttribute(id) {
                 <div class="card-body">
                   <ul class="list-group list-group-flush">
                     <li class="list-group-item">
-                      <strong>Source: </strong>
-                      <a
-                        href="#"
-                        @click.prevent="
-                          goToAttribute(correlation._source.source_id)
-                        "
-                      >
-                        {{ correlation._source.source_id }}
-                      </a>
-                    </li>
-                    <li class="list-group-item">
-                      <strong>Target: </strong>
-                      <a
-                        href="#"
-                        @click.prevent="
-                          goToAttribute(correlation._source.target_id)
-                        "
-                      >
-                        {{ correlation._source.target_id }}
-                      </a>
-                    </li>
-                    <li class="list-group-item">
-                      <strong>Match Type:</strong>
-                      <span class="badge bg-info text-dark ms-2">{{
-                        correlation._source.match_type
+                      <span class="badge bg-info text-dark me-2">{{
+                        correlation._source.target_attribute_type
                       }}</span>
+                      <a
+                        href="#"
+                        @click.prevent="
+                          goToAttribute(
+                            correlation._source.source_attribute_uuid,
+                          )
+                        "
+                      >
+                        {{ correlation._source.target_attribute_value }}
+                      </a>
                     </li>
                     <li class="list-group-item">
-                      <strong>Score:</strong> {{ correlation._source.score }}
+                      <strong>Event: </strong>
+                      <a
+                        href="#"
+                        @click.prevent="
+                          goToEvent(correlation._source.target_event_uuid)
+                        "
+                      >
+                        {{ correlation._source.target_event_uuid }}
+                      </a>
                     </li>
                     <li class="list-group-item">
-                      <strong>Timestamp:</strong>
+                      <strong>Match Type: </strong>
+                      {{ correlation._source.match_type }}
+                    </li>
+                    <li class="list-group-item">
+                      <strong>Score: </strong> {{ correlation._source.score }}
+                    </li>
+                    <li class="list-group-item">
+                      <strong>Timestamp: </strong>
                       {{ correlation._source["@timestamp"] }}
                     </li>
                   </ul>

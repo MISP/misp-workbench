@@ -5,5 +5,5 @@ defineProps(["id"]);
 </script>
 
 <template>
-  <EventView :event_id="id" />
+  <EventView :event_id="id" :key="id" />
 </template>
