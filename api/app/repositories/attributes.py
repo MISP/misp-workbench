@@ -150,7 +150,7 @@ def create_attribute_from_pulled_attribute(
         event_id=local_event_id,
         category=pulled_attribute.category,
         type=pulled_attribute.type,
-        value=pulled_attribute.value,
+        value=pulled_attribute.value if isinstance(pulled_attribute.value, str) else str(pulled_attribute.value),
         to_ids=pulled_attribute.to_ids,
         uuid=pulled_attribute.uuid,
         timestamp=pulled_attribute.timestamp.timestamp(),
@@ -206,7 +206,7 @@ def update_attribute_from_pulled_attribute(
             event_id=local_event_id,
             category=pulled_attribute.category,
             type=pulled_attribute.type,
-            value=pulled_attribute.value,
+            value=pulled_attribute.value if isinstance(pulled_attribute.value, str) else str(pulled_attribute.value),
             to_ids=pulled_attribute.to_ids,
             timestamp=pulled_attribute.timestamp.timestamp(),
             distribution=event_schemas.DistributionLevel(
