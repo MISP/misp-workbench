@@ -15,7 +15,9 @@ export const useAttributesStore = defineStore({
     },
   }),
   actions: {
-    async get(params = { skip: 0, limit: 10, event_id: null, deleted: false }) {
+    async get(
+      params = { skip: 0, limit: 10, event_uuid: null, deleted: false },
+    ) {
       this.status = { loading: true };
       fetchWrapper
         .get(baseUrl + "/?" + new URLSearchParams(params).toString())

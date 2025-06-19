@@ -10,7 +10,7 @@ import DeleteObjectModal from "@/components/objects/DeleteObjectModal.vue";
 import Spinner from "@/components/misc/Spinner.vue";
 import Paginate from "vuejs-paginate-next";
 
-const props = defineProps(["event_id", "page_size"]);
+const props = defineProps(["event_uuid", "page_size"]);
 
 const objectsStore = useObjectsStore();
 const { objects, pages, status } = storeToRefs(objectsStore);
@@ -19,7 +19,7 @@ function onPageChange(page) {
   objectsStore.get({
     page: page,
     size: props.page_size,
-    event_id: props.event_id,
+    event_uuid: props.event_uuid,
     deleted: false,
   });
 }
@@ -73,7 +73,7 @@ function openAddObjectModal() {
   <AddObjectModal
     id="addObjectModal"
     :modal="addObjectModal"
-    :event_id="event_id"
+    :event_uuid="event_uuid"
     @object-created="handleObjectsUpdated"
   />
   <DeleteObjectModal

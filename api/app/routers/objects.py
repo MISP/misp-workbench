@@ -16,11 +16,11 @@ router = APIRouter()
 
 
 async def get_objects_parameters(
-    event_id: Optional[int] = None,
+    event_uuid: Optional[str] = None,
     deleted: Optional[bool] = False,
     template_uuid: list[UUID] = None,
 ):
-    return {"event_id": event_id, "deleted": deleted, "template_uuid": template_uuid}
+    return {"event_uuid": event_uuid, "deleted": deleted, "template_uuid": template_uuid}
 
 
 @router.get("/objects/", response_model=Page[object_schemas.Object])
@@ -32,7 +32,7 @@ def get_objects(
     ),
 ) -> Page[object_schemas.Object]:
     return objects_repository.get_objects(
-        db, params["event_id"], params["deleted"], params["template_uuid"]
+        db, params["event_uuid"], params["deleted"], params["template_uuid"]
     )
 
 

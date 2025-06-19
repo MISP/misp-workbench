@@ -10,6 +10,7 @@ from app.models import user as user_models
 from app.models import object_reference as object_reference_models
 from app.repositories import attributes as attributes_repository
 from app.repositories import object_references as object_references_repository
+from app.repositories import events as events_repository
 from app.schemas import event as event_schemas
 from app.schemas import object as object_schemas
 from app.schemas import user as user_schemas
@@ -24,15 +25,21 @@ logger = logging.getLogger(__name__)
 
 def get_objects(
     db: Session,
-    event_id: int = None,
+    event_uuid: str = None,
     deleted: bool = False,
     template_uuid: list[uuid.UUID] = None
 ) -> list[object_models.Object]:
     query = db.query(object_models.Object)
 
-    if event_id is not None:
-        query = query.filter(object_models.Object.event_id == event_id)
-        
+    if event_uuid is not None:
+        db_event = events_repository.get_event_by_uuid(event_uuid=event_uuid, db=db)
+        if db_event is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Event not found"
+            )
+
+        query = query.filter(object_models.Object.event_id == db_event.id)
+
     if template_uuid is not None:
         query = query.filter(object_models.Object.template_uuid.in_(template_uuid))
 

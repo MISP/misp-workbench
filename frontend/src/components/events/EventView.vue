@@ -12,7 +12,11 @@ import AnalysisLevel from "@/components/enums/AnalysisLevel.vue";
 import EventActions from "@/components/events/EventActions.vue";
 import UploadAttachmentsWidget from "@/components/attachments/UploadAttachmentsWidget.vue";
 import { router } from "@/router";
-import { useEventsStore, useModulesStore } from "@/stores";
+import {
+  useEventsStore,
+  useModulesStore,
+  useCorrelationsStore,
+} from "@/stores";
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
 import {
   faTags,
@@ -21,11 +25,18 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import Timestamp from "@/components/misc/Timestamp.vue";
 
-const props = defineProps(["event_id"]);
+const props = defineProps(["event_uuid"]);
 
 const eventsStore = useEventsStore();
 const { event, status } = storeToRefs(eventsStore);
-eventsStore.getById(props.event_id);
+const correlationsStore = useCorrelationsStore();
+const { correlations } = storeToRefs(correlationsStore);
+
+eventsStore.getById(props.event_uuid);
+correlationsStore.get({
+  event_uuid: props.event_uuid,
+  page_size: 10,
+});
 
 const modulesStore = useModulesStore();
 modulesStore.get({ enabled: true });
@@ -188,14 +199,19 @@ div.row h3 {
         </div>
       </div>
       <div class="col col-sm-8 mt-2">
-        <ReportsIndex :event_id="event.id" />
+        <ReportsIndex :event_uuid="event.uuid" />
+      </div>
+      <div class="col col-sm-8 mt-2">
+        <div class="card mt-2">
+          {{ correlations }}
+        </div>
       </div>
     </div>
     <div class="row">
       <div class="row m-1">
         <div class="col-12">
           <UploadAttachmentsWidget
-            :event_id="event.id"
+            :event_uuid="event.uuid"
             :key="event.object_count"
             @object-added="handleObjectAdded"
             @object-deleted="handleObjectDeleted"
@@ -206,7 +222,7 @@ div.row h3 {
             </div>
             <div class="card-body d-flex flex-column">
               <ObjectsIndex
-                :event_id="event_id"
+                :event_uuid="event.uuid"
                 :page_size="10"
                 :key="event.object_count"
               />
@@ -221,7 +237,7 @@ div.row h3 {
               <FontAwesomeIcon :icon="faCubesStacked" /> attributes
             </div>
             <div class="card-body d-flex flex-column">
-              <AttributesIndex :event_id="event_id" :page_size="10" />
+              <AttributesIndex :event_uuid="event.uuid" :page_size="10" />
             </div>
           </div>
         </div>

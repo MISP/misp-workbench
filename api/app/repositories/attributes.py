@@ -7,6 +7,7 @@ from app.models import attribute as attribute_models
 from app.models import tag as tag_models
 from app.models import user as user_models
 from app.repositories import attachments as attachments_repository
+from app.repositories import events as events_repository
 from app.schemas import attribute as attribute_schemas
 from app.schemas import event as event_schemas
 from app.worker import tasks
@@ -53,12 +54,17 @@ def enrich_attributes_page_with_correlations(
 
 
 def get_attributes(
-    db: Session, event_id: int = None, deleted: bool = None, object_id: int = None
+    db: Session, event_uuid: str = None, deleted: bool = None, object_id: int = None
 ) -> Page[attribute_schemas.Attribute]:
     query = select(attribute_models.Attribute)
 
-    if event_id is not None:
-        query = query.where(attribute_models.Attribute.event_id == event_id)
+    if event_uuid is not None:
+        db_event = events_repository.get_event_by_uuid(event_uuid=event_uuid, db=db)
+        if db_event is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Event not found"
+            )
+        query = query.where(attribute_models.Attribute.event_id == db_event.id)
 
     if deleted is not None:
         query = query.where(attribute_models.Attribute.deleted == deleted)

@@ -22,16 +22,16 @@ export const useAttachmentsStore = defineStore({
     },
   }),
   actions: {
-    async uploadAttachments(id, files) {
+    async uploadAttachments(uuid, files) {
       this.status = { uploading: true };
       return await fetchWrapper.postFormData(
         `${baseUrl}/events/${id}/upload_attachments`,
         files,
       );
     },
-    async getEventAttachments(id) {
+    async getEventAttachments(uuid) {
       return await fetchWrapper
-        .get(`${baseUrl}/events/${id}/attachments`)
+        .get(`${baseUrl}/events/${uuid}/attachments`)
         .then(
           (response) => (
             (this.attachments = response.items),

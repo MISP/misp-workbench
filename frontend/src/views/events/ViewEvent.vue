@@ -1,9 +1,9 @@
 <script setup>
 import EventView from "@/components/events/EventView.vue";
 
-defineProps(["id"]);
+defineProps(["uuid"]);
 </script>
 
 <template>
-  <EventView :event_id="id" :key="id" />
+  <EventView :event_uuid="uuid" :key="uuid" />
 </template>

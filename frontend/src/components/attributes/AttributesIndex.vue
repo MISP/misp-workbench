@@ -12,7 +12,7 @@ import CopyToClipboard from "@/components/misc/CopyToClipboard.vue";
 import Timestamp from "@/components/misc/Timestamp.vue";
 import { Modal } from "bootstrap";
 
-const props = defineProps(["event_id", "page_size"]);
+const props = defineProps(["event_uuid", "page_size"]);
 const attributesStore = useAttributesStore();
 const { page_count, attributes, status } = storeToRefs(attributesStore);
 
@@ -32,7 +32,7 @@ function onPageChange(page) {
   attributesStore.get({
     page: page,
     size: props.page_size,
-    event_id: props.event_id,
+    event_uuid: props.event_uuid,
     deleted: false,
   });
 }
@@ -117,7 +117,7 @@ function handleAttributesUpdated() {
       id="addAttributeModal"
       @attribute-created="handleAttributesUpdated"
       :modal="addAttributeModal"
-      :event_id="event_id"
+      :event_uuid="event_uuid"
     />
     <div class="mt-3">
       <button

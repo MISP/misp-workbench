@@ -48,7 +48,7 @@ function handleEventDeleted() {
     <table class="table table-striped table-hover">
       <thead>
         <tr>
-          <th scope="col">id</th>
+          <th scope="col">uuid</th>
           <th scope="col">info</th>
           <th scope="col">tags</th>
           <th scope="col">date</th>
@@ -57,9 +57,11 @@ function handleEventDeleted() {
         </tr>
       </thead>
       <tbody>
-        <tr :key="event.id" v-for="event in events.items">
+        <tr :key="event.uuid" v-for="event in events.items">
           <td>
-            <RouterLink :to="`/events/${event.id}`">{{ event.id }}</RouterLink>
+            <RouterLink :to="`/events/${event.uuid}`">{{
+              event.uuid
+            }}</RouterLink>
           </td>
           <td class="eventInfoColumn text-start">{{ event.info }}</td>
           <td>

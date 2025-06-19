@@ -46,7 +46,7 @@ export const router = createRouter({
     { path: "/", component: Home },
     { path: "/login", component: Login },
     { path: "/events", component: IndexEvents },
-    { path: "/events/:id", component: ViewEvent, props: true },
+    { path: "/events/:uuid", component: ViewEvent, props: true },
     { path: "/events/update/:id", component: EditEvent, props: true },
     { path: "/events/add", component: AddEvent },
     { path: "/attributes/:id", component: ViewAttribute, props: true },
