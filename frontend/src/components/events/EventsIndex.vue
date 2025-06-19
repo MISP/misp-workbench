@@ -113,11 +113,13 @@ function handleEventDeleted() {
         </tr>
       </tbody>
     </table>
-    <Paginate
-      v-if="page_count > 1"
-      :page-count="page_count"
-      :click-handler="onPageChange"
-    />
+    <div class="d-flex justify-content-center mt-3">
+      <Paginate
+        v-if="page_count > 1"
+        :page-count="page_count"
+        :click-handler="onPageChange"
+      />
+    </div>
   </div>
   <Spinner v-if="status.loading" />
 </template>
