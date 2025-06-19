@@ -11,6 +11,7 @@ import ThreatLevel from "@/components/enums/ThreatLevel.vue";
 import AnalysisLevel from "@/components/enums/AnalysisLevel.vue";
 import EventActions from "@/components/events/EventActions.vue";
 import UploadAttachmentsWidget from "@/components/attachments/UploadAttachmentsWidget.vue";
+import CorrelatedEvents from "@/components/correlations/CorrelatedEvents.vue";
 import { router } from "@/router";
 import {
   useEventsStore,
@@ -30,13 +31,10 @@ const props = defineProps(["event_uuid"]);
 const eventsStore = useEventsStore();
 const { event, status } = storeToRefs(eventsStore);
 const correlationsStore = useCorrelationsStore();
-const { correlations } = storeToRefs(correlationsStore);
+const { correlated_events } = storeToRefs(correlationsStore);
 
 eventsStore.getById(props.event_uuid);
-correlationsStore.get({
-  event_uuid: props.event_uuid,
-  page_size: 10,
-});
+correlationsStore.getTopCorrelatingEvents(props.event_uuid);
 
 const modulesStore = useModulesStore();
 modulesStore.get({ enabled: true });
@@ -136,7 +134,9 @@ div.row h3 {
                   </tr>
                   <tr>
                     <th>timestamp</th>
-                    <td><Timestamp :timestamp="event.timestamp" /></td>
+                    <td>
+                      <Timestamp :timestamp="event.timestamp" />
+                    </td>
                   </tr>
                   <tr>
                     <th>threat level</th>
@@ -198,13 +198,11 @@ div.row h3 {
           </div>
         </div>
       </div>
-      <div class="col col-sm-8 mt-2">
-        <ReportsIndex :event_uuid="event.uuid" />
+      <div class="col col-sm-4 mt-2">
+        <CorrelatedEvents :results="correlated_events" />
       </div>
-      <div class="col col-sm-8 mt-2">
-        <div class="card mt-2">
-          {{ correlations }}
-        </div>
+      <div class="col col-sm-12 mt-4">
+        <ReportsIndex :event_uuid="event.uuid" />
       </div>
     </div>
     <div class="row">

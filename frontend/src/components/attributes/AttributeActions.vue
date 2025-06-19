@@ -6,7 +6,7 @@ import { storeToRefs } from "pinia";
 import { useModulesStore, useAuthStore } from "@/stores";
 import DeleteAttributeModal from "@/components/attributes/DeleteAttributeModal.vue";
 import EnrichAttributeModal from "@/components/attributes/EnrichAttributeModal.vue";
-import AttributeCorrelationsModal from "@/components/attributes/AttributeCorrelationsModal.vue";
+import CorrelatedAttributesModal from "@/components/correlations/CorrelatedAttributesModal.vue";
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
 import {
   faTrash,
@@ -55,7 +55,7 @@ const emit = defineEmits([
 
 const deleteAttributeModal = ref(null);
 const enrichAttributeModal = ref(null);
-const atributeCorrelationsModal = ref(null);
+const correlatedAttributesModal = ref(null);
 const modulesStore = useModulesStore();
 const { modulesResponses } = storeToRefs(modulesStore);
 
@@ -66,8 +66,8 @@ onMounted(() => {
   enrichAttributeModal.value = new Modal(
     document.getElementById(`enrichAttributeModal_${props.attribute.id}`),
   );
-  atributeCorrelationsModal.value = new Modal(
-    document.getElementById(`attributeCorrelationsModal_${props.attribute.id}`),
+  correlatedAttributesModal.value = new Modal(
+    document.getElementById(`correlatedAttributesModal${props.attribute.id}`),
   );
 });
 
@@ -81,7 +81,7 @@ function openEnrichAttributeModal() {
 }
 
 function openCorrelationsModal() {
-  atributeCorrelationsModal.value.show();
+  correlatedAttributesModal.value.show();
 }
 
 function handleAttributeDeleted() {
@@ -182,10 +182,10 @@ function handleAttributeEnriched() {
     :modal="enrichAttributeModal"
     :attribute="attribute"
   />
-  <AttributeCorrelationsModal
+  <CorrelatedAttributesModal
     :key="attribute.id"
-    :id="`attributeCorrelationsModal_${attribute.id}`"
-    :modal="atributeCorrelationsModal"
+    :id="`correlatedAttributesModal${attribute.id}`"
+    :modal="correlatedAttributesModal"
     :attribute="attribute"
   />
 </template>

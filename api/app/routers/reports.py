@@ -9,16 +9,16 @@ from app.repositories import events as events_repository
 router = APIRouter()
 
 
-@router.get("/reports/{event_id}")
+@router.get("/reports/{event_uuid}")
 def get_event_reports_by_event_uuid(
-    event_id: int,
+    event_uuid: str,
     db: Session = Depends(get_db),
     user: user_schemas.User = Security(
         get_current_active_user, scopes=["reports:read"]
     ),
 ):
 
-    db_event = events_repository.get_event_by_id(db, event_id=event_id)
+    db_event = events_repository.get_event_by_uuid(db, event_uuid=event_uuid)
     if db_event is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Event not found"

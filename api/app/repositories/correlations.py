@@ -207,6 +207,29 @@ def correlate_document(doc):
         )
 
 
+def get_top_correlated_events(source_event_uuid: str):
+    OpenSearchClient = get_opensearch_client()
+
+    query = {
+        "size": 0,
+        "query": {"term": {"source_event_uuid.keyword": source_event_uuid}},
+        "aggs": {
+            "by_target_event": {
+                "terms": {"field": "target_event_uuid.keyword", "size": 10}
+            }
+        },
+    }
+
+    response = OpenSearchClient.search(
+        index="misp-attribute-correlations",
+        body=query,
+    )
+
+    return (
+        response.get("aggregations", {}).get("by_target_event", {}).get("buckets", [])
+    )
+
+
 def run_correlations():
 
     for doc in get_all_attributes():

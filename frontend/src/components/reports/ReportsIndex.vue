@@ -5,11 +5,11 @@ import Spinner from "@/components/misc/Spinner.vue";
 import { marked } from "marked";
 import DOMPurify from "dompurify";
 
-const props = defineProps(["event_id"]);
+const props = defineProps(["event_uuid"]);
 const reportsStore = useReportsStore();
 const { reports, status } = storeToRefs(reportsStore);
 
-reportsStore.getReportsByEventId(props.event_id);
+reportsStore.getReportsByEventId(props.event_uuid);
 </script>
 
 <template>

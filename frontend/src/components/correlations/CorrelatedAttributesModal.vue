@@ -15,7 +15,7 @@ function goToEvent(id) {
 </script>
 
 <template>
-  <div :id="`attributeCorrelationsModal_${attribute.id}`" class="modal">
+  <div :id="`correlatedAttributesModal${attribute.id}`" class="modal">
     <div class="modal-dialog modal-lg">
       <div class="modal-content">
         <div class="modal-header">

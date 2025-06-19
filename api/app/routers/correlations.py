@@ -39,6 +39,17 @@ def get_correlations(
     )
 
 
+@router.get("/correlations/events/{source_event_uuid}/top")
+def get_top_correlated_events(
+    source_event_uuid: str,
+    user: user_schemas.User = Security(
+        get_current_active_user, scopes=["correlations:read"]
+    ),
+):
+
+    return correlations_repository.get_top_correlated_events(source_event_uuid=source_event_uuid)
+
+
 @router.post("/correlations/run")
 def run_correlations(
     user: user_schemas.User = Security(

@@ -8,7 +8,7 @@ defineProps(["event"]);
 <template>
   <div class="card mb-2">
     <div class="card-header">
-      <a :href="`/events/${event._source.id}`">
+      <a :href="`/events/${event._source.uuid}`">
         {{ event._source.info }}
       </a>
     </div>
