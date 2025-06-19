@@ -1,6 +1,6 @@
 <template>
   <div v-if="visible" class="spinner-overlay">
-    <div class="spinner-border" role="status">
+    <div class="spinner-border text-light" role="status">
       <span class="visually-hidden">Loading...</span>
     </div>
   </div>
