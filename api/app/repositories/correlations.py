@@ -82,10 +82,18 @@ def get_all_attributes():
         yield doc
 
 
-def build_query(uuid, value, match_type):
+def build_query(uuid, event_uuid, value, match_type):
 
     query = {
-        "query": {"bool": {"must": [], "must_not": [{"term": {"uuid.keyword": uuid}}]}}
+        "query": {
+            "bool": {
+                "must": [],
+                "must_not": [
+                    {"term": {"uuid.keyword": uuid}},
+                    {"term": {"event_uuid.keyword": event_uuid}},
+                ],
+            }
+        }
     }
 
     if match_type == "term":
@@ -104,7 +112,7 @@ def build_query(uuid, value, match_type):
     return query
 
 
-def build_cidr_query(uuid, doc):
+def build_cidr_query(uuid, event_uuid, doc):
     if (
         doc["_source"]["type"] in ["ip-src", "ip-dst"]
         and "/" in doc["_source"]["value"]
@@ -124,7 +132,10 @@ def build_cidr_query(uuid, doc):
         "query": {
             "bool": {
                 "must": [{"term": {"expanded.ip": cidr}}],
-                "must_not": [{"term": {"uuid.keyword": uuid}}],
+                "must_not": [
+                    {"term": {"uuid.keyword": uuid}},
+                    {"term": {"event_uuid.keyword": event_uuid}},
+                ],
             }
         }
     }
@@ -179,9 +190,11 @@ def correlate_document(doc):
                 or "/" not in value
             ):
                 continue
-            query = build_cidr_query(doc["_id"], doc)
+            query = build_cidr_query(doc["_id"], doc["_source"]["event_uuid"], doc)
         else:
-            query = build_query(doc["_id"], value, match_type)
+            query = build_query(
+                doc["_id"], doc["_source"]["event_uuid"], value, match_type
+            )
 
         res = OpenSearchClient.search(
             index="misp-attributes",
