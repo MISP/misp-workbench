@@ -235,7 +235,83 @@ def run_correlations():
     for doc in get_all_attributes():
         correlate_document(doc)
 
+    return True
+
+
+def get_top_correlating_events():
+    OpenSearchClient = get_opensearch_client()
+
+    top_correlated_events_query = {
+        "size": 0,
+        "aggs": {
+            "by_source_event": {
+                "terms": {"field": "source_event_uuid.keyword", "size": 10}
+            }
+        },
+    }
+
+    top_correlated_events = OpenSearchClient.search(
+        index="misp-attribute-correlations",
+        body=top_correlated_events_query,
+    )
+
+    return (
+        top_correlated_events.get("aggregations", {})
+        .get("by_source_event", {})
+        .get("buckets", [])
+    )
+
+
+def get_top_correlating_attributes():
+    OpenSearchClient = get_opensearch_client()
+
+    top_correlated_attributes_query = {
+        "size": 0,
+        "aggs": {
+            "by_target_attribute": {
+                "terms": {"field": "target_attribute_uuid.keyword", "size": 10},
+                "aggs": {
+                    "top_attribute_info": {
+                        "top_hits": {
+                            "size": 1,
+                            "_source": {
+                                "includes": [
+                                    "target_attribute_type",
+                                    "target_attribute_value",
+                                    "target_event_uuid",
+                                ]
+                            },
+                        }
+                    }
+                },
+            }
+        },
+    }
+
+    top_correlated_attributes = OpenSearchClient.search(
+        index="misp-attribute-correlations",
+        body=top_correlated_attributes_query,
+    )
+
+    return (
+        top_correlated_attributes.get("aggregations", {})
+        .get("by_target_attribute", {})
+        .get("buckets", [])
+    )
+
+
+def get_total_correlations():
+    OpenSearchClient = get_opensearch_client()
+
+    total_correlations = OpenSearchClient.count(index="misp-attribute-correlations")
+
+    return total_correlations["count"]
+
+
+def get_correlations_stats():
+
     return {
-        "status": "success",
-        "message": "Correlations generated successfully.",
+        "top_correlated_events": get_top_correlating_events(),
+        "top_correlated_attributes": get_top_correlating_attributes(),
+        "total_correlations": get_total_correlations(),
     }

@@ -7,6 +7,7 @@ export const useCorrelationsStore = defineStore("correlations", {
   state: () => ({
     correlations: [],
     correlated_events: [],
+    stats: {},
     page_count: 0,
     status: {
       loading: false,
@@ -36,12 +37,20 @@ export const useCorrelationsStore = defineStore("correlations", {
         .catch((error) => (this.status = { error }))
         .finally(() => (this.status = { loading: false }));
     },
-    async generate() {
+    async run() {
       this.status = { generating: true };
-      await fetchWrapper
-        .post(`${baseUrl}/generate`)
+      return await fetchWrapper
+        .post(`${baseUrl}/run`)
         .catch((error) => (this.status = { error }))
         .finally(() => (this.status = { generating: false }));
+    },
+    async getStats() {
+      this.status = { loading: true };
+      fetchWrapper
+        .get(baseUrl + "/stats")
+        .then((response) => (this.stats = response))
+        .catch((error) => (this.status = { error }))
+        .finally(() => (this.status = { loading: false }));
     },
   },
 });

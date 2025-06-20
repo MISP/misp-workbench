@@ -114,6 +114,12 @@ function switchTheme() {
             </li>
             <hr class="dropdown-divider" />
             <li>
+              <RouterLink to="/correlations" class="dropdown-item"
+                >correlations</RouterLink
+              >
+            </li>
+            <hr class="dropdown-divider" />
+            <li>
               <RouterLink to="/tasks" class="dropdown-item">tasks</RouterLink>
             </li>
           </ul>

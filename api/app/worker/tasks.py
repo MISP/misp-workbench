@@ -10,6 +10,7 @@ from app.repositories import events as events_repository
 from app.repositories import feeds as feeds_repository
 from app.repositories import servers as servers_repository
 from app.repositories import users as users_repository
+from app.repositories import correlations as correlations_repository
 from app.schemas import event as event_schemas
 from app.settings import get_settings
 from celery import Celery
@@ -289,3 +290,17 @@ def fetch_feed_event(event_uuid: uuid.UUID, feed_id: int, user_id: int):
 
     logger.info("fetch feed event uuid=%s job finished", event_uuid)
     return result
+
+
+@app.task
+def generate_correlations():
+    logger.info("generate correlations job started")
+
+    try:
+        correlations_repository.run_correlations()
+    except Exception as e:
+        logger.error("Failed to generate correlations: %s", str(e))
+        return False
+
+    logger.info("generate correlations job finished")
+    return True

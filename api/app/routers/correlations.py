@@ -1,7 +1,9 @@
 from app.auth.auth import get_current_active_user
 from app.schemas import user as user_schemas
+from app.schemas import task as task_schemas
 from app.repositories import correlations as correlations_repository
-from fastapi import APIRouter, Security, Query, Depends
+from app.worker import tasks
+from fastapi import APIRouter, Security, Query, Depends, status
 from typing import Optional
 
 router = APIRouter()
@@ -47,13 +49,35 @@ def get_top_correlated_events(
     ),
 ):
 
-    return correlations_repository.get_top_correlated_events(source_event_uuid=source_event_uuid)
+    return correlations_repository.get_top_correlated_events(
+        source_event_uuid=source_event_uuid
+    )
 
 
-@router.post("/correlations/run")
+@router.post(
+    "/correlations/run",
+    status_code=status.HTTP_202_ACCEPTED,
+    response_model=task_schemas.Task,
+)
 def run_correlations(
     user: user_schemas.User = Security(
         get_current_active_user, scopes=["correlations:create"]
     ),
 ):
-    return correlations_repository.run_correlations()
+    task = tasks.generate_correlations.delay()
+
+    return task_schemas.Task(
+        task_id=task.id,
+        status=task.status,
+        message="generate correlations job enqueued",
+    )
+
+
+@router.get("/correlations/stats")
+def get_correlations_stats(
+    user: user_schemas.User = Security(
+        get_current_active_user, scopes=["correlations:read"]
+    ),
+):
+
+    return correlations_repository.get_correlations_stats()

@@ -16,7 +16,7 @@ defineProps({
           <div class="d-flex justify-content-between">
             <div>
               <RouterLink :to="`/events/${event.key}`">
-                <span class="badge bg-primary me-2">{{ event.doc_count }}</span>
+                <span class="badge bg-info me-2">{{ event.doc_count }}</span>
                 {{ event.key }}
               </RouterLink>
             </div>

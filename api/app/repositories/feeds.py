@@ -2,12 +2,9 @@ import os
 import logging
 
 import requests
-from app.models import event as event_models
 from app.models import feed as feed_models
-from app.repositories import attributes as attributes_repository
 from app.repositories import sync as sync_repository
 from app.repositories import events as events_repository
-from app.repositories import objects as objects_repository
 from app.repositories import organisations as organisations_repository
 from app.schemas import feed as feed_schemas
 from app.schemas import user as user_schemas
