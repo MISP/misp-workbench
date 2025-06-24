@@ -209,12 +209,36 @@ def index_event(event_uuid: uuid.UUID):
     for object in objects:
         object["@timestamp"] = datetime.fromtimestamp(object["timestamp"]).isoformat()
 
-        for attribute in object["attributes"]:
+        object_attributes = object.pop("attributes")
+
+        object_attributes_docs = []
+        for attribute in object_attributes:
             attribute["@timestamp"] = datetime.fromtimestamp(
                 attribute["timestamp"]
             ).isoformat()
             attribute["event_uuid"] = event.uuid
+            attribute["object_uuid"] = object["uuid"]
             attribute["data"] = ""  # do not index file contents
+            object_attributes_docs.append(
+                {
+                    "_id": attribute["uuid"],
+                    "_index": "misp-attributes",
+                    "_source": attribute,
+                }
+            )
+
+        success, failed = opensearch_helpers.bulk(
+            OpenSearchClient, attributes_docs, refresh=True
+        )
+        if failed:
+            logger.error("Failed to index object attributes. Failed: %s", failed)
+            raise Exception("Failed to index object attributes.")
+        logger.info(
+            "indexed attributes of event uuid=%s, object uuid=%s, indexed %s attributes",
+            event_uuid,
+            object["uuid"],
+            len(object_attributes_docs),
+        )
 
         for reference in object["object_references"]:
             reference["@timestamp"] = datetime.fromtimestamp(
