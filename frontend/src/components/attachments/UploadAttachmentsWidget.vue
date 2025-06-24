@@ -173,7 +173,7 @@ function handleObjectDeleted(object_id) {
       </div>
       <div class="text-center mt-3">
         <button
-          class="btn btn-primary"
+          class="btn btn-outline-primary"
           @click="uploadFiles"
           :disabled="files.length === 0 || status.uploading"
         >

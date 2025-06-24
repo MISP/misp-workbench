@@ -1,7 +1,9 @@
 <script setup>
-import Spinner from "@/components/misc/Spinner.vue";
 import { storeToRefs } from "pinia";
+import { ref, onMounted } from "vue";
+import Spinner from "@/components/misc/Spinner.vue";
 import AttributesIndex from "@/components/attributes/AttributesIndex.vue";
+import CreateEventReportModal from "@/components/events/CreateEventReportModal.vue";
 import ObjectsIndex from "@/components/objects/ObjectsIndex.vue";
 import TagsSelect from "@/components/tags/TagsSelect.vue";
 import ReportsIndex from "@/components/reports/ReportsIndex.vue";
@@ -13,6 +15,7 @@ import EventActions from "@/components/events/EventActions.vue";
 import UploadAttachmentsWidget from "@/components/attachments/UploadAttachmentsWidget.vue";
 import CorrelatedEvents from "@/components/correlations/CorrelatedEvents.vue";
 import { router } from "@/router";
+import { Modal } from "bootstrap";
 import {
   useEventsStore,
   useModulesStore,
@@ -23,6 +26,7 @@ import {
   faTags,
   faShapes,
   faCubesStacked,
+  faPlus,
 } from "@fortawesome/free-solid-svg-icons";
 import Timestamp from "@/components/misc/Timestamp.vue";
 
@@ -39,6 +43,17 @@ correlationsStore.getTopCorrelatingEvents(props.event_uuid);
 const modulesStore = useModulesStore();
 modulesStore.get({ enabled: true });
 
+const createEventReportModal = ref(null);
+onMounted(() => {
+  createEventReportModal.value = new Modal(
+    document.getElementById(`createEventReportModal_${props.event_uuid}`),
+  );
+});
+
+function openCreateEventReportModal() {
+  createEventReportModal.value.show();
+}
+
 function handleEventDeleted() {
   router.push(`/events`);
 }
@@ -50,6 +65,8 @@ function handleObjectAdded() {
 function handleObjectDeleted() {
   event.value.object_count -= 1;
 }
+
+function handleEventReportCreated() {}
 </script>
 
 <style>
@@ -202,7 +219,28 @@ div.row h3 {
         <CorrelatedEvents :results="correlated_events" />
       </div>
       <div class="col col-sm-12 mt-4">
-        <ReportsIndex :event_uuid="event.uuid" />
+        <div class="card mt-2">
+          <div class="card-header">
+            <div class="row">
+              <div class="col-10">Reports</div>
+            </div>
+          </div>
+          <div class="card-body d-flex flex-column">
+            <ReportsIndex :event_uuid="event.uuid" />
+            <div class="mb-2 text-center">
+              <button
+                type="button"
+                class="btn btn-outline-primary"
+                data-placement="top"
+                data-toggle="tooltip"
+                title="Create Event Report"
+                @click="openCreateEventReportModal"
+              >
+                <FontAwesomeIcon :icon="faPlus" /> Create Event Report
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
     <div class="row">
@@ -242,4 +280,11 @@ div.row h3 {
       </div>
     </div>
   </div>
+  <CreateEventReportModal
+    :key="event_uuid"
+    :id="`createEventReportModal_${event_uuid}`"
+    @event-report-created="handleEventReportCreated"
+    :modal="createEventReportModal"
+    :event_uuid="event_uuid"
+  />
 </template>

@@ -22,5 +22,12 @@ export const useReportsStore = defineStore({
         .catch((error) => (this.report = { error }))
         .finally(() => (this.status = { loading: false }));
     },
+    async create(event_uuid, report) {
+      this.status = { loading: true };
+      fetchWrapper
+        .post(`${baseUrl}/${event_uuid}`, report)
+        .catch((error) => (this.report = { error }))
+        .finally(() => (this.status = { loading: false }));
+    },
   },
 });
