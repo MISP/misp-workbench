@@ -37,6 +37,7 @@ import {
   ViewRemoteEvent,
   ExploreEvents,
   TasksIndex,
+  IndexCorrelations,
 } from "@/views";
 
 export const router = createRouter({
@@ -46,7 +47,7 @@ export const router = createRouter({
     { path: "/", component: Home },
     { path: "/login", component: Login },
     { path: "/events", component: IndexEvents },
-    { path: "/events/:id", component: ViewEvent, props: true },
+    { path: "/events/:uuid", component: ViewEvent, props: true },
     { path: "/events/update/:id", component: EditEvent, props: true },
     { path: "/events/add", component: AddEvent },
     { path: "/attributes/:id", component: ViewAttribute, props: true },
@@ -86,6 +87,7 @@ export const router = createRouter({
     { path: "/galaxies/:id", component: ViewGalaxy, props: true },
     { path: "/explore", component: ExploreEvents },
     { path: "/tasks", component: TasksIndex },
+    { path: "/correlations", component: IndexCorrelations },
   ],
 });
 

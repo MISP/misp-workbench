@@ -98,6 +98,9 @@ oauth2_scheme = OAuth2PasswordBearer(
         "tasks:read": "Read tasks.",
         "tasks:delete": "Delete tasks.",
         "workers:update": "Update workers.",
+        "correlations:read": "Read correlations.",
+        "correlations:create": "Create correlations.",
+        "correlations:delete": "Delete correlations.",
     },
 )
 
@@ -217,6 +220,7 @@ def get_scopes_for_user(user: user_schemas.User):
         scopes.add("attachments:*")
         scopes.add("tasks:*")
         scopes.add("workers:*")
+        scopes.add("correlations:*")
 
     if user.role.perm_auth:
         scopes.add("auth:login")

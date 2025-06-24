@@ -224,14 +224,14 @@ async def upload_attachments(
 
 
 @router.get(
-    "/events/{event_id}/attachments", response_model=Page[object_schemas.Object]
+    "/events/{event_uuid}/attachments", response_model=Page[object_schemas.Object]
 )
 def get_event_attachments(
-    event_id: int,
+    event_uuid: str,
     db: Session = Depends(get_db),
     user: user_schemas.User = Security(get_current_active_user, scopes=["events:read"]),
 ) -> Page[object_schemas.Object]:
-    db_event = events_repository.get_event_by_id(db, event_id=event_id)
+    db_event = events_repository.get_event_by_uuid(db, event_uuid=event_uuid)
     if db_event is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Event not found"
@@ -239,7 +239,7 @@ def get_event_attachments(
 
     return objects_repository.get_objects(
         db,
-        event_id=event_id,
+        event_uuid=db_event.uuid,
         deleted=False,
         template_uuid=[
             "688c46fb-5edb-40a3-8273-1af7923e2215"  # TODO: get the object template from the json file

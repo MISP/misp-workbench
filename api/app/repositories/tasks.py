@@ -1,6 +1,6 @@
 import os
 
-from fastapi import HTTPException, Query, status
+from fastapi import HTTPException, status
 from app.flower import FlowerClient
 
 flower_url = os.environ.get("FLOWER_API_URL", "http://flower:5555/api")

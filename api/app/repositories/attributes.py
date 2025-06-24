@@ -2,11 +2,12 @@ import time
 from typing import Union
 from uuid import UUID
 from app.models.event import DistributionLevel
-
+from app.dependencies import get_opensearch_client
 from app.models import attribute as attribute_models
 from app.models import tag as tag_models
 from app.models import user as user_models
 from app.repositories import attachments as attachments_repository
+from app.repositories import events as events_repository
 from app.schemas import attribute as attribute_schemas
 from app.schemas import event as event_schemas
 from app.worker import tasks
@@ -16,22 +17,63 @@ from pymisp import MISPAttribute, MISPTag
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import select
 from fastapi_pagination import Page
+from collections import defaultdict
+from opensearchpy.exceptions import NotFoundError
+
+def enrich_attributes_page_with_correlations(
+    attributes_page: Page[attribute_schemas.Attribute],
+) -> Page[attribute_schemas.Attribute]:
+    OpenSearchClient = get_opensearch_client()
+
+    uuids = [attr.uuid for attr in attributes_page.items]
+    if not uuids:
+        return attributes_page
+
+    query = {
+        "query": {"terms": {"source_attribute_uuid.keyword": uuids}},
+        "size": 10000,  # results should be less than MAX_CORRELATIONS_PER_DOC * page_size
+    }
+
+    try:
+        response = OpenSearchClient.search(index="misp-attribute-correlations", body=query)
+        hits = response["hits"]["hits"]
+    except NotFoundError:
+        for attr in attributes_page.items:
+            attr.correlations = []
+        return attributes_page
+
+    correlation_map = defaultdict(list)
+    for hit in hits:
+        source_attribute_uuid = hit["_source"]["source_attribute_uuid"]
+        correlation_map[source_attribute_uuid].append(hit)
+
+    for attr in attributes_page.items:
+        attr.correlations = correlation_map.get(str(attr.uuid), [])
+
+    return attributes_page
 
 
 def get_attributes(
-    db: Session, event_id: int = None, deleted: bool = None, object_id: int = None
+    db: Session, event_uuid: str = None, deleted: bool = None, object_id: int = None
 ) -> Page[attribute_schemas.Attribute]:
     query = select(attribute_models.Attribute)
 
-    if event_id is not None:
-        query = query.where(attribute_models.Attribute.event_id == event_id)
+    if event_uuid is not None:
+        db_event = events_repository.get_event_by_uuid(event_uuid=event_uuid, db=db)
+        if db_event is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Event not found"
+            )
+        query = query.where(attribute_models.Attribute.event_id == db_event.id)
 
     if deleted is not None:
         query = query.where(attribute_models.Attribute.deleted == deleted)
 
     query = query.where(attribute_models.Attribute.object_id == object_id)
 
-    return paginate(db, query)
+    page_results = paginate(db, query)
+
+    return enrich_attributes_page_with_correlations(page_results)
 
 
 def get_attribute_by_id(
@@ -108,7 +150,7 @@ def create_attribute_from_pulled_attribute(
         event_id=local_event_id,
         category=pulled_attribute.category,
         type=pulled_attribute.type,
-        value=pulled_attribute.value,
+        value=pulled_attribute.value if isinstance(pulled_attribute.value, str) else str(pulled_attribute.value),
         to_ids=pulled_attribute.to_ids,
         uuid=pulled_attribute.uuid,
         timestamp=pulled_attribute.timestamp.timestamp(),
@@ -164,10 +206,12 @@ def update_attribute_from_pulled_attribute(
             event_id=local_event_id,
             category=pulled_attribute.category,
             type=pulled_attribute.type,
-            value=pulled_attribute.value,
+            value=pulled_attribute.value if isinstance(pulled_attribute.value, str) else str(pulled_attribute.value),
             to_ids=pulled_attribute.to_ids,
             timestamp=pulled_attribute.timestamp.timestamp(),
-            distribution=event_schemas.DistributionLevel(pulled_attribute.distribution or DistributionLevel.INHERIT_EVENT),
+            distribution=event_schemas.DistributionLevel(
+                pulled_attribute.distribution or DistributionLevel.INHERIT_EVENT
+            ),
             comment=pulled_attribute.comment,
             sharing_group_id=None,
             deleted=pulled_attribute.deleted,

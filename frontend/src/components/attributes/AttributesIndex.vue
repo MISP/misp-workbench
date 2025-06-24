@@ -12,7 +12,7 @@ import CopyToClipboard from "@/components/misc/CopyToClipboard.vue";
 import Timestamp from "@/components/misc/Timestamp.vue";
 import { Modal } from "bootstrap";
 
-const props = defineProps(["event_id", "page_size"]);
+const props = defineProps(["event_uuid", "page_size"]);
 const attributesStore = useAttributesStore();
 const { page_count, attributes, status } = storeToRefs(attributesStore);
 
@@ -32,7 +32,7 @@ function onPageChange(page) {
   attributesStore.get({
     page: page,
     size: props.page_size,
-    event_id: props.event_id,
+    event_uuid: props.event_uuid,
     deleted: false,
   });
 }
@@ -50,7 +50,6 @@ function handleAttributesUpdated() {
 }
 
 .value {
-  width: 30%;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -68,10 +67,10 @@ function handleAttributesUpdated() {
       <thead>
         <tr>
           <th scope="col">value</th>
+          <th scope="col">type</th>
           <th style="width: 400px" scope="col" class="d-none d-sm-table-cell">
             tags
           </th>
-          <th scope="col">type</th>
           <th scope="col" class="d-none d-sm-table-cell">timestamp</th>
           <th scope="col" class="d-none d-sm-table-cell">distribution</th>
           <th scope="col" class="text-end">actions</th>
@@ -83,6 +82,7 @@ function handleAttributesUpdated() {
             <CopyToClipboard :value="attribute.value" />
             {{ attribute.value }}
           </td>
+          <td>{{ attribute.type }}</td>
           <td class="d-none d-sm-table-cell">
             <TagsSelect
               :modelClass="'attribute'"
@@ -90,7 +90,6 @@ function handleAttributesUpdated() {
               :selectedTags="attribute.tags"
             />
           </td>
-          <td>{{ attribute.type }}</td>
           <td class="d-none d-sm-table-cell">
             <Timestamp :timestamp="attribute.timestamp" />
           </td>
@@ -118,7 +117,7 @@ function handleAttributesUpdated() {
       id="addAttributeModal"
       @attribute-created="handleAttributesUpdated"
       :modal="addAttributeModal"
-      :event_id="event_id"
+      :event_uuid="event_uuid"
     />
     <div class="mt-3">
       <button

@@ -14,10 +14,10 @@ export const useReportsStore = defineStore({
     },
   }),
   actions: {
-    async getReportsByEventId(event_id) {
+    async getReportsByEventId(event_uuid) {
       this.status = { loading: true };
       fetchWrapper
-        .get(`${baseUrl}/${event_id}`)
+        .get(`${baseUrl}/${event_uuid}`)
         .then((reports) => (this.reports = reports))
         .catch((error) => (this.report = { error }))
         .finally(() => (this.status = { loading: false }));

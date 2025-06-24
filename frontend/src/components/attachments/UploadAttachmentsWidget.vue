@@ -7,13 +7,13 @@ import { faCloudArrowUp, faPaperclip } from "@fortawesome/free-solid-svg-icons";
 import AttachmentIcon from "@/components/attachments/AttachmentIcon.vue";
 import Spinner from "@/components/misc/Spinner.vue";
 
-const props = defineProps(["event_id"]);
+const props = defineProps(["event_uuid"]);
 const emit = defineEmits(["object-added", "object-deleted"]);
 
 const attachmentsStore = useAttachmentsStore();
 const { attachments, status } = storeToRefs(attachmentsStore);
 
-attachmentsStore.getEventAttachments(props.event_id);
+attachmentsStore.getEventAttachments(props.event_uuid);
 
 const files = ref([]);
 const fileInput = ref(null);
@@ -63,7 +63,7 @@ const uploadFiles = () => {
   formData.append("attachments_meta", JSON.stringify(attachments_meta));
 
   attachmentsStore
-    .uploadAttachments(props.event_id, formData)
+    .uploadAttachments(props.event_uuid, formData)
     .then((response) => {
       files.value = [];
       status.value = { uploading: false };

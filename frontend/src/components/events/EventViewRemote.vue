@@ -31,7 +31,6 @@ remoteMISPEventsStore.get_remote_server_events_index(props.server_id, {
 });
 
 function pullRemoteMISPEvent(event_uuid) {
-  // toastsStore.push("Event pull enqueued. Task ID: " + response.task.id);
   toastsStore.push("Event pull enqueued.");
   remoteMISPEventsStore.pull_remote_misp_event(props.server_id, event_uuid);
 }
