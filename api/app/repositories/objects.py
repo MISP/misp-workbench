@@ -13,21 +13,60 @@ from app.repositories import object_references as object_references_repository
 from app.repositories import events as events_repository
 from app.schemas import event as event_schemas
 from app.schemas import object as object_schemas
+from app.schemas import attribute as attribute_schemas
 from app.schemas import user as user_schemas
 from app.worker import tasks
+from app.dependencies import get_opensearch_client
 from fastapi import HTTPException, status
 from fastapi_pagination.ext.sqlalchemy import paginate
 from pymisp import MISPObject
 from sqlalchemy.orm import Session
+from collections import defaultdict
+from opensearchpy.exceptions import NotFoundError
 
 logger = logging.getLogger(__name__)
+
+
+def enrich_object_attributes_with_correlations(
+    attributes: list[attribute_schemas.Attribute],
+) -> list[attribute_schemas.Attribute]:
+    OpenSearchClient = get_opensearch_client()
+
+    uuids = [attr.uuid for attr in attributes]
+    if not uuids:
+        return attributes
+
+    query = {
+        "query": {"terms": {"source_attribute_uuid.keyword": uuids}},
+        "size": 10000,  # results should be less than MAX_CORRELATIONS_PER_DOC * page_size
+    }
+
+    try:
+        response = OpenSearchClient.search(
+            index="misp-attribute-correlations", body=query
+        )
+        hits = response["hits"]["hits"]
+    except NotFoundError:
+        for attr in attributes:
+            attr.correlations = []
+        return attributes
+
+    correlation_map = defaultdict(list)
+    for hit in hits:
+        source_attribute_uuid = hit["_source"]["source_attribute_uuid"]
+        correlation_map[source_attribute_uuid].append(hit)
+
+    for attr in attributes:
+        attr.correlations = correlation_map.get(str(attr.uuid), [])
+
+    return attributes
 
 
 def get_objects(
     db: Session,
     event_uuid: str = None,
     deleted: bool = False,
-    template_uuid: list[uuid.UUID] = None
+    template_uuid: list[uuid.UUID] = None,
 ) -> list[object_models.Object]:
     query = db.query(object_models.Object)
 
@@ -45,7 +84,12 @@ def get_objects(
 
     query = query.filter(object_models.Object.deleted.is_(bool(deleted)))
 
-    return paginate(db, query)
+    objects_page = paginate(db, query)
+
+    for obj in objects_page.items:
+        obj.attributes = enrich_object_attributes_with_correlations(obj.attributes)
+
+    return objects_page
 
 
 def get_object_by_id(db: Session, object_id: int):
@@ -55,12 +99,14 @@ def get_object_by_id(db: Session, object_id: int):
         .first()
     )
 
+
 def get_object_by_uuid(db: Session, object_uuid: uuid.UUID):
     return (
         db.query(object_models.Object)
         .filter(object_models.Object.uuid == object_uuid)
         .first()
     )
+
 
 def create_object(
     db: Session, object: object_schemas.ObjectCreate
@@ -113,7 +159,7 @@ def create_object_from_pulled_object(
 ) -> MISPObject:
     # TODO: process sharing group // captureSG
     # TODO: enforce warninglist
-    
+
     db_object = object_models.Object(
         event_id=local_event_id,
         name=pulled_object.name,
@@ -140,8 +186,10 @@ def create_object_from_pulled_object(
     )
 
     for pulled_attribute in pulled_object.attributes:
-        local_object_attribute = attributes_repository.create_attribute_from_pulled_attribute(
-            db, pulled_attribute, local_event_id, user
+        local_object_attribute = (
+            attributes_repository.create_attribute_from_pulled_attribute(
+                db, pulled_attribute, local_event_id, user
+            )
         )
         db_object.attributes.append(local_object_attribute)
 
@@ -153,28 +201,46 @@ def create_object_from_pulled_object(
 
     db.add(db_object)
 
+
 def update_object_from_pulled_object(
-    db: Session, local_object: object_models.Object, pulled_object: MISPObject, local_event_id: int, user: user_models.User):
-    
+    db: Session,
+    local_object: object_models.Object,
+    pulled_object: MISPObject,
+    local_event_id: int,
+    user: user_models.User,
+):
+
     if local_object.timestamp < pulled_object.timestamp.timestamp():
         # find object attributes to delete
-        local_object_attribute_uuids = [attribute.uuid for attribute in local_object.attributes]
-        pulled_object_attribute_uuids = [attribute.uuid for attribute in pulled_object.attributes]
-        delete_attributes = [str(uuid) for uuid in local_object_attribute_uuids if uuid not in pulled_object_attribute_uuids]
+        local_object_attribute_uuids = [
+            attribute.uuid for attribute in local_object.attributes
+        ]
+        pulled_object_attribute_uuids = [
+            attribute.uuid for attribute in pulled_object.attributes
+        ]
+        delete_attributes = [
+            str(uuid)
+            for uuid in local_object_attribute_uuids
+            if uuid not in pulled_object_attribute_uuids
+        ]
 
         for pulled_object_attribute in pulled_object.attributes:
             pulled_object_attribute.object_id = local_object.id
-            local_attribute = attributes_repository.get_attribute_by_uuid(db, pulled_object_attribute.uuid)
+            local_attribute = attributes_repository.get_attribute_by_uuid(
+                db, pulled_object_attribute.uuid
+            )
             if local_attribute is None:
-                local_attribute = attributes_repository.create_attribute_from_pulled_attribute(
-                    db, pulled_object_attribute, local_event_id, user
+                local_attribute = (
+                    attributes_repository.create_attribute_from_pulled_attribute(
+                        db, pulled_object_attribute, local_event_id, user
+                    )
                 )
             else:
                 pulled_object_attribute.id = local_attribute.id
                 attributes_repository.update_attribute_from_pulled_attribute(
                     db, local_attribute, pulled_object_attribute, local_event_id, user
                 )
-                
+
         object_patch = object_schemas.ObjectUpdate(
             event_id=local_event_id,
             name=pulled_object.name,
@@ -199,24 +265,32 @@ def update_object_from_pulled_object(
             ),
             delete_attributes=delete_attributes,
         )
-        
+
         for pulled_object_reference in pulled_object.ObjectReference:
-            local_object_reference = object_references_repository.get_object_reference_by_uuid(
-                db, pulled_object_reference.uuid
+            local_object_reference = (
+                object_references_repository.get_object_reference_by_uuid(
+                    db, pulled_object_reference.uuid
+                )
             )
-            
+
             if local_object_reference is None:
                 local_object_reference = object_references_repository.create_object_reference_from_pulled_object_reference(
                     db, pulled_object_reference, local_event_id
                 )
                 local_object.object_references.append(local_object_reference)
             else:
-                if local_object_reference.timestamp < pulled_object.timestamp.timestamp():
+                if (
+                    local_object_reference.timestamp
+                    < pulled_object.timestamp.timestamp()
+                ):
                     pulled_object_reference.id = local_object_reference.id
                     local_object_reference = object_references_repository.update_object_reference_from_pulled_object_reference(
-                        db, local_object_reference, pulled_object_reference, local_event_id
+                        db,
+                        local_object_reference,
+                        pulled_object_reference,
+                        local_event_id,
                     )
-        
+
         update_object(db, local_object.id, object_patch)
 
 
@@ -235,19 +309,18 @@ def update_object(
         if key == "attributes":
             continue
         setattr(db_object, key, value)
-        
+
     # new attribute
     for attribute in object.new_attributes:
-            attribute.object_id = db_object.id
-            attribute.event_id = db_object.event_id
-            attribute.uuid = str(uuid.uuid4())
-            attributes_repository.create_attribute(db, attribute)
-
+        attribute.object_id = db_object.id
+        attribute.event_id = db_object.event_id
+        attribute.uuid = str(uuid.uuid4())
+        attributes_repository.create_attribute(db, attribute)
 
     # existing attribute
     for attribute in object.update_attributes:
         attributes_repository.update_attribute(db, attribute.id, attribute)
-        
+
     # delete attribute
     for attribute_id in object.delete_attributes:
         attributes_repository.delete_attribute(db, attribute_id)
@@ -281,6 +354,7 @@ def delete_object(db: Session, object_id: int) -> object_models.Object:
 
     return db_object
 
+
 def create_objects_from_fetched_event(
     db: Session,
     local_event: event_models.Event,
@@ -290,9 +364,7 @@ def create_objects_from_fetched_event(
 ):
 
     for object in objects:
-         create_object_from_pulled_object(
-            db, object, local_event.id, user
-        )
+        create_object_from_pulled_object(db, object, local_event.id, user)
 
 
 def update_objects_from_fetched_event(
