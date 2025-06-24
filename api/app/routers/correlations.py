@@ -81,3 +81,12 @@ def get_correlations_stats(
 ):
 
     return correlations_repository.get_correlations_stats()
+
+
+@router.delete("/correlations/")
+def delete_correlations(
+    user: user_schemas.User = Security(
+        get_current_active_user, scopes=["correlations:delete"]
+    ),
+):
+    return correlations_repository.delete_correlations()

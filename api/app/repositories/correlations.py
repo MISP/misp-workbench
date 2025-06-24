@@ -315,3 +315,28 @@ def get_correlations_stats():
         "top_correlated_attributes": get_top_correlating_attributes(),
         "total_correlations": get_total_correlations(),
     }
+
+
+def delete_correlations():
+    OpenSearchClient = get_opensearch_client()
+
+    try:
+        mapping = OpenSearchClient.indices.get_mapping(
+            index="misp-attribute-correlations"
+        )
+
+        OpenSearchClient.indices.delete(index="misp-attribute-correlations")
+
+        OpenSearchClient.indices.create(
+            index="misp-attribute-correlations",
+            body={
+                "mappings": mapping["misp-attribute-correlations"]["mappings"],
+            },
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to delete correlations index: {str(e)}",
+        )
+
+    return {"message": "Correlations index deleted successfully."}

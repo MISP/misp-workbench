@@ -297,6 +297,7 @@ def generate_correlations():
     logger.info("generate correlations job started")
 
     try:
+        correlations_repository.delete_correlations()
         correlations_repository.run_correlations()
     except Exception as e:
         logger.error("Failed to generate correlations: %s", str(e))
