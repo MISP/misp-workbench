@@ -32,6 +32,8 @@ import Timestamp from "@/components/misc/Timestamp.vue";
 
 const props = defineProps(["event_uuid"]);
 
+const reports_last_updated = ref(parseInt(Date.now() / 1000));
+
 const eventsStore = useEventsStore();
 const { event, status } = storeToRefs(eventsStore);
 const correlationsStore = useCorrelationsStore();
@@ -67,13 +69,19 @@ function handleObjectDeleted() {
 }
 
 function handleReportCreated() {
-  event.value.timestamp = parseInt(Date.now() / 1000);
+  setTimeout(() => {
+    reports_last_updated.value = parseInt(Date.now() / 1000);
+  }, 100);
 }
 function handleReportUpdated() {
-  event.value.timestamp = parseInt(Date.now() / 1000);
+  setTimeout(() => {
+    reports_last_updated.value = parseInt(Date.now() / 1000);
+  }, 100);
 }
 function handleReportDeleted() {
-  event.value.timestamp = parseInt(Date.now() / 1000);
+  setTimeout(() => {
+    reports_last_updated.value = parseInt(Date.now() / 1000);
+  }, 100);
 }
 </script>
 
@@ -236,7 +244,7 @@ div.row h3 {
           <div class="card-body d-flex flex-column">
             <ReportsIndex
               :event_uuid="event.uuid"
-              :key="event.timestamp"
+              :key="reports_last_updated"
               @report-updated="handleReportUpdated"
               @report-deleted="handleReportDeleted"
             />
