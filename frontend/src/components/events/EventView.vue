@@ -1,7 +1,9 @@
 <script setup>
-import Spinner from "@/components/misc/Spinner.vue";
 import { storeToRefs } from "pinia";
+import { ref, onMounted } from "vue";
+import Spinner from "@/components/misc/Spinner.vue";
 import AttributesIndex from "@/components/attributes/AttributesIndex.vue";
+import CreateOrEditReportModal from "@/components/reports/CreateOrEditReportModal.vue";
 import ObjectsIndex from "@/components/objects/ObjectsIndex.vue";
 import TagsSelect from "@/components/tags/TagsSelect.vue";
 import ReportsIndex from "@/components/reports/ReportsIndex.vue";
@@ -13,6 +15,7 @@ import EventActions from "@/components/events/EventActions.vue";
 import UploadAttachmentsWidget from "@/components/attachments/UploadAttachmentsWidget.vue";
 import CorrelatedEvents from "@/components/correlations/CorrelatedEvents.vue";
 import { router } from "@/router";
+import { Modal } from "bootstrap";
 import {
   useEventsStore,
   useModulesStore,
@@ -23,10 +26,13 @@ import {
   faTags,
   faShapes,
   faCubesStacked,
+  faPlus,
 } from "@fortawesome/free-solid-svg-icons";
 import Timestamp from "@/components/misc/Timestamp.vue";
 
 const props = defineProps(["event_uuid"]);
+
+const reports_last_updated = ref(parseInt(Date.now() / 1000));
 
 const eventsStore = useEventsStore();
 const { event, status } = storeToRefs(eventsStore);
@@ -39,6 +45,17 @@ correlationsStore.getTopCorrelatingEvents(props.event_uuid);
 const modulesStore = useModulesStore();
 modulesStore.get({ enabled: true });
 
+const createOrEditReportModal = ref(null);
+onMounted(() => {
+  createOrEditReportModal.value = new Modal(
+    document.getElementById(`createOrEditReportModal_${props.event_uuid}`),
+  );
+});
+
+function openCreateorEditReportModal() {
+  createOrEditReportModal.value.show();
+}
+
 function handleEventDeleted() {
   router.push(`/events`);
 }
@@ -49,6 +66,22 @@ function handleObjectAdded() {
 
 function handleObjectDeleted() {
   event.value.object_count -= 1;
+}
+
+function handleReportCreated() {
+  setTimeout(() => {
+    reports_last_updated.value = parseInt(Date.now() / 1000);
+  }, 100);
+}
+function handleReportUpdated() {
+  setTimeout(() => {
+    reports_last_updated.value = parseInt(Date.now() / 1000);
+  }, 100);
+}
+function handleReportDeleted() {
+  setTimeout(() => {
+    reports_last_updated.value = parseInt(Date.now() / 1000);
+  }, 100);
 }
 </script>
 
@@ -84,7 +117,7 @@ div.row h3 {
         </div>
         <div class="col-2 text-end">
           <EventActions
-            :event_id="event.id"
+            :event_uuid="event.uuid"
             @event-deleted="handleEventDeleted"
           />
         </div>
@@ -202,7 +235,33 @@ div.row h3 {
         <CorrelatedEvents :results="correlated_events" />
       </div>
       <div class="col col-sm-12 mt-4">
-        <ReportsIndex :event_uuid="event.uuid" />
+        <div class="card mt-2">
+          <div class="card-header">
+            <div class="row">
+              <div class="col-10">Reports</div>
+            </div>
+          </div>
+          <div class="card-body d-flex flex-column">
+            <ReportsIndex
+              :event_uuid="event.uuid"
+              :key="reports_last_updated"
+              @report-updated="handleReportUpdated"
+              @report-deleted="handleReportDeleted"
+            />
+            <div class="mt-4 text-center">
+              <button
+                type="button"
+                class="btn btn-outline-primary"
+                data-placement="top"
+                data-toggle="tooltip"
+                title="Create Event Report"
+                @click="openCreateorEditReportModal"
+              >
+                <FontAwesomeIcon :icon="faPlus" /> Create Event Report
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
     <div class="row">
@@ -242,4 +301,11 @@ div.row h3 {
       </div>
     </div>
   </div>
+  <CreateOrEditReportModal
+    :key="event_uuid"
+    :id="`createOrEditReportModal_${event_uuid}`"
+    @report-created="handleReportCreated"
+    :modal="createOrEditReportModal"
+    :event_uuid="event_uuid"
+  />
 </template>

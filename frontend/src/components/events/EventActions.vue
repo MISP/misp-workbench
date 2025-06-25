@@ -21,7 +21,7 @@ const eventsStore = useEventsStore();
 const { status } = storeToRefs(eventsStore);
 
 const props = defineProps({
-  event_id: Number,
+  event_uuid: String,
   default_actions: {
     type: Object,
     default: () => ({}),
@@ -50,7 +50,7 @@ const deleteEventModal = ref(null);
 
 onMounted(() => {
   deleteEventModal.value = new Modal(
-    document.getElementById(`deleteEventModal_${props.event_id}`),
+    document.getElementById(`deleteEventModal_${props.event_uuid}`),
   );
 });
 
@@ -65,7 +65,7 @@ function handleEventDeleted(event) {
 }
 
 function indexEventDocument() {
-  eventsStore.forceIndex(props.event_id);
+  eventsStore.forceIndex(props.event_uuid);
 }
 </script>
 
@@ -84,7 +84,7 @@ function indexEventDocument() {
     >
       <RouterLink
         v-if="actions.view"
-        :to="`/events/${event_id}`"
+        :to="`/events/${event_uuid}`"
         class="btn btn-outline-primary"
         data-placement="top"
         data-toggle="tooltip"
@@ -94,7 +94,7 @@ function indexEventDocument() {
       </RouterLink>
       <RouterLink
         v-if="actions.update"
-        :to="`/events/update/${event_id}`"
+        :to="`/events/update/${event_uuid}`"
         class="btn btn-outline-primary"
         data-placement="top"
         data-toggle="tooltip"
@@ -133,10 +133,10 @@ function indexEventDocument() {
     </div>
   </div>
   <DeleteEventModal
-    :key="event_id"
-    :id="`deleteEventModal_${event_id}`"
+    :key="event_uuid"
+    :id="`deleteEventModal_${event_uuid}`"
     @event-deleted="handleEventDeleted"
     :modal="deleteEventModal"
-    :event_id="event_id"
+    :event_uuid="event_uuid"
   />
 </template>

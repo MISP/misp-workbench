@@ -101,6 +101,11 @@ oauth2_scheme = OAuth2PasswordBearer(
         "correlations:read": "Read correlations.",
         "correlations:create": "Create correlations.",
         "correlations:delete": "Delete correlations.",
+        "reports:read": "Read reports.",
+        "reports:create": "Create reports.",
+        "reports:update": "Update reports.",
+        "reports:tag": "Tag reports.",
+        "reports:delete": "Delete reports.",
     },
 )
 
