@@ -1,21 +1,18 @@
 <script setup>
-import { ref } from "vue";
-import { useReportsStore } from "@/stores";
 import { storeToRefs } from "pinia";
+import { useReportsStore } from "../../stores/reports.store";
 
 const reportsStore = useReportsStore();
-const { status } = storeToRefs(eventsStore);
+const { status } = storeToRefs(reportsStore);
 
-const props = defineProps(["event_uuid", "modal"]);
-const emit = defineEmits(["event-report-created"]);
-
-const report = ref(null);
+const props = defineProps(["report_uuid", "modal"]);
+const emit = defineEmits(["report-deleted"]);
 
 function onSubmit() {
   return reportsStore
-    .create(props.event_uuid, report)
+    .delete(props.report_uuid)
     .then(() => {
-      emit("event-report-created", { event_uuid: props.event_uuid });
+      emit("report-deleted", { report_uuid: props.report_uuid });
       props.modal.hide();
     })
     .catch((error) => (status.error = error));
@@ -24,17 +21,17 @@ function onSubmit() {
 
 <template>
   <div
-    :id="'createEventReportModal_' + event_uuid"
+    :id="'deleteReportModal_' + report_uuid"
     class="modal fade"
     tabindex="-1"
-    aria-labelledby="createEventReportModal"
+    aria-labelledby="deleteReportModal"
     aria-hidden="true"
   >
     <div class="modal-dialog modal-lg">
       <div class="modal-content">
         <div class="modal-header">
-          <h5 class="modal-title" id="createEventReportModal">
-            Create Event Report
+          <h5 class="modal-title" id="deleteReportModal">
+            Delete Report #{{ report_uuid }}
           </h5>
           <button
             type="button"
@@ -43,7 +40,9 @@ function onSubmit() {
             aria-label="Discard"
           ></button>
         </div>
-        <div class="modal-body">Event Report Editor</div>
+        <div class="modal-body">
+          Are you sure you want to delete this report?
+        </div>
         <div v-if="status.error" class="w-100 alert alert-danger mt-3 mb-3">
           {{ status.error }}
         </div>
@@ -69,7 +68,7 @@ function onSubmit() {
                 aria-hidden="true"
               ></span>
             </span>
-            <span v-if="!status.deleting">Create</span>
+            <span v-if="!status.deleting">Delete</span>
           </button>
         </div>
       </div>

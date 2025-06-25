@@ -2,12 +2,23 @@
 import { storeToRefs } from "pinia";
 import { useReportsStore } from "@/stores";
 import Spinner from "@/components/misc/Spinner.vue";
+import ReportActions from "@/components/reports/ReportActions.vue";
 import { marked } from "marked";
 import DOMPurify from "dompurify";
 
 const props = defineProps(["event_uuid"]);
 const reportsStore = useReportsStore();
 const { reports, status } = storeToRefs(reportsStore);
+
+const emit = defineEmits(["report-updated", "report-deleted"]);
+
+function handleReportDeleted(r) {
+  emit("report-deleted", r);
+}
+
+function handleReportUpdated(r) {
+  emit("report-updated", r);
+}
 
 reportsStore.getReportsByEventId(props.event_uuid);
 </script>
@@ -27,32 +38,41 @@ reportsStore.getReportsByEventId(props.event_uuid);
       <div
         class="accordion-item"
         style="max-height: 800px; overflow-y: auto"
-        :key="report._source.id"
+        :key="report._id"
         v-for="report in reports"
       >
-        <h2
-          class="accordion-header"
-          :id="`eventReportHeading${report._source.id}`"
+        <div
+          class="accordion-header d-flex align-items-center"
+          :id="`eventReportHeading${report._id}`"
         >
           <button
-            class="accordion-button"
+            class="accordion-button flex-grow-1 text-start"
             type="button"
             data-bs-toggle="collapse"
-            :data-bs-target="`#eventReport${report._source.id}`"
+            :data-bs-target="`#eventReport${report._id}`"
             aria-expanded="true"
           >
-            <strong>{{ report._source.name }} </strong>
+            <strong>{{ report._source.name }}</strong>
           </button>
-        </h2>
+          <div class="ms-2">
+            <ReportActions
+              :report="report"
+              :key="report._id"
+              @report-updated="handleReportUpdated"
+              @report-deleted="handleReportDeleted"
+            />
+          </div>
+        </div>
+
         <div
-          :id="`eventReport${report._source.id}`"
+          :id="`eventReport${report._id}`"
           class="accordion-collapse collapse"
           :class="{
-            show: report._source.id === reports[0]._source.id,
+            show: report._id === reports[0]._id,
           }"
           data-bs-parent="#eventReporstAccordion"
         >
-          <div class="accordion-body">
+          <div class="accordion-body bg-white">
             <div
               class="markdown-body"
               v-html="DOMPurify.sanitize(marked(report._source.content))"
