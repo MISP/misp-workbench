@@ -328,4 +328,5 @@ def generate_correlations():
         return False
 
     logger.info("generate correlations job finished")
+
     return True

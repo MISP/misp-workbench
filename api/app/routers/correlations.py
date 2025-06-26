@@ -1,3 +1,4 @@
+import logging
 from app.auth.auth import get_current_active_user
 from app.schemas import user as user_schemas
 from app.schemas import task as task_schemas
@@ -7,6 +8,8 @@ from fastapi import APIRouter, Security, Query, Depends, status
 from typing import Optional
 
 router = APIRouter()
+
+logger = logging.getLogger(__name__)
 
 
 async def get_correlations_parameters(
@@ -65,6 +68,7 @@ def run_correlations(
     ),
 ):
     task = tasks.generate_correlations.delay()
+    logger.info("Enqueued generate_correlations task with ID: %s", task.id)
 
     return task_schemas.Task(
         task_id=task.id,

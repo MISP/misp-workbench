@@ -14,6 +14,8 @@ POSSIBLE_CIDR_ATTRIBUTES_TYPES = [
     "ip-dst|port",
     "domain|ip",
 ]
+BULK_BUFFER = []
+BULK_SIZE = 100
 
 
 def get_correlations(params: dict, page: int = 0, from_value: int = 0, size: int = 100):
@@ -141,13 +143,21 @@ def build_cidr_query(uuid, event_uuid, doc):
     }
 
 
-def store_correlations_bulk(attribute_uuid, event_uuid, hits, match_type):
-    if not hits:
-        return
+def flush_bulk_correlations():
+    global BULK_BUFFER
 
     OpenSearchClient = get_opensearch_client()
 
-    correlations = []
+    if not BULK_BUFFER:
+        return
+
+    opensearch_helpers.bulk(OpenSearchClient, BULK_BUFFER)
+    BULK_BUFFER = []
+
+
+def store_correlations_bulk(attribute_uuid, event_uuid, hits, match_type):
+    if not hits:
+        return
 
     for hit in hits:
         correlation_doc = {
@@ -167,9 +177,10 @@ def store_correlations_bulk(attribute_uuid, event_uuid, hits, match_type):
             },
         }
 
-        correlations.append(correlation_doc)
+        BULK_BUFFER.append(correlation_doc)
 
-    opensearch_helpers.bulk(OpenSearchClient, correlations)
+        if len(BULK_BUFFER) >= BULK_SIZE:
+            flush_bulk_correlations()
 
 
 def correlate_document(doc):
@@ -234,6 +245,8 @@ def run_correlations():
 
     for doc in get_all_attributes():
         correlate_document(doc)
+
+    flush_bulk_correlations()
 
     return True
 

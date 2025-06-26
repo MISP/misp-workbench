@@ -8,7 +8,7 @@ const { stats, status } = storeToRefs(correlationsStore);
 
 correlationsStore.getStats();
 
-async function rerunCorrelations() {
+function rerunCorrelations() {
   correlationsStore.run().then((response) => {
     toastsStore.push(
       "Correlations re-run enqueued. Task ID: " + response.task_id,
