@@ -84,10 +84,10 @@ export const useEventsStore = defineStore({
         .catch((error) => (this.status = { error }))
         .finally(() => (this.status = { loading: false }));
     },
-    async forceIndex(id) {
+    async forceIndex(uuid) {
       this.status = { indexing: true };
       return await fetchWrapper
-        .post(`${baseUrl}/force-index?id=${id}`)
+        .post(`${baseUrl}/force-index?uuid=${uuid}`)
         .catch((error) => (this.status = { error }))
         .finally(() => (this.status = { indexing: false }));
     },
