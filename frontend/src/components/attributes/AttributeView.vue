@@ -199,7 +199,7 @@ div.row h3 {
           </div>
         </div>
       </div>
-      <div class="col col-sm-3">
+      <div class="col col-sm-6">
         <div class="card mt-2">
           <div class="card-header">
             <font-awesome-icon icon="fa-solid fa-tags" /> tags

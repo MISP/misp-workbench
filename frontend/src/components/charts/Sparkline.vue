@@ -67,3 +67,22 @@ export default {
   },
 };
 </script>
+
+<template>
+  <svg
+    :width="width"
+    :height="height"
+    class="sparkline"
+    viewBox="0 0 240 96"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <path
+      :d="shape"
+      fill="none"
+      stroke="#007bff"
+      :stroke-width="stroke"
+      stroke-linecap="round"
+    />
+    <path :d="fillEndPath" fill="#007bff" opacity=".1" />
+  </svg>
+</template>

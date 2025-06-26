@@ -19,7 +19,8 @@ from app.routers import (
     users,
     reports,
     tasks,
-    correlations
+    correlations,
+    sightings,
 )
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -102,5 +103,8 @@ app.include_router(tasks.router, tags=["Tasks"])
 
 # Correlations resource
 app.include_router(correlations.router, tags=["Correlations"])
+
+# Sightings resource
+app.include_router(sightings.router, tags=["Sightings"])
 
 add_pagination(app)

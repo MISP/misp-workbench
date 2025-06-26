@@ -1,0 +1,44 @@
+{
+    "mappings": {
+        "properties": {
+            "@timestamp": {
+                "type": "date"
+            },
+            "attribute_uuid": {
+                "type": "keyword"
+            },
+            "event_uuid": {
+                "type": "keyword"
+            },
+            "sighting_type": {
+                "type": "keyword"
+            },
+            "observer": {
+                "properties": {
+                    "source": {
+                        "type": "keyword"
+                    },
+                    "organization": {
+                        "type": "keyword"
+                    }
+                }
+            },
+            "metadata": {
+                "properties": {
+                    "sensor_type": {
+                        "type": "keyword"
+                    },
+                    "confidence": {
+                        "type": "integer"
+                    },
+                    "details": {
+                        "type": "text"
+                    },
+                    "tags": {
+                        "type": "keyword"
+                    }
+                }
+            }
+        }
+    }
+}
