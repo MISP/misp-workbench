@@ -2,8 +2,8 @@ import logging
 from app.auth.auth import get_current_active_user
 from app.schemas import user as user_schemas
 from app.repositories import sightings as sightings_repository
-from fastapi import APIRouter, Security, Query, Depends
-from typing import Optional
+from fastapi import APIRouter, Security, Query, Depends, Body
+from typing import Optional, Union, List
 
 router = APIRouter()
 
@@ -37,7 +37,7 @@ def get_sightings(
 
 @router.post("/sightings/")
 def create_sightings(
-    sightings: list[dict],
+    sightings:  Union[dict, List[dict]] = Body(...),
     user: user_schemas.User = Security(
         get_current_active_user, scopes=["sightings:create"]
     ),
