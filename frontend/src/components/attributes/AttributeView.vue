@@ -1,5 +1,5 @@
 <script setup>
-import Sparkline from "@/components/charts/Sparkline.vue";
+import SightingsSparklineWidget from "@/components/sightings/SightingsSparklineWidget.vue";
 import TagsIndex from "@/components/tags/TagsIndex.vue";
 import DistributionLevel from "@/components/enums/DistributionLevel.vue";
 import DeleteAttributeModal from "@/components/attributes/DeleteAttributeModal.vue";
@@ -154,25 +154,7 @@ div.row h3 {
         </div>
       </div>
       <div class="col-xs-12 col-sm-12 col-md-12 col-lg-6 col-xl-3">
-        <div class="mt-2 card">
-          <div class="card-body">
-            <div class="d-flex justify-content-between align-items-center">
-              <div>
-                <p class="mb-0 text-muted">activity</p>
-                <Sparkline :data="[2, 3, 5, 7, 18, 8, 6, 15, 23, 20, 21]" />
-              </div>
-            </div>
-          </div>
-          <div class="card-footer text-muted">
-            <p class="card-text fst-italic fw-light">
-              <small class="text-muted"
-                >last day/week/<span class="fw-bold text-decoration-underline"
-                  >month</span
-                ></small
-              >
-            </p>
-          </div>
-        </div>
+        <SightingsSparklineWidget :value="attribute.value" />
         <div class="mt-2 card">
           <div class="card-body">
             <div class="d-flex justify-content-between align-items-center">

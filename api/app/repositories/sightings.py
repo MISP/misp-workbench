@@ -102,3 +102,45 @@ def create_sightings(user, sightings: Union[list, dict]):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e),
         )
+
+
+def get_sighting_activity_by_value(params: dict):
+    OpenSearchClient = get_opensearch_client()
+
+    value = params.get("value")
+    if not value:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Value parameter is required",
+        )
+
+    period = params.get("period", "7d")
+    interval = params.get("interval", "1h")
+
+    query = {
+        "size": 0,
+        "query": {
+            "bool": {
+                "must": [
+                    {"term": {"value": value}},
+                    {"range": {"@timestamp": {"gte": f"now-{period}/d", "lte": "now"}}},
+                ]
+            }
+        },
+        "aggs": {
+            "sightings_over_time": {
+                "date_histogram": {
+                    "field": "@timestamp",
+                    "fixed_interval": interval,
+                    "min_doc_count": 0,
+                }
+            }
+        },
+    }
+
+    response = OpenSearchClient.search(
+        index="misp-sightings",
+        body=query,
+    )
+
+    return response["aggregations"]
