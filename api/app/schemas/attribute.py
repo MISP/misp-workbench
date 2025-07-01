@@ -7,7 +7,8 @@ from pydantic import BaseModel, ConfigDict
 
 
 class AttributeBase(BaseModel):
-    event_id: int
+    event_id: Optional[int] = None
+    event_uuid: Optional[UUID] = None
     object_id: Optional[int] = None
     object_relation: Optional[str] = None
     category: str

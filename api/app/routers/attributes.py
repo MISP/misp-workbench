@@ -75,14 +75,22 @@ def create_attribute(
         get_current_active_user, scopes=["attributes:create"]
     ),
 ) -> attribute_schemas.Attribute:
-    event = events_repository.get_event_by_id(
-        db, event_id=attribute.event_id
-    )  # TODO: only check if exists and get uuid
+    if attribute.event_id is None:
+        if attribute.event_uuid is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Event ID or UUID must be provided",
+            )
+        event = events_repository.get_event_by_uuid(db, event_uuid=str(attribute.event_uuid))
+    else:
+        event = events_repository.get_event_by_id(db, event_id=attribute.event_id)
+
     if event is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Event not found"
         )
 
+    attribute.event_id = event.id
     db_attribute = attributes_repository.create_attribute(db=db, attribute=attribute)
 
     tasks.index_event.delay(event.uuid)
