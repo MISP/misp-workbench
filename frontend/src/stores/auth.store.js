@@ -7,14 +7,17 @@ import { router } from "@/router";
 
 export const useAuthStore = defineStore({
   id: "auth",
-  state: () => ({
-    access_token: localStorage.getItem("access_token"),
-    decoded_access_token:
-      JSON.parse(localStorage.getItem("decoded_access_token")) || {},
-    scopes:
-      JSON.parse(localStorage.getItem("decoded_access_token")).scopes || [],
-    returnUrl: null,
-  }),
+  state: () => {
+    const decodedStr = localStorage.getItem("decoded_access_token");
+    const decoded = decodedStr ? JSON.parse(decodedStr) : {};
+
+    return {
+      access_token: localStorage.getItem("access_token"),
+      decoded_access_token: decoded,
+      scopes: decoded.scopes || [],
+      returnUrl: null,
+    };
+  },
   actions: {
     async authenticate(username, password) {
       const response = await fetchWrapper.authenticate(username, password);
