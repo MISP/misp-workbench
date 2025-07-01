@@ -15,12 +15,12 @@ import { Form, Field } from "vee-validate";
 const attributesStore = useAttributesStore();
 const { status } = storeToRefs(attributesStore);
 const apiError = ref(null);
-const props = defineProps(["event_id", "modal"]);
+const props = defineProps(["event_uuid", "modal"]);
 const emit = defineEmits(["attribute-created"]);
 
 const attribute = ref({
   distribution: DISTRIBUTION_LEVEL.INHERIT_EVENT,
-  event_id: props.event_id,
+  event_uuid: props.event_uuid,
   category: "Network activity",
   type: "ip-src",
   disable_correlation: false,
@@ -43,7 +43,7 @@ function addAttribute(values, { setErrors }) {
 function onClose() {
   attribute.value = {
     distribution: DISTRIBUTION_LEVEL.INHERIT_EVENT,
-    event_id: props.event_id,
+    event_uuid: props.event_uuid,
     category: "Network activity",
     type: "ip-src",
     disable_correlation: false,
