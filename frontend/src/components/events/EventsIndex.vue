@@ -7,6 +7,8 @@ import DistributionLevel from "@/components/enums/DistributionLevel.vue";
 import TagsIndex from "@/components/tags/TagsIndex.vue";
 import DeleteEventModal from "@/components/events/DeleteEventModal.vue";
 import Paginate from "vuejs-paginate-next";
+import UUID from "@/components/misc/UUID.vue";
+
 const eventsStore = useEventsStore();
 const { page_count, events, status } = storeToRefs(eventsStore);
 
@@ -59,9 +61,9 @@ function handleEventDeleted() {
       <tbody>
         <tr :key="event.uuid" v-for="event in events.items">
           <td>
-            <RouterLink :to="`/events/${event.uuid}`">{{
-              event.uuid
-            }}</RouterLink>
+            <RouterLink :to="`/events/${event.uuid}`">
+              <UUID :uuid="event.uuid" :copy="false" />
+            </RouterLink>
           </td>
           <td class="eventInfoColumn text-start">{{ event.info }}</td>
           <td>
