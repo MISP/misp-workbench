@@ -37,10 +37,12 @@ function rerunCorrelations() {
             <div class="table-responsive-sm">
               <table class="table table-striped">
                 <thead>
-                  <th>count</th>
-                  <th>type</th>
-                  <th>value</th>
-                  <th>event_uuid</th>
+                  <tr>
+                    <th>count</th>
+                    <th>type</th>
+                    <th>value</th>
+                    <th>event_uuid</th>
+                  </tr>
                 </thead>
                 <tbody>
                   <tr
@@ -95,8 +97,10 @@ function rerunCorrelations() {
             <div class="table-responsive-sm">
               <table class="table table-striped">
                 <thead>
-                  <th>count</th>
-                  <th>event_uuid</th>
+                  <tr>
+                    <th>count</th>
+                    <th>event_uuid</th>
+                  </tr>
                 </thead>
                 <tbody>
                   <tr

@@ -27,7 +27,7 @@ function onSubmit(values, { setErrors }) {
   return eventsStore
     .create(event)
     .then((response) => {
-      router.push(`/events/${response.id}`);
+      router.push(`/events/${response.uuid}`);
     })
     .catch((error) => setErrors({ apiError: error }));
 }

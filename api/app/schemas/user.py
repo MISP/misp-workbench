@@ -1,6 +1,7 @@
 from typing import Optional
 
 from app.schemas.role import Role
+from app.schemas.organisations import Organisation
 from pydantic import BaseModel, ConfigDict
 
 
@@ -13,6 +14,7 @@ class UserBase(BaseModel):
 class User(UserBase):
     id: int
     role: Role
+    organisation: Organisation
     model_config = ConfigDict(from_attributes=True)
 
 

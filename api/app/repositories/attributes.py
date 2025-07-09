@@ -99,7 +99,6 @@ def get_attribute_by_uuid(
 def create_attribute(
     db: Session, attribute: attribute_schemas.AttributeCreate
 ) -> attribute_models.Attribute:
-    # TODO: Attribute::beforeValidate() && Attribute::$validate
     db_attribute = attribute_models.Attribute(
         event_id=attribute.event_id,
         object_id=(

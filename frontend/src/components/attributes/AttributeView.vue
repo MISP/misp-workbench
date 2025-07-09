@@ -1,5 +1,6 @@
 <script setup>
-import Sparkline from "@/components/charts/Sparkline.vue";
+import SightingsSparklineWidget from "@/components/sightings/SightingsSparklineWidget.vue";
+import SightingsStatsWidget from "@/components/sightings/SightingsStatsWidget.vue";
 import TagsIndex from "@/components/tags/TagsIndex.vue";
 import DistributionLevel from "@/components/enums/DistributionLevel.vue";
 import DeleteAttributeModal from "@/components/attributes/DeleteAttributeModal.vue";
@@ -154,52 +155,10 @@ div.row h3 {
         </div>
       </div>
       <div class="col-xs-12 col-sm-12 col-md-12 col-lg-6 col-xl-3">
-        <div class="mt-2 card">
-          <div class="card-body">
-            <div class="d-flex justify-content-between align-items-center">
-              <div>
-                <p class="mb-0 text-muted">activity</p>
-                <Sparkline :data="[2, 3, 5, 7, 18, 8, 6, 15, 23, 20, 21]" />
-              </div>
-            </div>
-          </div>
-          <div class="card-footer text-muted">
-            <p class="card-text fst-italic fw-light">
-              <small class="text-muted"
-                >last day/week/<span class="fw-bold text-decoration-underline"
-                  >month</span
-                ></small
-              >
-            </p>
-          </div>
-        </div>
-        <div class="mt-2 card">
-          <div class="card-body">
-            <div class="d-flex justify-content-between align-items-center">
-              <div>
-                <p class="mb-0 text-muted">sightings</p>
-                <h2>423</h2>
-              </div>
-              <span
-                class="badge badge-pill badge-cyan badge-red bg-danger fs-5"
-              >
-                <font-awesome-icon icon="fa-solid fa-up-long" />
-                <span class="font-weight-semibold ml-1">16.71%</span>
-              </span>
-            </div>
-          </div>
-          <div class="card-footer text-muted">
-            <p class="card-text fst-italic fw-light">
-              <small class="text-muted"
-                >last day/week/<span class="fw-bold text-decoration-underline"
-                  >month</span
-                ></small
-              >
-            </p>
-          </div>
-        </div>
+        <SightingsSparklineWidget :value="attribute.value" />
+        <SightingsStatsWidget :value="attribute.value" />
       </div>
-      <div class="col col-sm-3">
+      <div class="col col-sm-6">
         <div class="card mt-2">
           <div class="card-header">
             <font-awesome-icon icon="fa-solid fa-tags" /> tags

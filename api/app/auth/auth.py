@@ -106,6 +106,10 @@ oauth2_scheme = OAuth2PasswordBearer(
         "reports:update": "Update reports.",
         "reports:tag": "Tag reports.",
         "reports:delete": "Delete reports.",
+        "sightings:create": "Create sightings.",
+        "sightings:read": "Read sightings.",
+        "sightings:update": "Update sightings.",
+        "sightings:delete": "Delete sightings.",
     },
 )
 

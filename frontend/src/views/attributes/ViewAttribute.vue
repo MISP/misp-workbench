@@ -24,7 +24,7 @@ defineProps(["id"]);
 <template>
   <Spinner v-if="status.loading" />
   <AttributeView
-    v-show="!status.loading"
+    v-if="!status.loading"
     :attribute="attribute"
     :status="status"
   />
