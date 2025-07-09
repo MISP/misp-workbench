@@ -1,5 +1,6 @@
 <script setup>
 import SightingsSparklineWidget from "@/components/sightings/SightingsSparklineWidget.vue";
+import SightingsStatsWidget from "@/components/sightings/SightingsStatsWidget.vue";
 import TagsIndex from "@/components/tags/TagsIndex.vue";
 import DistributionLevel from "@/components/enums/DistributionLevel.vue";
 import DeleteAttributeModal from "@/components/attributes/DeleteAttributeModal.vue";
@@ -155,31 +156,7 @@ div.row h3 {
       </div>
       <div class="col-xs-12 col-sm-12 col-md-12 col-lg-6 col-xl-3">
         <SightingsSparklineWidget :value="attribute.value" />
-        <div class="mt-2 card">
-          <div class="card-body">
-            <div class="d-flex justify-content-between align-items-center">
-              <div>
-                <p class="mb-0 text-muted">sightings</p>
-                <h2>423</h2>
-              </div>
-              <span
-                class="badge badge-pill badge-cyan badge-red bg-danger fs-5"
-              >
-                <font-awesome-icon icon="fa-solid fa-up-long" />
-                <span class="font-weight-semibold ml-1">16.71%</span>
-              </span>
-            </div>
-          </div>
-          <div class="card-footer text-muted">
-            <p class="card-text fst-italic fw-light">
-              <small class="text-muted"
-                >last day/week/<span class="fw-bold text-decoration-underline"
-                  >month</span
-                ></small
-              >
-            </p>
-          </div>
-        </div>
+        <SightingsStatsWidget :value="attribute.value" />
       </div>
       <div class="col col-sm-6">
         <div class="card mt-2">

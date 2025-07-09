@@ -63,4 +63,14 @@ def get_sighting_activity_by_value(
         get_current_active_user, scopes=["sightings:read"]
     ),
 ):
-    return sightings_repository.get_sighting_activity_by_value(params)
+    return sightings_repository.get_sightings_activity_by_value(params)
+
+
+@router.get("/sightings/stats")
+def get_sighting_activity_by_value(
+    params: dict = Depends(get_sighting_activity_by_value_parameters),
+    user: user_schemas.User = Security(
+        get_current_active_user, scopes=["sightings:read"]
+    ),
+):
+    return sightings_repository.get_sightings_stats_by_value(params)

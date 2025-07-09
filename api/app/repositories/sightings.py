@@ -104,7 +104,7 @@ def create_sightings(user, sightings: Union[list, dict]):
         )
 
 
-def get_sighting_activity_by_value(params: dict):
+def get_sightings_activity_by_value(params: dict):
     OpenSearchClient = get_opensearch_client()
 
     value = params.get("value")
@@ -123,6 +123,7 @@ def get_sighting_activity_by_value(params: dict):
             "bool": {
                 "must": [
                     {"term": {"value": value}},
+                    {"term": {"sighting_type": "positive"}},
                     {"range": {"@timestamp": {"gte": f"now-{period}/d", "lte": "now"}}},
                 ]
             }
@@ -133,6 +134,7 @@ def get_sighting_activity_by_value(params: dict):
                     "field": "@timestamp",
                     "fixed_interval": interval,
                     "min_doc_count": 0,
+                    "extended_bounds": {"min": f"now-{period}/d", "max": "now"},
                 }
             }
         },
@@ -144,3 +146,53 @@ def get_sighting_activity_by_value(params: dict):
     )
 
     return response["aggregations"]
+
+
+def get_sightings_stats_by_value(params: dict):
+    OpenSearchClient = get_opensearch_client()
+
+    value = params.get("value")
+    if not value:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Value parameter is required",
+        )
+
+    period = params.get("period", "7d")
+
+    query_total_period = {
+        "track_total_hits": True,
+        "size": 0,
+        "query": {
+            "bool": {
+                "must": [
+                    {"term": {"value": value}},
+                    {"term": {"sighting_type": "positive"}},
+                    {"range": {"@timestamp": {"gte": f"now-{period}/d", "lte": "now"}}},
+                ]
+            }
+        },
+    }
+    total_period = OpenSearchClient.search(
+        index="misp-sightings",
+        body=query_total_period,
+    )
+
+    query_prev_period = query_total_period.copy()
+    query_prev_period["query"]["bool"]["must"].append(
+        {
+            "range": {
+                "@timestamp": {"gte": f"now-{period}/d-1d", "lte": f"now-{period}/d"}
+            }
+        }
+    )
+
+    total_prev_period = OpenSearchClient.search(
+        index="misp-sightings",
+        body=query_prev_period,
+    )
+
+    return {
+        "total": total_period["hits"]["total"]["value"],
+        "previous_total": total_prev_period["hits"]["total"]["value"],
+    }

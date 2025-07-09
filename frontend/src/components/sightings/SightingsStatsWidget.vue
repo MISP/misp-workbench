@@ -1,7 +1,6 @@
 <script setup>
 import { computed, watch, ref } from "vue";
 import { storeToRefs } from "pinia";
-import Sparkline from "@/components/charts/Sparkline.vue";
 import { useSightingsStore } from "@/stores";
 
 const props = defineProps({
@@ -12,7 +11,7 @@ const props = defineProps({
 });
 
 const sightingsStore = useSightingsStore();
-const { sightings } = storeToRefs(sightingsStore);
+const { stats } = storeToRefs(sightingsStore);
 
 const selectedPeriod = ref("7d");
 
@@ -29,11 +28,22 @@ const interval = computed(() => {
   }
 });
 
+const change = computed(() => {
+  return stats.value.total - stats.value.previous_total;
+});
+
+const badgeColor = computed(() => {
+  if (change.value >= 100) return "bg-danger";
+  if (change.value >= 10) return "bg-warning";
+  if (change.value > 0) return "bg-info";
+  return "bg-secondary";
+});
+
 watch(
   [() => props.value, selectedPeriod],
   ([value, period]) => {
     if (value) {
-      sightingsStore.getHistogram({
+      sightingsStore.getStats({
         value,
         period,
         interval: interval.value,
@@ -42,21 +52,28 @@ watch(
   },
   { immediate: true },
 );
-
-const points = computed(() => {
-  const buckets = sightings.value?.sightings_over_time?.buckets || [];
-  return buckets.map((bucket) => bucket.doc_count);
-});
 </script>
 
 <template>
   <div class="mt-2 card">
     <div class="card-header border-bottom">
-      <h6 class="card-title">sightings activity</h6>
+      <h6 class="card-title">sightings stats</h6>
     </div>
 
-    <div class="card-body">
-      <Sparkline :points="points" />
+    <div
+      class="card-body d-flex justify-content-between align-items-center p-3 shadow-sm rounded"
+    >
+      <div>
+        <p class="text-muted mb-1 small">Total</p>
+        <h2 class="mb-0 fw-bold">{{ stats.total || 0 }}</h2>
+      </div>
+      <span
+        class="badge text-white d-flex align-items-center px-3 py-2 fs-6 rounded-pill shadow-sm"
+        :class="badgeColor"
+      >
+        <font-awesome-icon icon="fa-solid fa-up-long" class="me-1" />
+        <span class="fw-semibold">{{ change || 0 }}</span>
+      </span>
     </div>
 
     <div
