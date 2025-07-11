@@ -45,7 +45,7 @@ div.row h3 {
           >
             <button
               type="button"
-              class="btn btn-outline-danger"
+              class="btn btn-danger"
               data-bs-toggle="modal"
               :data-bs-target="'#deleteAttributeModal-' + attribute.id"
             >

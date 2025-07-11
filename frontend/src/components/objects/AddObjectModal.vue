@@ -390,7 +390,11 @@ watch(selectedQuickTemplate, (newValue) => {
                 role="tabpanel"
                 aria-labelledby="preview-tab"
               >
-                <AddObjectPreview :object="object" :template="activeTemplate" />
+                <AddObjectPreview
+                  v-if="activeTemplate.uuid"
+                  :object="object"
+                  :template="activeTemplate"
+                />
               </div>
             </div>
             <!-- TODO -->

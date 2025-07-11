@@ -137,7 +137,9 @@ function switchTheme() {
       </div>
       <div class="m-2">
         <button type="button" class="btn btn-outline">
-          <FontAwesomeIcon :icon="faCog" class="fa-xl" />
+          <RouterLink to="/settings">
+            <FontAwesomeIcon :icon="faCog" class="fa-xl" />
+          </RouterLink>
         </button>
       </div>
       <form class="d-flex">

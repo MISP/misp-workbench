@@ -1,6 +1,7 @@
 from app.dependencies import get_opensearch_client
 from fastapi import HTTPException, status
 from opensearchpy import helpers as opensearch_helpers
+from app.services.runtime_settings import RuntimeSettings
 import datetime
 
 MAX_CORRELATIONS_PER_DOC = 1000
@@ -84,7 +85,7 @@ def get_all_attributes():
         yield doc
 
 
-def build_query(uuid, event_uuid, value, match_type):
+def build_query(uuid, event_uuid, value, match_type, runtimeSettings: RuntimeSettings):
 
     query = {
         "query": {
@@ -102,11 +103,28 @@ def build_query(uuid, event_uuid, value, match_type):
         query["query"]["bool"]["must"] = [{"term": {"value.keyword": value}}]
     elif match_type == "prefix":
         query["query"]["bool"]["must"] = [
-            {"prefix": {"value.keyword": value[:CORRELATION_PREFIX_LENGTH]}}
+            {
+                "prefix": {
+                    "value.keyword": value[
+                        : runtimeSettings.get_value(
+                            "correlations.prefixLength", CORRELATION_PREFIX_LENGTH
+                        )
+                    ]
+                }
+            }
         ]
     elif match_type == "fuzzy":
         query["query"]["bool"]["must"] = [
-            {"fuzzy": {"value": {"value": value, "fuzziness": CORRELATION_FUZZYNESS}}}
+            {
+                "fuzzy": {
+                    "value": {
+                        "value": value,
+                        "fuzziness": runtimeSettings.get_value(
+                            "correlations.fuzzynessAlgo", CORRELATION_FUZZYNESS
+                        ),
+                    }
+                }
+            }
         ]
     else:
         raise ValueError(f"Unsupported match_type: {match_type}")
@@ -155,7 +173,9 @@ def flush_bulk_correlations():
     BULK_BUFFER = []
 
 
-def store_correlations_bulk(attribute_uuid, event_uuid, hits, match_type):
+def store_correlations_bulk(
+    attribute_uuid, event_uuid, hits, match_type, runtimeSettings: RuntimeSettings
+):
     if not hits:
         return
 
@@ -179,11 +199,13 @@ def store_correlations_bulk(attribute_uuid, event_uuid, hits, match_type):
 
         BULK_BUFFER.append(correlation_doc)
 
-        if len(BULK_BUFFER) >= BULK_SIZE:
+        if len(BULK_BUFFER) >= runtimeSettings.get_value(
+            "correlations.opensearchFlushBulkSize", BULK_SIZE
+        ):
             flush_bulk_correlations()
 
 
-def correlate_document(doc):
+def correlate_document(doc, runtimeSettings: RuntimeSettings):
     OpenSearchClient = get_opensearch_client()
 
     value = doc["_source"].get("value")
@@ -191,30 +213,46 @@ def correlate_document(doc):
     if not value:
         return
 
-    # match_types = ["term", "fuzzy", "prefix", "cidr", "phrase"]  # customizable
-    match_types = ["term", "cidr"]
+    match_types = runtimeSettings.get_value("correlations.matchTypes", ["term", "cidr"])
 
     for match_type in match_types:
         if match_type == "cidr":
             if (
-                doc["_source"]["type"] not in POSSIBLE_CIDR_ATTRIBUTES_TYPES
+                doc["_source"]["type"]
+                not in runtimeSettings.get_value(
+                    "correlations.possibleCdirAttributeTypes",
+                    POSSIBLE_CIDR_ATTRIBUTES_TYPES,
+                )
                 or "/" not in value
             ):
                 continue
             query = build_cidr_query(doc["_id"], doc["_source"]["event_uuid"], doc)
         else:
             query = build_query(
-                doc["_id"], doc["_source"]["event_uuid"], value, match_type
+                doc["_id"],
+                doc["_source"]["event_uuid"],
+                value,
+                match_type,
+                runtimeSettings,
             )
 
         res = OpenSearchClient.search(
             index="misp-attributes",
             body=query,
-            size=MAX_CORRELATIONS_PER_DOC,
+            size=runtimeSettings.get_value(
+                "correlations.maxCorrelationsPerDoc",
+                runtimeSettings.get_value(
+                    "correlations.opensearchFlushBulkSize", MAX_CORRELATIONS_PER_DOC
+                ),
+            ),
         )
 
         store_correlations_bulk(
-            doc["_id"], doc["_source"]["event_uuid"], res["hits"]["hits"], match_type
+            doc["_id"],
+            doc["_source"]["event_uuid"],
+            res["hits"]["hits"],
+            match_type,
+            runtimeSettings,
         )
 
 
@@ -241,10 +279,10 @@ def get_top_correlated_events(source_event_uuid: str):
     )
 
 
-def run_correlations():
+def run_correlations(runtimeSettings: RuntimeSettings):
 
     for doc in get_all_attributes():
-        correlate_document(doc)
+        correlate_document(doc, runtimeSettings)
 
     flush_bulk_correlations()
 
