@@ -38,6 +38,7 @@ import {
   ExploreEvents,
   TasksIndex,
   IndexCorrelations,
+  IndexRuntimeSettings,
 } from "@/views";
 
 export const router = createRouter({
@@ -88,6 +89,7 @@ export const router = createRouter({
     { path: "/explore", component: ExploreEvents },
     { path: "/tasks", component: TasksIndex },
     { path: "/correlations", component: IndexCorrelations },
+    { path: "/settings", component: IndexRuntimeSettings },
   ],
 });
 

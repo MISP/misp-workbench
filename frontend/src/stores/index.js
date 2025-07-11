@@ -21,3 +21,4 @@ export * from "./reports.store";
 export * from "./tasks.store";
 export * from "./correlations.store";
 export * from "./sightings.store";
+export * from "./runtimeSettings.store";
