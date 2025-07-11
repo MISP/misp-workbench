@@ -2,8 +2,11 @@
 import { ref, reactive, onMounted, watch } from "vue";
 import { storeToRefs } from "pinia";
 import Spinner from "@/components/misc/Spinner.vue";
-import { useRuntimeSettingsStore } from "@/stores";
+import { useRuntimeSettingsStore, useToastsStore } from "@/stores";
+import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
+import { faSync } from "@fortawesome/free-solid-svg-icons";
 
+const toastsStore = useToastsStore();
 const runtimeSettingsStore = useRuntimeSettingsStore();
 const { settings, status } = storeToRefs(runtimeSettingsStore);
 
@@ -39,6 +42,10 @@ async function saveNamespace(namespace) {
     await runtimeSettingsStore.update(namespace, parsed);
     await runtimeSettingsStore.getAll(); // Refresh
     errors.value[namespace] = null;
+    toastsStore.push(
+      `Settings for "${namespace}" updated successfully.`,
+      "success",
+    );
   } catch {
     errors.value[namespace] = "Invalid JSON";
   }
@@ -93,7 +100,12 @@ async function saveNamespace(namespace) {
                       class="btn btn-primary text-sm"
                       @click="saveNamespace(namespace)"
                     >
-                      Save
+                      <FontAwesomeIcon
+                        :icon="faSync"
+                        spin
+                        v-if="status.loading"
+                      />
+                      <span v-else>Save</span>
                     </button>
                   </div>
                 </div>
