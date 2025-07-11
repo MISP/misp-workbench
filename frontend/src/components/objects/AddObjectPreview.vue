@@ -10,7 +10,7 @@ defineProps(["object", "template"]);
     <span class="badge bg-info flex">v{{ template.version }}</span>
   </div>
   <div>
-    <UUID :uuid="template.uuid" />
+    <UUID :uuid="template.uuid" :copy="false" />
   </div>
   <div class="container mt-3">
     <div class="table-responsive">
