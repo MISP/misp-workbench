@@ -6,13 +6,14 @@ from datetime import datetime
 
 from app.database import SQLALCHEMY_DATABASE_URL
 from app.dependencies import get_opensearch_client
+from app.settings import get_settings
+from app.dependencies import get_runtime_settings
 from app.repositories import events as events_repository
 from app.repositories import feeds as feeds_repository
 from app.repositories import servers as servers_repository
 from app.repositories import users as users_repository
 from app.repositories import correlations as correlations_repository
 from app.schemas import event as event_schemas
-from app.settings import get_settings
 from celery import Celery
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
@@ -320,9 +321,12 @@ def fetch_feed_event(event_uuid: uuid.UUID, feed_id: int, user_id: int):
 def generate_correlations():
     logger.info("generate correlations job started")
 
+    with Session(engine) as db:
+        runtimeSettings = get_runtime_settings(db)
+
     try:
         correlations_repository.delete_correlations()
-        correlations_repository.run_correlations()
+        correlations_repository.run_correlations(runtimeSettings)
     except Exception as e:
         logger.error("Failed to generate correlations: %s", str(e))
         return False
