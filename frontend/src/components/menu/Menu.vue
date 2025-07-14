@@ -120,6 +120,12 @@ function switchTheme() {
             </li>
             <hr class="dropdown-divider" />
             <li>
+              <RouterLink to="/settings/runtime" class="dropdown-item"
+                >settings</RouterLink
+              >
+            </li>
+            <hr class="dropdown-divider" />
+            <li>
               <RouterLink to="/tasks" class="dropdown-item">tasks</RouterLink>
             </li>
           </ul>
@@ -137,7 +143,7 @@ function switchTheme() {
       </div>
       <div class="m-2">
         <button type="button" class="btn btn-outline">
-          <RouterLink to="/settings">
+          <RouterLink to="/settings/user">
             <FontAwesomeIcon :icon="faCog" class="fa-xl" />
           </RouterLink>
         </button>

@@ -9,9 +9,17 @@ def get_user_settings(db: Session, user_id: str):
         .all()
     )
 
+def get_user_setting(db: Session, user_id: int, namespace: str):
+    return (
+        db.query(user_settings_models.UserSetting)
+        .filter(user_settings_models.UserSetting.user_id == user_id)
+        .filter(user_settings_models.UserSetting.namespace == namespace)
+        .first()
+    )
+
 
 def set_user_setting(db: Session, user_id: str, namespace: str, value: dict):
-    setting = get_user_settings(db, user_id)
+    setting = get_user_setting(db, user_id, namespace)
     if setting:
         setting.value = value
     else:
