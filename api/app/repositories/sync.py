@@ -19,7 +19,7 @@ from pymisp import (
     MISPEventReport,
 )
 from sqlalchemy.orm import Session
-from app.dependencies import get_opensearch_client
+from app.services.opensearch import get_opensearch_client
 
 logger = logging.getLogger(__name__)
 

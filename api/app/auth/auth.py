@@ -5,7 +5,7 @@ from typing import Union
 
 import bcrypt
 import jwt
-from app.dependencies import get_db
+from app.db.session import get_db
 from app.repositories import users as users_repository
 from app.schemas import user as user_schemas
 from app.settings import Settings, get_settings
@@ -141,63 +141,6 @@ def create_access_token(
         to_encode, settings.OAuth2.secret_key, algorithm=settings.OAuth2.algorithm
     )
     return encoded_jwt
-
-
-async def get_current_user(
-    security_scopes: SecurityScopes,
-    token: str = Depends(oauth2_scheme),
-    db: Session = Depends(get_db),
-    settings: Settings = Depends(get_settings),
-):
-    if security_scopes.scopes:
-        authenticate_value = f'Bearer scope="{security_scopes.scope_str}"'
-    else:
-        authenticate_value = "Bearer"
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
-        headers={"WWW-Authenticate": authenticate_value},
-    )
-    try:
-        payload = jwt.decode(
-            token, settings.OAuth2.secret_key, algorithms=[settings.OAuth2.algorithm]
-        )
-        username: str = payload.get("sub")
-        if username is None:
-            raise credentials_exception
-        token_scopes = payload.get("scopes", [])
-        token_data = TokenData(scopes=token_scopes, username=username)
-    except (InvalidTokenError, ValidationError):
-        raise credentials_exception
-    user = users_repository.get_user_by_email(db, email=token_data.username)
-    if user is None:
-        raise credentials_exception
-
-    if "*" in token_data.scopes:
-        # "*" scope is superadmin, so it can access everything
-        return user
-
-    for scope in security_scopes.scopes:
-        # check if the user has access to the requested scope
-        resource = scope.split(":")[0]
-        if scope not in token_data.scopes and f"{resource}:*" not in token_data.scopes:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Not enough permissions",
-                headers={"WWW-Authenticate": authenticate_value},
-            )
-    return user
-
-
-async def get_current_active_user(
-    current_user: user_schemas.User = Depends(get_current_user),
-):
-    if current_user.disabled:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Inactive user"
-        )
-    return current_user
-
 
 def authenticate_user(db: Session, username: str, password: str):
     user = users_repository.get_user_by_email(db, username)

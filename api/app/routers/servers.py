@@ -1,5 +1,5 @@
-from app.auth.auth import get_current_active_user
-from app.dependencies import get_db
+from app.auth.security import get_current_active_user
+from app.db.session import get_db
 from app.repositories import servers as servers_repository
 from app.schemas import server as server_schemas
 from app.schemas import task as task_schemas

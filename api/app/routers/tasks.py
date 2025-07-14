@@ -1,4 +1,4 @@
-from app.auth.auth import get_current_active_user
+from app.auth.security import get_current_active_user
 from app.schemas import user as user_schemas
 from app.repositories import tasks as tasks_repository
 from fastapi import APIRouter, Query, Security

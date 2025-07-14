@@ -1,4 +1,4 @@
-from app.dependencies import get_opensearch_client
+from app.services.opensearch import get_opensearch_client
 from fastapi import HTTPException, status
 from opensearchpy import helpers as opensearch_helpers
 from app.services.runtime_settings import RuntimeSettings

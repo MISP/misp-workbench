@@ -3,7 +3,7 @@ from datetime import timedelta
 
 import pytest
 from app.auth import auth
-from app.dependencies import get_db
+from app.db.session import get_db
 from app.main import app
 from app.models import attribute as attribute_models
 from app.models import event as event_models

@@ -1,4 +1,4 @@
-from app.dependencies import get_opensearch_client
+from app.services.opensearch import get_opensearch_client
 from app.models import event as event_models
 import logging
 import uuid

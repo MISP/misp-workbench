@@ -16,7 +16,7 @@ from app.schemas import object as object_schemas
 from app.schemas import attribute as attribute_schemas
 from app.schemas import user as user_schemas
 from app.worker import tasks
-from app.dependencies import get_opensearch_client
+from app.services.opensearch import get_opensearch_client
 from fastapi import HTTPException, status
 from fastapi_pagination.ext.sqlalchemy import paginate
 from pymisp import MISPObject

@@ -5,9 +5,9 @@ import uuid
 from datetime import datetime
 
 from app.database import SQLALCHEMY_DATABASE_URL
-from app.dependencies import get_opensearch_client
+from app.services.opensearch import get_opensearch_client
 from app.settings import get_settings
-from app.dependencies import get_runtime_settings
+from app.services.runtime_settings_provider import get_runtime_settings
 from app.repositories import events as events_repository
 from app.repositories import feeds as feeds_repository
 from app.repositories import servers as servers_repository
