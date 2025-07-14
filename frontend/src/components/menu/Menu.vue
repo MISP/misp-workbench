@@ -120,13 +120,13 @@ function switchTheme() {
             </li>
             <hr class="dropdown-divider" />
             <li>
-              <RouterLink to="/settings/runtime" class="dropdown-item"
-                >settings</RouterLink
-              >
+              <RouterLink to="/tasks" class="dropdown-item">tasks</RouterLink>
             </li>
             <hr class="dropdown-divider" />
             <li>
-              <RouterLink to="/tasks" class="dropdown-item">tasks</RouterLink>
+              <RouterLink to="/settings/runtime" class="dropdown-item"
+                >settings</RouterLink
+              >
             </li>
           </ul>
         </div>
