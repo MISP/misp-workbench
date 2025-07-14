@@ -2,7 +2,7 @@ import time
 from typing import Union
 from uuid import UUID
 from app.models.event import DistributionLevel
-from app.dependencies import get_opensearch_client
+from app.services.opensearch import get_opensearch_client
 from app.models import attribute as attribute_models
 from app.models import tag as tag_models
 from app.models import user as user_models

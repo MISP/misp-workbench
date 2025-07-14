@@ -1,6 +1,6 @@
 import logging
 from typing import Union
-from app.dependencies import get_opensearch_client
+from app.services.opensearch import get_opensearch_client
 from fastapi import HTTPException, status
 from opensearchpy import helpers as opensearch_helpers
 import datetime

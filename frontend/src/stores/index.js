@@ -22,3 +22,4 @@ export * from "./tasks.store";
 export * from "./correlations.store";
 export * from "./sightings.store";
 export * from "./runtimeSettings.store";
+export * from "./userSettings.store";

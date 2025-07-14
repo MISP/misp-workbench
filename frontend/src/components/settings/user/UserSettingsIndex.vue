@@ -2,20 +2,20 @@
 import { ref, reactive, onMounted, watch } from "vue";
 import { storeToRefs } from "pinia";
 import Spinner from "@/components/misc/Spinner.vue";
-import { useRuntimeSettingsStore, useToastsStore } from "@/stores";
+import { useUserSettingsStore, useToastsStore } from "@/stores";
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
 import { faSync } from "@fortawesome/free-solid-svg-icons";
 
 const toastsStore = useToastsStore();
-const runtimeSettingsStore = useRuntimeSettingsStore();
-const { runtimeSettings, status } = storeToRefs(runtimeSettingsStore);
+const userSettingsStore = useUserSettingsStore();
+const { userSettings, status } = storeToRefs(userSettingsStore);
 
 const errors = ref({});
 const editableSettings = reactive({});
 
 onMounted(() => {
-  runtimeSettingsStore.getAll().then(() => {
-    Object.entries(runtimeSettings.value).forEach(([namespace, value]) => {
+  userSettingsStore.getAll().then(() => {
+    Object.entries(userSettings.value).forEach(([namespace, value]) => {
       editableSettings[namespace] = JSON.stringify(value || {}, null, 4);
     });
   });
@@ -39,8 +39,8 @@ watch(
 async function saveNamespace(namespace) {
   try {
     const parsed = JSON.parse(editableSettings[namespace]);
-    await runtimeSettingsStore.update(namespace, parsed);
-    await runtimeSettingsStore.getAll(); // Refresh
+    await userSettingsStore.update(namespace, parsed);
+    await userSettingsStore.getAll(); // Refresh
     errors.value[namespace] = null;
     toastsStore.push(
       `Settings for "${namespace}" updated successfully.`,
@@ -58,12 +58,12 @@ async function saveNamespace(namespace) {
       <div class="col-md-12">
         <div class="card">
           <div class="card-header">
-            <h3>Runtime Settings</h3>
+            <h3>User Settings</h3>
           </div>
           <div class="accordion m-4" id="settingsAccordion">
             <div
               class="accordion-item"
-              v-for="(value, namespace) in runtimeSettings"
+              v-for="(value, namespace) in userSettings"
               :key="namespace"
             >
               <h2 class="accordion-header" :id="`heading_${namespace}`">

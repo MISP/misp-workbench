@@ -1,12 +1,12 @@
 import { defineStore } from "pinia";
 import { fetchWrapper } from "@/helpers";
 
-const baseUrl = `${import.meta.env.VITE_API_URL}/settings/runtime`;
+const baseUrl = `${import.meta.env.VITE_API_URL}/settings/user`;
 
-export const useRuntimeSettingsStore = defineStore("runtimeSettings", {
+export const useUserSettingsStore = defineStore("userSettings", {
   state: () => ({
-    runtimeSettings: {},
-    runtimeSetting: {},
+    userSettings: {},
+    userSetting: {},
     status: {
       loading: false,
       error: false,
@@ -18,7 +18,7 @@ export const useRuntimeSettingsStore = defineStore("runtimeSettings", {
       return fetchWrapper
         .get(baseUrl)
         .then((response) => {
-          this.runtimeSettings = response;
+          this.userSettings = response;
         })
         .catch((error) => {
           this.status = { error };
@@ -31,7 +31,7 @@ export const useRuntimeSettingsStore = defineStore("runtimeSettings", {
       this.status = { loading: true };
       fetchWrapper
         .get(`${baseUrl}/${namespace}`)
-        .then((runtimeSetting) => (this.runtimeSetting = runtimeSetting))
+        .then((userSetting) => (this.userSetting = userSetting))
         .catch((error) => (this.status = { error }))
         .finally(() => (this.status = { loading: false }));
     },

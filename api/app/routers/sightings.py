@@ -1,5 +1,5 @@
 import logging
-from app.auth.auth import get_current_active_user
+from app.auth.security import get_current_active_user
 from app.schemas import user as user_schemas
 from app.repositories import sightings as sightings_repository
 from fastapi import APIRouter, Security, Query, Depends, Body

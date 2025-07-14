@@ -1,7 +1,7 @@
 from datetime import timedelta
 
 from app.auth import auth
-from app.dependencies import get_db
+from app.db.session import get_db
 from app.settings import Settings, get_settings
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm

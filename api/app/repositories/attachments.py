@@ -6,7 +6,7 @@ import os
 
 
 from fastapi.responses import StreamingResponse
-from app.dependencies import get_minio_client
+from app.services.minio import get_minio_client
 from starlette import status
 import app.schemas.event as event_schemas
 from app.schemas import object as object_schemas

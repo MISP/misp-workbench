@@ -1,7 +1,7 @@
 from typing import Optional
 
-from app.auth.auth import get_current_active_user
-from app.dependencies import get_db
+from app.auth.security import get_current_active_user
+from app.db.session import get_db
 from app.repositories import modules as modules_repository
 from app.schemas import module as module_schemas
 from app.schemas import user as user_schemas

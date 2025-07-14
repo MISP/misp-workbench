@@ -3,7 +3,7 @@ import time
 from datetime import datetime
 from uuid import UUID
 
-from app.dependencies import get_opensearch_client
+from app.services.opensearch import get_opensearch_client
 from app.models import event as event_models
 from app.models import feed as feed_models
 from app.models import tag as tag_models

@@ -2,8 +2,8 @@ from typing import Optional
 
 from typing import Union
 from uuid import UUID
-from app.auth.auth import get_current_active_user
-from app.dependencies import get_db
+from app.auth.security import get_current_active_user
+from app.db.session import get_db
 from app.repositories import attributes as attributes_repository
 from app.repositories import events as events_repository
 from app.repositories import tags as tags_repository

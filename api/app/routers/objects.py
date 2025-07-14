@@ -1,8 +1,8 @@
 from uuid import UUID
 from typing import Optional
 
-from app.auth.auth import get_current_active_user
-from app.dependencies import get_db
+from app.auth.security import get_current_active_user
+from app.db.session import get_db
 from app.repositories import events as events_repository
 from app.repositories import objects as objects_repository
 from app.schemas import object as object_schemas
