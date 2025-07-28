@@ -1,3 +1,5 @@
+from typing import Union
+from uuid import UUID
 from app.auth.security import get_current_active_user
 from app.db.session import get_db
 from app.repositories import organisations as organisations_repository
@@ -25,15 +27,17 @@ def get_organisations(
     "/organisations/{organisation_id}", response_model=organisation_schemas.Organisation
 )
 def get_organisation_by_id(
-    organisation_id: int,
+    organisation_id: Union[int, UUID],
     db: Session = Depends(get_db),
     user: user_schemas.User = Security(
         get_current_active_user, scopes=["organisations:read"]
     ),
 ):
-    db_organisation = organisations_repository.get_organisation_by_id(
-        db, organisation_id=organisation_id
-    )
+    if isinstance(organisation_id, int):
+        db_organisation = organisations_repository.get_organisation_by_id(db, organisation_id=organisation_id)
+    else:
+        db_organisation = organisations_repository.get_organisation_by_uuid(db, organisation_uuid=organisation_id)
+
     if db_organisation is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Organisation not found"
