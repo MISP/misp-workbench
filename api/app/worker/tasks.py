@@ -13,6 +13,7 @@ from app.repositories import feeds as feeds_repository
 from app.repositories import servers as servers_repository
 from app.repositories import users as users_repository
 from app.repositories import correlations as correlations_repository
+from app.repositories import notifications as notifications_repository
 from app.schemas import event as event_schemas
 from celery import Celery
 from sqlalchemy import create_engine
@@ -81,10 +82,18 @@ def handle_created_event(event_uuid: uuid.UUID):
     logger.info("handling created event uuid=%s job started", event_uuid)
 
     with Session(engine) as db:
-        # TODO
-        pass
-  
+        db_event = events_repository.get_event_by_uuid(db, event_uuid)
+        if db_event is None:
+            raise Exception("Event with uuid=%s not found", event_uuid)
+
+        notifications_repository.create_new_event_notifications(
+            db,
+            event=db_event,
+            payload={"event_uuid": str(event_uuid)},
+        )
+
     return True
+
 
 @app.task
 def handle_created_attribute(attribute_id: int, object_id: int | None, event_id: int):
