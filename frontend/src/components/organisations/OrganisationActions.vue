@@ -53,9 +53,10 @@ onMounted(() => {
     ),
   );
   userSettingsStore.getAll().then(() => {
-    followed.value = userSettings.value.follow?.organisations.includes(
-      props.organisation_uuid,
-    );
+    followed.value =
+      userSettings.value.notifications?.follow?.organisations.includes(
+        props.organisation_uuid,
+      );
   });
 });
 
@@ -72,17 +73,22 @@ function handleOrganisationDeleted(event) {
 function followOrganisation() {
   followed.value = !followed.value;
 
-  const followed_organisations = userSettings.value.follow?.organisations || [];
+  const followed_organisations =
+    userSettings.value.notifications?.follow?.organisations || [];
 
   if (followed.value) {
-    userSettingsStore.update("follow", {
-      organisations: followed_organisations.concat(props.organisation_uuid),
+    userSettingsStore.update("notifications", {
+      follow: {
+        organisations: followed_organisations.concat(props.organisation_uuid),
+      },
     });
   } else {
-    userSettingsStore.update("follow", {
-      organisations: followed_organisations.filter(
-        (uuid) => uuid !== props.organisation_uuid,
-      ),
+    userSettingsStore.update("notifications", {
+      follow: {
+        organisations: followed_organisations.filter(
+          (uuid) => uuid !== props.organisation_uuid,
+        ),
+      },
     });
   }
 }
