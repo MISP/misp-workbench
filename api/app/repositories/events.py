@@ -3,6 +3,7 @@ import time
 from datetime import datetime
 from uuid import UUID
 
+from app.worker import tasks
 from app.services.opensearch import get_opensearch_client
 from app.models import event as event_models
 from app.models import feed as feed_models
@@ -118,6 +119,8 @@ def create_event(db: Session, event: event_schemas.EventCreate) -> event_models.
     db.commit()
     db.flush()
     db.refresh(db_event)
+
+    tasks.handle_created_event.delay(db_event.uuid)
 
     return db_event
 

@@ -77,6 +77,16 @@ def pull_event_by_uuid(event_uuid: uuid.UUID, server_id: int, user_id: int):
 
 
 @app.task
+def handle_created_event(event_uuid: uuid.UUID):
+    logger.info("handling created event uuid=%s job started", event_uuid)
+
+    with Session(engine) as db:
+        # TODO
+        pass
+  
+    return True
+
+@app.task
 def handle_created_attribute(attribute_id: int, object_id: int | None, event_id: int):
     logger.info("handling created attribute id=%s job started", attribute_id)
     with Session(engine) as db:

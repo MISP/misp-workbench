@@ -22,7 +22,8 @@ from app.routers import (
     correlations,
     sightings,
     runtime_settings,
-    user_settings
+    user_settings,
+    notifications
 )
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -114,5 +115,8 @@ app.include_router(runtime_settings.router, tags=["Runtime Settings"])
 
 # User Settings resource
 app.include_router(user_settings.router, tags=["User Settings"])
+
+# Notifications resource
+app.include_router(notifications.router, tags=["Notifications"])
 
 add_pagination(app)

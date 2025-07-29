@@ -18,6 +18,7 @@ class User(Base):
     organisation = relationship(
         "Organisation", backref=backref("users", cascade="all, delete-orphan")
     )
+    settings = relationship("UserSetting", lazy="subquery", cascade="all, delete-orphan")
 
     def can_create_pulled_event(self, event: MISPEvent) -> bool:
         """
