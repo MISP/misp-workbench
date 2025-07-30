@@ -8,13 +8,13 @@ from pydantic import BaseModel, ConfigDict
 class NotificationBase(BaseModel):
     user_id: int
     type: str
-    entity_type: Optional[str] = None
+    entity_type: str
     entity_uuid: UUID
     read: bool = False
     title: str
-    payload: dict = {}
-    created_at: datetime
-    updated_at: datetime
+    payload: Optional[dict] = {}
+    created_at: datetime = datetime.now()
+    updated_at: Optional[datetime] = None
 
 
 class Notification(NotificationBase):

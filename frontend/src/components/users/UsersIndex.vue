@@ -24,6 +24,7 @@ function handleUserDeleted() {
         <tr>
           <th scope="col">id</th>
           <th scope="col">email</th>
+          <th scope="col">organisation</th>
           <th scope="col">disabled</th>
           <th scope="col" class="text-end">actions</th>
         </tr>
@@ -34,6 +35,11 @@ function handleUserDeleted() {
             <RouterLink :to="`/users/${user.id}`">{{ user.id }}</RouterLink>
           </td>
           <td>{{ user.email }}</td>
+          <td>
+            <RouterLink :to="`/organisations/${user.organisation.uuid}`">
+              {{ user.organisation.name }}
+            </RouterLink>
+          </td>
           <td>{{ !!user.disabled }}</td>
           <td class="text-end">
             <div class="btn-toolbar float-end" role="toolbar">

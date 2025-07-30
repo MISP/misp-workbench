@@ -1,9 +1,23 @@
 from app.models import user as user_models
 from app.models import event as event_models
-from app.schemas import notifications as notification_schemas
+from app.models import notification as notification_models
+from app.models import organisation as organisation_models
 from sqlalchemy import text
 from sqlalchemy.orm import Session
+from datetime import datetime
 import json
+
+
+def get_user_notifications(db: Session, user_id: int):
+    return (
+        db.query(notification_models.Notification)
+        .filter(
+            notification_models.Notification.user_id == user_id,
+            notification_models.Notification.read == False,
+        )
+        .order_by(notification_models.Notification.created_at.desc())
+        .all()
+    )
 
 
 def get_followers_for_organisation(db, organisation_uuid: str):
@@ -17,7 +31,7 @@ def get_followers_for_organisation(db, organisation_uuid: str):
         FROM user_settings
         WHERE namespace = 'notifications'
         AND (value -> 'follow' -> 'organisations') @> :org_array
-    """
+        """
     )
     result = db.execute(stmt, {"org_array": json.dumps([str(organisation_uuid)])})
     user_ids = [row.user_id for row in result]
@@ -29,10 +43,19 @@ def get_followers_for_organisation(db, organisation_uuid: str):
 
 
 def create_new_event_notifications(db: Session, event: event_models.Event):
-    # create notifications for organisation followers
-    followers = get_followers_for_organisation(
-        db, organisation_uuid=event.organisation.uuid
+    """Create notifications for users following the organisation of the event."""
+
+    # get event organisation
+    organisation = (
+        db.query(organisation_models.Organisation)
+        .filter(organisation_models.Organisation.id == event.orgc_id)
+        .first()
     )
+
+    if not organisation:
+        return []
+
+    followers = get_followers_for_organisation(db, organisation_uuid=organisation.uuid)
 
     if not followers:
         return []
@@ -43,19 +66,20 @@ def create_new_event_notifications(db: Session, event: event_models.Event):
         user_id = follower.id
         payload = {
             "event_uuid": str(event.uuid),
-            "event_name": event.name,
-            "organisation_uuid": str(event.organisation.uuid),
+            "event_name": event.info,
+            "organisation_uuid": str(organisation.uuid),
         }
 
-        title = f"New event in organisation {event.organisation.name}"
-        notification = notification_schemas.Notification(
+        title = f"New event in organisation {organisation.name}"
+        notification = notification_models.Notification(
             user_id=user_id,
-            type="organisation_event",
-            entity_type="organisation",
-            entity_uuid=event.organisation.uuid,
+            type="organisation.event.new",
+            entity_type="event",
+            entity_uuid=event.uuid,
             read=False,
             title=title,
             payload=payload,
+            created_at=datetime.now(),
         )
         notifications.append(notification)
 

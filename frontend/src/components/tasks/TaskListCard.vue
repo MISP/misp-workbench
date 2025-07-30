@@ -121,6 +121,11 @@ function formatTime(ts) {
                 <li class="list-group-item">
                   <strong>Result:</strong> {{ task.result }}
                 </li>
+                <li class="list-group-item">
+                  <pre>
+                    {{ task.traceback }}
+                  </pre>
+                </li>
               </ul>
             </div>
           </div>

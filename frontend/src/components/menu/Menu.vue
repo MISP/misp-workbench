@@ -5,8 +5,8 @@ import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
 import {
   faArrowRightFromBracket,
   faBars,
+  faBell,
   faBuilding,
-  faCog,
   faEnvelopeOpenText,
   faMoon,
   faRightFromBracket,
@@ -125,7 +125,12 @@ function switchTheme() {
             <hr class="dropdown-divider" />
             <li>
               <RouterLink to="/settings/runtime" class="dropdown-item"
-                >settings</RouterLink
+                >runtime settings</RouterLink
+              >
+            </li>
+            <li>
+              <RouterLink to="/settings/user" class="dropdown-item"
+                >user settings</RouterLink
               >
             </li>
           </ul>
@@ -142,11 +147,19 @@ function switchTheme() {
         </button>
       </div>
       <div class="m-2">
-        <button type="button" class="btn btn-outline">
-          <RouterLink to="/settings/user">
-            <FontAwesomeIcon :icon="faCog" class="fa-xl" />
-          </RouterLink>
-        </button>
+        <RouterLink to="/notifications">
+          <button type="button" class="btn btn-outline position-relative">
+            <FontAwesomeIcon :icon="faBell" class="fa-xl" />
+
+            <span
+              class="position-absolute start-80 translate-middle badge rounded-pill bg-danger"
+              style="font-size: 0.65rem"
+            >
+              8
+              <span class="visually-hidden">unread notifications</span>
+            </span>
+          </button>
+        </RouterLink>
       </div>
       <form class="d-flex">
         <button
