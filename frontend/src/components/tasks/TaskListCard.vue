@@ -57,7 +57,7 @@ function formatTime(ts) {
         <span
           v-if="taskTotalSuccessCount > 0"
           class="badge bg-success fs-7 me-2"
-          >success: {{ taskTotalSuccessCount }}</span
+          >succeeded: {{ taskTotalSuccessCount }}</span
         >
         <span v-if="taskTotalFailureCount > 0" class="badge bg-danger fs-7 me-3"
           >failed: {{ taskTotalFailureCount }}</span
