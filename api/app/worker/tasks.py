@@ -86,11 +86,7 @@ def handle_created_event(event_uuid: uuid.UUID):
         if db_event is None:
             raise Exception("Event with uuid=%s not found", event_uuid)
 
-        notifications_repository.create_new_event_notifications(
-            db,
-            event=db_event,
-            payload={"event_uuid": str(event_uuid)},
-        )
+        notifications_repository.create_new_event_notifications(db, event=db_event)
 
     return True
 
