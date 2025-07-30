@@ -40,6 +40,7 @@ import {
   IndexCorrelations,
   IndexRuntimeSettings,
   IndexUserSettings,
+  IndexNotifications,
 } from "@/views";
 
 export const router = createRouter({
@@ -92,6 +93,7 @@ export const router = createRouter({
     { path: "/correlations", component: IndexCorrelations },
     { path: "/settings/runtime", component: IndexRuntimeSettings },
     { path: "/settings/user", component: IndexUserSettings },
+    { path: "/notifications", component: IndexNotifications },
   ],
 });
 

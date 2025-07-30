@@ -36,3 +36,4 @@ export { default as TasksIndex } from "./tasks/TasksIndex.vue";
 export { default as IndexCorrelations } from "./correlations/IndexCorrelations.vue";
 export { default as IndexRuntimeSettings } from "./settings/runtime/IndexRuntimeSettings.vue";
 export { default as IndexUserSettings } from "./settings/user/IndexUserSettings.vue";
+export { default as IndexNotifications } from "./notifications/IndexNotifications.vue";

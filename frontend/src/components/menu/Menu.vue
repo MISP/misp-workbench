@@ -1,6 +1,7 @@
 <script setup>
 import { ref, watchEffect } from "vue";
-import { useAuthStore } from "@/stores";
+import { storeToRefs } from "pinia";
+import { useAuthStore, useNotificationsStore } from "@/stores";
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
 import {
   faArrowRightFromBracket,
@@ -16,6 +17,13 @@ import {
 
 const visible = ref(false);
 const authStore = useAuthStore();
+
+const notificationsStore = useNotificationsStore();
+const { notifications } = storeToRefs(notificationsStore);
+
+notificationsStore.get({
+  read: false,
+});
 
 const theme = ref(localStorage.getItem("theme") || "light");
 
@@ -152,10 +160,11 @@ function switchTheme() {
             <FontAwesomeIcon :icon="faBell" class="fa-xl" />
 
             <span
+              v-if="notifications.total > 0"
               class="position-absolute start-80 translate-middle badge rounded-pill bg-danger"
               style="font-size: 0.65rem"
             >
-              8
+              {{ notifications.total }}
               <span class="visually-hidden">unread notifications</span>
             </span>
           </button>

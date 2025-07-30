@@ -2,23 +2,41 @@ from app.models import user as user_models
 from app.models import event as event_models
 from app.models import notification as notification_models
 from app.models import organisation as organisation_models
-from sqlalchemy import text
+from sqlalchemy import text, select
 from sqlalchemy.orm import Session
+from fastapi_pagination.ext.sqlalchemy import paginate
 from datetime import datetime
 import json
 
 
-def get_user_notifications(db: Session, user_id: int):
-    return (
-        db.query(notification_models.Notification)
-        .filter(
-            notification_models.Notification.user_id == user_id,
-            notification_models.Notification.read == False,
-        )
-        .order_by(notification_models.Notification.created_at.desc())
-        .all()
-    )
+def get_user_notifications(db: Session, user_id: int, params: dict = {}):
+    query = select(notification_models.Notification)
+    query = query.where(notification_models.Notification.user_id == user_id)
 
+    if params.get("type") is not None:
+        query = query.where(notification_models.Notification.type == params["type"])
+    if params.get("read") is not None:
+        query = query.where(notification_models.Notification.read == params["read"])
+
+    query = query.order_by(notification_models.Notification.created_at.desc())
+
+    return paginate(db, query)
+
+
+def mark_notification_as_read(db: Session, notification_id: int, user_id: int):
+    notification = db.query(notification_models.Notification).filter(
+        notification_models.Notification.id == notification_id,
+        notification_models.Notification.user_id == user_id
+    ).first()
+
+    if not notification:
+        return None
+
+    notification.read = True
+    db.commit()
+    db.refresh(notification)
+
+    return notification
 
 def get_followers_for_organisation(db, organisation_uuid: str):
     """
