@@ -8,6 +8,7 @@ export const useNotificationsStore = defineStore("notifications", {
   state: () => ({
     notifications: {},
     notification: {},
+    unreadNotifications: 0,
     page_count: 0,
     status: {
       loading: false,
@@ -28,6 +29,12 @@ export const useNotificationsStore = defineStore("notifications", {
         )
         .catch((error) => (this.status = { error }))
         .finally(() => (this.status = { loading: false }));
+    },
+    async getUnreadTotal() {
+      fetchWrapper
+        .get(`${baseUrl}/?read=false`)
+        .then((response) => (this.unreadNotifications = response.total))
+        .catch((error) => (this.status = { error }));
     },
     async markAsRead(id) {
       this.status = { loading: true };

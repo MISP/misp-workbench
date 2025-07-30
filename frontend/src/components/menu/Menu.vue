@@ -18,12 +18,13 @@ import {
 const visible = ref(false);
 const authStore = useAuthStore();
 
+// fetch notifications and repeat every 10 seconds
 const notificationsStore = useNotificationsStore();
-const { notifications } = storeToRefs(notificationsStore);
-
-notificationsStore.get({
-  read: false,
-});
+const { unreadNotifications } = storeToRefs(notificationsStore);
+notificationsStore.getUnreadTotal();
+setInterval(() => {
+  notificationsStore.getUnreadTotal();
+}, 10000);
 
 const theme = ref(localStorage.getItem("theme") || "light");
 
@@ -160,11 +161,11 @@ function switchTheme() {
             <FontAwesomeIcon :icon="faBell" class="fa-xl" />
 
             <span
-              v-if="notifications.total > 0"
+              v-if="unreadNotifications > 0"
               class="position-absolute start-80 translate-middle badge rounded-pill bg-danger"
               style="font-size: 0.65rem"
             >
-              {{ notifications.total }}
+              {{ unreadNotifications }}
               <span class="visually-hidden">unread notifications</span>
             </span>
           </button>
