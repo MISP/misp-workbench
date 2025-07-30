@@ -2,7 +2,7 @@ from app.models import user as user_models
 from app.models import event as event_models
 from app.schemas import notifications as notification_schemas
 from sqlalchemy import text
-
+from sqlalchemy.orm import Session
 import json
 
 
