@@ -17,7 +17,7 @@ def get_user_notifications(db: Session, user_id: int, params: dict = {}):
         query = query.where(notification_models.Notification.type == params["type"])
     if params.get("read") is not None:
         query = query.where(notification_models.Notification.read == params["read"])
-    if params.get("filter") is not None and params["filter"] is not "":
+    if params.get("filter") is not None and params["filter"] != "":
         filter_value = params["filter"]
         query = query.where(
             notification_models.Notification.title.ilike(f"%{filter_value}%") |
