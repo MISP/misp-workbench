@@ -1,8 +1,9 @@
+from typing import Union
 from app.models import user as user_models
 from app.models import event as event_models
 from app.models import notification as notification_models
 from app.models import organisation as organisation_models
-from sqlalchemy import text, select
+from sqlalchemy import text, select, update
 from sqlalchemy.orm import Session
 from fastapi_pagination.ext.sqlalchemy import paginate
 from datetime import datetime
@@ -20,8 +21,8 @@ def get_user_notifications(db: Session, user_id: int, params: dict = {}):
     if params.get("filter") is not None and params["filter"] != "":
         filter_value = params["filter"]
         query = query.where(
-            notification_models.Notification.title.ilike(f"%{filter_value}%") |
-            notification_models.Notification.type.ilike(f"%{filter_value}%")
+            notification_models.Notification.title.ilike(f"%{filter_value}%")
+            | notification_models.Notification.type.ilike(f"%{filter_value}%")
         )
 
     query = query.order_by(notification_models.Notification.created_at.desc())
@@ -29,20 +30,41 @@ def get_user_notifications(db: Session, user_id: int, params: dict = {}):
     return paginate(db, query)
 
 
-def mark_notification_as_read(db: Session, notification_id: int, user_id: int):
-    notification = db.query(notification_models.Notification).filter(
-        notification_models.Notification.id == notification_id,
-        notification_models.Notification.user_id == user_id
-    ).first()
+def mark_notification_as_read(
+    db: Session, notification_id: Union[int, str], user_id: int
+):
 
-    if not notification:
-        return None
+    if isinstance(notification_id, str) and notification_id == "all":
+        notification_id = "all"
 
-    notification.read = True
-    db.commit()
-    db.refresh(notification)
+        # update all notifications for the user
+        stmt = (
+            update(notification_models.Notification)
+            .where(notification_models.Notification.user_id == user_id)
+            .values(read=True)
+        )
 
-    return notification
+        db.execute(stmt)
+        db.commit()
+    else:
+        notification = (
+            db.query(notification_models.Notification)
+            .filter(
+                notification_models.Notification.id == notification_id,
+                notification_models.Notification.user_id == user_id,
+            )
+            .first()
+        )
+
+        if not notification:
+            return None
+
+        notification.read = True
+        db.commit()
+        db.refresh(notification)
+
+    return {"status": "success"}
+
 
 def get_followers_for_organisation(db, organisation_uuid: str):
     """

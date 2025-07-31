@@ -53,6 +53,12 @@ function handleNotificationClick(notification) {
   }
 }
 
+function markAllAsRead() {
+  notificationsStore.markAsRead("all").then(() => {
+    onPageChange(1);
+  });
+}
+
 dayjs.extend(relativeTime);
 function formatRelativeTime(dateString) {
   return dayjs(dateString).fromNow();
@@ -85,6 +91,19 @@ function formatRelativeTime(dateString) {
                 @click="showOnlyUnread = true"
               >
                 Unread
+              </button>
+            </div>
+            <div
+              class="btn-group ms-4"
+              role="group"
+              aria-label="Filter Notifications"
+            >
+              <button
+                type="button"
+                class="btn btn-outline-primary"
+                @click="markAllAsRead()"
+              >
+                Mark all as read
               </button>
             </div>
           </div>
@@ -153,7 +172,7 @@ function formatRelativeTime(dateString) {
           </tr>
         </tbody>
       </table>
-      <div v-if="notifications.items.length === 0" class="text-center">
+      <div v-if="notifications.items?.length === 0" class="text-center">
         <p>No notifications found.</p>
       </div>
       <div class="d-flex justify-content-center mt-3">

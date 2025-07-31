@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Union
 from app.auth.security import get_current_active_user
 from app.db.session import get_db
 from app.repositories import notifications as notifications_repository
@@ -40,20 +40,15 @@ async def get_my_notifications(
 
 @router.patch(
     "/notifications/{notification_id}/read",
-    response_model=notification_schemas.Notification,
 )
 async def mark_notification_as_read(
-    notification_id: int,
+    notification_id: Union[int, str],
     db: Session = Depends(get_db),
     user: user_schemas.User = Security(
         get_current_active_user, scopes=["notifications:update"]
     ),
-) -> notification_schemas.Notification:
-    notification = notifications_repository.mark_notification_as_read(db, notification_id, user.id)
-    if not notification:
-        raise HTTPException(status_code=404, detail="Notification not found or not accessible")
-    
-    return notification
+):
+    return notifications_repository.mark_notification_as_read(db, notification_id, user.id)
 
 
 # @router.get(
