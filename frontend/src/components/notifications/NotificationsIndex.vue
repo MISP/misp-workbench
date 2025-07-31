@@ -4,12 +4,15 @@ import { router } from "@/router";
 import { storeToRefs } from "pinia";
 import Spinner from "@/components/misc/Spinner.vue";
 import NotificationActions from "@/components/notifications/NotificationActions.vue";
+import NotificationText from "@/components/notifications/NotificationText.vue";
 import Paginate from "vuejs-paginate-next";
 import { useNotificationsStore } from "@/stores";
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
 import { faMagnifyingGlass } from "@fortawesome/free-solid-svg-icons";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
+import utc from "dayjs/plugin/utc";
+import timezone from "dayjs/plugin/timezone";
 
 const searchTerm = ref("");
 const showOnlyUnread = ref(false);
@@ -59,9 +62,12 @@ function markAllAsRead() {
   });
 }
 
+dayjs.extend(utc);
+dayjs.extend(timezone);
 dayjs.extend(relativeTime);
 function formatRelativeTime(dateString) {
-  return dayjs(dateString).fromNow();
+  const adjustedDate = dayjs.utc(dateString).tz(dayjs.tz.guess());
+  return adjustedDate.fromNow();
 }
 </script>
 
@@ -146,7 +152,7 @@ function formatRelativeTime(dateString) {
               @click="handleNotificationClick(notification)"
               style="cursor: pointer"
             >
-              {{ notification.title }}
+              <NotificationText :notification="notification" />
             </td>
             <td
               @click="handleNotificationClick(notification)"
@@ -167,7 +173,10 @@ function formatRelativeTime(dateString) {
               </span>
             </td>
             <td>
-              <NotificationActions :notification="notification" />
+              <NotificationActions
+                :notification="notification"
+                @notification-unfollowed="onPageChange(1)"
+              />
             </td>
           </tr>
         </tbody>

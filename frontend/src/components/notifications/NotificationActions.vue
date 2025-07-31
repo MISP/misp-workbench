@@ -1,12 +1,17 @@
 <script setup>
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
 import { faBellSlash } from "@fortawesome/free-solid-svg-icons";
+import { useNotificationsStore } from "@/stores";
+
+const notificationsStore = useNotificationsStore();
 
 const props = defineProps(["notification"]);
 const emit = defineEmits(["notification-unfollowed"]);
 
 function unfollowNotification() {
-  emit("notification-unfollowed", props.notification.id);
+  notificationsStore.unfollow(props.notification.id).then(() => {
+    emit("notification-unfollowed", props.notification.id);
+  });
 }
 </script>
 

@@ -40,9 +40,13 @@ export const useNotificationsStore = defineStore("notifications", {
       this.status = { loading: true };
       fetchWrapper
         .patch(`${baseUrl}/${id}/read`)
-        .then((response) => {
-          this.notification = response;
-        })
+        .catch((error) => (this.status = { error }))
+        .finally(() => (this.status = { loading: false }));
+    },
+    async unfollow(id) {
+      this.status = { loading: true };
+      fetchWrapper
+        .patch(`${baseUrl}/${id}/unfollow`)
         .catch((error) => (this.status = { error }))
         .finally(() => (this.status = { loading: false }));
     },
