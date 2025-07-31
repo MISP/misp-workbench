@@ -8,6 +8,7 @@ from fastapi import (
     APIRouter,
     Depends,
     Security,
+    HTTPException
 )
 from sqlalchemy.orm import Session
 from fastapi_pagination import Page
@@ -18,8 +19,9 @@ router = APIRouter()
 async def get_notification_parameters(
     read: Optional[bool] = None,
     type: Optional[str] = None,
+    filter: Optional[str] = None
 ):
-    return {"type": type, "read": read}
+    return {"type": type, "read": read, "filter": filter}
 
 
 @router.get(
@@ -54,17 +56,17 @@ async def mark_notification_as_read(
     return notification
 
 
-@router.get(
-    "/notifications/followers/organisation/{organisation_uuid}",
-    response_model=list[user_schemas.User],
-)
-async def get_users_following_organisation(
-    organisation_uuid: str,
-    db: Session = Depends(get_db),
-    user: user_schemas.User = Security(
-        get_current_active_user, scopes=["notifications:admin    "]
-    ),
-) -> list[user_schemas.User]:
-    return notifications_repository.get_followers_for_organisation(
-        db, organisation_uuid=organisation_uuid
-    )
+# @router.get(
+#     "/notifications/followers/organisation/{organisation_uuid}",
+#     response_model=list[user_schemas.User],
+# )
+# async def get_users_following_organisation(
+#     organisation_uuid: str,
+#     db: Session = Depends(get_db),
+#     user: user_schemas.User = Security(
+#         get_current_active_user, scopes=["notifications:admin"]
+#     ),
+# ) -> list[user_schemas.User]:
+#     return notifications_repository.get_followers_for_organisation(
+#         db, organisation_uuid=organisation_uuid
+#     )

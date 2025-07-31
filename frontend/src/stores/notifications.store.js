@@ -32,7 +32,7 @@ export const useNotificationsStore = defineStore("notifications", {
     },
     async getUnreadTotal() {
       fetchWrapper
-        .get(`${baseUrl}/?read=false`)
+        .get(`${baseUrl}/?read=false&size=1&page=1`)
         .then((response) => (this.unreadNotifications = response.total))
         .catch((error) => (this.status = { error }));
     },

@@ -1,8 +1,17 @@
 <script setup>
+import { ref, watch } from "vue";
 import { storeToRefs } from "pinia";
 import Spinner from "@/components/misc/Spinner.vue";
+import NotificationActions from "@/components/notifications/NotificationActions.vue";
 import Paginate from "vuejs-paginate-next";
 import { useNotificationsStore } from "@/stores";
+import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
+import { faMagnifyingGlass } from "@fortawesome/free-solid-svg-icons";
+import dayjs from "dayjs";
+import relativeTime from "dayjs/plugin/relativeTime";
+
+const searchTerm = ref("");
+const showOnlyUnread = ref(false);
 
 const notificationsStore = useNotificationsStore();
 const { notifications, status, page_count } = storeToRefs(notificationsStore);
@@ -11,54 +20,141 @@ function onPageChange(page) {
   notificationsStore.get({
     page: page,
     size: props.page_size,
+    filter: searchTerm.value,
   });
 }
 onPageChange(1);
 
+watch(showOnlyUnread, (newValue) => {
+  const params = {
+    page: 1,
+    size: props.page_size,
+    filter: searchTerm.value,
+  };
+  if (newValue) {
+    params.read = false;
+  }
+  notificationsStore.get({
+    ...params,
+  });
+});
+
 function handleNotificationClick(notification) {
   notificationsStore.markAsRead(notification.id).then(() => {
-    // Optionally, you can refresh the notifications list or handle UI updates here
     notification.read = true;
   });
+}
+
+dayjs.extend(relativeTime);
+function formatRelativeTime(dateString) {
+  return dayjs(dateString).fromNow();
 }
 </script>
 
 <template>
-  <Spinner v-if="status.loading" />
-  <div v-if="status.error" class="text-danger">
-    Error loading notifications: {{ status.error }}
-  </div>
-  <div class="table-responsive-sm">
-    <table v-show="!status.loading" class="table border table-hover">
-      <tbody>
-        <tr
-          :key="notification.id"
-          v-for="notification in notifications.items"
-          :class="{
-            'fw-bold': !notification.read,
-            'fw-lighter': notification.read,
-          }"
-          @click="handleNotificationClick(notification)"
-          style="cursor: pointer"
-        >
-          <td>
-            {{ notification.title }}
-          </td>
-          <td>
-            {{ notification.type }}
-          </td>
-          <td>
-            {{ notification.created_at }}
-          </td>
-        </tr>
-      </tbody>
-    </table>
-    <div class="d-flex justify-content-center mt-3">
-      <Paginate
-        v-if="page_count > 1"
-        :page-count="page_count"
-        :click-handler="onPageChange"
-      />
+  <div class="container">
+    <nav class="navbar">
+      <div class="container-fluid">
+        <div class="navbar-brand">
+          <div class="input-group d-flex fs-5 mt-1">
+            <div
+              class="btn-group"
+              role="group"
+              aria-label="Filter Notifications"
+            >
+              <button
+                type="button"
+                class="btn btn-outline-secondary"
+                :class="{ active: !showOnlyUnread }"
+                @click="showOnlyUnread = false"
+              >
+                All
+              </button>
+              <button
+                type="button"
+                class="btn btn-outline-secondary"
+                :class="{ active: showOnlyUnread }"
+                @click="showOnlyUnread = true"
+              >
+                Unread
+              </button>
+            </div>
+          </div>
+        </div>
+        <form class="d-flex" role="search" @submit.prevent="onPageChange(1)">
+          <div class="input-group d-flex">
+            <input
+              type="text"
+              class="form-control"
+              v-model="searchTerm"
+              placeholder="Search"
+            />
+            <span
+              class="input-group-text"
+              @click="onPageChange(1)"
+              style="cursor: pointer"
+            >
+              <FontAwesomeIcon :icon="faMagnifyingGlass" />
+            </span>
+          </div>
+        </form>
+      </div>
+    </nav>
+
+    <div v-if="status.error" class="text-danger">
+      Error loading notifications: {{ status.error }}
+    </div>
+    <div class="table-responsive-sm">
+      <table v-show="!status.loading" class="table border table-hover">
+        <tbody>
+          <tr
+            :key="notification.id"
+            v-for="notification in notifications.items"
+            :class="{
+              'fw-bold': !notification.read,
+              'fw-lighter': notification.read,
+            }"
+          >
+            <td
+              @click="handleNotificationClick(notification)"
+              style="cursor: pointer"
+            >
+              {{ notification.title }}
+            </td>
+            <td
+              @click="handleNotificationClick(notification)"
+              style="cursor: pointer"
+            >
+              {{ notification.type }}
+            </td>
+            <td
+              @click="handleNotificationClick(notification)"
+              style="cursor: pointer"
+            >
+              <span
+                data-toggle="tooltip"
+                data-placement="top"
+                :title="notification.created_at"
+              >
+                {{ formatRelativeTime(notification.created_at) }}
+              </span>
+            </td>
+            <td>
+              <NotificationActions :notification="notification" />
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      <div v-if="notifications.items.length === 0" class="text-center">
+        <p>No notifications found.</p>
+      </div>
+      <div class="d-flex justify-content-center mt-3">
+        <Paginate
+          v-if="page_count > 1"
+          :page-count="page_count"
+          :click-handler="onPageChange"
+        />
+      </div>
     </div>
   </div>
   <Spinner v-if="status.loading" />
