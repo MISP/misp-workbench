@@ -1,5 +1,6 @@
 <script setup>
 import { ref, watch } from "vue";
+import { router } from "@/router";
 import { storeToRefs } from "pinia";
 import Spinner from "@/components/misc/Spinner.vue";
 import NotificationActions from "@/components/notifications/NotificationActions.vue";
@@ -43,6 +44,13 @@ function handleNotificationClick(notification) {
   notificationsStore.markAsRead(notification.id).then(() => {
     notification.read = true;
   });
+
+  if (notification.type.startsWith("organisation.event")) {
+    router.push(`/events/${notification.entity_uuid}`);
+  }
+  if (notification.type.startsWith("organisation.user")) {
+    router.push(`/users/${notification.entity_uuid}`);
+  }
 }
 
 dayjs.extend(relativeTime);
