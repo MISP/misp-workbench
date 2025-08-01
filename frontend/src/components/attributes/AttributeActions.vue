@@ -125,7 +125,7 @@ function handleAttributeEnriched() {
       <RouterLink
         v-if="actions.view"
         :to="`/attributes/${attribute.id}`"
-        class="btn btn-outline-primary"
+        class="btn btn-outline-primary btn-sm"
         data-placement="top"
         data-toggle="tooltip"
         title="View Attribute"
@@ -135,7 +135,7 @@ function handleAttributeEnriched() {
       <button
         v-if="actions.enrich"
         type="button"
-        class="btn btn-outline-primary"
+        class="btn btn-outline-primary btn-sm"
         @click="openEnrichAttributeModal"
         data-placement="top"
         data-toggle="tooltip"
@@ -146,7 +146,7 @@ function handleAttributeEnriched() {
       <RouterLink
         v-if="actions.update"
         :to="`/attributes/update/${attribute.id}`"
-        class="btn btn-outline-primary"
+        class="btn btn-outline-primary btn-sm"
         data-placement="top"
         data-toggle="tooltip"
         title="Update Attribute"
@@ -158,7 +158,7 @@ function handleAttributeEnriched() {
       <button
         v-if="actions.delete"
         type="button"
-        class="btn btn-danger"
+        class="btn btn-danger btn-sm"
         @click="openDeleteAttributeModal"
         data-placement="top"
         data-toggle="tooltip"

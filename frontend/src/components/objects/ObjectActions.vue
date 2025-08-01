@@ -59,19 +59,22 @@ function handleObjectDeleted() {
       role="group"
       aria-label="Object Actions"
     >
-      <RouterLink :to="`/objects/${object.id}`" class="btn btn-outline-primary">
+      <RouterLink
+        :to="`/objects/${object.id}`"
+        class="btn btn-outline-primary btn-sm"
+      >
         <font-awesome-icon icon="fa-solid fa-eye" />
       </RouterLink>
       <!-- <button
         type="button"
-        class="btn btn-outline-primary"
+        class="btn btn-outline-primary btn-sm"
         @click="openEnrichObjectModal"
       >
         <font-awesome-icon icon="fa-solid fa-magic-wand-sparkles" />
       </button> -->
       <RouterLink
         :to="`/objects/update/${object.id}`"
-        class="btn btn-outline-primary"
+        class="btn btn-outline-primary btn-sm"
       >
         <font-awesome-icon icon="fa-solid fa-pen" />
       </RouterLink>

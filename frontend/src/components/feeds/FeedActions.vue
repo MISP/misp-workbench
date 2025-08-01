@@ -50,7 +50,7 @@ function fetchFeed(feed) {
       <div class="flex-wrap btn-group me-2" aria-label="Sync Actions">
         <button
           type="button"
-          class="btn btn-outline-primary"
+          class="btn btn-outline-primary btn-sm"
           data-placement="top"
           title="Fetch"
           @click="fetchFeed(feed)"
@@ -60,7 +60,7 @@ function fetchFeed(feed) {
         </button>
         <button
           type="button"
-          class="btn btn-outline-primary"
+          class="btn btn-outline-primary btn-sm"
           data-toggle="tooltip"
           data-placement="top"
           title="Preview"
@@ -77,12 +77,15 @@ function fetchFeed(feed) {
         role="group"
         aria-label="Feed Actions"
       >
-        <RouterLink :to="`/feeds/${feed.id}`" class="btn btn-outline-primary">
+        <RouterLink
+          :to="`/feeds/${feed.id}`"
+          class="btn btn-outline-primary btn-sm"
+        >
           <font-awesome-icon icon="fa-solid fa-eye" />
         </RouterLink>
         <RouterLink
           :to="`/feeds/update/${feed.id}`"
-          class="btn btn-outline-primary"
+          class="btn btn-outline-primary btn-sm"
         >
           <font-awesome-icon icon="fa-solid fa-pen" />
         </RouterLink>
@@ -90,7 +93,7 @@ function fetchFeed(feed) {
       <div class="btn-group me-2" role="group">
         <button
           type="button"
-          class="btn btn-danger"
+          class="btn btn-danger btn-sm"
           @click="openDeleteFeedModal"
         >
           <font-awesome-icon icon="fa-solid fa-trash" />

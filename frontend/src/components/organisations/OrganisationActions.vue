@@ -110,7 +110,7 @@ function followOrganisation() {
       <RouterLink
         v-if="actions.view"
         :to="`/organisations/${organisation_uuid}`"
-        class="btn btn-outline-primary"
+        class="btn btn-outline-primary btn-sm"
         data-placement="top"
         data-toggle="tooltip"
         title="View Organisation"
@@ -120,7 +120,7 @@ function followOrganisation() {
       <RouterLink
         v-if="actions.update"
         :to="`/organisations/update/${organisation_uuid}`"
-        class="btn btn-outline-primary"
+        class="btn btn-outline-primary btn-sm"
         data-placement="top"
         data-toggle="tooltip"
         title="Update Organisation"
@@ -131,7 +131,7 @@ function followOrganisation() {
     <div class="btn-group me-2" role="group">
       <button
         type="button"
-        class="btn btn-outline-primary"
+        class="btn btn-outline-primary btn-sm"
         data-placement="top"
         data-toggle="tooltip"
         title="Follow Organisation"
@@ -154,7 +154,7 @@ function followOrganisation() {
       <button
         v-if="actions.delete"
         type="button"
-        class="btn btn-danger"
+        class="btn btn-danger btn-sm"
         data-placement="top"
         data-toggle="tooltip"
         title="Delete Organisation"

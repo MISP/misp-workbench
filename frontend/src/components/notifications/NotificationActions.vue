@@ -30,7 +30,7 @@ function unfollowNotification() {
     >
       <button
         type="button"
-        class="btn btn-outline-primary"
+        class="btn btn-outline-primary btn-sm"
         @click="unfollowNotification"
       >
         <FontAwesomeIcon :icon="faBellSlash" />

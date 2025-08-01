@@ -85,7 +85,7 @@ function indexEventDocument() {
       <RouterLink
         v-if="actions.view"
         :to="`/events/${event_uuid}`"
-        class="btn btn-outline-primary"
+        class="btn btn-outline-primary btn-sm"
         data-placement="top"
         data-toggle="tooltip"
         title="View Event"
@@ -95,7 +95,7 @@ function indexEventDocument() {
       <RouterLink
         v-if="actions.update"
         :to="`/events/update/${event_uuid}`"
-        class="btn btn-outline-primary"
+        class="btn btn-outline-primary btn-sm"
         data-placement="top"
         data-toggle="tooltip"
         title="Update Event"
@@ -108,7 +108,7 @@ function indexEventDocument() {
         v-if="actions.index"
         :disabled="status.indexing"
         type="button"
-        class="btn btn-outline-primary"
+        class="btn btn-outline-primary btn-sm"
         data-placement="top"
         data-toggle="tooltip"
         title="Index Event"
@@ -122,7 +122,7 @@ function indexEventDocument() {
       <button
         v-if="actions.delete"
         type="button"
-        class="btn btn-danger"
+        class="btn btn-danger btn-sm"
         data-placement="top"
         data-toggle="tooltip"
         title="Delete Event"
