@@ -24,9 +24,11 @@ def set_user_setting(db: Session, user_id: str, namespace: str, value: dict):
         setting.value = value
     else:
         setting = user_settings_models.UserSetting(user_id=user_id, namespace=namespace, value=value)
-        db.add(setting)
+    
+    db.add(setting)
     db.commit()
     db.refresh(setting)
+    
     return setting
 
 

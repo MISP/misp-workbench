@@ -1,13 +1,15 @@
 from typing import Union
 from app.models import user as user_models
-from app.models import event as event_models
 from app.models import notification as notification_models
 from app.models import organisation as organisation_models
-from sqlalchemy import text, select, update
+from app.models import event as event_models
+from app.repositories import user_settings as user_settings_repository
+from sqlalchemy import select, update, text
 from sqlalchemy.orm import Session
 from fastapi_pagination.ext.sqlalchemy import paginate
 from datetime import datetime
 import json
+import copy
 
 
 def get_user_notifications(db: Session, user_id: int, params: dict = {}):
@@ -66,6 +68,34 @@ def mark_notification_as_read(
     return {"status": "success"}
 
 
+def unfollow_notification(db: Session, notification_id: int, user_id: int):
+
+    notification = (
+        db.query(notification_models.Notification)
+        .filter(
+            notification_models.Notification.id == notification_id,
+            notification_models.Notification.user_id == user_id,
+        )
+        .first()
+    )
+
+    if not notification:
+        return None
+
+    if notification.type.startswith("organisation"):
+        unfollow_organisation_notifications(
+            db,
+            organisation_uuid=notification.payload.get("organisation_uuid"),
+            user_id=user_id,
+        )
+
+    # delete the notification
+    db.delete(notification)
+    db.commit()
+
+    return {"status": "success"}
+
+
 def get_followers_for_organisation(db, organisation_uuid: str):
     """
     Get all users who follow the organisation of the given event.
@@ -116,7 +146,7 @@ def create_new_event_notifications(db: Session, event: event_models.Event):
             "organisation_uuid": str(organisation.uuid),
         }
 
-        title = f"New event in organisation {organisation.name}"
+        title = f"new event from {organisation.name}"
         notification = notification_models.Notification(
             user_id=user_id,
             type="organisation.event.new",
@@ -133,3 +163,35 @@ def create_new_event_notifications(db: Session, event: event_models.Event):
     db.commit()
 
     return notifications
+
+
+def unfollow_organisation_notifications(
+    db: Session, organisation_uuid: str, user_id: int
+):
+    """
+    Unfollow notifications for a specific organisation.
+    """
+
+    user_settings = user_settings_repository.get_user_setting(
+        db, user_id, "notifications"
+    )
+    if not user_settings:
+        return {"status": "error", "message": "User settings not found"}
+
+    if organisation_uuid not in user_settings.value.get("follow", {}).get(
+        "organisations", []
+    ):
+        return {
+            "status": "error",
+            "message": "User is not following this organisation",
+        }
+
+    orgs = user_settings.value.get("follow", {}).get("organisations", [])
+    updated_orgs = [str(o) for o in orgs if str(o) != organisation_uuid]
+
+    updated_value = copy.deepcopy(user_settings.value)
+    updated_value["follow"]["organisations"] = updated_orgs
+
+    user_settings_repository.set_user_setting(
+        db, user_id, "notifications", updated_value
+    )

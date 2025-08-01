@@ -90,3 +90,4 @@ class Event(Base):
     objects = relationship("Object", lazy="subquery", cascade="all, delete-orphan")
     sharing_group = relationship("SharingGroup", lazy="joined")
     tags = relationship("Tag", secondary="event_tags", lazy="joined")
+    organisation = relationship("Organisation", lazy="joined", uselist=False, foreign_keys=[org_id])
