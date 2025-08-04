@@ -54,6 +54,9 @@ function handleNotificationClick(notification) {
   if (notification.type.startsWith("organisation.user")) {
     router.push(`/users/${notification.entity_uuid}`);
   }
+  if (notification.type.startsWith("event.attribute")) {
+    router.push(`/attributes/${notification.entity_uuid}`);
+  }
 }
 
 function markAllAsRead() {
