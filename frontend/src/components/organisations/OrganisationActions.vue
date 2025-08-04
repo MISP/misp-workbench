@@ -79,12 +79,14 @@ function followOrganisation() {
   if (followed.value) {
     userSettingsStore.update("notifications", {
       follow: {
+        ...userSettings.value.notifications?.follow,
         organisations: followed_organisations.concat(props.organisation_uuid),
       },
     });
   } else {
     userSettingsStore.update("notifications", {
       follow: {
+        ...userSettings.value.notifications?.follow,
         organisations: followed_organisations.filter(
           (uuid) => uuid !== props.organisation_uuid,
         ),

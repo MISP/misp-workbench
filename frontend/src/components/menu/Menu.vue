@@ -145,7 +145,7 @@ function switchTheme() {
           </ul>
         </div>
       </div>
-      <div class="m-2">
+      <div>
         <button type="button" class="btn btn-outline" @click="switchTheme">
           <FontAwesomeIcon
             v-if="theme == 'light'"

@@ -3,7 +3,7 @@ import { authHelper } from "@/helpers";
 import { ref, computed, onMounted } from "vue";
 import { Modal } from "bootstrap";
 import { storeToRefs } from "pinia";
-import { useAuthStore, useEventsStore } from "@/stores";
+import { useAuthStore, useEventsStore, useUserSettingsStore } from "@/stores";
 import DeleteEventModal from "@/components/events/DeleteEventModal.vue";
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
 import {
@@ -12,6 +12,7 @@ import {
   faPen,
   faFileArrowUp,
   faSync,
+  faBookmark,
 } from "@fortawesome/free-solid-svg-icons";
 
 const authStore = useAuthStore();
@@ -19,6 +20,11 @@ const { scopes } = storeToRefs(authStore);
 
 const eventsStore = useEventsStore();
 const { status } = storeToRefs(eventsStore);
+
+const userSettingsStore = useUserSettingsStore();
+const { userSettings } = storeToRefs(userSettingsStore);
+
+const followed = ref(false);
 
 const props = defineProps({
   event_uuid: String,
@@ -52,6 +58,11 @@ onMounted(() => {
   deleteEventModal.value = new Modal(
     document.getElementById(`deleteEventModal_${props.event_uuid}`),
   );
+  userSettingsStore.getAll().then(() => {
+    followed.value = userSettings.value.notifications?.follow?.events.includes(
+      props.event_uuid,
+    );
+  });
 });
 
 function openDeleteEventModal() {
@@ -66,6 +77,29 @@ function handleEventDeleted(event) {
 
 function indexEventDocument() {
   eventsStore.forceIndex(props.event_uuid);
+}
+
+function followEvent() {
+  followed.value = !followed.value;
+
+  const followed_events =
+    userSettings.value.notifications?.follow?.events || [];
+
+  if (followed.value) {
+    userSettingsStore.update("notifications", {
+      follow: {
+        ...userSettings.value.notifications?.follow,
+        events: followed_events.concat(props.event_uuid),
+      },
+    });
+  } else {
+    userSettingsStore.update("notifications", {
+      follow: {
+        ...userSettings.value.notifications?.follow,
+        events: followed_events.filter((uuid) => uuid !== props.event_uuid),
+      },
+    });
+  }
 }
 </script>
 
@@ -116,6 +150,26 @@ function indexEventDocument() {
       >
         <FontAwesomeIcon v-if="!status.indexing" :icon="faFileArrowUp" />
         <FontAwesomeIcon v-if="status.indexing" :icon="faSync" spin />
+      </button>
+      <button
+        type="button"
+        class="btn btn-outline-primary btn-sm"
+        data-placement="top"
+        data-toggle="tooltip"
+        title="Follow Event"
+        @click="followEvent"
+      >
+        <FontAwesomeIcon
+          v-if="!followed"
+          :icon="faBookmark"
+          :inverse="true"
+          class="text-light"
+        />
+        <FontAwesomeIcon
+          v-if="followed"
+          :icon="faBookmark"
+          class="text-success"
+        />
       </button>
     </div>
     <div class="btn-group me-2" role="group">
