@@ -13,6 +13,7 @@ from app.repositories import feeds as feeds_repository
 from app.repositories import servers as servers_repository
 from app.repositories import users as users_repository
 from app.repositories import correlations as correlations_repository
+from app.repositories import attributes as attributes_repository
 from app.repositories import notifications as notifications_repository
 from app.schemas import event as event_schemas
 from celery import Celery
@@ -70,7 +71,9 @@ def pull_event_by_uuid(event_uuid: uuid.UUID, server_id: int, user_id: int):
         db_event = servers_repository.pull_event_by_uuid(
             db, event_uuid, server, user, get_settings()
         )
+        
         notifications_repository.create_new_event_notifications(db, event=db_event)
+        
         logger.info(
             "pull event uuid=%s from server id=%s, job finished", event_uuid, server_id
         )
@@ -98,6 +101,9 @@ def handle_created_attribute(attribute_id: int, object_id: int | None, event_id:
     with Session(engine) as db:
         if object_id is None:
             events_repository.increment_attribute_count(db, event_id)
+
+    db_attribute = attributes_repository.get_attribute_by_id(db, attribute_id)
+    notifications_repository.create_new_attribute_notifications(db, attribute=db_attribute)
 
     return True
 

@@ -3,6 +3,7 @@ from app.models import user as user_models
 from app.models import notification as notification_models
 from app.models import organisation as organisation_models
 from app.models import event as event_models
+from app.models import attribute as attribute_models
 from app.repositories import user_settings as user_settings_repository
 from sqlalchemy import select, update, text
 from sqlalchemy.orm import Session
@@ -82,12 +83,23 @@ def unfollow_notification(db: Session, notification_id: int, user_id: int):
     if not notification:
         return None
 
-    if notification.type.startswith("organisation"):
-        unfollow_organisation_notifications(
-            db,
-            organisation_uuid=notification.payload.get("organisation_uuid"),
-            user_id=user_id,
-        )
+    follow_key = ""
+    uuid = ""
+    if notification.type.startswith("event"):
+        follow_key = "events"
+        uuid = notification.payload.get("event_uuid")
+    elif notification.type.startswith("organisation"):
+        follow_key = "organisations"
+        uuid = notification.payload.get("organisation_uuid")
+    else:
+        return {"status": "error", "message": "Unsupported notification type"}
+
+    unfollow_notifications(
+        db,
+        follow_key=follow_key,
+        uuid=uuid,
+        user_id=user_id,
+    )
 
     # delete the notification
     db.delete(notification)
@@ -96,22 +108,35 @@ def unfollow_notification(db: Session, notification_id: int, user_id: int):
     return {"status": "success"}
 
 
-def get_followers_for_organisation(db, organisation_uuid: str):
+def get_followers_for(db, follow_key: str, uuid: str):
     """
-    Get all users who follow the organisation of the given event.
-    """
+    Get all users who follow a specific organisation or event.
 
+    Args:
+        db: Database session.
+        follow_key: 'organisations' or 'events'.
+        uuid: The UUID of the organisation or event.
+
+    Returns:
+        List of User objects.
+    """
     stmt = text(
-        """
+        f"""
         SELECT user_id
         FROM user_settings
         WHERE namespace = 'notifications'
-        AND (value -> 'follow' -> 'organisations') @> :org_array
+        AND (value -> 'follow' -> :key) @> :uuid_array
         """
     )
-    result = db.execute(stmt, {"org_array": json.dumps([str(organisation_uuid)])})
-    user_ids = [row.user_id for row in result]
+    result = db.execute(
+        stmt,
+        {
+            "key": follow_key,
+            "uuid_array": json.dumps([str(uuid)]),
+        },
+    )
 
+    user_ids = [row.user_id for row in result]
     if not user_ids:
         return []
 
@@ -131,7 +156,7 @@ def create_new_event_notifications(db: Session, event: event_models.Event):
     if not organisation:
         return []
 
-    followers = get_followers_for_organisation(db, organisation_uuid=organisation.uuid)
+    followers = get_followers_for(db, "organisations", organisation.uuid)
 
     if not followers:
         return []
@@ -144,9 +169,10 @@ def create_new_event_notifications(db: Session, event: event_models.Event):
             "event_uuid": str(event.uuid),
             "event_name": event.info,
             "organisation_uuid": str(organisation.uuid),
+            "organisation_name": organisation.name,
         }
 
-        title = f"new event from {organisation.name}"
+        title = f"new event"
         notification = notification_models.Notification(
             user_id=user_id,
             type="organisation.event.new",
@@ -165,33 +191,88 @@ def create_new_event_notifications(db: Session, event: event_models.Event):
     return notifications
 
 
-def unfollow_organisation_notifications(
-    db: Session, organisation_uuid: str, user_id: int
-):
+def unfollow_notifications(db: Session, follow_key: str, uuid: str, user_id: int):
     """
-    Unfollow notifications for a specific organisation.
-    """
+    Unfollow notifications for a specific organisation or event.
 
+    Args:
+        db: SQLAlchemy session
+        follow_key: 'organisations' or 'events'
+        uuid: UUID of the organisation or event
+        user_id: ID of the user
+    """
     user_settings = user_settings_repository.get_user_setting(
         db, user_id, "notifications"
     )
     if not user_settings:
         return {"status": "error", "message": "User settings not found"}
 
-    if organisation_uuid not in user_settings.value.get("follow", {}).get(
-        "organisations", []
-    ):
+    followed_items = user_settings.value.get("follow", {}).get(follow_key, [])
+
+    if uuid not in followed_items:
         return {
             "status": "error",
-            "message": "User is not following this organisation",
+            "message": f"User is not following this {follow_key[:-1]}",
         }
 
-    orgs = user_settings.value.get("follow", {}).get("organisations", [])
-    updated_orgs = [str(o) for o in orgs if str(o) != organisation_uuid]
+    updated_items = [str(i) for i in followed_items if str(i) != uuid]
 
     updated_value = copy.deepcopy(user_settings.value)
-    updated_value["follow"]["organisations"] = updated_orgs
+    updated_value.setdefault("follow", {})[follow_key] = updated_items
 
     user_settings_repository.set_user_setting(
         db, user_id, "notifications", updated_value
     )
+
+    return {"status": "success"}
+
+
+def create_new_attribute_notifications(
+    db: Session, attribute: attribute_models.Attribute
+):
+    """Create notifications for users following event of the attribute."""
+
+    # get event
+    event = (
+        db.query(event_models.Event)
+        .filter(event_models.Event.id == attribute.event_id)
+        .first()
+    )
+
+    if not event:
+        return []
+
+    followers = get_followers_for(db, "events", event.uuid)
+
+    if not followers:
+        return []
+
+    notifications = []
+
+    for follower in followers:
+        user_id = follower.id
+        payload = {
+            "event_uuid": str(event.uuid),
+            "event_title": event.info,
+            "attribute_value": attribute.value[:10],
+            "attribute_type": attribute.type,
+            "organisation_uuid": str(event.orgc_id),
+        }
+
+        title = f"new attribute"
+        notification = notification_models.Notification(
+            user_id=user_id,
+            type="event.attribute.new",
+            entity_type="attribute",
+            entity_uuid=attribute.uuid,
+            read=False,
+            title=title,
+            payload=payload,
+            created_at=datetime.now(),
+        )
+        notifications.append(notification)
+
+    db.add_all(notifications)
+    db.commit()
+
+    return notifications
