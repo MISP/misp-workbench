@@ -67,9 +67,10 @@ def pull_event_by_uuid(event_uuid: uuid.UUID, server_id: int, user_id: int):
         if server is None:
             raise Exception("Server not found")
 
-        servers_repository.pull_event_by_uuid(
+        db_event = servers_repository.pull_event_by_uuid(
             db, event_uuid, server, user, get_settings()
         )
+        notifications_repository.create_new_event_notifications(db, event=db_event)
         logger.info(
             "pull event uuid=%s from server id=%s, job finished", event_uuid, server_id
         )
