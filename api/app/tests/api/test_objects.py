@@ -44,7 +44,7 @@ class TestObjectsResource(ApiTester):
         response = client.post(
             "/objects/",
             json={
-                "event_id": event_1.id,
+                "event_uuid": event_1.uuid,
                 "name": "test object",
                 "template_version": 0,
                 "timestamp": 1655283899,
@@ -68,7 +68,7 @@ class TestObjectsResource(ApiTester):
         response = client.post(
             "/objects/",
             json={
-                "event_id": event_1.id,
+                "event_uuid": event_1.uuid,
                 "name": "test object",
                 "template_version": 0,
                 "timestamp": 1655283899,
@@ -86,7 +86,7 @@ class TestObjectsResource(ApiTester):
         response = client.post(
             "/objects/",
             json={
-                "event_id": event_1.id,
+                "event_uuid": event_1.uuid,
             },
             headers={"Authorization": "Bearer " + auth_token},
         )
