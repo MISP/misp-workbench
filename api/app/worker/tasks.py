@@ -109,6 +109,19 @@ def handle_updated_event(event_uuid: uuid.UUID):
     return True
 
 @app.task
+def handle_deleted_event(event_uuid: uuid.UUID):
+    logger.info("handling deleted event uuid=%s job started", event_uuid)
+
+    with Session(engine) as db:
+        db_event = events_repository.get_event_by_uuid(db, event_uuid)
+        if db_event is None:
+            raise Exception("Event with uuid=%s not found", event_uuid)
+
+        notifications_repository.create_event_notifications(db, "deleted", event=db_event)
+
+    return True
+
+@app.task
 def handle_created_attribute(attribute_id: int, object_id: int | None, event_id: int):
     logger.info("handling created attribute id=%s job started", attribute_id)
     with Session(engine) as db:

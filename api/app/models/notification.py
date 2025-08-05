@@ -19,7 +19,6 @@ class Notification(Base):
     entity_type = Column(String(255))
     entity_uuid = Column(UUID(as_uuid=True), unique=False, nullable=False)
     read = Column(Boolean, default=False)
-    title = Column(String(255), nullable=False)
     payload = Column(JSON, nullable=False, default={})
     created_at = Column(DateTime, nullable=False)
     updated_at = Column(DateTime, nullable=True)

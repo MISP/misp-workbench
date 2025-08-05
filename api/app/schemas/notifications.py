@@ -11,7 +11,6 @@ class NotificationBase(BaseModel):
     entity_type: str
     entity_uuid: UUID
     read: bool = False
-    title: str
     payload: Optional[dict] = {}
     created_at: datetime = datetime.now()
     updated_at: Optional[datetime] = None

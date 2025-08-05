@@ -125,7 +125,7 @@ def update_event(
 
 @router.delete("/events/{event_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_event(
-    event_id: int,
+    event_id: Union[int, UUID],
     force: Optional[bool] = Query(False),
     db: Session = Depends(get_db),
     user: user_schemas.User = Security(

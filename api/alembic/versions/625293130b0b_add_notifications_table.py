@@ -27,7 +27,6 @@ def upgrade():
         sa.Column("entity_type", sa.String(255)),
         sa.Column("entity_uuid", sa.types.Uuid(as_uuid=False), nullable=False),
         sa.Column("read", sa.Boolean, default=False),
-        sa.Column("title", sa.String(255), nullable=False),
         sa.Column("payload", sa.JSON(), nullable=False, default={}),
         sa.Column(
             "created_at", sa.DateTime(), nullable=False, server_default=sa.func.now()

@@ -25,8 +25,7 @@ def get_user_notifications(db: Session, user_id: int, params: dict = {}):
     if params.get("filter") is not None and params["filter"] != "":
         filter_value = params["filter"]
         query = query.where(
-            notification_models.Notification.title.ilike(f"%{filter_value}%")
-            | notification_models.Notification.type.ilike(f"%{filter_value}%")
+            notification_models.Notification.type.ilike(f"%{filter_value}%")
         )
 
     query = query.order_by(notification_models.Notification.created_at.desc())
@@ -144,10 +143,29 @@ def get_followers_for(db, follow_key: str, uuid: str):
     return db.query(user_models.User).filter(user_models.User.id.in_(user_ids)).all()
 
 
-def create_event_notifications(db: Session, type: str, event: event_models.Event):
-    """Create notifications for users following the organisation of the event."""
+def build_event_notification(
+    user_id: int, type: str, event, organisation
+) -> notification_models.Notification:
+    return notification_models.Notification(
+        user_id=user_id,
+        type=type,
+        entity_type="event",
+        entity_uuid=event.uuid,
+        read=False,
+        payload={
+            "event_uuid": str(event.uuid),
+            "event_name": event.info,
+            "organisation_uuid": str(organisation.uuid),
+            "organisation_name": organisation.name,
+        },
+        created_at=datetime.now(),
+    )
 
-    # get event organisation
+
+def create_event_notifications(db: Session, type: str, event: event_models.Event):
+    """Create notifications for users following the organisation or event."""
+
+    # Get event organisation
     organisation = (
         db.query(organisation_models.Organisation)
         .filter(organisation_models.Organisation.id == event.orgc_id)
@@ -157,37 +175,32 @@ def create_event_notifications(db: Session, type: str, event: event_models.Event
     if not organisation:
         return []
 
-    followers = get_followers_for(db, "organisations", organisation.uuid)
-
-    if not followers:
-        return []
-
     notifications = []
 
-    for follower in followers:
-        user_id = follower.id
-        payload = {
-            "event_uuid": str(event.uuid),
-            "event_name": event.info,
-            "organisation_uuid": str(organisation.uuid),
-            "organisation_name": organisation.name,
-        }
-
-        title = f"{type} event"
-        notification = notification_models.Notification(
-            user_id=user_id,
-            type=f"organisation.event.{type}",
-            entity_type="event",
-            entity_uuid=event.uuid,
-            read=False,
-            title=title,
-            payload=payload,
-            created_at=datetime.now(),
+    # Followers of the organisation
+    org_followers = get_followers_for(db, "organisations", organisation.uuid)
+    notifications += [
+        build_event_notification(
+            follower.id,
+            f"organisation.event.{type}",
+            event=event,
+            organisation=organisation,
         )
-        notifications.append(notification)
+        for follower in org_followers
+    ]
 
-    db.add_all(notifications)
-    db.commit()
+    # Followers of the specific event
+    event_followers = get_followers_for(db, "events", event.uuid)
+    notifications += [
+        build_event_notification(
+            follower.id, f"event.{type}", event=event, organisation=organisation
+        )
+        for follower in event_followers
+    ]
+
+    if notifications:
+        db.add_all(notifications)
+        db.commit()
 
     return notifications
 
@@ -260,14 +273,12 @@ def create_new_attribute_notifications(
             "organisation_uuid": str(event.orgc_id),
         }
 
-        title = f"new attribute"
         notification = notification_models.Notification(
             user_id=user_id,
-            type="event.attribute.new",
+            type="event.attribute.created",
             entity_type="attribute",
             entity_uuid=attribute.uuid,
             read=False,
-            title=title,
             payload=payload,
             created_at=datetime.now(),
         )
@@ -278,9 +289,8 @@ def create_new_attribute_notifications(
 
     return notifications
 
-def create_new_object_notifications(
-    db: Session, object: object_models.Object
-):
+
+def create_new_object_notifications(db: Session, object: object_models.Object):
     """Create notifications for users following event of the object."""
 
     # get event
@@ -309,14 +319,12 @@ def create_new_object_notifications(
             "organisation_uuid": str(event.orgc_id),
         }
 
-        title = f"new object"
         notification = notification_models.Notification(
             user_id=user_id,
-            type="event.object.new",
+            type="event.object.created",
             entity_type="object",
             entity_uuid=object.uuid,
             read=False,
-            title=title,
             payload=payload,
             created_at=datetime.now(),
         )
