@@ -64,12 +64,13 @@ def create_object(
         get_current_active_user, scopes=["objects:create"]
     ),
 ):
-    event = events_repository.get_event_by_id(db, event_id=object.event_id)
+    event = events_repository.get_event_by_uuid(db, event_uuid=object.event_uuid)
     if event is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Event not found"
         )
 
+    object.event_id = event.id
     object_db = objects_repository.create_object(db=db, object=object)
 
     tasks.index_event.delay(event.uuid)

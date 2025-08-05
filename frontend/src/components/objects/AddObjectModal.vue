@@ -16,7 +16,7 @@ const objectsStore = useObjectsStore();
 const { status } = storeToRefs(objectsStore);
 const apiError = ref(null);
 const objectTemplateErrors = ref(null);
-const props = defineProps(["event_id", "modal"]);
+const props = defineProps(["event_uuid", "modal"]);
 const emit = defineEmits(["object-created"]);
 
 const object = ref({
@@ -25,7 +25,7 @@ const object = ref({
   template_uuid: null,
   attributes: [],
   deleted: false,
-  event_id: props.event_id,
+  event_uuid: props.event_uuid,
 });
 
 const selectedQuickTemplate = ref("");
