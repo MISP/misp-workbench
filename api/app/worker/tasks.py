@@ -73,7 +73,7 @@ def pull_event_by_uuid(event_uuid: uuid.UUID, server_id: int, user_id: int):
             db, event_uuid, server, user, get_settings()
         )
         
-        notifications_repository.create_event_notifications(db, "new", event=db_event)
+        notifications_repository.create_event_notifications(db, "created", event=db_event)
         
         logger.info(
             "pull event uuid=%s from server id=%s, job finished", event_uuid, server_id
@@ -91,7 +91,7 @@ def handle_created_event(event_uuid: uuid.UUID):
         if db_event is None:
             raise Exception("Event with uuid=%s not found", event_uuid)
 
-        notifications_repository.create_event_notifications(db, "new", event=db_event)
+        notifications_repository.create_event_notifications(db, "created", event=db_event)
 
     return True
 
@@ -129,17 +129,28 @@ def handle_created_attribute(attribute_id: int, object_id: int | None, event_id:
             events_repository.increment_attribute_count(db, event_id)
 
     db_attribute = attributes_repository.get_attribute_by_id(db, attribute_id)
-    notifications_repository.create_new_attribute_notifications(db, attribute=db_attribute)
+    notifications_repository.create_attribute_notifications(db, "created", attribute=db_attribute)
 
     return True
 
+@app.task
+def handle_updated_attribute(attribute_id: int, object_id: int | None, event_id: int):
+    logger.info("handling updated attribute id=%s job started", attribute_id)
+    with Session(engine) as db:
+        db_attribute = attributes_repository.get_attribute_by_id(db, attribute_id)
+        notifications_repository.create_attribute_notifications(db, "updated", attribute=db_attribute)
+
+    return True
 
 @app.task
 def handle_deleted_attribute(attribute_id: int, object_id: int | None, event_id: int):
     logger.info("handling deleted attribute id=%s job started", attribute_id)
     with Session(engine) as db:
+        db_attribute = attributes_repository.get_attribute_by_id(db, attribute_id)
         if object_id is None:
             events_repository.decrement_attribute_count(db, event_id)
+
+        notifications_repository.create_attribute_notifications(db, "deleted", attribute=db_attribute)
 
     return True
 
