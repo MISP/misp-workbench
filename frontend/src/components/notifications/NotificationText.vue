@@ -22,5 +22,16 @@ defineProps({ notification: Object });
       {{ notification.payload.attribute_value }}
     </div>
   </div>
+  <div v-else-if="notification.type.startsWith('event.object')">
+    <div class="text-muted small">
+      {{ notification.title }} in
+      <code>{{ notification.payload.event_title }}</code> event
+    </div>
+    <div>
+      <span class="badge bg-info text-dark me-2">{{
+        notification.payload.object_template
+      }}</span>
+    </div>
+  </div>
   <div v-else>{{ notification.title }}</div>
 </template>

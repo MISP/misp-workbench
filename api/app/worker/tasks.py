@@ -11,6 +11,7 @@ from app.services.runtime_settings_provider import get_runtime_settings
 from app.repositories import events as events_repository
 from app.repositories import feeds as feeds_repository
 from app.repositories import servers as servers_repository
+from app.repositories import objects as objects_repository
 from app.repositories import users as users_repository
 from app.repositories import correlations as correlations_repository
 from app.repositories import attributes as attributes_repository
@@ -124,6 +125,9 @@ def handle_created_object(object_id: int, event_id: int):
 
     with Session(engine) as db:
         events_repository.increment_object_count(db, event_id)
+
+    db_object = objects_repository.get_object_by_id(db, object_id)
+    notifications_repository.create_new_object_notifications(db, object=db_object)
 
     return True
 

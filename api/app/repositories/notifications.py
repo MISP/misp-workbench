@@ -2,6 +2,7 @@ from typing import Union
 from app.models import user as user_models
 from app.models import notification as notification_models
 from app.models import organisation as organisation_models
+from app.models import object as object_models
 from app.models import event as event_models
 from app.models import attribute as attribute_models
 from app.repositories import user_settings as user_settings_repository
@@ -265,6 +266,55 @@ def create_new_attribute_notifications(
             type="event.attribute.new",
             entity_type="attribute",
             entity_uuid=attribute.uuid,
+            read=False,
+            title=title,
+            payload=payload,
+            created_at=datetime.now(),
+        )
+        notifications.append(notification)
+
+    db.add_all(notifications)
+    db.commit()
+
+    return notifications
+
+def create_new_object_notifications(
+    db: Session, object: object_models.Object
+):
+    """Create notifications for users following event of the object."""
+
+    # get event
+    event = (
+        db.query(event_models.Event)
+        .filter(event_models.Event.id == object.event_id)
+        .first()
+    )
+
+    if not event:
+        return []
+
+    followers = get_followers_for(db, "events", event.uuid)
+
+    if not followers:
+        return []
+
+    notifications = []
+
+    for follower in followers:
+        user_id = follower.id
+        payload = {
+            "event_uuid": str(event.uuid),
+            "event_title": event.info,
+            "object_template": object.name,
+            "organisation_uuid": str(event.orgc_id),
+        }
+
+        title = f"new object"
+        notification = notification_models.Notification(
+            user_id=user_id,
+            type="event.object.new",
+            entity_type="object",
+            entity_uuid=object.uuid,
             read=False,
             title=title,
             payload=payload,
