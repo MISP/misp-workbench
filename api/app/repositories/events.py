@@ -158,6 +158,8 @@ def create_event_from_pulled_event(db: Session, pulled_event: MISPEvent):
     db.commit()
     db.refresh(event)
 
+    tasks.handle_created_event.delay(event.uuid)
+
     return event
 
 
@@ -186,6 +188,8 @@ def update_event_from_pulled_event(
     db.commit()
     db.refresh(existing_event)
 
+    tasks.handle_updated_event.delay(existing_event.uuid)
+
     return existing_event
 
 
@@ -204,6 +208,8 @@ def update_event(db: Session, event_id: int, event: event_schemas.EventUpdate):
 
     db.commit()
     db.refresh(db_event)
+
+    tasks.handle_updated_event.delay(db_event.uuid)
 
     return db_event
 

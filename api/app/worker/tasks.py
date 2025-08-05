@@ -73,7 +73,7 @@ def pull_event_by_uuid(event_uuid: uuid.UUID, server_id: int, user_id: int):
             db, event_uuid, server, user, get_settings()
         )
         
-        notifications_repository.create_new_event_notifications(db, event=db_event)
+        notifications_repository.create_event_notifications(db, "new", event=db_event)
         
         logger.info(
             "pull event uuid=%s from server id=%s, job finished", event_uuid, server_id
@@ -91,10 +91,22 @@ def handle_created_event(event_uuid: uuid.UUID):
         if db_event is None:
             raise Exception("Event with uuid=%s not found", event_uuid)
 
-        notifications_repository.create_new_event_notifications(db, event=db_event)
+        notifications_repository.create_event_notifications(db, "new", event=db_event)
 
     return True
 
+@app.task
+def handle_updated_event(event_uuid: uuid.UUID):
+    logger.info("handling updated event uuid=%s job started", event_uuid)
+
+    with Session(engine) as db:
+        db_event = events_repository.get_event_by_uuid(db, event_uuid)
+        if db_event is None:
+            raise Exception("Event with uuid=%s not found", event_uuid)
+
+        notifications_repository.create_event_notifications(db, "updated", event=db_event)
+
+    return True
 
 @app.task
 def handle_created_attribute(attribute_id: int, object_id: int | None, event_id: int):

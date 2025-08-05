@@ -18,7 +18,8 @@ const searchTerm = ref("");
 const showOnlyUnread = ref(false);
 
 const notificationsStore = useNotificationsStore();
-const { notifications, status, page_count } = storeToRefs(notificationsStore);
+const { notifications, status, page_count, unreadNotifications } =
+  storeToRefs(notificationsStore);
 const props = defineProps({ page_size: Number });
 function onPageChange(page) {
   notificationsStore.get({
@@ -62,6 +63,7 @@ function handleNotificationClick(notification) {
 function markAllAsRead() {
   notificationsStore.markAsRead("all").then(() => {
     onPageChange(1);
+    unreadNotifications.value = 0;
   });
 }
 

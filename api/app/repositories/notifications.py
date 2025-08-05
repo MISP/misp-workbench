@@ -144,7 +144,7 @@ def get_followers_for(db, follow_key: str, uuid: str):
     return db.query(user_models.User).filter(user_models.User.id.in_(user_ids)).all()
 
 
-def create_new_event_notifications(db: Session, event: event_models.Event):
+def create_event_notifications(db: Session, type: str, event: event_models.Event):
     """Create notifications for users following the organisation of the event."""
 
     # get event organisation
@@ -173,10 +173,10 @@ def create_new_event_notifications(db: Session, event: event_models.Event):
             "organisation_name": organisation.name,
         }
 
-        title = f"new event"
+        title = f"{type} event"
         notification = notification_models.Notification(
             user_id=user_id,
-            type="organisation.event.new",
+            type=f"organisation.event.{type}",
             entity_type="event",
             entity_uuid=event.uuid,
             read=False,

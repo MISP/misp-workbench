@@ -162,7 +162,7 @@ function switchTheme() {
 
             <span
               v-if="unreadNotifications > 0"
-              class="position-absolute start-80 translate-middle badge rounded-pill bg-danger"
+              class="position-absolute start-80 translate-middle badge rounded-pill bg-info"
               style="font-size: 0.65rem"
             >
               {{ unreadNotifications }}
