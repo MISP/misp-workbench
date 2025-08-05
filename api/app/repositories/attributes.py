@@ -86,7 +86,7 @@ def get_attribute_by_id(
     )
 
 
-def f(
+def get_attribute_by_uuid(
     db: Session, attribute_uuid: UUID
 ) -> Union[attribute_models.Attribute, None]:
     return (
