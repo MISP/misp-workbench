@@ -1,10 +1,17 @@
 <script setup lang="ts">
+import { onMounted } from "vue";
 import Menu from "./components/menu/Menu.vue";
 import { RouterView } from "vue-router";
-import { useAuthStore } from "@/stores";
+import { useAuthStore, useUserSettingsStore } from "@/stores";
 import ToastManager from "./components/misc/ToastManager.vue";
 
 const authStore = useAuthStore();
+const userSettingsStore = useUserSettingsStore();
+onMounted(() => {
+  if (authStore.isAuthenticated()) {
+    userSettingsStore.getAll();
+  }
+});
 </script>
 
 <template>

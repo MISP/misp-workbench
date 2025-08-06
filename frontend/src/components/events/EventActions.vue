@@ -58,11 +58,10 @@ onMounted(() => {
   deleteEventModal.value = new Modal(
     document.getElementById(`deleteEventModal_${props.event_uuid}`),
   );
-  userSettingsStore.getAll().then(() => {
-    followed.value = userSettings.value.notifications?.follow?.events.includes(
+  followed.value =
+    userSettings?.value?.notifications?.follow?.events?.includes(
       props.event_uuid,
-    );
-  });
+    ) || false;
 });
 
 function openDeleteEventModal() {
