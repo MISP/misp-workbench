@@ -3,7 +3,7 @@ import { authHelper } from "@/helpers";
 import { ref, computed, onMounted } from "vue";
 import { Modal } from "bootstrap";
 import { storeToRefs } from "pinia";
-import { useAuthStore, useEventsStore, useUserSettingsStore } from "@/stores";
+import { useAuthStore, useEventsStore } from "@/stores";
 import DeleteEventModal from "@/components/events/DeleteEventModal.vue";
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
 import {
@@ -14,15 +14,13 @@ import {
   faSync,
   faBookmark,
 } from "@fortawesome/free-solid-svg-icons";
+import { toggleFollowEntity, isFollowingEntity } from "@/helpers/follow";
 
 const authStore = useAuthStore();
 const { scopes } = storeToRefs(authStore);
 
 const eventsStore = useEventsStore();
 const { status } = storeToRefs(eventsStore);
-
-const userSettingsStore = useUserSettingsStore();
-const { userSettings } = storeToRefs(userSettingsStore);
 
 const followed = ref(false);
 
@@ -58,10 +56,7 @@ onMounted(() => {
   deleteEventModal.value = new Modal(
     document.getElementById(`deleteEventModal_${props.event_uuid}`),
   );
-  followed.value =
-    userSettings?.value?.notifications?.follow?.events?.includes(
-      props.event_uuid,
-    ) || false;
+  followed.value = isFollowingEntity("events", props.event_uuid);
 });
 
 function openDeleteEventModal() {
@@ -80,25 +75,7 @@ function indexEventDocument() {
 
 function followEvent() {
   followed.value = !followed.value;
-
-  const followed_events =
-    userSettings.value.notifications?.follow?.events || [];
-
-  if (followed.value) {
-    userSettingsStore.update("notifications", {
-      follow: {
-        ...userSettings.value.notifications?.follow,
-        events: followed_events.concat(props.event_uuid),
-      },
-    });
-  } else {
-    userSettingsStore.update("notifications", {
-      follow: {
-        ...userSettings.value.notifications?.follow,
-        events: followed_events.filter((uuid) => uuid !== props.event_uuid),
-      },
-    });
-  }
+  toggleFollowEntity("events", props.event_uuid, followed.value);
 }
 </script>
 

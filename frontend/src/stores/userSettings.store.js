@@ -49,6 +49,9 @@ export const useUserSettingsStore = defineStore("userSettings", {
       this.status = { updating: true };
       return await fetchWrapper
         .post(`${baseUrl}/${namespace}`, data)
+        .then(() => {
+          this.getAll(true); // Refresh all settings after update
+        })
         .catch((error) => (this.status = { error }))
         .finally(() => (this.status.updating = false));
     },
