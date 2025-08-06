@@ -3,7 +3,7 @@ import { authHelper } from "@/helpers";
 import { ref, computed, onMounted } from "vue";
 import { Modal } from "bootstrap";
 import { storeToRefs } from "pinia";
-import { useAuthStore, useUserSettingsStore } from "@/stores";
+import { useAuthStore } from "@/stores";
 import DeleteOrganisationModal from "@/components/organisations/DeleteOrganisationModal.vue";
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
 import {
@@ -12,12 +12,10 @@ import {
   faPen,
   faBookmark,
 } from "@fortawesome/free-solid-svg-icons";
+import { toggleFollowEntity, isFollowingEntity } from "@/helpers/follow";
 
 const authStore = useAuthStore();
 const { scopes } = storeToRefs(authStore);
-
-const userSettingsStore = useUserSettingsStore();
-const { userSettings } = storeToRefs(userSettingsStore);
 
 const followed = ref(false);
 
@@ -52,12 +50,7 @@ onMounted(() => {
       `deleteOrganisationModal_${props.organisation_uuid}`,
     ),
   );
-  userSettingsStore.getAll().then(() => {
-    followed.value =
-      userSettings.value.notifications?.follow?.organisations.includes(
-        props.organisation_uuid,
-      );
-  });
+  followed.value = isFollowingEntity("organisations", props.organisation_uuid);
 });
 
 function openDeleteOrganisationModal() {
@@ -72,27 +65,7 @@ function handleOrganisationDeleted(event) {
 
 function followOrganisation() {
   followed.value = !followed.value;
-
-  const followed_organisations =
-    userSettings.value.notifications?.follow?.organisations || [];
-
-  if (followed.value) {
-    userSettingsStore.update("notifications", {
-      follow: {
-        ...userSettings.value.notifications?.follow,
-        organisations: followed_organisations.concat(props.organisation_uuid),
-      },
-    });
-  } else {
-    userSettingsStore.update("notifications", {
-      follow: {
-        ...userSettings.value.notifications?.follow,
-        organisations: followed_organisations.filter(
-          (uuid) => uuid !== props.organisation_uuid,
-        ),
-      },
-    });
-  }
+  toggleFollowEntity("organisations", props.organisation_uuid, followed.value);
 }
 </script>
 
