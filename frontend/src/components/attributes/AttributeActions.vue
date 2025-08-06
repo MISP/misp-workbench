@@ -14,10 +14,14 @@ import {
   faPen,
   faMagicWandSparkles,
   faSitemap,
+  faBookmark,
 } from "@fortawesome/free-solid-svg-icons";
+import { toggleFollowEntity, isFollowingEntity } from "@/helpers/follow";
 
 const authStore = useAuthStore();
 const { scopes } = storeToRefs(authStore);
+
+const followed = ref(false);
 
 const props = defineProps({
   attribute: Object,
@@ -69,6 +73,7 @@ onMounted(() => {
   correlatedAttributesModal.value = new Modal(
     document.getElementById(`correlatedAttributesModal${props.attribute.id}`),
   );
+  followed.value = isFollowingEntity("attributes", props.attribute.uuid);
 });
 
 function openDeleteAttributeModal() {
@@ -90,6 +95,11 @@ function handleAttributeDeleted() {
 
 function handleAttributeEnriched() {
   emit("attribute-enriched", props.attribute.id);
+}
+
+function followAttribute() {
+  followed.value = !followed.value;
+  toggleFollowEntity("attributes", props.attribute.uuid, followed.value);
 }
 </script>
 
@@ -132,6 +142,18 @@ function handleAttributeEnriched() {
       >
         <FontAwesomeIcon :icon="faEye" />
       </RouterLink>
+      <RouterLink
+        v-if="actions.update"
+        :to="`/attributes/update/${attribute.id}`"
+        class="btn btn-outline-primary btn-sm"
+        data-placement="top"
+        data-toggle="tooltip"
+        title="Update Attribute"
+      >
+        <FontAwesomeIcon :icon="faPen" />
+      </RouterLink>
+    </div>
+    <div class="btn-group me-2" role="group">
       <button
         v-if="actions.enrich"
         type="button"
@@ -143,16 +165,26 @@ function handleAttributeEnriched() {
       >
         <FontAwesomeIcon :icon="faMagicWandSparkles" />
       </button>
-      <RouterLink
-        v-if="actions.update"
-        :to="`/attributes/update/${attribute.id}`"
+      <button
+        type="button"
         class="btn btn-outline-primary btn-sm"
         data-placement="top"
         data-toggle="tooltip"
-        title="Update Attribute"
+        title="Follow Attribute"
+        @click="followAttribute"
       >
-        <FontAwesomeIcon :icon="faPen" />
-      </RouterLink>
+        <FontAwesomeIcon
+          v-if="!followed"
+          :icon="faBookmark"
+          :inverse="true"
+          class="text-light"
+        />
+        <FontAwesomeIcon
+          v-if="followed"
+          :icon="faBookmark"
+          class="text-success"
+        />
+      </button>
     </div>
     <div class="btn-group me-2" role="group">
       <button

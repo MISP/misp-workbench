@@ -4,6 +4,7 @@ import SightingsStatsWidget from "@/components/sightings/SightingsStatsWidget.vu
 import TagsIndex from "@/components/tags/TagsIndex.vue";
 import DistributionLevel from "@/components/enums/DistributionLevel.vue";
 import DeleteAttributeModal from "@/components/attributes/DeleteAttributeModal.vue";
+import AttributeActions from "@/components/attributes/AttributeActions.vue";
 
 defineProps(["attribute", "status"]);
 
@@ -35,29 +36,10 @@ div.row h3 {
           <h3>Attribute #{{ attribute.id }}</h3>
         </div>
         <div class="col-2 text-end">
-          <div
-            class="flex-wrap"
-            :class="{
-              'btn-group-vertical': $isMobile,
-              'btn-group': !$isMobile,
-            }"
-            aria-label="Attribute Actions"
-          >
-            <button
-              type="button"
-              class="btn btn-danger"
-              data-bs-toggle="modal"
-              :data-bs-target="'#deleteAttributeModal-' + attribute.id"
-            >
-              <font-awesome-icon icon="fa-solid fa-trash" />
-            </button>
-            <RouterLink
-              :to="`/attributes/update/${attribute.id}`"
-              class="btn btn-outline-primary"
-            >
-              <font-awesome-icon icon="fa-solid fa-pen" />
-            </RouterLink>
-          </div>
+          <AttributeActions
+            :attribute="attribute"
+            @attribute-deleted="handleAttributeDeleted"
+          />
         </div>
       </div>
     </div>
