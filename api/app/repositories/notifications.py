@@ -91,6 +91,12 @@ def unfollow_notification(db: Session, notification_id: int, user_id: int):
     elif notification.type.startswith("organisation"):
         follow_key = "organisations"
         uuid = notification.payload.get("organisation_uuid")
+    elif notification.type.startswith("attribute"):
+        follow_key = "attributes"
+        uuid = notification.payload.get("attribute_uuid")
+    elif notification.type.startswith("object"):
+        follow_key = "objects"
+        uuid = notification.payload.get("object_uuid")
     else:
         return {"status": "error", "message": "Unsupported notification type"}
 
