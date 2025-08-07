@@ -407,7 +407,7 @@ def create_sighting_notifications(
             read=False,
             payload={
                 "sighting_value": sighting["value"],
-                "sighting_type": sighting.get("sighting_type", "positive"),
+                "sighting_type": sighting.get("type", "positive"),
                 "organisation": sighting["observer"]["organisation"],
                 "timestamp": sighting.get("timestamp", datetime.now().timestamp()),
                 "attribute_type": attribute["_source"]["type"],

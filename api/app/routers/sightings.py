@@ -11,11 +11,11 @@ logger = logging.getLogger(__name__)
 
 
 async def get_sightings_parameters(
-    attribute_uuid: Optional[str] = None, sighting_type: Optional[str] = None
+    attribute_uuid: Optional[str] = None, type: Optional[str] = None
 ):
     return {
         "attribute_uuid": attribute_uuid,
-        "sighting_type": sighting_type,
+        "type": type,
     }
 
 

@@ -26,9 +26,9 @@ def get_sightings(params: dict, page: int = 0, from_value: int = 0, size: int = 
         query["query"]["bool"]["must"].append(
             {"term": {"attribute_uuid.keyword": params["attribute_uuid"]}}
         )
-    if params.get("sighting_type"):
+    if params.get("type"):
         query["query"]["bool"]["must"].append(
-            {"term": {"sighting_type.keyword": params["sighting_type"]}}
+            {"term": {"type.keyword": params["type"]}}
         )
 
     response = OpenSearchClient.search(
@@ -57,7 +57,7 @@ def create_sighting_doc(user, sighting: dict):
         if sighting.get("timestamp")
         else datetime.datetime.now().isoformat()
     )
-    sighting["sighting_type"] = sighting.get("sighting_type", "positive")
+    sighting["type"] = sighting.get("type", "positive")
     sighting["observer"] = sighting.get(
         "observer",
         {
@@ -83,7 +83,7 @@ def create_sightings(user, sightings: Union[list, dict]):
         tasks.handle_created_sighting.delay(
             sighting["value"],
             sighting["observer"]["organisation"],
-            sighting["sighting_type"],
+            sighting["type"],
             sighting.get("timestamp", datetime.datetime.now().timestamp()),
         )
 
@@ -106,7 +106,7 @@ def create_sightings(user, sightings: Union[list, dict]):
         tasks.handle_created_sighting.delay(
             sighting["value"],
             sighting["observer"]["organisation"],
-            sighting["sighting_type"],
+            sighting["type"],
             sighting.get("timestamp", datetime.datetime.now().timestamp()),
         )
 
@@ -139,7 +139,7 @@ def get_sightings_activity_by_value(params: dict):
             "bool": {
                 "must": [
                     {"term": {"value": value}},
-                    {"term": {"sighting_type": "positive"}},
+                    {"term": {"type": "positive"}},
                     {"range": {"@timestamp": {"gte": f"now-{period}/d", "lte": "now"}}},
                 ]
             }
@@ -183,7 +183,7 @@ def get_sightings_stats_by_value(params: dict):
             "bool": {
                 "must": [
                     {"term": {"value": value}},
-                    {"term": {"sighting_type": "positive"}},
+                    {"term": {"type": "positive"}},
                     {"range": {"@timestamp": {"gte": f"now-{period}/d", "lte": "now"}}},
                 ]
             }

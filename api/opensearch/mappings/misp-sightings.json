@@ -10,7 +10,7 @@
             "event_uuid": {
                 "type": "keyword"
             },
-            "sighting_type": {
+            "type": {
                 "type": "keyword"
             },
             "observer": {
