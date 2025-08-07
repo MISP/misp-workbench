@@ -27,6 +27,10 @@ const title = computed(() => {
       return `event updated`;
     case "event.deleted":
       return `event deleted`;
+    case "attribute.updated":
+      return `attribute updated`;
+    case "attribute.deleted":
+      return `attribute deleted`;
     default:
       return props.notification?.title || "unknown notification";
   }
@@ -51,7 +55,12 @@ const title = computed(() => {
       {{ title }}
       <code>{{ notification.payload.event_name }}</code>
     </div>
-    <div v-else-if="notification.type.startsWith('event.attribute')">
+    <div
+      v-else-if="
+        notification.type.startsWith('event.attribute') ||
+        notification.type.startsWith('attribute')
+      "
+    >
       <div class="text-muted small">
         {{ notification.title }} in
         <code>{{ notification.payload.event_title }}</code> event

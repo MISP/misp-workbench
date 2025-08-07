@@ -267,11 +267,13 @@ def create_attribute_notifications(
 
     if not event:
         return []
+    
+    notifications = []
 
     # Followers of the event
     event_followers = get_followers_for(db, "events", event.uuid)
     notifications += [
-        build_event_notification(
+        build_attribute_notification(
             follower.id, f"event.attribute.{type}", attribute=attribute, event=event
         )
         for follower in event_followers
