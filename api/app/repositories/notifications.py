@@ -385,3 +385,40 @@ def create_object_notifications(db: Session, type: str, object: object_models.Ob
         db.commit()
 
     return notifications
+
+
+def create_sighting_notifications(
+    db: Session, type: str, attribute: dict, sighting: dict
+):
+    """Create notifications for users following an attribute."""
+    if not attribute or not sighting:
+        return []
+
+    # Get followers of the attribute
+    attribute_followers = get_followers_for(db, "attributes", attribute["_source"]["uuid"])
+    
+    notifications = []
+    for follower in attribute_followers:
+        notification = notification_models.Notification(
+            user_id=follower.id,
+            type=f"attribute.sighting.{type}",
+            entity_type="attribute",
+            entity_uuid=attribute["_source"]["uuid"],
+            read=False,
+            payload={
+                "sighting_value": sighting["value"],
+                "sighting_type": sighting.get("sighting_type", "positive"),
+                "organisation": sighting["observer"]["organisation"],
+                "timestamp": sighting.get("timestamp", datetime.now().timestamp()),
+                "attribute_type": attribute["_source"]["type"],
+                "attribute_uuid": attribute["_source"]["uuid"],
+            },
+            created_at=datetime.now(),
+        )
+        notifications.append(notification)
+
+    if notifications:
+        db.add_all(notifications)
+        db.commit()
+
+    return notifications

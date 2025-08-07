@@ -118,7 +118,7 @@ function followAttribute() {
     >
       <button
         type="button"
-        class="btn"
+        class="btn btn-sm"
         @click="openCorrelationsModal"
         data-placement="top"
         data-toggle="tooltip"

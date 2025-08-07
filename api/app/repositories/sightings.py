@@ -1,9 +1,10 @@
 import logging
+import datetime
 from typing import Union
 from app.services.opensearch import get_opensearch_client
 from fastapi import HTTPException, status
 from opensearchpy import helpers as opensearch_helpers
-import datetime
+from app.worker import tasks
 
 logger = logging.getLogger(__name__)
 
@@ -60,7 +61,7 @@ def create_sighting_doc(user, sighting: dict):
     sighting["observer"] = sighting.get(
         "observer",
         {
-            "organization": user.organisation.name,
+            "organisation": user.organisation.name,
         },
     )
 
@@ -78,6 +79,14 @@ def create_sightings(user, sightings: Union[list, dict]):
             index="misp-sightings",
             body=sighting,
         )
+
+        tasks.handle_created_sighting.delay(
+            sighting["value"],
+            sighting["observer"]["organisation"],
+            sighting["sighting_type"],
+            sighting.get("timestamp", datetime.datetime.now().timestamp()),
+        )
+
         return {"result": "Sighting created successfully"}
 
     for sighting in sightings:
@@ -92,6 +101,13 @@ def create_sightings(user, sightings: Union[list, dict]):
                 "_index": "misp-sightings",
                 "_source": sighting,
             }
+        )
+
+        tasks.handle_created_sighting.delay(
+            sighting["value"],
+            sighting["observer"]["organisation"],
+            sighting["sighting_type"],
+            sighting.get("timestamp", datetime.datetime.now().timestamp()),
         )
 
     try:

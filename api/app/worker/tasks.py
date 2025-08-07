@@ -408,3 +408,40 @@ def generate_correlations():
     logger.info("generate correlations job finished")
 
     return True
+
+@app.task
+def handle_created_sighting(
+    value: str,
+    organisation: str,
+    sighting_type: str,
+    timestamp: float = None
+):
+    logger.info("handling created sighting value=%s job started", value)
+
+    attributes = events_repository.search_events(
+        page=0,
+        from_value=0,
+        size=1000,
+        query="value: %s" % value,
+        searchAttributes=True,
+    )
+
+    if attributes["total"] > 1000:
+        logger.warning(
+            "Too many attributes found for value=%s, only the first 1000 will be processed.",
+            value,
+        )
+
+    sighting = {
+        "value": value,
+        "sighting_type": sighting_type,
+        "observer": {"organisation": organisation},
+        "timestamp": timestamp or datetime.datetime.now().timestamp(),
+    }
+
+    with Session(engine) as db:
+        for attribute in attributes["results"]:
+            notifications_repository.create_sighting_notifications(db, "created", attribute=attribute, sighting=sighting)
+
+
+
