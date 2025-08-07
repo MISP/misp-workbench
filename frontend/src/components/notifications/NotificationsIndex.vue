@@ -16,6 +16,8 @@ import timezone from "dayjs/plugin/timezone";
 
 const searchTerm = ref("");
 const showOnlyUnread = ref(false);
+const livereaload = ref(false);
+const interval = ref(null);
 
 const notificationsStore = useNotificationsStore();
 const { notifications, status, page_count, unreadNotifications } =
@@ -44,6 +46,16 @@ watch(showOnlyUnread, (newValue) => {
   });
 });
 
+watch(livereaload, (newValue) => {
+  if (newValue) {
+    interval.value = setInterval(() => {
+      onPageChange(1);
+    }, 5000);
+  } else {
+    clearInterval(interval.value);
+  }
+});
+
 function handleNotificationClick(notification) {
   notificationsStore.markAsRead(notification.id).then(() => {
     notification.read = true;
@@ -56,6 +68,9 @@ function handleNotificationClick(notification) {
     router.push(`/users/${notification.entity_uuid}`);
   }
   if (notification.type.startsWith("event.attribute")) {
+    router.push(`/attributes/${notification.entity_uuid}`);
+  }
+  if (notification.type.startsWith("attribute")) {
     router.push(`/attributes/${notification.entity_uuid}`);
   }
 }
@@ -93,7 +108,7 @@ function formatRelativeTime(dateString) {
                 :class="{ active: !showOnlyUnread }"
                 @click="showOnlyUnread = false"
               >
-                All
+                all
               </button>
               <button
                 type="button"
@@ -101,21 +116,30 @@ function formatRelativeTime(dateString) {
                 :class="{ active: showOnlyUnread }"
                 @click="showOnlyUnread = true"
               >
-                Unread
+                unread
               </button>
             </div>
-            <div
-              class="btn-group ms-4"
-              role="group"
-              aria-label="Filter Notifications"
-            >
+            <div class="ms-4">
               <button
                 type="button"
                 class="btn btn-outline-primary"
                 @click="markAllAsRead()"
               >
-                Mark all as read
+                mark all as read
               </button>
+            </div>
+            <div class="ms-4">
+              <div class="form-check form-switch">
+                <label class="form-check-label" for="livereaload">
+                  live reload
+                </label>
+                <input
+                  class="form-check-input"
+                  type="checkbox"
+                  v-model="livereaload"
+                  :checked="livereaload"
+                />
+              </div>
             </div>
           </div>
         </div>
@@ -125,7 +149,7 @@ function formatRelativeTime(dateString) {
               type="text"
               class="form-control"
               v-model="searchTerm"
-              placeholder="Search"
+              placeholder="search"
             />
             <span
               class="input-group-text"
