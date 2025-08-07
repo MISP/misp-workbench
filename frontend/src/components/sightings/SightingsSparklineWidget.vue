@@ -21,11 +21,11 @@ const interval = computed(() => {
     case "1d":
       return "1h";
     case "7d":
-      return "1h";
+      return "1d";
     case "30d":
       return "1d";
     default:
-      return "1h";
+      return "1d";
   }
 });
 
