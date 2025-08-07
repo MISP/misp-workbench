@@ -5,6 +5,9 @@ import TagsIndex from "@/components/tags/TagsIndex.vue";
 import DistributionLevel from "@/components/enums/DistributionLevel.vue";
 import DeleteAttributeModal from "@/components/attributes/DeleteAttributeModal.vue";
 import AttributeActions from "@/components/attributes/AttributeActions.vue";
+import UUID from "@/components/misc/UUID.vue";
+import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
+import { faTags } from "@fortawesome/free-solid-svg-icons";
 
 defineProps(["attribute", "status"]);
 
@@ -57,11 +60,7 @@ div.row h3 {
                   <tr>
                     <th>uuid</th>
                     <td>
-                      {{ attribute.uuid }}
-                      <font-awesome-icon
-                        class="text-primary"
-                        icon="fa-solid fa-copy"
-                      />
+                      <UUID :uuid="attribute.uuid" :copy="true" />
                     </td>
                   </tr>
                   <tr>
@@ -142,9 +141,7 @@ div.row h3 {
       </div>
       <div class="col col-sm-6">
         <div class="card mt-2">
-          <div class="card-header">
-            <font-awesome-icon icon="fa-solid fa-tags" /> tags
-          </div>
+          <div class="card-header"><FontAwesomeIcon :icon="faTags" /> tags</div>
           <div class="card-body d-flex flex-column">
             <div class="card-text">
               <TagsIndex :tags="attribute.tags" />
