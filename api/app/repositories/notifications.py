@@ -243,16 +243,16 @@ def unfollow_notifications(db: Session, follow_key: str, uuid: str, user_id: int
 
 
 def build_attribute_notification(
-    user_id: int, type: str, attribute, event, object = None
+    user_id: int, type: str, attribute, event, object=None
 ) -> notification_models.Notification:
-    
+
     payload = {
-            "event_uuid": str(event.uuid),
-            "event_title": event.info,
-            "attribute_value": attribute.value[:10],
-            "attribute_type": attribute.type,
-        }
-    
+        "event_uuid": str(event.uuid),
+        "event_title": event.info,
+        "attribute_value": attribute.value[:10],
+        "attribute_type": attribute.type,
+    }
+
     if object:
         payload["object_uuid"] = str(object.uuid)
         payload["object_name"] = object.name
@@ -306,7 +306,11 @@ def create_attribute_notifications(
         )
         if object:
             notifications = build_attribute_notification(
-                db, f"object.attribute.{type}", attribute=attribute, event=event, object=object
+                db,
+                f"object.attribute.{type}",
+                attribute=attribute,
+                event=event,
+                object=object,
             )
             return notifications
 
@@ -390,13 +394,15 @@ def create_object_notifications(db: Session, type: str, object: object_models.Ob
 def create_sighting_notifications(
     db: Session, type: str, attribute: dict, sighting: dict
 ):
-    """Create notifications for users following an attribute."""
+    """Create sighting notifications for users following an attribute."""
     if not attribute or not sighting:
         return []
 
     # Get followers of the attribute
-    attribute_followers = get_followers_for(db, "attributes", attribute["_source"]["uuid"])
-    
+    attribute_followers = get_followers_for(
+        db, "attributes", attribute["_source"]["uuid"]
+    )
+
     notifications = []
     for follower in attribute_followers:
         notification = notification_models.Notification(
@@ -412,6 +418,42 @@ def create_sighting_notifications(
                 "timestamp": sighting.get("timestamp", datetime.now().timestamp()),
                 "attribute_type": attribute["_source"]["type"],
                 "attribute_uuid": attribute["_source"]["uuid"],
+            },
+            created_at=datetime.now(),
+        )
+        notifications.append(notification)
+
+    if notifications:
+        db.add_all(notifications)
+        db.commit()
+
+    return notifications
+
+
+def create_correlation_notifications(db: Session, type: str, correlation: dict):
+    """Create correlation notifications for users following an attribute."""
+    if not correlation:
+        return []
+
+    # Get followers of the attribute
+    attribute_followers = get_followers_for(
+        db, "attributes", correlation["source_attribute_uuid"]
+    )
+
+    notifications = []
+    for follower in attribute_followers:
+        notification = notification_models.Notification(
+            user_id=follower.id,
+            type=f"attribute.correlation.{type}",
+            entity_type="attribute",
+            entity_uuid=correlation["source_attribute_uuid"],
+            read=False,
+            payload={
+                "source_event_uuid": correlation["source_event_uuid"],
+                "target_event_uuid": correlation["target_event_uuid"],
+                "target_attribute_uuid": correlation["target_attribute_uuid"],
+                "target_attribute_type": correlation["target_attribute_type"],
+                "target_attribute_value": correlation["target_attribute_value"],
             },
             created_at=datetime.now(),
         )

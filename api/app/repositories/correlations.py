@@ -2,6 +2,7 @@ from app.services.opensearch import get_opensearch_client
 from fastapi import HTTPException, status
 from opensearchpy import helpers as opensearch_helpers
 from app.services.runtime_settings import RuntimeSettings
+from app.worker import tasks
 import datetime
 
 MAX_CORRELATIONS_PER_DOC = 1000
@@ -198,6 +199,15 @@ def store_correlations_bulk(
         }
 
         BULK_BUFFER.append(correlation_doc)
+
+        tasks.handle_created_correlation.delay(
+            attribute_uuid,
+            correlation_doc["_source"]["source_event_uuid"],
+            correlation_doc["_source"]["target_event_uuid"],
+            correlation_doc["_source"]["target_attribute_uuid"],
+            correlation_doc["_source"]["target_attribute_type"],
+            correlation_doc["_source"]["target_attribute_value"],
+        )
 
         if len(BULK_BUFFER) >= runtimeSettings.get_value(
             "correlations.opensearchFlushBulkSize", BULK_SIZE

@@ -72,9 +72,11 @@ def pull_event_by_uuid(event_uuid: uuid.UUID, server_id: int, user_id: int):
         db_event = servers_repository.pull_event_by_uuid(
             db, event_uuid, server, user, get_settings()
         )
-        
-        notifications_repository.create_event_notifications(db, "created", event=db_event)
-        
+
+        notifications_repository.create_event_notifications(
+            db, "created", event=db_event
+        )
+
         logger.info(
             "pull event uuid=%s from server id=%s, job finished", event_uuid, server_id
         )
@@ -91,9 +93,12 @@ def handle_created_event(event_uuid: uuid.UUID):
         if db_event is None:
             raise Exception("Event with uuid=%s not found", event_uuid)
 
-        notifications_repository.create_event_notifications(db, "created", event=db_event)
+        notifications_repository.create_event_notifications(
+            db, "created", event=db_event
+        )
 
     return True
+
 
 @app.task
 def handle_updated_event(event_uuid: uuid.UUID):
@@ -104,9 +109,12 @@ def handle_updated_event(event_uuid: uuid.UUID):
         if db_event is None:
             raise Exception("Event with uuid=%s not found", event_uuid)
 
-        notifications_repository.create_event_notifications(db, "updated", event=db_event)
+        notifications_repository.create_event_notifications(
+            db, "updated", event=db_event
+        )
 
     return True
+
 
 @app.task
 def handle_deleted_event(event_uuid: uuid.UUID):
@@ -117,9 +125,12 @@ def handle_deleted_event(event_uuid: uuid.UUID):
         if db_event is None:
             raise Exception("Event with uuid=%s not found", event_uuid)
 
-        notifications_repository.create_event_notifications(db, "deleted", event=db_event)
+        notifications_repository.create_event_notifications(
+            db, "deleted", event=db_event
+        )
 
     return True
+
 
 @app.task
 def handle_created_attribute(attribute_id: int, object_id: int | None, event_id: int):
@@ -129,18 +140,24 @@ def handle_created_attribute(attribute_id: int, object_id: int | None, event_id:
             events_repository.increment_attribute_count(db, event_id)
 
     db_attribute = attributes_repository.get_attribute_by_id(db, attribute_id)
-    notifications_repository.create_attribute_notifications(db, "created", attribute=db_attribute)
+    notifications_repository.create_attribute_notifications(
+        db, "created", attribute=db_attribute
+    )
 
     return True
+
 
 @app.task
 def handle_updated_attribute(attribute_id: int, object_id: int | None, event_id: int):
     logger.info("handling updated attribute id=%s job started", attribute_id)
     with Session(engine) as db:
         db_attribute = attributes_repository.get_attribute_by_id(db, attribute_id)
-        notifications_repository.create_attribute_notifications(db, "updated", attribute=db_attribute)
+        notifications_repository.create_attribute_notifications(
+            db, "updated", attribute=db_attribute
+        )
 
     return True
+
 
 @app.task
 def handle_deleted_attribute(attribute_id: int, object_id: int | None, event_id: int):
@@ -150,7 +167,9 @@ def handle_deleted_attribute(attribute_id: int, object_id: int | None, event_id:
         if object_id is None:
             events_repository.decrement_attribute_count(db, event_id)
 
-        notifications_repository.create_attribute_notifications(db, "deleted", attribute=db_attribute)
+        notifications_repository.create_attribute_notifications(
+            db, "deleted", attribute=db_attribute
+        )
 
     return True
 
@@ -163,9 +182,12 @@ def handle_created_object(object_id: int, event_id: int):
         events_repository.increment_object_count(db, event_id)
 
         db_object = objects_repository.get_object_by_id(db, object_id)
-        notifications_repository.create_object_notifications(db, "created", object=db_object)
+        notifications_repository.create_object_notifications(
+            db, "created", object=db_object
+        )
 
     return True
+
 
 @app.task
 def handle_updated_object(object_id: int, event_id: int):
@@ -173,9 +195,12 @@ def handle_updated_object(object_id: int, event_id: int):
 
     with Session(engine) as db:
         db_object = objects_repository.get_object_by_id(db, object_id)
-        notifications_repository.create_object_notifications(db, "updated", object=db_object)
+        notifications_repository.create_object_notifications(
+            db, "updated", object=db_object
+        )
 
     return True
+
 
 @app.task
 def handle_deleted_object(object_id: int, event_id: int):
@@ -185,7 +210,9 @@ def handle_deleted_object(object_id: int, event_id: int):
         events_repository.decrement_object_count(db, event_id)
 
     db_object = objects_repository.get_object_by_id(db, object_id)
-    notifications_repository.create_object_notifications(db, "deleted", object=db_object)
+    notifications_repository.create_object_notifications(
+        db, "deleted", object=db_object
+    )
 
     return True
 
@@ -409,12 +436,10 @@ def generate_correlations():
 
     return True
 
+
 @app.task
 def handle_created_sighting(
-    value: str,
-    organisation: str,
-    sighting_type: str,
-    timestamp: float = None
+    value: str, organisation: str, sighting_type: str, timestamp: float = None
 ):
     logger.info("handling created sighting value=%s job started", value)
 
@@ -441,7 +466,33 @@ def handle_created_sighting(
 
     with Session(engine) as db:
         for attribute in attributes["results"]:
-            notifications_repository.create_sighting_notifications(db, "created", attribute=attribute, sighting=sighting)
+            notifications_repository.create_sighting_notifications(
+                db, "created", attribute=attribute, sighting=sighting
+            )
 
+@app.task
+def handle_created_correlation(
+    source_attribute_uuid: str,
+    source_event_uuid: str,
+    target_event_uuid: str,
+    target_attribute_uuid: str,
+    target_attribute_type: str,
+    target_attribute_value: str,
+):
+    logger.info("handling created correlation id=%s job started", source_attribute_uuid)
 
+    with Session(engine) as db:
+        correlation = {
+            "source_attribute_uuid": source_attribute_uuid,
+            "source_event_uuid": source_event_uuid,
+            "target_event_uuid": target_event_uuid,
+            "target_attribute_uuid": target_attribute_uuid,
+            "target_attribute_type": target_attribute_type,
+            "target_attribute_value": target_attribute_value,
+        }
 
+        notifications_repository.create_correlation_notifications(
+            db, "created", correlation=correlation
+        )
+
+    return True

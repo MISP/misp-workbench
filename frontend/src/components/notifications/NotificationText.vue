@@ -33,6 +33,8 @@ const title = computed(() => {
       return `attribute deleted`;
     case "attribute.sighting.created":
       return `attribute sighted`;
+    case "attribute.correlation.created":
+      return `attribute correlation found`;
     case "object.updated":
       return `object updated`;
     case "object.deleted":
@@ -54,6 +56,19 @@ const title = computed(() => {
           notification.payload.attribute_type
         }}</span>
         {{ notification.payload.sighting_value }}
+      </div>
+    </div>
+    <div
+      v-else-if="notification.type.startsWith('attribute.correlation.created')"
+    >
+      <div class="text-muted small">
+        {{ title }}
+      </div>
+      <div>
+        <span class="badge bg-info text-dark me-2">{{
+          notification.payload.target_attribute_type
+        }}</span>
+        {{ notification.payload.target_attribute_value }}
       </div>
     </div>
     <div v-else-if="notification.type.startsWith('organisation.event')">
