@@ -31,6 +31,10 @@ const title = computed(() => {
       return `attribute updated`;
     case "attribute.deleted":
       return `attribute deleted`;
+    case "object.updated":
+      return `object updated`;
+    case "object.deleted":
+      return `object deleted`;
     default:
       return props.notification?.title || "unknown notification";
   }
@@ -62,8 +66,7 @@ const title = computed(() => {
       "
     >
       <div class="text-muted small">
-        {{ notification.title }} in
-        <code>{{ notification.payload.event_title }}</code> event
+        {{ title }} in <code>{{ notification.payload.event_title }}</code> event
       </div>
       <div>
         <span class="badge bg-info text-dark me-2">{{
@@ -72,14 +75,18 @@ const title = computed(() => {
         {{ notification.payload.attribute_value }}
       </div>
     </div>
-    <div v-else-if="notification.type.startsWith('event.object')">
+    <div
+      v-else-if="
+        notification.type.startsWith('event.object') ||
+        notification.type.startsWith('object')
+      "
+    >
       <div class="text-muted small">
-        {{ notification.title }} in
-        <code>{{ notification.payload.event_title }}</code> event
+        {{ title }} in <code>{{ notification.payload.event_title }}</code> event
       </div>
       <div>
         <span class="badge bg-info text-dark me-2">{{
-          notification.payload.object_template
+          notification.payload.object_name
         }}</span>
       </div>
     </div>

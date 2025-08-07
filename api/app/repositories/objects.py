@@ -156,7 +156,7 @@ def create_object(
 
 def create_object_from_pulled_object(
     db: Session, pulled_object: MISPObject, local_event_id: int, user: user_models.User
-) -> MISPObject:
+) -> object_models.Object:
     # TODO: process sharing group // captureSG
     # TODO: enforce warninglist
 
@@ -200,6 +200,10 @@ def create_object_from_pulled_object(
         db_object.object_references.append(local_object_reference)
 
     db.add(db_object)
+
+    tasks.handle_created_object.delay(db_object.id, db_object.event_id)
+
+    return db_object
 
 
 def update_object_from_pulled_object(
@@ -328,6 +332,8 @@ def update_object(
     db.add(db_object)
     db.commit()
     db.refresh(db_object)
+
+    tasks.handle_updated_object.delay(db_object.id, db_object.event_id)
 
     return db_object
 

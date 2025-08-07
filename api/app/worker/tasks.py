@@ -162,11 +162,20 @@ def handle_created_object(object_id: int, event_id: int):
     with Session(engine) as db:
         events_repository.increment_object_count(db, event_id)
 
-    db_object = objects_repository.get_object_by_id(db, object_id)
-    notifications_repository.create_new_object_notifications(db, object=db_object)
+        db_object = objects_repository.get_object_by_id(db, object_id)
+        notifications_repository.create_object_notifications(db, "created", object=db_object)
 
     return True
 
+@app.task
+def handle_updated_object(object_id: int, event_id: int):
+    logger.info("handling updated object id=%s job started", object_id)
+
+    with Session(engine) as db:
+        db_object = objects_repository.get_object_by_id(db, object_id)
+        notifications_repository.create_object_notifications(db, "updated", object=db_object)
+
+    return True
 
 @app.task
 def handle_deleted_object(object_id: int, event_id: int):
@@ -174,6 +183,9 @@ def handle_deleted_object(object_id: int, event_id: int):
 
     with Session(engine) as db:
         events_repository.decrement_object_count(db, event_id)
+
+    db_object = objects_repository.get_object_by_id(db, object_id)
+    notifications_repository.create_object_notifications(db, "deleted", object=db_object)
 
     return True
 

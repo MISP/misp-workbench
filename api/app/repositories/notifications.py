@@ -241,23 +241,32 @@ def unfollow_notifications(db: Session, follow_key: str, uuid: str, user_id: int
 
     return {"status": "success"}
 
+
 def build_attribute_notification(
-    user_id: int, type: str, attribute, event
+    user_id: int, type: str, attribute, event, object = None
 ) -> notification_models.Notification:
-    return notification_models.Notification(
-        user_id=user_id,
-        type=type,
-        entity_type="attribute",
-        entity_uuid=event.uuid,
-        read=False,
-        payload={
+    
+    payload = {
             "event_uuid": str(event.uuid),
             "event_title": event.info,
             "attribute_value": attribute.value[:10],
             "attribute_type": attribute.type,
-        },
+        }
+    
+    if object:
+        payload["object_uuid"] = str(object.uuid)
+        payload["object_name"] = object.name
+
+    return notification_models.Notification(
+        user_id=user_id,
+        type=type,
+        entity_type="attribute",
+        entity_uuid=attribute.uuid,
+        read=False,
+        payload=payload,
         created_at=datetime.now(),
     )
+
 
 def create_attribute_notifications(
     db: Session, type: str, attribute: attribute_models.Attribute
@@ -273,17 +282,8 @@ def create_attribute_notifications(
 
     if not event:
         return []
-    
-    notifications = []
 
-    # Followers of the event
-    event_followers = get_followers_for(db, "events", event.uuid)
-    notifications += [
-        build_attribute_notification(
-            follower.id, f"event.attribute.{type}", attribute=attribute, event=event
-        )
-        for follower in event_followers
-    ]
+    notifications = []
 
     # Followers of the specific attribute
     attr_followers = get_followers_for(db, "attributes", attribute.uuid)
@@ -297,6 +297,28 @@ def create_attribute_notifications(
         for follower in attr_followers
     ]
 
+    # If the attribute is linked to an object, we can also notify followers of that object
+    if attribute.object_id:
+        object = (
+            db.query(object_models.Object)
+            .filter(object_models.Object.id == attribute.object_id)
+            .first()
+        )
+        if object:
+            notifications = build_attribute_notification(
+                db, f"object.attribute.{type}", attribute=attribute, event=event, object=object
+            )
+            return notifications
+
+    # Followers of the event
+    event_followers = get_followers_for(db, "events", event.uuid)
+    notifications += [
+        build_attribute_notification(
+            follower.id, f"event.attribute.{type}", attribute=attribute, event=event
+        )
+        for follower in event_followers
+    ]
+
     if notifications:
         db.add_all(notifications)
         db.commit()
@@ -304,7 +326,25 @@ def create_attribute_notifications(
     return notifications
 
 
-def create_new_object_notifications(db: Session, object: object_models.Object):
+def build_object_notification(
+    user_id: int, type: str, object, event
+) -> notification_models.Notification:
+    return notification_models.Notification(
+        user_id=user_id,
+        type=type,
+        entity_type="object",
+        entity_uuid=object.uuid,
+        read=False,
+        payload={
+            "event_uuid": str(event.uuid),
+            "event_title": event.info,
+            "object_name": object.name,
+        },
+        created_at=datetime.now(),
+    )
+
+
+def create_object_notifications(db: Session, type: str, object: object_models.Object):
     """Create notifications for users following event of the object."""
 
     # get event
@@ -317,34 +357,31 @@ def create_new_object_notifications(db: Session, object: object_models.Object):
     if not event:
         return []
 
-    followers = get_followers_for(db, "events", event.uuid)
-
-    if not followers:
-        return []
-
     notifications = []
 
-    for follower in followers:
-        user_id = follower.id
-        payload = {
-            "event_uuid": str(event.uuid),
-            "event_title": event.info,
-            "object_template": object.name,
-            "organisation_uuid": str(event.orgc_id),
-        }
-
-        notification = notification_models.Notification(
-            user_id=user_id,
-            type="event.object.created",
-            entity_type="object",
-            entity_uuid=object.uuid,
-            read=False,
-            payload=payload,
-            created_at=datetime.now(),
+    # Followers of the event
+    event_followers = get_followers_for(db, "events", event.uuid)
+    notifications += [
+        build_object_notification(
+            follower.id, f"event.object.{type}", object=object, event=event
         )
-        notifications.append(notification)
+        for follower in event_followers
+    ]
 
-    db.add_all(notifications)
-    db.commit()
+    # Followers of the specific object
+    obj_followers = get_followers_for(db, "objects", object.uuid)
+    notifications += [
+        build_object_notification(
+            follower.id,
+            f"object.{type}",
+            object=object,
+            event=event,
+        )
+        for follower in obj_followers
+    ]
+
+    if notifications:
+        db.add_all(notifications)
+        db.commit()
 
     return notifications

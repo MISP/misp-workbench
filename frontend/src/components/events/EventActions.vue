@@ -139,7 +139,7 @@ function followEvent() {
           v-if="!followed"
           :icon="faBookmark"
           :inverse="true"
-          class="text-light"
+          class="text-primary"
         />
         <FontAwesomeIcon
           v-if="followed"
