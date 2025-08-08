@@ -2,7 +2,8 @@ import logging
 import time
 from datetime import datetime
 from uuid import UUID
-
+from typing import Union
+from app.worker import tasks
 from app.services.opensearch import get_opensearch_client
 from app.models import event as event_models
 from app.models import feed as feed_models
@@ -119,6 +120,8 @@ def create_event(db: Session, event: event_schemas.EventCreate) -> event_models.
     db.flush()
     db.refresh(db_event)
 
+    tasks.handle_created_event.delay(db_event.uuid)
+
     return db_event
 
 
@@ -155,6 +158,8 @@ def create_event_from_pulled_event(db: Session, pulled_event: MISPEvent):
     db.commit()
     db.refresh(event)
 
+    tasks.handle_created_event.delay(event.uuid)
+
     return event
 
 
@@ -183,6 +188,8 @@ def update_event_from_pulled_event(
     db.commit()
     db.refresh(existing_event)
 
+    tasks.handle_updated_event.delay(existing_event.uuid)
+
     return existing_event
 
 
@@ -202,11 +209,17 @@ def update_event(db: Session, event_id: int, event: event_schemas.EventUpdate):
     db.commit()
     db.refresh(db_event)
 
+    tasks.handle_updated_event.delay(db_event.uuid)
+
     return db_event
 
 
-def delete_event(db: Session, event_id: int, force: bool = False) -> None:
-    db_event = get_event_by_id(db, event_id=event_id)
+def delete_event(db: Session, event_id: Union[int, UUID], force: bool = False) -> None:
+
+    if isinstance(event_id, int):
+        db_event = get_event_by_id(db, event_id=event_id)
+    else:
+        db_event = get_event_by_uuid(db, event_uuid=event_id)
 
     if db_event is None:
         raise HTTPException(
@@ -222,6 +235,8 @@ def delete_event(db: Session, event_id: int, force: bool = False) -> None:
 
     db.commit()
     db.refresh(db_event)
+
+    tasks.handle_deleted_event.delay(db_event.uuid)
 
 
 def increment_attribute_count(

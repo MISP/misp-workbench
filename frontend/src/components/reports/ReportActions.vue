@@ -80,12 +80,12 @@ function handleReportUpdated(r) {
     <div
       :class="{ 'btn-group-vertical': $isMobile, 'btn-group me-2': !$isMobile }"
       role="group"
-      aria-label="Event Actions"
+      aria-label="Event Report Actions"
     >
       <button
         v-if="actions.update"
         type="button"
-        class="btn btn-outline-primary"
+        class="btn btn-outline-primary btn-sm"
         data-placement="top"
         data-toggle="tooltip"
         title="Delete report"
@@ -98,7 +98,7 @@ function handleReportUpdated(r) {
       <button
         v-if="actions.delete"
         type="button"
-        class="btn btn-danger"
+        class="btn btn-danger btn-sm"
         data-placement="top"
         data-toggle="tooltip"
         title="Delete report"

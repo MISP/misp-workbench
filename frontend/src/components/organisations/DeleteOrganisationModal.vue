@@ -5,14 +5,16 @@ import { storeToRefs } from "pinia";
 const organisationsStore = useOrganisationsStore();
 const { status } = storeToRefs(organisationsStore);
 
-const props = defineProps(["organisation_id"]);
+const props = defineProps(["organisation_uuid"]);
 const emit = defineEmits(["organisation-deleted"]);
 
 function onSubmit() {
   return organisationsStore
-    .delete(props.organisation_id)
+    .delete(props.organisation_uuid)
     .then(() => {
-      emit("organisation-deleted", { organisation_id: props.organisation_id });
+      emit("organisation-deleted", {
+        organisation_uuid: props.organisation_uuid,
+      });
       document.getElementById("closeModalButton").click();
     })
     .catch((error) => (status.error = error));
@@ -21,7 +23,7 @@ function onSubmit() {
 
 <template>
   <div
-    :id="'deleteOrganisationModal-' + organisation_id"
+    :id="'deleteOrganisationModal-' + organisation_uuid"
     class="modal fade"
     tabindex="-1"
     aria-labelledby="deleteOrganisationModal"
@@ -31,7 +33,7 @@ function onSubmit() {
       <div class="modal-content">
         <div class="modal-header">
           <h5 class="modal-title" id="deleteOrganisationModal">
-            Delete Organisation #{{ organisation_id }}
+            Delete Organisation #{{ organisation_uuid }}
           </h5>
           <button
             type="button"

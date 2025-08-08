@@ -18,6 +18,7 @@ class User(Base):
     organisation = relationship(
         "Organisation", backref=backref("users", cascade="all, delete-orphan")
     )
+    settings = relationship("UserSetting", back_populates="user")
 
     def can_create_pulled_event(self, event: MISPEvent) -> bool:
         """
@@ -43,3 +44,6 @@ class User(Base):
             return True
 
         return False
+
+
+from app.models.user_setting import UserSetting

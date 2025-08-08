@@ -4,6 +4,7 @@ from app.repositories import servers as servers_repository
 from app.schemas import server as server_schemas
 from app.schemas import task as task_schemas
 from app.schemas import user as user_schemas
+from app.schemas import event as event_schemas
 from app.worker import tasks
 from app.settings import Settings
 from fastapi import APIRouter, Depends, HTTPException, Security, status
@@ -189,6 +190,7 @@ def get_remote_event_objects(
         event_uuid=event_uuid,
     )
 
+
 @router.get("/servers/{server_id}/events/{event_id}/reports")
 def get_remote_event_reports(
     server_id: int,
@@ -207,7 +209,10 @@ def get_remote_event_reports(
     )
 
 
-@router.post("/servers/{server_id}/events/{event_uuid}/pull")
+@router.post(
+    "/servers/{server_id}/events/{event_uuid}/pull",
+    response_model=event_schemas.Event,
+)
 def pull_remote_event_by_uuid(
     server_id: int,
     event_uuid: str,
@@ -219,8 +224,6 @@ def pull_remote_event_by_uuid(
     server = servers_repository.get_server_by_id(db, server_id)
     if server is None:
         raise Exception("Server not found")
-
-    remote_misp = servers_repository.get_remote_misp_connection(server)
 
     return servers_repository.pull_event_by_uuid(
         db=db,

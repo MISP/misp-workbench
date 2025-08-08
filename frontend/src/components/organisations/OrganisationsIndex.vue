@@ -4,6 +4,7 @@ import { useOrganisationsStore } from "@/stores";
 import { RouterLink } from "vue-router";
 import Spinner from "@/components/misc/Spinner.vue";
 import DeleteOrganisationModal from "@/components/organisations/DeleteOrganisationModal.vue";
+import OrganisationActions from "@/components/organisations/OrganisationActions.vue";
 
 const organisationsStore = useOrganisationsStore();
 const { organisations, status } = storeToRefs(organisationsStore);
@@ -47,39 +48,7 @@ function handleOrganisationDeleted() {
           <td class="d-none d-sm-table-cell">{{ organisation.type }}</td>
           <td class="text-end">
             <div class="btn-toolbar float-end" role="toolbar">
-              <div
-                class="flex-wrap"
-                :class="{
-                  'btn-group-vertical': $isMobile,
-                  'btn-group me-2': !$isMobile,
-                }"
-                aria-label="Organisation Actions"
-              >
-                <RouterLink
-                  :to="`/organisations/${organisation.id}`"
-                  class="btn btn-outline-primary"
-                >
-                  <font-awesome-icon icon="fa-solid fa-eye" />
-                </RouterLink>
-                <RouterLink
-                  :to="`/organisations/update/${organisation.id}`"
-                  class="btn btn-outline-primary"
-                >
-                  <font-awesome-icon icon="fa-solid fa-pen" />
-                </RouterLink>
-              </div>
-              <div class="btn-group me-2" role="group">
-                <button
-                  type="button"
-                  class="btn btn-danger"
-                  data-bs-toggle="modal"
-                  :data-bs-target="
-                    '#deleteOrganisationModal-' + organisation.id
-                  "
-                >
-                  <font-awesome-icon icon="fa-solid fa-trash" />
-                </button>
-              </div>
+              <OrganisationActions :organisation_uuid="organisation.uuid" />
             </div>
           </td>
           <DeleteOrganisationModal

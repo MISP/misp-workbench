@@ -23,3 +23,4 @@ export * from "./correlations.store";
 export * from "./sightings.store";
 export * from "./runtimeSettings.store";
 export * from "./userSettings.store";
+export * from "./notifications.store";

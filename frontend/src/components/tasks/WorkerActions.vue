@@ -42,7 +42,7 @@ function handleWorkerUpdate() {
     <div class="btn-group me-2" role="group">
       <button
         type="button"
-        class="btn btn-outline-primary"
+        class="btn btn-outline-primary btn-sm"
         data-placement="top"
         title="Restart"
         @click="restartWorker(worker_id)"
@@ -51,9 +51,9 @@ function handleWorkerUpdate() {
       </button>
       <button
         type="button"
-        class="btn btn-outline-primary"
+        class="btn btn-outline-primary btn-sm"
         data-placement="top"
-        title="Mange Worker Pool"
+        title="Manage Worker Pool"
         data-bs-toggle="modal"
         :data-bs-target="'#manageWorkerModal-' + worker_id"
       >

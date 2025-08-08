@@ -12,13 +12,17 @@ import {
   faPen,
   faFileArrowUp,
   faSync,
+  faBookmark,
 } from "@fortawesome/free-solid-svg-icons";
+import { toggleFollowEntity, isFollowingEntity } from "@/helpers/follow";
 
 const authStore = useAuthStore();
 const { scopes } = storeToRefs(authStore);
 
 const eventsStore = useEventsStore();
 const { status } = storeToRefs(eventsStore);
+
+const followed = ref(false);
 
 const props = defineProps({
   event_uuid: String,
@@ -52,6 +56,7 @@ onMounted(() => {
   deleteEventModal.value = new Modal(
     document.getElementById(`deleteEventModal_${props.event_uuid}`),
   );
+  followed.value = isFollowingEntity("events", props.event_uuid);
 });
 
 function openDeleteEventModal() {
@@ -66,6 +71,11 @@ function handleEventDeleted(event) {
 
 function indexEventDocument() {
   eventsStore.forceIndex(props.event_uuid);
+}
+
+function followEvent() {
+  followed.value = !followed.value;
+  toggleFollowEntity("events", props.event_uuid, followed.value);
 }
 </script>
 
@@ -85,7 +95,7 @@ function indexEventDocument() {
       <RouterLink
         v-if="actions.view"
         :to="`/events/${event_uuid}`"
-        class="btn btn-outline-primary"
+        class="btn btn-outline-primary btn-sm"
         data-placement="top"
         data-toggle="tooltip"
         title="View Event"
@@ -95,7 +105,7 @@ function indexEventDocument() {
       <RouterLink
         v-if="actions.update"
         :to="`/events/update/${event_uuid}`"
-        class="btn btn-outline-primary"
+        class="btn btn-outline-primary btn-sm"
         data-placement="top"
         data-toggle="tooltip"
         title="Update Event"
@@ -108,7 +118,7 @@ function indexEventDocument() {
         v-if="actions.index"
         :disabled="status.indexing"
         type="button"
-        class="btn btn-outline-primary"
+        class="btn btn-outline-primary btn-sm"
         data-placement="top"
         data-toggle="tooltip"
         title="Index Event"
@@ -117,12 +127,32 @@ function indexEventDocument() {
         <FontAwesomeIcon v-if="!status.indexing" :icon="faFileArrowUp" />
         <FontAwesomeIcon v-if="status.indexing" :icon="faSync" spin />
       </button>
+      <button
+        type="button"
+        class="btn btn-outline-primary btn-sm"
+        data-placement="top"
+        data-toggle="tooltip"
+        title="Follow Event"
+        @click="followEvent"
+      >
+        <FontAwesomeIcon
+          v-if="!followed"
+          :icon="faBookmark"
+          :inverse="true"
+          class="text-primary"
+        />
+        <FontAwesomeIcon
+          v-if="followed"
+          :icon="faBookmark"
+          class="text-success"
+        />
+      </button>
     </div>
     <div class="btn-group me-2" role="group">
       <button
         v-if="actions.delete"
         type="button"
-        class="btn btn-danger"
+        class="btn btn-danger btn-sm"
         data-placement="top"
         data-toggle="tooltip"
         title="Delete Event"

@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 
 
-class Setting(BaseModel):
+class UserSetting(BaseModel):
     id: int
     user_id: int
     namespace: str

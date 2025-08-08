@@ -1,13 +1,11 @@
 <script setup>
 import { storeToRefs } from "pinia";
 import { useEventsStore } from "@/stores";
-import { RouterLink } from "vue-router";
 import Spinner from "@/components/misc/Spinner.vue";
 import DistributionLevel from "@/components/enums/DistributionLevel.vue";
 import TagsIndex from "@/components/tags/TagsIndex.vue";
-import DeleteEventModal from "@/components/events/DeleteEventModal.vue";
 import Paginate from "vuejs-paginate-next";
-import UUID from "@/components/misc/UUID.vue";
+import EventActions from "@/components/events/EventActions.vue";
 
 const eventsStore = useEventsStore();
 const { page_count, events, status } = storeToRefs(eventsStore);
@@ -31,14 +29,27 @@ function handleEventDeleted() {
 
 <style scoped>
 .eventInfoColumn {
-  width: 50%;
-  /* white-space: nowrap; */
-  overflow: hidden;
-  text-overflow: ellipsis;
+  width: 100%;
+  word-break: break-word;
 }
 
 .btn-toolbar {
   flex-wrap: nowrap !important;
+}
+
+@media (max-width: 768px) {
+  .eventInfoColumn {
+    width: auto;
+  }
+
+  .btn-toolbar {
+    flex-direction: column;
+    align-items: flex-end;
+  }
+
+  td {
+    font-size: 0.9rem;
+  }
 }
 </style>
 
@@ -46,25 +57,20 @@ function handleEventDeleted() {
   <div v-if="status.error" class="text-danger">
     Error loading events: {{ status.error }}
   </div>
-  <div class="table-responsive-sm">
+  <div class="table-responsive">
     <table class="table table-striped table-hover">
       <thead>
         <tr>
-          <th scope="col">uuid</th>
           <th scope="col">info</th>
           <th scope="col">tags</th>
           <th scope="col">date</th>
           <th scope="col" class="d-none d-sm-table-cell">distribution</th>
-          <th scope="col" width="20%" class="text-end">actions</th>
+          <th scope="col">organisation</th>
+          <th scope="col" class="text-end">actions</th>
         </tr>
       </thead>
       <tbody>
         <tr :key="event.uuid" v-for="event in events.items">
-          <td>
-            <RouterLink :to="`/events/${event.uuid}`">
-              <UUID :uuid="event.uuid" :copy="false" />
-            </RouterLink>
-          </td>
           <td class="eventInfoColumn text-start">{{ event.info }}</td>
           <td>
             <TagsIndex :tags="event.tags" />
@@ -73,45 +79,15 @@ function handleEventDeleted() {
           <td class="d-none d-sm-table-cell">
             <DistributionLevel :distribution_level_id="event.distribution" />
           </td>
-          <td class="text-end">
-            <div class="btn-toolbar float-end" role="toolbar">
-              <div
-                class="flex-wrap"
-                :class="{
-                  'btn-group-vertical': $isMobile,
-                  'btn-group me-2': !$isMobile,
-                }"
-                aria-label="Event Actions"
-              >
-                <RouterLink
-                  :to="`/events/${event.id}`"
-                  class="btn btn-outline-primary"
-                >
-                  <font-awesome-icon icon="fa-solid fa-eye" />
-                </RouterLink>
-                <RouterLink
-                  :to="`/events/update/${event.id}`"
-                  class="btn btn-outline-primary"
-                >
-                  <font-awesome-icon icon="fa-solid fa-pen" />
-                </RouterLink>
-              </div>
-              <div class="btn-group me-2" role="group">
-                <button
-                  type="button"
-                  class="btn btn-danger"
-                  data-bs-toggle="modal"
-                  :data-bs-target="'#deleteEventModal-' + event.id"
-                >
-                  <font-awesome-icon icon="fa-solid fa-trash" />
-                </button>
-              </div>
-            </div>
+          <td>
+            {{ event.organisation.name }}
           </td>
-          <DeleteEventModal
-            @event-deleted="handleEventDeleted"
-            :event_id="event.id"
-          />
+          <td class="text-end">
+            <EventActions
+              :event_uuid="event.uuid"
+              @event-deleted="handleEventDeleted"
+            />
+          </td>
         </tr>
       </tbody>
     </table>

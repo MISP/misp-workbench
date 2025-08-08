@@ -7,6 +7,7 @@ from app.schemas.attribute import Attribute
 from app.schemas.object import Object
 from app.schemas.sharing_groups import SharingGroup
 from app.schemas.tag import Tag
+from app.schemas.organisations import Organisation
 from pydantic import BaseModel, ConfigDict
 
 
@@ -42,6 +43,7 @@ class Event(EventBase):
     objects: list[Object] = []
     sharing_group: Optional[SharingGroup] = None
     tags: list[Tag] = []
+    organisation: Organisation
     model_config = ConfigDict(from_attributes=True)
 
 

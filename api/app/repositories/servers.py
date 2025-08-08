@@ -4,6 +4,7 @@ from typing import Union
 
 from app.models import server as server_models
 from app.models import user as user_models
+from app.models import event as event_models
 from app.models.event import DistributionLevel
 from app.repositories import sync as sync_repository
 from app.repositories import events as events_repository
@@ -159,7 +160,7 @@ def pull_event_by_uuid(
     server: server_schemas.Server,
     user: user_models.User,
     settings: Settings,
-):
+) -> Union[event_models.Event, bool]:
     """
     see: app/Model/Server.php::__pullEvent()
     """
@@ -222,7 +223,7 @@ def pull_event_by_uuid(
     
     tasks.index_event.delay(db_event.uuid)
 
-    return True
+    return db_event
 
 
 def update_pulled_event_before_insert(

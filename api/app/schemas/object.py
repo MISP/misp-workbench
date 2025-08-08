@@ -13,7 +13,7 @@ class ObjectBase(BaseModel):
     description: Optional[str] = None
     template_uuid: Optional[str] = None
     template_version: int
-    event_id: int
+    event_id: Optional[int] = None
     uuid: Optional[UUID] = None
     timestamp: int
     distribution: Optional[DistributionLevel] = None
@@ -34,6 +34,7 @@ class Object(ObjectBase):
 
 
 class ObjectCreate(ObjectBase):
+    event_uuid: Optional[UUID] = None
     attributes: Optional[list[AttributeCreate]] = []
     object_references: list[ObjectReferenceCreate] = []
 

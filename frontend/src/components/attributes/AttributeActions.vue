@@ -14,10 +14,14 @@ import {
   faPen,
   faMagicWandSparkles,
   faSitemap,
+  faBookmark,
 } from "@fortawesome/free-solid-svg-icons";
+import { toggleFollowEntity, isFollowingEntity } from "@/helpers/follow";
 
 const authStore = useAuthStore();
 const { scopes } = storeToRefs(authStore);
+
+const followed = ref(false);
 
 const props = defineProps({
   attribute: Object,
@@ -69,6 +73,7 @@ onMounted(() => {
   correlatedAttributesModal.value = new Modal(
     document.getElementById(`correlatedAttributesModal${props.attribute.id}`),
   );
+  followed.value = isFollowingEntity("attributes", props.attribute.uuid);
 });
 
 function openDeleteAttributeModal() {
@@ -91,6 +96,11 @@ function handleAttributeDeleted() {
 function handleAttributeEnriched() {
   emit("attribute-enriched", props.attribute.id);
 }
+
+function followAttribute() {
+  followed.value = !followed.value;
+  toggleFollowEntity("attributes", props.attribute.uuid, followed.value);
+}
 </script>
 
 <style scoped>
@@ -108,7 +118,7 @@ function handleAttributeEnriched() {
     >
       <button
         type="button"
-        class="btn"
+        class="btn btn-sm"
         @click="openCorrelationsModal"
         data-placement="top"
         data-toggle="tooltip"
@@ -125,28 +135,17 @@ function handleAttributeEnriched() {
       <RouterLink
         v-if="actions.view"
         :to="`/attributes/${attribute.id}`"
-        class="btn btn-outline-primary"
+        class="btn btn-outline-primary btn-sm"
         data-placement="top"
         data-toggle="tooltip"
         title="View Attribute"
       >
         <FontAwesomeIcon :icon="faEye" />
       </RouterLink>
-      <button
-        v-if="actions.enrich"
-        type="button"
-        class="btn btn-outline-primary"
-        @click="openEnrichAttributeModal"
-        data-placement="top"
-        data-toggle="tooltip"
-        title="Enrich Attribute"
-      >
-        <FontAwesomeIcon :icon="faMagicWandSparkles" />
-      </button>
       <RouterLink
         v-if="actions.update"
         :to="`/attributes/update/${attribute.id}`"
-        class="btn btn-outline-primary"
+        class="btn btn-outline-primary btn-sm"
         data-placement="top"
         data-toggle="tooltip"
         title="Update Attribute"
@@ -156,9 +155,42 @@ function handleAttributeEnriched() {
     </div>
     <div class="btn-group me-2" role="group">
       <button
+        v-if="actions.enrich"
+        type="button"
+        class="btn btn-outline-primary btn-sm"
+        @click="openEnrichAttributeModal"
+        data-placement="top"
+        data-toggle="tooltip"
+        title="Enrich Attribute"
+      >
+        <FontAwesomeIcon :icon="faMagicWandSparkles" />
+      </button>
+      <button
+        type="button"
+        class="btn btn-outline-primary btn-sm"
+        data-placement="top"
+        data-toggle="tooltip"
+        title="Follow Attribute"
+        @click="followAttribute"
+      >
+        <FontAwesomeIcon
+          v-if="!followed"
+          :icon="faBookmark"
+          :inverse="true"
+          class="text-primary"
+        />
+        <FontAwesomeIcon
+          v-if="followed"
+          :icon="faBookmark"
+          class="text-success"
+        />
+      </button>
+    </div>
+    <div class="btn-group me-2" role="group">
+      <button
         v-if="actions.delete"
         type="button"
-        class="btn btn-danger"
+        class="btn btn-danger btn-sm"
         @click="openDeleteAttributeModal"
         data-placement="top"
         data-toggle="tooltip"

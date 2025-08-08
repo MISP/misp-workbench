@@ -24,6 +24,7 @@ function handleUserDeleted() {
         <tr>
           <th scope="col">id</th>
           <th scope="col">email</th>
+          <th scope="col">organisation</th>
           <th scope="col">disabled</th>
           <th scope="col" class="text-end">actions</th>
         </tr>
@@ -34,6 +35,11 @@ function handleUserDeleted() {
             <RouterLink :to="`/users/${user.id}`">{{ user.id }}</RouterLink>
           </td>
           <td>{{ user.email }}</td>
+          <td>
+            <RouterLink :to="`/organisations/${user.organisation.uuid}`">
+              {{ user.organisation.name }}
+            </RouterLink>
+          </td>
           <td>{{ !!user.disabled }}</td>
           <td class="text-end">
             <div class="btn-toolbar float-end" role="toolbar">
@@ -47,13 +53,13 @@ function handleUserDeleted() {
               >
                 <RouterLink
                   :to="`/users/${user.id}`"
-                  class="btn btn-outline-primary"
+                  class="btn btn-outline-primary btn-sm"
                 >
                   <font-awesome-icon icon="fa-solid fa-eye" />
                 </RouterLink>
                 <RouterLink
                   :to="`/users/update/${user.id}`"
-                  class="btn btn-outline-primary"
+                  class="btn btn-outline-primary btn-sm"
                 >
                   <font-awesome-icon icon="fa-solid fa-pen" />
                 </RouterLink>
@@ -61,7 +67,7 @@ function handleUserDeleted() {
               <div class="btn-group me-2" role="group">
                 <button
                   type="button"
-                  class="btn btn-danger"
+                  class="btn btn-danger btn-sm"
                   data-bs-toggle="modal"
                   :data-bs-target="'#deleteUserModal-' + user.id"
                 >

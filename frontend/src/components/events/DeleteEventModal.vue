@@ -5,14 +5,14 @@ import { storeToRefs } from "pinia";
 const eventsStore = useEventsStore();
 const { status } = storeToRefs(eventsStore);
 
-const props = defineProps(["event_id", "modal"]);
+const props = defineProps(["event_uuid", "modal"]);
 const emit = defineEmits(["event-deleted"]);
 
 function onSubmit() {
   return eventsStore
-    .delete(props.event_id)
+    .delete(props.event_uuid)
     .then(() => {
-      emit("event-deleted", { event_id: props.event_id });
+      emit("event-deleted", { event_uuid: props.event_uuid });
       props.modal.hide();
     })
     .catch((error) => (status.error = error));
@@ -21,7 +21,7 @@ function onSubmit() {
 
 <template>
   <div
-    :id="'deleteEventModal_' + event_id"
+    :id="'deleteEventModal_' + event_uuid"
     class="modal fade"
     tabindex="-1"
     aria-labelledby="deleteEventModal"
@@ -31,7 +31,7 @@ function onSubmit() {
       <div class="modal-content">
         <div class="modal-header">
           <h5 class="modal-title" id="deleteEventModal">
-            Delete Event #{{ event_id }}
+            Delete Event #{{ event_uuid }}
           </h5>
           <button
             type="button"

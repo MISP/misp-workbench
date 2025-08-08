@@ -49,7 +49,7 @@ function pullServer(server) {
         !server.connectionFailed
       "
       type="button"
-      class="btn btn-outline-primary"
+      class="btn btn-outline-primary btn-sm"
       @click="testServerConnection(server)"
       data-toggle="tooltip"
       data-placement="top"
@@ -57,7 +57,11 @@ function pullServer(server) {
     >
       <FontAwesomeIcon :icon="faCheck" />
     </button>
-    <button v-if="server.testingConnection" type="button" class="btn btn-light">
+    <button
+      v-if="server.testingConnection"
+      type="button"
+      class="btn btn-light btn-sm"
+    >
       <FontAwesomeIcon :icon="faSync" spin />
     </button>
     <button
@@ -67,7 +71,7 @@ function pullServer(server) {
         !server.connectionSucceeded
       "
       type="button"
-      class="btn btn-danger"
+      class="btn btn-danger btn-sm"
       @click="testServerConnection(server)"
       data-toggle="tooltip"
       data-placement="top"
@@ -78,7 +82,7 @@ function pullServer(server) {
     <button
       v-if="server.connectionSucceeded"
       type="button"
-      class="btn btn-success"
+      class="btn btn-success btn-sm"
       data-toggle="tooltip"
       data-placement="top"
       title="Connection succeed"
@@ -91,7 +95,7 @@ function pullServer(server) {
         </button> -->
     <button
       type="button"
-      class="btn btn-outline-primary"
+      class="btn btn-outline-primary btn-sm"
       data-placement="top"
       title="Pull"
       @click="pullServer(server)"
@@ -100,7 +104,7 @@ function pullServer(server) {
     </button>
     <RouterLink
       :to="`/servers/explore/${server.id}`"
-      class="btn btn-outline-primary"
+      class="btn btn-outline-primary btn-sm"
     >
       <FontAwesomeIcon :icon="faMagnifyingGlass" />
     </RouterLink>

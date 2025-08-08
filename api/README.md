@@ -38,51 +38,51 @@ Migrations are managed by [Alembic](https://alembic.sqlalchemy.org).
 
 ### Add new revision
 ```console
-docker-compose exec api poetry run alembic revision -m "add foobar table"
+docker compose exec api poetry run alembic revision -m "add foobar table"
 ```
 
 ### Show migrations history
 ```console
-docker-compose exec api poetry run alembic history
+docker compose exec api poetry run alembic history
 ```
 ### Upgrade to lastest
 ```console
-$ docker-compose exec api poetry run alembic upgrade head
+$ docker compose exec api poetry run alembic upgrade head
 ```
 ### Downgrade to revision
 ```console
-$ docker-compose exec api poetry run alembic downgrade [revision]
+$ docker compose exec api poetry run alembic downgrade [revision]
 ```
 
 ### Help
 ```console
-$ docker-compose exec api poetry run alembic help 
+$ docker compose exec api poetry run alembic help 
 ```
 
 ## CLI
 There is a CLI tool powered by [typer](https://github.com/tiangolo/typer) that lets you perform administrative tasks via command line:
 To list available commands:
 ```console
-$ docker-compose exec api poetry run python -m app.cli --help
+$ docker compose exec api poetry run python -m app.cli --help
 ```
 
 Create an organisation via CLI:
 ```console
-$ docker-compose exec api poetry run python -m app.cli create-organisation [org_name]
+$ docker compose exec api poetry run python -m app.cli create-organisation [org_name]
 Created organisation id=1
 
 Create a user via CLI:
 ```console
-$ docker-compose exec api poetry run python -m app.cli create-user [email] [password] [organisation_id] [role_id]
+$ docker compose exec api poetry run python -m app.cli create-user [email] [password] [organisation_id] [role_id]
 Created user id=1
 ```
 
 ## Testing
 ```console
 $ git submodule update --init --recursive
-$ docker-compose -f docker-compose.yml -f docker-compose.test.yml --env-file=".env.test" up -d
+$ docker compose -f docker-compose.yml -f docker-compose.test.yml --env-file=".env.test" up -d
 ...
-$ docker-compose exec api poetry run pytest
+$ docker compose exec api poetry run pytest
 =========================================================================================== test session starts ===========================================================================================
 platform linux -- Python 3.9.12, pytest-7.1.2, pluggy-1.0.0
 rootdir: /code
@@ -97,7 +97,7 @@ app/test_main.py .                                                              
 ### Debugging tests
 1. Run:
     ```console
-    docker-compose exec api poetry run python -m debugpy --listen 0.0.0.0:5677 --wait-for-client -m pytest
+    docker compose exec api poetry run python -m debugpy --listen 0.0.0.0:5677 --wait-for-client -m pytest
     ```
 
 
@@ -112,7 +112,7 @@ First make sure Make sure the [Python VS Code extension](https://marketplace) is
 
 1. Launch the docker containers with the debug configuration:
     ```console
-    $ docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
+    $ docker compose -f docker-compose.yml -f docker-compose.dev.yml up
     ```
 2. Add the following Python debug profile to VS Code: `.vscode/launch.json`
     ```json
@@ -199,13 +199,13 @@ Same if you modify a tasks code, you have to restart the `worker` container.
 
 To restart the worker container run:
 ```
-$ docker-compose restart worker
+$ docker compose restart worker
 ```
 
 
 #### purge tasks
 ```
-docker-compose exec worker poetry run celery -A app.worker.tasks purge
+docker compose exec worker poetry run celery -A app.worker.tasks purge
 ``` 
 
 ## TODO

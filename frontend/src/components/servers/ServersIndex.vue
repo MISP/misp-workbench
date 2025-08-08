@@ -58,13 +58,13 @@ function handleServerDeleted() {
               >
                 <RouterLink
                   :to="`/servers/update/${server.id}`"
-                  class="btn btn-outline-primary"
+                  class="btn btn-outline-primary btn-sm"
                 >
                   <font-awesome-icon icon="fa-solid fa-pen" />
                 </RouterLink>
                 <RouterLink
                   :to="`/servers/${server.id}`"
-                  class="btn btn-outline-primary"
+                  class="btn btn-outline-primary btn-sm"
                 >
                   <font-awesome-icon icon="fa-solid fa-eye" />
                 </RouterLink>
@@ -72,7 +72,7 @@ function handleServerDeleted() {
               <div class="btn-group me-2" role="group">
                 <button
                   type="button"
-                  class="btn btn-danger"
+                  class="btn btn-danger btn-sm"
                   data-bs-toggle="modal"
                   :data-bs-target="'#deleteServerModal-' + server.id"
                 >

@@ -113,6 +113,9 @@ jobs:
           POSTGRES_DB: misp
           OPENSEARCH_HOSTNAME: localhost
           OPENSEARCH_PORT: 9200
+          REDIS_HOSTNAME: localhost
+          REDIS_PORT: 6379
+          REDIS_CACHE_DB: 5
 
       - name: Run tests
         working-directory: api
@@ -129,6 +132,9 @@ jobs:
           OAUTH2_SECRET_KEY: e6d14a781f168c29f8ba7dad72c2ad1418375ab9e3878ea671ba87cf76618511
           OAUTH2_ALGORITHM: HS256
           OAUTH2_ACCESS_TOKEN_EXPIRE_MINUTES: 30
+          REDIS_HOSTNAME: localhost
+          REDIS_PORT: 6379
+          REDIS_CACHE_DB: 5
           CELERY_BROKER_URL: amqp://rabbitmq:rabbitmq@localhost:5672/rabbitmq
           CELERY_RESULT_BACKEND: redis://localhost:6379/0
           MAIL_USERNAME: mail-user
