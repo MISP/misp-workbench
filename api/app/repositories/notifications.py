@@ -203,7 +203,7 @@ def create_event_notifications(db: Session, type: str, event: event_models.Event
     org_followers = get_followers_for(db, "organisations", organisation.uuid)
     notifications += [
         build_event_notification(
-            follower.id,
+            follower,
             f"organisation.event.{type}",
             event=event,
             organisation=organisation,
@@ -215,7 +215,7 @@ def create_event_notifications(db: Session, type: str, event: event_models.Event
     event_followers = get_followers_for(db, "events", event.uuid)
     notifications += [
         build_event_notification(
-            follower.id, f"event.{type}", event=event, organisation=organisation
+            follower, f"event.{type}", event=event, organisation=organisation
         )
         for follower in event_followers
     ]
@@ -305,7 +305,7 @@ def create_attribute_notifications(
     attr_followers = get_followers_for(db, "attributes", attribute.uuid)
     notifications += [
         build_attribute_notification(
-            follower.id,
+            follower,
             f"attribute.{type}",
             attribute=attribute,
             event=event,
@@ -334,7 +334,7 @@ def create_attribute_notifications(
     event_followers = get_followers_for(db, "events", event.uuid)
     notifications += [
         build_attribute_notification(
-            follower.id, f"event.attribute.{type}", attribute=attribute, event=event
+            follower, f"event.attribute.{type}", attribute=attribute, event=event
         )
         for follower in event_followers
     ]
@@ -383,7 +383,7 @@ def create_object_notifications(db: Session, type: str, object: object_models.Ob
     event_followers = get_followers_for(db, "events", event.uuid)
     notifications += [
         build_object_notification(
-            follower.id, f"event.object.{type}", object=object, event=event
+            follower, f"event.object.{type}", object=object, event=event
         )
         for follower in event_followers
     ]
@@ -392,7 +392,7 @@ def create_object_notifications(db: Session, type: str, object: object_models.Ob
     obj_followers = get_followers_for(db, "objects", object.uuid)
     notifications += [
         build_object_notification(
-            follower.id,
+            follower,
             f"object.{type}",
             object=object,
             event=event,
@@ -422,7 +422,7 @@ def create_sighting_notifications(
     notifications = []
     for follower in attribute_followers:
         notification = notification_models.Notification(
-            user_id=follower.id,
+            user_id=follower,
             type=f"attribute.sighting.{type}",
             entity_type="attribute",
             entity_uuid=attribute["_source"]["uuid"],
@@ -459,7 +459,7 @@ def create_correlation_notifications(db: Session, type: str, correlation: dict):
     notifications = []
     for follower in attribute_followers:
         notification = notification_models.Notification(
-            user_id=follower.id,
+            user_id=follower,
             type=f"attribute.correlation.{type}",
             entity_type="attribute",
             entity_uuid=correlation["source_attribute_uuid"],

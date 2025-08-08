@@ -61,19 +61,3 @@ async def unfollow_notification(
     ),
 ):
     return notifications_repository.unfollow_notification(db, notification_id, user.id)
-
-
-# @router.get(
-#     "/notifications/followers/organisation/{organisation_uuid}",
-#     response_model=list[user_schemas.User],
-# )
-# async def get_users_following_organisation(
-#     organisation_uuid: str,
-#     db: Session = Depends(get_db),
-#     user: user_schemas.User = Security(
-#         get_current_active_user, scopes=["notifications:admin"]
-#     ),
-# ) -> list[user_schemas.User]:
-#     return notifications_repository.get_followers_for_organisation(
-#         db, organisation_uuid=organisation_uuid
-#     )
