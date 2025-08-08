@@ -58,6 +58,10 @@ class StorageSettings(BaseModel):
     engine: str = os.environ["STORAGE_ENGINE"] or "local"
     minio: MinioSettings = MinioSettings()
 
+class RedisSettings(BaseModel):
+    host: str = os.environ["REDIS_HOSTNAME"] or "localhost"
+    port: int = int(os.environ["REDIS_PORT"]) or 6379
+    cache_db: int = int(os.environ["REDIS_CACHE_DB"]) or 5
 
 class Settings(BaseSettings):
     MISP: MISPSettings = MISPSettings()
@@ -65,6 +69,7 @@ class Settings(BaseSettings):
     Mail: MailSettings = MailSettings()
     Modules: ModuleSettings = ModuleSettings()
     Storage: StorageSettings = StorageSettings()
+    Redis: RedisSettings = RedisSettings()
 
 
 @lru_cache

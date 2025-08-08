@@ -1,4 +1,5 @@
 from typing import Union
+import uuid
 from app.models import user as user_models
 from app.models import notification as notification_models
 from app.models import organisation as organisation_models
@@ -10,9 +11,11 @@ from sqlalchemy import select, update, text
 from sqlalchemy.orm import Session
 from fastapi_pagination.ext.sqlalchemy import paginate
 from datetime import datetime
+from app.services.redis import get_redis_client
 import json
 import copy
 
+CACHE_TTL = 60
 
 def get_user_notifications(db: Session, user_id: int, params: dict = {}):
     query = select(notification_models.Notification)
@@ -100,6 +103,8 @@ def unfollow_notification(db: Session, notification_id: int, user_id: int):
     else:
         return {"status": "error", "message": "Unsupported notification type"}
 
+    invalidate_follow_cache(follow_key, uuid)
+
     unfollow_notifications(
         db,
         follow_key=follow_key,
@@ -116,37 +121,48 @@ def unfollow_notification(db: Session, notification_id: int, user_id: int):
 
 def get_followers_for(db, follow_key: str, uuid: str):
     """
-    Get all users who follow a specific organisation or event.
+    Get all users who follow a specific organisation, event, object or attribute.
 
     Args:
         db: Database session.
-        follow_key: 'organisations' or 'events'.
-        uuid: The UUID of the organisation or event.
+        follow_key: 'organisations', 'events', 'objects' or 'attributes'.
+        uuid: The UUID of the organisation, event, object or attribute.
 
     Returns:
-        List of User objects.
+        List of user ids.
     """
-    stmt = text(
-        f"""
-        SELECT user_id
-        FROM user_settings
-        WHERE namespace = 'notifications'
-        AND (value -> 'follow' -> :key) @> :uuid_array
-        """
-    )
-    result = db.execute(
-        stmt,
-        {
-            "key": follow_key,
-            "uuid_array": json.dumps([str(uuid)]),
-        },
-    )
 
-    user_ids = [row.user_id for row in result]
+    cache_key = f"notifications:followers:{follow_key}:{uuid}"
+    RedisClient = get_redis_client()
+    cached = RedisClient.get(cache_key)
+    if cached:
+        user_ids = json.loads(cached)
+    else:
+        stmt = text(
+            f"""
+            SELECT user_id
+            FROM user_settings
+            WHERE namespace = 'notifications'
+            AND (value -> 'follow' -> :key) @> :uuid_array
+            """
+        )
+        result = db.execute(
+            stmt,
+            {
+                "key": follow_key,
+                "uuid_array": json.dumps([str(uuid)]),
+            },
+        )
+
+        user_ids = [row.user_id for row in result]
+        
+
+        RedisClient.setex(cache_key, CACHE_TTL, json.dumps(user_ids))
+    
     if not user_ids:
         return []
-
-    return db.query(user_models.User).filter(user_models.User.id.in_(user_ids)).all()
+    
+    return user_ids
 
 
 def build_event_notification(
@@ -464,3 +480,7 @@ def create_correlation_notifications(db: Session, type: str, correlation: dict):
         db.commit()
 
     return notifications
+
+def invalidate_follow_cache(entity_type: str, entity_uuid: str):
+    RedisClient = get_redis_client()
+    RedisClient.delete(f"notifications:followers:{entity_type}:{entity_uuid}")
