@@ -23,3 +23,6 @@ TODO
     cd frontend/ 
     npm run dev
     ```
+
+3. Go to https://localhost:3000
+    * Default credentials: `admin@admin.test`:`admin`
