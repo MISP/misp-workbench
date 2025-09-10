@@ -30,7 +30,7 @@ function handleOrganisationDeleted() {
               type="button"
               class="btn btn-outline-danger"
               data-bs-toggle="modal"
-              :data-bs-target="'#deleteOrganisationModal-' + organisation.id"
+              :data-bs-target="'#deleteOrganisationModal_' + organisation.uuid"
             >
               <font-awesome-icon icon="fa-solid fa-trash" />
             </button>
@@ -106,7 +106,7 @@ function handleOrganisationDeleted() {
         </table>
         <DeleteOrganisationModal
           @organisation-deleted="handleOrganisationDeleted"
-          :organisation_id="organisation.id"
+          :organisation_uuid="organisation.uuid"
         />
       </div>
     </div>

@@ -2,6 +2,7 @@ import logging
 import uuid
 from datetime import datetime
 from typing import Union
+from uuid import UUID
 
 from app.models import organisation as organisation_models
 from app.schemas import organisations as organisations_schemas
@@ -35,6 +36,16 @@ def get_organisation_by_uuid(
     return (
         db.query(organisation_models.Organisation)
         .filter(organisation_models.Organisation.uuid == organisation_uuid)
+        .first()
+    )
+
+
+def get_organisation_by_name(
+    db: Session, organisation_name: str
+) -> Union[organisation_models.Organisation, None]:
+    return (
+        db.query(organisation_models.Organisation)
+        .filter(organisation_models.Organisation.name == organisation_name)
         .first()
     )
 
@@ -90,8 +101,14 @@ def update_organisation(
     return db_organisation
 
 
-def delete_organisation(db: Session, organisation_id: int) -> None:
-    db_organisation = get_organisation_by_id(db, organisation_id=organisation_id)
+def delete_organisation(db: Session, organisation_id: Union[int, UUID]) -> None:
+
+    if isinstance(organisation_id, int):
+        db_organisation = get_organisation_by_id(db, organisation_id=organisation_id)
+    else:
+        db_organisation = get_organisation_by_uuid(
+            db, organisation_uuid=organisation_id
+        )
 
     if db_organisation is None:
         raise HTTPException(

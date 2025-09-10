@@ -11,6 +11,14 @@ app = typer.Typer()
 @app.command()
 def create_organisation(name: str, created_by: int = 0, local: bool = True):
     db = SessionLocal()
+
+    db_organisation = organisations_repository.get_organisation_by_name(
+        db, organisation_name=name
+    )
+    if db_organisation:
+        print(f"Organisation '{name}' already exists.")
+        return
+
     organisation = organisation_schemas.OrganisationCreate(
         name=name, created_by=created_by, local=local
     )
@@ -23,6 +31,12 @@ def create_organisation(name: str, created_by: int = 0, local: bool = True):
 @app.command()
 def create_user(email: str, password: str, organisation_id: int, role_id: int):
     db = SessionLocal()
+
+    db_user = user_repository.get_user_by_email(db, email=email)
+    if db_user:
+        print(f"User already exists with id={db_user.id}.")
+        return
+
     user = user_schemas.UserCreate(
         email=email, password=password, org_id=organisation_id, role_id=role_id
     )

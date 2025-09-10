@@ -3,7 +3,6 @@ import { storeToRefs } from "pinia";
 import { useOrganisationsStore } from "@/stores";
 import { RouterLink } from "vue-router";
 import Spinner from "@/components/misc/Spinner.vue";
-import DeleteOrganisationModal from "@/components/organisations/DeleteOrganisationModal.vue";
 import OrganisationActions from "@/components/organisations/OrganisationActions.vue";
 
 const organisationsStore = useOrganisationsStore();
@@ -48,13 +47,12 @@ function handleOrganisationDeleted() {
           <td class="d-none d-sm-table-cell">{{ organisation.type }}</td>
           <td class="text-end">
             <div class="btn-toolbar float-end" role="toolbar">
-              <OrganisationActions :organisation_uuid="organisation.uuid" />
+              <OrganisationActions
+                :organisation_uuid="organisation.uuid"
+                @organisation-deleted="handleOrganisationDeleted"
+              />
             </div>
           </td>
-          <DeleteOrganisationModal
-            @organisation-deleted="handleOrganisationDeleted"
-            :organisation_id="organisation.id"
-          />
         </tr>
       </tbody>
     </table>

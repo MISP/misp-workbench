@@ -83,7 +83,7 @@ def update_organisation(
     "/organisations/{organisation_id}", status_code=status.HTTP_204_NO_CONTENT
 )
 def delete_organisation(
-    organisation_id: int,
+    organisation_id: Union[int, UUID],
     db: Session = Depends(get_db),
     user: user_schemas.User = Security(
         get_current_active_user, scopes=["organisations:delete"]
