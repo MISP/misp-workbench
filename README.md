@@ -24,5 +24,5 @@ TODO
     npm run dev
     ```
 
-3. Go to https://localhost:3000
+3. Go to https://localhost:3001
     * Default credentials: `admin@admin.test`:`admin`
