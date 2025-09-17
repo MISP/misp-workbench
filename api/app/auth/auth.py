@@ -65,6 +65,7 @@ oauth2_scheme = OAuth2PasswordBearer(
         "servers:update": "Update servers.",
         "servers:delete": "Delete servers.",
         "servers:pull": "Pull server by id.",
+        "servers:push": "Push server by id.",
         "servers:test": "Test server connection by id.",
         "servers:events_index": "Index server events by id.",
         "sharing_groups:create": "Create sharing groups.",

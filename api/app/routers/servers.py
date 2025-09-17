@@ -232,3 +232,27 @@ def pull_remote_event_by_uuid(
         user=user,
         settings=Settings(),
     )
+
+@router.post(
+    "/servers/{server_id}/events/{event_uuid}/push",
+    response_model=event_schemas.Event,
+)
+def push_remote_event_by_uuid(
+    server_id: int,
+    event_uuid: str,
+    db: Session = Depends(get_db),
+    user: user_schemas.User = Security(
+        get_current_active_user, scopes=["servers:push"]
+    ),
+):
+    server = servers_repository.get_server_by_id(db, server_id)
+    if server is None:
+        raise Exception("Server not found")
+
+    return servers_repository.push_event_by_uuid(
+        db=db,
+        event_uuid=event_uuid,
+        server=server,
+        user=user,
+        settings=Settings(),
+    )

@@ -91,3 +91,34 @@ class Event(Base):
     sharing_group = relationship("SharingGroup", lazy="joined")
     tags = relationship("Tag", secondary="event_tags", lazy="joined")
     organisation = relationship("Organisation", lazy="joined", uselist=False, foreign_keys=[org_id])
+
+    def to_misp_event(self):
+        return {
+            "id": self.id,
+            "org_id": self.org_id,
+            "date": self.date.isoformat(),
+            "info": self.info,
+            "user_id": self.user_id,
+            "uuid": str(self.uuid),
+            "published": self.published,
+            "analysis": self.analysis.value,
+            "orgc_id": self.orgc_id,
+            "timestamp": self.timestamp,
+            "distribution": self.distribution.value,
+            "sharing_group_id": self.sharing_group_id,
+            "proposal_email_lock": self.proposal_email_lock,
+            "locked": self.locked,
+            "threat_level": self.threat_level.value,
+            "publish_timestamp": self.publish_timestamp,
+            "disable_correlation": self.disable_correlation,
+            "extends_uuid": str(self.extends_uuid) if self.extends_uuid else None,
+            "protected": self.protected,
+            "deleted": self.deleted,
+            # "Attributes": [attribute.to_misp_attribute() for attribute in self.attributes],
+            # "Objects": [obj.to_misp_object() for obj in self.objects],
+            # "Tags": [tag.name for tag in self.tags],
+            "Organisation": {
+                "id": self.organisation.id,
+                "name": self.organisation.name
+            } if self.organisation else None
+        }

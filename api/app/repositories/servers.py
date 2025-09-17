@@ -76,7 +76,14 @@ def get_remote_misp_connection(server: server_models.Server):
     verify_cert = not server.self_signed
 
     try:
-        remote_misp = PyMISP(url=server.url, key=server.authkey, ssl=verify_cert, http_headers={"User-Agent": "misp-lite/" + os.environ.get("APP_VERSION", "")})
+        remote_misp = PyMISP(
+            url=server.url,
+            key=server.authkey,
+            ssl=verify_cert,
+            http_headers={
+                "User-Agent": "misp-lite/" + os.environ.get("APP_VERSION", "")
+            },
+        )
         remote_misp_version = remote_misp.misp_instance_version
     except Exception as ex:
         raise Exception("Remote MISP instance not reachable: %s" % ex)
@@ -106,7 +113,9 @@ def pull_server_by_id(
 
     if technique == "pull_relevant_clusters":
         # TODO implement pull_relevant_clusters server pull technique
-        raise Exception("Server pull technique `pull_relevant_clusters` not implemented yet.")
+        raise Exception(
+            "Server pull technique `pull_relevant_clusters` not implemented yet."
+        )
 
     if technique == "update":
         # TODO implement update server pull technique
@@ -115,7 +124,9 @@ def pull_server_by_id(
     if technique == "full":
         return pull_server_by_id_full(db, server, remote_misp, user)
 
-    raise Exception("Unknown server pull technique `%s` not implemented yet." % technique)
+    raise Exception(
+        "Unknown server pull technique `%s` not implemented yet." % technique
+    )
 
 
 def pull_server_by_id_full(
@@ -136,7 +147,10 @@ def pull_server_by_id_full(
         tasks.pull_event_by_uuid.delay(event_uuid, server.id, user.id)
 
     logger.info("server pull id=%s all event fetch tasks enqueued.", server.id)
-    return {"result": "success", "message": "All server id=%s events to pull enqueued." % server.id}
+    return {
+        "result": "success",
+        "message": "All server id=%s events to pull enqueued." % server.id,
+    }
 
 
 def get_event_uuids_from_server(server: server_schemas.Server, remote_misp: PyMISP):
@@ -164,7 +178,7 @@ def pull_event_by_uuid(
     """
     see: app/Model/Server.php::__pullEvent()
     """
-    
+
     remote_misp = get_remote_misp_connection(server)
 
     # fetch event from remote server
@@ -174,7 +188,7 @@ def pull_event_by_uuid(
         "includeEventCorrelations": 0,
         "includeFeedCorrelations": 0,
         "includeWarninglistHits": 0,
-        "withAttachments": 1
+        "withAttachments": 1,
     }
 
     if server.internal:
@@ -220,7 +234,7 @@ def pull_event_by_uuid(
     # TODO: process sightings, see app/Model/Event.php::_add()
 
     # TODO: process tag collection, see app/Model/Event.php::_add()
-    
+
     tasks.index_event.delay(db_event.uuid)
 
     return db_event
@@ -261,7 +275,6 @@ def update_pulled_event_before_insert(
             for attribute in event.attributes:
                 attribute = update_pulled_attribute_before_insert(attribute)
 
-
         # process event reports
         if event.event_reports:
             # TODO handle event reports
@@ -294,10 +307,10 @@ def update_pulled_attribute_before_insert(attribute: MISPAttribute) -> MISPAttri
     # TODO: handle MISP.enable_synchronisation_filtering_on_type / attributes pullRules
 
     attribute.distribution = downgrade_distribution(attribute.distribution)
-    
+
     if attribute.object_id == "0":
         attribute.object_id = None
-        
+
     # remove local tags obtained via pull
     attribute.tags = [tag for tag in attribute.tags if not tag.local]
 
@@ -424,9 +437,15 @@ def create_or_update_pulled_event(
         )
         if updated:
             sync_repository.create_pulled_event_tags(db, updated, event.tags, user)
-            sync_repository.create_pulled_event_reports(db, updated.uuid, event.event_reports, user)
-            sync_repository.update_pulled_event_objects(db, updated.id, event.objects, user)
-            sync_repository.update_pulled_event_attributes(db, updated.id, event.attributes, user)
+            sync_repository.create_pulled_event_reports(
+                db, updated.uuid, event.event_reports, user
+            )
+            sync_repository.update_pulled_event_objects(
+                db, updated.id, event.objects, user
+            )
+            sync_repository.update_pulled_event_attributes(
+                db, updated.id, event.attributes, user
+            )
 
             # TODO: publish event update to ZMQ
             logger.info("Updated event %s" % event.uuid)
@@ -583,7 +602,12 @@ def get_remote_event_attributes(
         )
 
     return remote_misp.search(
-        controller="attributes", eventid=event_uuid, with_attachments=True, deleted=["0"], limit=limit, page=page
+        controller="attributes",
+        eventid=event_uuid,
+        with_attachments=True,
+        deleted=["0"],
+        limit=limit,
+        page=page,
     )
 
 
@@ -606,12 +630,16 @@ def get_remote_event_objects(
         )
 
     return remote_misp.search(
-        controller="objects", eventid=event_uuid, with_attachments=True, deleted=["0"], limit=limit, page=page
+        controller="objects",
+        eventid=event_uuid,
+        with_attachments=True,
+        deleted=["0"],
+        limit=limit,
+        page=page,
     )
 
-def get_remote_event_reports(
-    db: Session, server_id: int, event_id: int
-):
+
+def get_remote_event_reports(db: Session, server_id: int, event_id: int):
 
     db_server = get_server_by_id(db, server_id=server_id)
 
@@ -628,3 +656,91 @@ def get_remote_event_reports(
         )
 
     return remote_misp.get_event_reports(event_id)
+
+
+def push_event_by_uuid(
+    db: Session,
+    event_uuid: str,
+    server: server_schemas.Server,
+    user: user_models.User,
+    settings: Settings,
+) -> bool:
+
+    db_event = events_repository.get_event_by_uuid(db, event_uuid=event_uuid)
+    if db_event is None:
+        logger.error(
+            "Event {} not found on local instance, cannot push to remote server {}".format(
+                event_uuid, server.id
+            )
+        )
+        return False
+
+    remote_misp = get_remote_misp_connection(server)
+
+    # fetch event from remote server
+    data = {
+        "deleted": [0, 1],
+        "minimal": 1,
+    }
+
+    if server.internal:
+        data["excludeLocalTags"] = 1
+
+    try:
+        response = remote_misp._prepare_request(
+            "POST", f"events/view/{event_uuid}", data=data
+        )
+
+        if response.status_code == 200:
+            event_raw = remote_misp._check_json_response(response)
+            remote_event = MISPEvent()
+            remote_event.load(event_raw)
+
+        if response.status_code == 404:
+            remote_event = None
+        elif response.status_code != 200:
+            logger.error(
+                "Failed fetching the event {} from remote server {}, status code: {}".format(
+                    event_uuid, server.id, response.status_code
+                )
+            )
+            return False
+
+    except Exception as ex:
+        logger.war(
+            "Failed downloading the event {} from remote server {}".format(
+                event_uuid, server.id
+            ),
+            ex,
+        )
+        return False
+
+    if remote_event and remote_event.timestamp >= db_event.timestamp:
+        logger.info(
+            "Remote event %s is newer or same as local, skipping push" % event_uuid
+        )
+        return False
+
+    try:
+        response = remote_misp._prepare_request(
+            "POST", f"events/add/{event_uuid}", data=db_event.to_misp_event()
+        )
+        if response.status_code == 200:
+            return True
+        else:
+            logger.error(
+                "Failed pushing the event {} to remote server {}, status code: {}".format(
+                    event_uuid, server.id, response.status_code
+                )
+            )
+            return False
+    except Exception as ex:
+        logger.error(
+            "Failed downloading the event {} from remote server {}".format(
+                event_uuid, server.id
+            ),
+            ex,
+        )
+        return False
+
+    return False

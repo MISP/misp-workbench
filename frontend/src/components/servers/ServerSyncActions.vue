@@ -6,6 +6,7 @@ import {
   faMagnifyingGlass,
   faSync,
   faXmark,
+  faUpload,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
 const serversStore = useServersStore();
@@ -37,6 +38,10 @@ function testServerConnection(server) {
 
 function pullServer(server) {
   serversStore.pull(server.id);
+}
+
+function pushServer(server) {
+  serversStore.push(server.id);
 }
 </script>
 
@@ -89,10 +94,15 @@ function pullServer(server) {
     >
       <FontAwesomeIcon :icon="faCheck" />
     </button>
-    <!-- <button type="button" class="btn btn-outline-primary" disabled data-toggle="tooltip" data-placement="top"
-            title="Push">
-            <FontAwesomeIcon :icon="faUpload" />
-        </button> -->
+    <button
+      type="button"
+      class="btn btn-outline-primary btn-sm"
+      data-placement="top"
+      title="Push"
+      @click="pushServer(server)"
+    >
+      <FontAwesomeIcon :icon="faUpload" />
+    </button>
     <button
       type="button"
       class="btn btn-outline-primary btn-sm"
