@@ -25,7 +25,7 @@ export const useAttachmentsStore = defineStore({
     async uploadAttachments(uuid, files) {
       this.status = { uploading: true };
       return await fetchWrapper.postFormData(
-        `${baseUrl}/events/${id}/upload_attachments`,
+        `${baseUrl}/events/${uuid}/upload_attachments`,
         files,
       );
     },
@@ -44,9 +44,9 @@ export const useAttachmentsStore = defineStore({
         .catch((error) => (this.status = { error }))
         .finally(() => (this.status = { loading: false }));
     },
-    async downloadAttachment(id) {
+    async downloadAttachment(uuid) {
       return await fetchWrapper.downloadAttachment(
-        `${baseUrl}/attachments/${id}`,
+        `${baseUrl}/attachments/${uuid}`,
       );
     },
   },

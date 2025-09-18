@@ -8,14 +8,14 @@ from sqlalchemy.orm import Session
 router = APIRouter()
 
 
-@router.get("/attachments/{attachment_id}")
+@router.get("/attachments/{attachment_uuid}")
 def download_attachment(
-    attachment_id: int,
+    attachment_uuid: str,
     db: Session = Depends(get_db),
     user: user_schemas.User = Security(
         get_current_active_user, scopes=["attachments:download"]
     ),
 ):
     return attachments_repository.download_attachment(
-        db, attachment_id=attachment_id
+        db, attachment_uuid=attachment_uuid
     )
