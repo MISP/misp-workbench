@@ -32,3 +32,25 @@ class Object(Base):
 
     attributes = relationship("Attribute", lazy="subquery", cascade="all, delete-orphan")
     object_references = relationship("ObjectReference", lazy="subquery", cascade="all, delete-orphan")
+
+    def to_misp_format(self):
+        """Convert the Object to a MISP-compatible dictionary representation."""
+        return {
+            "id": self.id,
+            "name": self.name,
+            "meta_category": self.meta_category,
+            "description": self.description,
+            "template_uuid": self.template_uuid,
+            "template_version": self.template_version,
+            "event_id": self.event_id,
+            "uuid": str(self.uuid),
+            "timestamp": self.timestamp,
+            "distribution": self.distribution.name if self.distribution else None,
+            "sharing_group_id": self.sharing_group_id,
+            "comment": self.comment,
+            "deleted": self.deleted,
+            "first_seen": self.first_seen,
+            "last_seen": self.last_seen,
+            "Attributes": [attribute.to_misp_format() for attribute in self.attributes],
+            "ObjectReference": [ref.to_misp_format() for ref in self.object_references],
+        }

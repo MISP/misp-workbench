@@ -95,7 +95,6 @@ function onSubmit(values, { setErrors }) {
       <button class="w-100 btn btn-lg btn-outline-primary" type="submit">
         Sign in
       </button>
-      <p class="mt-3 mb-3 text-muted">&copy; 2024</p>
     </Form>
   </div>
 </template>

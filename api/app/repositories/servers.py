@@ -723,7 +723,7 @@ def push_event_by_uuid(
 
     try:
         response = remote_misp._prepare_request(
-            "POST", f"events/add/{event_uuid}", data=db_event.to_misp_event()
+            "POST", f"events/add/{event_uuid}", data=db_event.to_misp_format()
         )
         if response.status_code == 200:
             return True

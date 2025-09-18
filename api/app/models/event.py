@@ -92,7 +92,9 @@ class Event(Base):
     tags = relationship("Tag", secondary="event_tags", lazy="joined")
     organisation = relationship("Organisation", lazy="joined", uselist=False, foreign_keys=[org_id])
 
-    def to_misp_event(self):
+    def to_misp_format(self):
+        """Convert the Event to a MISP-compatible dictionary representation."""
+
         return {
             "id": self.id,
             "org_id": self.org_id,
@@ -114,11 +116,12 @@ class Event(Base):
             "extends_uuid": str(self.extends_uuid) if self.extends_uuid else None,
             "protected": self.protected,
             "deleted": self.deleted,
-            # "Attributes": [attribute.to_misp_attribute() for attribute in self.attributes],
-            # "Objects": [obj.to_misp_object() for obj in self.objects],
-            # "Tags": [tag.name for tag in self.tags],
+            "Attributes": [attribute.to_misp_format() for attribute in self.attributes],
+            "Objects": [obj.to_misp_format() for obj in self.objects],
+            "Tags": [tag.to_misp_format() for tag in self.tags],
             "Organisation": {
                 "id": self.organisation.id,
-                "name": self.organisation.name
+                "name": self.organisation.name,
+                "uuid": str(self.organisation.uuid),
             } if self.organisation else None
         }
