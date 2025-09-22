@@ -715,15 +715,16 @@ def push_event_by_uuid(
         )
         return False
 
-    if remote_event and remote_event.timestamp >= db_event.timestamp:
+    if remote_event and remote_event.timestamp.timestamp() >= db_event.timestamp:
         logger.info(
-            "Remote event %s is newer or same as local, skipping push" % event_uuid
+            "Local event %s is not newer than remote, skipping push" % event_uuid
         )
         return False
 
     try:
+        event_json = db_event.to_misp_format()
         response = remote_misp._prepare_request(
-            "POST", f"events/add/{event_uuid}", data=db_event.to_misp_format()
+            "POST", f"events/add/{event_uuid}/?XDEBUG_SESSION_START", data=event_json
         )
         if response.status_code == 200:
             return True
@@ -741,6 +742,5 @@ def push_event_by_uuid(
             ),
             ex,
         )
-        return False
 
     return False

@@ -233,10 +233,8 @@ def pull_remote_event_by_uuid(
         settings=Settings(),
     )
 
-@router.post(
-    "/servers/{server_id}/events/{event_uuid}/push",
-    response_model=event_schemas.Event,
-)
+
+@router.post("/servers/{server_id}/events/{event_uuid}/push")
 def push_remote_event_by_uuid(
     server_id: int,
     event_uuid: str,

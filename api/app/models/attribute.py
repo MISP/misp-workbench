@@ -3,6 +3,7 @@ import uuid
 import logging
 from app.database import Base
 from app.models.event import DistributionLevel
+from app.services.attachments import get_attachment, get_b64_attachment
 from sqlalchemy import BigInteger, Boolean, Column, Enum, ForeignKey, Integer, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -61,26 +62,21 @@ class Attribute(Base):
             "to_ids": self.to_ids,
             "uuid": str(self.uuid),
             "timestamp": self.timestamp,
-            "distribution": self.distribution.name if self.distribution else None,
-            "sharing_group_id": self.sharing_group_id,
+            "distribution": self.distribution.value if self.distribution else DistributionLevel.INHERIT_EVENT,
+            "sharing_group_id": self.sharing_group_id if self.sharing_group_id else None,
             "comment": self.comment,
             "deleted": self.deleted,
             "disable_correlation": self.disable_correlation,
             "first_seen": self.first_seen,
             "last_seen": self.last_seen,
-            "Tags": [tag.to_misp_format() for tag in self.tags],
+            "Tag": [tag.to_misp_format() for tag in self.tags],
         }
 
         # if its a file attribute, we need to handle it differently
         if self.type in ["malware-sample", "attachment"]:
             try:
-                MinioClient = get_minio_client()
-                data = MinioClient.get_object(settings.Storage.minio.bucket, self.uuid)
-                file_content = data.read()
-                file_b64 = file_content.encode("base64")
-                attr_json["data"] = file_b64
+                attr_json["data"] = get_b64_attachment(self.uuid, settings)
             except Exception as e:
-                file_b64 = None
                 logger.error(f"Error storing attachment: {str(e)}")
                 print(f"Error fetching file from storage: {str(e)}")
 

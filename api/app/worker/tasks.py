@@ -106,8 +106,13 @@ def handle_updated_event(event_uuid: uuid.UUID):
 
     with Session(engine) as db:
         db_event = events_repository.get_event_by_uuid(db, event_uuid)
+
         if db_event is None:
             raise Exception("Event with uuid=%s not found", event_uuid)
+
+        db_event.timestamp = datetime.now().timestamp()
+        db.commit()
+        db.refresh(db_event)
 
         notifications_repository.create_event_notifications(
             db, "updated", event=db_event

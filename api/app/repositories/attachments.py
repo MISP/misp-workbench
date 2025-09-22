@@ -7,6 +7,7 @@ import os
 
 from fastapi.responses import StreamingResponse
 from app.services.minio import get_minio_client
+from app.services.attachments import get_attachment
 from starlette import status
 import app.schemas.event as event_schemas
 from app.schemas import object as object_schemas
@@ -21,6 +22,7 @@ from fastapi import (
 )
 
 logger = logging.getLogger(__name__)
+
 
 def store_attachment(
     file_content,
@@ -52,6 +54,7 @@ def store_attachment(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Error storing attachment",
         )
+
 
 def upload_attachments_to_event(
     db: Session,
@@ -173,7 +176,11 @@ def upload_attachments_to_event(
                 file_object.attributes.append(malware_attribute)
 
             db_file_object = objects_repository.create_object(db, file_object)
-            attachment_attribute_db = [db_file_object_attr for db_file_object_attr in db_file_object.attributes if db_file_object_attr.type == "attachment"][0]
+            attachment_attribute_db = [
+                db_file_object_attr
+                for db_file_object_attr in db_file_object.attributes
+                if db_file_object_attr.type == "attachment"
+            ][0]
 
             store_attachment(file_content, attachment_attribute_db.uuid)
 
@@ -197,30 +204,15 @@ def download_attachment(
 
     db_attribute = attributes_repository.get_attribute_by_uuid(db, attachment_uuid)
 
-    # get attachment from minio
     try:
-        if settings.Storage.engine == "minio":
-            MinioClient = get_minio_client()
+        return StreamingResponse(
+            io.BytesIO(get_attachment(attachment_uuid, settings)),
+            media_type="application/octet-stream",
+            headers={
+                "Content-Disposition": f'attachment; filename="{db_attribute.value or attachment_uuid}"'
+            },
+        )
 
-            data = MinioClient.get_object(settings.Storage.minio.bucket, attachment_uuid)
-            return StreamingResponse(
-                io.BytesIO(data.read()),
-                media_type="application/octet-stream",
-                headers={
-                    "Content-Disposition": f'attachment; filename="{db_attribute.value or attachment_uuid}"'
-                },
-            )
-
-        # get attachment from local storage
-        if settings.Storage.engine == "local":
-            with open(f"/tmp/attachments/{attachment_uuid}", "rb") as f:
-                return StreamingResponse(
-                    io.BytesIO(f.read()),
-                    media_type="application/octet-stream",
-                    headers={
-                        "Content-Disposition": f'attachment; filename="{db_attribute.value or attachment_uuid}"'
-                    },
-                )
     except Exception as e:
         logger.error(f"Error fetching attachment: {str(e)}")
         raise HTTPException(
