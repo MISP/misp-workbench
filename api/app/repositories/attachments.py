@@ -74,6 +74,7 @@ def upload_attachments_to_event(
             file_object = object_schemas.ObjectCreate(
                 name="file",
                 template_uuid="688c46fb-5edb-40a3-8273-1af7923e2215",
+                meta_category="File",
                 template_version=25,
                 comment=attachment.filename,
                 event_id=event.id,
@@ -142,7 +143,7 @@ def upload_attachments_to_event(
             size_attribute = attribute_schemas.AttributeCreate(
                 event_id=event.id,
                 object_relation="size-in-bytes",
-                category="External analysis",
+                category="Other",
                 type="size-in-bytes",
                 value=str(size),
                 timestamp=int(time.time()),
