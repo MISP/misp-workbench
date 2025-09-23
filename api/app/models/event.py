@@ -116,8 +116,8 @@ class Event(Base):
             "extends_uuid": str(self.extends_uuid) if self.extends_uuid else None,
             "protected": self.protected,
             "deleted": self.deleted,
-            "Attribute": [attribute.to_misp_format() for attribute in self.attributes],
-            "Object": [obj.to_misp_format() for obj in self.objects],
+            "Attribute": [attribute.to_misp_format() for attribute in self.attributes if attribute.object_id == None and not attribute.deleted],
+            "Object": [obj.to_misp_format() for obj in self.objects if not obj.deleted],
             "Tag": [tag.to_misp_format() for tag in self.tags],
             "Organisation": {
                 "id": self.organisation.id,

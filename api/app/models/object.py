@@ -38,8 +38,8 @@ class Object(Base):
         return {
             "id": self.id,
             "name": self.name,
-            "meta_category": self.meta_category,
-            "description": self.description,
+            "meta-category": self.meta_category,
+            "description": self.description if self.description else self.name,
             "template_uuid": self.template_uuid,
             "template_version": self.template_version,
             "event_id": self.event_id,

@@ -1,9 +1,11 @@
 <script setup>
 import { ref } from "vue";
+import AttributeCategorySelect from "@/components/enums/AttributeCategorySelect.vue";
 import AddOrEditObjectAttributeRow from "@/components/objects/AddOrEditObjectAttributeRow.vue";
 import ObjectTemplateAttributeTypeSelect from "@/components/objects/ObjectTemplateAttributeTypeSelect.vue";
 import ObjectTemplateAttributeObjectRelationSelect from "@/components/objects/ObjectTemplateAttributeObjectRelationSelect.vue";
 import ObjectAttributeValueInput from "@/components/objects/ObjectAttributeValueInput.vue";
+import UUID from "@/components/misc/UUID.vue";
 import {
   AttributeSchema,
   getAttributeTypeValidationSchema,
@@ -26,13 +28,21 @@ const attributeErrors = ref(null);
 const newAttribute = ref({
   event_id: object.value.event_id,
   value: "",
-  category: "Other",
+  category: getDefaultAttributeCategory(),
   to_ids: false,
   distribution: 0,
   disable_correlation: false,
 });
 
 const selectedTemplateAttribute = ref({});
+
+function getDefaultAttributeCategory() {
+  if (template.value.meta_category === "network") {
+    return "Network activity";
+  }
+
+  return "Other";
+}
 
 function addAttribute(values, { resetForm }) {
   validateAttributeValue(values, AttributeTypeSchema.value)
@@ -116,7 +126,7 @@ function handleAttributeValueChanged(value) {
 
 <template>
   <div>
-    <!-- <div class="mt-3 mb-3">
+    <div class="mt-3 mb-3">
       <div class="card card-body">
         <div>
           <span class="fw-bold">{{ template.name }} </span>
@@ -140,7 +150,7 @@ function handleAttributeValueChanged(value) {
           </li>
         </ul>
       </div>
-    </div> -->
+    </div>
     <Form
       @submit="addAttribute"
       :validation-schema="AttributeSchema"
@@ -168,6 +178,13 @@ function handleAttributeValueChanged(value) {
           @attribute-template-object-relation-changed="
             handleAttributeObjectRelationChanged
           "
+        />
+        <label class="input-group-text" for="attribute.type">category</label>
+        <AttributeCategorySelect
+          id="attribute.category"
+          name="attribute.category"
+          v-model="newAttribute.category"
+          :errors="errors['newAttribute.category']"
         />
         <label class="input-group-text" for="attribute.type">type</label>
         <ObjectTemplateAttributeTypeSelect

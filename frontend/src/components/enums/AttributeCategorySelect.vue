@@ -12,7 +12,7 @@ function handleSelectChange(event) {
 
 <template>
   <Field
-    class="form-control"
+    class="form-select"
     :name="name"
     :class="{ 'is-invalid': errors }"
     as="select"

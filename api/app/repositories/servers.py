@@ -664,7 +664,7 @@ def push_event_by_uuid(
     server: server_schemas.Server,
     user: user_models.User,
     settings: Settings,
-) -> bool:
+) -> dict:
 
     db_event = events_repository.get_event_by_uuid(db, event_uuid=event_uuid)
     if db_event is None:
@@ -704,37 +704,58 @@ def push_event_by_uuid(
                     event_uuid, server.id, response.status_code
                 )
             )
-            return False
+            return {
+                "status": response.status_code,
+                "message": "Failed fetching the event.",
+                "response": response.json(),
+            }
 
     except Exception as ex:
-        logger.war(
+        logger.warning(
             "Failed downloading the event {} from remote server {}".format(
                 event_uuid, server.id
             ),
             ex,
         )
-        return False
+        return {
+            "status": response.status_code,
+            "message": "Failed downloading the event",
+            "response": response.json(),
+        }
 
-    if remote_event and remote_event.timestamp.timestamp() >= db_event.timestamp:
-        logger.info(
-            "Local event %s is not newer than remote, skipping push" % event_uuid
-        )
-        return False
+    # if remote_event and remote_event.timestamp.timestamp() >= db_event.timestamp:
+    #     logger.info(
+    #         "Local event %s is not newer than remote, skipping push" % event_uuid
+    #     )
+    #     return {
+    #         "status": "info",
+    #         "message": "Local event is not newer than remote, skipping push",
+    #         "response": response.json(),
+    #     }
 
     try:
         event_json = db_event.to_misp_format()
         response = remote_misp._prepare_request(
-            "POST", f"events/add/{event_uuid}/?XDEBUG_SESSION_START", data=event_json
+            "POST", f"events/add/{event_uuid}", data=event_json
         )
         if response.status_code == 200:
-            return True
+            return {
+                "status": response.status_code,
+                "message": "Event pushed successfully.",
+                "response": response.json(),
+            }
         else:
             logger.error(
                 "Failed pushing the event {} to remote server {}, status code: {}".format(
                     event_uuid, server.id, response.status_code
                 )
             )
-            return False
+            return {
+                "status": response.status_code,
+                "message": "Failed pushing the event.",
+                "response": response.json(),
+            }
+
     except Exception as ex:
         logger.error(
             "Failed downloading the event {} from remote server {}".format(
@@ -743,4 +764,8 @@ def push_event_by_uuid(
             ex,
         )
 
-    return False
+        return {
+            "status": response.status_code if "response" in locals() else 500,
+            "message": "Failed pushing the event, exception: {}".format(ex),
+            "response": None,
+        }
