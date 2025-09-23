@@ -234,6 +234,27 @@ def pull_remote_event_by_uuid(
     )
 
 
+@router.post(
+    "/servers/{server_id}/push",
+    status_code=status.HTTP_202_ACCEPTED,
+    response_model=task_schemas.Task,
+)
+def push_server(
+    server_id: int,
+    db: Session = Depends(get_db),
+    user: user_schemas.User = Security(
+        get_current_active_user, scopes=["servers:push"]
+    ),
+):
+    # TODO: handle other techniques
+    task = tasks.server_push_by_id.delay(server_id, user.id, "full")
+
+    return task_schemas.Task(
+        task_id=task.id,
+        status=task.status,
+        message="push server_id=%s enqueued" % server_id,
+    )
+
 @router.post("/servers/{server_id}/events/{event_uuid}/push")
 def push_remote_event_by_uuid(
     server_id: int,

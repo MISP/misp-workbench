@@ -3,11 +3,10 @@ import uuid
 import logging
 from app.database import Base
 from app.models.event import DistributionLevel
-from app.services.attachments import get_attachment, get_b64_attachment
+from app.services.attachments import  get_b64_attachment
 from sqlalchemy import BigInteger, Boolean, Column, Enum, ForeignKey, Integer, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from app.services.minio import get_minio_client
 from app.settings import Settings, get_settings
 
 

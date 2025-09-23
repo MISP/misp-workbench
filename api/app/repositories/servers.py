@@ -784,3 +784,50 @@ def push_event_by_uuid(
             "message": "Failed pushing the event, exception: {}".format(ex),
             "response": None,
         }
+
+
+def push_server_by_id_full(
+    db: Session,
+    server: server_schemas.Server,
+    user: user_models.User,
+):
+
+    # get a list of the event_ids eligible to be pushed to the server
+    event_uuids = db.query(event_models.Event.uuid).filter(
+        event_models.Event.published == True,
+        event_models.Event.distribution == DistributionLevel.CONNECTED_COMMUNITIES
+        or event_models.Event.distribution == DistributionLevel.ALL_COMMUNITIES,
+    ).all()
+    event_uuids = [event_uuid for (event_uuid,) in event_uuids]
+
+    # push each of the events in different tasks
+    for event_uuid in event_uuids:
+        tasks.push_event_by_uuid.delay(event_uuid, server.id, user.id)
+
+    logger.info("server push id=%s all event fetch tasks enqueued.", server.id)
+    return {
+        "result": "success",
+        "message": "All server id=%s events to push enqueued." % server.id,
+    }
+
+
+def push_server_by_id(
+    db: Session,
+    server_id: int,
+    user: user_models.User,
+    technique: str = "full",
+):
+    server = get_server_by_id(db, server_id)
+    if server is None:
+        raise Exception("Server not found")
+
+    if technique == "update":
+        # TODO implement update server push technique
+        raise Exception("Server push technique `update` not implemented yet.")
+
+    if technique == "full":
+        return push_server_by_id_full(db, server, user)
+
+    raise Exception(
+        "Unknown server push technique `%s` not implemented yet." % technique
+    )

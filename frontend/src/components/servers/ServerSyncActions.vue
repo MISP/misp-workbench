@@ -1,5 +1,5 @@
 <script setup>
-import { useServersStore } from "@/stores";
+import { useServersStore, useToastsStore } from "@/stores";
 import {
   faCheck,
   faDownload,
@@ -10,6 +10,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
 const serversStore = useServersStore();
+const toastsStore = useToastsStore();
 
 defineProps(["server"]);
 
@@ -37,10 +38,12 @@ function testServerConnection(server) {
 }
 
 function pullServer(server) {
+  toastsStore.push("Server pull enqueued.");
   serversStore.pull(server.id);
 }
 
 function pushServer(server) {
+  toastsStore.push("Server push enqueued.");
   serversStore.push(server.id);
 }
 </script>

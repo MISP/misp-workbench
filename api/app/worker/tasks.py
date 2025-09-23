@@ -85,6 +85,47 @@ def pull_event_by_uuid(event_uuid: uuid.UUID, server_id: int, user_id: int):
 
 
 @app.task
+def server_push_by_id(server_id: int, user_id: int, technique: str):
+    logger.info("push server_id=%s job started", server_id)
+
+    with Session(engine) as db:
+        user = users_repository.get_user_by_id(db, user_id)
+        if user is None:
+            raise Exception("User not found")
+
+        servers_repository.push_server_by_id(db, server_id, user, technique)
+        logger.info("push server_id=%s job finished", server_id)
+
+    return True
+
+
+@app.task
+def push_event_by_uuid(event_uuid: uuid.UUID, server_id: int, user_id: int):
+    logger.info(
+        "push event uuid=%s to server id=%s, job started", event_uuid, server_id
+    )
+
+    with Session(engine) as db:
+        user = users_repository.get_user_by_id(db, user_id)
+        if user is None:
+            raise Exception("User not found")
+
+        server = servers_repository.get_server_by_id(db, server_id)
+        if server is None:
+            raise Exception("Server not found")
+
+        servers_repository.push_event_by_uuid(
+            db, event_uuid, server, user, get_settings()
+        )
+
+        logger.info(
+            "push event uuid=%s to server id=%s, job finished", event_uuid, server_id
+        )
+
+    return True
+
+
+@app.task
 def handle_created_event(event_uuid: uuid.UUID):
     logger.info("handling created event uuid=%s job started", event_uuid)
 
@@ -474,6 +515,7 @@ def handle_created_sighting(
             notifications_repository.create_sighting_notifications(
                 db, "created", attribute=attribute, sighting=sighting
             )
+
 
 @app.task
 def handle_created_correlation(
