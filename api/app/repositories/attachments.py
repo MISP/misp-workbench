@@ -143,6 +143,7 @@ def upload_attachments_to_event(
             size_attribute = attribute_schemas.AttributeCreate(
                 event_id=event.id,
                 object_relation="size-in-bytes",
+                disable_correlation=True,
                 category="Other",
                 type="size-in-bytes",
                 value=str(size),
