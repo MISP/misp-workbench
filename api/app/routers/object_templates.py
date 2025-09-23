@@ -1,5 +1,5 @@
 from app.auth.security import get_current_active_user
-from app.services.object_templates import get_object_templates
+from app.services.object_templates import get_local_object_templates
 from app.schemas import object_template as object_template_schemas
 from app.schemas import user as user_schemas
 from fastapi import APIRouter, Security
@@ -15,4 +15,4 @@ def get_object_templates(
         get_current_active_user, scopes=["objects:read"]
     ),
 ):
-    return get_object_templates()
+    return get_local_object_templates()

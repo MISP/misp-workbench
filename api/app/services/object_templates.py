@@ -3,7 +3,7 @@ import os
 
 
 # @lru_cache
-def get_object_templates():
+def get_local_object_templates():
 
     templates = []
     objects_dir = "app/submodules/misp-objects/objects"

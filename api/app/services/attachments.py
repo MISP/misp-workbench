@@ -1,7 +1,7 @@
 
 from app.settings import Settings, get_settings
 from app.services.minio import get_minio_client
-from app.services.object_templates import get_object_templates
+from app.services.object_templates import get_local_object_templates
 import base64
 
 def get_attachment(
@@ -32,7 +32,7 @@ def get_attachment_template_uuid() -> str:
     return "688c46fb-5edb-40a3-8273-1af7923e2215"
 
 def get_attachment_template() -> dict:
-    object_templates = get_object_templates()
+    object_templates = get_local_object_templates()
 
     for template in object_templates:
         if template["uuid"] == get_attachment_template_uuid():

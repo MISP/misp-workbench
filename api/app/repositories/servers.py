@@ -675,6 +675,14 @@ def push_event_by_uuid(
         )
         return False
 
+    if not db_event.published:
+        logger.info("Event {} is not published, skipping.".format(event_uuid))
+        return {
+            "status": 200,
+            "message": "Event is not published, skipping.",
+            "response": None,
+        }
+
     remote_misp = get_remote_misp_connection(server)
 
     # fetch event from remote server
@@ -723,21 +731,28 @@ def push_event_by_uuid(
             "response": response.json(),
         }
 
-    # if remote_event and remote_event.timestamp.timestamp() >= db_event.timestamp:
-    #     logger.info(
-    #         "Local event %s is not newer than remote, skipping push" % event_uuid
-    #     )
-    #     return {
-    #         "status": "info",
-    #         "message": "Local event is not newer than remote, skipping push",
-    #         "response": response.json(),
-    #     }
+    if remote_event and remote_event.timestamp.timestamp() >= db_event.timestamp:
+        logger.info(
+            "Local event %s is not newer than remote, skipping push" % event_uuid
+        )
+        return {
+            "status": "info",
+            "message": "Local event is not newer than remote, skipping push",
+            "response": response.json(),
+        }
 
     try:
         event_json = db_event.to_misp_format()
-        response = remote_misp._prepare_request(
-            "POST", f"events/add/{event_uuid}", data=event_json
-        )
+
+        if remote_event is None:
+            response = remote_misp._prepare_request(
+                "POST", f"events/add/{event_uuid}", data=event_json
+            )
+        else:
+            response = remote_misp._prepare_request(
+                "POST", f"events/edit/{event_uuid}", data=event_json
+            )
+
         if response.status_code == 200:
             return {
                 "status": response.status_code,
