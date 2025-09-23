@@ -7,7 +7,7 @@ import os
 
 from fastapi.responses import StreamingResponse
 from app.services.minio import get_minio_client
-from app.services.attachments import get_attachment
+from app.services.attachments import get_attachment, get_attachment_template
 from starlette import status
 import app.schemas.event as event_schemas
 from app.schemas import object as object_schemas
@@ -69,13 +69,13 @@ def upload_attachments_to_event(
         for attachment in attachments:
 
             attachment_meta = attachments_meta.get(attachment.filename)
+            template = get_attachment_template()
 
-            # TODO get the object template from the json file
             file_object = object_schemas.ObjectCreate(
                 name="file",
-                template_uuid="688c46fb-5edb-40a3-8273-1af7923e2215",
-                meta_category="File",
-                template_version=25,
+                template_uuid=template["uuid"],
+                meta_category=template["meta_category"],
+                template_version=template["version"],
                 comment=attachment.filename,
                 event_id=event.id,
                 timestamp=int(time.time()),
