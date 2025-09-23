@@ -102,9 +102,8 @@ onMounted(() => {
         },
       },
       onLoad() {
-        const tags = props.selectedTags
-          ? props.selectedTags.map((tag) => tag.name)
-          : [];
+        if (!selectElement.value?.tomselect) return;
+        const tags = props.selectedTags?.map((tag) => tag.name) ?? [];
         selectElement.value.tomselect.setValue(tags, true);
         initialising = false;
       },
