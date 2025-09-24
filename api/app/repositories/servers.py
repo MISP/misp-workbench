@@ -772,16 +772,15 @@ def push_event_by_uuid(
             }
 
     except Exception as ex:
-        logger.error(
+        logger.exception(
             "Failed downloading the event {} from remote server {}".format(
                 event_uuid, server.id
-            ),
-            ex,
+            )
         )
 
         return {
             "status": response.status_code if "response" in locals() else 500,
-            "message": "Failed pushing the event, exception: {}".format(ex),
+            "message": "Failed pushing the event due to an internal error.",
             "response": None,
         }
 
