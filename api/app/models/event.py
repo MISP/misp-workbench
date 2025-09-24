@@ -91,3 +91,37 @@ class Event(Base):
     sharing_group = relationship("SharingGroup", lazy="joined")
     tags = relationship("Tag", secondary="event_tags", lazy="joined")
     organisation = relationship("Organisation", lazy="joined", uselist=False, foreign_keys=[org_id])
+
+    def to_misp_format(self):
+        """Convert the Event to a MISP-compatible dictionary representation."""
+
+        return {
+            "id": self.id,
+            "org_id": self.org_id,
+            "date": self.date.isoformat(),
+            "info": self.info,
+            "user_id": self.user_id,
+            "uuid": str(self.uuid),
+            "published": self.published,
+            "analysis": self.analysis.value,
+            "orgc_id": self.orgc_id,
+            "timestamp": self.timestamp,
+            "distribution": self.distribution.value,
+            "sharing_group_id": self.sharing_group_id,
+            "proposal_email_lock": self.proposal_email_lock,
+            "locked": self.locked,
+            "threat_level": self.threat_level.value,
+            "publish_timestamp": self.publish_timestamp,
+            "disable_correlation": self.disable_correlation,
+            "extends_uuid": str(self.extends_uuid) if self.extends_uuid else None,
+            "protected": self.protected,
+            "deleted": self.deleted,
+            "Attribute": [attribute.to_misp_format() for attribute in self.attributes if attribute.object_id == None and not attribute.deleted],
+            "Object": [obj.to_misp_format() for obj in self.objects if not obj.deleted],
+            "Tag": [tag.to_misp_format() for tag in self.tags],
+            "Organisation": {
+                "id": self.organisation.id,
+                "name": self.organisation.name,
+                "uuid": str(self.organisation.uuid),
+            } if self.organisation else None
+        }

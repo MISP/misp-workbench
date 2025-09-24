@@ -104,5 +104,26 @@ export const useEventsStore = defineStore({
         .catch((error) => (this.status = { error }))
         .finally(() => (this.status = { loading: false }));
     },
+    async publish(id) {
+      this.status = { updating: true };
+      return await fetchWrapper
+        .post(`${baseUrl}/${id}/publish`)
+        .catch((error) => (this.error = error))
+        .finally(() => (this.status = { updating: false }));
+    },
+    async unpublish(uuid) {
+      this.status = { updating: true };
+      return await fetchWrapper
+        .post(`${baseUrl}/${uuid}/unpublish`)
+        .catch((error) => (this.error = error))
+        .finally(() => (this.status = { updating: false }));
+    },
+    async toggleCorrelation(uuid) {
+      this.status = { updating: true };
+      return await fetchWrapper
+        .post(`${baseUrl}/${uuid}/toggle-correlation`)
+        .catch((error) => (this.error = error))
+        .finally(() => (this.status = { updating: false }));
+    },
   },
 });

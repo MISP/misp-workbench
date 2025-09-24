@@ -7,11 +7,13 @@ import os
 
 from fastapi.responses import StreamingResponse
 from app.services.minio import get_minio_client
+from app.services.attachments import get_attachment, get_attachment_template
 from starlette import status
 import app.schemas.event as event_schemas
 from app.schemas import object as object_schemas
 import app.schemas.attribute as attribute_schemas
 from app.repositories import objects as objects_repository
+from app.repositories import attributes as attributes_repository
 from sqlalchemy.orm import Session
 from app.settings import Settings, get_settings
 from fastapi import (
@@ -21,15 +23,13 @@ from fastapi import (
 
 logger = logging.getLogger(__name__)
 
+
 def store_attachment(
     file_content,
     filename: str | None = None,
     settings: Settings = get_settings(),
 ) -> str:
     try:
-        if not filename:
-            filename = hashlib.md5(file_content).hexdigest()
-
         # upload file to minio
         if settings.Storage.engine == "minio":
             MinioClient = get_minio_client()
@@ -43,10 +43,13 @@ def store_attachment(
 
         # upload file to local storage
         if settings.Storage.engine == "local":
-            if os.path.exists("/tmp/attachments") is False:
-                os.makedirs("/tmp/attachments")
-
-            with open(f"/tmp/attachments/{filename}", "wb") as f:
+            base_path = "/tmp/attachments"
+            if os.path.exists(base_path) is False:
+                os.makedirs(base_path)
+            fullpath = os.path.normpath(os.path.join(base_path, filename))
+            if not fullpath.startswith(base_path):
+                raise Exception("not allowed")
+            with open(fullpath, "wb") as f:
                 f.write(file_content)
     except Exception as e:
         logger.error(f"Error storing attachment: {str(e)}")
@@ -54,6 +57,7 @@ def store_attachment(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Error storing attachment",
         )
+
 
 def upload_attachments_to_event(
     db: Session,
@@ -68,12 +72,13 @@ def upload_attachments_to_event(
         for attachment in attachments:
 
             attachment_meta = attachments_meta.get(attachment.filename)
+            template = get_attachment_template()
 
-            # TODO get the object template from the json file
             file_object = object_schemas.ObjectCreate(
                 name="file",
-                template_uuid="688c46fb-5edb-40a3-8273-1af7923e2215",
-                template_version=25,
+                template_uuid=template["uuid"],
+                meta_category=template["meta_category"],
+                template_version=template["version"],
                 comment=attachment.filename,
                 event_id=event.id,
                 timestamp=int(time.time()),
@@ -124,7 +129,7 @@ def upload_attachments_to_event(
             file_object.attributes.append(sha256_attribute)
 
             # get file md5
-            md5sum = hashlib.md5(file_content.getbuffer()).hexdigest()
+            md5sum = hashlib.md5(file_content).hexdigest()
             md5_attribute = attribute_schemas.AttributeCreate(
                 event_id=event.id,
                 object_relation="md5",
@@ -141,13 +146,26 @@ def upload_attachments_to_event(
             size_attribute = attribute_schemas.AttributeCreate(
                 event_id=event.id,
                 object_relation="size-in-bytes",
-                category="External analysis",
+                disable_correlation=True,
+                category="Other",
                 type="size-in-bytes",
                 value=str(size),
                 timestamp=int(time.time()),
                 distribution=event_schemas.DistributionLevel.INHERIT_EVENT,
             )
             file_object.attributes.append(size_attribute)
+
+            # attachment attribute
+            attachment_attribute = attribute_schemas.AttributeCreate(
+                event_id=event.id,
+                object_relation="attachment",
+                category="Payload delivery",
+                type="attachment",
+                value=attachment.filename,
+                timestamp=int(time.time()),
+                distribution=event_schemas.DistributionLevel.INHERIT_EVENT,
+            )
+            file_object.attributes.append(attachment_attribute)
 
             # malware analysis
             if attachment_meta.get("is_malware", False):
@@ -163,8 +181,13 @@ def upload_attachments_to_event(
                 file_object.attributes.append(malware_attribute)
 
             db_file_object = objects_repository.create_object(db, file_object)
+            attachment_attribute_db = [
+                db_file_object_attr
+                for db_file_object_attr in db_file_object.attributes
+                if db_file_object_attr.type == "attachment"
+            ][0]
 
-            store_attachment(file_content, md5sum)
+            store_attachment(file_content, attachment_attribute_db.uuid)
 
             file_objects.append(db_file_object)
 
@@ -180,58 +203,21 @@ def upload_attachments_to_event(
 
 def download_attachment(
     db: Session,
-    attachment_id: int,
+    attachment_uuid: str,
     settings: Settings = get_settings(),
 ) -> StreamingResponse:
 
-    db_object = objects_repository.get_object_by_id(db, attachment_id)
+    db_attribute = attributes_repository.get_attribute_by_uuid(db, attachment_uuid)
 
-    if not db_object:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Object not found",
-        )
-
-    for attribute in db_object.attributes:
-        if attribute.type == "md5":
-            md5 = attribute.value
-            break
-
-    for attribute in db_object.attributes:
-        if attribute.type == "filename":
-            file_name = attribute.value
-            break
-
-    if not md5:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="MD5 attribute not found",
-        )
-
-    # get attachment from minio
     try:
-        if settings.Storage.engine == "minio":
-            MinioClient = get_minio_client()
+        return StreamingResponse(
+            io.BytesIO(get_attachment(attachment_uuid, settings)),
+            media_type="application/octet-stream",
+            headers={
+                "Content-Disposition": f'attachment; filename="{db_attribute.value or attachment_uuid}"'
+            },
+        )
 
-            data = MinioClient.get_object(settings.Storage.minio.bucket, md5)
-            return StreamingResponse(
-                io.BytesIO(data.read()),
-                media_type="application/octet-stream",
-                headers={
-                    "Content-Disposition": f'attachment; filename="{file_name or md5}"'
-                },
-            )
-
-        # get attachment from local storage
-        if settings.Storage.engine == "local":
-            with open(f"/tmp/attachments/{md5}", "rb") as f:
-                return StreamingResponse(
-                    io.BytesIO(f.read()),
-                    media_type="application/octet-stream",
-                    headers={
-                        "Content-Disposition": f'attachment; filename="{file_name or md5}"'
-                    },
-                )
     except Exception as e:
         logger.error(f"Error fetching attachment: {str(e)}")
         raise HTTPException(

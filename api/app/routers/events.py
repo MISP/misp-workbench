@@ -198,7 +198,7 @@ def untag_event(
     status_code=status.HTTP_200_OK,
 )
 async def upload_attachments(
-    event_id: int,
+    event_id: Union[int, UUID],
     attachments: list[UploadFile],
     attachments_meta: Annotated[str, Form()],
     db: Session = Depends(get_db),
@@ -206,8 +206,12 @@ async def upload_attachments(
         get_current_active_user, scopes=["events:update"]
     ),
 ) -> list[object_schemas.Object]:
-    event = events_repository.get_event_by_id(db, event_id=event_id)
-    if event is None:
+    if isinstance(event_id, int):
+        db_event = events_repository.get_event_by_id(db, event_id=event_id)
+    else:
+        db_event = events_repository.get_event_by_uuid(db, event_uuid=event_id)
+
+    if db_event is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Event not found"
         )
@@ -216,9 +220,12 @@ async def upload_attachments(
         attachments_meta = json.loads(attachments_meta)
 
     objects = attachments_repository.upload_attachments_to_event(
-        db=db, event=event, attachments=attachments, attachments_meta=attachments_meta
+        db=db,
+        event=db_event,
+        attachments=attachments,
+        attachments_meta=attachments_meta,
     )
-    tasks.index_event.delay(event.uuid)
+    tasks.index_event.delay(db_event.uuid)
 
     return objects
 
@@ -266,7 +273,7 @@ async def force_index(
             content={"message": f"Indexing started for event {event_uuid}."},
             status_code=status.HTTP_202_ACCEPTED,
         )
-        
+
     if event_id:
         db_event = events_repository.get_event_by_id(db, event_id=event_id)
         if db_event is None:
@@ -282,8 +289,72 @@ async def force_index(
     uuids = events_repository.get_event_uuids(db)
     for uuid in uuids:
         tasks.index_event.delay(uuid[0])
-    
+
     return JSONResponse(
         content={"message": "Indexing started for all events."},
         status_code=status.HTTP_202_ACCEPTED,
+    )
+
+
+@router.post("/events/{event_uuid}/publish")
+def publish(
+    event_uuid: UUID,
+    db: Session = Depends(get_db),
+    user: user_schemas.User = Security(
+        get_current_active_user, scopes=["events:publish"]
+    ),
+):
+    db_event = events_repository.get_event_by_uuid(db, event_uuid=event_uuid)
+    if db_event is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Event not found"
+        )
+
+    events_repository.publish_event(db, db_event)
+
+    return JSONResponse(
+        content={"message": f"Event {event_uuid} has been published."},
+        status_code=status.HTTP_200_OK,
+    )
+
+@router.post("/events/{event_uuid}/unpublish")
+def unpublish(
+    event_uuid: UUID,
+    db: Session = Depends(get_db),
+    user: user_schemas.User = Security(
+        get_current_active_user, scopes=["events:publish"]
+    ),
+):
+    db_event = events_repository.get_event_by_uuid(db, event_uuid=event_uuid)
+    if db_event is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Event not found"
+        )
+
+    events_repository.unpublish_event(db, db_event)
+
+    return JSONResponse(
+        content={"message": f"Event {event_uuid} has been unpublished."},
+        status_code=status.HTTP_200_OK,
+    )
+
+@router.post("/events/{event_uuid}/toggle-correlation")
+def toggle_correlation(
+    event_uuid: UUID,
+    db: Session = Depends(get_db),
+    user: user_schemas.User = Security(
+        get_current_active_user, scopes=["events:update"]
+    ),
+):
+    db_event = events_repository.get_event_by_uuid(db, event_uuid=event_uuid)
+    if db_event is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Event not found"
+        )
+
+    events_repository.toggle_event_correlation(db, db_event)
+
+    return JSONResponse(
+        content={"message": f"Event {event_uuid} disable_correlation has been toggled."},
+        status_code=status.HTTP_200_OK,
     )

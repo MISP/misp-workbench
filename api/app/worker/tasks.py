@@ -85,6 +85,47 @@ def pull_event_by_uuid(event_uuid: uuid.UUID, server_id: int, user_id: int):
 
 
 @app.task
+def server_push_by_id(server_id: int, user_id: int, technique: str):
+    logger.info("push server_id=%s job started", server_id)
+
+    with Session(engine) as db:
+        user = users_repository.get_user_by_id(db, user_id)
+        if user is None:
+            raise Exception("User not found")
+
+        servers_repository.push_server_by_id(db, server_id, user, technique)
+        logger.info("push server_id=%s job finished", server_id)
+
+    return True
+
+
+@app.task
+def push_event_by_uuid(event_uuid: uuid.UUID, server_id: int, user_id: int):
+    logger.info(
+        "push event uuid=%s to server id=%s, job started", event_uuid, server_id
+    )
+
+    with Session(engine) as db:
+        user = users_repository.get_user_by_id(db, user_id)
+        if user is None:
+            raise Exception("User not found")
+
+        server = servers_repository.get_server_by_id(db, server_id)
+        if server is None:
+            raise Exception("Server not found")
+
+        servers_repository.push_event_by_uuid(
+            db, event_uuid, server, user, get_settings()
+        )
+
+        logger.info(
+            "push event uuid=%s to server id=%s, job finished", event_uuid, server_id
+        )
+
+    return True
+
+
+@app.task
 def handle_created_event(event_uuid: uuid.UUID):
     logger.info("handling created event uuid=%s job started", event_uuid)
 
@@ -106,8 +147,13 @@ def handle_updated_event(event_uuid: uuid.UUID):
 
     with Session(engine) as db:
         db_event = events_repository.get_event_by_uuid(db, event_uuid)
+
         if db_event is None:
             raise Exception("Event with uuid=%s not found", event_uuid)
+
+        db_event.timestamp = datetime.now().timestamp()
+        db.commit()
+        db.refresh(db_event)
 
         notifications_repository.create_event_notifications(
             db, "updated", event=db_event
@@ -470,6 +516,7 @@ def handle_created_sighting(
                 db, "created", attribute=attribute, sighting=sighting
             )
 
+
 @app.task
 def handle_created_correlation(
     source_attribute_uuid: str,
@@ -493,6 +540,66 @@ def handle_created_correlation(
 
         notifications_repository.create_correlation_notifications(
             db, "created", correlation=correlation
+        )
+
+    return True
+
+
+@app.task
+def handle_published_event(event_uuid: uuid.UUID):
+    logger.info("handling published event uuid=%s job started", event_uuid)
+
+    with Session(engine) as db:
+        db_event = events_repository.get_event_by_uuid(db, event_uuid)
+        if db_event is None:
+            raise Exception("Event with uuid=%s not found", event_uuid)
+
+        notifications_repository.create_event_notifications(
+            db, "published", event=db_event
+        )
+
+        logger.info("handling published event uuid=%s job finished", event_uuid)
+
+    return True
+
+
+@app.task
+def handle_unpublished_event(event_uuid: uuid.UUID):
+    logger.info("handling unpublished event uuid=%s job started", event_uuid)
+
+    with Session(engine) as db:
+        db_event = events_repository.get_event_by_uuid(db, event_uuid)
+        if db_event is None:
+            raise Exception("Event with uuid=%s not found", event_uuid)
+
+        notifications_repository.create_event_notifications(
+            db, "unpublished", event=db_event
+        )
+
+        logger.info("handling unpublished event uuid=%s job finished", event_uuid)
+
+    return True
+
+
+@app.task
+def handle_toggled_event_correlation(event_uuid: uuid.UUID, disable_correlation: bool):
+    logger.info("handling toggled event correlation uuid=%s job started", event_uuid)
+
+    with Session(engine) as db:
+        db_event = events_repository.get_event_by_uuid(db, event_uuid)
+        if db_event is None:
+            raise Exception("Event with uuid=%s not found", event_uuid)
+
+        if disable_correlation:
+            correlations_repository.delete_event_correlations(event_uuid)
+        else:
+            with Session(engine) as db:
+                runtimeSettings = get_runtime_settings(db)
+
+                correlations_repository.correlate_event(runtimeSettings, str(event_uuid))
+
+        logger.info(
+            "handling toggled event correlation uuid=%s job finished", event_uuid
         )
 
     return True

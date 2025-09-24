@@ -72,5 +72,10 @@ export const useServersStore = defineStore({
         .post(`${baseUrl}/${id}/pull`)
         .catch((error) => (this.status = { error }));
     },
+    async push(id) {
+      return await fetchWrapper
+        .post(`${baseUrl}/${id}/push`)
+        .catch((error) => (this.status = { error }));
+    },
   },
 });

@@ -1,6 +1,6 @@
 <script setup>
 import { storeToRefs } from "pinia";
-import { ref, onMounted } from "vue";
+import { ref, onMounted, computed } from "vue";
 import Spinner from "@/components/misc/Spinner.vue";
 import AttributesIndex from "@/components/attributes/AttributesIndex.vue";
 import CreateOrEditReportModal from "@/components/reports/CreateOrEditReportModal.vue";
@@ -52,6 +52,10 @@ onMounted(() => {
   );
 });
 
+const eventCorrelationEnabled = computed(() => {
+  return !event.value.disable_correlation;
+});
+
 function openCreateorEditReportModal() {
   createOrEditReportModal.value.show();
 }
@@ -66,6 +70,26 @@ function handleObjectAdded() {
 
 function handleObjectDeleted() {
   event.value.object_count -= 1;
+}
+
+function togglePublished() {
+  if (event.value.published) {
+    eventsStore.publish(event.value.uuid).catch(() => {
+      event.value.published = !event.value.published;
+    });
+  } else {
+    eventsStore.unpublish(event.value.uuid).catch(() => {
+      event.value.published = !event.value.published;
+    });
+  }
+}
+
+function toggleDisableCorrelation() {
+  event.value.disable_correlation = !event.value.disable_correlation;
+  eventsStore.toggleCorrelation(event.value.uuid).catch(() => {
+    // revert the switch
+    event.value.disable_correlation = !event.value.disable_correlation;
+  });
 }
 
 function handleReportCreated() {
@@ -142,13 +166,24 @@ div.row h3 {
                   </tr>
                   <tr>
                     <th>published</th>
-                    <td>{{ event.published }}</td>
+                    <td>
+                      <div class="form-check form-switch">
+                        <input
+                          class="form-check-input"
+                          type="checkbox"
+                          id="eventPublishedSwitch"
+                          v-model="event.published"
+                          @change="togglePublished"
+                        />
+                      </div>
+                    </td>
                   </tr>
                   <tr>
                     <th>creator user</th>
                     <td>{{ event.user_id }}</td>
                   </tr>
-                  <tr>
+                  <!-- TODO handle protected events -->
+                  <!-- <tr>
                     <th>protected</th>
                     <td>
                       <div class="form-check form-switch">
@@ -160,7 +195,7 @@ div.row h3 {
                         />
                       </div>
                     </td>
-                  </tr>
+                  </tr> -->
                   <tr>
                     <th>date</th>
                     <td>{{ event.date }}</td>
@@ -199,14 +234,15 @@ div.row h3 {
                     </td>
                   </tr>
                   <tr>
-                    <th>disable correlation</th>
+                    <th>correlate</th>
                     <td>
                       <div class="form-check form-switch">
                         <input
                           class="form-check-input"
                           type="checkbox"
-                          :checked="event.disable_correlation"
-                          disabled
+                          id="eventDisableCorrelationSwitch"
+                          v-model="eventCorrelationEnabled"
+                          @change="toggleDisableCorrelation"
                         />
                       </div>
                     </td>

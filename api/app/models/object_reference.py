@@ -33,3 +33,20 @@ class ObjectReference(Base):
     relationship_type = Column(String)
     comment = Column(String, nullable=False)
     deleted = Column(Boolean, nullable=False, default=False)
+
+    def to_misp_format(self):
+        """Convert the ObjectReference to a MISP-compatible dictionary representation."""
+        return {
+            "id": self.id,
+            "uuid": str(self.uuid),
+            "timestamp": self.timestamp,
+            "object_id": self.object_id,
+            "event_id": self.event_id,
+            "source_uuid": str(self.source_uuid) if self.source_uuid else None,
+            "referenced_uuid": str(self.referenced_uuid) if self.referenced_uuid else None,
+            "referenced_id": self.referenced_id,
+            "referenced_type": self.referenced_type.name if self.referenced_type else None,
+            "relationship_type": self.relationship_type,
+            "comment": self.comment,
+            "deleted": self.deleted,
+        }

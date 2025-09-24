@@ -1,14 +1,16 @@
 <script setup>
-import { useServersStore } from "@/stores";
+import { useServersStore, useToastsStore } from "@/stores";
 import {
   faCheck,
   faDownload,
   faMagnifyingGlass,
   faSync,
   faXmark,
+  faUpload,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
 const serversStore = useServersStore();
+const toastsStore = useToastsStore();
 
 defineProps(["server"]);
 
@@ -36,7 +38,13 @@ function testServerConnection(server) {
 }
 
 function pullServer(server) {
+  toastsStore.push("Server pull enqueued.");
   serversStore.pull(server.id);
+}
+
+function pushServer(server) {
+  toastsStore.push("Server push enqueued.");
+  serversStore.push(server.id);
 }
 </script>
 
@@ -89,10 +97,15 @@ function pullServer(server) {
     >
       <FontAwesomeIcon :icon="faCheck" />
     </button>
-    <!-- <button type="button" class="btn btn-outline-primary" disabled data-toggle="tooltip" data-placement="top"
-            title="Push">
-            <FontAwesomeIcon :icon="faUpload" />
-        </button> -->
+    <button
+      type="button"
+      class="btn btn-outline-primary btn-sm"
+      data-placement="top"
+      title="Push"
+      @click="pushServer(server)"
+    >
+      <FontAwesomeIcon :icon="faUpload" />
+    </button>
     <button
       type="button"
       class="btn btn-outline-primary btn-sm"

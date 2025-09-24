@@ -1,10 +1,16 @@
 import uuid
 
+import logging
 from app.database import Base
 from app.models.event import DistributionLevel
+from app.services.attachments import  get_b64_attachment
 from sqlalchemy import BigInteger, Boolean, Column, Enum, ForeignKey, Integer, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+from app.settings import Settings, get_settings
+
+
+logger = logging.getLogger(__name__)
 
 
 class Attribute(Base):
@@ -37,3 +43,40 @@ class Attribute(Base):
     last_seen = Column(BigInteger(), index=True)
 
     tags = relationship("Tag", secondary="attribute_tags", lazy="subquery")
+
+    def to_misp_format(
+        self,
+        settings: Settings = get_settings(),
+    ):
+        """Convert the Attribute to a MISP-compatible dictionary representation."""
+
+        attr_json = {
+            "id": self.id,
+            "event_id": self.event_id,
+            "object_id": self.object_id,
+            "object_relation": self.object_relation,
+            "category": self.category,
+            "type": self.type,
+            "value": self.value,
+            "to_ids": self.to_ids,
+            "uuid": str(self.uuid),
+            "timestamp": self.timestamp,
+            "distribution": self.distribution.value if self.distribution else DistributionLevel.INHERIT_EVENT,
+            "sharing_group_id": self.sharing_group_id if self.sharing_group_id else None,
+            "comment": self.comment,
+            "deleted": self.deleted,
+            "disable_correlation": self.disable_correlation,
+            "first_seen": self.first_seen,
+            "last_seen": self.last_seen,
+            "Tag": [tag.to_misp_format() for tag in self.tags],
+        }
+
+        # if its a file attribute, we need to handle it differently
+        if self.type in ["malware-sample", "attachment"]:
+            try:
+                attr_json["data"] = get_b64_attachment(self.uuid, settings)
+            except Exception as e:
+                logger.error(f"Error storing attachment: {str(e)}")
+                print(f"Error fetching file from storage: {str(e)}")
+
+        return attr_json

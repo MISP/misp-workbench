@@ -107,10 +107,17 @@ const size = computed(() => {
   return sizeAttr ? `${(parseInt(sizeAttr.value) / 1024).toFixed(2)} KB` : "?";
 });
 
+const attachment_uuid = computed(() => {
+  const uuidAttr = attachment.value.attributes.find(
+    (attr) => attr.type === "attachment",
+  );
+  return uuidAttr ? uuidAttr.uuid : null;
+});
+
 async function downloadAttachment() {
   try {
     const response = await attachmentsStore.downloadAttachment(
-      attachment.value.id,
+      attachment_uuid.value,
     );
 
     if (!response.ok) {
