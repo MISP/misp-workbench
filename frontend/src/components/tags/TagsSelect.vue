@@ -1,142 +1,129 @@
 <script setup>
-import { ref, onMounted, nextTick } from "vue";
-import { tagHelper } from "@/helpers";
+import { ref, watch, onMounted, onBeforeUnmount, nextTick } from "vue";
 import TomSelect from "tom-select";
+import { tagHelper } from "@/helpers";
 import { useTagsStore, useAttributesStore, useEventsStore } from "@/stores";
 
 const props = defineProps({
-  modelClass: {
-    type: String,
-    required: true,
-  },
-  model: {
-    type: Object,
-    required: true,
-  },
-  selectedTags: {
-    type: Array,
-    default: () => [],
-  },
+  modelClass: { type: String, required: true },
+  model: { type: Object, required: true },
+  selectedTags: { type: Array, default: () => [] },
 });
+
 const tagsStore = useTagsStore();
 const eventsStore = useEventsStore();
 const attributesStore = useAttributesStore();
 
 const selectElement = ref(null);
+let tomselect = null;
 
-onMounted(() => {
-  nextTick(() => {
-    let initialising = true;
-    new TomSelect(selectElement.value, {
-      create: false,
-      placeholder: "Click to add a tag...",
-      valueField: "name",
-      labelField: "name",
-      searchField: "name",
-      preload: true,
-      load: function (query, callback) {
-        // add already selected tags to the list first
-        const tags = [];
-        for (let i = 0; i < props.selectedTags.length; i++) {
-          tags.push(
-            {
-              id: props.selectedTags[i].id,
-              name: props.selectedTags[i].name,
-              color: tagHelper.getContrastColor(props.selectedTags[i].colour),
-              backgroundColor: props.selectedTags[i].colour,
-            },
-            false,
-          );
-        }
+function formatTag(tag) {
+  return {
+    id: tag.id,
+    name: tag.name,
+    color: tagHelper.getContrastColor(tag.colour),
+    backgroundColor: tag.colour,
+  };
+}
 
-        // add tags from the database to the list
-        tagsStore
-          .get({ filter: query, hidden: false })
-          .then((response) => {
-            for (let i = 0; i < response.items.length; i++) {
-              tags.push({
-                id: response.items[i].id,
-                name: response.items[i].name,
-                color: tagHelper.getContrastColor(response.items[i].colour),
-                backgroundColor: response.items[i].colour,
-              });
-            }
-            callback(tags);
-          })
-          .catch(() => {
-            callback();
-          });
+function initTomSelect() {
+  if (!selectElement.value) return;
+
+  // destroy old instance if exists
+  if (tomselect) {
+    tomselect.destroy();
+    tomselect = null;
+  }
+
+  tomselect = new TomSelect(selectElement.value, {
+    create: false,
+    placeholder: "Click to add a tag...",
+    valueField: "name",
+    labelField: "name",
+    searchField: "name",
+    preload: true,
+    options: props.selectedTags.map(formatTag),
+    items: props.selectedTags.map((tag) => tag.name),
+
+    load(query, callback) {
+      tagsStore
+        .get({ filter: query, hidden: false })
+        .then((response) => {
+          callback(response.items.map(formatTag));
+        })
+        .catch(() => callback());
+    },
+
+    plugins: { remove_button: { title: "Remove this tag" } },
+
+    render: {
+      option(data, escape) {
+        return `
+          <span class="badge mx-1 tag"
+                style="color:${escape(data.color)}; background-color:${escape(data.backgroundColor)}"
+                title="${escape(data.name)}">
+            ${escape(data.name)}
+          </span>`;
       },
-      items: props.selectedTags.map((tag) => tag.name),
-      plugins: {
-        remove_button: {
-          title: "Remove this tag",
-        },
+      item(data, escape) {
+        return `
+          <span class="badge mx-1 tag"
+                style="display:block; color:${escape(data.color)}; background-color:${escape(data.backgroundColor)}"
+                title="${escape(data.name)}">
+            <span class="tag-label">${escape(data.name)}<span/>
+          </span>`;
       },
-      render: {
-        option: function (data, escape) {
-          return (
-            '<span class="badge mx-1 tag" style="color: ' +
-            escape(data.color) +
-            "; background-color: " +
-            escape(data.backgroundColor) +
-            ';" title="' +
-            escape(data.name) +
-            '">' +
-            escape(data.name) +
-            "</span>"
-          );
-        },
-        item: function (data, escape) {
-          return (
-            '<span class="badge mx-1 tag" style="display:block; color: ' +
-            escape(data.color) +
-            "; background-color: " +
-            escape(data.backgroundColor) +
-            ';" title="' +
-            escape(data.name) +
-            '"><span class="tag-label">' +
-            escape(data.name) +
-            "<span/></span>"
-          );
-        },
-      },
-      onLoad() {
-        if (!selectElement.value?.tomselect) return;
-        const tags = props.selectedTags?.map((tag) => tag.name) ?? [];
-        selectElement.value.tomselect.setValue(tags, true);
-        initialising = false;
-      },
-      onItemRemove: function (tag) {
-        if (props.modelClass == "event") {
-          eventsStore.untag(props.model.id, tag);
-          return;
-        }
-        if (props.modelClass == "attribute") {
-          attributesStore.untag(props.model.id, tag);
-          return;
-        }
-      },
-      onItemAdd: function (tag) {
-        // ignore when adding items programmatically on initialisation
-        if (initialising) {
-          return;
-        }
-        if (props.modelClass == "event") {
-          eventsStore.tag(props.model.id, tag);
-          return;
-        }
-        if (props.modelClass == "attribute") {
-          attributesStore.tag(props.model.id, tag);
-          return;
-        }
-      },
-    });
+    },
+
+    onItemRemove(tag) {
+      if (props.modelClass === "event") {
+        eventsStore.untag(props.model.id, tag);
+      } else if (props.modelClass === "attribute") {
+        attributesStore.untag(props.model.id, tag);
+      }
+    },
+
+    onItemAdd(tag) {
+      if (props.modelClass === "event") {
+        eventsStore.tag(props.model.id, tag);
+      } else if (props.modelClass === "attribute") {
+        attributesStore.tag(props.model.id, tag);
+      }
+    },
   });
+}
+
+onMounted(() => nextTick(initTomSelect));
+
+onBeforeUnmount(() => {
+  if (tomselect) {
+    tomselect.destroy();
+    tomselect = null;
+  }
 });
+
+// if props.selectedTags changes while component is alive
+watch(
+  () => props.selectedTags,
+  (newTags) => {
+    if (tomselect) {
+      const names = newTags.map((tag) => tag.name);
+      tomselect.clearOptions();
+      tomselect.addOptions(newTags.map(formatTag));
+      tomselect.setValue(names, true);
+    }
+  },
+  { deep: true },
+);
 </script>
 
-<style></style>
+<style>
+[data-bs-theme="dark"] .ts-control,
+[data-bs-theme="dark"] .ts-control input {
+  color: #fff !important;
+  background-color: transparent !important;
+}
+</style>
 
 <template>
   <select ref="selectElement" multiple></select>
