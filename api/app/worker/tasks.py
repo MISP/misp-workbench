@@ -543,3 +543,55 @@ def handle_created_correlation(
         )
 
     return True
+
+@app.task
+def handle_published_event(event_uuid: uuid.UUID):
+    logger.info("handling published event uuid=%s job started", event_uuid)
+
+    with Session(engine) as db:
+        db_event = events_repository.get_event_by_uuid(db, event_uuid)
+        if db_event is None:
+            raise Exception("Event with uuid=%s not found", event_uuid)
+
+        notifications_repository.create_event_notifications(
+            db, "published", event=db_event
+        )
+
+        logger.info("handling published event uuid=%s job finished", event_uuid)
+
+    return True
+
+@app.task
+def handle_unpublished_event(event_uuid: uuid.UUID):
+    logger.info("handling unpublished event uuid=%s job started", event_uuid)
+
+    with Session(engine) as db:
+        db_event = events_repository.get_event_by_uuid(db, event_uuid)
+        if db_event is None:
+            raise Exception("Event with uuid=%s not found", event_uuid)
+
+        notifications_repository.create_event_notifications(
+            db, "unpublished", event=db_event
+        )
+
+        logger.info("handling unpublished event uuid=%s job finished", event_uuid)
+
+    return True
+
+@app.task
+def handle_toggled_event_correlation(event_uuid: uuid.UUID, disable_correlation: bool):
+    logger.info("handling toggled event correlation uuid=%s job started", event_uuid)
+
+    with Session(engine) as db:
+        db_event = events_repository.get_event_by_uuid(db, event_uuid)
+        if db_event is None:
+            raise Exception("Event with uuid=%s not found", event_uuid)
+
+        if disable_correlation:
+            correlations_repository.delete_event_correlations(event_uuid)
+        else:
+            correlations_repository.create_event_correlations(event_uuid)
+
+        logger.info("handling toggled event correlation uuid=%s job finished", event_uuid)
+
+    return True

@@ -73,13 +73,15 @@ function handleObjectDeleted() {
 }
 
 function togglePublished() {
-  eventsStore
-    .update(event.value)
-    .then(() => {})
-    .catch(() => {
-      // revert the switch
+  if (event.value.published) {
+    eventsStore.publish(event.value.uuid).catch(() => {
       event.value.published = !event.value.published;
     });
+  } else {
+    eventsStore.unpublish(event.value.uuid).catch(() => {
+      event.value.published = !event.value.published;
+    });
+  }
 }
 
 function toggleDisableCorrelation() {

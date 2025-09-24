@@ -469,3 +469,44 @@ def get_events_by_uuids(db: Session, uuids: list[UUID]) -> list[event_models.Eve
         .filter(event_models.Event.uuid.in_(uuids))
         .all()
     )
+
+def publish_event(db: Session, db_event: event_models.Event) -> event_models.Event:
+
+    if db_event.published:
+        return db_event
+    
+    db_event.published = True
+    db_event.publish_timestamp = time.time()
+
+    db.commit()
+    db.refresh(db_event)
+
+    tasks.handle_published_event.delay(db_event.uuid)
+
+    return db_event
+
+def unpublish_event(db: Session, db_event: event_models.Event) -> event_models.Event:
+    
+    if not db_event.published:
+        return db_event
+    
+    db_event.published = False
+
+    db.commit()
+    db.refresh(db_event)
+
+    tasks.handle_unpublished_event.delay(db_event.uuid)
+
+    return db_event
+
+def toggle_event_correlation(
+    db: Session, db_event: event_models.Event
+) -> event_models.Event:
+    db_event.disable_correlation = not db_event.disable_correlation
+
+    db.commit()
+    db.refresh(db_event)
+
+    tasks.handle_toggled_event_correlation.delay(db_event.uuid, db_event.disable_correlation)
+
+    return db_event

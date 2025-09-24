@@ -731,15 +731,15 @@ def push_event_by_uuid(
             "response": response.json(),
         }
 
-    if remote_event and remote_event.timestamp.timestamp() >= db_event.timestamp:
-        logger.info(
-            "Local event %s is not newer than remote, skipping push" % event_uuid
-        )
-        return {
-            "status": "info",
-            "message": "Local event is not newer than remote, skipping push",
-            "response": response.json(),
-        }
+    # if remote_event and remote_event.timestamp.timestamp() >= db_event.timestamp:
+    #     logger.info(
+    #         "Local event %s is not newer than remote, skipping push" % event_uuid
+    #     )
+    #     return {
+    #         "status": "info",
+    #         "message": "Local event is not newer than remote, skipping push",
+    #         "response": response.json(),
+    #     }
 
     try:
         event_json = db_event.to_misp_format()

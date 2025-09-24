@@ -51,6 +51,7 @@ oauth2_scheme = OAuth2PasswordBearer(
         "events:update": "Update events.",
         "events:delete": "Delete events.",
         "events:tag": "Tag events.",
+        "events:publish": "Publish events.",
         "attributes:create": "Create attributes.",
         "attributes:read": "Read attributes.",
         "attributes:update": "Update attributes.",
