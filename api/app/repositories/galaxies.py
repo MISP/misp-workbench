@@ -194,7 +194,7 @@ def update_galaxies(
                                                     tag=tags_repository.tag_schemas.TagCreate(
                                                         name=related_tag,
                                                         colour="#000000",
-                                                        exportable=False,
+                                                        exportable=True,
                                                         org_id=user.org_id,
                                                         user_id=user.id,
                                                         hide_tag=False,
@@ -262,7 +262,7 @@ def enable_galaxy_tags(db: Session, galaxy: galaxies_models.Galaxy):
             db_galaxy_cluster_tag = tags_models.Tag(
                 name=galaxy_cluster_tag,
                 colour="#BBBBBB",
-                exportable=False,
+                exportable=True,
                 hide_tag=False,
                 is_galaxy=True,
                 is_custom_galaxy=False,
