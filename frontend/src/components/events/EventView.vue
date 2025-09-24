@@ -86,13 +86,10 @@ function togglePublished() {
 
 function toggleDisableCorrelation() {
   event.value.disable_correlation = !event.value.disable_correlation;
-  eventsStore
-    .update(event.value)
-    .then(() => {})
-    .catch(() => {
-      // revert the switch
-      event.value.disable_correlation = !event.value.disable_correlation;
-    });
+  eventsStore.toggleCorrelation(event.value.uuid).catch(() => {
+    // revert the switch
+    event.value.disable_correlation = !event.value.disable_correlation;
+  });
 }
 
 function handleReportCreated() {

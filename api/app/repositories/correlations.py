@@ -72,13 +72,20 @@ def get_correlations(params: dict, page: int = 0, from_value: int = 0, size: int
     }
 
 
-def get_all_attributes():
+def get_attributes(filters: dict = {}):
     OpenSearchClient = get_opensearch_client()
+
+    query = {"query": {"bool": {"must": [{"term": {"disable_correlation": False}}]}}}
+
+    if filters.get("event_uuid"):
+        query["query"]["bool"]["must"].append(
+            {"term": {"event_uuid.keyword": filters["event_uuid"]}}
+        )
 
     scroll = opensearch_helpers.scan(
         client=OpenSearchClient,
         index="misp-attributes",
-        query={"query": {"bool": {"must": [{"term": {"disable_correlation": False}}]}}},
+        query=query,
         scroll="2m",
         size=500,
     )
@@ -289,9 +296,9 @@ def get_top_correlated_events(source_event_uuid: str):
     )
 
 
-def run_correlations(runtimeSettings: RuntimeSettings):
+def run_correlations(runtimeSettings: RuntimeSettings, filters: dict = {}):
 
-    for doc in get_all_attributes():
+    for doc in get_attributes(filters):
         correlate_document(doc, runtimeSettings)
 
     flush_bulk_correlations()
@@ -401,3 +408,40 @@ def delete_correlations():
         )
 
     return {"message": "Correlations index deleted successfully."}
+
+
+def delete_event_correlations(event_uuid: str):
+    OpenSearchClient = get_opensearch_client()
+
+    query = {
+        "query": {
+            "bool": {
+                "should": [
+                    {"term": {"source_event_uuid.keyword": str(event_uuid)}},
+                    {"term": {"target_event_uuid.keyword": str(event_uuid)}},
+                ]
+            }
+        }
+    }
+
+    try:
+        OpenSearchClient.delete_by_query(
+            index="misp-attribute-correlations",
+            body=query,
+            refresh=True,
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to delete correlations for event {event_uuid}: {str(e)}",
+        )
+
+    return {"message": f"Correlations for event {event_uuid} deleted successfully."}
+
+def correlate_event(runtimeSettings: RuntimeSettings, event_uuid: str):
+    run_correlations(
+        runtimeSettings,
+        filters={"event_uuid": event_uuid}
+    )
+
+    return {"message": f"Correlations for event {event_uuid} created successfully."}

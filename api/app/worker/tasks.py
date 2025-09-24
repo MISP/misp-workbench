@@ -544,6 +544,7 @@ def handle_created_correlation(
 
     return True
 
+
 @app.task
 def handle_published_event(event_uuid: uuid.UUID):
     logger.info("handling published event uuid=%s job started", event_uuid)
@@ -560,6 +561,7 @@ def handle_published_event(event_uuid: uuid.UUID):
         logger.info("handling published event uuid=%s job finished", event_uuid)
 
     return True
+
 
 @app.task
 def handle_unpublished_event(event_uuid: uuid.UUID):
@@ -578,6 +580,7 @@ def handle_unpublished_event(event_uuid: uuid.UUID):
 
     return True
 
+
 @app.task
 def handle_toggled_event_correlation(event_uuid: uuid.UUID, disable_correlation: bool):
     logger.info("handling toggled event correlation uuid=%s job started", event_uuid)
@@ -590,8 +593,13 @@ def handle_toggled_event_correlation(event_uuid: uuid.UUID, disable_correlation:
         if disable_correlation:
             correlations_repository.delete_event_correlations(event_uuid)
         else:
-            correlations_repository.create_event_correlations(event_uuid)
+            with Session(engine) as db:
+                runtimeSettings = get_runtime_settings(db)
 
-        logger.info("handling toggled event correlation uuid=%s job finished", event_uuid)
+                correlations_repository.correlate_event(runtimeSettings, str(event_uuid))
+
+        logger.info(
+            "handling toggled event correlation uuid=%s job finished", event_uuid
+        )
 
     return True
