@@ -16,7 +16,12 @@ def get_attachment(
 
     # get attachment from local storage
     if settings.Storage.engine == "local":
-        with open(f"/tmp/attachments/{attachment_uuid}", "rb") as f:
+        import os
+        base_path = "/tmp/attachments"
+        fullpath = os.path.normpath(os.path.join(base_path, attachment_uuid))
+        if not fullpath.startswith(base_path):
+            raise Exception("not allowed")
+        with open(fullpath, "rb") as f:
             return f.read()
         
 
