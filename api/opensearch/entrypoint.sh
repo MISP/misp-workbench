@@ -30,6 +30,8 @@ for file in "${MAPPINGS_DIR}"/*.json; do
     echo "Creating index '$INDEX_NAME' using mapping file '$file'..."
     curl -s -X PUT "${OPENSEARCH_URL}/${INDEX_NAME}" \
          -H "Content-Type: application/json" \
+         --user admin:${OPENSEARCH_INITIAL_ADMIN_PASSWORD} \
+         --cacert /usr/share/opensearch/config/root-ca.pem \
          -d @"$file"
     echo "Index '$INDEX_NAME' created."
   fi
@@ -46,6 +48,8 @@ for file in "${PIPELINES_DIR}"/*.json; do
     echo "Creating pipeline '$PIPELINE_NAME' using mapping file '$file'..."
     curl -s -X PUT "${OPENSEARCH_URL}/_ingest/pipeline/${PIPELINE_NAME}" \
          -H "Content-Type: application/json" \
+         --user admin:${OPENSEARCH_INITIAL_ADMIN_PASSWORD} \
+         --cacert /usr/share/opensearch/config/root-ca.pem \
          -d @"$file"
     echo "Pipeline '$PIPELINE_NAME' created."
   fi

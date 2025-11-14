@@ -1,112 +1,161 @@
+x-environment: &default-env
+  POSTGRES_HOSTNAME: ${POSTGRES_HOSTNAME:-postgres}
+  POSTGRES_PORT: ${POSTGRES_PORT:-5432}
+  POSTGRES_USER: ${POSTGRES_USER:-postgres}
+  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+  POSTGRES_DB: ${POSTGRES_DB:-misp}
+  OPENSEARCH_HOSTNAME: ${OPENSEARCH_HOSTNAME:-opensearch}
+  OPENSEARCH_PORT: ${OPENSEARCH_PORT:-9200}
+  OAUTH2_SECRET_KEY: ${OAUTH2_SECRET_KEY}
+  OAUTH2_ALGORITHM: ${OAUTH2_ALGORITHM:-HS256}
+  OAUTH2_ACCESS_TOKEN_EXPIRE_MINUTES: ${OAUTH2_ACCESS_TOKEN_EXPIRE_MINUTES:-30}
+  REDIS_HOSTNAME: ${REDIS_HOSTNAME:-redis}
+  REDIS_PORT: ${REDIS_PORT:-6379}
+  REDIS_CACHE_DB: ${REDIS_CACHE_DB:-0}
+  CELERY_BROKER_URL: amqp://${RABBITMQ_DEFAULT_USER:-rabbitmq}:${RABBITMQ_DEFAULT_PASS:-rabbitmq}@${RABBITMQ_HOSTNAME:-rabbitmq}:5672/${RABBITMQ_DEFAULT_VHOST:-rabbitmq}
+  CELERY_RESULT_BACKEND: redis://${REDIS_HOSTNAME:-redis}:${REDIS_PORT:-6379}/${REDIS_CELERY_DB:-0}
+  MODULES_HOST: ${MODULES_HOST:-modules}
+  MODULES_PORT: ${MODULES_PORT:-6666}
+  STORAGE_ENGINE: ${STORAGE_ENGINE:-local}
+  MINIO_HOST: ${MINIO_HOST:-minio:9000}
+  MINIO_BUCKET: ${MINIO_BUCKET:-attachments}
+  MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+  MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+  MINIO_SECURE: ${MINIO_SECURE:-true}
+  FLOWER_BASIC_AUTH: ${FLOWER_BASIC_AUTH:-flower:flower}
+  MAIL_USERNAME: ${MAIL_USERNAME}
+  MAIL_PASSWORD: ${MAIL_PASSWORD}
+  MAIL_PORT: ${MAIL_PORT}
+  MAIL_SERVER: ${MAIL_SERVER}
+
 services:
   postgres:
     image: postgres:16.3
-    restart: always
+    restart: unless-stopped
     environment:
-      POSTGRES_HOSTNAME: ${POSTGRES_HOSTNAME:-postgres}
-      POSTGRES_PORT: ${POSTGRES_PORT:-5432}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_DB: ${POSTGRES_DB:-misp}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
     healthcheck:
-      test: "pg_isready --username=$$POSTGRES_USER --dbname=$$POSTGRES_DB"
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 10s
       timeout: 5s
       retries: 5
-    volumes:
-      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - backend
 
   opensearch:
-    image: opensearchproject/opensearch:2.19.1
+    image: opensearchproject/opensearch:3
+    restart: unless-stopped
     environment:
-      OPENSEARCH_HOSTNAME: ${OPENSEARCH_HOSTNAME:-opensearch}
-      OPENSEARCH_PORT: ${OPENSEARCH_PORT:-9200}
-      OPENSEARCH_INITIAL_ADMIN_PASSWORD: ${OPENSEARCH_INITIAL_ADMIN_PASSWORD}
-      cluster.name: opensearch-cluster
-      node.name: opensearch-misp1
-      bootstrap.memory_lock: true
-      OPENSEARCH_JAVA_OPTS: "-Xms512m -Xmx512m"
+      - cluster.name=opensearch-cluster
+      - node.name=opensearch-misp1
+      - discovery.type=single-node
+      - bootstrap.memory_lock=true
+      - "OPENSEARCH_JAVA_OPTS=-Xms2g -Xmx2g"
+      - OPENSEARCH_INITIAL_ADMIN_PASSWORD=${OPENSEARCH_INITIAL_ADMIN_PASSWORD}
+      - DISABLE_SECURITY_PLUGIN=false
+      - plugins.security.ssl.http.enabled=true
     ulimits:
       memlock:
         soft: -1
         hard: -1
-    volumes:
-      - opensearch-data:/usr/share/opensearch/data
+      nofile:
+        soft: 65536
+        hard: 65536
+    ports:
+      - "9200:9200"
+      - "9600:9600"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9200"]
-      interval: 5s
-      timeout: 3s
-      retries: 10
+      test:
+        [
+          "CMD-SHELL",
+          "curl -s --user admin:$$OPENSEARCH_INITIAL_ADMIN_PASSWORD --cacert /usr/share/opensearch/config/root-ca.pem -X GET https://localhost:9200/_cluster/health?pretty | grep '\"status\" : \"green\"'"
+        ]
+      interval: 10s
+      timeout: 10s
+      retries: 20
+    networks:
+      - backend
+    volumes:
+      - os_data:/usr/share/opensearch/data
+      - os_logs:/usr/share/opensearch/logs
 
   setup-opensearch:
     image: curlimages/curl:latest
     depends_on:
-          opensearch:
-            condition: service_healthy
+      opensearch:
+        condition: service_healthy
     volumes:
       - ./api/opensearch/mappings:/mappings
       - ./api/opensearch/pipelines:/pipelines
       - ./api/opensearch/entrypoint.sh:/entrypoint.sh
     entrypoint: ["/bin/sh", "/entrypoint.sh"]
     environment:
-      OPENSEARCH_HOSTNAME: ${OPENSEARCH_HOSTNAME:-opensearch}
-      OPENSEARCH_PORT: ${OPENSEARCH_PORT:-9200}
+      <<: *default-env
+      OPENSEARCH_INITIAL_ADMIN_PASSWORD: ${OPENSEARCH_INITIAL_ADMIN_PASSWORD}
+    networks:
+      - backend
 
-  dashboards:
-    image: opensearchproject/opensearch-dashboards:2.19.1
-    container_name: opensearch-dashboards
-    environment:
-      OPENSEARCH_HOSTNAME: ${OPENSEARCH_HOSTNAME:-opensearch}
-      OPENSEARCH_PORT: ${OPENSEARCH_PORT:-9200}
-      OPENSEARCH_HOSTS: "http://${OPENSEARCH_HOSTNAME}:${OPENSEARCH_PORT}"
-      DISABLE_SECURITY_DASHBOARDS_PLUGIN: true
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
     ports:
-      - "5601:5601"
-    depends_on:
-      - opensearch
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+    networks:
+      - backend
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_VHOST: ${RABBITMQ_DEFAULT_VHOST:-rabbitmq}
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:-rabbitmq}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:-rabbitmq}
+    ports:
+      - "15672:15672"
+      - "5672:5672"
+    healthcheck:
+      test: ["CMD", "rabbitmqctl", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - backend
+
+  minio:
+    image: quay.io/minio/minio:latest
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - backend
 
   api:
     build:
       context: ./api
-      dockerfile: Dockerfile
+    restart: unless-stopped
     ports:
       - "8080:80"
     environment:
-      POSTGRES_HOSTNAME: ${POSTGRES_HOSTNAME:-postgres}
-      POSTGRES_PORT: ${POSTGRES_PORT:-5432}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_DB: ${POSTGRES_DB:-misp}
-      OPENSEARCH_HOSTNAME: ${OPENSEARCH_HOSTNAME:-opensearch}
-      OPENSEARCH_PORT: ${OPENSEARCH_PORT:-9200}
-      OAUTH2_SECRET_KEY: ${OAUTH2_SECRET_KEY}
-      OAUTH2_ALGORITHM: ${OAUTH2_ALGORITHM:-HS256}
-      OAUTH2_ACCESS_TOKEN_EXPIRE_MINUTES: ${OAUTH2_ACCESS_TOKEN_EXPIRE_MINUTES:-30}
-      REDIS_HOSTNAME: ${REDIS_HOSTNAME:-redis}
-      REDIS_PORT: ${REDIS_PORT:-6379}
-      REDIS_CACHE_DB: ${REDIS_CACHE_DB:-0}
-      CELERY_BROKER_URL: amqp://${RABBITMQ_DEFAULT_USER:-rabbitmq}:${RABBITMQ_DEFAULT_PASS:-rabbitmq}@${RABBITMQ_HOSTNAME:-rabbitmq}:5672/${RABBITMQ_DEFAULT_VHOST:-rabbitmq}
-      CELERY_RESULT_BACKEND: redis://${REDIS_HOSTNAME:-redis}:${REDIS_PORT:-6379}/${REDIS_CELERY_DB:-0}
-      BROKER_POOL_LIMIT: None
-      BROKER_TRANSPORT_OPTIONS: "{'confirm_publish': True}"
-      BROKER_CONNECTION_TIMEOUT: 30
-      BROKER_CONNECTION_RETRY: True
-      BROKER_CONNECTION_MAX_RETRIES: 100
-      CELERY_TASK_TRACK_STARTED:  True
-      MAIL_USERNAME: ${MAIL_USERNAME}
-      MAIL_PASSWORD: ${MAIL_PASSWORD}
-      MAIL_PORT: ${MAIL_PORT}
-      MAIL_SERVER: ${MAIL_SERVER}
-      MODULES_HOST: ${MODULES_HOST:-modules}
-      MODULES_PORT: ${MODULES_PORT:-6666}
-      STORAGE_ENGINE: ${STORAGE_ENGINE:-local}
-      MINIO_HOST: ${MINIO_HOST:-minio:9000}
-      MINIO_BUCKET: ${MINIO_BUCKET:-attachments}
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
-      MINIO_SECURE: ${MINIO_SECURE:-true}
-      FLOWER_BASIC_AUTH: ${FLOWER_BASIC_AUTH:-flower:flower}
-    entrypoint: [ "bash", "-c", "./entrypoint.sh" ]
+      <<: *default-env
+    entrypoint: ["bash", "-c", "./entrypoint.sh"]
     depends_on:
       postgres:
         condition: service_healthy
@@ -114,174 +163,86 @@ services:
         condition: service_healthy
     volumes:
       - attachments-data:/tmp/attachments
+    networks:
+      - backend
+      - frontend
+
+  worker:
+    build:
+      context: ./api
+    command: poetry run celery -A app.worker.tasks worker --loglevel=info --hostname worker@%h -E --autoscale=4,10
+    restart: unless-stopped
+    environment:
+      <<: *default-env
+    depends_on:
+      - api
+      - redis
+      - rabbitmq
+      - postgres
+    volumes:
+      - attachments-data:/tmp/attachments
+    networks:
+      - backend
+
+  flower:
+    build:
+      context: ./api
+    command: poetry run celery -A app.worker.tasks flower --loglevel=info --persistent=True --auto_refresh=True --state_save_interval=5
+    ports:
+      - "5555:5555"
+    environment:
+      <<: *default-env
+    depends_on:
+      - worker
+    networks:
+      - backend
+      - frontend
 
   frontend:
     build:
       context: ./frontend
-      dockerfile: Dockerfile
+    restart: unless-stopped
     ports:
       - "3000:80"
     environment:
       API_HOST: api
     depends_on:
       - api
+    networks:
+      - frontend
 
-  worker:
-    build:
-      context: ./api
-      dockerfile: Dockerfile
-    command: poetry run celery -A app.worker.tasks worker --loglevel=info --hostname worker@%h -E --autoscale=4,10
-    environment:
-      POSTGRES_HOSTNAME: ${POSTGRES_HOSTNAME:-postgres}
-      POSTGRES_PORT: ${POSTGRES_PORT:-5432}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_DB: ${POSTGRES_DB:-misp}
-      OPENSEARCH_HOSTNAME: ${OPENSEARCH_HOSTNAME:-opensearch}
-      OPENSEARCH_PORT: ${OPENSEARCH_PORT:-9200}
-      OAUTH2_SECRET_KEY: ${OAUTH2_SECRET_KEY}
-      OAUTH2_ALGORITHM: ${OAUTH2_ALGORITHM:-HS256}
-      OAUTH2_ACCESS_TOKEN_EXPIRE_MINUTES: ${OAUTH2_ACCESS_TOKEN_EXPIRE_MINUTES:-30}
-      REDIS_HOSTNAME: ${REDIS_HOSTNAME:-redis}
-      REDIS_PORT: ${REDIS_PORT:-6379}
-      REDIS_CACHE_DB: ${REDIS_CACHE_DB:-0}
-      CELERY_BROKER_URL: amqp://${RABBITMQ_DEFAULT_USER:-rabbitmq}:${RABBITMQ_DEFAULT_PASS:-rabbitmq}@${RABBITMQ_HOSTNAME:-rabbitmq}:5672/${RABBITMQ_DEFAULT_VHOST:-rabbitmq}
-      CELERY_RESULT_BACKEND: redis://${REDIS_HOSTNAME:-redis}:${REDIS_PORT:-6379}/${REDIS_CELERY_DB:-0}
-      BROKER_HEARTBEAT: 10
-      BROKER_POOL_LIMIT: None
-      BROKER_TRANSPORT_OPTIONS: "{'confirm_publish': True}"
-      BROKER_CONNECTION_TIMEOUT: 30
-      BROKER_CONNECTION_RETRY: True
-      BROKER_CONNECTION_MAX_RETRIES: 100
-      CELERY_TASK_TRACK_STARTED:  True
-      MAIL_USERNAME: ${MAIL_USERNAME}
-      MAIL_PASSWORD: ${MAIL_PASSWORD}
-      MAIL_PORT: ${MAIL_PORT}
-      MAIL_SERVER: ${MAIL_SERVER}
-      MODULES_HOST: ${MODULES_HOST:-modules}
-      MODULES_PORT: ${MODULES_PORT:-6666}
-      STORAGE_ENGINE: ${STORAGE_ENGINE:-local}
-      MINIO_HOST: ${MINIO_HOST:-minio:9000}
-      MINIO_BUCKET: ${MINIO_BUCKET:-attachments}
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
-      MINIO_SECURE: ${MINIO_SECURE:-true}
-      FLOWER_BASIC_AUTH: ${FLOWER_BASIC_AUTH:-flower:flower}
-    depends_on:
-      - redis
-      - postgres
-      - rabbitmq
-      - api
-    volumes:
-      - attachments-data:/tmp/attachments
-
-  flower:
-    build:
-      context: ./api
-      dockerfile: Dockerfile
-    command: poetry run celery -A app.worker.tasks flower --loglevel=info --persistent=True --auto_refresh=True --state_save_interval=5 --broker-api=amqp://${RABBITMQ_DEFAULT_USER:-rabbitmq}:${RABBITMQ_DEFAULT_PASS:-rabbitmq}@${RABBITMQ_HOSTNAME:-rabbitmq}:15672/${RABBITMQ_DEFAULT_VHOST:-rabbitmq}/api
-    ports:
-      - "5555:5555"
-    working_dir: /code
-    environment:
-      POSTGRES_HOSTNAME: ${POSTGRES_HOSTNAME:-postgres}
-      POSTGRES_PORT: ${POSTGRES_PORT:-5432}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_DB: ${POSTGRES_DB:-misp}
-      OPENSEARCH_HOSTNAME: ${OPENSEARCH_HOSTNAME:-opensearch}
-      OPENSEARCH_PORT: ${OPENSEARCH_PORT:-9200}
-      OAUTH2_SECRET_KEY: ${OAUTH2_SECRET_KEY}
-      OAUTH2_ALGORITHM: ${OAUTH2_ALGORITHM:-HS256}
-      OAUTH2_ACCESS_TOKEN_EXPIRE_MINUTES: ${OAUTH2_ACCESS_TOKEN_EXPIRE_MINUTES:-30}
-      REDIS_HOSTNAME: ${REDIS_HOSTNAME:-redis}
-      REDIS_PORT: ${REDIS_PORT:-6379}
-      REDIS_CACHE_DB: ${REDIS_CACHE_DB:-0}
-      CELERY_BROKER_URL: amqp://${RABBITMQ_DEFAULT_USER:-rabbitmq}:${RABBITMQ_DEFAULT_PASS:-rabbitmq}@${RABBITMQ_HOSTNAME:-rabbitmq}:5672/${RABBITMQ_DEFAULT_VHOST:-rabbitmq}
-      CELERY_RESULT_BACKEND: redis://${REDIS_HOSTNAME:-redis}:${REDIS_PORT:-6379}/${REDIS_CELERY_DB:-0}
-      BROKER_HEARTBEAT: 10
-      BROKER_POOL_LIMIT: None
-      BROKER_TRANSPORT_OPTIONS: "{'confirm_publish': True}"
-      BROKER_CONNECTION_TIMEOUT: 30
-      BROKER_CONNECTION_RETRY: True
-      BROKER_CONNECTION_MAX_RETRIES: 100
-      CELERY_TASK_TRACK_STARTED:  True
-      MAIL_USERNAME: ${MAIL_USERNAME}
-      MAIL_PASSWORD: ${MAIL_PASSWORD}
-      MAIL_PORT: ${MAIL_PORT}
-      MAIL_SERVER: ${MAIL_SERVER}
-      MODULES_HOST: ${MODULES_HOST:-modules}
-      MODULES_PORT: ${MODULES_PORT:-6666}
-      STORAGE_ENGINE: ${STORAGE_ENGINE:-local}
-      MINIO_HOST: ${MINIO_HOST:-minio:9000}
-      MINIO_BUCKET: ${MINIO_BUCKET:-attachments}
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
-      MINIO_SECURE: ${MINIO_SECURE:-true}
-      FLOWER_BASIC_AUTH: ${FLOWER_BASIC_AUTH:-flower:flower}
-    depends_on:
-      - worker
-      - rabbitmq
-      - redis
-    volumes:
-      - attachments-data:/tmp/attachments
-
-  redis:
-    image: redis:7-alpine
-    ports:
-      - "6379:6379"
-    healthcheck:
-      test: [ "CMD", "redis-cli", "ping" ]
-
-  rabbitmq:
-    image: rabbitmq:3-management
-    environment:
-      RABBITMQ_HOSTNAME: ${RABBITMQ_HOSTNAME:-rabbitmq}
-      RABBITMQ_DEFAULT_VHOST: ${RABBITMQ_HOSTNAME:-rabbitmq}
-      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:-rabbitmq}
-      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:-rabbitmq}
-    ports:
-      - "15672:15672"
-      - "5672:5672"
-    healthcheck:
-      test: [ "CMD", "rabbitmqctl", "ping" ]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+  dashboards:
+    image: opensearchproject/opensearch-dashboards:2.19.1
     restart: unless-stopped
+    environment:
+      OPENSEARCH_HOSTS: "https://${OPENSEARCH_HOSTNAME:-opensearch}:${OPENSEARCH_PORT:-9200}"
+      OPENSEARCH_INITIAL_ADMIN_PASSWORD: ${OPENSEARCH_INITIAL_ADMIN_PASSWORD}
+    ports:
+      - "5601:5601"
     depends_on:
-      - redis
-  
+      - opensearch
+    networks:
+      - backend
+      - frontend
+
   modules:
     image: ghcr.io/misp/misp-docker/misp-modules:latest
     environment:
-      - "REDIS_BACKEND=redis"
+      REDIS_BACKEND: redis
     depends_on:
       redis:
         condition: service_healthy
-
-  minio:
-    image: quay.io/minio/minio:latest
-    container_name: minio
-    command: server /data --console-address ":9001"
-    environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
-    ports:
-      - "9000:9000" # S3 API
-      - "9001:9001" # Web UI
-    volumes:
-      - minio-data:/data
-    healthcheck:
-      test: [ "CMD", "mc", "alias", "set", "minio", "http://minio:9000", "${MINIO_ROOT_USER}", "${MINIO_ROOT_PASSWORD}" ]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    restart: always
-
+    networks:
+      - backend
 
 volumes:
   opensearch-data:
   postgres-data:
   minio-data:
   attachments-data:
+  os_data:
+  os_logs:
+
+networks:
+  backend:
+  frontend:
