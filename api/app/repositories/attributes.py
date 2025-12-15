@@ -129,9 +129,10 @@ def create_attribute(
     db.commit()
     db.refresh(db_attribute)
 
-    tasks.handle_created_attribute.delay(
-        db_attribute.id, db_attribute.object_id, db_attribute.event_id
-    )
+    if db_attribute is not None:
+        tasks.handle_created_attribute.delay(
+            db_attribute.id, db_attribute.object_id, db_attribute.event_id
+        )
 
     return db_attribute
 
@@ -184,10 +185,6 @@ def create_attribute_from_pulled_attribute(
 
     capture_attribute_tags(
         db, local_attribute, pulled_attribute.tags, local_event_id, user
-    )
-
-    tasks.handle_created_attribute.delay(
-        local_attribute.id, local_attribute.object_id, local_attribute.event_id
     )
 
     return local_attribute
