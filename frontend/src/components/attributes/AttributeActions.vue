@@ -105,12 +105,35 @@ function followAttribute() {
 
 <style scoped>
 .btn-toolbar {
-  flex-wrap: nowrap !important;
+  display: flex;
+  gap: 0.25rem;
+}
+
+@media (max-width: 576px) {
+  .btn-toolbar {
+    flex-wrap: wrap !important;
+    width: 100%;
+  }
+
+  .btn-group,
+  .btn-group-vertical {
+    width: 100%;
+  }
+
+  .btn-group .btn,
+  .btn-group-vertical .btn {
+    width: 100%;
+    justify-content: center;
+  }
 }
 </style>
 
 <template>
-  <div class="btn-toolbar float-end" role="toolbar">
+  <div
+    v-if="!$isMobile"
+    class="btn-toolbar d-flex align-items-center flex-nowrap float-end"
+    role="toolbar"
+  >
     <div
       v-if="Object(attribute.correlations).length > 0"
       class="btn-group me-2"
@@ -120,86 +143,137 @@ function followAttribute() {
         type="button"
         class="btn btn-sm"
         @click="openCorrelationsModal"
-        data-placement="top"
-        data-toggle="tooltip"
         title="View Correlations"
       >
         <FontAwesomeIcon :icon="faSitemap" class="text-warning" />
       </button>
     </div>
-    <div
-      :class="{ 'btn-group-vertical': $isMobile, 'btn-group me-2': !$isMobile }"
-      role="group"
-      aria-label="Attribute Actions"
-    >
-      <RouterLink
-        v-if="actions.view"
-        :to="`/attributes/${attribute.id}`"
-        class="btn btn-outline-primary btn-sm"
-        data-placement="top"
-        data-toggle="tooltip"
-        title="View Attribute"
-      >
-        <FontAwesomeIcon :icon="faEye" />
-      </RouterLink>
-      <RouterLink
-        v-if="actions.update"
-        :to="`/attributes/update/${attribute.id}`"
-        class="btn btn-outline-primary btn-sm"
-        data-placement="top"
-        data-toggle="tooltip"
-        title="Update Attribute"
-      >
-        <FontAwesomeIcon :icon="faPen" />
-      </RouterLink>
-    </div>
+
     <div class="btn-group me-2" role="group">
       <button
         v-if="actions.enrich"
         type="button"
         class="btn btn-outline-primary btn-sm"
-        @click="openEnrichAttributeModal"
-        data-placement="top"
-        data-toggle="tooltip"
         title="Enrich Attribute"
+        @click="openEnrichAttributeModal"
       >
-        <FontAwesomeIcon :icon="faMagicWandSparkles" />
+        <FontAwesomeIcon fixed-width :icon="faMagicWandSparkles" />
       </button>
+
       <button
         type="button"
         class="btn btn-outline-primary btn-sm"
-        data-placement="top"
-        data-toggle="tooltip"
         title="Follow Attribute"
         @click="followAttribute"
       >
         <FontAwesomeIcon
-          v-if="!followed"
+          fixed-width
           :icon="faBookmark"
-          :inverse="true"
-          class="text-primary"
-        />
-        <FontAwesomeIcon
-          v-if="followed"
-          :icon="faBookmark"
-          class="text-success"
+          :class="followed ? 'text-success' : 'text-primary'"
         />
       </button>
     </div>
+
     <div class="btn-group me-2" role="group">
+      <RouterLink
+        v-if="actions.view"
+        :to="`/attributes/${attribute.id}`"
+        class="btn btn-outline-primary btn-sm"
+        title="View Attribute"
+      >
+        <FontAwesomeIcon fixed-width :icon="faEye" />
+      </RouterLink>
+
+      <RouterLink
+        v-if="actions.update"
+        :to="`/attributes/update/${attribute.id}`"
+        class="btn btn-outline-primary btn-sm"
+        title="Update Attribute"
+      >
+        <FontAwesomeIcon fixed-width :icon="faPen" />
+      </RouterLink>
+
       <button
         v-if="actions.delete"
         type="button"
         class="btn btn-danger btn-sm"
-        @click="openDeleteAttributeModal"
-        data-placement="top"
-        data-toggle="tooltip"
         title="Delete Attribute"
+        @click="openDeleteAttributeModal"
       >
-        <FontAwesomeIcon :icon="faTrash" />
+        <FontAwesomeIcon fixed-width :icon="faTrash" />
       </button>
     </div>
   </div>
+
+  <div v-else class="dropdown float-end">
+    <button
+      class="btn btn-outline-secondary btn-sm"
+      type="button"
+      data-bs-toggle="dropdown"
+      aria-expanded="false"
+    >
+      &#x22EE;
+    </button>
+
+    <ul class="dropdown-menu dropdown-menu-end">
+      <li v-if="Object(attribute.correlations).length > 0">
+        <button class="dropdown-item" @click="openCorrelationsModal">
+          <FontAwesomeIcon :icon="faSitemap" class="me-2 text-warning" />
+          Correlations
+        </button>
+      </li>
+
+      <li v-if="actions.view">
+        <RouterLink class="dropdown-item" :to="`/attributes/${attribute.id}`">
+          <FontAwesomeIcon :icon="faEye" class="me-2" />
+          View
+        </RouterLink>
+      </li>
+
+      <li v-if="actions.update">
+        <RouterLink
+          class="dropdown-item"
+          :to="`/attributes/update/${attribute.id}`"
+        >
+          <FontAwesomeIcon :icon="faPen" class="me-2" />
+          Update
+        </RouterLink>
+      </li>
+
+      <li v-if="actions.enrich">
+        <button class="dropdown-item" @click="openEnrichAttributeModal">
+          <FontAwesomeIcon :icon="faMagicWandSparkles" class="me-2" />
+          Enrich
+        </button>
+      </li>
+
+      <li>
+        <button class="dropdown-item" @click="followAttribute">
+          <FontAwesomeIcon
+            :icon="faBookmark"
+            class="me-2"
+            :class="followed ? 'text-success' : 'text-primary'"
+          />
+          {{ followed ? "Unfollow" : "Follow" }}
+        </button>
+      </li>
+
+      <li>
+        <hr class="dropdown-divider" />
+      </li>
+
+      <li v-if="actions.delete">
+        <button
+          class="dropdown-item text-danger"
+          @click="openDeleteAttributeModal"
+        >
+          <FontAwesomeIcon :icon="faTrash" class="me-2" />
+          Delete
+        </button>
+      </li>
+    </ul>
+  </div>
+
   <DeleteAttributeModal
     :key="attribute.id"
     :id="`deleteAttributeModal_${attribute.id}`"
@@ -207,6 +281,7 @@ function followAttribute() {
     :modal="deleteAttributeModal"
     :attribute_id="attribute.id"
   />
+
   <EnrichAttributeModal
     :key="attribute.id"
     :id="`enrichAttributeModal_${attribute.id}`"
@@ -214,6 +289,7 @@ function followAttribute() {
     :modal="enrichAttributeModal"
     :attribute="attribute"
   />
+
   <CorrelatedAttributesModal
     :key="attribute.id"
     :id="`correlatedAttributesModal${attribute.id}`"
