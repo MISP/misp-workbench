@@ -2,7 +2,6 @@
 import { storeToRefs } from "pinia";
 import { useEventsStore } from "@/stores";
 import Spinner from "@/components/misc/Spinner.vue";
-import DistributionLevel from "@/components/enums/DistributionLevel.vue";
 import TagsIndex from "@/components/tags/TagsIndex.vue";
 import Paginate from "vuejs-paginate-next";
 import EventActions from "@/components/events/EventActions.vue";
@@ -63,9 +62,8 @@ function handleEventDeleted() {
         <tr>
           <th scope="col">info</th>
           <th scope="col">tags</th>
-          <th scope="col">date</th>
-          <th scope="col" class="d-none d-sm-table-cell">distribution</th>
           <th scope="col">organisation</th>
+          <th scope="col">date</th>
           <th scope="col" class="text-end">actions</th>
         </tr>
       </thead>
@@ -75,13 +73,10 @@ function handleEventDeleted() {
           <td>
             <TagsIndex :tags="event.tags" />
           </td>
-          <td>{{ event.date }}</td>
-          <td class="d-none d-sm-table-cell">
-            <DistributionLevel :distribution_level_id="event.distribution" />
-          </td>
           <td>
             {{ event.organisation.name }}
           </td>
+          <td>{{ event.date }}</td>
           <td class="text-end">
             <EventActions
               :event_uuid="event.uuid"
