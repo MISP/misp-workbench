@@ -1,5 +1,6 @@
 <script setup>
 import { ref, watchEffect } from "vue";
+import { useRouter } from "vue-router";
 import { storeToRefs } from "pinia";
 import { useAuthStore, useNotificationsStore } from "@/stores";
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
@@ -12,6 +13,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 
 const authStore = useAuthStore();
+const router = useRouter();
 
 // notifications
 const notificationsStore = useNotificationsStore();
@@ -37,6 +39,52 @@ watchEffect(() => {
 function switchTheme() {
   setTheme(theme.value === "light" ? "dark" : "light");
 }
+
+const isMobileMenuOpen = ref(false);
+
+function createBackdrop() {
+  if (document.querySelector(".vue-offcanvas-backdrop")) return;
+  const b = document.createElement("div");
+  b.className = "vue-offcanvas-backdrop";
+  Object.assign(b.style, {
+    position: "fixed",
+    inset: "0",
+    background: "rgba(0,0,0,0.5)",
+    zIndex: 1040,
+  });
+  b.addEventListener("click", closeMobileMenu);
+  document.body.appendChild(b);
+}
+
+function removeBackdrop() {
+  const b = document.querySelector(".vue-offcanvas-backdrop");
+  if (b) {
+    try {
+      b.removeEventListener("click", closeMobileMenu);
+    } finally {
+      b.remove();
+    }
+  }
+}
+
+function openMobileMenu() {
+  isMobileMenuOpen.value = true;
+  document.body.classList.add("offcanvas-open");
+  createBackdrop();
+}
+
+function closeMobileMenu() {
+  isMobileMenuOpen.value = false;
+  removeBackdrop();
+  document.body.classList.remove("offcanvas-open");
+  document.body.style.overflow = "";
+  document.body.style.paddingRight = "";
+}
+
+function navAndClose(path) {
+  closeMobileMenu();
+  router.push(path).catch(() => {});
+}
 </script>
 
 <style scoped>
@@ -49,11 +97,19 @@ function switchTheme() {
 
 .offcanvas-body ul ul {
   border-left: none !important;
-  padding-left: 1rem; /* Indent submenus nicely */
+  padding-left: 1rem;
 }
 
 .list-group-item {
-  border-left: none !important; /* Remove offset border from nested list-group-items */
+  border: none !important;
+}
+
+.vue-offcanvas-backdrop {
+  transition: opacity 0.15s linear;
+}
+
+.offcanvas.show {
+  visibility: visible;
 }
 </style>
 
@@ -183,10 +239,8 @@ function switchTheme() {
       <!-- Hamburger -->
       <button
         class="btn btn-outline"
-        data-bs-toggle="offcanvas"
-        data-bs-target="#mobileMenu"
-        aria-controls="mobileMenu"
         aria-label="Toggle menu"
+        @click="openMobileMenu"
       >
         <FontAwesomeIcon :icon="faBars" />
       </button>
@@ -217,7 +271,7 @@ function switchTheme() {
 
   <!-- ================= MOBILE OFFCANVAS ================= -->
   <div
-    class="offcanvas offcanvas-start"
+    :class="['offcanvas offcanvas-start', { show: isMobileMenuOpen }]"
     tabindex="-1"
     id="mobileMenu"
     aria-labelledby="mobileMenuLabel"
@@ -227,8 +281,8 @@ function switchTheme() {
       <button
         type="button"
         class="btn-close"
-        data-bs-dismiss="offcanvas"
         aria-label="Close"
+        @click="closeMobileMenu"
       />
     </div>
 
@@ -238,7 +292,7 @@ function switchTheme() {
           <RouterLink
             to="/explore"
             class="list-group-item list-group-item-action"
-            data-bs-dismiss="offcanvas"
+            @click.prevent="navAndClose('/explore')"
           >
             Explore
           </RouterLink>
@@ -247,7 +301,7 @@ function switchTheme() {
           <RouterLink
             to="/events"
             class="list-group-item list-group-item-action"
-            data-bs-dismiss="offcanvas"
+            @click.prevent="navAndClose('/events')"
           >
             Events
           </RouterLink>
@@ -256,7 +310,7 @@ function switchTheme() {
           <RouterLink
             to="/users"
             class="list-group-item list-group-item-action"
-            data-bs-dismiss="offcanvas"
+            @click.prevent="navAndClose('/users')"
           >
             Users
           </RouterLink>
@@ -270,7 +324,7 @@ function switchTheme() {
               <RouterLink
                 to="/servers"
                 class="list-group-item list-group-item-action ps-4"
-                data-bs-dismiss="offcanvas"
+                @click.prevent="navAndClose('/servers')"
               >
                 Servers
               </RouterLink>
@@ -279,7 +333,7 @@ function switchTheme() {
               <RouterLink
                 to="/feeds"
                 class="list-group-item list-group-item-action ps-4"
-                data-bs-dismiss="offcanvas"
+                @click.prevent="navAndClose('/feeds')"
               >
                 Feeds
               </RouterLink>
@@ -295,7 +349,7 @@ function switchTheme() {
               <RouterLink
                 to="/organisations"
                 class="list-group-item list-group-item-action ps-4"
-                data-bs-dismiss="offcanvas"
+                @click.prevent="navAndClose('/organisations')"
               >
                 Organisations
               </RouterLink>
@@ -304,7 +358,7 @@ function switchTheme() {
               <RouterLink
                 to="/settings/modules"
                 class="list-group-item list-group-item-action ps-4"
-                data-bs-dismiss="offcanvas"
+                @click.prevent="navAndClose('/settings/modules')"
               >
                 Modules
               </RouterLink>
@@ -313,7 +367,7 @@ function switchTheme() {
               <RouterLink
                 to="/settings/taxonomies"
                 class="list-group-item list-group-item-action ps-4"
-                data-bs-dismiss="offcanvas"
+                @click.prevent="navAndClose('/settings/taxonomies')"
               >
                 Taxonomies
               </RouterLink>
@@ -322,7 +376,7 @@ function switchTheme() {
               <RouterLink
                 to="/settings/galaxies"
                 class="list-group-item list-group-item-action ps-4"
-                data-bs-dismiss="offcanvas"
+                @click.prevent="navAndClose('/settings/galaxies')"
               >
                 Galaxies
               </RouterLink>
@@ -331,7 +385,7 @@ function switchTheme() {
               <RouterLink
                 to="/correlations"
                 class="list-group-item list-group-item-action ps-4"
-                data-bs-dismiss="offcanvas"
+                @click.prevent="navAndClose('/correlations')"
               >
                 Correlations
               </RouterLink>
@@ -340,7 +394,7 @@ function switchTheme() {
               <RouterLink
                 to="/tasks"
                 class="list-group-item list-group-item-action ps-4"
-                data-bs-dismiss="offcanvas"
+                @click.prevent="navAndClose('/tasks')"
               >
                 Tasks
               </RouterLink>
@@ -349,7 +403,7 @@ function switchTheme() {
               <RouterLink
                 to="/settings/runtime"
                 class="list-group-item list-group-item-action ps-4"
-                data-bs-dismiss="offcanvas"
+                @click.prevent="navAndClose('/settings/runtime')"
               >
                 Runtime Settings
               </RouterLink>
@@ -358,7 +412,7 @@ function switchTheme() {
               <RouterLink
                 to="/settings/user"
                 class="list-group-item list-group-item-action ps-4"
-                data-bs-dismiss="offcanvas"
+                @click.prevent="navAndClose('/settings/user')"
               >
                 User Settings
               </RouterLink>
