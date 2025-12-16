@@ -178,7 +178,7 @@ def create_attribute_from_pulled_attribute(
 
     if pulled_attribute.data is not None:
         # store file
-        attachments_repository.store_attachment(pulled_attribute.data.getvalue())
+        attachments_repository.store_attachment(pulled_attribute.uuid, pulled_attribute.data.getvalue())
 
     # TODO: process sigthings
     # TODO: process galaxies
@@ -234,7 +234,7 @@ def update_attribute_from_pulled_attribute(
 
     if pulled_attribute.data is not None:
         # store file
-        attachments_repository.store_attachment(pulled_attribute.data.getvalue())
+        attachments_repository.store_attachment(pulled_attribute.uuid, pulled_attribute.data.getvalue())
 
     capture_attribute_tags(
         db, local_attribute, pulled_attribute.tags, local_event_id, user

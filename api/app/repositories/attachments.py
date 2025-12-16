@@ -25,8 +25,8 @@ logger = logging.getLogger(__name__)
 
 
 def store_attachment(
+    filename: str,
     file_content,
-    filename: str | None = None,
     settings: Settings = get_settings(),
 ) -> str:
     try:
@@ -187,7 +187,7 @@ def upload_attachments_to_event(
                 if db_file_object_attr.type == "attachment"
             ][0]
 
-            store_attachment(file_content, attachment_attribute_db.uuid)
+            store_attachment(attachment_attribute_db.uuid, file_content)
 
             file_objects.append(db_file_object)
 
