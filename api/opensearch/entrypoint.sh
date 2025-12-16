@@ -48,7 +48,6 @@ else
     sleep 3
   done
 fi
-fi
 
 echo "OpenSearch is up! Proceeding with setup."
 
