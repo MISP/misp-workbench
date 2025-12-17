@@ -93,8 +93,6 @@ def create_attribute(
     attribute.event_id = event.id
     db_attribute = attributes_repository.create_attribute(db=db, attribute=attribute)
 
-    tasks.index_event.delay(event.uuid)
-
     return db_attribute
 
 
@@ -115,7 +113,6 @@ def update_attribute(
         db=db, attribute_id=attribute_id, attribute=attribute
     )
     event = events_repository.get_event_by_id(db, event_id=attribute_db.event_id)
-    tasks.index_event.delay(event.uuid)
 
     return attribute_db
 

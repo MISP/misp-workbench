@@ -73,8 +73,6 @@ def create_object(
     object.event_id = event.id
     object_db = objects_repository.create_object(db=db, object=object)
 
-    tasks.index_event.delay(event.uuid)
-
     return object_db
 
 
@@ -100,7 +98,5 @@ def delete_object(
 ):
     object_db = objects_repository.delete_object(db=db, object_id=object_id)
     event = events_repository.get_event_by_id(db, event_id=object_db.event_id)
-
-    tasks.index_event.delay(event.uuid)
 
     return object_db

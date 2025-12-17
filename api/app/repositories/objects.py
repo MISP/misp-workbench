@@ -201,8 +201,6 @@ def create_object_from_pulled_object(
 
     db.add(db_object)
 
-    tasks.handle_created_object.delay(db_object.id, db_object.event_id)
-
     return db_object
 
 

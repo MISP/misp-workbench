@@ -225,7 +225,6 @@ async def upload_attachments(
         attachments=attachments,
         attachments_meta=attachments_meta,
     )
-    tasks.index_event.delay(db_event.uuid)
 
     return objects
 
