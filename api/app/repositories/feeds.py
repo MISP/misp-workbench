@@ -174,6 +174,10 @@ def process_feed_event(
             db, local_event.id, event.attributes, user
         )
 
+    local_event.attribute_count = len(local_event.attributes)
+    local_event.object_count = len(local_event.objects)
+    db.add(local_event)
+
     db.commit()
 
     tasks.index_event.delay(local_event.uuid)
@@ -214,6 +218,10 @@ def fetch_feed(db: Session, feed_id: int, user: user_schemas.User):
             # etag = req.headers.get("etag")
             # logger.info(f"Fetching feed UUID {db_feed.uuid} ETag: {etag}")
 
+
+            # filter feed events to fetch based on rules
+            manifest = filter_feed_by_rules(db, db_feed, manifest)
+
             feed_events_uuids = manifest.keys()
 
             local_feed_events = events_repository.get_events_by_uuids(
@@ -246,3 +254,30 @@ def fetch_feed(db: Session, feed_id: int, user: user_schemas.User):
         "result": "success",
         "message": "All feed id=%s events to fetch enqueued." % feed_id,
     }
+
+def filter_feed_by_rules(db: Session, feed: feed_models.Feed, manifest: dict):
+    # apply feed rules to filter manifest events
+    if not feed.rules or feed.rules == {}:
+        return manifest
+    
+    filtered_manifest = {}
+    
+    if "eventid" in feed.rules:
+        event_ids_rule = feed.rules["eventid"] if isinstance(feed.rules["eventid"], list) else [feed.rules["eventid"]]
+
+    for uuid, event in manifest.items():
+        # filter by event id
+        if "eventid" in feed.rules:
+            if uuid not in event_ids_rule:
+                continue
+
+        filtered_manifest[uuid] = event
+
+        if "timestamp" in feed.rules:
+            # TODO: support human readable time formats (10d, 3h, etc)
+            if event["timestamp"] <= feed.rules["timestamp"]:
+                continue
+
+        # TODO: support missing filters
+
+    return filtered_manifest
