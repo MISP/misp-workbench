@@ -21,7 +21,6 @@ from celery import Celery
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 from opensearchpy import helpers as opensearch_helpers
-from fastapi import HTTPException, status
 
 # Celery configuration
 app = Celery()
@@ -32,6 +31,11 @@ app.conf.update(
     result_serializer="json",
     accept_content=["json"],
     worker_pool_restarts=True,
+    broker_transport_options={"visibility_timeout": 60 * 60 * 10},  # 10 hours,
+    acks_late=False,
+    worker_prefetch_multiplier=1,
+    task_time_limit=None,
+    task_soft_time_limit=None,
 )
 
 logger = logging.getLogger(__name__)
@@ -376,7 +380,7 @@ def index_event(event_uuid: uuid.UUID):
             )
 
         success, failed = opensearch_helpers.bulk(
-            OpenSearchClient, attributes_docs, refresh=True
+            OpenSearchClient, object_attributes_docs, refresh=True
         )
         if failed:
             logger.error("Failed to index object attributes. Failed: %s", failed)
@@ -596,7 +600,9 @@ def handle_toggled_event_correlation(event_uuid: uuid.UUID, disable_correlation:
             with Session(engine) as db:
                 runtimeSettings = get_runtime_settings(db)
 
-                correlations_repository.correlate_event(runtimeSettings, str(event_uuid))
+                correlations_repository.correlate_event(
+                    runtimeSettings, str(event_uuid)
+                )
 
         logger.info(
             "handling toggled event correlation uuid=%s job finished", event_uuid
