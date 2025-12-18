@@ -1,7 +1,6 @@
 <script setup>
 import { ref, computed } from "vue";
 import { authHelper } from "@/helpers";
-import DistributionLevel from "@/components/enums/DistributionLevel.vue";
 import TagsSelect from "@/components/tags/TagsSelect.vue";
 import Timestamp from "@/components/misc/Timestamp.vue";
 import CopyToClipboard from "@/components/misc/CopyToClipboard.vue";
@@ -81,11 +80,10 @@ function handleAttributeEnriched(attribute_id) {
       <tr>
         <th scope="col">value</th>
         <th scope="col">type</th>
-        <th style="width: 400px" scope="col" class="d-none d-sm-table-cell">
+        <th style="width: 250px" scope="col" class="d-none d-sm-table-cell">
           tags
         </th>
         <th scope="col" class="d-none d-sm-table-cell">timestamp</th>
-        <th scope="col" class="d-none d-sm-table-cell">distribution</th>
         <th
           v-if="
             actions.view || actions.enrich || actions.update || actions.delete
@@ -121,9 +119,6 @@ function handleAttributeEnriched(attribute_id) {
         </td>
         <td style="width: 10%" class="d-none d-sm-table-cell">
           <Timestamp :timestamp="attribute.timestamp" />
-        </td>
-        <td style="width: 10%" class="d-none d-sm-table-cell">
-          <DistributionLevel :distribution_level_id="attribute.distribution" />
         </td>
         <td
           style="width: 20%"

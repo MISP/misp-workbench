@@ -89,6 +89,11 @@ services:
       PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
       PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
 
+  dashboards:
+    environment:
+      OPENSEARCH_HOSTS: "http://${OPENSEARCH_HOSTNAME:-opensearch}:${OPENSEARCH_PORT:-9200}"
+      DISABLE_SECURITY_DASHBOARDS_PLUGIN: true
+
   modules:
     ports:
       - "6666:6666"

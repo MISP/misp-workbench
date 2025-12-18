@@ -3,6 +3,7 @@ import os
 import smtplib
 import uuid
 from datetime import datetime
+import redis
 
 from app.database import SQLALCHEMY_DATABASE_URL
 from app.services.opensearch import get_opensearch_client
@@ -21,7 +22,6 @@ from celery import Celery
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 from opensearchpy import helpers as opensearch_helpers
-from fastapi import HTTPException, status
 
 # Celery configuration
 app = Celery()
@@ -32,6 +32,11 @@ app.conf.update(
     result_serializer="json",
     accept_content=["json"],
     worker_pool_restarts=True,
+    broker_transport_options={"visibility_timeout": 60 * 60 * 10},  # 10 hours,
+    acks_late=False,
+    worker_prefetch_multiplier=1,
+    task_time_limit=None,
+    task_soft_time_limit=None,
 )
 
 logger = logging.getLogger(__name__)
@@ -376,7 +381,7 @@ def index_event(event_uuid: uuid.UUID):
             )
 
         success, failed = opensearch_helpers.bulk(
-            OpenSearchClient, attributes_docs, refresh=True
+            OpenSearchClient, object_attributes_docs, refresh=True
         )
         if failed:
             logger.error("Failed to index object attributes. Failed: %s", failed)
@@ -471,16 +476,62 @@ def generate_correlations():
     with Session(engine) as db:
         runtimeSettings = get_runtime_settings(db)
 
+    redis_url = get_redis_url()
+
     try:
-        correlations_repository.delete_correlations()
-        correlations_repository.run_correlations(runtimeSettings)
-    except Exception as e:
-        logger.error("Failed to generate correlations: %s", str(e))
-        return False
+        redis_client = redis.from_url(redis_url)
+    except Exception:
+        redis_client = None
 
-    logger.info("generate correlations job finished")
+    # TODO: Make lock key and TTL configurable, check if this is still required when there are multiple workers
+    lock_key = "generate_correlations_lock"
+    lock_ttl_seconds = 60 * 60 * 1  # 1 hour - safe default for long runs
 
-    return True
+    # Try to acquire the lock. If we can't acquire it, another run is active
+    # or finished very recently, so skip to avoid duplicates.
+    if redis_client is not None:
+        try:
+            got_lock = redis_client.set(lock_key, "1", nx=True, ex=lock_ttl_seconds)
+        except Exception:
+            got_lock = False
+    else:
+        got_lock = False
+
+    if not got_lock:
+        logger.info("generate_correlations skipped: lock present (another run active)")
+        return True
+
+    try:
+        try:
+            correlations_repository.delete_correlations()
+            correlations_repository.run_correlations(runtimeSettings)
+        except Exception as e:
+            logger.error("Failed to generate correlations: %s", str(e))
+            return False
+
+        logger.info("generate correlations job finished")
+        return True
+    finally:
+        # Release the lock. If Redis isn't available this is a noop.
+        try:
+            if redis_client is not None:
+                redis_client.delete(lock_key)
+        except Exception:
+            pass
+
+
+def get_redis_url():
+    redis_host = os.environ.get("REDIS_HOSTNAME", "localhost")
+    redis_port = os.environ.get("REDIS_PORT", "6379")
+    redis_db = os.environ.get("REDIS_CACHE_DB", "0")
+
+    redis_url = (
+        os.environ.get("CELERY_RESULT_BACKEND")
+        or os.environ.get("REDIS_URL")
+        or f"redis://{redis_host}:{redis_port}/{redis_db}"
+    )
+
+    return redis_url
 
 
 @app.task
@@ -596,7 +647,9 @@ def handle_toggled_event_correlation(event_uuid: uuid.UUID, disable_correlation:
             with Session(engine) as db:
                 runtimeSettings = get_runtime_settings(db)
 
-                correlations_repository.correlate_event(runtimeSettings, str(event_uuid))
+                correlations_repository.correlate_event(
+                    runtimeSettings, str(event_uuid)
+                )
 
         logger.info(
             "handling toggled event correlation uuid=%s job finished", event_uuid

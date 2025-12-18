@@ -127,6 +127,10 @@ div.row h3 {
 .table.table-striped {
   margin-bottom: 0;
 }
+.table-fixed {
+  table-layout: fixed;
+  width: 100%;
+}
 </style>
 <template>
   <Spinner v-if="status.loading" />
@@ -136,8 +140,8 @@ div.row h3 {
   <div v-if="!status.loading && event" class="card">
     <div class="event-title card-header border-bottom">
       <div class="row">
-        <div class="col-10">
-          <h3>{{ event.info }}</h3>
+        <div class="col-10 overflow-hidden">
+          <h3 class="text-truncate">{{ event.info }}</h3>
         </div>
         <div class="col-2 text-end">
           <EventActions
@@ -152,15 +156,15 @@ div.row h3 {
         <div class="card">
           <div class="card-body d-flex flex-column">
             <div class="table-responsive-sm">
-              <table class="table table-striped">
+              <table class="table table-striped table-fixed">
                 <tbody>
                   <tr>
                     <th>id</th>
                     <td>{{ event.id }}</td>
                   </tr>
                   <tr>
-                    <th>uuid</th>
-                    <td>
+                    <th style="width: 150px">uuid</th>
+                    <td class="overflow-hidden">
                       <UUID :uuid="event.uuid" />
                     </td>
                   </tr>
@@ -270,7 +274,7 @@ div.row h3 {
       <div class="col col-sm-4 mt-2">
         <CorrelatedEvents :results="correlated_events" />
       </div>
-      <div class="col col-sm-12 mt-4">
+      <div class="col col-sm-12">
         <div class="card mt-2">
           <div class="card-header">
             <div class="row">
