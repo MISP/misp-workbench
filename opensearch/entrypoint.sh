@@ -87,4 +87,17 @@ for file in "${PIPELINES_DIR}"/*.json; do
   fi
 done
 
+if [ "${ENVIRONMENT:-prod}" = "prod" ]; then
+  curl --fail -k -u admin:${OPENSEARCH_INITIAL_ADMIN_PASSWORD} \
+    -X PUT "${OPENSEARCH_URL}/_plugins/_security/api/internalusers/dashboards_system" \
+    -H "Content-Type: application/json" \
+    -d "{
+      \"password\": \"${OPENSEARCH_DASHBOARDS_PASSWORD}\",
+      \"reserved\": true,
+      \"backend_roles\": [\"dashboards_system\"],
+      \"description\": \"OpenSearch Dashboards service user\"
+    }"
+  echo "dashboards_system user configured"
+fi
+
 echo "OpenSearch setup completed successfully."
