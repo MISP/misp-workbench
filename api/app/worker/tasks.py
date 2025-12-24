@@ -180,6 +180,8 @@ def handle_deleted_event(event_uuid: uuid.UUID):
             db, "deleted", event=db_event
         )
 
+        delete_indexed_event.delay(event_uuid)
+
     return True
 
 
@@ -292,7 +294,7 @@ def send_email(email: dict):
 
 
 @app.task
-def index_event(event_uuid: uuid.UUID):
+def index_event(event_uuid: uuid.UUID, full_reindex: bool = False):
     logger.info("index event uuid=%s job started", event_uuid)
 
     with Session(engine) as db:
@@ -327,6 +329,36 @@ def index_event(event_uuid: uuid.UUID):
         raise Exception("Failed to index event.")
 
     logger.info("indexed event uuid=%s", event_uuid)
+
+    if not full_reindex:
+        return True
+
+    # delete existing indexed attributes and objects
+    query = {
+        "query": {
+            "bool": {
+                "must": [{"term": {"event_uuid": str(event.uuid)}}]
+            }
+        }
+    }
+
+    response = OpenSearchClient.delete_by_query(
+        index="misp-attributes", body=query, refresh=True
+    )
+    logger.info(
+        "deleted %s previously indexed attributes for event uuid=%s",
+        response["deleted"],
+        event_uuid,
+    )
+
+    response = OpenSearchClient.delete_by_query(
+        index="misp-objects", body=query, refresh=True
+    )
+    logger.info(
+        "deleted %s previously indexed objects for event uuid=%s",
+        response["deleted"],
+        event_uuid,
+    )
 
     # index attributes
     attributes_docs = []
@@ -654,5 +686,52 @@ def handle_toggled_event_correlation(event_uuid: uuid.UUID, disable_correlation:
         logger.info(
             "handling toggled event correlation uuid=%s job finished", event_uuid
         )
+
+    return True
+
+@app.task
+def delete_indexed_event(event_uuid: uuid.UUID):
+    logger.info("deleting indexed event uuid=%s job started", event_uuid)
+
+    OpenSearchClient = get_opensearch_client()
+
+    response = OpenSearchClient.delete(
+        index="misp-events", id=event_uuid, refresh=True, ignore=[404]
+    )
+
+    if response.get("result") == "not_found":
+        logger.info("event uuid=%s not found in index, nothing to delete", event_uuid)
+    else:
+        logger.info("deleted indexed event uuid=%s", event_uuid)
+
+    # delete indexed attributes
+    query = {
+        "query": {
+            "bool": {
+                "must": [{"term": {"event_uuid": str(event_uuid)}}]
+            }
+        }
+    }
+
+    response = OpenSearchClient.delete_by_query(
+        index="misp-attributes", body=query, refresh=True
+    )
+    logger.info(
+        "deleted %s indexed attributes for event uuid=%s",
+        response["deleted"],
+        event_uuid,
+    )
+
+    # delete indexed objects
+    response = OpenSearchClient.delete_by_query(
+        index="misp-objects", body=query, refresh=True
+    )
+    logger.info(
+        "deleted %s indexed objects for event uuid=%s",
+        response["deleted"],
+        event_uuid,
+    )
+
+    logger.info("deleting indexed event uuid=%s job finished", event_uuid)
 
     return True

@@ -235,7 +235,7 @@ def pull_event_by_uuid(
 
     # TODO: process tag collection, see app/Model/Event.php::_add()
 
-    tasks.index_event.delay(db_event.uuid)
+    tasks.index_event.delay(db_event.uuid, full_reindex=True) # TODO: optimize to index only changes
 
     return db_event
 

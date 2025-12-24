@@ -106,7 +106,7 @@ def create_event(
     event_create_request.org_id = user.org_id
 
     db_event = events_repository.create_event(db=db, event=event_create_request)
-    tasks.index_event.delay(db_event.uuid)
+    tasks.index_event.delay(db_event.uuid, full_reindex=True)
 
     return db_event
 
@@ -267,7 +267,7 @@ async def force_index(
 ):
 
     if event_uuid:
-        tasks.index_event.delay(event_uuid)
+        tasks.index_event.delay(event_uuid, full_reindex=True)
         return JSONResponse(
             content={"message": f"Indexing started for event {event_uuid}."},
             status_code=status.HTTP_202_ACCEPTED,
@@ -279,7 +279,7 @@ async def force_index(
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND, detail="Event not found"
             )
-        tasks.index_event.delay(db_event.uuid)
+        tasks.index_event.delay(db_event.uuid, full_reindex=True)
         return JSONResponse(
             content={"message": f"Indexing started for event {db_event.uuid}."},
             status_code=status.HTTP_202_ACCEPTED,
@@ -287,7 +287,7 @@ async def force_index(
 
     uuids = events_repository.get_event_uuids(db)
     for uuid in uuids:
-        tasks.index_event.delay(uuid[0])
+        tasks.index_event.delay(uuid[0], full_reindex=True)
 
     return JSONResponse(
         content={"message": "Indexing started for all events."},
