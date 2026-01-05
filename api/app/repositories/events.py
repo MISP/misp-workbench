@@ -210,7 +210,6 @@ def update_event(db: Session, event_id: int, event: event_schemas.EventUpdate):
     db.refresh(db_event)
 
     tasks.handle_updated_event.delay(db_event.uuid)
-    tasks.index_event.delay(db_event.uuid, full_reindex=False)
 
     return db_event
 
