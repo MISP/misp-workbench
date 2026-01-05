@@ -164,6 +164,8 @@ def handle_updated_event(event_uuid: uuid.UUID):
             db, "updated", event=db_event
         )
 
+        index_event.delay(db_event.uuid, full_reindex=False)
+
     return True
 
 
@@ -180,6 +182,8 @@ def handle_deleted_event(event_uuid: uuid.UUID):
             db, "deleted", event=db_event
         )
 
+        delete_indexed_event.delay(event_uuid)
+
     return True
 
 
@@ -190,10 +194,12 @@ def handle_created_attribute(attribute_id: int, object_id: int | None, event_id:
         if object_id is None:
             events_repository.increment_attribute_count(db, event_id)
 
-    db_attribute = attributes_repository.get_attribute_by_id(db, attribute_id)
-    notifications_repository.create_attribute_notifications(
-        db, "created", attribute=db_attribute
-    )
+        db_attribute = attributes_repository.get_attribute_by_id(db, attribute_id)
+        notifications_repository.create_attribute_notifications(
+            db, "created", attribute=db_attribute
+        )
+
+        index_attribute.delay(db_attribute.uuid)
 
     return True
 
@@ -206,6 +212,8 @@ def handle_updated_attribute(attribute_id: int, object_id: int | None, event_id:
         notifications_repository.create_attribute_notifications(
             db, "updated", attribute=db_attribute
         )
+
+        index_attribute.delay(db_attribute.uuid)
 
     return True
 
@@ -222,6 +230,8 @@ def handle_deleted_attribute(attribute_id: int, object_id: int | None, event_id:
             db, "deleted", attribute=db_attribute
         )
 
+        delete_indexed_attribute.delay(db_attribute.uuid)
+
     return True
 
 
@@ -237,6 +247,8 @@ def handle_created_object(object_id: int, event_id: int):
             db, "created", object=db_object
         )
 
+        index_object.delay(db_object.uuid)
+
     return True
 
 
@@ -250,6 +262,8 @@ def handle_updated_object(object_id: int, event_id: int):
             db, "updated", object=db_object
         )
 
+        index_object.delay(db_object.uuid)
+
     return True
 
 
@@ -260,10 +274,12 @@ def handle_deleted_object(object_id: int, event_id: int):
     with Session(engine) as db:
         events_repository.decrement_object_count(db, event_id)
 
-    db_object = objects_repository.get_object_by_id(db, object_id)
-    notifications_repository.create_object_notifications(
-        db, "deleted", object=db_object
-    )
+        db_object = objects_repository.get_object_by_id(db, object_id)
+        notifications_repository.create_object_notifications(
+            db, "deleted", object=db_object
+        )
+
+        delete_indexed_object.delay(db_object.uuid)
 
     return True
 
@@ -292,7 +308,7 @@ def send_email(email: dict):
 
 
 @app.task
-def index_event(event_uuid: uuid.UUID):
+def index_event(event_uuid: uuid.UUID, full_reindex: bool = False):
     logger.info("index event uuid=%s job started", event_uuid)
 
     with Session(engine) as db:
@@ -327,6 +343,30 @@ def index_event(event_uuid: uuid.UUID):
         raise Exception("Failed to index event.")
 
     logger.info("indexed event uuid=%s", event_uuid)
+
+    if not full_reindex:
+        return True
+
+    # delete existing indexed attributes and objects
+    query = {"query": {"bool": {"must": [{"term": {"event_uuid": str(event.uuid)}}]}}}
+
+    response = OpenSearchClient.delete_by_query(
+        index="misp-attributes", body=query, refresh=True
+    )
+    logger.info(
+        "deleted %s previously indexed attributes for event uuid=%s",
+        response["deleted"],
+        event_uuid,
+    )
+
+    response = OpenSearchClient.delete_by_query(
+        index="misp-objects", body=query, refresh=True
+    )
+    logger.info(
+        "deleted %s previously indexed objects for event uuid=%s",
+        response["deleted"],
+        event_uuid,
+    )
 
     # index attributes
     attributes_docs = []
@@ -654,5 +694,169 @@ def handle_toggled_event_correlation(event_uuid: uuid.UUID, disable_correlation:
         logger.info(
             "handling toggled event correlation uuid=%s job finished", event_uuid
         )
+
+    return True
+
+
+@app.task
+def delete_indexed_event(event_uuid: uuid.UUID):
+    logger.info("deleting indexed event uuid=%s job started", event_uuid)
+
+    OpenSearchClient = get_opensearch_client()
+
+    response = OpenSearchClient.delete(
+        index="misp-events", id=event_uuid, refresh=True, ignore=[404]
+    )
+
+    if response.get("result") == "not_found":
+        logger.info("event uuid=%s not found in index, nothing to delete", event_uuid)
+    else:
+        logger.info("deleted indexed event uuid=%s", event_uuid)
+
+    # delete indexed attributes
+    query = {"query": {"bool": {"must": [{"term": {"event_uuid": str(event_uuid)}}]}}}
+
+    response = OpenSearchClient.delete_by_query(
+        index="misp-attributes", body=query, refresh=True
+    )
+    logger.info(
+        "deleted %s indexed attributes for event uuid=%s",
+        response["deleted"],
+        event_uuid,
+    )
+
+    # delete indexed objects
+    response = OpenSearchClient.delete_by_query(
+        index="misp-objects", body=query, refresh=True
+    )
+    logger.info(
+        "deleted %s indexed objects for event uuid=%s",
+        response["deleted"],
+        event_uuid,
+    )
+
+    logger.info("deleting indexed event uuid=%s job finished", event_uuid)
+
+    return True
+
+
+@app.task
+def index_attribute(attribute_uuid: uuid.UUID):
+    logger.info("indexing attribute uuid=%s job started", attribute_uuid)
+
+    with Session(engine) as db:
+        db_attribute = attributes_repository.get_attribute_by_uuid(db, attribute_uuid)
+        if db_attribute is None:
+            raise Exception("Attribute with uuid=%s not found", attribute_uuid)
+
+    attribute = event_schemas.Attribute.model_validate(db_attribute)
+
+    OpenSearchClient = get_opensearch_client()
+
+    attribute_raw = attribute.model_dump()
+
+    # convert timestamp to datetime so it can be indexed
+    attribute_raw["@timestamp"] = datetime.fromtimestamp(
+        attribute_raw["timestamp"]
+    ).isoformat()
+    attribute_raw["data"] = ""  # do not index file contents
+
+    response = OpenSearchClient.index(
+        index="misp-attributes",
+        id=attribute.uuid,
+        body=attribute_raw,
+        refresh=True,
+    )
+
+    if response["result"] not in ["created", "updated"]:
+        logger.error(
+            "Failed to index attribute uuid=%s. Response: %s",
+            attribute_uuid,
+            response,
+        )
+        raise Exception("Failed to index attribute.")
+
+    logger.info("indexed attribute uuid=%s job finished", attribute_uuid)
+
+    return True
+
+
+@app.task
+def delete_indexed_attribute(attribute_uuid: uuid.UUID):
+    logger.info("deleting indexed attribute uuid=%s job started", attribute_uuid)
+
+    OpenSearchClient = get_opensearch_client()
+
+    response = OpenSearchClient.delete(
+        index="misp-attributes", id=attribute_uuid, refresh=True, ignore=[404]
+    )
+
+    if response.get("result") == "not_found":
+        logger.info(
+            "attribute uuid=%s not found in index, nothing to delete", attribute_uuid
+        )
+    else:
+        logger.info("deleted indexed attribute uuid=%s", attribute_uuid)
+
+    logger.info("deleting indexed attribute uuid=%s job finished", attribute_uuid)
+
+    return True
+
+
+@app.task
+def index_object(object_uuid: uuid.UUID):
+    logger.info("indexing object uuid=%s job started", object_uuid)
+
+    with Session(engine) as db:
+        db_object = objects_repository.get_object_by_uuid(db, object_uuid)
+        if db_object is None:
+            raise Exception("Object with uuid=%s not found", object_uuid)
+
+    object = event_schemas.Object.model_validate(db_object)
+
+    OpenSearchClient = get_opensearch_client()
+
+    object_raw = object.model_dump()
+
+    # convert timestamp to datetime so it can be indexed
+    object_raw["@timestamp"] = datetime.fromtimestamp(
+        object_raw["timestamp"]
+    ).isoformat()
+
+    response = OpenSearchClient.index(
+        index="misp-objects",
+        id=object.uuid,
+        body=object_raw,
+        refresh=True,
+    )
+
+    if response["result"] not in ["created", "updated"]:
+        logger.error(
+            "Failed to index object uuid=%s. Response: %s", object_uuid, response
+        )
+        raise Exception("Failed to index object.")
+
+    logger.info("indexed object uuid=%s job finished", object_uuid)
+
+    return True
+
+@app.task
+def delete_indexed_object(object_uuid: uuid.UUID):
+    logger.info("deleting indexed object uuid=%s job started", object_uuid)
+
+    OpenSearchClient = get_opensearch_client()
+
+    response = OpenSearchClient.delete(
+        index="misp-objects", id=object_uuid, refresh=True, ignore=[404]
+    )
+
+    if response.get("result") == "not_found":
+        logger.info(
+            "object uuid=%s not found in index, nothing to delete", object_uuid
+        )
+    else:
+        logger.info("deleted indexed object uuid=%s", object_uuid)
+
+    logger.info("deleting indexed object uuid=%s job finished", object_uuid)
 
     return True

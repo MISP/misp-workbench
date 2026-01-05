@@ -180,7 +180,7 @@ def process_feed_event(
 
     db.commit()
 
-    tasks.index_event.delay(local_event.uuid)
+    tasks.index_event.delay(local_event.uuid, full_reindex=True)
 
     return {"result": "success", "message": "Event processed"}
 
