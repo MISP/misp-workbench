@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from "vue";
+import { watch, ref } from "vue";
 import { useAttributesStore } from "@/stores";
 import { errorHandler } from "@/helpers";
 import { storeToRefs } from "pinia";
@@ -18,13 +18,38 @@ const apiError = ref(null);
 const props = defineProps(["event_uuid", "modal"]);
 const emit = defineEmits(["attribute-created"]);
 
-const attribute = ref({
-  distribution: DISTRIBUTION_LEVEL.INHERIT_EVENT,
-  event_uuid: props.event_uuid,
-  category: "Network activity",
-  type: "ip-src",
-  disable_correlation: false,
-});
+const detected = ref(null);
+const resetVeeForm = ref(null);
+
+function createEmptyAttribute() {
+  return {
+    distribution: DISTRIBUTION_LEVEL.INHERIT_EVENT,
+    event_uuid: props.event_uuid,
+    disable_correlation: false,
+    type: null,
+    category: null,
+    value: "",
+  };
+}
+
+const attribute = ref(createEmptyAttribute());
+
+watch(
+  () => attribute.value.value,
+  (newValue) => {
+    const result = detectAttribute(newValue);
+
+    if (!result) {
+      detected.value = null;
+      return;
+    }
+
+    detected.value = result;
+
+    attribute.value.type = result.type;
+    attribute.value.category = result.category;
+  },
+);
 
 function addAttribute(values, { setErrors }) {
   apiError.value = null;
@@ -32,6 +57,7 @@ function addAttribute(values, { setErrors }) {
     .create(attribute.value)
     .then((response) => {
       emit("attribute-created", { attribute: response });
+      onClose();
       props.modal.hide();
     })
     .catch((errors) => {
@@ -41,13 +67,13 @@ function addAttribute(values, { setErrors }) {
 }
 
 function onClose() {
-  attribute.value = {
-    distribution: DISTRIBUTION_LEVEL.INHERIT_EVENT,
-    event_uuid: props.event_uuid,
-    category: "Network activity",
-    type: "ip-src",
-    disable_correlation: false,
-  };
+  attribute.value = createEmptyAttribute();
+  detected.value = null;
+  apiError.value = null;
+
+  if (resetVeeForm.value) {
+    resetVeeForm.value();
+  }
 }
 
 function handleAttributeCategoryUpdated(category) {
@@ -60,6 +86,42 @@ function handleAttributeTypeUpdated(type) {
 
 function handleDistributionLevelUpdated(distributionLevelId) {
   attribute.value.distribution = parseInt(distributionLevelId);
+}
+
+function detectAttribute(value) {
+  if (!value) return null;
+
+  const v = value.trim();
+
+  if (/^(?:\d{1,3}\.){3}\d{1,3}$/.test(v)) {
+    return {
+      type: "ip-dst",
+      category: "Network activity",
+      label: "IP address",
+    };
+  }
+
+  if (/^[a-fA-F0-9]{64}$/.test(v)) {
+    return {
+      type: "sha256",
+      category: "Payload delivery",
+      label: "SHA-256 hash",
+    };
+  }
+
+  if (/^[a-fA-F0-9]{32}$/.test(v)) {
+    return { type: "md5", category: "Payload delivery", label: "MD5 hash" };
+  }
+
+  if (/^https?:\/\//i.test(v)) {
+    return { type: "url", category: "Payload delivery", label: "URL" };
+  }
+
+  if (/^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(v)) {
+    return { type: "domain", category: "Network activity", label: "Domain" };
+  }
+
+  return null;
 }
 </script>
 
@@ -74,8 +136,11 @@ function handleDistributionLevelUpdated(distributionLevelId) {
       <Form
         @submit="addAttribute"
         :validation-schema="AttributeSchema"
-        v-slot="{ errors }"
+        v-slot="{ errors, resetForm }"
       >
+        <template v-if="!resetVeeForm">
+          {{ resetVeeForm = resetForm }}
+        </template>
         <div class="modal-content">
           <div class="modal-header">
             <h5 class="modal-title" id="addAttributeModalLabel">
@@ -91,32 +156,46 @@ function handleDistributionLevelUpdated(distributionLevelId) {
           <div class="modal-body">
             <div class="row m-2">
               <div class="col text-start">
-                <label for="attribute.category" class="form-label"
-                  >category</label
+                <label for="attribute.value">value</label>
+                <Field
+                  class="form-control"
+                  id="attribute.value"
+                  name="attribute.value"
+                  as="textarea"
+                  placeholder="IOC or data here ..."
+                  v-model="attribute.value"
+                  style="height: 100px"
+                  :class="{ 'is-invalid': errors['attribute.value'] }"
                 >
-                <AttributeCategorySelect
-                  name="attribute.category"
-                  :selected="attribute.category"
-                  @attribute-category-updated="handleAttributeCategoryUpdated"
-                  :errors="errors['attribute.category']"
-                />
+                </Field>
                 <div class="invalid-feedback">
-                  {{ errors["attribute.category"] }}
+                  {{ errors["attribute.value"] }}
                 </div>
               </div>
+            </div>
+            <div class="row m-2">
               <div class="col text-start">
-                <label for="attribute.type" class="form-label">type</label>
+                <label class="form-label">
+                  type <small class="text-muted">(override if needed)</small>
+                </label>
                 <AttributeTypeSelect
-                  :key="attribute.category"
                   name="attribute.type"
+                  :key="attribute.category"
                   :category="attribute.category"
                   :selected="attribute.type"
                   @attribute-type-updated="handleAttributeTypeUpdated"
-                  :errors="errors['attribute.type']"
                 />
-                <div class="invalid-feedback">
-                  {{ errors["attribute.type"] }}
-                </div>
+              </div>
+              <div class="col text-start">
+                <label class="form-label">
+                  category <small class="text-muted">(auto-detected)</small>
+                </label>
+                <AttributeCategorySelect
+                  name="attribute.category"
+                  :key="attribute.type"
+                  :selected="attribute.category"
+                  @attribute-category-updated="handleAttributeCategoryUpdated"
+                />
               </div>
             </div>
             <div class="row m-2">
@@ -145,24 +224,6 @@ function handleDistributionLevelUpdated(distributionLevelId) {
               </div> -->
             <div class="row m-2">
               <div class="col text-start">
-                <label for="attribute.value">value</label>
-                <Field
-                  class="form-control"
-                  id="attribute.value"
-                  name="attribute.value"
-                  as="textarea"
-                  v-model="attribute.value"
-                  style="height: 100px"
-                  :class="{ 'is-invalid': errors['attribute.value'] }"
-                >
-                </Field>
-                <div class="invalid-feedback">
-                  {{ errors["attribute.value"] }}
-                </div>
-              </div>
-            </div>
-            <div class="row m-2">
-              <div class="col text-start">
                 <label for="attribute.comment">comment</label>
                 <Field
                   class="form-control"
@@ -170,7 +231,7 @@ function handleDistributionLevelUpdated(distributionLevelId) {
                   name="attribute.comment"
                   as="textarea"
                   v-model="attribute.comment"
-                  style="height: 100px"
+                  style="height: 50px"
                   :class="{ 'is-invalid': errors['attribute.comment'] }"
                 >
                 </Field>
