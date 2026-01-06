@@ -7,7 +7,7 @@ export const useObjectsStore = defineStore("objects", {
   state: () => ({
     objects: {},
     object: {},
-    objectTemplates: {},
+    objectTemplates: [],
     total: 0,
     pages: 0,
     page: 0,

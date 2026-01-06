@@ -22,7 +22,9 @@ const template = ref(props.template);
       aria-expanded="false"
       aria-controls="advancedSettings"
     >
-      Template details <font-awesome-icon icon="fa-solid fa-caret-down" />
+      <button type="button" class="btn btn-outline-secondary">
+        Template details <font-awesome-icon icon="fa-solid fa-caret-down" />
+      </button>
     </a>
   </p>
   <div class="collapse" id="templateDetails">
