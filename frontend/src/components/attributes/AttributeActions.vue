@@ -212,7 +212,7 @@ function followAttribute() {
       data-bs-toggle="dropdown"
       aria-expanded="false"
     >
-      &#x22EE;
+      &#8230;
     </button>
 
     <ul class="dropdown-menu dropdown-menu-end">
