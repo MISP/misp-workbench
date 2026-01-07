@@ -7,7 +7,6 @@ import { DISTRIBUTION_LEVEL } from "@/helpers/constants";
 import ObjectTemplateSelect from "@/components/enums/ObjectTemplateSelect.vue";
 import ApiError from "@/components/misc/ApiError.vue";
 import AddObjectAttributesForm from "@/components/objects/AddObjectAttributesForm.vue";
-import AddObjectPreview from "@/components/objects/AddObjectPreview.vue";
 import DisplayObjectTemplate from "@/components/objects/DisplayObjectTemplate.vue";
 import { objectTemplatesHelper } from "@/helpers";
 import { Form } from "vee-validate";
@@ -208,7 +207,6 @@ function handleObjectTemplateUpdated(templateUuid) {
             />
           </div>
           <div class="modal-body">
-            <!-- Category / Template Selection -->
             <section class="section" id="category-section">
               <h4>Choose Object Template</h4>
               <div class="row g-3 mx-0">
@@ -262,7 +260,6 @@ function handleObjectTemplateUpdated(templateUuid) {
               </div>
             </section>
 
-            <!-- Attributes -->
             <section
               class="section"
               id="attributes-section"
@@ -276,16 +273,6 @@ function handleObjectTemplateUpdated(templateUuid) {
                 @object-attribute-added="handleAttributesUpdated"
                 @object-attribute-deleted="handleAttributesUpdated"
               />
-            </section>
-
-            <!-- Preview -->
-            <section
-              class="section"
-              id="preview-section"
-              v-if="activeTemplate.uuid"
-            >
-              <h4>Preview</h4>
-              <AddObjectPreview :object="object" :template="activeTemplate" />
             </section>
           </div>
 
