@@ -2,8 +2,9 @@
 import { Field } from "vee-validate";
 import { useObjectsStore } from "@/stores";
 import { storeToRefs } from "pinia";
+import { computed } from "vue";
 
-const props = defineProps(["name", "meta_category", "selected", "errors"]);
+const props = defineProps(["name", "selected", "errors"]);
 const emit = defineEmits(["object-template-updated"]);
 
 const objectsStore = useObjectsStore();
@@ -11,8 +12,22 @@ const { objectTemplates } = storeToRefs(objectsStore);
 
 objectsStore.getObjectTemplates();
 
-function handleSelectChange(event) {
-  emit("object-template-updated", event.target.value);
+const selectedName = computed(() => {
+  if (!props.selected?.uuid) return "";
+  const tpl = objectTemplates.value.find((t) => t.uuid === props.selected.uuid);
+  return tpl?.name || "";
+});
+
+function handleInput(event) {
+  const value = event.target.value;
+
+  const match = objectTemplates.value.find(
+    (t) => t.name.toLowerCase() === value.toLowerCase(),
+  );
+
+  if (match) {
+    emit("object-template-updated", match.uuid);
+  }
 }
 </script>
 
@@ -20,21 +35,18 @@ function handleSelectChange(event) {
   <Field
     class="form-control"
     list="objectTemplateOptions"
-    id="objectTemplatesSelect"
     :name="name"
     :class="{ 'is-invalid': errors }"
-    @change="handleSelectChange"
-    placeholder="Type to search..."
-    :value="props.selected.uuid"
-  ></Field>
+    placeholder="Search object templates…"
+    :value="selectedName"
+    @input="handleInput"
+  />
+
   <datalist id="objectTemplateOptions">
     <option
       v-for="template in objectTemplates"
-      :value="template.uuid"
-      :uuid="template.uuid"
       :key="template.uuid"
-    >
-      {{ template.name }}
-    </option>
+      :value="template.name"
+    />
   </datalist>
 </template>

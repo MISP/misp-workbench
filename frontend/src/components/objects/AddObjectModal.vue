@@ -7,7 +7,6 @@ import { DISTRIBUTION_LEVEL } from "@/helpers/constants";
 import ObjectTemplateSelect from "@/components/enums/ObjectTemplateSelect.vue";
 import ApiError from "@/components/misc/ApiError.vue";
 import AddObjectAttributesForm from "@/components/objects/AddObjectAttributesForm.vue";
-import AddObjectPreview from "@/components/objects/AddObjectPreview.vue";
 import DisplayObjectTemplate from "@/components/objects/DisplayObjectTemplate.vue";
 import { objectTemplatesHelper } from "@/helpers";
 import { Form } from "vee-validate";
@@ -19,18 +18,65 @@ const objectTemplateErrors = ref(null);
 const props = defineProps(["event_uuid", "modal"]);
 const emit = defineEmits(["object-created"]);
 
-const object = ref({
-  distribution: DISTRIBUTION_LEVEL.INHERIT_EVENT,
-  meta_category: "network",
-  template_uuid: null,
-  attributes: [],
-  deleted: false,
-  event_uuid: props.event_uuid,
-});
+function createEmptyObject() {
+  return {
+    distribution: DISTRIBUTION_LEVEL.INHERIT_EVENT,
+    meta_category: "network",
+    template_uuid: null,
+    attributes: [],
+    deleted: false,
+    event_uuid: props.event_uuid,
+  };
+}
 
+function createEmptyTemplate() {
+  return {
+    uuid: "",
+    name: "",
+    version: "",
+    requiredOneOf: [],
+  };
+}
+
+const object = ref(createEmptyObject());
+const resetVeeForm = ref(null);
 const selectedQuickTemplate = ref("");
-const activeTemplate = ref({
-  requiredOneOf: [],
+const activeTemplate = ref(createEmptyTemplate());
+
+const defaultObjectTemplates = {
+  "domain/ip": "43b3b146-77eb-4931-b4cc-b66c60f28734",
+  "url/domain": "60efb77b-40b5-4c46-871b-ed1ed999fce5",
+  "file/hash": "688c46fb-5edb-40a3-8273-1af7923e2215",
+  vulnerability: "81650945-f186-437b-8945-9f31715d32da",
+  financial: "c51ed099-a628-46ee-ad8f-ffed866b6b8d",
+  personal: "a15b0477-e9d1-4b9c-9546-abe78a4f4248",
+};
+
+const templateIconMap = {
+  "domain/ip": "fa-network-wired",
+  "url/domain": "fa-link",
+  "file/hash": "fa-file-lines",
+  vulnerability: "fa-bug",
+  financial: "fa-money-check-dollar",
+  personal: "fa-person",
+};
+
+const selectTemplateByUuid = (uuid) => {
+  object.value.template_uuid = uuid;
+  const template = objectsStore.getObjectTemplateByUuid(uuid);
+  console.log("Selected template:", template);
+  if (template) {
+    activeTemplate.value = template;
+  } else {
+    activeTemplate.value = createEmptyTemplate();
+  }
+  selectedQuickTemplate.value = "";
+};
+
+watch(selectedQuickTemplate, (newValue) => {
+  if (defaultObjectTemplates[newValue]) {
+    selectTemplateByUuid(defaultObjectTemplates[newValue]);
+  }
 });
 
 function handleAttributesUpdated() {
@@ -57,6 +103,7 @@ function createObject(values, { setErrors }) {
         .create(object.value)
         .then((response) => {
           emit("object-created", { object: response });
+          resetObjectModal();
           props.modal.hide();
         })
         .catch((errors) => {
@@ -69,63 +116,71 @@ function createObject(values, { setErrors }) {
     });
 }
 
+function resetObjectModal() {
+  object.value = createEmptyObject();
+  activeTemplate.value = createEmptyTemplate();
+  selectedQuickTemplate.value = "";
+
+  apiError.value = null;
+  objectTemplateErrors.value = null;
+
+  if (resetVeeForm.value) {
+    resetVeeForm.value();
+  }
+}
+
 function onClose() {
-  object.value = {
-    distribution: DISTRIBUTION_LEVEL.INHERIT_EVENT,
-    meta_category: "network",
-    template_uuid: null,
-    template: null,
-  };
+  resetObjectModal();
   props.modal.hide();
 }
 
 function handleObjectTemplateUpdated(templateUuid) {
-  object.value.template_uuid = templateUuid;
-  activeTemplate.value = objectsStore.getObjectTemplateByUuid(templateUuid);
-  ObjectTemplateSchema.value = objectTemplatesHelper.getObjectTemplateSchema(
-    activeTemplate.value,
-  );
-
-  validateObjectTemplate();
-
-  selectedQuickTemplate.value = "";
+  selectTemplateByUuid(templateUuid);
+  objectTemplateErrors.value = null;
 }
-
-const defaultObjectTemplates = {
-  "domain/ip": "43b3b146-77eb-4931-b4cc-b66c60f28734",
-  "url/domain": "60efb77b-40b5-4c46-871b-ed1ed999fce5",
-  "file/hash": "688c46fb-5edb-40a3-8273-1af7923e2215",
-  vulnerability: "81650945-f186-437b-8945-9f31715d32da",
-  financial: "c51ed099-a628-46ee-ad8f-ffed866b6b8d",
-  personal: "a15b0477-e9d1-4b9c-9546-abe78a4f4248",
-};
-
-watch(selectedQuickTemplate, (newValue) => {
-  if (defaultObjectTemplates[newValue]) {
-    object.value.template_uuid = defaultObjectTemplates[newValue];
-    activeTemplate.value = objectsStore.getObjectTemplateByUuid(
-      defaultObjectTemplates[newValue],
-    );
-  }
-});
 </script>
 
 <style>
-.tab-content {
-  border-left: 1px solid #ddd;
-  border-right: 1px solid #ddd;
-  border-bottom: 1px solid #ddd;
-  padding: 10px;
+.modal-body {
+  max-height: 70vh;
+  overflow-y: auto;
+  padding-right: 1rem;
+  /* prevent scrollbar overlaying content */
 }
 
-.nav-tabs {
-  margin-bottom: 0;
+.section {
+  margin-bottom: 2rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--bs-border-color);
 }
 
-.figure {
-  width: 100px;
-  text-align: center;
-  vertical-align: middle;
+.section:last-child {
+  border-bottom: none;
+}
+
+.template-card {
+  transition: all 0.15s ease;
+  cursor: pointer;
+}
+
+.template-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.1);
+}
+
+.template-card.border-primary {
+  border-width: 2px !important;
+}
+
+.template-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.template-list > div {
+  flex: 1 0 12rem;
+  max-width: 12rem;
 }
 </style>
 
@@ -135,8 +190,10 @@ watch(selectedQuickTemplate, (newValue) => {
     class="modal fade"
     aria-labelledby="addObjectModalLabel"
     aria-hidden="true"
+    tabindex="-1"
   >
-    <Form @submit="createObject" v-slot="{ errors }">
+    <Form @submit="createObject" v-slot="{ errors, resetForm }">
+      <template v-if="!resetVeeForm">{{ resetVeeForm = resetForm }}</template>
       <div class="modal-dialog modal-xl">
         <div class="modal-content">
           <div class="modal-header">
@@ -146,268 +203,79 @@ watch(selectedQuickTemplate, (newValue) => {
               class="btn-close btn-outline-s"
               data-bs-dismiss="modal"
               aria-label="Discard"
-            ></button>
+              @click="onClose()"
+            />
           </div>
           <div class="modal-body">
-            <ul class="nav nav-tabs" id="addObjectTabs" role="tablist">
-              <li class="nav-item" role="presentation">
-                <button
-                  class="nav-link active"
-                  id="category-tab"
-                  data-bs-toggle="tab"
-                  data-bs-target="#category"
-                  type="button"
-                  role="tab"
-                  aria-controls="category"
-                  aria-selected="true"
+            <section class="section" id="category-section">
+              <h4>Choose Object Template</h4>
+              <div class="row g-3 mx-0">
+                <div
+                  v-for="(uuid, key) in defaultObjectTemplates"
+                  :key="key"
+                  class="col-6 col-md-2 px-2"
                 >
-                  Category
-                </button>
-              </li>
-              <li class="nav-item" role="presentation">
-                <button
-                  class="nav-link"
-                  id="attributes-tab"
-                  data-bs-toggle="tab"
-                  :disabled="!activeTemplate.uuid"
-                  data-bs-target="#attributes"
-                  type="button"
-                  role="tab"
-                  aria-controls="attributes"
-                  aria-selected="false"
-                >
-                  Attributes
-                </button>
-              </li>
-              <!-- <li class="nav-item" role="presentation">
-                                <button class="nav-link" id="distribution-tab" data-bs-toggle="tab"
-                                    data-bs-target="#distribution" type="button" role="tab" aria-controls="distribution"
-                                    aria-selected="false">Distribution</button>
-                            </li> -->
-              <!-- <li class="nav-item" role="presentation">
-                                <button class="nav-link" id="advanced-tab" data-bs-toggle="tab"
-                                    data-bs-target="#advanced" type="button" role="tab" aria-controls="advanced"
-                                    aria-selected="false">Advanced</button>
-                            </li> -->
-              <li class="nav-item" role="presentation">
-                <button
-                  class="nav-link"
-                  id="preview-tab"
-                  data-bs-toggle="tab"
-                  data-bs-target="#preview"
-                  :disabled="!activeTemplate.uuid"
-                  type="button"
-                  role="tab"
-                  aria-controls="preview"
-                  aria-selected="false"
-                >
-                  Preview
-                </button>
-              </li>
-            </ul>
-            <div class="tab-content" id="add-object-tab-content">
-              <div
-                class="tab-pane show active"
-                id="category"
-                role="tabpanel"
-                aria-labelledby="category-tab"
-              >
-                <div class="btn-group" role="group">
-                  <input
-                    type="radio"
-                    class="btn-check"
-                    v-model="selectedQuickTemplate"
-                    v-bind:value="'domain/ip'"
-                    name="btnradio"
-                    id="btn-domain-ip"
-                    autocomplete="off"
-                  />
-                  <label class="btn btn-outline-primary" for="btn-domain-ip">
-                    <font-awesome-icon
-                      icon="fa-solid fa-network-wired"
-                      class="fa-2xl mt-3"
-                    />
-                    <p>Domain/IP</p>
-                  </label>
-                  <input
-                    type="radio"
-                    class="btn-check"
-                    v-model="selectedQuickTemplate"
-                    v-bind:value="'url/domain'"
-                    name="btnradio"
-                    id="btn-url-domain"
-                    autocomplete="off"
-                  />
-                  <label class="btn btn-outline-primary" for="btn-url-domain">
-                    <font-awesome-icon
-                      icon="fa-solid fa-link"
-                      class="fa-2xl mt-3"
-                    />
-                    <p>URL/Domain</p>
-                  </label>
-                  <input
-                    type="radio"
-                    class="btn-check"
-                    v-model="selectedQuickTemplate"
-                    v-bind:value="'file/hash'"
-                    name="btnradio"
-                    id="btn-file-hash"
-                    autocomplete="off"
-                  />
-                  <label class="btn btn-outline-primary" for="btn-file-hash">
-                    <font-awesome-icon
-                      icon="fa-solid fa-file-lines"
-                      class="fa-2xl mt-3"
-                    />
-                    <p>File/Hash</p>
-                  </label>
-                  <input
-                    type="radio"
-                    class="btn-check"
-                    v-model="selectedQuickTemplate"
-                    v-bind:value="'vulnerability'"
-                    name="btnradio"
-                    id="btn-vulnerability"
-                    autocomplete="off"
-                  />
-                  <label
-                    class="btn btn-outline-primary"
-                    for="btn-vulnerability"
+                  <div
+                    class="card h-100 template-card"
+                    :class="{ 'border-primary': activeTemplate.uuid === uuid }"
+                    role="button"
+                    @click="selectTemplateByUuid(uuid)"
                   >
-                    <font-awesome-icon
-                      icon="fa-solid fa-skull-crossbones"
-                      class="fa-2xl mt-3"
-                    />
-                    <p>Vulnerability</p>
-                  </label>
-                  <input
-                    type="radio"
-                    class="btn-check"
-                    v-model="selectedQuickTemplate"
-                    v-bind:value="'financial'"
-                    name="btnradio"
-                    id="btn-financial"
-                    autocomplete="off"
-                  />
-                  <label class="btn btn-outline-primary" for="btn-financial">
-                    <font-awesome-icon
-                      icon="fa-solid fa-money-check-dollar"
-                      class="fa-2xl mt-3"
-                    />
-                    <p>Financial</p>
-                  </label>
-                  <input
-                    type="radio"
-                    class="btn-check"
-                    v-model="selectedQuickTemplate"
-                    v-bind:value="'personal'"
-                    name="btnradio"
-                    id="btn-person"
-                    autocomplete="off"
-                  />
-                  <label class="btn btn-outline-primary" for="btn-person">
-                    <font-awesome-icon
-                      icon="fa-solid fa-person"
-                      class="fa-2xl mt-3"
-                    />
-                    <p>Personal</p>
-                  </label>
-                </div>
-                <div class="col text-start mt-3">
-                  <label for="activeTemplate" class="form-label"
-                    >Or select a template from the list:</label
-                  >
-                  <ObjectTemplateSelect
-                    name="activeTemplate"
-                    :selected="activeTemplate"
-                    @object-template-updated="handleObjectTemplateUpdated"
-                    :errors="errors['activeTemplate']"
-                  />
-                  <div class="invalid-feedback">
-                    {{ errors["activeTemplate"] }}
+                    <div class="card-body text-center">
+                      <font-awesome-icon
+                        :icon="templateIconMap[key]"
+                        class="fa-2xl mb-3"
+                      />
+                      <h6 class="card-title text-capitalize">
+                        {{ key.replace("/", " / ") }}
+                      </h6>
+                    </div>
                   </div>
                 </div>
-                <div>
-                  <DisplayObjectTemplate
-                    v-if="activeTemplate.uuid"
-                    :key="activeTemplate.uuid"
-                    :template="activeTemplate"
-                  />
-                </div>
               </div>
-              <div
-                class="tab-pane"
-                id="attributes"
-                role="tabpanel"
-                aria-labelledby="attributes-tab"
-              >
-                <AddObjectAttributesForm
-                  v-if="activeTemplate.uuid"
-                  :object="object"
+
+              <hr class="my-4" />
+
+              <div>
+                <h5>Or choose from all templates</h5>
+                <ObjectTemplateSelect
+                  name="activeTemplate"
+                  :selected="activeTemplate"
+                  @object-template-updated="handleObjectTemplateUpdated"
+                  :errors="errors['activeTemplate']"
+                />
+              </div>
+
+              <div v-if="activeTemplate.uuid" class="mt-4">
+                <div class="alert alert-success d-flex align-items-center">
+                  <font-awesome-icon icon="fa-check-circle" class="me-2" />
+                  <strong class="me-2">Selected template:</strong>
+                  {{ activeTemplate.name }}
+                </div>
+
+                <DisplayObjectTemplate
                   :key="activeTemplate.uuid"
                   :template="activeTemplate"
-                  @object-attribute-added="handleAttributesUpdated"
-                  @object-attribute-deleted="handleAttributesUpdated"
                 />
               </div>
-              <!-- <div class="tab-pane" id="distribution" role="tabpanel" aria-labelledby="distribution-tab">
-                                distribution
-                            </div> -->
-              <!-- <div class="tab-pane" id="advanced" role="tabpanel" aria-labelledby="advanced-tab">
-                                <div class="row m-2">
-                                    <div class="col col-6 text-start">
-                                        <label for="object.distribution" class="form-label">distribution</label>
-                                        <DistributionLevelSelect name="object.distribution"
-                                            :selected=object.distribution
-                                            @distribution-level-updated="handleDistributionLevelUpdated"
-                                            :errors="errors['object.distribution']" />
-                                        <div class="invalid-feedback">{{ errors['object.distribution'] }}</div>
-                                    </div>
-                                </div>
-                                <div class="row m-2">
-                                    <div class="col col-6 text-start">
-                                        <label for="object.meta_category" class="form-label">meta-category</label>
-                                        <ObjectMetaCategorySelect name="object.meta-category"
-                                            :selected=object.meta_category
-                                            @object-meta-category-updated="handleObjectMetaCategoryUpdated"
-                                            :errors="errors['object.meta_category']" />
-                                        <div class="invalid-feedback">{{ errors['object.meta_category'] }}</div>
-                                    </div>
-                                </div>
-                                <div class="row m-2">
-                                    <div class="col text-start">
-                                        <label for="object.template" class="form-label">template</label>
-                                        <ObjectTemplateSelect name="object.template" :selected=object.template
-                                            @object-template-updated="handleObjectTemplateUpdated"
-                                            :errors="errors['object.template']" />
-                                        <div class="invalid-feedback">{{ errors['object.template'] }}</div>
-                                    </div>
-                                </div>
-                            </div> -->
-              <div
-                class="tab-pane"
-                id="preview"
-                role="tabpanel"
-                aria-labelledby="preview-tab"
-              >
-                <AddObjectPreview
-                  v-if="activeTemplate.uuid"
-                  :object="object"
-                  :template="activeTemplate"
-                />
-              </div>
-            </div>
-            <!-- TODO -->
-            <!--
-                        <div class="row m-2">
-                            <div class="col col-6 text-start">
-                                <label for="objectSharingGroupId" class="form-label">Sharing Group</label>
-                                <SharingGroupSelect v-model=object.sharing_group_id />
-                                <div class="invalid-feedback">{{ errors['object.sharing_group_id'] }}</div>
-                            </div>
-                        </div> 
-                        -->
+            </section>
+
+            <section
+              class="section"
+              id="attributes-section"
+              v-if="activeTemplate.uuid"
+            >
+              <h4>Attributes</h4>
+              <AddObjectAttributesForm
+                :object="object"
+                :template="activeTemplate"
+                :key="activeTemplate.uuid"
+                @object-attribute-added="handleAttributesUpdated"
+                @object-attribute-deleted="handleAttributesUpdated"
+              />
+            </section>
           </div>
+
           <div v-if="apiError" class="w-100 alert alert-danger mt-3 mb-3">
             <ApiError :errors="apiError" />
           </div>
@@ -417,9 +285,9 @@ watch(selectedQuickTemplate, (newValue) => {
           >
             <span>{{ objectTemplateErrors }}</span>
           </div>
+
           <div class="modal-footer">
             <button
-              id="closeModalButton"
               type="button"
               data-bs-dismiss="modal"
               class="btn btn-outline-secondary"
@@ -437,7 +305,7 @@ watch(selectedQuickTemplate, (newValue) => {
                   class="spinner-border spinner-border-sm"
                   role="status"
                   aria-hidden="true"
-                ></span>
+                />
               </span>
               <span v-show="!status.loading">Add Object</span>
             </button>

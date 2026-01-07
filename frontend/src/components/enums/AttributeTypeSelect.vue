@@ -1,21 +1,35 @@
 <script setup>
-import { ref } from "vue";
+import { ref, watch } from "vue";
 import { ATTRIBUTE_CATEGORIES, ATTRIBUTE_TYPES } from "@/helpers/constants";
 import { Field } from "vee-validate";
 
 const props = defineProps(["name", "category", "selected", "errors"]);
 const emit = defineEmits(["attribute-type-updated"]);
 
-function handleSelectChange(event) {
-  emit("attribute-type-updated", event.target.value);
-}
-
 const types = ref([]);
 
-if (ATTRIBUTE_CATEGORIES[props.category] === undefined) {
-  types.value = ATTRIBUTE_TYPES;
-} else {
-  types.value = ATTRIBUTE_CATEGORIES[props.category]["types"];
+function resolveTypes(category) {
+  if (ATTRIBUTE_CATEGORIES[category] === undefined) {
+    return ATTRIBUTE_TYPES;
+  }
+  return ATTRIBUTE_CATEGORIES[category].types;
+}
+
+types.value = resolveTypes(props.category);
+
+watch(
+  () => props.category,
+  (newCategory) => {
+    types.value = resolveTypes(newCategory);
+  },
+);
+
+function handleInput(event) {
+  const value = event.target.value;
+
+  if (types.value.includes(value)) {
+    emit("attribute-type-updated", value);
+  }
 }
 </script>
 
@@ -23,11 +37,14 @@ if (ATTRIBUTE_CATEGORIES[props.category] === undefined) {
   <Field
     class="form-control"
     :name="name"
+    list="attributeTypeOptions"
     :class="{ 'is-invalid': errors }"
-    as="select"
-    @change="handleSelectChange"
-    :value="props.selected"
-  >
-    <option v-for="type in types" :value="type" :key="type">{{ type }}</option>
-  </Field>
+    placeholder="Search attribute type…"
+    :value="selected"
+    @input="handleInput"
+  />
+
+  <datalist id="attributeTypeOptions">
+    <option v-for="type in types" :key="type" :value="type" />
+  </datalist>
 </template>

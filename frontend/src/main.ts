@@ -44,7 +44,6 @@ import {
   faQuestion,
   faMoneyCheckDollar,
   faPerson,
-  faSkullCrossbones,
   faCircleInfo,
   faFloppyDisk,
   faMagnifyingGlass,
@@ -56,6 +55,9 @@ import {
   faXmark,
   faGear,
   faCaretDown,
+  faList,
+  faBug,
+  faCheckCircle,
 } from "@fortawesome/free-solid-svg-icons";
 library.add(
   faPen,
@@ -89,7 +91,7 @@ library.add(
   faQuestion,
   faMoneyCheckDollar,
   faPerson,
-  faSkullCrossbones,
+  faBug,
   faCircleInfo,
   faFloppyDisk,
   faMagnifyingGlass,
@@ -101,6 +103,8 @@ library.add(
   faXmark,
   faGear,
   faCaretDown,
+  faList,
+  faCheckCircle,
 );
 
 const app = createApp(App);
