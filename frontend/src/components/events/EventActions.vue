@@ -117,7 +117,7 @@ function followEvent() {
         type="button"
         class="btn btn-outline-primary btn-sm"
         :disabled="status.indexing"
-        title="Index Event"
+        title="Re-Index Event"
         @click="indexEventDocument"
       >
         <FontAwesomeIcon

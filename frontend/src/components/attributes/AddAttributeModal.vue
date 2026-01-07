@@ -268,27 +268,6 @@ function detectAttribute(value) {
                 <div class="form-check">
                   <Field
                     class="form-control"
-                    id="attribute.batch_import"
-                    name="attribute.batch_import"
-                    :value="attribute.batch_import"
-                    v-model="attribute.batch_import"
-                    :class="{ 'is-invalid': errors['attribute.batch_import'] }"
-                  >
-                    <input
-                      class="form-check-input"
-                      type="checkbox"
-                      v-model="attribute.batch_import"
-                    />
-                  </Field>
-                  <label for="attribute.batch_import">batch import</label>
-                </div>
-              </div>
-            </div>
-            <div class="row m-2">
-              <div class="col text-start">
-                <div class="form-check">
-                  <Field
-                    class="form-control"
                     id="attribute.disable_correlation"
                     name="attribute.disable_correlation"
                     :value="attribute.disable_correlation"
