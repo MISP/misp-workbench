@@ -9,8 +9,10 @@ from app.models import event as event_models
 from app.models import feed as feed_models
 from app.models import tag as tag_models
 from app.repositories import tags as tags_repository
+from app.repositories import attributes as attributes_repository
 from app.schemas import event as event_schemas
 from app.schemas import user as user_schemas
+import app.schemas.attribute as attribute_schemas
 from fastapi import HTTPException, status
 from fastapi_pagination.ext.sqlalchemy import paginate
 from pymisp import MISPEvent, MISPOrganisation
@@ -470,11 +472,12 @@ def get_events_by_uuids(db: Session, uuids: list[UUID]) -> list[event_models.Eve
         .all()
     )
 
+
 def publish_event(db: Session, db_event: event_models.Event) -> event_models.Event:
 
     if db_event.published:
         return db_event
-    
+
     db_event.published = True
     db_event.publish_timestamp = time.time()
 
@@ -485,11 +488,12 @@ def publish_event(db: Session, db_event: event_models.Event) -> event_models.Eve
 
     return db_event
 
+
 def unpublish_event(db: Session, db_event: event_models.Event) -> event_models.Event:
-    
+
     if not db_event.published:
         return db_event
-    
+
     db_event.published = False
 
     db.commit()
@@ -499,6 +503,7 @@ def unpublish_event(db: Session, db_event: event_models.Event) -> event_models.E
 
     return db_event
 
+
 def toggle_event_correlation(
     db: Session, db_event: event_models.Event
 ) -> event_models.Event:
@@ -507,6 +512,40 @@ def toggle_event_correlation(
     db.commit()
     db.refresh(db_event)
 
-    tasks.handle_toggled_event_correlation.delay(db_event.uuid, db_event.disable_correlation)
+    tasks.handle_toggled_event_correlation.delay(
+        db_event.uuid, db_event.disable_correlation
+    )
 
     return db_event
+
+
+def import_data(db: Session, event: event_models.Event, data: dict):
+
+    total_imported_attributes = 0
+    total_attributes = 0
+
+    if "attributes" in data:
+        total_attributes = len(data["attributes"])
+
+        for raw_attribute in data["attributes"]:
+            try:
+                attribute = attribute_schemas.AttributeCreate(
+                    event_id=event.id,
+                    category=raw_attribute.get("category", "External analysis"),
+                    type=raw_attribute["type"],
+                    value=raw_attribute["value"],
+                    distribution=event_schemas.DistributionLevel.INHERIT_EVENT,
+                )
+                attributes_repository.create_attribute(db, attribute)
+                total_imported_attributes += 1
+            except Exception as e:
+                logger.error(f"Error importing attribute: {e}")
+                continue
+
+    return {
+        "message": f"Imported {total_imported_attributes} out of {total_attributes} attributes.",
+        "imported_attributes": total_imported_attributes,
+        "total_attributes": total_attributes,
+        "failed_attributes": total_attributes - total_imported_attributes,
+        "event_uuid": str(event.uuid),
+    }

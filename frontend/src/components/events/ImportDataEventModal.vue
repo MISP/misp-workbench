@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { reactive, watch, computed } from "vue";
 import { debounce } from "lodash-es";
-import { useEventsStore } from "@/stores";
+import { useEventsStore, useToastsStore } from "@/stores";
 import { storeToRefs } from "pinia";
 import { ATTRIBUTE_CATEGORIES, ATTRIBUTE_TYPES } from "@/helpers/constants";
 
+const toastsStore = useToastsStore();
 const eventsStore = useEventsStore();
 const { status } = storeToRefs(eventsStore);
 
@@ -177,13 +178,20 @@ function onSubmit() {
   const attributes = getFinalAttributes();
 
   return eventsStore
-    .import(props.event_uuid, attributes)
-    .then(() => {
+    .import(props.event_uuid, { attributes: attributes })
+    .then((response) => {
+      toastsStore.push(response["message"]);
       emit("event-updated", { event_uuid: props.event_uuid });
       resetBatchState();
       props.modal.hide();
     })
-    .catch((error) => (status.error = error));
+    .catch((error) => {
+      status.error = error.message || "An error occurred during import.";
+      toastsStore.push(
+        error.message || "An error occurred during import.",
+        "error",
+      );
+    });
 }
 
 function resetBatchState() {
