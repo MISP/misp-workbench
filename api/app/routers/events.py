@@ -316,6 +316,7 @@ def publish(
         status_code=status.HTTP_200_OK,
     )
 
+
 @router.post("/events/{event_uuid}/unpublish")
 def unpublish(
     event_uuid: UUID,
@@ -337,6 +338,7 @@ def unpublish(
         status_code=status.HTTP_200_OK,
     )
 
+
 @router.post("/events/{event_uuid}/toggle-correlation")
 def toggle_correlation(
     event_uuid: UUID,
@@ -354,6 +356,36 @@ def toggle_correlation(
     events_repository.toggle_event_correlation(db, db_event)
 
     return JSONResponse(
-        content={"message": f"Event {event_uuid} disable_correlation has been toggled."},
+        content={
+            "message": f"Event {event_uuid} disable_correlation has been toggled."
+        },
         status_code=status.HTTP_200_OK,
     )
+
+
+@router.post("/events/{event_uuid}/import")
+def import_data(
+    event_uuid: UUID,
+    db: Session = Depends(get_db),
+    data: dict = {},
+    user: user_schemas.User = Security(
+        get_current_active_user, scopes=["events:import"]
+    ),
+):
+    db_event = events_repository.get_event_by_uuid(db, event_uuid=event_uuid)
+    if db_event is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Event not found"
+        )
+
+    try:
+        result = events_repository.import_data(db, event=db_event, data=data)
+        return JSONResponse(
+            content=result,
+            status_code=status.HTTP_202_ACCEPTED,
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"An error occurred during import: {str(e)}",
+        )

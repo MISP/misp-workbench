@@ -13,9 +13,12 @@ import {
   faFileArrowUp,
   faSync,
   faBookmark,
+  faArrowsRotate,
+  faFileImport,
 } from "@fortawesome/free-solid-svg-icons";
 import { toggleFollowEntity, isFollowingEntity } from "@/helpers/follow";
 import DeleteEventModal from "@/components/events/DeleteEventModal.vue";
+import ImportDataEventModal from "@/components/events/ImportDataEventModal.vue";
 
 const authStore = useAuthStore();
 const { scopes } = storeToRefs(authStore);
@@ -52,10 +55,14 @@ const actions = computed(() => ({
 }));
 
 const deleteEventModal = ref(null);
+const importDataEventModal = ref(null);
 
 onMounted(() => {
   deleteEventModal.value = new Modal(
     document.getElementById(`deleteEventModal_${props.event_uuid}`),
+  );
+  importDataEventModal.value = new Modal(
+    document.getElementById(`importDataEventModal_${props.event_uuid}`),
   );
   followed.value = isFollowingEntity("events", props.event_uuid);
 });
@@ -64,10 +71,18 @@ function openDeleteEventModal() {
   deleteEventModal.value.show();
 }
 
+function openImportModal() {
+  importDataEventModal.value.show();
+}
+
 const emit = defineEmits(["event-updated", "event-deleted"]);
 
 function handleEventDeleted(event) {
   emit("event-deleted", event);
+}
+
+function handleEventUpdated(event) {
+  emit("event-updated", event);
 }
 
 function indexEventDocument() {
@@ -117,17 +132,26 @@ function followEvent() {
         type="button"
         class="btn btn-outline-primary btn-sm"
         :disabled="status.indexing"
-        title="Index Event"
+        title="Import"
+        @click="openImportModal"
+      >
+        <FontAwesomeIcon :icon="faFileImport" fixed-width />
+      </button>
+      <button
+        v-if="actions.index"
+        type="button"
+        class="btn btn-outline-primary btn-sm"
+        :disabled="status.indexing"
+        title="Re-Index Event"
         @click="indexEventDocument"
       >
         <FontAwesomeIcon
           v-if="!status.indexing"
-          :icon="faFileArrowUp"
+          :icon="faArrowsRotate"
           fixed-width
         />
         <FontAwesomeIcon v-else :icon="faSync" fixed-width spin />
       </button>
-
       <button
         type="button"
         class="btn btn-outline-primary btn-sm"
@@ -244,6 +268,14 @@ function followEvent() {
     :id="`deleteEventModal_${event_uuid}`"
     @event-deleted="handleEventDeleted"
     :modal="deleteEventModal"
+    :event_uuid="event_uuid"
+  />
+
+  <ImportDataEventModal
+    :key="event_uuid"
+    :id="`importDataEventModal_${event_uuid}`"
+    @event-updated="handleEventUpdated"
+    :modal="importDataEventModal"
     :event_uuid="event_uuid"
   />
 </template>

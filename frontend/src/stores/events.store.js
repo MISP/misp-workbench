@@ -125,5 +125,12 @@ export const useEventsStore = defineStore({
         .catch((error) => (this.error = error))
         .finally(() => (this.status = { updating: false }));
     },
+    async import(uuid, data) {
+      this.status = { importing: true };
+      return await fetchWrapper
+        .post(`${baseUrl}/${uuid}/import`, data)
+        .catch((error) => (this.error = error))
+        .finally(() => (this.status = { importing: false }));
+    },
   },
 });
