@@ -22,6 +22,8 @@ Some screenshots are available [here](docs/screenshots/).
 
 ```bash
 # from repository root
+cp .env.dev.dist .env.dev
+cp frontend/.env.dev frontend/.env
 git submodule update --init --recursive
 docker compose -f docker-compose.yml -f docker-compose.dev.yml --env-file=".env.dev" up --build
 ```
