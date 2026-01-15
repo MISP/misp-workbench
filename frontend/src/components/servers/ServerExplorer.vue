@@ -80,9 +80,9 @@ function toggleApplyPullRules() {
   searchRemoteMISPEvents();
 }
 
-function pullRemoteMISPEvent(event) {
+function pullRemoteMISPEvent(event_uuid) {
   toastsStore.push("Event pull enqueued.");
-  remoteMISPEventsStore.pull_remote_misp_event(props.server.id, event.uuid);
+  remoteMISPEventsStore.pull_remote_misp_event(props.server.id, event_uuid);
 }
 
 function handleNextPage() {
