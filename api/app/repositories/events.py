@@ -5,6 +5,8 @@ from uuid import UUID
 from typing import Union
 from app.worker import tasks
 from app.services.opensearch import get_opensearch_client
+from app.services.vulnerability_lookup import lookup as vulnerability_lookup
+from app.services.rulezet import lookup as rulezet_lookup
 from app.models import event as event_models
 from app.models import feed as feed_models
 from app.models import tag as tag_models
@@ -13,6 +15,7 @@ from app.repositories import attributes as attributes_repository
 from app.schemas import event as event_schemas
 from app.schemas import user as user_schemas
 import app.schemas.attribute as attribute_schemas
+import app.schemas.vulnerability as vulnerability_schemas
 from fastapi import HTTPException, status
 from fastapi_pagination.ext.sqlalchemy import paginate
 from pymisp import MISPEvent, MISPOrganisation
@@ -549,3 +552,31 @@ def import_data(db: Session, event: event_models.Event, data: dict):
         "failed_attributes": total_attributes - total_imported_attributes,
         "event_uuid": str(event.uuid),
     }
+
+
+def get_event_vulnerabilities(
+    db: Session,
+    event_uuid: str,
+) -> list[vulnerability_schemas.Vulnerability]:
+
+    vulnerability_attributes = attributes_repository.get_vulnerability_attributes(
+        db, event_uuid=event_uuid
+    )
+
+    vulnerabilities = []
+    for attribute in vulnerability_attributes:
+        vuln_meta = vulnerability_lookup(attribute.value)
+        detection_rules = rulezet_lookup(attribute.value)
+
+        vulnerability = vulnerability_schemas.Vulnerability(
+            vuln_id=attribute.value,
+            attribute_uuid=attribute.uuid,
+            description=vuln_meta.get("description", attribute.comment),
+            severity=vuln_meta.get("severity", None),
+            references=vuln_meta.get("references", None),
+            impacted_products=vuln_meta.get("impacted_products", None),
+            detection_rules=detection_rules if detection_rules else None,
+        )
+        vulnerabilities.append(vulnerability)
+
+    return vulnerabilities

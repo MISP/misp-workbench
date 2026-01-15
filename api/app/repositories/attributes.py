@@ -54,7 +54,7 @@ def enrich_attributes_page_with_correlations(
 
 
 def get_attributes(
-    db: Session, event_uuid: str = None, deleted: bool = None, object_id: int = None
+    db: Session, event_uuid: str = None, deleted: bool = None, object_id: int = None, type: str = None
 ) -> Page[attribute_schemas.Attribute]:
     query = select(attribute_models.Attribute)
 
@@ -68,6 +68,9 @@ def get_attributes(
 
     if deleted is not None:
         query = query.where(attribute_models.Attribute.deleted == deleted)
+
+    if type is not None:
+        query = query.where(attribute_models.Attribute.type == type)
 
     query = query.where(attribute_models.Attribute.object_id == object_id)
 
@@ -352,3 +355,22 @@ def capture_attribute_tags(
         db.add(db_attribute_tag)
 
     db.commit()
+
+def get_vulnerability_attributes(
+    db: Session, event_uuid: str = None
+) -> list[attribute_schemas.Attribute]:
+    query = select(attribute_models.Attribute).where(
+        attribute_models.Attribute.type == "vulnerability"
+    )
+
+    if event_uuid is not None:
+        db_event = events_repository.get_event_by_uuid(event_uuid=event_uuid, db=db)
+        if db_event is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Event not found"
+            )
+        query = query.where(attribute_models.Attribute.event_id == db_event.id)
+
+    results = db.execute(query).scalars().all()
+
+    return results
