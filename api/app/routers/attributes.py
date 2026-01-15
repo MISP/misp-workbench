@@ -21,8 +21,9 @@ async def get_attributes_parameters(
     event_uuid: Optional[str] = None,
     deleted: Optional[bool] = None,
     object_id: Optional[int] = None,
+    type: Optional[str] = None,
 ):
-    return {"event_uuid": event_uuid, "deleted": deleted, "object_id": object_id}
+    return {"event_uuid": event_uuid, "deleted": deleted, "object_id": object_id, "type": type}
 
 
 @router.get("/attributes/", response_model=Page[attribute_schemas.Attribute])
@@ -34,7 +35,7 @@ def get_attributes(
     ),
 ) -> Page[attribute_schemas.Attribute]:
     return attributes_repository.get_attributes(
-        db, params["event_uuid"], params["deleted"], params["object_id"]
+        db, params["event_uuid"], params["deleted"], params["object_id"], params["type"]
     )
 
 

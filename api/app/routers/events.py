@@ -13,6 +13,7 @@ from app.repositories import objects as objects_repository
 from app.schemas import event as event_schemas
 from app.schemas import user as user_schemas
 from app.schemas import object as object_schemas
+from app.schemas import vulnerability as vulnerability_schemas
 from app.worker import tasks
 from fastapi import (
     APIRouter,
@@ -389,3 +390,23 @@ def import_data(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"An error occurred during import: {str(e)}",
         )
+
+
+@router.get(
+    "/events/{event_uuid}/vulnerabilities", response_model=list[vulnerability_schemas.Vulnerability]
+)
+def get_event_vulnerabilities(
+    event_uuid: str,
+    db: Session = Depends(get_db),
+    user: user_schemas.User = Security(get_current_active_user, scopes=["events:read"]),
+) -> list[vulnerability_schemas.Vulnerability]:
+    db_event = events_repository.get_event_by_uuid(db, event_uuid=event_uuid)
+    if db_event is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Event not found"
+        )
+
+    return events_repository.get_event_vulnerabilities(
+        db,
+        event_uuid=db_event.uuid,
+    )

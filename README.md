@@ -28,6 +28,10 @@ git submodule update --init --recursive
 docker compose -f docker-compose.yml -f docker-compose.dev.yml --env-file=".env.dev" up --build
 ```
 
+> **default credentials:** `admin@admin.test:admin`
+
+Go to http://localhost:3000/login and login.
+
 The dev compose file configures the API, frontend, OpenSearch, Redis, and other services needed to run the project locally.
 
 ####  Local development (alternative)
