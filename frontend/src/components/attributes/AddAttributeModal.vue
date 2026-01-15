@@ -93,6 +93,7 @@ function detectAttribute(value) {
 
   const v = value.trim();
 
+  // IPv4
   if (/^(?:\d{1,3}\.){3}\d{1,3}$/.test(v)) {
     return {
       type: "ip-dst",
@@ -101,6 +102,7 @@ function detectAttribute(value) {
     };
   }
 
+  // SHA-256
   if (/^[a-fA-F0-9]{64}$/.test(v)) {
     return {
       type: "sha256",
@@ -109,16 +111,28 @@ function detectAttribute(value) {
     };
   }
 
+  // MD5
   if (/^[a-fA-F0-9]{32}$/.test(v)) {
     return { type: "md5", category: "Payload delivery", label: "MD5 hash" };
   }
 
+  // URL
   if (/^https?:\/\//i.test(v)) {
     return { type: "url", category: "Payload delivery", label: "URL" };
   }
 
+  // Domain
   if (/^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(v)) {
     return { type: "domain", category: "Network activity", label: "Domain" };
+  }
+
+  // CVE / GCVE
+  if (/^(?:CVE-\d{4}-\d{4,}|GCVE-0-\d{4}-\d{4,})$/i.test(v)) {
+    return {
+      type: "vulnerability",
+      category: "External analysis",
+      label: "Vulnerability",
+    };
   }
 
   return null;

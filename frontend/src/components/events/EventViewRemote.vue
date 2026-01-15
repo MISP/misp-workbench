@@ -180,7 +180,7 @@ div.row h3 {
                 </tbody>
               </table>
             </div>
-            <div class="card mt-3" style="height: 280px">
+            <div class="card mt-3">
               <div class="card-header">
                 <FontAwesomeIcon :icon="faTags" /> tags
               </div>
