@@ -9,6 +9,7 @@ export const useEventsStore = defineStore({
   state: () => ({
     events: {},
     event: {},
+    vulnerabilities: [],
     page_count: 0,
     status: {
       loading: false,
@@ -131,6 +132,12 @@ export const useEventsStore = defineStore({
         .post(`${baseUrl}/${uuid}/import`, data)
         .catch((error) => (this.error = error))
         .finally(() => (this.status = { importing: false }));
+    },
+    async getVulnerabilities(event_uuid) {
+      return await fetchWrapper
+        .get(`${baseUrl}/${event_uuid}/vulnerabilities`)
+        .then((vulnerabilities) => (this.vulnerabilities = vulnerabilities))
+        .catch((error) => (this.status = { error }));
     },
   },
 });

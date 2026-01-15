@@ -33,7 +33,7 @@ export const useAuthStore = defineStore({
         JSON.stringify(this.decoded_access_token),
       );
 
-      router.push("/");
+      router.push("/events");
     },
     isAuthenticated() {
       return (

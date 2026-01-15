@@ -14,6 +14,7 @@ import AnalysisLevel from "@/components/enums/AnalysisLevel.vue";
 import EventActions from "@/components/events/EventActions.vue";
 import UploadAttachmentsWidget from "@/components/attachments/UploadAttachmentsWidget.vue";
 import CorrelatedEvents from "@/components/correlations/CorrelatedEvents.vue";
+import RelatedVulnerabilities from "@/components/vulnerabilities/RelatedVulnerabilities.vue";
 import { router } from "@/router";
 import { Modal } from "bootstrap";
 import {
@@ -55,6 +56,12 @@ onMounted(() => {
 const eventCorrelationEnabled = computed(() => {
   return !event.value.disable_correlation;
 });
+
+// show/hide additional event metadata (id, creator, date)
+const showMore = ref(false);
+function toggleShowMore() {
+  showMore.value = !showMore.value;
+}
 
 function openCreateorEditReportModal() {
   createOrEditReportModal.value.show();
@@ -127,6 +134,7 @@ div.row h3 {
 .table.table-striped {
   margin-bottom: 0;
 }
+
 .table-fixed {
   table-layout: fixed;
   width: 100%;
@@ -159,32 +167,10 @@ div.row h3 {
               <table class="table table-striped table-fixed">
                 <tbody>
                   <tr>
-                    <th>id</th>
-                    <td>{{ event.id }}</td>
-                  </tr>
-                  <tr>
                     <th style="width: 150px">uuid</th>
                     <td class="overflow-hidden">
                       <UUID :uuid="event.uuid" />
                     </td>
-                  </tr>
-                  <tr>
-                    <th>published</th>
-                    <td>
-                      <div class="form-check form-switch">
-                        <input
-                          class="form-check-input"
-                          type="checkbox"
-                          id="eventPublishedSwitch"
-                          v-model="event.published"
-                          @change="togglePublished"
-                        />
-                      </div>
-                    </td>
-                  </tr>
-                  <tr>
-                    <th>creator user</th>
-                    <td>{{ event.user_id }}</td>
                   </tr>
                   <!-- TODO handle protected events -->
                   <!-- <tr>
@@ -200,28 +186,6 @@ div.row h3 {
                       </div>
                     </td>
                   </tr> -->
-                  <tr>
-                    <th>date</th>
-                    <td>{{ event.date }}</td>
-                  </tr>
-                  <tr>
-                    <th>timestamp</th>
-                    <td>
-                      <Timestamp :timestamp="event.timestamp" />
-                    </td>
-                  </tr>
-                  <tr>
-                    <th>threat level</th>
-                    <td>
-                      <ThreatLevel :threat_level_id="event.threat_level" />
-                    </td>
-                  </tr>
-                  <tr>
-                    <th>analysis</th>
-                    <td>
-                      <AnalysisLevel :analysis_level_id="event.analysis" />
-                    </td>
-                  </tr>
                   <tr>
                     <th>distribution</th>
                     <td>
@@ -251,6 +215,66 @@ div.row h3 {
                       </div>
                     </td>
                   </tr>
+                  <tr>
+                    <th>published</th>
+                    <td>
+                      <div class="form-check form-switch">
+                        <input
+                          class="form-check-input"
+                          type="checkbox"
+                          id="eventPublishedSwitch"
+                          v-model="event.published"
+                          @change="togglePublished"
+                        />
+                      </div>
+                    </td>
+                  </tr>
+                  <tr>
+                    <th>last change at</th>
+                    <td>
+                      <Timestamp :timestamp="event.timestamp" />
+                    </td>
+                  </tr>
+                  <template v-if="showMore">
+                    <tr>
+                      <th>local id</th>
+                      <td>{{ event.id }}</td>
+                    </tr>
+                    <tr>
+                      <th>creator user</th>
+                      <td>{{ event.user_id }}</td>
+                    </tr>
+                    <tr>
+                      <th>threat level</th>
+                      <td>
+                        <ThreatLevel :threat_level_id="event.threat_level" />
+                      </td>
+                    </tr>
+                    <tr>
+                      <th>analysis</th>
+                      <td>
+                        <AnalysisLevel :analysis_level_id="event.analysis" />
+                      </td>
+                    </tr>
+                    <tr>
+                      <th>created at</th>
+                      <td>{{ event.date }}</td>
+                    </tr>
+                  </template>
+
+                  <!-- toggle row -->
+                  <tr>
+                    <td colspan="2" class="text-end">
+                      <button
+                        type="button"
+                        class="btn btn-sm btn-link"
+                        @click="toggleShowMore"
+                        aria-expanded="{{ showMore }}"
+                      >
+                        {{ showMore ? "Show less" : "Show more" }}
+                      </button>
+                    </td>
+                  </tr>
                 </tbody>
               </table>
             </div>
@@ -270,6 +294,9 @@ div.row h3 {
             </div>
           </div>
         </div>
+      </div>
+      <div class="col col-sm-4 mt-2">
+        <RelatedVulnerabilities :event_uuid="event.uuid" />
       </div>
       <div class="col col-sm-4 mt-2">
         <CorrelatedEvents :results="correlated_events" />
