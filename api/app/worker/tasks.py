@@ -17,8 +17,12 @@ from app.repositories import users as users_repository
 from app.repositories import correlations as correlations_repository
 from app.repositories import attributes as attributes_repository
 from app.repositories import notifications as notifications_repository
+from app.repositories import galaxies as galaxies_repository
+from app.repositories import taxonomies as taxonomies_repository
 from app.schemas import event as event_schemas
 from celery import Celery
+from celery.signals import worker_ready
+from app.models import user as user_models
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 from opensearchpy import helpers as opensearch_helpers
@@ -803,6 +807,49 @@ def delete_indexed_attribute(attribute_uuid: uuid.UUID):
     return True
 
 
+@app.task(name="load_galaxies")
+def load_galaxies(user_id: int):
+    """Load galaxies from the bundled misp-galaxy submodule into the database.
+
+    If `user_id` is not provided the first user in the database will be used as
+    the creator for created tags and objects.
+    """
+    logger.info("load_galaxies job started")
+
+    with Session(engine) as db:
+        if user_id is not None:
+            user = users_repository.get_user_by_id(db, user_id)
+
+        if user is None:
+            logger.error("No user found to run load_galaxies; aborting")
+            return False
+
+        try:
+            galaxies = galaxies_repository.update_galaxies(db, user)
+            logger.info(
+                "load_galaxies finished: %s galaxies created/updated", len(galaxies)
+            )
+            return True
+        except Exception as e:
+            logger.exception("Error loading galaxies: %s", e)
+            return False
+
+@app.task(name="load_taxonomies")
+def load_taxonomies():
+    logger.info("load_taxonomies job started")
+
+    with Session(engine) as db:
+        try:
+            taxonomies = taxonomies_repository.update_taxonomies(db)
+            logger.info(
+                "load_taxonomies finished: %s taxonomies created/updated",
+                len(taxonomies),
+            )
+            return True
+        except Exception as e:
+            logger.exception("Error loading taxonomies: %s", e)
+            return False
+
 @app.task
 def index_object(object_uuid: uuid.UUID):
     logger.info("indexing object uuid=%s job started", object_uuid)
@@ -840,6 +887,7 @@ def index_object(object_uuid: uuid.UUID):
 
     return True
 
+
 @app.task
 def delete_indexed_object(object_uuid: uuid.UUID):
     logger.info("deleting indexed object uuid=%s job started", object_uuid)
@@ -851,9 +899,7 @@ def delete_indexed_object(object_uuid: uuid.UUID):
     )
 
     if response.get("result") == "not_found":
-        logger.info(
-            "object uuid=%s not found in index, nothing to delete", object_uuid
-        )
+        logger.info("object uuid=%s not found in index, nothing to delete", object_uuid)
     else:
         logger.info("deleted indexed object uuid=%s", object_uuid)
 

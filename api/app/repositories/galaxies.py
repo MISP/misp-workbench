@@ -53,176 +53,231 @@ def update_galaxies(
     galaxies_dir = "app/submodules/misp-galaxy/galaxies"
     galaxies_clusters_dir = "app/submodules/misp-galaxy/clusters"
 
+    # read all galaxy files and upsert them. The function is idempotent:
+    # - if a galaxy with the same uuid exists and the version matches, skip it
+    # - otherwise update fields and upsert clusters
     for root, __, files in os.walk(galaxies_dir):
         for galaxy_file in files:
             if not galaxy_file.endswith(".json"):
                 continue
 
-            with open(os.path.join(root, galaxy_file)) as f:
-                galaxy_data = json.load(f)
-                galaxy = galaxies_models.Galaxy(
-                    name=galaxy_data["name"],
-                    uuid=galaxy_data["uuid"],
-                    namespace=(
-                        galaxy_data["namespace"]
-                        if "namespace" in galaxy_data
-                        else "missing-namespace"
-                    ),
-                    version=galaxy_data["version"],
-                    description=galaxy_data["description"],
-                    icon=galaxy_data["icon"],
-                    type=galaxy_data["type"],
-                    kill_chain_order=(
-                        galaxy_data["kill_chain_order"]
-                        if "kill_chain_order" in galaxy_data
-                        else None
-                    ),
+            galaxy_path = os.path.join(root, galaxy_file)
+            clusters_path = os.path.join(galaxies_clusters_dir, galaxy_file)
+
+            try:
+                with open(galaxy_path) as f:
+                    galaxy_data = json.load(f)
+            except Exception as e:
+                logger.warning("Failed to read galaxy file %s: %s", galaxy_path, e)
+                continue
+
+            # try to find an existing galaxy by uuid
+            db_galaxy = (
+                db.query(galaxies_models.Galaxy)
+                .filter(galaxies_models.Galaxy.uuid == galaxy_data["uuid"])
+                .first()
+            )
+
+            # if exists and same version, skip to save time
+            if db_galaxy and getattr(db_galaxy, "version", None) == galaxy_data.get("version"):
+                logger.debug("Skipping galaxy %s (version unchanged)", galaxy_data.get("name"))
+                galaxies.append(db_galaxy)
+                continue
+
+            # create or update the galaxy
+            if not db_galaxy:
+                db_galaxy = galaxies_models.Galaxy(
+                    name=galaxy_data.get("name"),
+                    uuid=galaxy_data.get("uuid"),
+                    namespace=galaxy_data.get("namespace", "missing-namespace"),
+                    version=galaxy_data.get("version"),
+                    description=galaxy_data.get("description"),
+                    icon=galaxy_data.get("icon"),
+                    type=galaxy_data.get("type"),
+                    kill_chain_order=galaxy_data.get("kill_chain_order"),
                     org_id=user.org_id,
                     orgc_id=user.org_id,
                     created=datetime.now(),
                     modified=datetime.now(),
                 )
+                db.add(db_galaxy)
+                db.flush()
+            else:
+                # update fields
+                db_galaxy.name = galaxy_data.get("name")
+                db_galaxy.namespace = galaxy_data.get("namespace", db_galaxy.namespace)
+                db_galaxy.version = galaxy_data.get("version")
+                db_galaxy.description = galaxy_data.get("description")
+                db_galaxy.icon = galaxy_data.get("icon")
+                db_galaxy.type = galaxy_data.get("type")
+                db_galaxy.kill_chain_order = galaxy_data.get("kill_chain_order")
+                db_galaxy.modified = datetime.now()
 
-                # parse galaxy clusters file
-                with open(os.path.join(galaxies_clusters_dir, galaxy_file)) as f:
-                    clusters_data_raw = json.load(f)
-
-                    if "values" in clusters_data_raw:
-                        for cluster in clusters_data_raw["values"]:
-                            galaxy_cluster = galaxies_models.GalaxyCluster(
-                                uuid=cluster["uuid"],
-                                value=cluster["value"],
-                                type=(
-                                    clusters_data_raw["type"]
-                                    if "type" in clusters_data_raw
-                                    else galaxy.type
-                                ),
-                                description=(
-                                    cluster["description"]
-                                    if "description" in cluster
-                                    else ""
-                                ),
-                                source=(
-                                    clusters_data_raw["source"]
-                                    if "source" in clusters_data_raw
-                                    else None
-                                ),
-                                version=clusters_data_raw["version"],
-                                authors=(
-                                    clusters_data_raw["authors"]
-                                    if "authors" in clusters_data_raw
-                                    else None
-                                ),
-                                tag_name=f"misp-galaxy:{galaxy.type}={cluster['uuid']}",
-                                org_id=user.org_id,
-                                orgc_id=user.org_id,
-                                collection_uuid=(
-                                    clusters_data_raw["collection_uuid"]
-                                    if "collection_uuid" in clusters_data_raw
-                                    else None
-                                ),
-                                extends_uuid=(
-                                    clusters_data_raw["extends_uuid"]
-                                    if "extends_uuid" in clusters_data_raw
-                                    else None
-                                ),
-                                extends_version=(
-                                    clusters_data_raw["extends_version"]
-                                    if "extends_version" in clusters_data_raw
-                                    else None
-                                ),
-                            )
-                            galaxy.clusters.append(galaxy_cluster)
-
-                            # add galaxy elements
-                            if "meta" in cluster:
-                                for element in cluster["meta"]:
-                                    galaxy_element = galaxies_models.GalaxyElement(
-                                        key=element,
-                                        value=(
-                                            cluster["meta"][element]
-                                            if isinstance(cluster["meta"][element], str)
-                                            else json.dumps(cluster["meta"][element])
-                                        ),
-                                    )
-                                    galaxy_cluster.elements.append(galaxy_element)
-
-                            # add galaxy relations
-                            if "related" in cluster:
-                                for relation in cluster["related"]:
-
-                                    # check if valid uuid
-                                    if (
-                                        "dest-uuid" not in relation
-                                        or not relation["dest-uuid"]
-                                    ):
-                                        logger.warning(
-                                            f"Missing dest-uuid {relation['dest-uuid']} for galaxy {galaxy.name}"
-                                        )
-                                        continue
-
-                                    try:
-                                        UUID(relation["dest-uuid"])
-                                    except ValueError:
-                                        logger.warning(
-                                            f"Invalid dest-uuid {relation['dest-uuid']} for galaxy {galaxy.name}"
-                                        )
-                                        continue
-
-                                    galaxy_relation = galaxies_models.GalaxyClusterRelation(
-                                        galaxy_cluster_uuid=cluster["uuid"],
-                                        referenced_galaxy_cluster_uuid=relation[
-                                            "dest-uuid"
-                                        ],
-                                        referenced_galaxy_cluster_type=relation["type"],
-                                        default=True,
-                                        distribution=events_models.DistributionLevel.ALL_COMMUNITIES,
-                                    )
-
-                                    if "tags" in relation:
-                                        for related_tag in relation["tags"]:
-                                            tag = tags_repository.get_tag_by_name(
-                                                db, tag_name=related_tag
-                                            )
-
-                                            if not tag:
-                                                logger.warning(
-                                                    f"Tag {related_tag} not found for galaxy {galaxy.name}"
-                                                )
-                                                tag = tags_repository.create_tag(
-                                                    db,
-                                                    tag=tags_repository.tag_schemas.TagCreate(
-                                                        name=related_tag,
-                                                        colour="#000000",
-                                                        exportable=True,
-                                                        org_id=user.org_id,
-                                                        user_id=user.id,
-                                                        hide_tag=False,
-                                                        is_galaxy=False,
-                                                        is_custom_galaxy=False,
-                                                        local_only=False,
-                                                    ),
-                                                )
-
-                                            galaxy_relation_tag = galaxies_models.GalaxyClusterRelationTag(
-                                                tag=tag,
-                                            )
-
-                                            galaxy_relation.tags.append(
-                                                galaxy_relation_tag
-                                            )
-
-                                    galaxy_cluster.relations.append(galaxy_relation)
+            # parse galaxy clusters file if present
+            if not os.path.exists(clusters_path):
+                logger.debug("Clusters file not found for galaxy %s", galaxy_file)
                 try:
-                    db.add(galaxy)
                     db.commit()
-                    db.refresh(galaxy)
-                    galaxies.append(galaxy)
-                except Exception as e:
-                    logger.error(f"Error creating galaxy {galaxy.name}: {e}")
+                    db.refresh(db_galaxy)
+                    galaxies.append(db_galaxy)
+                except Exception:
                     db.rollback()
+                continue
 
-    # fix galaxy cluster relations references to galaxy clusters
+            try:
+                with open(clusters_path) as f:
+                    clusters_data_raw = json.load(f)
+            except Exception as e:
+                logger.warning("Failed to read clusters file %s: %s", clusters_path, e)
+                try:
+                    db.commit()
+                    db.refresh(db_galaxy)
+                    galaxies.append(db_galaxy)
+                except Exception:
+                    db.rollback()
+                continue
+
+            if "values" in clusters_data_raw:
+                for cluster in clusters_data_raw["values"]:
+                    # try to find existing cluster by uuid
+                    db_cluster = (
+                        db.query(galaxies_models.GalaxyCluster)
+                        .filter(galaxies_models.GalaxyCluster.uuid == cluster["uuid"]) 
+                        .first()
+                    )
+
+                    if not db_cluster:
+                        db_cluster = galaxies_models.GalaxyCluster(
+                            uuid=cluster["uuid"],
+                            value=cluster.get("value"),
+                            type=clusters_data_raw.get("type", db_galaxy.type),
+                            description=cluster.get("description", ""),
+                            source=clusters_data_raw.get("source"),
+                            version=clusters_data_raw.get("version"),
+                            authors=clusters_data_raw.get("authors"),
+                            tag_name=f"misp-galaxy:{db_galaxy.type}={cluster['uuid']}",
+                            org_id=user.org_id,
+                            orgc_id=user.org_id,
+                            collection_uuid=clusters_data_raw.get("collection_uuid"),
+                            extends_uuid=clusters_data_raw.get("extends_uuid"),
+                            extends_version=clusters_data_raw.get("extends_version"),
+                        )
+                        # set foreign key explicitly (no backref on GalaxyCluster)
+                        db_cluster.galaxy_id = db_galaxy.id
+                        db.add(db_cluster)
+                        db.flush()
+                    else:
+                        # update cluster fields and ensure association
+                        db_cluster.value = cluster.get("value")
+                        db_cluster.type = clusters_data_raw.get("type", db_cluster.type)
+                        db_cluster.description = cluster.get("description", db_cluster.description)
+                        db_cluster.source = clusters_data_raw.get("source", db_cluster.source)
+                        db_cluster.version = clusters_data_raw.get("version", db_cluster.version)
+                        db_cluster.authors = clusters_data_raw.get("authors", db_cluster.authors)
+                        db_cluster.tag_name = f"misp-galaxy:{db_galaxy.type}={cluster['uuid']}"
+                        db_cluster.collection_uuid = clusters_data_raw.get("collection_uuid", db_cluster.collection_uuid)
+                        db_cluster.extends_uuid = clusters_data_raw.get("extends_uuid", db_cluster.extends_uuid)
+                        db_cluster.extends_version = clusters_data_raw.get("extends_version", db_cluster.extends_version)
+                        # ensure cluster is associated with the parent galaxy
+                        db_cluster.galaxy_id = db_galaxy.id
+
+                    # replace elements: delete existing then add current ones
+                    db.query(galaxies_models.GalaxyElement).filter(
+                        galaxies_models.GalaxyElement.galaxy_cluster_id == db_cluster.id
+                    ).delete(synchronize_session=False)
+
+                    if "meta" in cluster:
+                        for element_key in cluster["meta"]:
+                            value = cluster["meta"][element_key]
+                            elem_value = (
+                                value if isinstance(value, str) else json.dumps(value)
+                            )
+                            galaxy_element = galaxies_models.GalaxyElement(
+                                key=element_key,
+                                value=elem_value,
+                                galaxy_cluster_id=db_cluster.id,
+                            )
+                            db.add(galaxy_element)
+
+                    # replace relations for this cluster: delete existing relation tags then relations, then recreate
+                    existing_relations = db.query(galaxies_models.GalaxyClusterRelation).filter(
+                        galaxies_models.GalaxyClusterRelation.galaxy_cluster_uuid == cluster["uuid"]
+                    ).all()
+
+                    # delete tags that reference the relations first to avoid FK constraint errors
+                    for rel in existing_relations:
+                        db.query(galaxies_models.GalaxyClusterRelationTag).filter(
+                            galaxies_models.GalaxyClusterRelationTag.galaxy_cluster_relation_id == rel.id
+                        ).delete(synchronize_session=False)
+
+                    # now delete the relations themselves
+                    db.query(galaxies_models.GalaxyClusterRelation).filter(
+                        galaxies_models.GalaxyClusterRelation.galaxy_cluster_uuid == cluster["uuid"]
+                    ).delete(synchronize_session=False)
+
+                    if "related" in cluster:
+                        for relation in cluster["related"]:
+                            # validate dest uuid
+                            dest_uuid = relation.get("dest-uuid")
+                            if not dest_uuid:
+                                logger.warning(
+                                    "Missing dest-uuid %s for galaxy %s",
+                                    relation, db_galaxy.name,
+                                )
+                                continue
+                            try:
+                                UUID(dest_uuid)
+                            except ValueError:
+                                logger.warning(
+                                    "Invalid dest-uuid %s for galaxy %s",
+                                    dest_uuid, db_galaxy.name,
+                                )
+                                continue
+
+                            galaxy_relation = galaxies_models.GalaxyClusterRelation(
+                                galaxy_cluster_uuid=cluster["uuid"],
+                                referenced_galaxy_cluster_uuid=dest_uuid,
+                                referenced_galaxy_cluster_type=relation.get("type"),
+                                default=True,
+                                distribution=events_models.DistributionLevel.ALL_COMMUNITIES,
+                            )
+
+                            # attach tags to relation
+                            if "tags" in relation:
+                                for related_tag in relation["tags"]:
+                                    tag = tags_repository.get_tag_by_name(db, tag_name=related_tag)
+                                    if not tag:
+                                        logger.warning("Tag %s not found for galaxy %s", related_tag, db_galaxy.name)
+                                        tag = tags_repository.create_tag(
+                                            db,
+                                            tag=tags_repository.tag_schemas.TagCreate(
+                                                name=related_tag,
+                                                colour="#000000",
+                                                exportable=True,
+                                                org_id=user.org_id,
+                                                user_id=user.id,
+                                                hide_tag=False,
+                                                is_galaxy=False,
+                                                is_custom_galaxy=False,
+                                                local_only=False,
+                                            ),
+                                        )
+
+                                    galaxy_relation_tag = galaxies_models.GalaxyClusterRelationTag(tag=tag)
+                                    galaxy_relation.tags.append(galaxy_relation_tag)
+
+                            db_cluster.relations.append(galaxy_relation)
+
+            # commit per-galaxy to avoid long-running transactions and reduce duplicates
+            try:
+                db.commit()
+                db.refresh(db_galaxy)
+                galaxies.append(db_galaxy)
+            except Exception as e:
+                logger.error("Error writing galaxy %s: %s", galaxy_data.get("name"), e)
+                db.rollback()
+
+    # fix galaxy cluster relations references to galaxy clusters (single pass)
     relations = db.query(galaxies_models.GalaxyClusterRelation).all()
     for relation in relations:
         galaxy_cluster = (
