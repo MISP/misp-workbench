@@ -12,7 +12,7 @@ from app.schemas import galaxy as galaxies_schemas
 from app.schemas import user as users_schemas
 from fastapi import HTTPException, Query, status
 from fastapi_pagination.ext.sqlalchemy import paginate
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, noload
 from sqlalchemy.sql import select
 
 logger = logging.getLogger(__name__)
@@ -21,7 +21,8 @@ logger = logging.getLogger(__name__)
 def get_galaxies(
     db: Session, enabled: bool = Query(None), filter: str = Query(None)
 ) -> galaxies_models.Galaxy:
-    query = select(galaxies_models.Galaxy)
+    # avoid loading child relationships (clusters/elements) to keep the query lightweight
+    query = select(galaxies_models.Galaxy).options(noload(galaxies_models.Galaxy.clusters))
 
     if filter:
         query = query.where(galaxies_models.Galaxy.name.ilike(f"%{filter}%"))
