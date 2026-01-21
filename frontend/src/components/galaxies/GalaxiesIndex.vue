@@ -82,7 +82,6 @@ function toggle(property, galaxy) {
     <table class="table table-striped">
       <thead>
         <tr>
-          <th scope="col">id</th>
           <th scope="col">name</th>
           <!-- <th scope="col">description</th> -->
           <th scope="col">version</th>
@@ -94,12 +93,11 @@ function toggle(property, galaxy) {
       </thead>
       <tbody>
         <tr :key="galaxy.id" v-for="galaxy in galaxies.items">
-          <td>
+          <td class="text-start">
             <RouterLink :to="`/galaxies/${galaxy.id}`">{{
-              galaxy.id
+              galaxy.name
             }}</RouterLink>
           </td>
-          <td class="text-start">{{ galaxy.name }}</td>
           <td>{{ galaxy.version }}</td>
           <td>
             <div class="flex-wrap btn-group me-2">
