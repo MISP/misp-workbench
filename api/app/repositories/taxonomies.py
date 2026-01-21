@@ -1,5 +1,6 @@
 import json
 import os
+import logging
 
 from app.models import tag as tags_models
 from app.models import taxonomy as taxonomies_models
@@ -9,6 +10,7 @@ from fastapi_pagination.ext.sqlalchemy import paginate
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import select
 
+logger = logging.getLogger(__name__)
 
 def get_taxonomies(
     db: Session, enabled: bool = Query(None), filter: str = Query(None)
@@ -183,6 +185,11 @@ def update_taxonomies(db: Session):
                 db.add(db_taxonomy)
                 db.commit()
                 db.refresh(db_taxonomy)
+            else:
+                logger.debug(
+                    f"Taxonomy {db_taxonomy.namespace} is up to date. Skipping."
+                )
+                continue
 
             taxonomies.append(db_taxonomy)
 
@@ -217,6 +224,9 @@ def update_taxonomies(db: Session):
                     db.add(db_entry)
 
                 db.commit()
+                logger.debug(
+                    f"Processed {len(raw_predicate_entries['entry'])} entries for predicate {db_predicate.value} in taxonomy {db_taxonomy.namespace}"
+                )
 
     return taxonomies
 
