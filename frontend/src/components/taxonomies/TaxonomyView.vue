@@ -1,5 +1,6 @@
 <script setup>
 import Badge from "@/components/misc/Badge.vue";
+import UUID from "@/components/misc/UUID.vue";
 defineProps(["taxonomy", "status"]);
 
 function handleTaxonomyDeleted() {
@@ -27,7 +28,7 @@ div.row h3 {
     <div class="taxonomy-title card-header border-bottom">
       <div class="row">
         <div class="col-10">
-          <h3>Taxonomy #{{ taxonomy.id }}</h3>
+          <h3>{{ taxonomy.namespace }}</h3>
         </div>
         <div class="col-2 text-end">
           <div
@@ -58,8 +59,10 @@ div.row h3 {
               <table class="table table-striped">
                 <tbody>
                   <tr>
-                    <th>id</th>
-                    <td>{{ taxonomy.id }}</td>
+                    <th>uuid</th>
+                    <td>
+                      <UUID :uuid="taxonomy.uuid" :copy="true" />
+                    </td>
                   </tr>
                   <tr>
                     <th>description</th>
@@ -98,7 +101,7 @@ div.row h3 {
                   <table class="table table-striped">
                     <thead>
                       <tr>
-                        <th scope="col">id</th>
+                        <th scope="col">uuid</th>
                         <th scope="col">tag</th>
                         <th scope="col">expanded</th>
                       </tr>
@@ -109,7 +112,9 @@ div.row h3 {
                         :key="predicate.id"
                       >
                         <tr v-for="entry in predicate.entries" :key="entry.id">
-                          <td>{{ entry.id }}</td>
+                          <td>
+                            <UUID :uuid="entry.uuid" :copy="true" />
+                          </td>
                           <td>
                             <Badge
                               :value="entry.value"
@@ -120,7 +125,9 @@ div.row h3 {
                           <td>{{ entry.expanded }}</td>
                         </tr>
                         <tr>
-                          <td>{{ predicate.id }}</td>
+                          <td>
+                            <UUID :uuid="predicate.uuid" :copy="true" />
+                          </td>
                           <td>
                             <Badge
                               :value="predicate.value"

@@ -1,13 +1,14 @@
 <script setup>
 import { ref, watch } from "vue";
 import { storeToRefs } from "pinia";
-import { useTaxonomiesStore } from "@/stores";
+import { useTaxonomiesStore, useToastsStore } from "@/stores";
 import Spinner from "@/components/misc/Spinner.vue";
 import Paginate from "vuejs-paginate-next";
 import TaxonomyActions from "@/components/taxonomies/TaxonomyActions.vue";
 
 const props = defineProps(["page_size"]);
 
+const toastsStore = useToastsStore();
 const taxonomiesStore = useTaxonomiesStore();
 const { page_count, taxonomies, status } = storeToRefs(taxonomiesStore);
 const searchTerm = ref("");
@@ -38,6 +39,12 @@ function toggle(property, taxonomy) {
     })
     .catch((errors) => (this.status.error = errors));
 }
+
+function updateTaxonomies() {
+  taxonomiesStore.update().then((response) => {
+    toastsStore.push("Taxonomy update enqueued. Task ID: " + response.task_id);
+  });
+}
 </script>
 
 <template>
@@ -47,7 +54,7 @@ function toggle(property, taxonomy) {
         <button
           type="button"
           class="btn btn-outline-primary"
-          @click="taxonomiesStore.update()"
+          @click="updateTaxonomies"
           :disabled="status.updating"
         >
           <span v-show="status.updating">
@@ -82,7 +89,6 @@ function toggle(property, taxonomy) {
     <table class="table table-striped">
       <thead>
         <tr>
-          <th scope="col">id</th>
           <th scope="col">namespace</th>
           <!-- <th scope="col">description</th> -->
           <th scope="col">version</th>
@@ -95,13 +101,12 @@ function toggle(property, taxonomy) {
         </tr>
       </thead>
       <tbody>
-        <tr :key="taxonomy.id" v-for="taxonomy in taxonomies.items">
+        <tr :key="taxonomy.uuid" v-for="taxonomy in taxonomies.items">
           <td>
-            <RouterLink :to="`/taxonomies/${taxonomy.id}`">{{
-              taxonomy.id
+            <RouterLink :to="`/taxonomies/${taxonomy.uuid}`">{{
+              taxonomy.namespace
             }}</RouterLink>
           </td>
-          <td class="text-start">{{ taxonomy.namespace }}</td>
           <td>{{ taxonomy.version }}</td>
           <td>
             <div class="flex-wrap btn-group me-2">

@@ -24,7 +24,7 @@ Some screenshots are available [here](docs/screenshots/).
 # from repository root
 cp .env.dev.dist .env.dev
 cp frontend/.env.dist frontend/.env
-git submodule update --init --recursive
+git submodule update --remote --recursive
 docker compose -f docker-compose.yml -f docker-compose.dev.yml --env-file=".env.dev" up --build
 ```
 

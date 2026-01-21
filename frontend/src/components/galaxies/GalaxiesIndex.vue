@@ -1,13 +1,14 @@
 <script setup>
 import { ref, watch } from "vue";
 import { storeToRefs } from "pinia";
-import { useGalaxiesStore } from "@/stores";
+import { useGalaxiesStore, useToastsStore } from "@/stores";
 import Spinner from "@/components/misc/Spinner.vue";
 import Paginate from "vuejs-paginate-next";
 import GalaxyActions from "@/components/galaxies/GalaxyActions.vue";
 
 const props = defineProps(["page_size"]);
 
+const toastsStore = useToastsStore();
 const galaxiesStore = useGalaxiesStore();
 const { page_count, galaxies, status } = storeToRefs(galaxiesStore);
 const searchTerm = ref("");
@@ -24,6 +25,12 @@ onPageChange(1);
 watch(searchTerm, () => {
   onPageChange(1);
 });
+
+function updateGalaxies() {
+  galaxiesStore.update().then((response) => {
+    toastsStore.push("Galaxy update enqueued. Task ID: " + response.task_id);
+  });
+}
 
 function handleGalaxiesUpdated() {
   // TODO FIXME: resets the page to 1 and reloads the galaxies, not the best way to do this, reload current page
@@ -47,7 +54,7 @@ function toggle(property, galaxy) {
         <button
           type="button"
           class="btn btn-outline-primary"
-          @click="galaxiesStore.update()"
+          @click="updateGalaxies"
           :disabled="status.updating"
         >
           <span v-show="status.updating">

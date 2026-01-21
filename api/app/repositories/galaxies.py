@@ -2,12 +2,9 @@ import json
 import logging
 import os
 from datetime import datetime
-from uuid import UUID
 
-from app.models import event as events_models
 from app.models import galaxy as galaxies_models
 from app.models import tag as tags_models
-from app.repositories import tags as tags_repository
 from app.schemas import galaxy as galaxies_schemas
 from app.schemas import user as users_schemas
 from fastapi import HTTPException, Query, status

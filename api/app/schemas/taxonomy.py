@@ -1,9 +1,11 @@
 from typing import Optional
+from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
 
 
 class TaxonomyBase(BaseModel):
+    uuid: UUID
     namespace: str
     description: str
     version: int
@@ -21,6 +23,7 @@ class TaxonomyUpdate(BaseModel):
 
 
 class TaxonomyPredicateBase(BaseModel):
+    uuid: UUID
     taxonomy_id: int
     value: str
     expanded: str
@@ -31,6 +34,7 @@ class TaxonomyPredicateBase(BaseModel):
 
 
 class TaxonomyEntryBase(BaseModel):
+    uuid: UUID
     taxonomy_predicate_id: int
     value: str
     expanded: str

@@ -12,6 +12,7 @@ from sqlalchemy.sql import select
 
 logger = logging.getLogger(__name__)
 
+
 def get_taxonomies(
     db: Session, enabled: bool = Query(None), filter: str = Query(None)
 ) -> taxonomies_models.Taxonomy:
@@ -40,6 +41,14 @@ def get_taxonomy_by_id(db: Session, taxonomy_id: int) -> taxonomies_models.Taxon
     )
 
 
+def get_taxonomy_by_uuid(db: Session, taxonomy_uuid: str) -> taxonomies_models.Taxonomy:
+    return (
+        db.query(taxonomies_models.Taxonomy)
+        .filter(taxonomies_models.Taxonomy.uuid == str(taxonomy_uuid))
+        .first()
+    )
+
+
 def get_or_create_predicate(db: Session, db_taxonomy, raw_predicate):
     db_predicate = (
         db.query(taxonomies_models.TaxonomyPredicate)
@@ -58,8 +67,11 @@ def get_or_create_predicate(db: Session, db_taxonomy, raw_predicate):
                 if "expanded" in raw_predicate
                 else raw_predicate["value"]
             ),
+            uuid=raw_predicate["uuid"],
             value=raw_predicate["value"],
-            colour=(raw_predicate["colour"] if "colour" in raw_predicate else "#ffffff"),
+            colour=(
+                raw_predicate["colour"] if "colour" in raw_predicate else "#ffffff"
+            ),
         )
     return db_predicate
 
@@ -101,6 +113,7 @@ def get_or_create_entry(db: Session, db_predicate, raw_entry):
     if db_entry is None:
         db_entry = taxonomies_models.TaxonomyEntry(
             taxonomy_predicate_id=db_predicate.id,
+            uuid=raw_entry["uuid"],
             expanded=(
                 raw_entry["expanded"] if "expanded" in raw_entry else raw_entry["value"]
             ),
@@ -165,6 +178,7 @@ def update_taxonomies(db: Session):
 
             if db_taxonomy is None:
                 db_taxonomy = taxonomies_models.Taxonomy(
+                    uuid=raw_taxonomy["uuid"],
                     namespace=raw_taxonomy["namespace"],
                     description=raw_taxonomy["description"],
                     version=raw_taxonomy["version"],
