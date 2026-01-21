@@ -46,6 +46,12 @@ def get_galaxy_by_id(db: Session, galaxy_id: int) -> galaxies_models.Galaxy:
         .first()
     )
 
+def get_galaxy_by_uuid(db: Session, galaxy_uuid: str) -> galaxies_models.Galaxy:
+    return (
+        db.query(galaxies_models.Galaxy)
+        .filter(galaxies_models.Galaxy.uuid == galaxy_uuid)
+        .first()
+    )
 
 def update_galaxies(
     db: Session, user: users_schemas.User

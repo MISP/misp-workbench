@@ -1,6 +1,7 @@
 <script setup>
 import Badge from "@/components/misc/Badge.vue";
 import CopyToClipboard from "@/components/misc/CopyToClipboard.vue";
+import UUID from "@/components/misc/UUID.vue";
 defineProps(["galaxy", "status"]);
 
 function handleGalaxyDeleted() {
@@ -28,7 +29,7 @@ div.row h3 {
     <div class="galaxy-title card-header border-bottom">
       <div class="row">
         <div class="col-10">
-          <h3>Galaxy #{{ galaxy.id }}</h3>
+          <h3>{{ galaxy.name }}</h3>
         </div>
         <div class="col-2 text-end">
           <div
@@ -59,8 +60,10 @@ div.row h3 {
               <table class="table table-striped">
                 <tbody>
                   <tr>
-                    <th>id</th>
-                    <td>{{ galaxy.id }}</td>
+                    <th>uuid</th>
+                    <td>
+                      <UUID :uuid="galaxy.uuid" :copy="true" />
+                    </td>
                   </tr>
                   <tr>
                     <th>description</th>
@@ -95,7 +98,7 @@ div.row h3 {
                   <table class="table table-striped">
                     <thead>
                       <tr>
-                        <th scope="col">id</th>
+                        <th scope="col">uuid</th>
                         <th scope="col">value</th>
                         <th scope="col">connector_tag</th>
                         <th scope="col">deleted</th>
@@ -103,8 +106,13 @@ div.row h3 {
                       </tr>
                     </thead>
                     <tbody>
-                      <tr v-for="cluster in galaxy.clusters" :key="cluster.id">
-                        <td>{{ cluster.id }}</td>
+                      <tr
+                        v-for="cluster in galaxy.clusters"
+                        :key="cluster.uuid"
+                      >
+                        <td>
+                          <UUID :uuid="cluster.uuid" :copy="true" />
+                        </td>
                         <td>{{ cluster.value }}</td>
                         <td>
                           <Badge :value="cluster.tag_name" />

@@ -92,9 +92,9 @@ function toggle(property, galaxy) {
         </tr>
       </thead>
       <tbody>
-        <tr :key="galaxy.id" v-for="galaxy in galaxies.items">
+        <tr :key="galaxy.uuid" v-for="galaxy in galaxies.items">
           <td class="text-start">
-            <RouterLink :to="`/galaxies/${galaxy.id}`">{{
+            <RouterLink :to="`/galaxies/${galaxy.uuid}`">{{
               galaxy.name
             }}</RouterLink>
           </td>

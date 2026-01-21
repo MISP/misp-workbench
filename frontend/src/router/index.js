@@ -87,7 +87,7 @@ export const router = createRouter({
     { path: "/feeds/add", component: AddFeed },
     { path: "/feeds/update/:id", component: UpdateFeed, props: true },
     { path: "/taxonomies/:id", component: ViewTaxonomy, props: true },
-    { path: "/galaxies/:id", component: ViewGalaxy, props: true },
+    { path: "/galaxies/:uuid", component: ViewGalaxy, props: true },
     { path: "/explore", component: ExploreEvents },
     { path: "/tasks", component: TasksIndex },
     { path: "/correlations", component: IndexCorrelations },

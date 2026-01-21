@@ -11,6 +11,8 @@ from fastapi_pagination.customization import (
     UseParamsFields,
 )
 from sqlalchemy.orm import Session
+from typing import Union
+from uuid import UUID
 
 router = APIRouter()
 
@@ -35,13 +37,18 @@ def get_galaxies(
 
 @router.get("/galaxies/{galaxy_id}", response_model=galaxies_schemas.Galaxy)
 def get_galaxy_by_id(
-    galaxy_id: int,
+    galaxy_id: Union[int, UUID],
     db: Session = Depends(get_db),
     user: user_schemas.User = Security(
         get_current_active_user, scopes=["galaxies:read"]
     ),
 ) -> galaxies_schemas.Galaxy:
-    db_galaxy = galaxies_repository.get_galaxy_by_id(db, galaxy_id=galaxy_id)
+
+    if isinstance(galaxy_id, int):
+        db_galaxy = galaxies_repository.get_galaxy_by_id(db, galaxy_id=galaxy_id)
+    else:
+        db_galaxy = galaxies_repository.get_galaxy_by_uuid(db, galaxy_uuid=galaxy_id)
+
     if db_galaxy is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Galaxy not found"
