@@ -19,10 +19,13 @@ logger = logging.getLogger(__name__)
 
 
 def get_galaxies(
-    db: Session, enabled: bool = Query(None), filter: str = Query(None)
+    db: Session, enabled: bool = Query(None), filter: str = Query(None), include_clusters: bool = Query(False)
 ) -> galaxies_models.Galaxy:
-    # avoid loading child relationships (clusters/elements) to keep the query lightweight
-    query = select(galaxies_models.Galaxy).options(noload(galaxies_models.Galaxy.clusters))
+    if include_clusters:
+        query = select(galaxies_models.Galaxy)
+    else:   
+        # avoid loading child relationships (clusters/elements) to keep the query lightweight
+        query = select(galaxies_models.Galaxy).options(noload(galaxies_models.Galaxy.clusters))
 
     if filter:
         query = query.where(galaxies_models.Galaxy.name.ilike(f"%{filter}%"))

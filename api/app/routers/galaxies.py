@@ -31,8 +31,9 @@ def get_galaxies(
     ),
     enabled: bool = Query(None),
     filter: str = Query(None),
+    include_clusters: bool = Query(False),
 ):
-    return galaxies_repository.get_galaxies(db, enabled=enabled, filter=filter)
+    return galaxies_repository.get_galaxies(db, enabled=enabled, filter=filter, include_clusters=include_clusters)
 
 
 @router.get("/galaxies/{galaxy_id}", response_model=galaxies_schemas.Galaxy)
