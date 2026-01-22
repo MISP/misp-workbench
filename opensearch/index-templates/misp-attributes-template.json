@@ -1,0 +1,10 @@
+{
+  "index_patterns": ["misp-attributes"],
+  "template": {
+    "settings": {
+      "index.default_pipeline": "misp-attributes_default",
+      "index.final_pipeline": "misp-attributes_final"
+    }
+  },
+  "priority": 100
+}

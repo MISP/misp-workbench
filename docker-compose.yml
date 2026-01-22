@@ -89,9 +89,15 @@ services:
     depends_on:
       opensearch:
         condition: service_healthy
+      dashboards:
+        condition: service_healthy
     volumes:
       - ./opensearch/mappings:/mappings
       - ./opensearch/pipelines:/pipelines
+      - ./opensearch/index-patterns:/index-patterns
+      - ./opensearch/index-templates:/index-templates
+      - ./opensearch/visualizations:/visualizations
+      - ./opensearch/dashboards:/dashboards
       - ./opensearch/entrypoint.sh:/entrypoint.sh
     entrypoint: ["/bin/sh", "/entrypoint.sh"]
     environment:
@@ -223,6 +229,15 @@ services:
       - "5601:5601"
     depends_on:
       - opensearch
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "curl -s --user admin:$$OPENSEARCH_DASHBOARDS_PASSWORD -k -X GET https://localhost:5601/api/status | grep '\"state\":\"green\"'"
+        ]
+      interval: 10s
+      timeout: 10s
+      retries: 20
     networks:
       - backend
       - frontend
