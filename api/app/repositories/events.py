@@ -1,8 +1,9 @@
+import json
 import logging
 import time
 from datetime import datetime
 from uuid import UUID
-from typing import Union
+from typing import Union, Iterable
 from app.worker import tasks
 from app.services.opensearch import get_opensearch_client
 from app.services.vulnerability_lookup import lookup as vulnerability_lookup
@@ -76,22 +77,47 @@ def search_events(
     }
 
 
-def export_events(query: str = None, searchAttributes: bool = False, format: str = "json"):
-    OpenSearchClient = get_opensearch_client()
+def export_events(
+    query: str = None,
+    searchAttributes: bool = False,
+    format: str = "json",
+    page_size: int = 1000,
+) -> Iterable:
+    client = get_opensearch_client()
 
-    if searchAttributes:
-        search_body = {
-            "query": {"query_string": {"query": query, "default_field": "value"}},
-            "size": 10000,  # Adjust size as needed
-        }
-        response = OpenSearchClient.search(index="misp-attributes", body=search_body)
-    else:
-        search_body = {
-            "query": {"query_string": {"query": query, "default_field": "info"}},
-            "size": 10000,  # Adjust size as needed
-        }
-        response = OpenSearchClient.search(index="misp-events", body=search_body)
-    return response["hits"]["hits"]
+    index = "misp-attributes" if searchAttributes else "misp-events"
+    default_field = "value" if searchAttributes else "info"
+
+    search_body = {
+        "query": {
+            "query_string": {
+                "query": query or "*",
+                "default_field": default_field,
+            }
+        },
+        "size": page_size,
+        "sort": [{"_id": "asc"}],
+    }
+
+    search_after = None
+
+    while True:
+        if search_after:
+            search_body["search_after"] = search_after
+
+        response = client.search(index=index, body=search_body)
+        hits = response["hits"]["hits"]
+
+        if not hits:
+            break
+
+        for hit in hits:
+            if format == "ndjson":
+                yield json.dumps(hit, separators=(",", ":")) + "\n"
+            else:
+                yield hit
+
+        search_after = hits[-1].get("sort")
 
 
 def get_event_by_id(db: Session, event_id: int):

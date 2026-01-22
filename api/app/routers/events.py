@@ -1,3 +1,4 @@
+from datetime import date, datetime
 import json
 
 from typing import Optional, Annotated
@@ -28,7 +29,7 @@ from fastapi import (
 from fastapi_pagination import Page
 from sqlalchemy.orm import Session
 from starlette import status
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 
 router = APIRouter()
 
@@ -67,6 +68,7 @@ async def search_events(
         query, searchAttributes, page, from_value, size
     )
 
+
 @router.get("/events/export")
 async def export_events(
     query: str = Query(..., min_length=0),
@@ -74,7 +76,23 @@ async def export_events(
     format: Optional[str] = Query("json"),
     user: user_schemas.User = Security(get_current_active_user, scopes=["events:read"]),
 ):
-    return events_repository.export_events(query, searchAttributes)
+    results = events_repository.export_events(query, searchAttributes, format)
+
+    if format == "ndjson":
+        return StreamingResponse(
+            results,
+            media_type="application/ndjson",
+            headers={
+                f"Content-Disposition": f"attachment; filename=misp-lite-{datetime.now()}-export.ndjson"
+            },
+        )
+
+    if format == "json":
+        return JSONResponse(list(results))
+    
+    raise HTTPException(
+        status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid format specified"
+    )
 
 
 @router.get("/events/{event_id}", response_model=event_schemas.Event)
@@ -402,7 +420,8 @@ def import_data(
 
 
 @router.get(
-    "/events/{event_uuid}/vulnerabilities", response_model=list[vulnerability_schemas.Vulnerability]
+    "/events/{event_uuid}/vulnerabilities",
+    response_model=list[vulnerability_schemas.Vulnerability],
 )
 def get_event_vulnerabilities(
     event_uuid: str,

@@ -12,7 +12,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import Paginate from "vuejs-paginate-next";
 
-import { useLocalStorageRef } from "@/helpers";
+import { useLocalStorageRef, fetchWrapper } from "@/helpers";
 
 import AttributeResultCard from "./AttributeResultCard.vue";
 import EventResultCard from "./EventResultCard.vue";
@@ -28,6 +28,8 @@ const props = defineProps({
     default: 10,
   },
 });
+
+const exportedEvents = ref([]);
 
 function onPageChange(page) {
   eventsStore.search({
@@ -58,7 +60,7 @@ function search() {
   }
 }
 
-function downloadResultsJson() {
+function downloadCurrentPageJson() {
   if (!events.value || !events.value.results) return;
 
   const payload = {
@@ -84,26 +86,105 @@ function downloadResultsJson() {
   URL.revokeObjectURL(url);
 }
 
-async function downloadAllResultsJson() {
-  if (events.value.total > 5000) {
+async function downloadAllResults(format) {
+  if (events.value && events.value.total > 1000) {
     if (
       !confirm(`Export ${events.value.total} results? This may take a while.`)
     ) {
       return;
     }
   }
+
   try {
+    if (format === "ndjson") {
+      // Stream NDJSON directly from the API to avoid loading everything in memory.
+      // Use fetchWrapper.downloadAttachment so auth headers are applied.
+      eventsStore.status = { exporting: true };
+      const qs = new URLSearchParams({
+        query: searchQuery.value,
+        searchAttributes: searchAttributes.value,
+        format: format,
+      }).toString();
+      const url = `${import.meta.env.VITE_API_URL}/events/export?${qs}`;
+      const res = await fetchWrapper.downloadAttachment(url);
+      if (!res.ok)
+        throw new Error(`Export failed: ${res.status} ${res.statusText}`);
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      const rawChunks = [];
+      exportedEvents.value = [];
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const chunk = decoder.decode(value, { stream: true });
+        rawChunks.push(chunk);
+        buffer += chunk;
+        const lines = buffer.split(/\r?\n/);
+        buffer = lines.pop(); // last partial line stays in buffer
+        for (const line of lines) {
+          if (!line) continue;
+          try {
+            const obj = JSON.parse(line);
+            exportedEvents.value.push(obj);
+          } catch (e) {
+            // If a line isn't valid JSON, skip it but keep raw
+            console.warn("Failed to parse NDJSON line", e, line);
+          }
+        }
+      }
+
+      if (buffer) {
+        try {
+          const obj = JSON.parse(buffer);
+          exportedEvents.value.push(obj);
+          rawChunks.push(buffer);
+        } catch (e) {
+          // ignore
+          console.warn("Failed to parse final NDJSON line", e, buffer);
+        }
+      }
+
+      // Download raw NDJSON as a file
+      const blob = new Blob(rawChunks, { type: "application/x-ndjson" });
+      const downloadUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = downloadUrl;
+      a.download = `misp-lite-explore-all-${Date.now()}.ndjson`;
+      a.click();
+      URL.revokeObjectURL(downloadUrl);
+
+      // Optionally store parsed results in localStorage (be careful with size)
+      try {
+        const MAX_STORE = 5 * 1024 * 1024; // 5 MB
+        const serialized = JSON.stringify(exportedEvents.value);
+        if (serialized.length < MAX_STORE) {
+          localStorage.setItem("exported_events", serialized);
+        } else {
+          console.warn("Exported results too large to store in localStorage");
+        }
+      } catch (e) {
+        console.warn("Failed to persist exported events", e);
+      }
+
+      eventsStore.status = { exporting: false };
+      return;
+    }
+
+    // fallback: use existing store export (JSON)
     const results = await eventsStore.export({
       query: searchQuery.value,
       searchAttributes: searchAttributes.value,
-      format: "json",
+      format: format,
     });
 
-    const blob = new Blob([JSON.stringify(results, null, 2)], {
+    const blobJson = new Blob([JSON.stringify(results, null, 2)], {
       type: "application/json",
     });
 
-    const url = URL.createObjectURL(blob);
+    const url = URL.createObjectURL(blobJson);
     const a = document.createElement("a");
     a.href = url;
     a.download = `misp-lite-explore-all-${Date.now()}.json`;
@@ -111,7 +192,8 @@ async function downloadAllResultsJson() {
     URL.revokeObjectURL(url);
   } catch (err) {
     console.error(err);
-    alert("Failed to export results");
+    alert("Failed to export results: " + (err?.message || err));
+    eventsStore.status = { exporting: false };
   }
 }
 </script>
@@ -177,13 +259,18 @@ body {
         </button>
         <ul class="dropdown-menu dropdown-menu-end">
           <li>
-            <button class="dropdown-item" @click="downloadResultsJson">
+            <button class="dropdown-item" @click="downloadCurrentPageJson">
               Current page (JSON)
             </button>
           </li>
           <li>
-            <button class="dropdown-item" @click="downloadAllResultsJson">
+            <button class="dropdown-item" @click="downloadAllResults('json')">
               All results (JSON)
+            </button>
+          </li>
+          <li>
+            <button class="dropdown-item" @click="downloadAllResults('ndjson')">
+              All results (NDJSON)
             </button>
           </li>
         </ul>
