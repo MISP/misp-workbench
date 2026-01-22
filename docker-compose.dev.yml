@@ -93,6 +93,12 @@ services:
     environment:
       OPENSEARCH_HOSTS: "http://${OPENSEARCH_HOSTNAME:-opensearch}:${OPENSEARCH_PORT:-9200}"
       DISABLE_SECURITY_DASHBOARDS_PLUGIN: true
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "curl -s --user admin:$$OPENSEARCH_DASHBOARDS_PASSWORD -k -X GET http://localhost:5601/api/status | grep '\"state\":\"green\"'"
+        ]
 
   modules:
     ports:

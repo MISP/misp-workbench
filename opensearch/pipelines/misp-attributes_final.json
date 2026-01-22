@@ -1,0 +1,10 @@
+{
+    "description": "Enrichments pipeline wrapper",
+    "processors": [
+        {
+            "pipeline": {
+                "name": "misp-attributes_ip_geoip"
+            }
+        }
+    ]
+}
