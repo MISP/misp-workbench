@@ -18,6 +18,7 @@ export const useEventsStore = defineStore({
       uploading: false,
       deleting: false,
       indexing: false,
+      importing: false,
       error: false,
     },
   }),
@@ -104,6 +105,15 @@ export const useEventsStore = defineStore({
         )
         .catch((error) => (this.status = { error }))
         .finally(() => (this.status = { loading: false }));
+    },
+    async export(
+      params = { query: "", searchAttributes: false, format: "json" },
+    ) {
+      this.status = { exporting: true };
+      return await fetchWrapper
+        .get(baseUrl + "/export?" + new URLSearchParams(params).toString())
+        .catch((error) => (this.status = { error }))
+        .finally(() => (this.status = { exporting: false }));
     },
     async publish(id) {
       this.status = { updating: true };

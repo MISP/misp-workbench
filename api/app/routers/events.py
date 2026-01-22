@@ -67,6 +67,15 @@ async def search_events(
         query, searchAttributes, page, from_value, size
     )
 
+@router.get("/events/export")
+async def export_events(
+    query: str = Query(..., min_length=0),
+    searchAttributes: Optional[bool] = Query(False),
+    format: Optional[str] = Query("json"),
+    user: user_schemas.User = Security(get_current_active_user, scopes=["events:read"]),
+):
+    return events_repository.export_events(query, searchAttributes)
+
 
 @router.get("/events/{event_id}", response_model=event_schemas.Event)
 def get_event_by_id(

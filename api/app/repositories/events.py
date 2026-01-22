@@ -76,6 +76,24 @@ def search_events(
     }
 
 
+def export_events(query: str = None, searchAttributes: bool = False, format: str = "json"):
+    OpenSearchClient = get_opensearch_client()
+
+    if searchAttributes:
+        search_body = {
+            "query": {"query_string": {"query": query, "default_field": "value"}},
+            "size": 10000,  # Adjust size as needed
+        }
+        response = OpenSearchClient.search(index="misp-attributes", body=search_body)
+    else:
+        search_body = {
+            "query": {"query_string": {"query": query, "default_field": "info"}},
+            "size": 10000,  # Adjust size as needed
+        }
+        response = OpenSearchClient.search(index="misp-events", body=search_body)
+    return response["hits"]["hits"]
+
+
 def get_event_by_id(db: Session, event_id: int):
     return (
         db.query(event_models.Event).filter(event_models.Event.id == event_id).first()

@@ -5,7 +5,11 @@ import { useEventsStore } from "@/stores";
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
 import Spinner from "@/components/misc/Spinner.vue";
 import ApiError from "@/components/misc/ApiError.vue";
-import { faMagnifyingGlass } from "@fortawesome/free-solid-svg-icons";
+import {
+  faFileDownload,
+  faMagnifyingGlass,
+  faSpinner,
+} from "@fortawesome/free-solid-svg-icons";
 import Paginate from "vuejs-paginate-next";
 
 import { useLocalStorageRef } from "@/helpers";
@@ -53,6 +57,63 @@ function search() {
     storedExploreSearches.value.shift();
   }
 }
+
+function downloadResultsJson() {
+  if (!events.value || !events.value.results) return;
+
+  const payload = {
+    query: searchQuery.value,
+    search_attributes: searchAttributes.value,
+    page_size: props.page_size,
+    results_on_page: events.value.results.length,
+    total_results: events.value.total,
+    took_ms: events.value.took,
+    results: events.value.results,
+  };
+
+  const blob = new Blob([JSON.stringify(payload, null, 2)], {
+    type: "application/json",
+  });
+
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `misp-lite-explore-${Date.now()}.json`;
+  a.click();
+
+  URL.revokeObjectURL(url);
+}
+
+async function downloadAllResultsJson() {
+  if (events.value.total > 5000) {
+    if (
+      !confirm(`Export ${events.value.total} results? This may take a while.`)
+    ) {
+      return;
+    }
+  }
+  try {
+    const results = await eventsStore.export({
+      query: searchQuery.value,
+      searchAttributes: searchAttributes.value,
+      format: "json",
+    });
+
+    const blob = new Blob([JSON.stringify(results, null, 2)], {
+      type: "application/json",
+    });
+
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `misp-lite-explore-all-${Date.now()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  } catch (err) {
+    console.error(err);
+    alert("Failed to export results");
+  }
+}
 </script>
 
 <style>
@@ -97,6 +158,37 @@ body {
     </div>
   </div>
   <div>
+    <div
+      v-if="events && events.total > 0"
+      class="d-flex justify-content-end mb-2"
+    >
+      <div class="btn-group">
+        <button
+          class="btn btn-outline-secondary dropdown-toggle"
+          data-bs-toggle="dropdown"
+          :disabled="status.exporting"
+        >
+          <span v-if="status.exporting">
+            <FontAwesomeIcon :icon="faSpinner" spin class="ms-2" />
+          </span>
+          <span v-else class="ms-2">
+            <FontAwesomeIcon :icon="faFileDownload" /> Download
+          </span>
+        </button>
+        <ul class="dropdown-menu dropdown-menu-end">
+          <li>
+            <button class="dropdown-item" @click="downloadResultsJson">
+              Current page (JSON)
+            </button>
+          </li>
+          <li>
+            <button class="dropdown-item" @click="downloadAllResultsJson">
+              All results (JSON)
+            </button>
+          </li>
+        </ul>
+      </div>
+    </div>
     <div id="results">
       <Spinner v-if="status.loading" />
       <div v-for="result in events.results">
