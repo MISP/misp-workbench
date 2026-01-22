@@ -16,7 +16,8 @@ class TestTaxonomiesResource(ApiTester):
         auth_token: auth.Token,
     ):
         response = client.get(
-            "/galaxies/", headers={"Authorization": "Bearer " + auth_token}
+            "/galaxies", headers={"Authorization": "Bearer " + auth_token},
+            params={"include_clusters": True}
         )
         data = response.json()
 

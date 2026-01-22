@@ -7,8 +7,8 @@ import Spinner from "@/components/misc/Spinner.vue";
 const route = useRoute();
 const taxonomiesStore = useTaxonomiesStore();
 const { taxonomy, status } = storeToRefs(taxonomiesStore);
-taxonomiesStore.getById(route.params.id);
-defineProps(["id"]);
+taxonomiesStore.getById(route.params.uuid);
+defineProps(["uuid"]);
 </script>
 
 <style>

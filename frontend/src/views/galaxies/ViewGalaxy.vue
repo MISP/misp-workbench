@@ -7,8 +7,8 @@ import Spinner from "@/components/misc/Spinner.vue";
 const route = useRoute();
 const galaxiesStore = useGalaxiesStore();
 const { galaxy, status } = storeToRefs(galaxiesStore);
-galaxiesStore.getById(route.params.id);
-defineProps(["id"]);
+galaxiesStore.getById(route.params.uuid);
+defineProps(["uuid"]);
 </script>
 
 <style>

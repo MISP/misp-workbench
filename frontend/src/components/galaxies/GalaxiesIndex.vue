@@ -1,13 +1,14 @@
 <script setup>
 import { ref, watch } from "vue";
 import { storeToRefs } from "pinia";
-import { useGalaxiesStore } from "@/stores";
+import { useGalaxiesStore, useToastsStore } from "@/stores";
 import Spinner from "@/components/misc/Spinner.vue";
 import Paginate from "vuejs-paginate-next";
 import GalaxyActions from "@/components/galaxies/GalaxyActions.vue";
 
 const props = defineProps(["page_size"]);
 
+const toastsStore = useToastsStore();
 const galaxiesStore = useGalaxiesStore();
 const { page_count, galaxies, status } = storeToRefs(galaxiesStore);
 const searchTerm = ref("");
@@ -24,6 +25,12 @@ onPageChange(1);
 watch(searchTerm, () => {
   onPageChange(1);
 });
+
+function updateGalaxies() {
+  galaxiesStore.update().then((response) => {
+    toastsStore.push("Galaxy update enqueued. Task ID: " + response.task_id);
+  });
+}
 
 function handleGalaxiesUpdated() {
   // TODO FIXME: resets the page to 1 and reloads the galaxies, not the best way to do this, reload current page
@@ -47,7 +54,7 @@ function toggle(property, galaxy) {
         <button
           type="button"
           class="btn btn-outline-primary"
-          @click="galaxiesStore.update()"
+          @click="updateGalaxies"
           :disabled="status.updating"
         >
           <span v-show="status.updating">
@@ -82,7 +89,6 @@ function toggle(property, galaxy) {
     <table class="table table-striped">
       <thead>
         <tr>
-          <th scope="col">id</th>
           <th scope="col">name</th>
           <!-- <th scope="col">description</th> -->
           <th scope="col">version</th>
@@ -93,13 +99,12 @@ function toggle(property, galaxy) {
         </tr>
       </thead>
       <tbody>
-        <tr :key="galaxy.id" v-for="galaxy in galaxies.items">
-          <td>
-            <RouterLink :to="`/galaxies/${galaxy.id}`">{{
-              galaxy.id
+        <tr :key="galaxy.uuid" v-for="galaxy in galaxies.items">
+          <td class="text-start">
+            <RouterLink :to="`/galaxies/${galaxy.uuid}`">{{
+              galaxy.name
             }}</RouterLink>
           </td>
-          <td class="text-start">{{ galaxy.name }}</td>
           <td>{{ galaxy.version }}</td>
           <td>
             <div class="flex-wrap btn-group me-2">

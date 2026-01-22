@@ -2,26 +2,27 @@ import json
 import logging
 import os
 from datetime import datetime
-from uuid import UUID
 
-from app.models import event as events_models
 from app.models import galaxy as galaxies_models
 from app.models import tag as tags_models
-from app.repositories import tags as tags_repository
 from app.schemas import galaxy as galaxies_schemas
 from app.schemas import user as users_schemas
 from fastapi import HTTPException, Query, status
 from fastapi_pagination.ext.sqlalchemy import paginate
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, noload
 from sqlalchemy.sql import select
 
 logger = logging.getLogger(__name__)
 
 
 def get_galaxies(
-    db: Session, enabled: bool = Query(None), filter: str = Query(None)
+    db: Session, enabled: bool = Query(None), filter: str = Query(None), include_clusters: bool = Query(False)
 ) -> galaxies_models.Galaxy:
-    query = select(galaxies_models.Galaxy)
+    if include_clusters:
+        query = select(galaxies_models.Galaxy)
+    else:   
+        # avoid loading child relationships (clusters/elements) to keep the query lightweight
+        query = select(galaxies_models.Galaxy).options(noload(galaxies_models.Galaxy.clusters))
 
     if filter:
         query = query.where(galaxies_models.Galaxy.name.ilike(f"%{filter}%"))
@@ -45,6 +46,12 @@ def get_galaxy_by_id(db: Session, galaxy_id: int) -> galaxies_models.Galaxy:
         .first()
     )
 
+def get_galaxy_by_uuid(db: Session, galaxy_uuid: str) -> galaxies_models.Galaxy:
+    return (
+        db.query(galaxies_models.Galaxy)
+        .filter(galaxies_models.Galaxy.uuid == galaxy_uuid)
+        .first()
+    )
 
 def update_galaxies(
     db: Session, user: users_schemas.User
@@ -60,6 +67,21 @@ def update_galaxies(
 
             with open(os.path.join(root, galaxy_file)) as f:
                 galaxy_data = json.load(f)
+
+                # check galaxy version
+                if (
+                    db.query(galaxies_models.Galaxy)
+                    .filter(
+                        galaxies_models.Galaxy.uuid == galaxy_data["uuid"],
+                        galaxies_models.Galaxy.version == galaxy_data["version"],
+                    )
+                    .first()
+                ):
+                    logger.debug(
+                        f"Galaxy {galaxy_data['name']} version {galaxy_data['version']} already exists. Skipping."
+                    )
+                    continue
+
                 galaxy = galaxies_models.Galaxy(
                     name=galaxy_data["name"],
                     uuid=galaxy_data["uuid"],
@@ -147,102 +169,104 @@ def update_galaxies(
                                     )
                                     galaxy_cluster.elements.append(galaxy_element)
 
-                            # add galaxy relations
-                            if "related" in cluster:
-                                for relation in cluster["related"]:
+                            # TODO: fix import galaxy cluster relations
+                            # # add galaxy relations
+                            # if "related" in cluster:
+                            #     for relation in cluster["related"]:
 
-                                    # check if valid uuid
-                                    if (
-                                        "dest-uuid" not in relation
-                                        or not relation["dest-uuid"]
-                                    ):
-                                        logger.warning(
-                                            f"Missing dest-uuid {relation['dest-uuid']} for galaxy {galaxy.name}"
-                                        )
-                                        continue
+                            #         # check if valid uuid
+                            #         if (
+                            #             "dest-uuid" not in relation
+                            #             or not relation["dest-uuid"]
+                            #         ):
+                            #             logger.warning(
+                            #                 f"Missing dest-uuid {relation['dest-uuid']} for galaxy {galaxy.name}"
+                            #             )
+                            #             continue
 
-                                    try:
-                                        UUID(relation["dest-uuid"])
-                                    except ValueError:
-                                        logger.warning(
-                                            f"Invalid dest-uuid {relation['dest-uuid']} for galaxy {galaxy.name}"
-                                        )
-                                        continue
+                            #         try:
+                            #             UUID(relation["dest-uuid"])
+                            #         except ValueError:
+                            #             logger.warning(
+                            #                 f"Invalid dest-uuid {relation['dest-uuid']} for galaxy {galaxy.name}"
+                            #             )
+                            #             continue
 
-                                    galaxy_relation = galaxies_models.GalaxyClusterRelation(
-                                        galaxy_cluster_uuid=cluster["uuid"],
-                                        referenced_galaxy_cluster_uuid=relation[
-                                            "dest-uuid"
-                                        ],
-                                        referenced_galaxy_cluster_type=relation["type"],
-                                        default=True,
-                                        distribution=events_models.DistributionLevel.ALL_COMMUNITIES,
-                                    )
+                            #         galaxy_relation = galaxies_models.GalaxyClusterRelation(
+                            #             galaxy_cluster_uuid=cluster["uuid"],
+                            #             referenced_galaxy_cluster_uuid=relation[
+                            #                 "dest-uuid"
+                            #             ],
+                            #             referenced_galaxy_cluster_type=relation["type"],
+                            #             default=True,
+                            #             distribution=events_models.DistributionLevel.ALL_COMMUNITIES,
+                            #         )
 
-                                    if "tags" in relation:
-                                        for related_tag in relation["tags"]:
-                                            tag = tags_repository.get_tag_by_name(
-                                                db, tag_name=related_tag
-                                            )
+                            #         if "tags" in relation:
+                            #             for related_tag in relation["tags"]:
+                            #                 tag = tags_repository.get_tag_by_name(
+                            #                     db, tag_name=related_tag
+                            #                 )
 
-                                            if not tag:
-                                                logger.warning(
-                                                    f"Tag {related_tag} not found for galaxy {galaxy.name}"
-                                                )
-                                                tag = tags_repository.create_tag(
-                                                    db,
-                                                    tag=tags_repository.tag_schemas.TagCreate(
-                                                        name=related_tag,
-                                                        colour="#000000",
-                                                        exportable=True,
-                                                        org_id=user.org_id,
-                                                        user_id=user.id,
-                                                        hide_tag=False,
-                                                        is_galaxy=False,
-                                                        is_custom_galaxy=False,
-                                                        local_only=False,
-                                                    ),
-                                                )
+                            #                 if not tag:
+                            #                     logger.warning(
+                            #                         f"Tag {related_tag} not found for galaxy {galaxy.name}"
+                            #                     )
+                            #                     tag = tags_repository.create_tag(
+                            #                         db,
+                            #                         tag=tags_repository.tag_schemas.TagCreate(
+                            #                             name=related_tag,
+                            #                             colour="#000000",
+                            #                             exportable=True,
+                            #                             org_id=user.org_id,
+                            #                             user_id=user.id,
+                            #                             hide_tag=False,
+                            #                             is_galaxy=False,
+                            #                             is_custom_galaxy=False,
+                            #                             local_only=False,
+                            #                         ),
+                            #                     )
 
-                                            galaxy_relation_tag = galaxies_models.GalaxyClusterRelationTag(
-                                                tag=tag,
-                                            )
+                            #                 galaxy_relation_tag = galaxies_models.GalaxyClusterRelationTag(
+                            #                     tag=tag,
+                            #                 )
 
-                                            galaxy_relation.tags.append(
-                                                galaxy_relation_tag
-                                            )
+                            #                 galaxy_relation.tags.append(
+                            #                     galaxy_relation_tag
+                            #                 )
 
-                                    galaxy_cluster.relations.append(galaxy_relation)
+                            #         galaxy_cluster.relations.append(galaxy_relation)
                 try:
                     db.add(galaxy)
                     db.commit()
                     db.refresh(galaxy)
                     galaxies.append(galaxy)
+                    logger.debug(f"Imported galaxy {galaxy.name}")
                 except Exception as e:
                     logger.error(f"Error creating galaxy {galaxy.name}: {e}")
                     db.rollback()
 
-    # fix galaxy cluster relations references to galaxy clusters
-    relations = db.query(galaxies_models.GalaxyClusterRelation).all()
-    for relation in relations:
-        galaxy_cluster = (
-            db.query(galaxies_models.GalaxyCluster)
-            .filter(
-                galaxies_models.GalaxyCluster.uuid
-                == relation.referenced_galaxy_cluster_uuid
-            )
-            .first()
-        )
+    # TODO: fix galaxy cluster relations references to galaxy clusters
+    # relations = db.query(galaxies_models.GalaxyClusterRelation).all()
+    # for relation in relations:
+    #     galaxy_cluster = (
+    #         db.query(galaxies_models.GalaxyCluster)
+    #         .filter(
+    #             galaxies_models.GalaxyCluster.uuid
+    #             == relation.referenced_galaxy_cluster_uuid
+    #         )
+    #         .first()
+    #     )
 
-        if not galaxy_cluster:
-            logger.warning(
-                f"Galaxy cluster {relation.referenced_galaxy_cluster_uuid} not found"
-            )
-            continue
+    #     if not galaxy_cluster:
+    #         logger.warning(
+    #             f"Galaxy cluster {relation.referenced_galaxy_cluster_uuid} not found"
+    #         )
+    #         continue
 
-        relation.referenced_galaxy_cluster_id = galaxy_cluster.id
-        db.add(relation)
-    db.commit()
+    #     relation.referenced_galaxy_cluster_id = galaxy_cluster.id
+    #     db.add(relation)
+    # db.commit()
 
     return galaxies
 

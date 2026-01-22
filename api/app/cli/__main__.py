@@ -4,6 +4,7 @@ from app.repositories import organisations as organisations_repository
 from app.repositories import users as user_repository
 from app.schemas import organisations as organisation_schemas
 from app.schemas import user as user_schemas
+from app.worker import tasks
 
 app = typer.Typer()
 
@@ -42,6 +43,16 @@ def create_user(email: str, password: str, organisation_id: int, role_id: int):
     )
     user_db = user_repository.create_user(db, user=user)
     print(f"Created user id={user_db.id}")  # noqa: T201
+
+
+@app.command()
+def load_galaxies(user_id: int = None):
+    tasks.load_galaxies.delay(user_id)
+
+
+@app.command()
+def load_taxonomies(user_id: int = None):
+    tasks.load_taxonomies.delay()
 
 
 if __name__ == "__main__":
