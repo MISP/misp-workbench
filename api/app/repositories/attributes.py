@@ -1,5 +1,5 @@
 import time
-from typing import Union
+from typing import Iterable, Union
 from uuid import UUID
 from app.models.event import DistributionLevel
 from app.services.opensearch import get_opensearch_client
@@ -20,6 +20,7 @@ from fastapi_pagination import Page
 from collections import defaultdict
 from opensearchpy.exceptions import NotFoundError
 
+
 def enrich_attributes_page_with_correlations(
     attributes_page: Page[attribute_schemas.Attribute],
 ) -> Page[attribute_schemas.Attribute]:
@@ -35,7 +36,9 @@ def enrich_attributes_page_with_correlations(
     }
 
     try:
-        response = OpenSearchClient.search(index="misp-attribute-correlations", body=query)
+        response = OpenSearchClient.search(
+            index="misp-attribute-correlations", body=query
+        )
         hits = response["hits"]["hits"]
     except NotFoundError:
         for attr in attributes_page.items:
@@ -54,7 +57,11 @@ def enrich_attributes_page_with_correlations(
 
 
 def get_attributes(
-    db: Session, event_uuid: str = None, deleted: bool = None, object_id: int = None, type: str = None
+    db: Session,
+    event_uuid: str = None,
+    deleted: bool = None,
+    object_id: int = None,
+    type: str = None,
 ) -> Page[attribute_schemas.Attribute]:
     query = select(attribute_models.Attribute)
 
@@ -153,7 +160,11 @@ def create_attribute_from_pulled_attribute(
         event_id=local_event_id,
         category=pulled_attribute.category,
         type=pulled_attribute.type,
-        value=pulled_attribute.value if isinstance(pulled_attribute.value, str) else str(pulled_attribute.value),
+        value=(
+            pulled_attribute.value
+            if isinstance(pulled_attribute.value, str)
+            else str(pulled_attribute.value)
+        ),
         to_ids=pulled_attribute.to_ids,
         uuid=pulled_attribute.uuid,
         timestamp=pulled_attribute.timestamp.timestamp(),
@@ -181,7 +192,9 @@ def create_attribute_from_pulled_attribute(
 
     if pulled_attribute.data is not None:
         # store file
-        attachments_repository.store_attachment(pulled_attribute.uuid, pulled_attribute.data.getvalue())
+        attachments_repository.store_attachment(
+            pulled_attribute.uuid, pulled_attribute.data.getvalue()
+        )
 
     # TODO: process sigthings
     # TODO: process galaxies
@@ -209,7 +222,11 @@ def update_attribute_from_pulled_attribute(
             event_id=local_event_id,
             category=pulled_attribute.category,
             type=pulled_attribute.type,
-            value=pulled_attribute.value if isinstance(pulled_attribute.value, str) else str(pulled_attribute.value),
+            value=(
+                pulled_attribute.value
+                if isinstance(pulled_attribute.value, str)
+                else str(pulled_attribute.value)
+            ),
             to_ids=pulled_attribute.to_ids,
             timestamp=pulled_attribute.timestamp.timestamp(),
             distribution=event_schemas.DistributionLevel(
@@ -237,7 +254,9 @@ def update_attribute_from_pulled_attribute(
 
     if pulled_attribute.data is not None:
         # store file
-        attachments_repository.store_attachment(pulled_attribute.uuid, pulled_attribute.data.getvalue())
+        attachments_repository.store_attachment(
+            pulled_attribute.uuid, pulled_attribute.data.getvalue()
+        )
 
     capture_attribute_tags(
         db, local_attribute, pulled_attribute.tags, local_event_id, user
@@ -356,6 +375,7 @@ def capture_attribute_tags(
 
     db.commit()
 
+
 def get_vulnerability_attributes(
     db: Session, event_uuid: str = None
 ) -> list[attribute_schemas.Attribute]:
@@ -374,3 +394,68 @@ def get_vulnerability_attributes(
     results = db.execute(query).scalars().all()
 
     return results
+
+
+def search_attributes(
+    query: str = None,
+    page: int = 0,
+    from_value: int = 0,
+    size: int = 10,
+):
+    OpenSearchClient = get_opensearch_client()
+
+    search_body = {
+        "query": {"query_string": {"query": query, "default_field": "value"}},
+        "from": from_value,
+        "size": size,
+    }
+    response = OpenSearchClient.search(index="misp-attributes", body=search_body)
+
+    return {
+        "page": page,
+        "size": size,
+        "total": response["hits"]["total"]["value"],
+        "took": response["took"],
+        "timed_out": response["timed_out"],
+        "max_score": response["hits"]["max_score"],
+        "results": response["hits"]["hits"],
+    }
+
+def export_attributes(
+    query: str = None,
+    format: str = "json",
+    page_size: int = 1000,
+) -> Iterable:
+    client = get_opensearch_client()
+
+    index = "misp-attributes"
+    default_field = "value"
+
+    search_body = {
+        "query": {
+            "query_string": {
+                "query": query or "*",
+                "default_field": default_field,
+            }
+        },
+        "size": page_size,
+        "sort": [{"_id": "asc"}],
+    }
+
+    search_after = None
+
+    while True:
+        if search_after:
+            search_body["search_after"] = search_after
+
+        response = client.search(index=index, body=search_body)
+        hits = response["hits"]["hits"]
+
+        if not hits:
+            break
+
+        for hit in hits:
+            if format == "json":
+                yield hit
+
+        search_after = hits[-1].get("sort")

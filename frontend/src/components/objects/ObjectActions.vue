@@ -9,7 +9,7 @@ import {
   faEye,
   faPen,
   faMagicWandSparkles,
-  faBookmark,
+  faStar,
 } from "@fortawesome/free-solid-svg-icons";
 import { authHelper } from "@/helpers";
 import { useAuthStore } from "@/stores";
@@ -139,7 +139,7 @@ function followObject() {
       >
         <FontAwesomeIcon
           fixed-width
-          :icon="faBookmark"
+          :icon="faStar"
           :class="followed ? 'text-success' : 'text-primary'"
         />
       </button>
@@ -193,7 +193,7 @@ function followObject() {
       <li>
         <button class="dropdown-item" @click="followObject">
           <FontAwesomeIcon
-            :icon="faBookmark"
+            :icon="faStar"
             class="me-2"
             :class="followed ? 'text-success' : 'text-primary'"
           />

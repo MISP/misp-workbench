@@ -10,8 +10,9 @@ from app.repositories import tags as tags_repository
 from app.schemas import attribute as attribute_schemas
 from app.schemas import user as user_schemas
 from app.worker import tasks
-from fastapi import APIRouter, Depends, HTTPException, Response, Security, status
+from fastapi import APIRouter, Depends, HTTPException, Response, Security, status, Query
 from fastapi_pagination import Page
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
 router = APIRouter()
@@ -23,7 +24,12 @@ async def get_attributes_parameters(
     object_id: Optional[int] = None,
     type: Optional[str] = None,
 ):
-    return {"event_uuid": event_uuid, "deleted": deleted, "object_id": object_id, "type": type}
+    return {
+        "event_uuid": event_uuid,
+        "deleted": deleted,
+        "object_id": object_id,
+        "type": type,
+    }
 
 
 @router.get("/attributes/", response_model=Page[attribute_schemas.Attribute])
@@ -38,6 +44,35 @@ def get_attributes(
         db, params["event_uuid"], params["deleted"], params["object_id"], params["type"]
     )
 
+
+@router.get("/attributes/search")
+async def search_attributes(
+    query: str = Query(..., min_length=0),
+    page: int = Query(1, ge=1),
+    size: int = Query(10, ge=1, le=100),
+    user: user_schemas.User = Security(
+        get_current_active_user, scopes=["attributes:read"]
+    ),
+):
+
+    from_value = (page - 1) * size
+
+    return attributes_repository.search_attributes(query, page, from_value, size)
+
+@router.get("/attributes/export")
+async def export_attributes(
+    query: str = Query(..., min_length=0),
+    format: Optional[str] = Query("json"),
+    user: user_schemas.User = Security(get_current_active_user, scopes=["attributes:read"]),
+):
+    results = attributes_repository.export_attributes(query, format=format)
+
+    if format == "json":
+        return JSONResponse(list(results))
+
+    raise HTTPException(
+        status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid format specified"
+    )
 
 @router.get("/attributes/{attribute_id}", response_model=attribute_schemas.Attribute)
 def get_attribute_by_id(
@@ -82,7 +117,9 @@ def create_attribute(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Event ID or UUID must be provided",
             )
-        event = events_repository.get_event_by_uuid(db, event_uuid=str(attribute.event_uuid))
+        event = events_repository.get_event_by_uuid(
+            db, event_uuid=str(attribute.event_uuid)
+        )
     else:
         event = events_repository.get_event_by_id(db, event_id=attribute.event_id)
 

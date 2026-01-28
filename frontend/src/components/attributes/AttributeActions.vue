@@ -14,7 +14,7 @@ import {
   faPen,
   faMagicWandSparkles,
   faSitemap,
-  faBookmark,
+  faStar,
 } from "@fortawesome/free-solid-svg-icons";
 import { toggleFollowEntity, isFollowingEntity } from "@/helpers/follow";
 
@@ -168,7 +168,7 @@ function followAttribute() {
       >
         <FontAwesomeIcon
           fixed-width
-          :icon="faBookmark"
+          :icon="faStar"
           :class="followed ? 'text-success' : 'text-primary'"
         />
       </button>
@@ -250,7 +250,7 @@ function followAttribute() {
       <li>
         <button class="dropdown-item" @click="followAttribute">
           <FontAwesomeIcon
-            :icon="faBookmark"
+            :icon="faStar"
             class="me-2"
             :class="followed ? 'text-success' : 'text-primary'"
           />

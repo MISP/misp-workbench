@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import datetime
 import json
 
 from typing import Optional, Annotated
@@ -29,7 +29,7 @@ from fastapi import (
 from fastapi_pagination import Page
 from sqlalchemy.orm import Session
 from starlette import status
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import JSONResponse
 
 router = APIRouter()
 
@@ -56,7 +56,6 @@ async def get_events(
 @router.get("/events/search")
 async def search_events(
     query: str = Query(..., min_length=0),
-    searchAttributes: Optional[bool] = Query(False),
     page: int = Query(1, ge=1),
     size: int = Query(10, ge=1, le=100),
     user: user_schemas.User = Security(get_current_active_user, scopes=["events:read"]),
@@ -64,32 +63,20 @@ async def search_events(
 
     from_value = (page - 1) * size
 
-    return events_repository.search_events(
-        query, searchAttributes, page, from_value, size
-    )
+    return events_repository.search_events(query, page, from_value, size)
 
 
 @router.get("/events/export")
 async def export_events(
     query: str = Query(..., min_length=0),
-    searchAttributes: Optional[bool] = Query(False),
     format: Optional[str] = Query("json"),
     user: user_schemas.User = Security(get_current_active_user, scopes=["events:read"]),
 ):
-    results = events_repository.export_events(query, searchAttributes, format)
-
-    if format == "ndjson":
-        return StreamingResponse(
-            results,
-            media_type="application/ndjson",
-            headers={
-                f"Content-Disposition": f"attachment; filename=misp-lite-{datetime.now()}-export.ndjson"
-            },
-        )
+    results = events_repository.export_events(query, format=format)
 
     if format == "json":
         return JSONResponse(list(results))
-    
+
     raise HTTPException(
         status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid format specified"
     )

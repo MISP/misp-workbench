@@ -44,27 +44,18 @@ def get_events(db: Session, info: str = None, deleted: bool = None, uuid: str = 
 
 def search_events(
     query: str = None,
-    searchAttributes: bool = False,
     page: int = 0,
     from_value: int = 0,
     size: int = 10,
 ):
     OpenSearchClient = get_opensearch_client()
 
-    if searchAttributes:
-        search_body = {
-            "query": {"query_string": {"query": query, "default_field": "value"}},
-            "from": from_value,
-            "size": size,
-        }
-        response = OpenSearchClient.search(index="misp-attributes", body=search_body)
-    else:
-        search_body = {
-            "query": {"query_string": {"query": query, "default_field": "info"}},
-            "from": from_value,
-            "size": size,
-        }
-        response = OpenSearchClient.search(index="misp-events", body=search_body)
+    search_body = {
+        "query": {"query_string": {"query": query, "default_field": "info"}},
+        "from": from_value,
+        "size": size,
+    }
+    response = OpenSearchClient.search(index="misp-events", body=search_body)
 
     return {
         "page": page,
@@ -79,14 +70,13 @@ def search_events(
 
 def export_events(
     query: str = None,
-    searchAttributes: bool = False,
     format: str = "json",
     page_size: int = 1000,
 ) -> Iterable:
     client = get_opensearch_client()
 
-    index = "misp-attributes" if searchAttributes else "misp-events"
-    default_field = "value" if searchAttributes else "info"
+    index = "misp-events"
+    default_field = "info"
 
     search_body = {
         "query": {
@@ -112,9 +102,7 @@ def export_events(
             break
 
         for hit in hits:
-            if format == "ndjson":
-                yield json.dumps(hit, separators=(",", ":")) + "\n"
-            else:
+            if format == "json":
                 yield hit
 
         search_after = hits[-1].get("sort")

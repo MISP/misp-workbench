@@ -5,7 +5,7 @@ import CopyToClipboard from "@/components/misc/CopyToClipboard.vue";
 import Timestamp from "@/components/misc/Timestamp.vue";
 import TagsIndex from "@/components/tags/TagsIndex.vue";
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
-import { faShield } from "@fortawesome/free-solid-svg-icons";
+import { faShield, faEye } from "@fortawesome/free-solid-svg-icons";
 import UUID from "../misc/UUID.vue";
 
 const props = defineProps({
