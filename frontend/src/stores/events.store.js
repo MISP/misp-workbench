@@ -8,6 +8,7 @@ export const useEventsStore = defineStore({
   id: "events",
   state: () => ({
     events: {},
+    event_docs: {},
     event: {},
     vulnerabilities: [],
     page_count: 0,
@@ -18,6 +19,7 @@ export const useEventsStore = defineStore({
       uploading: false,
       deleting: false,
       indexing: false,
+      importing: false,
       error: false,
     },
   }),
@@ -98,12 +100,19 @@ export const useEventsStore = defineStore({
         .get(baseUrl + "/search?" + new URLSearchParams(params).toString())
         .then(
           (response) => (
-            (this.events = response),
+            (this.event_docs = response),
             (this.page_count = Math.ceil(response.total / params.size))
           ),
         )
         .catch((error) => (this.status = { error }))
         .finally(() => (this.status = { loading: false }));
+    },
+    async export(params = { query: "", format: "json" }) {
+      this.status = { exporting: true };
+      return await fetchWrapper
+        .get(baseUrl + "/export?" + new URLSearchParams(params).toString())
+        .catch((error) => (this.status = { error }))
+        .finally(() => (this.status = { exporting: false }));
     },
     async publish(id) {
       this.status = { updating: true };

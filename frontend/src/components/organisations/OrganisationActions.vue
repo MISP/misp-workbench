@@ -10,7 +10,7 @@ import {
   faTrash,
   faEye,
   faPen,
-  faBookmark,
+  faStar,
 } from "@fortawesome/free-solid-svg-icons";
 import { toggleFollowEntity, isFollowingEntity } from "@/helpers/follow";
 
@@ -114,15 +114,11 @@ function followOrganisation() {
       >
         <FontAwesomeIcon
           v-if="!followed"
-          :icon="faBookmark"
+          :icon="faStar"
           :inverse="true"
           class="text-primary"
         />
-        <FontAwesomeIcon
-          v-if="followed"
-          :icon="faBookmark"
-          class="text-success"
-        />
+        <FontAwesomeIcon v-if="followed" :icon="faStar" class="text-success" />
       </button>
     </div>
     <div class="btn-group me-2" role="group">

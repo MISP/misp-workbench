@@ -12,8 +12,8 @@ import {
   faEllipsisVertical,
   faFileArrowUp,
   faSync,
-  faBookmark,
-  faArrowsRotate,
+  faStar,
+  // faArrowsRotate,
   faFileImport,
 } from "@fortawesome/free-solid-svg-icons";
 import { toggleFollowEntity, isFollowingEntity } from "@/helpers/follow";
@@ -137,7 +137,7 @@ function followEvent() {
       >
         <FontAwesomeIcon :icon="faFileImport" fixed-width />
       </button>
-      <button
+      <!-- <button
         v-if="actions.index"
         type="button"
         class="btn btn-outline-primary btn-sm"
@@ -151,7 +151,7 @@ function followEvent() {
           fixed-width
         />
         <FontAwesomeIcon v-else :icon="faSync" fixed-width spin />
-      </button>
+      </button> -->
       <button
         type="button"
         class="btn btn-outline-primary btn-sm"
@@ -159,7 +159,7 @@ function followEvent() {
         @click="followEvent"
       >
         <FontAwesomeIcon
-          :icon="faBookmark"
+          :icon="faStar"
           fixed-width
           :class="followed ? 'text-success' : 'text-primary'"
         />
@@ -241,7 +241,7 @@ function followEvent() {
       <li>
         <button class="dropdown-item" @click="followEvent">
           <FontAwesomeIcon
-            :icon="faBookmark"
+            :icon="faStar"
             fixed-width
             class="me-2"
             :class="followed ? 'text-success' : 'text-primary'"

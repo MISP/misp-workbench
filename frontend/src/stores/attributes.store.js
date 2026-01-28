@@ -6,7 +6,7 @@ const baseUrl = `${import.meta.env.VITE_API_URL}/attributes`;
 export const useAttributesStore = defineStore({
   id: "attributes",
   state: () => ({
-    attributes: {},
+    attribute_docs: {},
     attribute: {},
     page_count: 0,
     status: {
@@ -71,6 +71,26 @@ export const useAttributesStore = defineStore({
         .delete(`${baseUrl}/${id}/tag/${tag}`)
         .catch((error) => (this.status = { error }))
         .finally(() => (this.status = { loading: false }));
+    },
+    async search(params = { query: "", page: 1, size: 10 }) {
+      this.status = { loading: true };
+      fetchWrapper
+        .get(baseUrl + "/search?" + new URLSearchParams(params).toString())
+        .then(
+          (response) => (
+            (this.attribute_docs = response),
+            (this.page_count = Math.ceil(response.total / params.size))
+          ),
+        )
+        .catch((error) => (this.status = { error }))
+        .finally(() => (this.status = { loading: false }));
+    },
+    async export(params = { query: "", format: "json" }) {
+      this.status = { exporting: true };
+      return await fetchWrapper
+        .get(baseUrl + "/export?" + new URLSearchParams(params).toString())
+        .catch((error) => (this.status = { error }))
+        .finally(() => (this.status = { exporting: false }));
     },
   },
 });

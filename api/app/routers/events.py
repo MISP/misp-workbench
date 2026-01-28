@@ -1,3 +1,4 @@
+from datetime import datetime
 import json
 
 from typing import Optional, Annotated
@@ -55,7 +56,6 @@ async def get_events(
 @router.get("/events/search")
 async def search_events(
     query: str = Query(..., min_length=0),
-    searchAttributes: Optional[bool] = Query(False),
     page: int = Query(1, ge=1),
     size: int = Query(10, ge=1, le=100),
     user: user_schemas.User = Security(get_current_active_user, scopes=["events:read"]),
@@ -63,8 +63,22 @@ async def search_events(
 
     from_value = (page - 1) * size
 
-    return events_repository.search_events(
-        query, searchAttributes, page, from_value, size
+    return events_repository.search_events(query, page, from_value, size)
+
+
+@router.get("/events/export")
+async def export_events(
+    query: str = Query(..., min_length=0),
+    format: Optional[str] = Query("json"),
+    user: user_schemas.User = Security(get_current_active_user, scopes=["events:read"]),
+):
+    results = events_repository.export_events(query, format=format)
+
+    if format == "json":
+        return JSONResponse(list(results))
+
+    raise HTTPException(
+        status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid format specified"
     )
 
 
@@ -393,7 +407,8 @@ def import_data(
 
 
 @router.get(
-    "/events/{event_uuid}/vulnerabilities", response_model=list[vulnerability_schemas.Vulnerability]
+    "/events/{event_uuid}/vulnerabilities",
+    response_model=list[vulnerability_schemas.Vulnerability],
 )
 def get_event_vulnerabilities(
     event_uuid: str,

@@ -67,8 +67,28 @@ function authHeader(url) {
 }
 
 function handleResponse(response) {
+  // Read response body as text first. We only JSON.parse when the
+  // Content-Type indicates JSON. For NDJSON or other text types we
+  // return the raw text so callers can stream/parse it themselves.
+  const contentType = response.headers.get("content-type") || "";
   return response.text().then((text) => {
-    const data = text && JSON.parse(text);
+    let data = null;
+
+    const isJson =
+      contentType.includes("application/json") || contentType.includes("+json");
+
+    if (isJson && text) {
+      try {
+        data = JSON.parse(text);
+      } catch (e) {
+        // If parsing fails, fall back to raw text
+        data = text;
+        console.warn("Failed to parse JSON response", e);
+      }
+    } else {
+      // For NDJSON and other textual responses return raw text
+      data = text;
+    }
 
     if (!response.ok) {
       const { logout } = useAuthStore();
