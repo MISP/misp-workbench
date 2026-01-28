@@ -5,6 +5,8 @@ import { useEventsStore, useAttributesStore } from "@/stores";
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
 import ApiError from "@/components/misc/ApiError.vue";
 import {
+  faCaretDown,
+  faCaretUp,
   faFileDownload,
   faMagnifyingGlass,
   faSpinner,
@@ -190,11 +192,21 @@ body {
             @click="showEvents = !showEvents"
           >
             <div>
-              <strong>Events</strong>
+              <div>
+                <strong>Events</strong>
+                <span v-if="event_docs?.total" class="text-muted ms-2">
+                  ({{ event_docs.total }})
+                </span>
+                <span class="ms-2" aria-hidden="true">
+                  <span v-if="showEvents">
+                    <FontAwesomeIcon :icon="faCaretUp" class="ms-2" />
+                  </span>
+                  <span v-else>
+                    <FontAwesomeIcon :icon="faCaretDown" class="ms-2" />
+                  </span>
+                </span>
+              </div>
             </div>
-            <span v-if="event_docs?.total" class="text-muted ms-2">
-              ({{ event_docs.total }})
-            </span>
           </div>
           <div class="d-flex align-items-center">
             <div
@@ -279,6 +291,14 @@ body {
               <strong>Attributes</strong>
               <span v-if="attribute_docs?.total" class="text-muted ms-2">
                 ({{ attribute_docs.total }})
+              </span>
+              <span class="ms-2" aria-hidden="true">
+                <span v-if="showAttributes">
+                  <FontAwesomeIcon :icon="faCaretUp" class="ms-2" />
+                </span>
+                <span v-else>
+                  <FontAwesomeIcon :icon="faCaretDown" class="ms-2" />
+                </span>
               </span>
             </div>
           </div>
