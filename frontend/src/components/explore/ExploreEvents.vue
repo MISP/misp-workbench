@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from "vue";
+import { ref, onMounted, onUnmounted, watch } from "vue";
 import { storeToRefs } from "pinia";
 import { useEventsStore, useAttributesStore } from "@/stores";
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
@@ -44,6 +44,91 @@ const props = defineProps({
     type: Number,
     default: 5,
   },
+});
+
+// animated placeholder / focus state
+const isFocused = ref(false);
+const animatedPlaceholder = ref("Search something (Lucene Query Syntax) ...");
+
+const _examples = [
+  "info:banking",
+  "type.keyword:ip*",
+  'expanded.ip2geo.country_iso_code:"RU"',
+  "@timestamp:[2026-01-01 TO *]",
+  '"admin@example.com"',
+  'tags.name.keyword:"tlp:amber"',
+  'uuid:"094cecb9-2bd0-4c15-97f1-21373601b36"',
+];
+
+function sleep(ms) {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+let _stopAnim = false;
+async function _runAnimatedPlaceholder() {
+  const typingDelay = 40;
+  const pauseDelay = 2000;
+  while (!_stopAnim) {
+    // if user is interacting or has typed something, show default and wait
+    if (
+      isFocused.value ||
+      (searchQuery.value && searchQuery.value.length > 0)
+    ) {
+      animatedPlaceholder.value = "Search something (Lucene Query Syntax) ...";
+      await sleep(300);
+      continue;
+    }
+
+    for (let i = 0; i < _examples.length && !_stopAnim; i++) {
+      const s = _examples[i];
+      // type
+      for (let j = 1; j <= s.length && !_stopAnim; j++) {
+        if (
+          isFocused.value ||
+          (searchQuery.value && searchQuery.value.length > 0)
+        )
+          break;
+        animatedPlaceholder.value = s.slice(0, j);
+        await sleep(typingDelay);
+      }
+      if (
+        isFocused.value ||
+        (searchQuery.value && searchQuery.value.length > 0)
+      )
+        break;
+      await sleep(pauseDelay);
+      // delete
+      for (let j = s.length; j >= 0 && !_stopAnim; j--) {
+        if (
+          isFocused.value ||
+          (searchQuery.value && searchQuery.value.length > 0)
+        )
+          break;
+        animatedPlaceholder.value = s.slice(0, j);
+        await sleep(typingDelay / 2);
+      }
+      if (
+        isFocused.value ||
+        (searchQuery.value && searchQuery.value.length > 0)
+      )
+        break;
+      await sleep(200);
+    }
+  }
+}
+
+onMounted(() => {
+  _stopAnim = false;
+  _runAnimatedPlaceholder();
+});
+
+onUnmounted(() => {
+  _stopAnim = true;
+});
+
+// if searchQuery changes to non-empty, ensure placeholder resets
+watch(searchQuery, (v) => {
+  if (v && v.length > 0) animatedPlaceholder.value = "";
 });
 
 function onEventsPageChange(page) {
@@ -161,7 +246,9 @@ body {
           type="text"
           class="form-control"
           list="previous-searches"
-          placeholder="Search something ..."
+          :placeholder="animatedPlaceholder"
+          @focus="isFocused = true"
+          @blur="isFocused = false"
           v-model="searchQuery"
           v-on:keyup.enter="search"
         />
