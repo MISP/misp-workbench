@@ -13,6 +13,8 @@ const emit = defineEmits([
 ]);
 
 const modulesStore = useModulesStore();
+modulesStore.get({ enabled: true });
+
 const objectsStore = useObjectsStore();
 const attributesStore = useAttributesStore();
 const { status, modulesResponses, modules } = storeToRefs(modulesStore);

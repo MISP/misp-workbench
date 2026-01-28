@@ -9,6 +9,7 @@ import {
   faCaretUp,
   faFileDownload,
   faMagnifyingGlass,
+  faScroll,
   faSpinner,
 } from "@fortawesome/free-solid-svg-icons";
 import Paginate from "vuejs-paginate-next";
@@ -17,6 +18,7 @@ import { useLocalStorageRef } from "@/helpers";
 
 import AttributeResultCard from "./AttributeResultCard.vue";
 import EventResultCard from "./EventResultCard.vue";
+import LuceneQuerySyntaxCheatsheet from "./LuceneQuerySyntaxCheatsheet.vue";
 
 const searchQuery = ref("");
 const storedExploreSearches = useLocalStorageRef("storedExploreSearches", []);
@@ -173,8 +175,19 @@ body {
         </button>
       </div>
       <span class="text-muted fst-italic small"
-        >Lucene query syntax supported</span
-      >
+        >Lucene query syntax supported.
+        <button
+          type="button"
+          class="btn btn-sm"
+          data-bs-toggle="modal"
+          data-bs-target="#luceneQuerySyntaxCheatsheetModal"
+          alt="Lucene Query Syntax Cheatsheet"
+        >
+          <FontAwesomeIcon :icon="faScroll" class="ms-1 cursor-pointer" />
+        </button>
+      </span>
+      <LuceneQuerySyntaxCheatsheet />
+      <span> </span>
     </div>
   </div>
   <div>
