@@ -1,29 +1,35 @@
 <script setup>
-import { ref, onMounted, onUnmounted, watch } from "vue";
+import { ref, onMounted, onUnmounted, watch, computed } from "vue";
 import { storeToRefs } from "pinia";
-import { useEventsStore, useAttributesStore } from "@/stores";
+import {
+  useEventsStore,
+  useAttributesStore,
+  useUserSettingsStore,
+} from "@/stores";
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
 import ApiError from "@/components/misc/ApiError.vue";
 import {
   faCaretDown,
   faCaretUp,
   faFileDownload,
+  faFileLines,
+  faFloppyDisk,
   faMagnifyingGlass,
-  faScroll,
   faSpinner,
+  faX,
 } from "@fortawesome/free-solid-svg-icons";
 import Paginate from "vuejs-paginate-next";
 
-import { useLocalStorageRef } from "@/helpers";
-
 import AttributeResultCard from "./AttributeResultCard.vue";
 import EventResultCard from "./EventResultCard.vue";
-import LuceneQuerySyntaxCheatsheet from "./LuceneQuerySyntaxCheatsheet.vue";
+import LuceneQuerySyntaxCheatsheet from "./LuceneQuerySyntaxCheatsheetModal.vue";
 
 const searchQuery = ref("");
-const storedExploreSearches = useLocalStorageRef("storedExploreSearches", []);
 const eventsStore = useEventsStore();
 const attributesStore = useAttributesStore();
+
+const userSettingsStore = useUserSettingsStore();
+const { userSettings } = storeToRefs(userSettingsStore);
 
 const showEvents = ref(true);
 const showAttributes = ref(true);
@@ -131,6 +137,10 @@ watch(searchQuery, (v) => {
   if (v && v.length > 0) animatedPlaceholder.value = "";
 });
 
+const storedExploreSearches = computed(
+  () => userSettings.value?.stored_explore_searches || [],
+);
+
 function onEventsPageChange(page) {
   eventsStore.search({
     page: page,
@@ -216,6 +226,20 @@ async function downloadAllResults(type, format = "json") {
     console.error("Export failed:", err);
   }
 }
+
+function saveSearch() {}
+
+function deleteSavedSearch(term) {
+  const idx = storedExploreSearches.value.findIndex((t) => t === term);
+  if (idx !== -1) storedExploreSearches.value.splice(idx, 1);
+}
+
+// saved searches card body collapsed by default
+const savedCardOpen = ref(false);
+
+function toggleSavedCard() {
+  savedCardOpen.value = !savedCardOpen.value;
+}
 </script>
 
 <style>
@@ -236,52 +260,149 @@ body {
   border-left: 4px solid #198754;
   /* green */
 }
+
+/* saved searches overlay */
+.saved-searches-panel {
+  position: fixed;
+  z-index: 1120;
+  /* show on top */
+}
+
+.saved-searches-panel .list-group {
+  scrollbar-gutter: stable;
+}
+
+.saved-searches-panel {
+  width: 300px;
+}
+
+@media (max-width: 768px) {
+  .saved-searches-panel {
+    width: 90%;
+    left: 5%;
+    top: 10rem;
+  }
+}
 </style>
 
 <template>
-  <div class="d-flex justify-content-center">
-    <div class="w-100 mb-3" style="max-width: 600px">
-      <div class="input-group input-group-lg mb-1">
-        <input
-          type="text"
-          class="form-control"
-          list="previous-searches"
-          :placeholder="animatedPlaceholder"
-          @focus="isFocused = true"
-          @blur="isFocused = false"
-          v-model="searchQuery"
-          v-on:keyup.enter="search"
-        />
+  <div class="row mb-3 justify-content-center align-items-start">
+    <div class="col-012">
+      <div
+        class="saved-searches-panel"
+        role="dialog"
+        aria-label="saved searches"
+      >
+        <div class="card">
+          <div
+            class="card-header saved-searches-header d-flex justify-content-between align-items-center"
+            role="button"
+            tabindex="0"
+            @click="toggleSavedCard"
+            @keydown.enter.prevent="toggleSavedCard"
+            @keydown.space.prevent="toggleSavedCard"
+          >
+            <div>
+              <strong>saved searches</strong>
+              <small class="text-muted ms-2"
+                >({{ storedExploreSearches.length }})</small
+              >
+            </div>
 
-        <datalist id="previous-searches">
-          <option v-for="term in storedExploreSearches">{{ term }}</option>
-        </datalist>
+            <FontAwesomeIcon
+              :icon="faCaretDown"
+              class="text-muted transition"
+              :class="{ 'rotate-180': savedCardOpen }"
+            />
+          </div>
 
-        <button class="btn btn-primary btn-lg" type="button" @click="search">
-          <FontAwesomeIcon :icon="faMagnifyingGlass" />
-        </button>
+          <div class="card-body p-0" v-show="savedCardOpen">
+            <ul
+              class="list-group list-group-flush"
+              style="max-height: 60vh; overflow: auto"
+            >
+              <li
+                v-for="(term, idx) in storedExploreSearches"
+                :key="term + idx"
+                class="list-group-item d-flex justify-content-between align-items-center"
+              >
+                <div
+                  class="text-truncate cursor-pointer"
+                  :title="term"
+                  style="max-width: 220px"
+                  @click="((searchQuery = term), search())"
+                >
+                  {{ term }}
+                </div>
+
+                <div class="btn-group btn-group-sm">
+                  <button
+                    class="btn secondary"
+                    @click="deleteSavedSearch(term)"
+                  >
+                    <FontAwesomeIcon :icon="faX" />
+                  </button>
+                </div>
+              </li>
+
+              <li
+                v-if="storedExploreSearches.length === 0"
+                class="list-group-item text-muted"
+              >
+                No saved searches.
+              </li>
+            </ul>
+          </div>
+        </div>
       </div>
-      <span class="text-muted fst-italic small"
-        >Lucene query syntax supported.
-        <button
-          type="button"
-          class="btn btn-sm"
-          data-bs-toggle="modal"
-          data-bs-target="#luceneQuerySyntaxCheatsheetModal"
-          alt="Lucene Query Syntax Cheatsheet"
-        >
-          <FontAwesomeIcon :icon="faScroll" class="ms-1 cursor-pointer" />
-        </button>
-      </span>
-      <LuceneQuerySyntaxCheatsheet />
-      <span> </span>
     </div>
-  </div>
-  <div>
+    <div class="col-12 col-md-6">
+      <div class="w-100">
+        <div class="input-group input-group mb-1">
+          <button
+            class="btn btn-outline-secondary btn"
+            type="button"
+            @click="saveSearch"
+          >
+            <FontAwesomeIcon :icon="faFloppyDisk" />
+          </button>
+          <input
+            type="text"
+            class="form-control"
+            list="previous-searches"
+            :placeholder="animatedPlaceholder"
+            @focus="isFocused = true"
+            @blur="isFocused = false"
+            v-model="searchQuery"
+            v-on:keyup.enter="search"
+          />
+          <datalist id="previous-searches">
+            <option v-for="term in storedExploreSearches">{{ term }}</option>
+          </datalist>
+          <button class="btn btn-primary btn" type="button" @click="search">
+            <FontAwesomeIcon :icon="faMagnifyingGlass" />
+          </button>
+        </div>
+        <span class="text-muted fst-italic small"
+          >Lucene query syntax supported
+          <button
+            type="button"
+            class="btn btn-sm"
+            data-bs-toggle="modal"
+            data-bs-target="#luceneQuerySyntaxCheatsheetModal"
+            alt="Lucene Query Syntax Cheatsheet"
+          >
+            <FontAwesomeIcon :icon="faFileLines" class="ms-1 cursor-pointer" />
+          </button>
+        </span>
+        <LuceneQuerySyntaxCheatsheet />
+      </div>
+    </div>
+
     <div id="results">
       <div
         id="eventsResults"
-        class="card mb-3"
+        class="card mb-3 col-12 col-md-8 mx-auto"
         v-if="event_docs?.results || eventsStatus.error"
       >
         <div
@@ -377,7 +498,7 @@ body {
       </div>
       <div
         id="attributesResults"
-        class="card mb-3"
+        class="card mb-3 col-12 col-md-8 mx-auto"
         v-if="attribute_docs?.results || attributesStatus.error"
       >
         <div

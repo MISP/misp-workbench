@@ -73,6 +73,12 @@ const filteredExamples = computed(() => {
 });
 </script>
 
+<style>
+.modal {
+  z-index: 1130;
+}
+</style>
+
 <template>
   <div
     class="modal fade"
