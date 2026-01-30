@@ -161,7 +161,7 @@ function followEvent() {
         <FontAwesomeIcon
           :icon="faStar"
           fixed-width
-          :class="followed ? 'text-success' : 'text-primary'"
+          :class="followed ? 'text-warning' : 'text-secondary'"
         />
       </button>
     </div>
