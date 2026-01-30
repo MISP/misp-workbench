@@ -1,6 +1,7 @@
 <script setup>
 import { ref, onMounted, onUnmounted, watch, computed } from "vue";
 import { storeToRefs } from "pinia";
+import { useLocalStorageRef } from "@/helpers/local-storage";
 import {
   useEventsStore,
   useAttributesStore,
@@ -16,7 +17,7 @@ import {
   faFloppyDisk,
   faMagnifyingGlass,
   faSpinner,
-  faX,
+  faXmark,
 } from "@fortawesome/free-solid-svg-icons";
 import Paginate from "vuejs-paginate-next";
 
@@ -33,6 +34,11 @@ const { userSettings } = storeToRefs(userSettingsStore);
 
 const showEvents = ref(true);
 const showAttributes = ref(true);
+
+const userRecentSearches = useLocalStorageRef(
+  "user_recent_explore_searches",
+  [],
+);
 
 const {
   event_docs,
@@ -138,7 +144,7 @@ watch(searchQuery, (v) => {
 });
 
 const storedExploreSearches = computed(
-  () => userSettings.value?.stored_explore_searches || [],
+  () => userSettings.value?.explore?.saved_searches || [],
 );
 
 function onEventsPageChange(page) {
@@ -172,12 +178,13 @@ function search() {
 
   if (
     searchQuery.value &&
+    !userRecentSearches.value.includes(searchQuery.value) &&
     !storedExploreSearches.value.includes(searchQuery.value)
   ) {
-    storedExploreSearches.value.push(searchQuery.value);
+    userRecentSearches.value.push(searchQuery.value);
   }
-  if (storedExploreSearches.value.length > 10) {
-    storedExploreSearches.value.shift();
+  if (userRecentSearches.value.length > 10) {
+    userRecentSearches.value.shift();
   }
 }
 
@@ -227,11 +234,19 @@ async function downloadAllResults(type, format = "json") {
   }
 }
 
-function saveSearch() {}
+function saveSearch(term) {
+  console.log("saveSearch", term);
+  userSettingsStore.update("explore", {
+    saved_searches: Array.from(new Set([term, ...storedExploreSearches.value])),
+  });
+  const idx = userRecentSearches.value.findIndex((t) => t === term);
+  if (idx !== -1) userRecentSearches.value.splice(idx, 1);
+}
 
 function deleteSavedSearch(term) {
-  const idx = storedExploreSearches.value.findIndex((t) => t === term);
-  if (idx !== -1) storedExploreSearches.value.splice(idx, 1);
+  userSettingsStore.update("explore", {
+    saved_searches: storedExploreSearches.value.filter((t) => t !== term),
+  });
 }
 
 // saved searches card body collapsed by default
@@ -283,6 +298,16 @@ body {
     top: 10rem;
   }
 }
+
+.card > .card-body:last-child .list-group-flush > .list-group-item:last-child {
+  border-bottom-left-radius: var(--bs-card-border-radius);
+  border-bottom-right-radius: var(--bs-card-border-radius);
+}
+
+.card-body .list-group-flush:last-of-type .list-group-item:last-child {
+  border-bottom-left-radius: var(--bs-card-border-radius);
+  border-bottom-right-radius: var(--bs-card-border-radius);
+}
 </style>
 
 <template>
@@ -303,10 +328,7 @@ body {
             @keydown.space.prevent="toggleSavedCard"
           >
             <div>
-              <strong>saved searches</strong>
-              <small class="text-muted ms-2"
-                >({{ storedExploreSearches.length }})</small
-              >
+              <strong>search history</strong>
             </div>
 
             <FontAwesomeIcon
@@ -320,6 +342,7 @@ body {
             <ul
               class="list-group list-group-flush"
               style="max-height: 60vh; overflow: auto"
+              v-if="storedExploreSearches.length > 0"
             >
               <li
                 v-for="(term, idx) in storedExploreSearches"
@@ -337,19 +360,31 @@ body {
 
                 <div class="btn-group btn-group-sm">
                   <button
-                    class="btn secondary"
+                    class="btn text-secondary"
                     @click="deleteSavedSearch(term)"
                   >
-                    <FontAwesomeIcon :icon="faX" />
+                    <FontAwesomeIcon :icon="faXmark" />
                   </button>
                 </div>
               </li>
-
               <li
-                v-if="storedExploreSearches.length === 0"
-                class="list-group-item text-muted"
+                v-for="(term, idx) in userRecentSearches"
+                :key="term + idx"
+                class="list-group-item d-flex justify-content-between align-items-center"
               >
-                No saved searches.
+                <div
+                  class="text-truncate cursor-pointer"
+                  :title="term"
+                  style="max-width: 220px"
+                  @click="((searchQuery = term), search())"
+                >
+                  {{ term }}
+                </div>
+                <div class="btn-group btn-group-sm">
+                  <button class="btn text-secondary" @click="saveSearch(term)">
+                    <FontAwesomeIcon :icon="faFloppyDisk" />
+                  </button>
+                </div>
               </li>
             </ul>
           </div>
@@ -362,7 +397,7 @@ body {
           <button
             class="btn btn-outline-secondary btn"
             type="button"
-            @click="saveSearch"
+            @click="saveSearch(searchQuery)"
           >
             <FontAwesomeIcon :icon="faFloppyDisk" />
           </button>
@@ -383,11 +418,11 @@ body {
             <FontAwesomeIcon :icon="faMagnifyingGlass" />
           </button>
         </div>
-        <span class="text-muted fst-italic small"
-          >Lucene query syntax supported
+        <span class="text-muted fst-italic small d-flex align-items-center">
+          Lucene query syntax supported
           <button
             type="button"
-            class="btn btn-sm"
+            class="btn btn-sm d-flex align-items-center"
             data-bs-toggle="modal"
             data-bs-target="#luceneQuerySyntaxCheatsheetModal"
             alt="Lucene Query Syntax Cheatsheet"
