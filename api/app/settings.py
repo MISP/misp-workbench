@@ -14,9 +14,15 @@ class MISPSettings(BaseModel):
 
 class OAuth2Settings(BaseModel):
     secret_key: str = os.environ["OAUTH2_SECRET_KEY"]
+    refresh_secret_key: str = os.environ.get("OAUTH2_REFRESH_SECRET_KEY") or (
+        os.environ["OAUTH2_SECRET_KEY"] + "_refresh"
+    )
     algorithm: str = os.environ["OAUTH2_ALGORITHM"] or "HS256"
     access_token_expire_minutes: int = (
         int(os.environ["OAUTH2_ACCESS_TOKEN_EXPIRE_MINUTES"]) or 30
+    )
+    refresh_token_expire_days: int = (
+        int(os.environ["OAUTH2_REFRESH_TOKEN_EXPIRE_DAYS"]) or 7
     )
 
 

@@ -1,7 +1,8 @@
 import random
 import string
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Union
+from uuid import uuid4
 
 import bcrypt
 import jwt
@@ -9,11 +10,10 @@ from app.db.session import get_db
 from app.repositories import users as users_repository
 from app.schemas import user as user_schemas
 from app.settings import Settings, get_settings
-from fastapi import Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer, SecurityScopes
-from jwt.exceptions import InvalidTokenError
-from pydantic import BaseModel, ValidationError
+from fastapi.security import OAuth2PasswordBearer
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
+from app.services.redis import get_redis_client
 
 # see: https://fastapi.tiangolo.com/tutorial/security/oauth2-jwt/
 # see: https://fastapi.tiangolo.com/advanced/security/
@@ -21,6 +21,7 @@ from sqlalchemy.orm import Session
 
 class Token(BaseModel):
     access_token: str
+    refresh_token: str
     token_type: str
 
 
@@ -135,14 +136,50 @@ def create_access_token(
 ):
     to_encode = data.copy()
     if expires_delta:
-        expire = datetime.utcnow() + expires_delta
+        expire = datetime.now(timezone.utc) + expires_delta
     else:
-        expire = datetime.utcnow() + timedelta(minutes=15)
-    to_encode.update({"exp": expire})
+        expire = datetime.now(timezone.utc) + timedelta(minutes=15)
+    to_encode.update({"exp": expire, "jti": str(uuid4())})
     encoded_jwt = jwt.encode(
         to_encode, settings.OAuth2.secret_key, algorithm=settings.OAuth2.algorithm
     )
     return encoded_jwt
+
+
+def create_refresh_token(
+    data: dict,
+    expires_delta: Union[timedelta, None] = None,
+    settings: Settings = get_settings(),
+):
+    to_encode = data.copy()
+    if expires_delta:
+        expire = datetime.now(timezone.utc) + expires_delta
+    else:
+        expire = datetime.now(timezone.utc) + timedelta(days=7)
+    to_encode.update({"exp": expire, "jti": str(uuid4())})
+    encoded_jwt = jwt.encode(
+        to_encode,
+        settings.OAuth2.refresh_secret_key,
+        algorithm=settings.OAuth2.algorithm,
+    )
+    return encoded_jwt
+
+
+def is_token_revoked(decrypted_token):
+    jti = decrypted_token["jti"]
+
+    RedisClient = get_redis_client()
+    cache_key = f"auth:jwt_denylist:{jti}"
+    revoked = RedisClient.get(cache_key)
+
+    return revoked is not None
+
+
+def add_token_to_denylist(jti: str):
+    RedisClient = get_redis_client()
+    cache_key = f"auth:jwt_denylist:{jti}"
+    RedisClient.set(cache_key, "revoked")
+
 
 def authenticate_user(db: Session, username: str, password: str):
     user = users_repository.get_user_by_email(db, username)

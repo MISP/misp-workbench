@@ -1,4 +1,4 @@
-
+from app.auth import auth
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer,SecurityScopes
 from sqlalchemy.orm import Session
@@ -38,6 +38,14 @@ async def get_current_active_user(
         payload = jwt_decode(
             token, settings.OAuth2.secret_key, algorithms=[settings.OAuth2.algorithm]
         )
+
+        if auth.is_token_revoked(payload):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Token has been revoked",
+                headers={"WWW-Authenticate": authenticate_value},
+            )
+
         username: str = payload.get("sub")
         if username is None:
             raise credentials_exception
