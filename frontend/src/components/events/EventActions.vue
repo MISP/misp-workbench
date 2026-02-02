@@ -1,6 +1,6 @@
 <script setup>
 import { authHelper } from "@/helpers";
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, onMounted, onBeforeUnmount, nextTick } from "vue";
 import { Modal } from "bootstrap";
 import { storeToRefs } from "pinia";
 import { useAuthStore, useEventsStore } from "@/stores";
@@ -54,26 +54,46 @@ const actions = computed(() => ({
     authHelper.hasScope(scopes.value, "events:tag"),
 }));
 
-const deleteEventModal = ref(null);
-const importDataEventModal = ref(null);
-
 onMounted(() => {
-  deleteEventModal.value = new Modal(
-    document.getElementById(`deleteEventModal_${props.event_uuid}`),
-  );
-  importDataEventModal.value = new Modal(
-    document.getElementById(`importDataEventModal_${props.event_uuid}`),
-  );
   followed.value = isFollowingEntity("events", props.event_uuid);
 });
 
+const deleteModal = ref(null);
+const deleteModalRef = ref(null);
+const importModal = ref(null);
+const importModalRef = ref(null);
+
+function getDeleteModal() {
+  if (!deleteModal.value && deleteModalRef.value?.modalEl) {
+    deleteModal.value = new Modal(deleteModalRef.value.modalEl);
+  }
+  return deleteModal.value;
+}
+
 function openDeleteEventModal() {
-  deleteEventModal.value.show();
+  nextTick(() => {
+    getDeleteModal()?.show();
+  });
+}
+
+function getImportModal() {
+  if (!importModal.value && importModalRef.value?.modalEl) {
+    importModal.value = new Modal(importModalRef.value.modalEl);
+  }
+  return importModal.value;
 }
 
 function openImportModal() {
-  importDataEventModal.value.show();
+  nextTick(() => {
+    getImportModal()?.show();
+  });
 }
+
+/* Cleanup (VERY important in lists) */
+onBeforeUnmount(() => {
+  deleteModal.value?.dispose();
+  importModal.value?.dispose();
+});
 
 const emit = defineEmits(["event-updated", "event-deleted"]);
 
@@ -264,18 +284,14 @@ function followEvent() {
   </div>
 
   <DeleteEventModal
-    :key="event_uuid"
-    :id="`deleteEventModal_${event_uuid}`"
-    @event-deleted="handleEventDeleted"
-    :modal="deleteEventModal"
+    ref="deleteModalRef"
     :event_uuid="event_uuid"
+    @event-deleted="handleEventDeleted"
   />
 
   <ImportDataEventModal
-    :key="event_uuid"
-    :id="`importDataEventModal_${event_uuid}`"
-    @event-updated="handleEventUpdated"
-    :modal="importDataEventModal"
+    ref="importModalRef"
     :event_uuid="event_uuid"
+    @event-updated="handleEventUpdated"
   />
 </template>

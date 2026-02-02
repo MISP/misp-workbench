@@ -1,4 +1,6 @@
 import { useAuthStore } from "@/stores";
+import { router } from "@/router";
+
 const baseUrl = `${import.meta.env.VITE_API_URL}`;
 
 export const fetchWrapper = {
@@ -91,10 +93,8 @@ function handleResponse(response) {
     }
 
     if (!response.ok) {
-      const { logout } = useAuthStore();
       if (response.status === 401 || response.status === 403) {
-        // auto logout if 401 Unauthorized or 403 Forbidden response returned from api
-        logout();
+        router.push("/login");
       }
 
       const error = (data && data.detail) || response.statusText;

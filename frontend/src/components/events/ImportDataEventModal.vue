@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { reactive, watch, computed } from "vue";
+import { reactive, watch, computed, ref } from "vue";
 import { debounce } from "lodash-es";
 import { useEventsStore, useToastsStore } from "@/stores";
 import { storeToRefs } from "pinia";
@@ -9,8 +9,14 @@ const toastsStore = useToastsStore();
 const eventsStore = useEventsStore();
 const { status } = storeToRefs(eventsStore);
 
-const props = defineProps(["event_uuid", "modal"]);
+const props = defineProps(["event_uuid"]);
 const emit = defineEmits(["event-updated"]);
+
+const modalEl = ref(null);
+
+defineExpose({
+  modalEl,
+});
 
 const page = reactive({
   current: 1,
@@ -183,7 +189,7 @@ function onSubmit() {
       toastsStore.push(response["message"]);
       emit("event-updated", { event_uuid: props.event_uuid });
       resetBatchState();
-      props.modal.hide();
+      modalEl.value?.hide();
     })
     .catch((error) => {
       status.error = error.message || "An error occurred during import.";
@@ -211,6 +217,7 @@ function resetBatchState() {
 
 <template>
   <div
+    ref="modalEl"
     :id="'importDataEventModal_' + event_uuid"
     class="modal fade"
     tabindex="-1"

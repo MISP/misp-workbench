@@ -7,6 +7,7 @@ export const useAttributesStore = defineStore({
   id: "attributes",
   state: () => ({
     attribute_docs: {},
+    attributes: {},
     attribute: {},
     page_count: 0,
     status: {

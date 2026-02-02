@@ -1,19 +1,26 @@
 <script setup>
+import { ref } from "vue";
 import { useEventsStore } from "@/stores";
 import { storeToRefs } from "pinia";
 
 const eventsStore = useEventsStore();
 const { status } = storeToRefs(eventsStore);
 
-const props = defineProps(["event_uuid", "modal"]);
+const props = defineProps(["event_uuid"]);
 const emit = defineEmits(["event-deleted"]);
+
+const modalEl = ref(null);
+
+defineExpose({
+  modalEl,
+});
 
 function onSubmit() {
   return eventsStore
     .delete(props.event_uuid)
     .then(() => {
       emit("event-deleted", { event_uuid: props.event_uuid });
-      props.modal.hide();
+      modalEl.value?.hide();
     })
     .catch((error) => (status.error = error));
 }
@@ -21,6 +28,7 @@ function onSubmit() {
 
 <template>
   <div
+    ref="modalEl"
     :id="'deleteEventModal_' + event_uuid"
     class="modal fade"
     tabindex="-1"
