@@ -92,7 +92,7 @@ function handleResponse(response) {
 
     if (!response.ok) {
       const { logout } = useAuthStore();
-      if ([401, 403].includes(response.status)) {
+      if (response.status === 401 || response.status === 403) {
         // auto logout if 401 Unauthorized or 403 Forbidden response returned from api
         logout();
       }
