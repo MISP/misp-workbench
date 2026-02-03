@@ -22,7 +22,8 @@ class TestEventsResource(ApiTester):
         auth_token: auth.Token,
     ):
         response = client.get(
-            "/events/", headers={"Authorization": "Bearer " + auth_token}
+            "/events/", headers={"Authorization": "Bearer " + auth_token},
+            params={"include_attributes": True}
         )
         data = response.json()["items"]
 
