@@ -2,9 +2,9 @@ from typing import Optional
 from uuid import UUID
 
 from app.models.event import DistributionLevel
-from app.schemas.attribute import Attribute, AttributeCreate, AttributeUpdate
+from app.schemas.attribute import Attribute, AttributeCreate
 from app.schemas.object_reference import ObjectReference, ObjectReferenceCreate
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, computed_field
 
 
 class ObjectBase(BaseModel):
@@ -27,10 +27,15 @@ class ObjectBase(BaseModel):
 
 class Object(ObjectBase):
     id: int
-
     attributes: list[Attribute] = []
     object_references: list[ObjectReference] = []
     model_config = ConfigDict(from_attributes=True)
+
+    @computed_field
+    @property
+    def event_uuid(self) -> Optional[UUID]:
+        event = getattr(self, "event", None)
+        return event.uuid if event else None
 
 
 class ObjectCreate(ObjectBase):

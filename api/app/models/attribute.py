@@ -41,7 +41,10 @@ class Attribute(Base):
     disable_correlation = Column(Boolean, default=False)
     first_seen = Column(BigInteger(), index=True)
     last_seen = Column(BigInteger(), index=True)
-
+    event = relationship(
+        "Event",
+        lazy="joined"
+    )
     tags = relationship("Tag", secondary="attribute_tags", lazy="subquery")
 
     def to_misp_format(

@@ -3,12 +3,11 @@ from uuid import UUID
 
 from app.models.event import DistributionLevel
 from app.schemas.tag import Tag
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, computed_field
 
 
 class AttributeBase(BaseModel):
     event_id: Optional[int] = None
-    event_uuid: Optional[UUID] = None
     object_id: Optional[int] = None
     object_relation: Optional[str] = None
     category: str
@@ -33,8 +32,15 @@ class Attribute(AttributeBase):
     correlations: list[dict] = None
     model_config = ConfigDict(from_attributes=True)
 
+    @computed_field
+    @property
+    def event_uuid(self) -> Optional[UUID]:
+        event = getattr(self, "event", None)
+        return event.uuid if event else None
+
 
 class AttributeCreate(AttributeBase):
+    event_uuid: Optional[UUID] = None
     pass
 
 

@@ -852,6 +852,7 @@ def index_object(object_uuid: uuid.UUID):
     object_raw["@timestamp"] = datetime.fromtimestamp(
         object_raw["timestamp"]
     ).isoformat()
+    object_raw["event_uuid"] = str(db_object.event.uuid)
 
     response = OpenSearchClient.index(
         index="misp-objects",

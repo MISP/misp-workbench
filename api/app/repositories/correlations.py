@@ -4,6 +4,9 @@ from opensearchpy import helpers as opensearch_helpers
 from app.services.runtime_settings import RuntimeSettings
 from app.worker import tasks
 import datetime
+import logging
+
+logger = logging.getLogger(__name__)
 
 MAX_CORRELATIONS_PER_DOC = 1000
 CORRELATION_PREFIX_LENGTH = 10
@@ -94,6 +97,13 @@ def get_attributes(filters: dict = {}):
 
 
 def build_query(uuid, event_uuid, value, match_type, runtimeSettings: RuntimeSettings):
+
+    if uuid is None:
+        logger.error(f"build_query: UUID is None, event_uuid={event_uuid}")
+        raise ValueError("uuid cannot be None in build_query")    
+    if event_uuid is None:
+        logger.error(f"build_query: event_uuid is None, uuid={uuid}")
+        raise ValueError("event_uuid cannot be None in build_query")
 
     query = {
         "query": {
@@ -245,13 +255,17 @@ def correlate_document(doc, runtimeSettings: RuntimeSettings):
                 continue
             query = build_cidr_query(doc["_id"], doc["_source"]["event_uuid"], doc)
         else:
-            query = build_query(
-                doc["_id"],
-                doc["_source"]["event_uuid"],
-                value,
-                match_type,
-                runtimeSettings,
-            )
+            try:
+                query = build_query(
+                    doc["_id"],
+                    doc["_source"]["event_uuid"],
+                    value,
+                    match_type,
+                    runtimeSettings,
+                )
+            except ValueError as e:
+                logger.error(f"correlate_document: {str(e)}")
+                continue
 
         res = OpenSearchClient.search(
             index="misp-attributes",

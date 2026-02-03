@@ -29,7 +29,10 @@ class Object(Base):
     deleted = Column(Boolean, nullable=False, default=False)
     first_seen = Column(Integer)
     last_seen = Column(Integer)
-
+    event = relationship(
+        "Event",
+        lazy="joined"
+    )
     attributes = relationship("Attribute", lazy="subquery", cascade="all, delete-orphan")
     object_references = relationship("ObjectReference", lazy="subquery", cascade="all, delete-orphan")
 
