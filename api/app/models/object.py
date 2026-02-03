@@ -31,7 +31,8 @@ class Object(Base):
     last_seen = Column(Integer)
     event = relationship(
         "Event",
-        lazy="joined"
+        lazy="joined",
+        viewonly=True
     )
     attributes = relationship("Attribute", lazy="subquery", cascade="all, delete-orphan")
     object_references = relationship("ObjectReference", lazy="subquery", cascade="all, delete-orphan")

@@ -43,7 +43,8 @@ class Attribute(Base):
     last_seen = Column(BigInteger(), index=True)
     event = relationship(
         "Event",
-        lazy="joined"
+        lazy="joined",
+        viewonly=True
     )
     tags = relationship("Tag", secondary="attribute_tags", lazy="subquery")
 
