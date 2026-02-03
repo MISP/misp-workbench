@@ -49,8 +49,11 @@ def get_object_by_id(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Object not found"
         )
-    return db_object
+    
+    object = object_schemas.Object.from_orm(db_object)
+    object.event_uuid = str(db_object.event.uuid)
 
+    return object
 
 @router.post(
     "/objects/",

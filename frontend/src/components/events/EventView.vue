@@ -147,11 +147,13 @@ div.row h3 {
   </div>
   <div v-if="!status.loading && event" class="card">
     <div class="event-title card-header border-bottom">
-      <div class="row">
-        <div class="col-10 overflow-hidden">
-          <h3 class="text-truncate">{{ event.info }}</h3>
+      <div class="row align-items-center">
+        <div class="col-md-8 col-sm-12">
+          <h6 class="mb-0 text-truncate">Event #{{ event.uuid }}</h6>
         </div>
-        <div class="col-2 text-end">
+        <div
+          class="col-md-4 col-sm-12 text-md-end text-sm-start mt-sm-2 mt-md-0"
+        >
           <EventActions
             :event_uuid="event.uuid"
             @event-deleted="handleEventDeleted"
@@ -160,6 +162,11 @@ div.row h3 {
       </div>
     </div>
     <div class="row m-1">
+      <div>
+        <div class="alert alert-info h5 mt-2" role="alert">
+          {{ event.info }}
+        </div>
+      </div>
       <div class="col-sm-4 mt-2">
         <div class="card">
           <div class="card-body d-flex flex-column">

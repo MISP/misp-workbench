@@ -29,7 +29,7 @@ reportsStore.getReportsByEventId(props.event_uuid);
     Error loading reports: {{ status.error }}
   </div>
   <div v-if="!status.loading && reports.length === 0">
-    <div class="alert alert-info" role="alert">
+    <div class="alert alert-secondary" role="alert">
       No event reports found for this event.
     </div>
   </div>

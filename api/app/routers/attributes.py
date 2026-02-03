@@ -96,7 +96,11 @@ def get_attribute_by_id(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Attribute not found"
         )
-    return db_attribute
+    
+    attribute = attribute_schemas.Attribute.from_orm(db_attribute)
+    attribute.event_uuid = str(db_attribute.event.uuid)
+
+    return attribute
 
 
 @router.post(

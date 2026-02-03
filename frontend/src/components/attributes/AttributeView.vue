@@ -34,14 +34,26 @@ div.row h3 {
 <template>
   <div class="card">
     <div class="attribute-title card-header border-bottom">
-      <div class="row">
-        <div class="col-10">
-          <h3>Attribute #{{ attribute.id }}</h3>
+      <div class="row align-items-center">
+        <div class="col-md-8 col-sm-12">
+          <h6 class="mb-0 text-truncate">
+            <RouterLink
+              :to="`/events/${attribute.event_uuid}`"
+              class="text-decoration-none text-primary"
+            >
+              Event #{{ attribute.event_uuid }}
+            </RouterLink>
+            <span class="text-muted"> / </span>
+            <span class="text-secondary">Attribute #{{ attribute.uuid }}</span>
+          </h6>
         </div>
-        <div class="col-2 text-end">
+        <div
+          class="col-md-4 col-sm-12 text-md-end text-sm-start mt-sm-2 mt-md-0"
+        >
           <AttributeActions
             :attribute="attribute"
             @attribute-deleted="handleAttributeDeleted"
+            class="d-inline-block"
           />
         </div>
       </div>
@@ -64,8 +76,10 @@ div.row h3 {
                     </td>
                   </tr>
                   <tr>
-                    <th>event_id</th>
-                    <td>{{ attribute.event_id }}</td>
+                    <th>event_uuid</th>
+                    <td>
+                      <UUID :uuid="attribute.event_uuid" :copy="true" />
+                    </td>
                   </tr>
                   <tr>
                     <th>category</th>

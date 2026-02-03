@@ -163,8 +163,9 @@ function severityClass(severity) {
           </div>
         </div>
       </div>
-
-      <div v-else class="p-3 text-muted">No related vulnerabilities found.</div>
+      <div v-else class="alert alert-secondary m-3" role="alert">
+        No related vulnerabilities found.
+      </div>
     </div>
   </div>
 </template>

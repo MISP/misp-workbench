@@ -21,7 +21,7 @@ remoteMISPReportsStore.get_remote_server_event_reports(
     Error loading reports: {{ status.error }}
   </div>
   <div v-if="!status.loading && remote_event_reports.length === 0">
-    <div class="alert alert-info" role="alert">
+    <div class="alert alert-secondary" role="alert">
       No event reports found for this event.
     </div>
   </div>
