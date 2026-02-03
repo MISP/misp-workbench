@@ -255,6 +255,30 @@ const savedCardOpen = ref(false);
 function toggleSavedCard() {
   savedCardOpen.value = !savedCardOpen.value;
 }
+
+// detect clicks outside the saved-searches panel to close the card body
+const savedPanelRef = ref(null);
+
+function _handleDocumentClick(e) {
+  try {
+    const el = savedPanelRef.value;
+    if (!el) return;
+    // if card is open and the click is outside the panel, close it
+    if (savedCardOpen.value && !el.contains(e.target)) {
+      savedCardOpen.value = false;
+    }
+  } catch (err) {
+    console.error("Error handling document click:", err);
+  }
+}
+
+onMounted(() => {
+  document.addEventListener("click", _handleDocumentClick);
+});
+
+onUnmounted(() => {
+  document.removeEventListener("click", _handleDocumentClick);
+});
 </script>
 
 <style>
@@ -279,7 +303,7 @@ body {
 /* saved searches overlay */
 .saved-searches-panel {
   position: fixed;
-  z-index: 1120;
+  z-index: 1;
   /* show on top */
 }
 
@@ -315,6 +339,7 @@ body {
     <div class="col-012">
       <div
         class="saved-searches-panel"
+        ref="savedPanelRef"
         role="dialog"
         aria-label="saved searches"
       >
@@ -329,6 +354,11 @@ body {
           >
             <div>
               <strong>search history</strong>
+              <span class="text-muted ms-2"
+                >({{
+                  storedExploreSearches.length + userRecentSearches.length
+                }})</span
+              >
             </div>
 
             <FontAwesomeIcon
