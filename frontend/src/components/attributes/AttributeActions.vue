@@ -177,7 +177,7 @@ function followAttribute() {
     <div class="btn-group me-2" role="group">
       <RouterLink
         v-if="actions.view"
-        :to="`/attributes/${attribute.id}`"
+        :to="`/attributes/${attribute.uuid}`"
         class="btn btn-outline-primary btn-sm"
         title="View Attribute"
       >
