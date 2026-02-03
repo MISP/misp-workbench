@@ -3,13 +3,14 @@ import { ref, onMounted } from "vue";
 import { storeToRefs } from "pinia";
 import { useAttributesStore } from "@/stores";
 import TagsSelect from "@/components/tags/TagsSelect.vue";
-import Spinner from "@/components/misc/Spinner.vue";
 import Paginate from "vuejs-paginate-next";
 import AddAttributeModal from "@/components/attributes/AddAttributeModal.vue";
 import AttributeActions from "@/components/attributes/AttributeActions.vue";
 import CopyToClipboard from "@/components/misc/CopyToClipboard.vue";
 import Timestamp from "@/components/misc/Timestamp.vue";
 import { Modal } from "bootstrap";
+import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
+import { faSpinner } from "@fortawesome/free-solid-svg-icons";
 
 const props = defineProps(["event_uuid", "page_size"]);
 const attributesStore = useAttributesStore();
@@ -100,7 +101,9 @@ function handleAttributesUpdated() {
         </tr>
       </tbody>
     </table>
-    <Spinner v-if="status.loading" />
+    <span v-if="status.loading">
+      <FontAwesomeIcon :icon="faSpinner" spin class="ms-2" />
+    </span>
     <Paginate
       v-if="page_count > 1"
       :page-count="page_count"

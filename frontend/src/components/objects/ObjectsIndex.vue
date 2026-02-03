@@ -7,8 +7,9 @@ import ObjectAttributesList from "@/components/objects/ObjectAttributesList.vue"
 import ObjectActions from "@/components/objects/ObjectActions.vue";
 import AddObjectModal from "@/components/objects/AddObjectModal.vue";
 import DeleteObjectModal from "@/components/objects/DeleteObjectModal.vue";
-import Spinner from "@/components/misc/Spinner.vue";
 import Paginate from "vuejs-paginate-next";
+import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
+import { faSpinner } from "@fortawesome/free-solid-svg-icons";
 
 const props = defineProps(["event_uuid", "page_size"]);
 
@@ -41,10 +42,12 @@ function openAddObjectModal() {
 </script>
 
 <template>
-  <Spinner v-if="status.loading" />
   <div v-if="status.error" class="text-danger">
     Error loading objects: {{ status.error }}
   </div>
+  <span v-if="status.loading">
+    <FontAwesomeIcon :icon="faSpinner" spin class="ms-2" />
+  </span>
   <div class="table-responsive-sm">
     <div class="mt-2" :key="object.id" v-for="object in objects.items">
       <div class="card" v-if="!object.deleted">

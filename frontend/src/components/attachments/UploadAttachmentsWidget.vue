@@ -3,9 +3,12 @@ import { ref } from "vue";
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
 import { storeToRefs } from "pinia";
 import { useAttachmentsStore } from "@/stores";
-import { faCloudArrowUp, faPaperclip } from "@fortawesome/free-solid-svg-icons";
+import {
+  faCloudArrowUp,
+  faPaperclip,
+  faSpinner,
+} from "@fortawesome/free-solid-svg-icons";
 import AttachmentIcon from "@/components/attachments/AttachmentIcon.vue";
-import Spinner from "@/components/misc/Spinner.vue";
 
 const props = defineProps(["event_uuid"]);
 const emit = defineEmits(["object-added", "object-deleted"]);
@@ -101,7 +104,9 @@ function handleObjectDeleted(object_id) {
       <FontAwesomeIcon :icon="faPaperclip" /> attachments
     </div>
     <div class="card-body">
-      <Spinner v-if="status.loading" />
+      <span v-if="status.loading">
+        <FontAwesomeIcon :icon="faSpinner" spin class="ms-2" />
+      </span>
       <div class="row row-cols-1 row-cols-md-2">
         <AttachmentIcon
           v-for="attachment in attachments"

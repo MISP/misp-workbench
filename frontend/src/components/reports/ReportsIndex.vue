@@ -1,10 +1,11 @@
 <script setup>
 import { storeToRefs } from "pinia";
 import { useReportsStore } from "@/stores";
-import Spinner from "@/components/misc/Spinner.vue";
 import ReportActions from "@/components/reports/ReportActions.vue";
 import { marked } from "marked";
 import DOMPurify from "dompurify";
+import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
+import { faSpinner } from "@fortawesome/free-solid-svg-icons";
 
 const props = defineProps(["event_uuid"]);
 const reportsStore = useReportsStore();
@@ -24,10 +25,12 @@ reportsStore.getReportsByEventId(props.event_uuid);
 </script>
 
 <template>
-  <Spinner v-if="status.loading" />
   <div v-if="status.error" class="text-danger">
     Error loading reports: {{ status.error }}
   </div>
+  <span v-if="status.loading">
+    <FontAwesomeIcon :icon="faSpinner" spin class="ms-2" />
+  </span>
   <div v-if="!status.loading && reports.length === 0">
     <div class="alert alert-secondary" role="alert">
       No event reports found for this event.
