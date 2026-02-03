@@ -1,4 +1,3 @@
-import json
 import logging
 import time
 from datetime import datetime
@@ -17,7 +16,7 @@ from app.schemas import event as event_schemas
 from app.schemas import user as user_schemas
 import app.schemas.attribute as attribute_schemas
 import app.schemas.vulnerability as vulnerability_schemas
-from fastapi import HTTPException, status
+from fastapi import HTTPException, status, Query
 from fastapi_pagination.ext.sqlalchemy import paginate
 from pymisp import MISPEvent, MISPOrganisation
 from sqlalchemy.orm import Session, noload
@@ -26,8 +25,16 @@ from sqlalchemy.sql import select
 logger = logging.getLogger(__name__)
 
 
-def get_events(db: Session, info: str = None, deleted: bool = None, uuid: str = None):
+def get_events(db: Session, info: str = Query(None), deleted: bool = Query(None), uuid: str = Query(None), include_attributes: bool = Query(False)):
     query = select(event_models.Event)
+
+    if include_attributes:
+        query = select(event_models.Event)
+    else:   
+        # avoid loading child relationships (attributes/objects) to keep the query lightweight
+        query = select(event_models.Event).options(
+            noload(event_models.Event.attributes), noload(event_models.Event.objects)
+        )
 
     if info is not None:
         search = f"%{info}%"

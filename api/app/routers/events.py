@@ -35,11 +35,12 @@ router = APIRouter()
 
 
 async def get_events_parameters(
-    info: Optional[str] = None,
-    deleted: Optional[bool] = None,
-    uuid: Optional[str] = None,
+    info: Optional[str] = Query(None),
+    deleted: Optional[bool] = Query(None),
+    uuid: Optional[str] = Query(None),
+    include_attributes: bool = Query(False),
 ):
-    return {"info": info, "deleted": deleted, "uuid": uuid}
+    return {"info": info, "deleted": deleted, "uuid": uuid, "include_attributes": include_attributes}
 
 
 @router.get("/events/", response_model=Page[event_schemas.Event])
@@ -49,7 +50,7 @@ async def get_events(
     user: user_schemas.User = Security(get_current_active_user, scopes=["events:read"]),
 ) -> Page[event_schemas.Event]:
     return events_repository.get_events(
-        db, params["info"], params["deleted"], params["uuid"]
+        db, params["info"], params["deleted"], params["uuid"], params["include_attributes"]
     )
 
 
