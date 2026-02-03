@@ -3,10 +3,10 @@ import os
 import smtplib
 import uuid
 from datetime import datetime
-import redis
 
 from app.database import SQLALCHEMY_DATABASE_URL
 from app.services.opensearch import get_opensearch_client
+from app.services.redis import get_redis_client
 from app.settings import get_settings
 from app.services.runtime_settings_provider import get_runtime_settings
 from app.repositories import events as events_repository
@@ -520,12 +520,10 @@ def generate_correlations():
     with Session(engine) as db:
         runtimeSettings = get_runtime_settings(db)
 
-    redis_url = get_redis_url()
-
     try:
-        redis_client = redis.from_url(redis_url)
+        RedisClient = get_redis_client()
     except Exception:
-        redis_client = None
+        RedisClient = None
 
     # TODO: Make lock key and TTL configurable, check if this is still required when there are multiple workers
     lock_key = "generate_correlations_lock"
@@ -533,9 +531,9 @@ def generate_correlations():
 
     # Try to acquire the lock. If we can't acquire it, another run is active
     # or finished very recently, so skip to avoid duplicates.
-    if redis_client is not None:
+    if RedisClient is not None:
         try:
-            got_lock = redis_client.set(lock_key, "1", nx=True, ex=lock_ttl_seconds)
+            got_lock = RedisClient.set(lock_key, "1", nx=True, ex=lock_ttl_seconds)
         except Exception:
             got_lock = False
     else:
@@ -558,25 +556,10 @@ def generate_correlations():
     finally:
         # Release the lock. If Redis isn't available this is a noop.
         try:
-            if redis_client is not None:
-                redis_client.delete(lock_key)
+            if RedisClient is not None:
+                RedisClient.delete(lock_key)
         except Exception:
             pass
-
-
-def get_redis_url():
-    redis_host = os.environ.get("REDIS_HOSTNAME", "localhost")
-    redis_port = os.environ.get("REDIS_PORT", "6379")
-    redis_db = os.environ.get("REDIS_CACHE_DB", "0")
-
-    redis_url = (
-        os.environ.get("CELERY_RESULT_BACKEND")
-        or os.environ.get("REDIS_URL")
-        or f"redis://{redis_host}:{redis_port}/{redis_db}"
-    )
-
-    return redis_url
-
 
 @app.task
 def handle_created_sighting(
