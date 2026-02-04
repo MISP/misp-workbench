@@ -111,19 +111,26 @@ function navAndClose(path) {
 .offcanvas.show {
   visibility: visible;
 }
+
+.navbar-expand .navbar-nav .nav-link {
+  line-height: 2em;
+}
 </style>
 
 <template>
   <!-- ================= DESKTOP NAV ================= -->
   <nav v-if="!$isMobile" class="navbar navbar-expand border-bottom">
     <div class="container-fluid">
-      <div class="navbar-nav">
+      <div class="navbar-nav h5 fw-light">
         <RouterLink to="/" class="nav-item nav-link">
-          <img src="/images/misp-logo-pixel.png" height="30" />
+          <img
+            src="/images/misp-lite-logo.png"
+            height="30"
+            :style="{ filter: theme === 'dark' ? 'invert(1)' : 'none' }"
+          />
         </RouterLink>
         <RouterLink to="/explore" class="nav-item nav-link">explore</RouterLink>
         <RouterLink to="/events" class="nav-item nav-link">events</RouterLink>
-        <RouterLink to="/users" class="nav-item nav-link">users</RouterLink>
 
         <div class="nav-item dropdown">
           <a
@@ -134,17 +141,19 @@ function navAndClose(path) {
             data-bs-toggle="dropdown"
             aria-expanded="false"
           >
-            sync
+            sources
           </a>
           <ul class="dropdown-menu" aria-labelledby="syncDropdown">
             <li>
-              <RouterLink to="/servers" class="dropdown-item"
-                >servers</RouterLink
+              <RouterLink to="/feeds" class="dropdown-item fw-light"
+                >feeds</RouterLink
               >
             </li>
             <li><hr class="dropdown-divider" /></li>
             <li>
-              <RouterLink to="/feeds" class="dropdown-item">feeds</RouterLink>
+              <RouterLink to="/servers" class="dropdown-item fw-light"
+                >MISP servers</RouterLink
+              >
             </li>
           </ul>
         </div>
@@ -162,45 +171,54 @@ function navAndClose(path) {
           </a>
           <ul class="dropdown-menu" aria-labelledby="internalsDropdown">
             <li>
-              <RouterLink to="/organisations" class="dropdown-item"
+              <RouterLink to="/users" class="dropdown-item fw-light"
+                >users</RouterLink
+              >
+            </li>
+            <li>
+              <RouterLink to="/organisations" class="dropdown-item fw-light"
                 >organisations</RouterLink
               >
             </li>
             <li><hr class="dropdown-divider" /></li>
             <li>
-              <RouterLink to="/settings/modules" class="dropdown-item"
+              <RouterLink to="/settings/modules" class="dropdown-item fw-light"
                 >modules</RouterLink
               >
             </li>
             <li><hr class="dropdown-divider" /></li>
             <li>
-              <RouterLink to="/settings/taxonomies" class="dropdown-item"
+              <RouterLink
+                to="/settings/taxonomies"
+                class="dropdown-item fw-light"
                 >taxonomies</RouterLink
               >
             </li>
             <li>
-              <RouterLink to="/settings/galaxies" class="dropdown-item"
+              <RouterLink to="/settings/galaxies" class="dropdown-item fw-light"
                 >galaxies</RouterLink
               >
             </li>
             <li><hr class="dropdown-divider" /></li>
             <li>
-              <RouterLink to="/correlations" class="dropdown-item"
+              <RouterLink to="/correlations" class="dropdown-item fw-light"
                 >correlations</RouterLink
               >
             </li>
             <li><hr class="dropdown-divider" /></li>
             <li>
-              <RouterLink to="/tasks" class="dropdown-item">tasks</RouterLink>
+              <RouterLink to="/tasks" class="dropdown-item fw-light"
+                >tasks</RouterLink
+              >
             </li>
             <li><hr class="dropdown-divider" /></li>
             <li>
-              <RouterLink to="/settings/runtime" class="dropdown-item"
+              <RouterLink to="/settings/runtime" class="dropdown-item fw-light"
                 >runtime settings</RouterLink
               >
             </li>
             <li>
-              <RouterLink to="/settings/user" class="dropdown-item"
+              <RouterLink to="/settings/user" class="dropdown-item fw-light"
                 >user settings</RouterLink
               >
             </li>
@@ -209,12 +227,12 @@ function navAndClose(path) {
       </div>
 
       <div class="d-flex align-items-center gap-2">
-        <button class="btn btn-outline" @click="switchTheme">
+        <button class="btn btn-outline btn-lg" @click="switchTheme">
           <FontAwesomeIcon :icon="theme === 'light' ? faMoon : faSun" />
         </button>
 
         <RouterLink to="/notifications">
-          <button class="btn btn-outline position-relative">
+          <button class="btn btn-outline btn-lg position-relative">
             <FontAwesomeIcon :icon="faBell" />
             <span
               v-if="unreadNotifications > 0"
@@ -226,7 +244,10 @@ function navAndClose(path) {
           </button>
         </RouterLink>
 
-        <button @click="authStore.logout()" class="btn btn-outline text-danger">
+        <button
+          @click="authStore.logout()"
+          class="btn btn-outline text-danger btn-lg"
+        >
           <FontAwesomeIcon :icon="faRightFromBracket" />
         </button>
       </div>
@@ -247,7 +268,11 @@ function navAndClose(path) {
 
       <!-- Logo -->
       <RouterLink to="/" class="navbar-brand mx-auto">
-        <img src="/images/misp-logo-pixel.png" height="28" />
+        <img
+          src="/images/misp-lite-no-background.png"
+          height="28"
+          :style="{ filter: theme === 'dark' ? 'invert(1)' : 'none' }"
+        />
       </RouterLink>
 
       <!-- Notifications -->
@@ -294,7 +319,7 @@ function navAndClose(path) {
             class="list-group-item list-group-item-action"
             @click.prevent="navAndClose('/explore')"
           >
-            Explore
+            explore
           </RouterLink>
         </li>
         <li>
@@ -303,22 +328,12 @@ function navAndClose(path) {
             class="list-group-item list-group-item-action"
             @click.prevent="navAndClose('/events')"
           >
-            Events
+            events
           </RouterLink>
         </li>
-        <li>
-          <RouterLink
-            to="/users"
-            class="list-group-item list-group-item-action"
-            @click.prevent="navAndClose('/users')"
-          >
-            Users
-          </RouterLink>
-        </li>
-
-        <!-- Sync submenu -->
+        <!-- Sources submenu -->
         <li class="list-group-item">
-          <strong>Sync</strong>
+          <strong>sources</strong>
           <ul class="list-group mt-2">
             <li>
               <RouterLink
@@ -326,7 +341,7 @@ function navAndClose(path) {
                 class="list-group-item list-group-item-action ps-4"
                 @click.prevent="navAndClose('/servers')"
               >
-                Servers
+                servers
               </RouterLink>
             </li>
             <li>
@@ -335,7 +350,7 @@ function navAndClose(path) {
                 class="list-group-item list-group-item-action ps-4"
                 @click.prevent="navAndClose('/feeds')"
               >
-                Feeds
+                feeds
               </RouterLink>
             </li>
           </ul>
@@ -343,15 +358,24 @@ function navAndClose(path) {
 
         <!-- Internals submenu -->
         <li class="list-group-item">
-          <strong>Internals</strong>
+          <strong>internals</strong>
           <ul class="list-group mt-2">
+            <li>
+              <RouterLink
+                to="/users"
+                class="list-group-item list-group-item-action ps-4"
+                @click.prevent="navAndClose('/users')"
+              >
+                users
+              </RouterLink>
+            </li>
             <li>
               <RouterLink
                 to="/organisations"
                 class="list-group-item list-group-item-action ps-4"
                 @click.prevent="navAndClose('/organisations')"
               >
-                Organisations
+                organisations
               </RouterLink>
             </li>
             <li>
@@ -360,7 +384,7 @@ function navAndClose(path) {
                 class="list-group-item list-group-item-action ps-4"
                 @click.prevent="navAndClose('/settings/modules')"
               >
-                Modules
+                modules
               </RouterLink>
             </li>
             <li>
@@ -369,7 +393,7 @@ function navAndClose(path) {
                 class="list-group-item list-group-item-action ps-4"
                 @click.prevent="navAndClose('/settings/taxonomies')"
               >
-                Taxonomies
+                taxonomies
               </RouterLink>
             </li>
             <li>
@@ -378,7 +402,7 @@ function navAndClose(path) {
                 class="list-group-item list-group-item-action ps-4"
                 @click.prevent="navAndClose('/settings/galaxies')"
               >
-                Galaxies
+                galaxies
               </RouterLink>
             </li>
             <li>
@@ -387,7 +411,7 @@ function navAndClose(path) {
                 class="list-group-item list-group-item-action ps-4"
                 @click.prevent="navAndClose('/correlations')"
               >
-                Correlations
+                correlations
               </RouterLink>
             </li>
             <li>
@@ -396,7 +420,7 @@ function navAndClose(path) {
                 class="list-group-item list-group-item-action ps-4"
                 @click.prevent="navAndClose('/tasks')"
               >
-                Tasks
+                tasks
               </RouterLink>
             </li>
             <li>
@@ -405,7 +429,7 @@ function navAndClose(path) {
                 class="list-group-item list-group-item-action ps-4"
                 @click.prevent="navAndClose('/settings/runtime')"
               >
-                Runtime Settings
+                runtime settings
               </RouterLink>
             </li>
             <li>
@@ -414,7 +438,7 @@ function navAndClose(path) {
                 class="list-group-item list-group-item-action ps-4"
                 @click.prevent="navAndClose('/settings/user')"
               >
-                User Settings
+                user settings
               </RouterLink>
             </li>
           </ul>
