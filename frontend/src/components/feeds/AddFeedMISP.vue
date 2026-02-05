@@ -104,9 +104,15 @@ watch(
         };
       }
       if (basic.tags.enabled && basic.tags.tags.length > 0) {
+        if (!rules) {
+          rules = {};
+        }
         rules.tags = basic.tags.tags;
       }
       if (basic.orgs.enabled && basic.orgs.orgs.length > 0) {
+        if (!rules) {
+          rules = {};
+        }
         rules.orgs = basic.orgs.orgs;
       }
     } else {
