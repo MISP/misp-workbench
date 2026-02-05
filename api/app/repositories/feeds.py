@@ -274,12 +274,12 @@ def filter_feed_by_rules(rules: dict, manifest: dict):
 
         if "timestamp" in rules:
             try:
-                rules["timestamp"] = int(rules["timestamp"])
+                timestamp_rule = int(rules["timestamp"])
             except ValueError:
                 # Convert human-readable time formats (e.g., 30d, 1y) to a timestamp
-                rules["timestamp"] = parse_human_readable_time(rules["timestamp"])
+                timestamp_rule = parse_human_readable_time(rules["timestamp"])
 
-            if event["timestamp"] <= rules["timestamp"]:
+            if event["timestamp"] <= timestamp_rule:
                 continue
 
         if "tags" in rules:
