@@ -71,7 +71,7 @@ function handleEventDeleted() {
   router.push(`/events`);
 }
 
-function handleObjectAdded() {
+function handleObjectCreated() {
   event.value.object_count += 1;
 }
 
@@ -344,7 +344,7 @@ div.row h3 {
           <UploadAttachmentsWidget
             :event_uuid="event.uuid"
             :key="event.object_count"
-            @object-added="handleObjectAdded"
+            @object-created="handleObjectCreated"
             @object-deleted="handleObjectDeleted"
           />
           <div class="card mt-2">
@@ -368,7 +368,11 @@ div.row h3 {
               <FontAwesomeIcon :icon="faCubesStacked" /> attributes
             </div>
             <div class="card-body d-flex flex-column">
-              <AttributesIndex :event_uuid="event.uuid" :page_size="10" />
+              <AttributesIndex
+                :event_uuid="event.uuid"
+                :page_size="10"
+                @object-created="handleObjectCreated"
+              />
             </div>
           </div>
         </div>

@@ -13,6 +13,13 @@ import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
 import { faSpinner } from "@fortawesome/free-solid-svg-icons";
 
 const props = defineProps(["event_uuid", "page_size"]);
+
+const emit = defineEmits([
+  "attribute-created",
+  "object-created",
+  "attribute-enriched",
+]);
+
 const attributesStore = useAttributesStore();
 const { page_count, attributes, status } = storeToRefs(attributesStore);
 
@@ -41,6 +48,10 @@ onPageChange(1);
 function handleAttributesUpdated() {
   // TODO FIXME: resets the page to 1 and reloads the attributes, not the best way to do this, reload current page
   onPageChange(1);
+}
+
+function handleObjectCreated(object) {
+  emit("object-created", object);
 }
 </script>
 
@@ -96,6 +107,8 @@ function handleAttributesUpdated() {
             <AttributeActions
               :attribute="attribute"
               @attribute-deleted="handleAttributesUpdated"
+              @attribute-enriched="handleAttributesUpdated"
+              @object-created="handleObjectCreated"
             />
           </td>
         </tr>
