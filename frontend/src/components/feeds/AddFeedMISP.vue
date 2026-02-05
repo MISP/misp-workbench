@@ -13,7 +13,7 @@ const props = defineProps({
   modelValue: {
     type: [Object, null],
     required: true,
-    default: (DEFAULT_FEED_RULES) => DEFAULT_FEED_RULES,
+    default: () => DEFAULT_FEED_RULES,
   },
 });
 
