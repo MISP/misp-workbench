@@ -27,7 +27,7 @@ const basic = reactive({
     value: 30,
     unit: "d",
   },
-  eventTags: {
+  tags: {
     enabled: false,
     tags: [],
   },
@@ -60,6 +60,14 @@ watch(
           }
         }
 
+        if (value.rules.tags) {
+          mode.value = "basic";
+          basic.tags.enabled = true;
+          basic.tags.tags = value.rules.tags;
+          initialized.value = true;
+          return;
+        }
+
         mode.value = "advanced";
       }
       initialized.value = true;
@@ -81,6 +89,9 @@ watch(
         rules = {
           timestamp: `${basic.timestamp.value}${basic.timestamp.unit}`,
         };
+      }
+      if (basic.tags.enabled && basic.tags.tags.length > 0) {
+        rules.tags = basic.tags.tags;
       }
     } else {
       try {
@@ -188,14 +199,18 @@ if (props.modelValue === null) {
             <input
               class="form-check-input"
               type="checkbox"
-              v-model="basic.eventTags.enabled"
-              id="eventTagsRule"
+              v-model="basic.tags.enabled"
+              id="tagsRule"
             />
-            <label class="form-check-label" for="eventTagsRule">
+            <label class="form-check-label" for="tagsRule">
               Only fetch events with specific tags
             </label>
-            <div class="row g-2 mt-2" v-if="basic.eventTags.enabled">
-              <TagsSelect :modelClass="'event'" :model="basic.eventTags.tags" />
+            <div class="row g-2 mt-2" v-if="basic.tags.enabled">
+              <TagsSelect
+                :modelClass="'event'"
+                :model="basic.tags.tags"
+                @update:selectedTags="basic.tags.tags = $event"
+              />
             </div>
           </div>
         </div>
