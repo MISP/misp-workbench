@@ -1,6 +1,7 @@
 <script setup>
 import { ref, reactive, watch } from "vue";
 import TagsSelect from "../tags/TagsSelect.vue";
+import OrganisationsMultiSelect from "../organisations/OrganisationsMultiSelect.vue";
 
 const DEFAULT_FEED_RULES = {
   rules: {
@@ -30,6 +31,10 @@ const basic = reactive({
   tags: {
     enabled: false,
     tags: [],
+  },
+  orgs: {
+    enabled: false,
+    orgs: [],
   },
 });
 
@@ -68,6 +73,14 @@ watch(
           return;
         }
 
+        if (value.rules.orgs) {
+          mode.value = "basic";
+          basic.orgs.enabled = true;
+          basic.orgs.orgs = value.rules.orgs;
+          initialized.value = true;
+          return;
+        }
+
         mode.value = "advanced";
       }
       initialized.value = true;
@@ -92,6 +105,9 @@ watch(
       }
       if (basic.tags.enabled && basic.tags.tags.length > 0) {
         rules.tags = basic.tags.tags;
+      }
+      if (basic.orgs.enabled && basic.orgs.orgs.length > 0) {
+        rules.orgs = basic.orgs.orgs;
       }
     } else {
       try {
@@ -210,6 +226,24 @@ if (props.modelValue === null) {
                 :modelClass="'event'"
                 :model="basic.tags.tags"
                 @update:selectedTags="basic.tags.tags = $event"
+              />
+            </div>
+          </div>
+          <div class="form-check mb-3">
+            <input
+              class="form-check-input"
+              type="checkbox"
+              v-model="basic.orgs.enabled"
+              id="orgsRule"
+            />
+            <label class="form-check-label" for="orgsRule">
+              Only fetch events from specific organisations
+            </label>
+            <div class="row g-2 mt-2" v-if="basic.orgs.enabled">
+              <OrganisationsMultiSelect
+                :modelClass="'event'"
+                :model="basic.orgs.orgs"
+                @update:selectedOrgs="basic.orgs.orgs = $event"
               />
             </div>
           </div>
