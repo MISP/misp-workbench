@@ -10,7 +10,6 @@ const emit = defineEmits(["update:selectedOrgs"]);
 
 const selectElement = ref(null);
 let tomselect = null;
-const _updatingFromProp = false;
 
 function emitSelected() {
   if (!tomselect) return;
@@ -42,14 +41,12 @@ function initTomSelect() {
     items: props.selectedOrgs.map((org) => org),
     plugins: ["remove_button"],
     onItemRemove() {
-      if (!_updatingFromProp) emitSelected();
+      emitSelected();
     },
     onItemAdd() {
-      // notify parent of change
-      if (!_updatingFromProp) emitSelected();
+      emitSelected();
     },
     onChange() {
-      if (_updatingFromProp) return;
       emitSelected();
     },
   });
