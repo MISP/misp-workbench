@@ -8,6 +8,7 @@ import FeedBaseForm from "@/components/feeds/FeedBaseForm.vue";
 import AddFeedMISP from "@/components/feeds/AddFeedMISP.vue";
 import AddFeedCsv from "@/components/feeds/AddFeedCsv.vue";
 import AddFeedJson from "@/components/feeds/AddFeedJson.vue";
+import TestMISPFeedConnectionModal from "./TestMISPFeedConnectionModal.vue";
 
 const feedsStore = useFeedsStore();
 const toastsStore = useToastsStore();
@@ -219,41 +220,9 @@ function closeTestResult() {
       </div>
     </div>
   </div>
-  <div v-if="testResultOpen" class="test-modal-backdrop">
-    <div class="test-modal">
-      <div class="card">
-        <div
-          class="card-header d-flex justify-content-between align-items-center"
-        >
-          <div>
-            <strong>Connection Test</strong>
-          </div>
-        </div>
-        <div class="card-body">
-          <div v-if="testResult.success" class="alert alert-success">
-            {{ testResult.message }}
-          </div>
-          <div v-else class="alert alert-danger">
-            {{ testResult.message }}
-          </div>
-          <div v-if="testResult.total_events">
-            <p class="mb-0">
-              <strong>Total feed events:</strong> {{ testResult.total_events }}
-            </p>
-          </div>
-          <div v-if="testResult.total_filtered_events">
-            <p class="mb-0">
-              <strong>Total events to fetch:</strong>
-              {{ testResult.total_filtered_events }}
-            </p>
-          </div>
-        </div>
-        <div class="card-footer text-end">
-          <button class="btn btn-secondary" @click="closeTestResult">
-            Close
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
+  <TestMISPFeedConnectionModal
+    v-if="testResultOpen"
+    :testResult="testResult"
+    @closeTestResultModal="closeTestResult"
+  />
 </template>

@@ -34,8 +34,8 @@ function toggleEnable(feed) {
           <th scope="col">name</th>
           <th scope="col">provider</th>
           <th scope="col" v-if="!$isMobile">url</th>
-          <th scope="col" v-if="!$isMobile">source_format</th>
-          <th scope="col" v-if="!$isMobile">input_source</th>
+          <th scope="col" v-if="!$isMobile">format</th>
+          <th scope="col" v-if="!$isMobile">source</th>
           <th scope="col" class="text-end">enabled</th>
           <th scope="col" class="text-end">actions</th>
         </tr>
