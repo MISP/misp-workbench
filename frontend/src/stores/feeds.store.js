@@ -9,7 +9,6 @@ export const useFeedsStore = defineStore({
   state: () => ({
     feeds: {},
     feed: {},
-    testConnection: {},
     status: {
       loading: false,
       updating: false,
@@ -68,6 +67,12 @@ export const useFeedsStore = defineStore({
     async fetch(id) {
       return await fetchWrapper
         .post(`${baseUrl}/${id}/fetch`)
+        .catch((error) => (this.status.error = error));
+    },
+    async testConnection(feed) {
+      this.status = { updating: true };
+      return await fetchWrapper
+        .post(`${baseUrl}/test-connection`, feed)
         .catch((error) => (this.status.error = error));
     },
   },

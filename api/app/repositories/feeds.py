@@ -12,6 +12,7 @@ from app.worker import tasks
 from fastapi import HTTPException, status
 from pymisp import MISPEvent
 from sqlalchemy.orm import Session
+from datetime import datetime, timedelta
 
 logger = logging.getLogger(__name__)
 
@@ -220,7 +221,7 @@ def fetch_feed(db: Session, feed_id: int, user: user_schemas.User):
 
 
             # filter feed events to fetch based on rules
-            manifest = filter_feed_by_rules(db, db_feed, manifest)
+            manifest = filter_feed_by_rules(db_feed.rules, manifest)
 
             feed_events_uuids = manifest.keys()
 
@@ -255,29 +256,87 @@ def fetch_feed(db: Session, feed_id: int, user: user_schemas.User):
         "message": "All feed id=%s events to fetch enqueued." % feed_id,
     }
 
-def filter_feed_by_rules(db: Session, feed: feed_models.Feed, manifest: dict):
+def filter_feed_by_rules(rules: dict, manifest: dict):
     # apply feed rules to filter manifest events
-    if not feed.rules or feed.rules == {}:
+    if not rules or rules == {}:
         return manifest
     
     filtered_manifest = {}
     
-    if "eventid" in feed.rules:
-        event_ids_rule = feed.rules["eventid"] if isinstance(feed.rules["eventid"], list) else [feed.rules["eventid"]]
+    if "event_uuid" in rules:
+        event_uuids_rule = rules["event_uuid"] if isinstance(rules["event_uuid"], list) else [rules["event_uuid"]]
 
     for uuid, event in manifest.items():
         # filter by event id
-        if "eventid" in feed.rules:
-            if uuid not in event_ids_rule:
+        if "event_uuid" in rules:
+            if uuid not in event_uuids_rule:
+                continue
+
+        if "timestamp" in rules:
+            try:
+                rules["timestamp"] = int(rules["timestamp"])
+            except ValueError:
+                # Convert human-readable time formats (e.g., 30d, 1y) to a timestamp
+                rules["timestamp"] = parse_human_readable_time(rules["timestamp"])
+
+            if event["timestamp"] <= rules["timestamp"]:
+                continue
+
+        if "tags" in rules:
+            event_tags = event.get("Tag", [])
+            required_tags = rules["tags"] if isinstance(rules["tags"], list) else [rules["tags"]]
+            if not any(tag in [t.name for t in event_tags] for tag in required_tags):
+                continue
+
+        if "orgs" in rules:
+            event_org = event.get("Orgc", {}).get("name", "")
+            required_orgs = rules["orgs"] if isinstance(rules["orgs"], list) else [rules["orgs"]]
+            if event_org not in required_orgs:
                 continue
 
         filtered_manifest[uuid] = event
 
-        if "timestamp" in feed.rules:
-            # TODO: support human readable time formats (10d, 3h, etc)
-            if event["timestamp"] <= feed.rules["timestamp"]:
-                continue
-
-        # TODO: support missing filters
-
     return filtered_manifest
+
+def test_feed_connection(db: Session, feed: feed_schemas.FeedCreate):
+    if feed.source_format == "misp":
+        try:
+            response = get_feed_manifest(feed)
+            if response.status_code == 200:
+                manifest = response.json()
+                
+                total_events = len(manifest)
+
+                # apply feed rules to filter manifest events
+                filtered_manifest = filter_feed_by_rules(feed.rules, manifest)
+                total_filtered_events = len(filtered_manifest)
+
+                return {"result": "success", "message": "Connection successful", "total_events": total_events, "total_filtered_events": total_filtered_events}
+            else:
+                raise HTTPException(
+                    status_code=response.status_code,
+                    detail=f"Failed to connect to feed: {response.text}",
+                )
+        except Exception as e:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Failed to connect to feed: {str(e)}",
+            )
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Unsupported feed source format: {feed.source_format}",
+        )
+    
+def parse_human_readable_time(time_str):
+    unit = time_str[-1]
+    value = int(time_str[:-1])
+    now = datetime.now()
+    if unit == "d":
+        return int((now - timedelta(days=value)).timestamp())
+    elif unit == "h":
+        return int((now - timedelta(hours=value)).timestamp())
+    elif unit == "y":
+        return int((now - timedelta(days=value * 365)).timestamp())
+    else:
+        raise ValueError(f"Unsupported time format: {time_str}")
