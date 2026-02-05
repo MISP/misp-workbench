@@ -207,7 +207,7 @@ function closeTestResult() {
             Cancel
           </button>
           <button class="btn btn-success" :disabled="!canSubmit" @click="test">
-            Test
+            Test Connection
           </button>
           <button
             class="btn btn-primary"

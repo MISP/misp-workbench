@@ -252,20 +252,45 @@ if (props.modelValue === null) {
 
       <!-- ADVANCED MODE -->
       <div v-else>
-        <div class="alert alert-warning">
-          Advanced mode allows you to define the rules object directly. Invalid
-          JSON or unsupported rules may cause feed ingestion to fail or behave
-          unexpectedly.
-        </div>
-
         <textarea
           class="form-control font-monospace"
           rows="8"
           v-model="advancedJson"
           placeholder='{
-   "timestamp": "30d"
+  "timestamp": "30d"
 }'
         />
+        <div class="alert alert-info mt-2">
+          <p>
+            Advanced mode allows you to define the rules object directly.
+            Invalid JSON or unsupported rules may cause feed ingestion to fail
+            or behave unexpectedly.
+          </p>
+          <p>
+            Use the <strong>Test Connection</strong> button to validate your
+            rules before saving.
+          </p>
+          <p>Supported rules are:</p>
+          <ul>
+            <li>
+              <code>timestamp</code>: Only fetch events published after a given
+              time. Format can be a number followed by a unit, where unit can be
+              <code>d</code> (days), <code>w</code> (weeks) or
+              <code>m</code> (months). Example:
+              <code>"timestamp": "30d"</code> or a Unix timestamp.
+            </li>
+            <li>
+              <code>tags</code>: Only fetch events with specific tags. Format is
+              an array of tag names. Example:
+              <code>"tags": ["tlp:white", "type:OSINT"]</code>.
+            </li>
+            <li>
+              <code>orgs</code>: Only fetch events from specific organisations.
+              Format is an array of organisation names. Example:
+              <code>"orgs": ["CIRCL", "FIRST.ORG"]</code>.
+            </li>
+          </ul>
+        </div>
       </div>
     </div>
   </div>
