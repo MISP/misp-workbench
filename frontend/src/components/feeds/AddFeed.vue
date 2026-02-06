@@ -114,7 +114,7 @@ function test() {
     return feedsStore
       .testConnection(mispFeed)
       .then((response) => {
-        if (response.result == "success") {
+        if (response.result === "success") {
           testResult.success = true;
           testResult.message = `Connection successful!`;
           testResult.total_events = response.total_events;
