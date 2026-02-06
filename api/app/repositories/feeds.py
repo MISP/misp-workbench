@@ -285,7 +285,13 @@ def filter_feed_by_rules(rules: dict, manifest: dict):
         if "tags" in rules:
             event_tags = event.get("Tag", [])
             required_tags = rules["tags"] if isinstance(rules["tags"], list) else [rules["tags"]]
-            if not any(tag in [t.name for t in event_tags] for tag in required_tags):
+            if not any(
+                tag in [
+                    (t.get("name", "") if isinstance(t, dict) else getattr(t, "name", ""))
+                    for t in event_tags
+                ]
+                for tag in required_tags
+            ):
                 continue
 
         if "orgs" in rules:
