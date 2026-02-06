@@ -247,12 +247,12 @@ if (props.modelValue === null) {
             </label>
             <div class="row g-2 mt-2" v-if="basic.orgs.enabled">
               <OrganisationsMultiSelect
-                :modelClass="'event'"
-                :model="basic.orgs.orgs"
                 @update:selectedOrgs="basic.orgs.orgs = $event"
               />
             </div>
           </div>
+        </div>
+      </div>
         </div>
       </div>
 
