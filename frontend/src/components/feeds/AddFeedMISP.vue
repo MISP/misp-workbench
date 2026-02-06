@@ -230,6 +230,7 @@ if (props.modelValue === null) {
               <TagsSelect
                 :modelClass="'event'"
                 :model="basic.tags.tags"
+                :persist="false"
                 @update:selectedTags="basic.tags.tags = $event"
               />
             </div>
