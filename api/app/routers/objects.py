@@ -67,7 +67,16 @@ def create_object(
         get_current_active_user, scopes=["objects:create"]
     ),
 ):
-    event = events_repository.get_event_by_uuid(db, event_uuid=object.event_uuid)
+    
+    if object.event_id:
+        event = events_repository.get_event_by_id(db, event_id=object.event_id)
+    elif object.event_uuid:
+        event = events_repository.get_event_by_uuid(db, event_uuid=object.event_uuid)
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Event UUID is required"
+        )
+
     if event is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Event not found"

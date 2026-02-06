@@ -332,6 +332,10 @@ body {
   border-bottom-left-radius: var(--bs-card-border-radius);
   border-bottom-right-radius: var(--bs-card-border-radius);
 }
+
+.text-console {
+  font-family: "Courier New", Courier, monospace;
+}
 </style>
 
 <template>
@@ -380,7 +384,7 @@ body {
                 class="list-group-item d-flex justify-content-between align-items-center"
               >
                 <div
-                  class="text-truncate cursor-pointer"
+                  class="text-truncate cursor-pointer text-console"
                   :title="term"
                   style="max-width: 220px"
                   @click="((searchQuery = term), search())"
@@ -403,7 +407,7 @@ body {
                 class="list-group-item d-flex justify-content-between align-items-center"
               >
                 <div
-                  class="text-truncate cursor-pointer"
+                  class="text-truncate cursor-pointer text-console"
                   :title="term"
                   style="max-width: 220px"
                   @click="((searchQuery = term), search())"
@@ -433,7 +437,7 @@ body {
           </button>
           <input
             type="text"
-            class="form-control"
+            class="form-control text-console"
             list="previous-searches"
             :placeholder="animatedPlaceholder"
             @focus="isFocused = true"

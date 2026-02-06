@@ -1,11 +1,16 @@
 <script setup>
+import { ref } from "vue";
 import { Form, Field } from "vee-validate";
 import * as Yup from "yup";
 import { useAuthStore } from "@/stores";
+
 const schema = Yup.object().shape({
   username: Yup.string().required("Username is required"),
   password: Yup.string().required("Password is required"),
 });
+
+const theme = ref(localStorage.getItem("theme") || "light");
+
 function onSubmit(values, { setErrors }) {
   const authStore = useAuthStore();
   const { username, password } = values;
@@ -63,7 +68,13 @@ function onSubmit(values, { setErrors }) {
     class="form-signin d-flex flex-column min-vh-100 justify-content-center align-items-center"
   >
     <Form @submit="onSubmit" :validation-schema="schema" v-slot="{ errors }">
-      <img class="mb-4" src="/images/misp-logo-pixel.png" alt="" width="120" />
+      <img
+        class="mb-4"
+        src="/images/misp-lite-no-background.png"
+        alt=""
+        width="140"
+        :style="{ filter: theme === 'dark' ? 'invert(1)' : 'none' }"
+      />
 
       <div class="form-floating">
         <Field

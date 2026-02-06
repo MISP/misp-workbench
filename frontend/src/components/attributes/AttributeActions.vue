@@ -97,6 +97,10 @@ function handleAttributeEnriched() {
   emit("attribute-enriched", props.attribute.id);
 }
 
+function handleObjectCreated(object) {
+  emit("object-created", object);
+}
+
 function followAttribute() {
   followed.value = !followed.value;
   toggleFollowEntity("attributes", props.attribute.uuid, followed.value);
@@ -286,6 +290,7 @@ function followAttribute() {
     :key="attribute.id"
     :id="`enrichAttributeModal_${attribute.id}`"
     @attribute-enriched="handleAttributeEnriched"
+    @object-created="handleObjectCreated"
     :modal="enrichAttributeModal"
     :attribute="attribute"
   />

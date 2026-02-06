@@ -86,3 +86,11 @@ def fetch_feed(
 
     result = tasks.fetch_feed.delay(feed_id, user.id)
     return {"task": {"id": result.id, "name": "fetch_feed", "status": result.status}}
+
+@router.post("/feeds/test-connection")
+def test_feed_connection(
+    feed: feed_schemas.FeedCreate,
+    db: Session = Depends(get_db),
+    user: user_schemas.User = Security(get_current_active_user, scopes=["feeds:test-connection"]),
+):
+    return feeds_repository.test_feed_connection(db=db, feed=feed)
