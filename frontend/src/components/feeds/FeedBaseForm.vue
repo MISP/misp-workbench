@@ -22,7 +22,7 @@ const local = reactive({
   distribution: "0",
   enabled: true,
   description: "",
-  input_source: "",
+  input_source: "network",
   schedule: "daily",
   fetch_on_create: true,
 });
