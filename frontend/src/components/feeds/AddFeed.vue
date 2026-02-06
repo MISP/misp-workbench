@@ -72,7 +72,6 @@ function submit() {
     return feedsStore
       .create(mispFeed)
       .then((response) => {
-        console.log("Feed created:", response);
         toastsStore.push(
           `Feed "${response.name}" created successfully!`,
           "success",
