@@ -10,8 +10,8 @@ import {
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
 import ApiError from "@/components/misc/ApiError.vue";
 import {
-  faCaretDown,
-  faCaretUp,
+  faChevronDown,
+  faChevronUp,
   faFileDownload,
   faFileLines,
   faFloppyDisk,
@@ -366,7 +366,7 @@ body {
             </div>
 
             <FontAwesomeIcon
-              :icon="faCaretDown"
+              :icon="faChevronDown"
               class="text-muted transition"
               :class="{ 'rotate-180': savedCardOpen }"
             />
@@ -489,10 +489,10 @@ body {
                 </span>
                 <span class="ms-2" aria-hidden="true">
                   <span v-if="showEvents">
-                    <FontAwesomeIcon :icon="faCaretUp" class="ms-2" />
+                    <FontAwesomeIcon :icon="faChevronUp" class="ms-1" />
                   </span>
                   <span v-else>
-                    <FontAwesomeIcon :icon="faCaretDown" class="ms-2" />
+                    <FontAwesomeIcon :icon="faChevronDown" class="ms-1" />
                   </span>
                 </span>
               </div>
@@ -584,10 +584,10 @@ body {
               </span>
               <span class="ms-2" aria-hidden="true">
                 <span v-if="showAttributes">
-                  <FontAwesomeIcon :icon="faCaretUp" class="ms-2" />
+                  <FontAwesomeIcon :icon="faChevronUp" class="ms-1" />
                 </span>
                 <span v-else>
-                  <FontAwesomeIcon :icon="faCaretDown" class="ms-2" />
+                  <FontAwesomeIcon :icon="faChevronDown" class="ms-1" />
                 </span>
               </span>
             </div>
