@@ -1,11 +1,13 @@
 <script setup>
 import { ref, reactive, watch } from "vue";
-import TagsSelect from "../tags/TagsSelect.vue";
-import OrganisationsMultiSelect from "../organisations/OrganisationsMultiSelect.vue";
+import TagsSelect from "@/components/tags/TagsSelect.vue";
+import OrganisationsMultiSelect from "@/components/organisations/OrganisationsMultiSelect.vue";
 
 const DEFAULT_FEED_RULES = {
-  rules: {
-    timestamp: "30d",
+  typeConfig: {
+    rules: {
+      timestamp: "30d",
+    },
   },
 };
 
@@ -19,7 +21,6 @@ const props = defineProps({
 const emit = defineEmits(["update:modelValue"]);
 
 const mode = ref("basic");
-const initialized = ref(false);
 
 const basic = reactive({
   timestamp: {
@@ -38,55 +39,6 @@ const basic = reactive({
 });
 
 const advancedJson = ref("");
-
-/**
- * Initialize from existing modelValue
- */
-watch(
-  () => props.modelValue,
-  (value) => {
-    // Only auto-detect mode from incoming modelValue on initial mount.
-    // After the user has interacted (switched modes manually), do not override their choice.
-    if (!initialized.value) {
-      if (value?.rules) {
-        // Try advanced first
-        advancedJson.value = JSON.stringify(value.rules, null, 2);
-
-        if (value.rules.timestamp) {
-          const match = value.rules.timestamp.match(/^(\d+)([dwm])$/);
-          if (match) {
-            mode.value = "basic";
-            basic.timestamp.enabled = true;
-            basic.timestamp.value = Number(match[1]);
-            basic.timestamp.unit = match[2];
-            initialized.value = true;
-            return;
-          }
-        }
-
-        if (value.rules.tags) {
-          mode.value = "basic";
-          basic.tags.enabled = true;
-          basic.tags.tags = value.rules.tags;
-          initialized.value = true;
-          return;
-        }
-
-        if (value.rules.orgs) {
-          mode.value = "basic";
-          basic.orgs.enabled = true;
-          basic.orgs.orgs = value.rules.orgs;
-          initialized.value = true;
-          return;
-        }
-
-        mode.value = "advanced";
-      }
-      initialized.value = true;
-    }
-  },
-  { immediate: true, deep: true },
-);
 
 /**
  * Emit rules depending on mode
@@ -123,12 +75,15 @@ watch(
       }
     }
 
-    emit("update:modelValue", rules ? { rules } : {});
+    emit("update:modelValue", { typeConfig: rules ? { rules } : {} });
   },
   { deep: true },
 );
 
-if (props.modelValue === null) {
+if (
+  props.modelValue.typeConfig === null ||
+  Object.keys(props.modelValue.typeConfig).length === 0
+) {
   emit("update:modelValue", DEFAULT_FEED_RULES);
 }
 </script>
@@ -251,8 +206,6 @@ if (props.modelValue === null) {
               />
             </div>
           </div>
-        </div>
-      </div>
         </div>
       </div>
 
