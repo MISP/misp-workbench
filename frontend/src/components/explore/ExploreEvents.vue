@@ -366,9 +366,14 @@ body {
             </div>
 
             <FontAwesomeIcon
+              v-if="!savedCardOpen"
               :icon="faChevronDown"
               class="text-muted transition"
-              :class="{ 'rotate-180': savedCardOpen }"
+            />
+            <FontAwesomeIcon
+              v-if="savedCardOpen"
+              :icon="faChevronUp"
+              class="text-muted transition"
             />
           </div>
 
