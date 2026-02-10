@@ -5,10 +5,10 @@ import { useFeedsStore, useToastsStore } from "@/stores";
 
 import FeedTypeSelector from "@/components/feeds/FeedTypeSelector.vue";
 import FeedBaseForm from "@/components/feeds/FeedBaseForm.vue";
-import AddFeedMISP from "@/components/feeds/AddFeedMISP.vue";
-import AddFeedCsv from "@/components/feeds/AddFeedCsv.vue";
-import AddFeedJson from "@/components/feeds/AddFeedJson.vue";
-import TestMISPFeedConnectionModal from "./TestMISPFeedConnectionModal.vue";
+import AddFeedMISP from "@/components/feeds/misp/AddFeedMISP.vue";
+import AddFeedCsv from "@/components/feeds/csv/AddFeedCsv.vue";
+import TestMISPFeedConnectionModal from "@/components/feeds/misp/TestMISPFeedConnectionModal.vue";
+import AddFeedJson from "@/components/feeds/json/AddFeedJson.vue";
 
 const feedsStore = useFeedsStore();
 const toastsStore = useToastsStore();
@@ -16,7 +16,7 @@ const toastsStore = useToastsStore();
 const feedType = ref("misp");
 const apiError = ref(null);
 
-const baseConfig = ref({
+const config = ref({
   name: "",
   url: "",
   input_source: "network",
@@ -25,9 +25,8 @@ const baseConfig = ref({
   provider: "",
   distribution: 0,
   fetch_on_create: true,
+  typeConfig: {},
 });
-
-const typeConfig = ref(null);
 
 const typeComponent = computed(() => {
   switch (feedType.value) {
@@ -50,20 +49,17 @@ const testResult = reactive({ success: false, message: "", total_events: 0 });
  * (prevents leaking CSV mapping into JSON, etc.)
  */
 watch(feedType, () => {
-  typeConfig.value = {};
+  config.value.typeConfig = {};
 });
 
 const canSubmit = computed(() => {
-  return baseConfig.value.name && baseConfig.value.url;
+  return config.value.name && config.value.url;
 });
 
 function submit() {
   const feed = {
     type: feedType.value,
-    config: {
-      ...baseConfig.value,
-      ...typeConfig.value,
-    },
+    config: config.value,
   };
 
   if (feed.type === "misp") {
@@ -84,14 +80,14 @@ function submit() {
 
 function getMispFeedFromConfig() {
   return {
-    name: baseConfig.value.name,
-    url: baseConfig.value.url,
-    provider: baseConfig.value.provider,
+    name: config.value.name,
+    url: config.value.url,
+    provider: config.value.provider,
     source_format: feedType.value,
-    enabled: baseConfig.value.enabled,
-    distribution: baseConfig.value.distribution,
-    input_source: baseConfig.value.input_source,
-    rules: typeConfig.value.rules,
+    enabled: config.value.enabled,
+    distribution: config.value.distribution,
+    input_source: config.value.input_source,
+    rules: config.value.typeConfig.rules,
   };
 }
 
@@ -102,10 +98,7 @@ function cancel() {
 function test() {
   const feed = {
     type: feedType.value,
-    config: {
-      ...baseConfig.value,
-      ...typeConfig.value,
-    },
+    config: config.value,
   };
 
   if (feed.type === "misp") {
@@ -190,13 +183,13 @@ function closeTestResult() {
               <h5 class="mb-0">Feed Settings</h5>
             </div>
             <div class="card-body">
-              <FeedBaseForm v-model="baseConfig" />
+              <FeedBaseForm v-model="config" />
             </div>
           </div>
         </div>
 
         <div class="mb-4">
-          <component :is="typeComponent" v-model="typeConfig" />
+          <component :is="typeComponent" v-model="config" />
         </div>
         <div v-if="apiError" class="w-100 alert alert-danger mt-3 mb-3">
           {{ apiError }}
@@ -206,7 +199,7 @@ function closeTestResult() {
             Cancel
           </button>
           <button class="btn btn-success" :disabled="!canSubmit" @click="test">
-            Test Connection
+            Preview
           </button>
           <button
             class="btn btn-primary"

@@ -35,7 +35,7 @@ watch(
   (value) => {
     Object.assign(local, value);
   },
-  { immediate: true, deep: true },
+  { deep: true },
 );
 
 /**
@@ -135,7 +135,7 @@ function handleDistributionLevelUpdated(distributionLevelId) {
         </div>
 
         <div class="col-10">
-          <label class="form-label" for="feed.url">URL</label>
+          <label class="form-label" for="feed.url">URI</label>
           <div class="input-group mb-3">
             <div class="input-group-prepend">
               <span class="input-group-text">
