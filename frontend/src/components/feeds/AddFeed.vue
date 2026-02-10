@@ -23,7 +23,7 @@ const config = ref({
   enabled: true,
   schedule: "daily",
   provider: "",
-  distribution: 0,
+  distribution: 1,
   fetch_on_create: true,
   typeConfig: {},
 });
@@ -85,7 +85,7 @@ function getMispFeedFromConfig() {
     provider: config.value.provider,
     source_format: feedType.value,
     enabled: config.value.enabled,
-    distribution: config.value.distribution,
+    distribution: parseInt(config.value.distribution),
     input_source: config.value.input_source,
     rules: config.value.typeConfig.rules,
   };

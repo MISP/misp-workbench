@@ -335,17 +335,16 @@ def test_feed_connection(db: Session, feed: feed_schemas.FeedCreate):
             detail=f"Unsupported feed source format: {feed.source_format}",
         )
     
-def preview_csv_feed(db: Session, url: str, mode: str = "url"):
+def preview_csv_feed(url: str, mode: str = "url"):
 
     if mode == "network":
         try:
-            # TODO: add support for custom headers from feed configuration
-            # TODO: do not fetch the entire CSV file if it's large, only fetch the first few lines for preview
             response = requests.get(url, headers={"User-Agent": USER_AGENT})
             if response.status_code == 200:
                 content = response.content.decode("utf-8")
                 lines = content.splitlines()
-                preview_lines = lines[:10]  # Get the first 10 lines for preview
+                lines = [line for line in lines if line.strip() and not line.strip().startswith("#")]
+                preview_lines = [line for line in lines[:10] ]
                 csv_reader = csv.reader(preview_lines)
                 parsed_preview = [row for row in csv_reader]
                 return {"result": "success", "preview": parsed_preview}
@@ -363,7 +362,7 @@ def preview_csv_feed(db: Session, url: str, mode: str = "url"):
         try:
             with open(url, "r") as f:
                 lines = f.readlines()
-                preview_lines = lines[:10]  # Get the first 10 lines for preview
+                preview_lines = [line for line in lines[:10] if not line.strip().startswith("#")]
                 csv_reader = csv.reader(preview_lines)
                 parsed_preview = [row for row in csv_reader]
                 return {"result": "success", "preview": parsed_preview}

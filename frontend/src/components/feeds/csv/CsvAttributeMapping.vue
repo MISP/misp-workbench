@@ -9,6 +9,10 @@ const props = defineProps({
     type: Object,
     required: true,
   },
+  rows: {
+    type: Array,
+    default: () => [],
+  },
   columns: {
     type: Array,
     required: true,
@@ -93,24 +97,37 @@ function handleMappingTypeChanged(type, idx) {
 <template>
   <div class="card">
     <div class="card-header">
-      <strong>Attribute Mapping</strong>
+      <h5 class="mb-0">Attribute Mapping</h5>
     </div>
 
     <div class="card-body">
       <!-- VALUE COLUMN -->
-      <div class="mb-3 col-md-4">
-        <label class="form-label">attribute value column</label>
-        <select class="form-select" v-model="config.value_column">
-          <option disabled value="">Select column</option>
-          <option v-for="col in columns" :key="col" :value="col">
-            {{ col }}
-          </option>
-        </select>
-        <small class="text-muted">
-          This column provides the attribute value.
-        </small>
+      <div class="row">
+        <div class="mb-3 col-md-4">
+          <label class="form-label">attribute value column</label>
+          <select class="form-select" v-model="config.value_column">
+            <option disabled value="">Select column</option>
+            <option v-for="col in columns" :key="col" :value="col">
+              {{ col }}
+            </option>
+          </select>
+          <small class="text-muted">
+            This column provides the attribute value.
+          </small>
+        </div>
+        <div class="mb-3 col-md-4">
+          <label class="form-label">sample</label>
+          <div class="border rounded p-2 text-truncate">
+            <span
+              >{{
+                rows.length > 0 && config.value_column
+                  ? rows[0][columns.indexOf(config.value_column)]
+                  : "—"
+              }}&nbsp;</span
+            >
+          </div>
+        </div>
       </div>
-
       <hr />
 
       <!-- TYPE STRATEGY -->

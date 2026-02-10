@@ -82,6 +82,7 @@ function previewCsvFeed() {
   <CsvAttributeMapping
     v-if="csvConfig.mode === 'attribute'"
     v-model="csvConfig.attribute"
+    :rows="csvRows"
     :columns="csvConfig.columns"
   />
 </template>
