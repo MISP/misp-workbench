@@ -1,15 +1,22 @@
 <script setup>
 import { storeToRefs } from "pinia";
-import { useEventsStore } from "@/stores";
+import { useEventsStore, useServersStore, useFeedsStore } from "@/stores";
 import Spinner from "@/components/misc/Spinner.vue";
 import TagsIndex from "@/components/tags/TagsIndex.vue";
 import Paginate from "vuejs-paginate-next";
 import EventActions from "@/components/events/EventActions.vue";
 
 const eventsStore = useEventsStore();
+const serversStore = useServersStore();
+const feedsStore = useFeedsStore();
+const { servers } = storeToRefs(serversStore);
+const { feeds } = storeToRefs(feedsStore);
 const { page_count, events, status } = storeToRefs(eventsStore);
 
 const props = defineProps(["page_size"]);
+
+serversStore.getAll();
+feedsStore.getAll();
 
 function onPageChange(page) {
   eventsStore.get({
@@ -53,6 +60,13 @@ function handleEventDeleted() {
 </style>
 
 <template>
+  <div v-if="feeds.length === 0 && servers.length === 0">
+    <div class="alert alert-info text-center">
+      No servers or feeds configured. Please add a
+      <RouterLink to="/servers/add">server</RouterLink> or a
+      <RouterLink to="/feeds/add">feed</RouterLink> to fetch events.
+    </div>
+  </div>
   <div v-if="status.error" class="text-danger">
     Error loading events: {{ status.error }}
   </div>
