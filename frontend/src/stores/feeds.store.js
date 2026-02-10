@@ -75,5 +75,15 @@ export const useFeedsStore = defineStore({
         .post(`${baseUrl}/test-connection`, feed)
         .catch((error) => (this.status.error = error));
     },
+    async previewCsvFeed({ url, mode }) {
+      this.status = { loading: true };
+      return await fetchWrapper
+        .get(
+          baseUrl +
+            "/csv/preview?" +
+            new URLSearchParams({ url: url, mode: mode }).toString(),
+        )
+        .catch((error) => (this.status.error = error));
+    },
   },
 });
