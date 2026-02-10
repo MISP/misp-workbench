@@ -56,6 +56,15 @@ def test_feed_connection(
 ):
     return feeds_repository.test_feed_connection(db=db, feed=feed)
 
+@router.get("/feeds/csv/preview")
+def preview_csv_feed(
+    url: str,
+    mode: str = "network",
+    db: Session = Depends(get_db),
+    user: user_schemas.User = Security(get_current_active_user, scopes=["feeds:preview-csv"]),
+):
+    return feeds_repository.preview_csv_feed(db=db, url=url, mode=mode)
+
 @router.patch("/feeds/{feed_id}", response_model=feed_schemas.Feed)
 def update_feed(
     feed_id: int,

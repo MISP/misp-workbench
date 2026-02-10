@@ -13,6 +13,7 @@ from fastapi import HTTPException, status
 from pymisp import MISPEvent
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
+import csv
 
 logger = logging.getLogger(__name__)
 
@@ -334,6 +335,49 @@ def test_feed_connection(db: Session, feed: feed_schemas.FeedCreate):
             detail=f"Unsupported feed source format: {feed.source_format}",
         )
     
+def preview_csv_feed(db: Session, url: str, mode: str = "url"):
+
+    if mode == "network":
+        try:
+            # TODO: add support for custom headers from feed configuration
+            # TODO: do not fetch the entire CSV file if it's large, only fetch the first few lines for preview
+            response = requests.get(url, headers={"User-Agent": USER_AGENT})
+            if response.status_code == 200:
+                content = response.content.decode("utf-8")
+                lines = content.splitlines()
+                preview_lines = lines[:10]  # Get the first 10 lines for preview
+                csv_reader = csv.reader(preview_lines)
+                parsed_preview = [row for row in csv_reader]
+                return {"result": "success", "preview": parsed_preview}
+            else:
+                raise HTTPException(
+                    status_code=response.status_code,
+                    detail=f"Failed to fetch CSV feed: {response.text}",
+                )
+        except Exception as e:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Failed to fetch CSV feed: {str(e)}",
+            )
+    elif mode == "local" and os.path.isfile(url):
+        try:
+            with open(url, "r") as f:
+                lines = f.readlines()
+                preview_lines = lines[:10]  # Get the first 10 lines for preview
+                csv_reader = csv.reader(preview_lines)
+                parsed_preview = [row for row in csv_reader]
+                return {"result": "success", "preview": parsed_preview}
+        except Exception as e:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Failed to read CSV file: {str(e)}",
+            )
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid mode or missing URL/path for CSV preview",
+        )
+
 def parse_human_readable_time(time_str):
     unit = time_str[-1]
     value = int(time_str[:-1])
