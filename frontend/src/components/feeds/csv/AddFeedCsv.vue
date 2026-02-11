@@ -1,9 +1,11 @@
 <script setup>
-import { ref, reactive, watch } from "vue";
+import { ref, reactive, watch, computed } from "vue";
 import CsvPreview from "@/components/feeds/csv/CsvPreview.vue";
 import CsvModeSelector from "@/components/feeds/csv/CsvModeSelector.vue";
 import CsvAttributeMapping from "@/components/feeds/csv/CsvAttributeMapping.vue";
 import { useFeedsStore } from "@/stores";
+import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
+import { faSpinner } from "@fortawesome/free-solid-svg-icons";
 
 const feedsStore = useFeedsStore();
 const emit = defineEmits(["update:modelValue"]);
@@ -17,10 +19,13 @@ const props = defineProps({
 
 const apiError = ref(null);
 const csvRows = ref([]);
+const loadingPreview = ref(false);
+const parseHeader = ref(true);
 
 const csvConfig = reactive({
   mode: "attribute",
   columns: [],
+  delimiter: ",",
   attribute: {
     value_column: null,
     type: {
@@ -56,27 +61,105 @@ watch(
   },
 );
 
+const columnsComputed = computed(() => {
+  if (parseHeader.value && csvRows.value.length > 0) {
+    const header = csvRows.value[0];
+    return header.map((c) => c);
+  }
+  return csvRows.value.length > 0
+    ? csvRows.value[0].map((_, idx) => `Column ${idx + 1}`)
+    : [];
+});
+
+watch(
+  columnsComputed,
+  (newCols) => {
+    if (JSON.stringify(newCols) !== JSON.stringify(csvConfig.columns)) {
+      csvConfig.columns = [...newCols];
+    }
+  },
+  { immediate: true },
+);
+
 function previewCsvFeed() {
+  loadingPreview.value = true;
   feedsStore
     .previewCsvFeed({
       url: props.modelValue.url,
       mode: props.modelValue.input_source,
+      delimiter: csvConfig.delimiter,
     })
     .then((response) => {
       csvRows.value = response.preview;
     })
-    .catch((error) => (apiError.value = error?.message || String(error)));
+    .catch((error) => (apiError.value = error?.message || String(error)))
+    .finally(() => {
+      loadingPreview.value = false;
+    });
 }
 </script>
 <template>
-  <div v-if="apiError" class="w-100 alert alert-danger mt-3 mb-3">
-    {{ apiError }}
-  </div>
-  <div v-else-if="!csvRows.length" class="w-100 alert alert-warning mt-3 mb-3">
-    No preview available for this feed. Please check your URI and source type.
-  </div>
-  <div v-else>
-    <CsvPreview :rows="csvRows" v-model:columns="csvConfig.columns" />
+  <div class="mb-4">
+    <div class="card">
+      <div class="card-header">
+        <h5 class="mb-0">CSV Preview</h5>
+      </div>
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center m-2">
+          <div class="d-flex align-items-center gap-3">
+            <div class="form-check form-switch mb-0">
+              <input
+                class="form-check-input"
+                type="checkbox"
+                id="parseHeader"
+                v-model="parseHeader"
+              />
+              <label
+                class="form-check-label small text-muted"
+                for="parseHeader"
+              >
+                first row is header
+              </label>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+              <select
+                id="customDelimiter"
+                class="form-select form-select-sm"
+                style="width: 140px"
+                v-model="csvConfig.delimiter"
+              >
+                <option value=",">comma (,)</option>
+                <option value=";">semicolon (;)</option>
+                <option value="|">pipe (|)</option>
+                <option value="\t">tab (\t)</option>
+                <option value=" ">space ( )</option>
+              </select>
+              <label
+                class="form-check-label small text-muted ms-2"
+                for="customDelimiter"
+              >
+                delimiter
+              </label>
+            </div>
+          </div>
+        </div>
+        <div v-if="apiError" class="w-100 alert alert-danger mt-3 mb-3">
+          {{ apiError }}
+        </div>
+        <div
+          v-if="!csvRows || !csvRows.length"
+          class="w-100 alert alert-warning mt-3 mb-3"
+        >
+          No preview available for this feed. Please check your URI and source
+          type.
+        </div>
+        <div v-if="loadingPreview" class="w-100 alert alert-info mt-3 mb-3">
+          Loading preview...
+          <FontAwesomeIcon :icon="faSpinner" spin />
+        </div>
+        <CsvPreview :rows="csvRows" :columns="columnsComputed" />
+      </div>
+    </div>
   </div>
   <CsvModeSelector v-model="csvConfig.mode" />
   <CsvAttributeMapping
