@@ -72,6 +72,13 @@ const columnsComputed = computed(() => {
     : [];
 });
 
+const columnsWithIndex = computed(() =>
+  csvConfig.columns.map((name, index) => ({
+    index,
+    name,
+  })),
+);
+
 watch(
   columnsComputed,
   (newCols) => {
@@ -87,7 +94,7 @@ function previewCsvFeed() {
   feedsStore
     .previewCsvFeed(props.modelValue)
     .then((response) => {
-      csvRows.value = response.preview;
+      csvRows.value = response.rows || [];
     })
     .catch((error) => (apiError.value = error?.message || String(error)))
     .finally(() => {
@@ -163,12 +170,12 @@ function previewCsvFeed() {
     v-if="csvConfig.mode === 'attribute'"
     v-model="csvConfig.attribute"
     :rows="csvRows"
-    :columns="csvConfig.columns"
+    :columns="columnsWithIndex"
   />
   <CsvObjectMapping
     v-else-if="csvConfig.mode === 'object'"
     v-model="csvConfig.object"
     :rows="csvRows"
-    :columns="csvConfig.columns"
+    :columns="columnsWithIndex"
   />
 </template>

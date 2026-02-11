@@ -112,14 +112,6 @@ function handleMappingTypeChanged(type, idx) {
         <!-- VALUE COLUMN -->
         <div class="row">
           <div class="mb-3 col-md-4">
-            <!-- <label class="form-label">attribute value column</label>
-            <select class="form-select" v-model="config.value_column">
-              <option disabled value="">Select column</option>
-              <option v-for="col in columns" :key="col" :value="col">
-                {{ col }}
-              </option>
-            </select> -->
-
             <label class="form-label" for="csvConfig.attribute.value_column"
               >attribute value column</label
             >
@@ -133,8 +125,12 @@ function handleMappingTypeChanged(type, idx) {
                 'is-invalid': errors['csvConfig.attribute.value_column'],
               }"
             >
-              <option v-for="col in columns" :key="col" :value="col">
-                {{ col }}
+              <option
+                v-for="col in columns"
+                :key="col.index"
+                :value="col.index"
+              >
+                {{ col.name }} ({{ col.index }})
               </option>
             </Field>
             <small class="text-muted">
@@ -146,9 +142,7 @@ function handleMappingTypeChanged(type, idx) {
             <div class="border rounded p-2 text-truncate">
               <span
                 >{{
-                  rows.length > 0 && config.value_column
-                    ? rows[0][columns.indexOf(config.value_column)]
-                    : "—"
+                  rows.length > 0 ? rows[0][config.value_column] : "—"
                 }}&nbsp;</span
               >
             </div>
