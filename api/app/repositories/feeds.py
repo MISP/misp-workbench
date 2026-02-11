@@ -335,7 +335,7 @@ def test_feed_connection(db: Session, feed: feed_schemas.FeedCreate):
             detail=f"Unsupported feed source format: {feed.source_format}",
         )
     
-def preview_csv_feed(url: str, mode: str = "url"):
+def preview_csv_feed(url: str, mode: str = "url", delimiter: str = ","):
 
     if mode == "network":
         try:
@@ -344,9 +344,9 @@ def preview_csv_feed(url: str, mode: str = "url"):
                 content = response.content.decode("utf-8")
                 lines = content.splitlines()
                 lines = [line for line in lines if line.strip() and not line.strip().startswith("#")]
-                preview_lines = [line for line in lines[:10] ]
-                csv_reader = csv.reader(preview_lines)
-                parsed_preview = [row for row in csv_reader]
+                preview_lines = [line for line in lines[:10]]
+                csv_reader = csv.reader(preview_lines, delimiter=delimiter)
+                parsed_preview = [[cell.strip() for cell in row] for row in csv_reader]
                 return {"result": "success", "preview": parsed_preview}
             else:
                 raise HTTPException(
@@ -363,7 +363,7 @@ def preview_csv_feed(url: str, mode: str = "url"):
             with open(url, "r") as f:
                 lines = f.readlines()
                 preview_lines = [line for line in lines[:10] if not line.strip().startswith("#")]
-                csv_reader = csv.reader(preview_lines)
+                csv_reader = csv.reader(preview_lines, delimiter=delimiter)
                 parsed_preview = [row for row in csv_reader]
                 return {"result": "success", "preview": parsed_preview}
         except Exception as e:
