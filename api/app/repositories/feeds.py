@@ -352,11 +352,13 @@ def test_misp_feed_connection(feed: feed_schemas.FeedCreate):
 def process_csv_feed_row(row: list, settings: dict):
 
     if settings["csvConfig"]["mode"] == "attribute":
+
+        if settings["csvConfig"]["attribute"]["value_column"] is None:
+            return {"value": None, "type": None}
+
         value_column_index = settings["csvConfig"]["attribute"]["value_column"]
         if value_column_index >= len(row):
-            raise ValueError(
-                f"Value column index {value_column_index} is out of range for row with {len(row)} columns"
-            )
+            return {"value": None, "type": None}
 
         value = row[value_column_index]
 
@@ -365,9 +367,7 @@ def process_csv_feed_row(row: list, settings: dict):
         elif settings["csvConfig"]["attribute"]["type"]["strategy"] == "column":
             type_column_index = settings["csvConfig"]["attribute"]["type"]["column"]
             if type_column_index >= len(row):
-                raise ValueError(
-                    f"Type column index {type_column_index} is out of range for row with {len(row)} columns"
-                )
+                return {"value": value, "type": None}
             type_value = row[type_column_index]
         else:
             raise ValueError(
@@ -399,6 +399,7 @@ def preview_csv_feed(settings: dict = None):
                     delimiter=settings["settings"]["csvConfig"]["delimiter"],
                 )
                 parsed_preview = [[cell.strip() for cell in row] for row in csv_reader]
+                
                 processed_preview = [
                     process_csv_feed_row(row, settings["settings"])
                     for row in parsed_preview

@@ -152,11 +152,7 @@ function testCSVFeed() {
   return feedsStore
     .previewCsvFeed(csvFeed)
     .then((response) => {
-      if (response.result === "success") {
-        testCSVFeedResult.success = true;
-      } else {
-        testCSVFeedResult.success = false;
-      }
+      testCSVFeedResult.value = response;
       testCSVFeedResultOpen.value = true;
     })
     .catch((error) => {
@@ -263,7 +259,7 @@ function closeCSVFeedTestResult() {
   <TestCSVFeedModal
     v-if="testCSVFeedResultOpen"
     :config="config"
-    :testResult="testMISPFeedResult"
+    :testResult="testCSVFeedResult.value"
     @closeModal="closeCSVFeedTestResult"
   />
 </template>
