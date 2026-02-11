@@ -166,16 +166,29 @@ function handleMappingTypeChanged(type, idx) {
 
       <div v-if="config.type.strategy === 'column'" class="mb-3">
         <!-- COLUMN SELECT -->
-        <div class="mb-3 col-md-4">
-          <label class="form-label">Type column</label>
-          <select class="form-select mb-3" v-model="config.type.column">
-            <option disabled value="">select column</option>
-            <option v-for="col in columns" :key="col" :value="col">
-              {{ col }}
-            </option>
-          </select>
+        <div class="row">
+          <div class="mb-3 col-md-4">
+            <label class="form-label">type column</label>
+            <select class="form-select mb-3" v-model="config.type.column">
+              <option disabled value="">select column</option>
+              <option v-for="col in columns" :key="col" :value="col">
+                {{ col }}
+              </option>
+            </select>
+          </div>
+          <div class="mb-3 col-md-4">
+            <label class="form-label">sample</label>
+            <div class="border rounded p-2 text-truncate">
+              <span
+                >{{
+                  rows.length > 0 && config.type.column
+                    ? rows[0][columns.indexOf(config.type.column)]
+                    : "—"
+                }}&nbsp;</span
+              >
+            </div>
+          </div>
         </div>
-
         <!-- MAPPING TABLE -->
         <div class="card">
           <div class="card-header py-2">
@@ -355,45 +368,38 @@ function handleMappingTypeChanged(type, idx) {
                   </select>
 
                   <!-- FIXED VALUE INPUT -->
-                  <input
-                    v-if="
-                      config.properties[prop.key].strategy === 'fixed' &&
-                      prop.key !== 'tags' &&
-                      prop.key !== 'to_ids'
-                    "
-                    type="text"
-                    class="form-control form-control-sm"
-                    v-model="config.properties[prop.key].value"
-                    placeholder="Enter fixed value"
-                  />
-
-                  <select
-                    v-if="
-                      config.properties[prop.key].strategy === 'fixed' &&
-                      prop.key === 'to_ids'
-                    "
-                    class="form-select form-select-sm"
-                    v-model="config.properties[prop.key].value"
-                  >
-                    <option disabled value="">Select value</option>
-                    <option :value="true">true</option>
-                    <option :value="false">false</option>
-                  </select>
-
-                  <TagsSelect
-                    v-if="
-                      config.properties[prop.key].strategy === 'fixed' &&
-                      prop.key === 'tags'
-                    "
-                    :modelClass="'event'"
-                    :model="config.properties[prop.key].value"
-                    :persist="false"
-                    @update:selectedTags="
-                      config.properties[prop.key].value = $event
-                    "
-                  />
+                  <div v-if="config.properties[prop.key].strategy === 'fixed'">
+                    <div v-if="prop.key === 'tags'">
+                      <TagsSelect
+                        :modelClass="'event'"
+                        :model="config.properties[prop.key].value"
+                        :persist="false"
+                        @update:selectedTags="
+                          config.properties[prop.key].value = $event
+                        "
+                      />
+                    </div>
+                    <div v-else-if="prop.key === 'to_ids'">
+                      <select
+                        class="form-select form-select-sm"
+                        v-model="config.properties[prop.key].value"
+                      >
+                        <option disabled value="">Select value</option>
+                        <option :value="true">true</option>
+                        <option :value="false">false</option>
+                      </select>
+                    </div>
+                    <div v-else>
+                      <input
+                        v-if="prop.key !== 'tags' && prop.key !== 'to_ids'"
+                        type="text"
+                        class="form-control form-control-sm"
+                        v-model="config.properties[prop.key].value"
+                        placeholder="Enter fixed value"
+                      />
+                    </div>
+                  </div>
                 </div>
-
                 <small class="text-muted d-block mt-1">
                   {{ prop.help }}
                 </small>
