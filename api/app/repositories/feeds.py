@@ -329,7 +329,54 @@ def test_misp_feed_connection(feed: feed_schemas.FeedCreate):
             detail=f"Failed to connect to feed: {str(e)}",
         )
 
+
+def process_csv_feed_row(row: list, settings: dict):
+    # const csvConfig = reactive({
+    #   mode: "attribute",
+    #   columns: [],
+    #   delimiter: ",",
+    #   attribute: {
+    #     value_column: null,
+    #     type: {
+    #       strategy: "fixed",
+    #       value: null,
+    #       column: null,
+    #       mappings: [],
+    #     },
+    #     properties: {},
+    #   },
+    #   object: {
+    #     template: null,
+    #     mappings: {},
+    #   },
+    # });
+
+    # if settings["csvConfig"]["mode"] == "attribute":
+    #     value_column_index = settings["csvConfig"]["attribute"]["value_column"]
+    #     if value_column_index >= len(row):
+    #         raise ValueError(f"Value column index {value_column_index} is out of range for row with {len(row)} columns")
+        
+    #     value = row[value_column_index]
+
+    #     if settings["csvConfig"]["attribute"]["type"]["strategy"] == "fixed":
+    #         type_value = settings["csvConfig"]["attribute"]["type"]["value"]
+    #     elif settings["csvConfig"]["attribute"]["type"]["strategy"] == "column":
+    #         type_column_index = settings["csvConfig"]["attribute"]["type"]["column"]
+    #         if type_column_index >= len(row):
+    #             raise ValueError(f"Type column index {type_column_index} is out of range for row with {len(row)} columns")
+    #         type_value = row[type_column_index]
+    #     else:
+    #         raise ValueError(f"Unsupported type strategy: {settings['csvConfig']['attribute']['type']['strategy']}")
+
+    #     return {"value": value, "type": type_value}
+    # elif settings["csvConfig"]["mode"] == "object":
+    #     raise NotImplementedError("Object mode is not yet implemented")
+    # else:
+    #     raise ValueError(f"Unsupported CSV mode: {settings['csvConfig']['mode']}")
     
+    return {}
+
+
 def preview_csv_feed(settings: dict = None):
     if settings["input_source"] == "network":
         try:
@@ -341,7 +388,9 @@ def preview_csv_feed(settings: dict = None):
                 preview_lines = [line for line in lines[:10]]
                 csv_reader = csv.reader(preview_lines, delimiter=settings["settings"]["csvConfig"]["delimiter"])
                 parsed_preview = [[cell.strip() for cell in row] for row in csv_reader]
-                return {"result": "success", "preview": parsed_preview}
+                processed_preview = [process_csv_feed_row(row, settings["settings"]) for row in parsed_preview]
+
+                return {"result": "success", "rows": parsed_preview, "preview": processed_preview}
             else:
                 raise HTTPException(
                     status_code=response.status_code,
