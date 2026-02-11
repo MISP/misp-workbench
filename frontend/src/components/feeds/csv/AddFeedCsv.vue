@@ -3,6 +3,7 @@ import { ref, reactive, watch, computed } from "vue";
 import CsvPreview from "@/components/feeds/csv/CsvPreview.vue";
 import CsvModeSelector from "@/components/feeds/csv/CsvModeSelector.vue";
 import CsvAttributeMapping from "@/components/feeds/csv/CsvAttributeMapping.vue";
+import CsvObjectMapping from "@/components/feeds/csv/CsvObjectMapping.vue";
 import { useFeedsStore } from "@/stores";
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
 import { faSpinner } from "@fortawesome/free-solid-svg-icons";
@@ -46,7 +47,7 @@ watch(
   [csvConfig],
   () => {
     emit("update:modelValue", {
-      typeConfig: { settings: csvConfig ? { csvConfig } : {} },
+      settings: csvConfig ? { csvConfig } : {},
     });
   },
   { deep: true },
@@ -84,11 +85,7 @@ watch(
 function previewCsvFeed() {
   loadingPreview.value = true;
   feedsStore
-    .previewCsvFeed({
-      url: props.modelValue.url,
-      mode: props.modelValue.input_source,
-      delimiter: csvConfig.delimiter,
-    })
+    .previewCsvFeed(props.modelValue)
     .then((response) => {
       csvRows.value = response.preview;
     })
@@ -118,7 +115,7 @@ function previewCsvFeed() {
                 class="form-check-label small text-muted"
                 for="parseHeader"
               >
-                first row is header
+                First row is header
               </label>
             </div>
             <div class="d-flex align-items-center gap-2">
@@ -138,7 +135,7 @@ function previewCsvFeed() {
                 class="form-check-label small text-muted ms-2"
                 for="customDelimiter"
               >
-                delimiter
+                Delimiter
               </label>
             </div>
           </div>
@@ -165,6 +162,12 @@ function previewCsvFeed() {
   <CsvAttributeMapping
     v-if="csvConfig.mode === 'attribute'"
     v-model="csvConfig.attribute"
+    :rows="csvRows"
+    :columns="csvConfig.columns"
+  />
+  <CsvObjectMapping
+    v-else-if="csvConfig.mode === 'object'"
+    v-model="csvConfig.object"
     :rows="csvRows"
     :columns="csvConfig.columns"
   />

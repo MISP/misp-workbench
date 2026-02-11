@@ -7,6 +7,7 @@ import FeedTypeSelector from "@/components/feeds/FeedTypeSelector.vue";
 import FeedBaseForm from "@/components/feeds/FeedBaseForm.vue";
 import AddFeedMISP from "@/components/feeds/misp/AddFeedMISP.vue";
 import AddFeedCsv from "@/components/feeds/csv/AddFeedCsv.vue";
+import TestCSVFeedModal from "@/components/feeds/csv/TestCSVFeedModal.vue";
 import TestMISPFeedConnectionModal from "@/components/feeds/misp/TestMISPFeedConnectionModal.vue";
 import AddFeedJson from "@/components/feeds/json/AddFeedJson.vue";
 
@@ -25,7 +26,8 @@ const config = ref({
   provider: "",
   distribution: 1,
   fetch_on_create: true,
-  typeConfig: {},
+  rules: {},
+  settings: {},
 });
 
 const typeComponent = computed(() => {
@@ -41,15 +43,22 @@ const typeComponent = computed(() => {
 });
 
 // test modal state
-const testResultOpen = ref(false);
-const testResult = reactive({ success: false, message: "", total_events: 0 });
+const testMISPFeedResultOpen = ref(false);
+const testMISPFeedResult = reactive({
+  success: false,
+  message: "",
+  total_events: 0,
+});
+const testCSVFeedResultOpen = ref(false);
+const testCSVFeedResult = reactive({});
 
 /**
  * Reset type-specific config when switching types
  * (prevents leaking CSV mapping into JSON, etc.)
  */
 watch(feedType, () => {
-  config.value.typeConfig = {};
+  config.value.rules = {};
+  config.value.settings = {};
 });
 
 const canSubmit = computed(() => {
@@ -58,27 +67,24 @@ const canSubmit = computed(() => {
 
 function submit() {
   const feed = {
-    type: feedType.value,
-    config: config.value,
+    ...getFeedFromConfig(),
+    rules: config.value.rules,
+    settings: config.value.settings,
   };
 
-  if (feed.type === "misp") {
-    const mispFeed = getMispFeedFromConfig();
-
-    return feedsStore
-      .create(mispFeed)
-      .then((response) => {
-        toastsStore.push(
-          `Feed "${response.name}" created successfully!`,
-          "success",
-        );
-        router.push(`/feeds`);
-      })
-      .catch((error) => (apiError.value = error?.message || String(error)));
-  }
+  return feedsStore
+    .create(feed)
+    .then((response) => {
+      toastsStore.push(
+        `Feed "${response.name}" created successfully!`,
+        "success",
+      );
+      router.push(`/feeds`);
+    })
+    .catch((error) => (apiError.value = error?.message || String(error)));
 }
 
-function getMispFeedFromConfig() {
+function getFeedFromConfig() {
   return {
     name: config.value.name,
     url: config.value.url,
@@ -87,7 +93,6 @@ function getMispFeedFromConfig() {
     enabled: config.value.enabled,
     distribution: parseInt(config.value.distribution),
     input_source: config.value.input_source,
-    rules: config.value.typeConfig.rules,
   };
 }
 
@@ -102,32 +107,70 @@ function test() {
   };
 
   if (feed.type === "misp") {
-    const mispFeed = getMispFeedFromConfig();
+    return testMISPFeed();
+  }
 
-    return feedsStore
-      .testConnection(mispFeed)
-      .then((response) => {
-        if (response.result === "success") {
-          testResult.success = true;
-          testResult.message = `Connection successful!`;
-          testResult.total_events = response.total_events;
-          testResult.total_filtered_events = response.total_filtered_events;
-        } else {
-          testResult.success = false;
-          testResult.message = `Connection failed: ${response.message}`;
-        }
-        testResultOpen.value = true;
-      })
-      .catch((error) => {
-        testResult.success = false;
-        testResult.message = error?.message || String(error);
-        testResultOpen.value = true;
-      });
+  if (feed.type === "csv") {
+    testCSVFeed();
   }
 }
 
-function closeTestResult() {
-  testResultOpen.value = false;
+function testMISPFeed() {
+  const mispFeed = {
+    ...getFeedFromConfig(),
+    rules: config.value.rules,
+  };
+
+  return feedsStore
+    .testMISPFeedConnection(mispFeed)
+    .then((response) => {
+      if (response.result === "success") {
+        testMISPFeedResult.success = true;
+        testMISPFeedResult.message = `Connection successful!`;
+        testMISPFeedResult.total_events = response.total_events;
+        testMISPFeedResult.total_filtered_events =
+          response.total_filtered_events;
+      } else {
+        testMISPFeedResult.success = false;
+        testMISPFeedResult.message = `Connection failed: ${response.message}`;
+      }
+      testMISPFeedResultOpen.value = true;
+    })
+    .catch((error) => {
+      testMISPFeedResult.success = false;
+      testMISPFeedResult.message = error?.message || String(error);
+      testMISPFeedResultOpen.value = true;
+    });
+}
+
+function testCSVFeed() {
+  const csvFeed = {
+    ...getFeedFromConfig(),
+    settings: config.value.settings,
+  };
+
+  return feedsStore
+    .previewCsvFeed(csvFeed)
+    .then((response) => {
+      if (response.result === "success") {
+        testCSVFeedResult.success = true;
+      } else {
+        testCSVFeedResult.success = false;
+      }
+      testCSVFeedResultOpen.value = true;
+    })
+    .catch((error) => {
+      testCSVFeedResult.success = false;
+      testCSVFeedResult.message = error?.message || String(error);
+      testCSVFeedResultOpen.value = true;
+    });
+}
+
+function closeMISPFeedTestResult() {
+  testMISPFeedResultOpen.value = false;
+}
+function closeCSVFeedTestResult() {
+  testCSVFeedResultOpen.value = false;
 }
 </script>
 
@@ -213,8 +256,14 @@ function closeTestResult() {
     </div>
   </div>
   <TestMISPFeedConnectionModal
-    v-if="testResultOpen"
-    :testResult="testResult"
-    @closeTestResultModal="closeTestResult"
+    v-if="testMISPFeedResultOpen"
+    :testResult="testMISPFeedResult"
+    @closeModal="closeMISPFeedTestResult"
+  />
+  <TestCSVFeedModal
+    v-if="testCSVFeedResultOpen"
+    :config="config"
+    :testResult="testMISPFeedResult"
+    @closeModal="closeCSVFeedTestResult"
   />
 </template>

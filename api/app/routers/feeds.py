@@ -48,27 +48,26 @@ def create_feed(
 ):
     return feeds_repository.create_feed(db=db, feed=feed)
 
-@router.post("/feeds/test-connection")
+
+@router.post("/feeds/misp/test-connection")
 def test_feed_connection(
     feed: feed_schemas.FeedCreate,
-    db: Session = Depends(get_db),
-    user: user_schemas.User = Security(get_current_active_user, scopes=["feeds:test-connection"]),
+    user: user_schemas.User = Security(
+        get_current_active_user, scopes=["feeds:test-connection"]
+    ),
 ):
-    return feeds_repository.test_feed_connection(db=db, feed=feed)
+    return feeds_repository.test_misp_feed_connection(feed=feed)
 
-@router.get("/feeds/csv/preview")
+
+@router.post("/feeds/csv/preview")
 def preview_csv_feed(
-    url: str,
-    mode: str = "network",
-    delimiter: str = ",",
     settings: dict = None,
-    user: user_schemas.User = Security(get_current_active_user, scopes=["feeds:preview-csv"]),
+    user: user_schemas.User = Security(
+        get_current_active_user, scopes=["feeds:preview-csv"]
+    ),
 ):
-    
-    if delimiter == "\\t":
-        delimiter = "\t"
+    return feeds_repository.preview_csv_feed(settings=settings)
 
-    return feeds_repository.preview_csv_feed(url=url, mode=mode, delimiter=delimiter, settings=settings)
 @router.patch("/feeds/{feed_id}", response_model=feed_schemas.Feed)
 def update_feed(
     feed_id: int,

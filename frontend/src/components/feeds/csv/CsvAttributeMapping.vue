@@ -1,9 +1,11 @@
 <script setup>
+import { computed } from "vue";
 import AttributeTypeSelect from "@/components/enums/AttributeTypeSelect.vue";
 import TagsSelect from "@/components/tags/TagsSelect.vue";
 import { faChevronDown } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
-import { computed } from "vue";
+import { Form, Field } from "vee-validate";
+import { CsvFeedSettingsSchema } from "@/schemas/feed";
 
 const props = defineProps({
   modelValue: {
@@ -106,308 +108,336 @@ function handleMappingTypeChanged(type, idx) {
     </div>
 
     <div class="card-body">
-      <!-- VALUE COLUMN -->
-      <div class="row">
-        <div class="mb-3 col-md-4">
-          <label class="form-label">attribute value column</label>
-          <select class="form-select" v-model="config.value_column">
-            <option disabled value="">Select column</option>
-            <option v-for="col in columns" :key="col" :value="col">
-              {{ col }}
-            </option>
-          </select>
-          <small class="text-muted">
-            This column provides the attribute value.
-          </small>
-        </div>
-        <div class="mb-3 col-md-4">
-          <label class="form-label">sample</label>
-          <div class="border rounded p-2 text-truncate">
-            <span
-              >{{
-                rows.length > 0 && config.value_column
-                  ? rows[0][columns.indexOf(config.value_column)]
-                  : "—"
-              }}&nbsp;</span
-            >
-          </div>
-        </div>
-      </div>
-      <hr />
-
-      <!-- TYPE STRATEGY -->
-      <div class="mb-3">
-        <label class="form-label">attribute type</label>
-
-        <div class="form-check">
-          <input
-            class="form-check-input"
-            type="radio"
-            value="fixed"
-            v-model="config.type.strategy"
-            id="type-fixed"
-          />
-          <label class="form-check-label" for="type-fixed"> fixed type </label>
-        </div>
-
-        <div class="form-check">
-          <input
-            class="form-check-input"
-            type="radio"
-            value="column"
-            v-model="config.type.strategy"
-            id="type-column"
-          />
-          <label class="form-check-label" for="type-column">
-            type from column
-          </label>
-        </div>
-      </div>
-
-      <div v-if="config.type.strategy === 'column'" class="mb-3">
-        <!-- COLUMN SELECT -->
+      <Form :validation-schema="CsvFeedSettingsSchema" v-slot="{ errors }">
+        <!-- VALUE COLUMN -->
         <div class="row">
           <div class="mb-3 col-md-4">
-            <label class="form-label">type column</label>
-            <select class="form-select mb-3" v-model="config.type.column">
-              <option disabled value="">select column</option>
+            <!-- <label class="form-label">attribute value column</label>
+            <select class="form-select" v-model="config.value_column">
+              <option disabled value="">Select column</option>
               <option v-for="col in columns" :key="col" :value="col">
                 {{ col }}
               </option>
-            </select>
+            </select> -->
+
+            <label class="form-label" for="csvConfig.attribute.value_column"
+              >attribute value column</label
+            >
+            <Field
+              class="form-select"
+              as="select"
+              id="csvConfig.attribute.value_column"
+              name="csvConfig.attribute.value_column"
+              v-model="config.value_column"
+              :class="{
+                'is-invalid': errors['csvConfig.attribute.value_column'],
+              }"
+            >
+              <option v-for="col in columns" :key="col" :value="col">
+                {{ col }}
+              </option>
+            </Field>
+            <small class="text-muted">
+              This column provides the attribute value.
+            </small>
           </div>
           <div class="mb-3 col-md-4">
-            <label class="form-label">sample</label>
+            <label class="form-label">Sample</label>
             <div class="border rounded p-2 text-truncate">
               <span
                 >{{
-                  rows.length > 0 && config.type.column
-                    ? rows[0][columns.indexOf(config.type.column)]
+                  rows.length > 0 && config.value_column
+                    ? rows[0][columns.indexOf(config.value_column)]
                     : "—"
                 }}&nbsp;</span
               >
             </div>
           </div>
         </div>
-        <!-- MAPPING TABLE -->
+        <hr />
+
+        <!-- TYPE STRATEGY -->
+        <div class="mb-3">
+          <label class="form-label">Attribute type</label>
+
+          <div class="form-check">
+            <input
+              class="form-check-input"
+              type="radio"
+              value="fixed"
+              v-model="config.type.strategy"
+              id="type-fixed"
+            />
+            <label class="form-check-label" for="type-fixed">
+              Fixed type
+            </label>
+          </div>
+
+          <div class="form-check">
+            <input
+              class="form-check-input"
+              type="radio"
+              value="column"
+              v-model="config.type.strategy"
+              id="type-column"
+            />
+            <label class="form-check-label" for="type-column">
+              Type from column
+            </label>
+          </div>
+        </div>
+
+        <div v-if="config.type.strategy === 'column'" class="mb-3">
+          <!-- COLUMN SELECT -->
+          <div class="row">
+            <div class="mb-3 col-md-4">
+              <label class="form-label">type column</label>
+              <select class="form-select mb-3" v-model="config.type.column">
+                <option disabled value="">select column</option>
+                <option v-for="col in columns" :key="col" :value="col">
+                  {{ col }}
+                </option>
+              </select>
+            </div>
+            <div class="mb-3 col-md-4">
+              <label class="form-label">sample</label>
+              <div class="border rounded p-2 text-truncate">
+                <span
+                  >{{
+                    rows.length > 0 && config.type.column
+                      ? rows[0][columns.indexOf(config.type.column)]
+                      : "—"
+                  }}&nbsp;</span
+                >
+              </div>
+            </div>
+          </div>
+          <!-- MAPPING TABLE -->
+          <div class="card">
+            <div class="card-header py-2">
+              <button
+                class="btn btn-sm"
+                type="button"
+                data-bs-toggle="collapse"
+                data-bs-target="#valueMappingCardBody"
+                aria-expanded="false"
+                aria-controls="valueMappingCardBody"
+              >
+                Value mapping (optional)
+                <FontAwesomeIcon :icon="faChevronDown" class="ms-1" />
+              </button>
+            </div>
+
+            <div class="collapse collapsed" id="valueMappingCardBody">
+              <div class="card-body">
+                <table class="table table-sm align-middle">
+                  <thead>
+                    <tr>
+                      <th>CSV type</th>
+                      <th>MISP type</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr
+                      v-for="(mapping, idx) in config.type.mappings"
+                      :key="idx"
+                    >
+                      <td>
+                        <input
+                          type="text"
+                          class="form-control form-control-sm"
+                          v-model="mapping.from"
+                          placeholder="e.g. ip address"
+                        />
+                      </td>
+                      <td>
+                        <AttributeTypeSelect
+                          :name="`type-mapping-${idx}`"
+                          @attribute-type-updated="
+                            (type) => handleMappingTypeChanged(type, idx)
+                          "
+                        />
+                      </td>
+                      <td class="text-end">
+                        <button
+                          class="btn btn-sm btn-outline-danger"
+                          @click="removeMapping(idx)"
+                        >
+                          ✕
+                        </button>
+                      </td>
+                    </tr>
+
+                    <tr v-if="config.type.mappings.length === 0">
+                      <td colspan="3" class="text-muted text-center">
+                        No mappings defined
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+
+                <button
+                  class="btn btn-sm btn-outline-primary"
+                  @click="addMapping"
+                >
+                  + Add type mapping
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- FALLBACK -->
+          <div class="mt-3 col-md-4">
+            <label class="form-label">Fallback type</label>
+            <AttributeTypeSelect
+              name="fallback-type-mapping"
+              @attribute-type-updated="handleFallbackTypeChanged"
+            />
+            <small class="text-muted">
+              Used when the column value doesn’t match any mapping.
+            </small>
+          </div>
+        </div>
+
+        <!-- FIXED TYPE -->
+        <div v-if="config.type.strategy === 'fixed'" class="mb-3 col-md-4">
+          <AttributeTypeSelect
+            name="csvConfig.attribute.type.value"
+            @attribute-type-updated="handleFixedTypeChanged"
+            :errors="errors['csvConfig.attribute.type.value']"
+          />
+        </div>
+        <hr />
+
         <div class="card">
           <div class="card-header py-2">
             <button
-              class="btn btn-sm"
+              class="btn m-0"
               type="button"
               data-bs-toggle="collapse"
-              data-bs-target="#valueMappingCardBody"
+              data-bs-target="#advancedCardBody"
               aria-expanded="false"
-              aria-controls="valueMappingCardBody"
+              aria-controls="advancedCardBody"
             >
-              Value mapping (optional)
+              Advanced property mappings
               <FontAwesomeIcon :icon="faChevronDown" class="ms-1" />
             </button>
           </div>
 
-          <div class="collapse collapsed" id="valueMappingCardBody">
+          <div class="collapse collapsed" id="advancedCardBody">
             <div class="card-body">
-              <table class="table table-sm align-middle">
-                <thead>
-                  <tr>
-                    <th>CSV type</th>
-                    <th>MISP type</th>
-                    <th></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="(mapping, idx) in config.type.mappings" :key="idx">
-                    <td>
-                      <input
-                        type="text"
-                        class="form-control form-control-sm"
-                        v-model="mapping.from"
-                        placeholder="e.g. ip address"
-                      />
-                    </td>
-                    <td>
-                      <AttributeTypeSelect
-                        :name="`type-mapping-${idx}`"
-                        @attribute-type-updated="
-                          (type) => handleMappingTypeChanged(type, idx)
-                        "
-                      />
-                    </td>
-                    <td class="text-end">
-                      <button
-                        class="btn btn-sm btn-outline-danger"
-                        @click="removeMapping(idx)"
-                      >
-                        ✕
-                      </button>
-                    </td>
-                  </tr>
+              <div class="text-muted small mb-3">
+                Optionally map CSV columns to additional attribute properties.
+              </div>
 
-                  <tr v-if="config.type.mappings.length === 0">
-                    <td colspan="3" class="text-muted text-center">
-                      no mappings defined
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-
-              <button
-                class="btn btn-sm btn-outline-primary"
-                @click="addMapping"
+              <div
+                v-for="prop in attributeProperties"
+                :key="prop.key"
+                class="row align-items-center mb-3"
               >
-                + add type mapping
-              </button>
-            </div>
-          </div>
-        </div>
+                <!-- LABEL -->
+                <label class="col-sm-3 col-form-label">
+                  {{ prop.label }}
+                </label>
 
-        <!-- FALLBACK -->
-        <div class="mt-3 col-md-4">
-          <label class="form-label">Fallback type</label>
-          <AttributeTypeSelect
-            name="fallback-type-mapping"
-            @attribute-type-updated="handleFallbackTypeChanged"
-          />
-          <small class="text-muted">
-            used when the column value doesn’t match any mapping.
-          </small>
-        </div>
-      </div>
-
-      <!-- FIXED TYPE -->
-      <div v-if="config.type.strategy === 'fixed'" class="mb-3 col-md-4">
-        <AttributeTypeSelect
-          name="fixed-type-mapping"
-          @attribute-type-updated="handleFixedTypeChanged"
-        />
-      </div>
-      <hr />
-
-      <div class="card">
-        <div class="card-header py-2">
-          <button
-            class="btn m-0"
-            type="button"
-            data-bs-toggle="collapse"
-            data-bs-target="#advancedCardBody"
-            aria-expanded="false"
-            aria-controls="advancedCardBody"
-          >
-            Advanced attribute fields mappings
-            <FontAwesomeIcon :icon="faChevronDown" class="ms-1" />
-          </button>
-        </div>
-
-        <div class="collapse collapsed" id="advancedCardBody">
-          <div class="card-body">
-            <div class="text-muted small mb-3">
-              Optionally map CSV columns to additional attribute properties.
-            </div>
-
-            <div
-              v-for="prop in attributeProperties"
-              :key="prop.key"
-              class="row align-items-center mb-3"
-            >
-              <!-- LABEL -->
-              <label class="col-sm-3 col-form-label">
-                {{ prop.label }}
-              </label>
-
-              <!-- CONTROLS -->
-              <div class="col-sm-9">
-                <!-- STRATEGY SWITCH -->
-                <div class="d-flex align-items-center gap-3 mb-2">
-                  <div class="form-check form-check-inline">
-                    <input
-                      class="form-check-input"
-                      type="radio"
-                      :name="`prop-${prop.key}`"
-                      :value="null"
-                      v-model="config.properties[prop.key].strategy"
-                    />
-                    <label class="form-check-label small text-muted"
-                      >Not mapped</label
-                    >
-                  </div>
-
-                  <div class="form-check form-check-inline">
-                    <input
-                      class="form-check-input"
-                      type="radio"
-                      :name="`prop-${prop.key}`"
-                      value="column"
-                      v-model="config.properties[prop.key].strategy"
-                    />
-                    <label class="form-check-label small">Column</label>
-                  </div>
-
-                  <div class="form-check form-check-inline">
-                    <input
-                      class="form-check-input"
-                      type="radio"
-                      :name="`prop-${prop.key}`"
-                      value="fixed"
-                      v-model="config.properties[prop.key].strategy"
-                    />
-                    <label class="form-check-label small">Fixed value</label>
-                  </div>
-                </div>
-
-                <!-- COLUMN SELECT -->
-                <div class="col-md-6">
-                  <select
-                    v-if="config.properties[prop.key].strategy === 'column'"
-                    class="form-select form-select-sm"
-                    v-model="config.properties[prop.key].column"
-                  >
-                    <option disabled value="">Select column</option>
-                    <option v-for="col in columns" :key="col" :value="col">
-                      {{ col }}
-                    </option>
-                  </select>
-
-                  <!-- FIXED VALUE INPUT -->
-                  <div v-if="config.properties[prop.key].strategy === 'fixed'">
-                    <div v-if="prop.key === 'tags'">
-                      <TagsSelect
-                        :modelClass="'event'"
-                        :model="config.properties[prop.key].value"
-                        :persist="false"
-                        @update:selectedTags="
-                          config.properties[prop.key].value = $event
-                        "
-                      />
-                    </div>
-                    <div v-else-if="prop.key === 'to_ids'">
-                      <select
-                        class="form-select form-select-sm"
-                        v-model="config.properties[prop.key].value"
-                      >
-                        <option disabled value="">Select value</option>
-                        <option :value="true">true</option>
-                        <option :value="false">false</option>
-                      </select>
-                    </div>
-                    <div v-else>
+                <!-- CONTROLS -->
+                <div class="col-sm-9">
+                  <!-- STRATEGY SWITCH -->
+                  <div class="d-flex align-items-center gap-3 mb-2">
+                    <div class="form-check form-check-inline">
                       <input
-                        v-if="prop.key !== 'tags' && prop.key !== 'to_ids'"
-                        type="text"
-                        class="form-control form-control-sm"
-                        v-model="config.properties[prop.key].value"
-                        placeholder="Enter fixed value"
+                        class="form-check-input"
+                        type="radio"
+                        :name="`prop-${prop.key}`"
+                        :value="null"
+                        v-model="config.properties[prop.key].strategy"
                       />
+                      <label class="form-check-label small text-muted"
+                        >Not mapped</label
+                      >
+                    </div>
+
+                    <div class="form-check form-check-inline">
+                      <input
+                        class="form-check-input"
+                        type="radio"
+                        :name="`prop-${prop.key}`"
+                        value="column"
+                        v-model="config.properties[prop.key].strategy"
+                      />
+                      <label class="form-check-label small">Column</label>
+                    </div>
+
+                    <div class="form-check form-check-inline">
+                      <input
+                        class="form-check-input"
+                        type="radio"
+                        :name="`prop-${prop.key}`"
+                        value="fixed"
+                        v-model="config.properties[prop.key].strategy"
+                      />
+                      <label class="form-check-label small">Fixed value</label>
                     </div>
                   </div>
+
+                  <!-- COLUMN SELECT -->
+                  <div class="col-md-6">
+                    <select
+                      v-if="config.properties[prop.key].strategy === 'column'"
+                      class="form-select form-select-sm"
+                      v-model="config.properties[prop.key].column"
+                    >
+                      <option disabled value="">Select column</option>
+                      <option v-for="col in columns" :key="col" :value="col">
+                        {{ col }}
+                      </option>
+                    </select>
+
+                    <!-- FIXED VALUE INPUT -->
+                    <div
+                      v-if="config.properties[prop.key].strategy === 'fixed'"
+                    >
+                      <div v-if="prop.key === 'tags'">
+                        <TagsSelect
+                          :modelClass="'event'"
+                          :model="config.properties[prop.key].value"
+                          :persist="false"
+                          @update:selectedTags="
+                            config.properties[prop.key].value = $event
+                          "
+                        />
+                      </div>
+                      <div v-else-if="prop.key === 'to_ids'">
+                        <select
+                          class="form-select form-select-sm"
+                          v-model="config.properties[prop.key].value"
+                        >
+                          <option disabled value="">Select value</option>
+                          <option :value="true">true</option>
+                          <option :value="false">false</option>
+                        </select>
+                      </div>
+                      <div v-else>
+                        <input
+                          v-if="prop.key !== 'tags' && prop.key !== 'to_ids'"
+                          type="text"
+                          class="form-control form-control-sm"
+                          v-model="config.properties[prop.key].value"
+                          placeholder="Enter fixed value"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  <small class="text-muted d-block mt-1">
+                    {{ prop.help }}
+                  </small>
                 </div>
-                <small class="text-muted d-block mt-1">
-                  {{ prop.help }}
-                </small>
               </div>
             </div>
           </div>
         </div>
-      </div>
+      </Form>
     </div>
   </div>
 </template>

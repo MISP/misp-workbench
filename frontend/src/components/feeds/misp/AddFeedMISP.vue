@@ -4,10 +4,8 @@ import TagsSelect from "@/components/tags/TagsSelect.vue";
 import OrganisationsMultiSelect from "@/components/organisations/OrganisationsMultiSelect.vue";
 
 const DEFAULT_FEED_RULES = {
-  typeConfig: {
-    rules: {
-      timestamp: "30d",
-    },
+  rules: {
+    timestamp: "30d",
   },
 };
 
@@ -75,14 +73,14 @@ watch(
       }
     }
 
-    emit("update:modelValue", { typeConfig: rules ? { rules } : {} });
+    emit("update:modelValue", rules ? { rules } : {});
   },
   { deep: true },
 );
 
 if (
-  props.modelValue.typeConfig === null ||
-  Object.keys(props.modelValue.typeConfig).length === 0
+  props.modelValue.rules === null ||
+  Object.keys(props.modelValue.rules).length === 0
 ) {
   emit("update:modelValue", DEFAULT_FEED_RULES);
 }
