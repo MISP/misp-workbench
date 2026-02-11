@@ -69,24 +69,16 @@ export const useFeedsStore = defineStore({
         .post(`${baseUrl}/${id}/fetch`)
         .catch((error) => (this.status.error = error));
     },
-    async testConnection(feed) {
+    async testMISPFeedConnection(feed) {
       this.status = { updating: true };
       return await fetchWrapper
-        .post(`${baseUrl}/test-connection`, feed)
+        .post(`${baseUrl}/misp/test-connection`, feed)
         .catch((error) => (this.status.error = error));
     },
-    async previewCsvFeed({ url, mode, delimiter }) {
+    async previewCsvFeed(settings) {
       this.status = { loading: true };
       return await fetchWrapper
-        .get(
-          baseUrl +
-            "/csv/preview?" +
-            new URLSearchParams({
-              url: url,
-              mode: mode,
-              delimiter: delimiter,
-            }).toString(),
-        )
+        .post(`${baseUrl}/csv/preview`, settings)
         .catch((error) => (this.status.error = error));
     },
   },

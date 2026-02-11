@@ -305,47 +305,41 @@ def filter_feed_by_rules(rules: dict, manifest: dict):
 
     return filtered_manifest
 
-def test_feed_connection(db: Session, feed: feed_schemas.FeedCreate):
-    if feed.source_format == "misp":
-        try:
-            response = get_feed_manifest(feed)
-            if response.status_code == 200:
-                manifest = response.json()
-                
-                total_events = len(manifest)
+def test_misp_feed_connection(feed: feed_schemas.FeedCreate):
+    try:
+        response = get_feed_manifest(feed)
+        if response.status_code == 200:
+            manifest = response.json()
+            
+            total_events = len(manifest)
 
-                # apply feed rules to filter manifest events
-                filtered_manifest = filter_feed_by_rules(feed.rules, manifest)
-                total_filtered_events = len(filtered_manifest)
+            # apply feed rules to filter manifest events
+            filtered_manifest = filter_feed_by_rules(feed.rules, manifest)
+            total_filtered_events = len(filtered_manifest)
 
-                return {"result": "success", "message": "Connection successful", "total_events": total_events, "total_filtered_events": total_filtered_events}
-            else:
-                raise HTTPException(
-                    status_code=response.status_code,
-                    detail=f"Failed to connect to feed: {response.text}",
-                )
-        except Exception as e:
+            return {"result": "success", "message": "Connection successful", "total_events": total_events, "total_filtered_events": total_filtered_events}
+        else:
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Failed to connect to feed: {str(e)}",
+                status_code=response.status_code,
+                detail=f"Failed to connect to feed: {response.text}",
             )
-    else:
+    except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Unsupported feed source format: {feed.source_format}",
+            detail=f"Failed to connect to feed: {str(e)}",
         )
-    
-def preview_csv_feed(url: str, mode: str = "url", delimiter: str = ",", settings: dict = None):
 
-    if mode == "network":
+    
+def preview_csv_feed(settings: dict = None):
+    if settings["input_source"] == "network":
         try:
-            response = requests.get(url, headers={"User-Agent": USER_AGENT})
+            response = requests.get(settings["url"], headers={"User-Agent": USER_AGENT})
             if response.status_code == 200:
                 content = response.content.decode("utf-8")
                 lines = content.splitlines()
                 lines = [line for line in lines if line.strip() and not line.strip().startswith("#")]
                 preview_lines = [line for line in lines[:10]]
-                csv_reader = csv.reader(preview_lines, delimiter=delimiter)
+                csv_reader = csv.reader(preview_lines, delimiter=settings["settings"]["csvConfig"]["delimiter"])
                 parsed_preview = [[cell.strip() for cell in row] for row in csv_reader]
                 return {"result": "success", "preview": parsed_preview}
             else:
@@ -358,23 +352,15 @@ def preview_csv_feed(url: str, mode: str = "url", delimiter: str = ",", settings
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Failed to fetch CSV feed: {str(e)}",
             )
-    elif mode == "local" and os.path.isfile(url):
-        try:
-            with open(url, "r") as f:
-                lines = f.readlines()
-                preview_lines = [line for line in lines[:10] if not line.strip().startswith("#")]
-                csv_reader = csv.reader(preview_lines, delimiter=delimiter)
-                parsed_preview = [row for row in csv_reader]
-                return {"result": "success", "preview": parsed_preview}
-        except Exception as e:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Failed to read CSV file: {str(e)}",
-            )
+    elif settings["input_source"] == "local":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Local file preview is not yet supported",
+        )
     else:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid mode or missing URL/path for CSV preview",
+            detail="Invalid mode or missing URI for CSV preview",
         )
 
 def parse_human_readable_time(time_str):

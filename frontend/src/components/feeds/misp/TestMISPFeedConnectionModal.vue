@@ -6,10 +6,10 @@ defineProps({
   },
 });
 
-const emit = defineEmits(["closeTestResultModal"]);
+const emit = defineEmits(["closeModal"]);
 
-function closeTestResult() {
-  emit("closeTestResultModal");
+function closeModal() {
+  emit("closeModal");
 }
 </script>
 
@@ -44,9 +44,7 @@ function closeTestResult() {
           </div>
         </div>
         <div class="card-footer text-end">
-          <button class="btn btn-secondary" @click="closeTestResult">
-            Close
-          </button>
+          <button class="btn btn-secondary" @click="closeModal">Close</button>
         </div>
       </div>
     </div>

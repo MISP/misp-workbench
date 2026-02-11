@@ -1,2 +1,6 @@
 <script setup></script>
-<template><div>TODO</div></template>
+<template>
+  <div class="alert alert-warning">
+    <p class="mb-0 text-center">This feature is not yet implemented.</p>
+  </div>
+</template>
