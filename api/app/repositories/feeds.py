@@ -220,7 +220,6 @@ def fetch_feed(db: Session, feed_id: int, user: user_schemas.User):
             # etag = req.headers.get("etag")
             # logger.info(f"Fetching feed UUID {db_feed.uuid} ETag: {etag}")
 
-
             # filter feed events to fetch based on rules
             manifest = filter_feed_by_rules(db_feed.rules, manifest)
 
@@ -257,15 +256,20 @@ def fetch_feed(db: Session, feed_id: int, user: user_schemas.User):
         "message": "All feed id=%s events to fetch enqueued." % feed_id,
     }
 
+
 def filter_feed_by_rules(rules: dict, manifest: dict):
     # apply feed rules to filter manifest events
     if not rules or rules == {}:
         return manifest
-    
+
     filtered_manifest = {}
-    
+
     if "event_uuid" in rules:
-        event_uuids_rule = rules["event_uuid"] if isinstance(rules["event_uuid"], list) else [rules["event_uuid"]]
+        event_uuids_rule = (
+            rules["event_uuid"]
+            if isinstance(rules["event_uuid"], list)
+            else [rules["event_uuid"]]
+        )
 
     for uuid, event in manifest.items():
         # filter by event id
@@ -285,10 +289,17 @@ def filter_feed_by_rules(rules: dict, manifest: dict):
 
         if "tags" in rules:
             event_tags = event.get("Tag", [])
-            required_tags = rules["tags"] if isinstance(rules["tags"], list) else [rules["tags"]]
+            required_tags = (
+                rules["tags"] if isinstance(rules["tags"], list) else [rules["tags"]]
+            )
             if not any(
-                tag in [
-                    (t.get("name", "") if isinstance(t, dict) else getattr(t, "name", ""))
+                tag
+                in [
+                    (
+                        t.get("name", "")
+                        if isinstance(t, dict)
+                        else getattr(t, "name", "")
+                    )
                     for t in event_tags
                 ]
                 for tag in required_tags
@@ -297,7 +308,9 @@ def filter_feed_by_rules(rules: dict, manifest: dict):
 
         if "orgs" in rules:
             event_org = event.get("Orgc", {}).get("name", "")
-            required_orgs = rules["orgs"] if isinstance(rules["orgs"], list) else [rules["orgs"]]
+            required_orgs = (
+                rules["orgs"] if isinstance(rules["orgs"], list) else [rules["orgs"]]
+            )
             if event_org not in required_orgs:
                 continue
 
@@ -305,19 +318,25 @@ def filter_feed_by_rules(rules: dict, manifest: dict):
 
     return filtered_manifest
 
+
 def test_misp_feed_connection(feed: feed_schemas.FeedCreate):
     try:
         response = get_feed_manifest(feed)
         if response.status_code == 200:
             manifest = response.json()
-            
+
             total_events = len(manifest)
 
             # apply feed rules to filter manifest events
             filtered_manifest = filter_feed_by_rules(feed.rules, manifest)
             total_filtered_events = len(filtered_manifest)
 
-            return {"result": "success", "message": "Connection successful", "total_events": total_events, "total_filtered_events": total_filtered_events}
+            return {
+                "result": "success",
+                "message": "Connection successful",
+                "total_events": total_events,
+                "total_filtered_events": total_filtered_events,
+            }
         else:
             raise HTTPException(
                 status_code=response.status_code,
@@ -331,50 +350,35 @@ def test_misp_feed_connection(feed: feed_schemas.FeedCreate):
 
 
 def process_csv_feed_row(row: list, settings: dict):
-    # const csvConfig = reactive({
-    #   mode: "attribute",
-    #   columns: [],
-    #   delimiter: ",",
-    #   attribute: {
-    #     value_column: null,
-    #     type: {
-    #       strategy: "fixed",
-    #       value: null,
-    #       column: null,
-    #       mappings: [],
-    #     },
-    #     properties: {},
-    #   },
-    #   object: {
-    #     template: null,
-    #     mappings: {},
-    #   },
-    # });
 
-    # if settings["csvConfig"]["mode"] == "attribute":
-    #     value_column_index = settings["csvConfig"]["attribute"]["value_column"]
-    #     if value_column_index >= len(row):
-    #         raise ValueError(f"Value column index {value_column_index} is out of range for row with {len(row)} columns")
-        
-    #     value = row[value_column_index]
+    if settings["csvConfig"]["mode"] == "attribute":
+        value_column_index = settings["csvConfig"]["attribute"]["value_column"]
+        if value_column_index >= len(row):
+            raise ValueError(
+                f"Value column index {value_column_index} is out of range for row with {len(row)} columns"
+            )
 
-    #     if settings["csvConfig"]["attribute"]["type"]["strategy"] == "fixed":
-    #         type_value = settings["csvConfig"]["attribute"]["type"]["value"]
-    #     elif settings["csvConfig"]["attribute"]["type"]["strategy"] == "column":
-    #         type_column_index = settings["csvConfig"]["attribute"]["type"]["column"]
-    #         if type_column_index >= len(row):
-    #             raise ValueError(f"Type column index {type_column_index} is out of range for row with {len(row)} columns")
-    #         type_value = row[type_column_index]
-    #     else:
-    #         raise ValueError(f"Unsupported type strategy: {settings['csvConfig']['attribute']['type']['strategy']}")
+        value = row[value_column_index]
 
-    #     return {"value": value, "type": type_value}
-    # elif settings["csvConfig"]["mode"] == "object":
-    #     raise NotImplementedError("Object mode is not yet implemented")
-    # else:
-    #     raise ValueError(f"Unsupported CSV mode: {settings['csvConfig']['mode']}")
-    
-    return {}
+        if settings["csvConfig"]["attribute"]["type"]["strategy"] == "fixed":
+            type_value = settings["csvConfig"]["attribute"]["type"]["value"]
+        elif settings["csvConfig"]["attribute"]["type"]["strategy"] == "column":
+            type_column_index = settings["csvConfig"]["attribute"]["type"]["column"]
+            if type_column_index >= len(row):
+                raise ValueError(
+                    f"Type column index {type_column_index} is out of range for row with {len(row)} columns"
+                )
+            type_value = row[type_column_index]
+        else:
+            raise ValueError(
+                f"Unsupported type strategy: {settings['csvConfig']['attribute']['type']['strategy']}"
+            )
+
+        return {"value": value, "type": type_value}
+    elif settings["csvConfig"]["mode"] == "object":
+        raise NotImplementedError("Object mode is not yet implemented")
+    else:
+        raise ValueError(f"Unsupported CSV mode: {settings['csvConfig']['mode']}")
 
 
 def preview_csv_feed(settings: dict = None):
@@ -384,13 +388,27 @@ def preview_csv_feed(settings: dict = None):
             if response.status_code == 200:
                 content = response.content.decode("utf-8")
                 lines = content.splitlines()
-                lines = [line for line in lines if line.strip() and not line.strip().startswith("#")]
+                lines = [
+                    line
+                    for line in lines
+                    if line.strip() and not line.strip().startswith("#")
+                ]
                 preview_lines = [line for line in lines[:10]]
-                csv_reader = csv.reader(preview_lines, delimiter=settings["settings"]["csvConfig"]["delimiter"])
+                csv_reader = csv.reader(
+                    preview_lines,
+                    delimiter=settings["settings"]["csvConfig"]["delimiter"],
+                )
                 parsed_preview = [[cell.strip() for cell in row] for row in csv_reader]
-                processed_preview = [process_csv_feed_row(row, settings["settings"]) for row in parsed_preview]
+                processed_preview = [
+                    process_csv_feed_row(row, settings["settings"])
+                    for row in parsed_preview
+                ]
 
-                return {"result": "success", "rows": parsed_preview, "preview": processed_preview}
+                return {
+                    "result": "success",
+                    "rows": parsed_preview,
+                    "preview": processed_preview,
+                }
             else:
                 raise HTTPException(
                     status_code=response.status_code,
@@ -411,6 +429,7 @@ def preview_csv_feed(settings: dict = None):
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid mode or missing URI for CSV preview",
         )
+
 
 def parse_human_readable_time(time_str):
     unit = time_str[-1]
