@@ -1,5 +1,6 @@
 <script setup>
 import AttributeTypeSelect from "@/components/enums/AttributeTypeSelect.vue";
+import TagsSelect from "@/components/tags/TagsSelect.vue";
 import { faChevronDown } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
 import { computed } from "vue";
@@ -63,11 +64,15 @@ if (!config.value.properties) {
   config.value.properties = {};
 }
 
-for (const prop of attributeProperties) {
-  if (config.value.properties[prop.key] === undefined) {
-    config.value.properties[prop.key] = "";
+attributeProperties.forEach((prop) => {
+  if (!config.value.properties[prop.key]) {
+    config.value.properties[prop.key] = {
+      strategy: null,
+      column: null,
+      value: null,
+    };
   }
-}
+});
 
 const addMapping = () => {
   config.value.type.mappings.push({ from: "", to: "" });
@@ -268,7 +273,7 @@ function handleMappingTypeChanged(type, idx) {
       <div class="card">
         <div class="card-header py-2">
           <button
-            class="btn btn-sm"
+            class="btn m-0"
             type="button"
             data-bs-toggle="collapse"
             data-bs-target="#advancedCardBody"
@@ -289,26 +294,107 @@ function handleMappingTypeChanged(type, idx) {
             <div
               v-for="prop in attributeProperties"
               :key="prop.key"
-              class="row align-items-start mb-3"
+              class="row align-items-center mb-3"
             >
               <!-- LABEL -->
-              <label class="col-sm-2 col-form-label">
+              <label class="col-sm-3 col-form-label">
                 {{ prop.label }}
               </label>
 
-              <!-- INPUT -->
-              <div class="col-sm-6">
-                <select
-                  class="form-select"
-                  v-model="config.properties[prop.key]"
-                >
-                  <option value="">— not mapped —</option>
-                  <option v-for="col in columns" :key="col" :value="col">
-                    {{ col }}
-                  </option>
-                </select>
+              <!-- CONTROLS -->
+              <div class="col-sm-9">
+                <!-- STRATEGY SWITCH -->
+                <div class="d-flex align-items-center gap-3 mb-2">
+                  <div class="form-check form-check-inline">
+                    <input
+                      class="form-check-input"
+                      type="radio"
+                      :name="`prop-${prop.key}`"
+                      :value="null"
+                      v-model="config.properties[prop.key].strategy"
+                    />
+                    <label class="form-check-label small text-muted"
+                      >Not mapped</label
+                    >
+                  </div>
 
-                <small class="text-muted">
+                  <div class="form-check form-check-inline">
+                    <input
+                      class="form-check-input"
+                      type="radio"
+                      :name="`prop-${prop.key}`"
+                      value="column"
+                      v-model="config.properties[prop.key].strategy"
+                    />
+                    <label class="form-check-label small">Column</label>
+                  </div>
+
+                  <div class="form-check form-check-inline">
+                    <input
+                      class="form-check-input"
+                      type="radio"
+                      :name="`prop-${prop.key}`"
+                      value="fixed"
+                      v-model="config.properties[prop.key].strategy"
+                    />
+                    <label class="form-check-label small">Fixed value</label>
+                  </div>
+                </div>
+
+                <!-- COLUMN SELECT -->
+                <div class="col-md-6">
+                  <select
+                    v-if="config.properties[prop.key].strategy === 'column'"
+                    class="form-select form-select-sm"
+                    v-model="config.properties[prop.key].column"
+                  >
+                    <option disabled value="">Select column</option>
+                    <option v-for="col in columns" :key="col" :value="col">
+                      {{ col }}
+                    </option>
+                  </select>
+
+                  <!-- FIXED VALUE INPUT -->
+                  <input
+                    v-if="
+                      config.properties[prop.key].strategy === 'fixed' &&
+                      prop.key !== 'tags' &&
+                      prop.key !== 'to_ids'
+                    "
+                    type="text"
+                    class="form-control form-control-sm"
+                    v-model="config.properties[prop.key].value"
+                    placeholder="Enter fixed value"
+                  />
+
+                  <select
+                    v-if="
+                      config.properties[prop.key].strategy === 'fixed' &&
+                      prop.key === 'to_ids'
+                    "
+                    class="form-select form-select-sm"
+                    v-model="config.properties[prop.key].value"
+                  >
+                    <option disabled value="">Select value</option>
+                    <option :value="true">true</option>
+                    <option :value="false">false</option>
+                  </select>
+
+                  <TagsSelect
+                    v-if="
+                      config.properties[prop.key].strategy === 'fixed' &&
+                      prop.key === 'tags'
+                    "
+                    :modelClass="'event'"
+                    :model="config.properties[prop.key].value"
+                    :persist="false"
+                    @update:selectedTags="
+                      config.properties[prop.key].value = $event
+                    "
+                  />
+                </div>
+
+                <small class="text-muted d-block mt-1">
                   {{ prop.help }}
                 </small>
               </div>
