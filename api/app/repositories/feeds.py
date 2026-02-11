@@ -335,7 +335,7 @@ def test_feed_connection(db: Session, feed: feed_schemas.FeedCreate):
             detail=f"Unsupported feed source format: {feed.source_format}",
         )
     
-def preview_csv_feed(url: str, mode: str = "url", delimiter: str = ","):
+def preview_csv_feed(url: str, mode: str = "url", delimiter: str = ",", settings: dict = None):
 
     if mode == "network":
         try:

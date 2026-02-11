@@ -61,14 +61,14 @@ def preview_csv_feed(
     url: str,
     mode: str = "network",
     delimiter: str = ",",
-    db: Session = Depends(get_db),
+    settings: dict = None,
     user: user_schemas.User = Security(get_current_active_user, scopes=["feeds:preview-csv"]),
 ):
     
     if delimiter == "\\t":
         delimiter = "\t"
 
-    return feeds_repository.preview_csv_feed(url=url, mode=mode, delimiter=delimiter)
+    return feeds_repository.preview_csv_feed(url=url, mode=mode, delimiter=delimiter, settings=settings)
 @router.patch("/feeds/{feed_id}", response_model=feed_schemas.Feed)
 def update_feed(
     feed_id: int,
