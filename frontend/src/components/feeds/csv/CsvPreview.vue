@@ -87,11 +87,11 @@ td.text-truncate {
                   </div>
                 </td>
               </tr>
-              <tr>
+              <tr v-if="attribute.value">
                 <td>
                   <div class="text-truncate" style="max-width: 300px">
                     <span class="text-muted small">#{{ idx + 1 }}</span>
-                    <span class="badge bg-primary ms-2">{{
+                    <span v-if="attribute.type" class="badge bg-primary ms-2">{{
                       attribute.type
                     }}</span>
                     <code class="ms-2">{{ attribute.value }}</code>
