@@ -76,6 +76,8 @@ function onSubmit(values, { setErrors }) {
         :style="{ filter: theme === 'dark' ? 'invert(1)' : 'none' }"
       /> -->
 
+      <h1 class="mb-5 fw-normal">misp-workbench</h1>
+
       <div class="form-floating">
         <Field
           id="username"
