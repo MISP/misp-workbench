@@ -46,6 +46,9 @@ def get_events(db: Session, info: str = Query(None), deleted: bool = Query(None)
     if uuid is not None:
         query = query.where(event_models.Event.uuid == uuid)
 
+    # Sort the query by timestamp in descending order
+    query = query.order_by(event_models.Event.timestamp.desc())
+
     return paginate(db, query)
 
 
