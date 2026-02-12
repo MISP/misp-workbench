@@ -374,52 +374,76 @@ function handleMappingTypeChanged(type, idx) {
                   </div>
 
                   <!-- COLUMN SELECT -->
-                  <div class="col-md-6">
-                    <select
+                  <div class="col-md-10">
+                    <div
+                      class="row"
                       v-if="
                         csvConfig.properties[prop.key].strategy === 'column'
                       "
-                      class="form-select form-select-sm"
-                      v-model="csvConfig.properties[prop.key].column"
                     >
-                      <option disabled value="">Select column</option>
-                      <option v-for="col in columns" :key="col" :value="col">
-                        {{ col }}
-                      </option>
-                    </select>
-
-                    <!-- FIXED VALUE INPUT -->
-                    <div
-                      v-if="csvConfig.properties[prop.key].strategy === 'fixed'"
-                    >
-                      <div v-if="prop.key === 'tags'">
-                        <TagsSelect
-                          :modelClass="'event'"
-                          :model="csvConfig.properties[prop.key].value"
-                          :persist="false"
-                          @update:selectedTags="
-                            csvConfig.properties[prop.key].value = $event
-                          "
-                        />
-                      </div>
-                      <div v-else-if="prop.key === 'to_ids'">
+                      <div class="col-md-6">
                         <select
                           class="form-select form-select-sm"
-                          v-model="csvConfig.properties[prop.key].value"
+                          v-model="csvConfig.properties[prop.key].column"
                         >
-                          <option disabled value="">Select value</option>
-                          <option :value="true">true</option>
-                          <option :value="false">false</option>
+                          <option disabled value="">Select column</option>
+                          <option
+                            v-for="col in columns"
+                            :key="col.index"
+                            :value="col.index"
+                          >
+                            {{ col.name }}
+                          </option>
                         </select>
                       </div>
-                      <div v-else>
-                        <input
-                          v-if="prop.key !== 'tags' && prop.key !== 'to_ids'"
-                          type="text"
-                          class="form-control form-control-sm"
-                          v-model="csvConfig.properties[prop.key].value"
-                          placeholder="Enter fixed value"
-                        />
+                      <div class="col-md-6">
+                        <code>
+                          {{
+                            rows.length > 0 &&
+                            csvConfig.properties[prop.key].column !== null
+                              ? rows[0][csvConfig.properties[prop.key].column]
+                              : "—"
+                          }}
+                        </code>
+                      </div>
+                    </div>
+
+                    <!-- FIXED VALUE INPUT -->
+                    <div class="col-md-6">
+                      <div
+                        v-if="
+                          csvConfig.properties[prop.key].strategy === 'fixed'
+                        "
+                      >
+                        <div v-if="prop.key === 'tags'">
+                          <TagsSelect
+                            :modelClass="'event'"
+                            :model="csvConfig.properties[prop.key].value"
+                            :persist="false"
+                            @update:selectedTags="
+                              csvConfig.properties[prop.key].value = $event
+                            "
+                          />
+                        </div>
+                        <div v-else-if="prop.key === 'to_ids'">
+                          <select
+                            class="form-select form-select-sm"
+                            v-model="csvConfig.properties[prop.key].value"
+                          >
+                            <option disabled value="">Select value</option>
+                            <option :value="true">true</option>
+                            <option :value="false">false</option>
+                          </select>
+                        </div>
+                        <div v-else>
+                          <input
+                            v-if="prop.key !== 'tags' && prop.key !== 'to_ids'"
+                            type="text"
+                            class="form-control form-control-sm"
+                            v-model="csvConfig.properties[prop.key].value"
+                            placeholder="Enter fixed value"
+                          />
+                        </div>
                       </div>
                     </div>
                   </div>
