@@ -8,6 +8,7 @@ from app.repositories import events as events_repository
 from app.repositories import organisations as organisations_repository
 from app.schemas import feed as feed_schemas
 from app.schemas import user as user_schemas
+from app.schemas import attribute as attribute_schemas
 from app.worker import tasks
 from fastapi import HTTPException, status
 from pymisp import MISPEvent
@@ -351,37 +352,231 @@ def test_misp_feed_connection(feed: feed_schemas.FeedCreate):
 
 def process_csv_feed_row(row: list, settings: dict):
 
+    type_mappings = {}
+
+    if (
+        settings["csvConfig"]["attribute"]["type"]["mappings"]
+        and settings["csvConfig"]["attribute"]["type"]["strategy"] == "column"
+    ):
+        for mapping in settings["csvConfig"]["attribute"]["type"]["mappings"]:
+            type_mappings[mapping["from"]] = mapping["to"]
+
     if settings["csvConfig"]["mode"] == "attribute":
 
+        # value extraction
         if settings["csvConfig"]["attribute"]["value_column"] is None:
-            return {"value": None, "type": None}
+            return {
+                "value": None,
+                "type": None,
+                "error": "Value column index is not defined in settings",
+            }
 
         value_column_index = settings["csvConfig"]["attribute"]["value_column"]
         if value_column_index >= len(row):
-            return {"value": None, "type": None}
+            return {
+                "value": None,
+                "type": None,
+                "error": f"Value column index {value_column_index} out of range for row with {len(row)} columns",
+            }
 
         value = row[value_column_index]
 
+        # type extraction
         if settings["csvConfig"]["attribute"]["type"]["strategy"] == "fixed":
             type_value = settings["csvConfig"]["attribute"]["type"]["value"]
         elif settings["csvConfig"]["attribute"]["type"]["strategy"] == "column":
             type_column_index = settings["csvConfig"]["attribute"]["type"]["column"]
+            if type_column_index is None:
+                return {
+                    "value": value,
+                    "type": None,
+                    "error": "Type column index is not defined in settings",
+                }
+
             if type_column_index >= len(row):
                 return {"value": value, "type": None}
             type_value = row[type_column_index]
+
+            if type_value in type_mappings:
+                type_value = type_mappings[type_value]
+
+            if type_value not in attribute_schemas.AttributeType.__members__.values():
+                return {
+                    "value": value,
+                    "type": None,
+                    "error": f"Type value '{type_value}' is not a valid attribute type",
+                }
+
+        attribute = {"value": value, "type": type_value}
+
+        # timestamp extraction
+        if settings["csvConfig"]["attribute"]["properties"]["timestamp"] is not None:
+            if (
+                settings["csvConfig"]["attribute"]["properties"]["timestamp"][
+                    "strategy"
+                ]
+                == "fixed"
+            ):
+                attribute["timestamp"] = settings["csvConfig"]["attribute"][
+                    "properties"
+                ]["timestamp"]["value"]
+
+            if (
+                settings["csvConfig"]["attribute"]["properties"]["timestamp"][
+                    "strategy"
+                ]
+                == "column"
+            ):
+                timestamp_column_index = settings["csvConfig"]["attribute"][
+                    "properties"
+                ]["timestamp"]["column"]
+                if timestamp_column_index is not None and timestamp_column_index < len(
+                    row
+                ):
+                    attribute["timestamp"] = row[timestamp_column_index]
+                else:
+                    attribute["timestamp"] = None
         else:
             raise ValueError(
                 f"Unsupported type strategy: {settings['csvConfig']['attribute']['type']['strategy']}"
             )
 
-        return {"value": value, "type": type_value}
+        # to_ids extraction
+        if settings["csvConfig"]["attribute"]["properties"]["to_ids"] is not None:
+            if (
+                settings["csvConfig"]["attribute"]["properties"]["to_ids"]["strategy"]
+                == "fixed"
+            ):
+                attribute["to_ids"] = settings["csvConfig"]["attribute"]["properties"][
+                    "to_ids"
+                ]["value"]
+
+            if (
+                settings["csvConfig"]["attribute"]["properties"]["to_ids"]["strategy"]
+                == "column"
+            ):
+                to_ids_column_index = settings["csvConfig"]["attribute"]["properties"][
+                    "to_ids"
+                ]["column"]
+                if to_ids_column_index is not None and to_ids_column_index < len(row):
+                    attribute["to_ids"] = str(
+                        row[to_ids_column_index]
+                    ).strip().lower() in ["yes", "1", "true"]
+                else:
+                    attribute["to_ids"] = False
+
+        # tags extraction
+        if settings["csvConfig"]["attribute"]["properties"]["tags"] is not None:
+            if (
+                settings["csvConfig"]["attribute"]["properties"]["tags"]["strategy"]
+                == "fixed"
+            ):
+                attribute["tags"] = settings["csvConfig"]["attribute"]["properties"][
+                    "tags"
+                ]["value"]
+
+            if (
+                settings["csvConfig"]["attribute"]["properties"]["tags"]["strategy"]
+                == "column"
+            ):
+                tags_column_index = settings["csvConfig"]["attribute"]["properties"][
+                    "tags"
+                ]["column"]
+                if tags_column_index is not None and tags_column_index < len(row):
+                    attribute["tags"] = [
+                        tag.strip() for tag in row[tags_column_index].split(",")
+                    ]
+                else:
+                    attribute["tags"] = []
+
+        # comment extraction
+        if settings["csvConfig"]["attribute"]["properties"]["comment"] is not None:
+            if (
+                settings["csvConfig"]["attribute"]["properties"]["comment"]["strategy"]
+                == "fixed"
+            ):
+                attribute["comment"] = settings["csvConfig"]["attribute"]["properties"][
+                    "comment"
+                ]["value"]
+
+            if (
+                settings["csvConfig"]["attribute"]["properties"]["comment"]["strategy"]
+                == "column"
+            ):
+                comment_column_index = settings["csvConfig"]["attribute"]["properties"][
+                    "comment"
+                ]["column"]
+                if comment_column_index is not None and comment_column_index < len(row):
+                    attribute["comment"] = row[comment_column_index]
+                else:
+                    attribute["comment"] = ""
+
+        # first_seen extraction
+        if settings["csvConfig"]["attribute"]["properties"]["first_seen"] is not None:
+            if (
+                settings["csvConfig"]["attribute"]["properties"]["first_seen"][
+                    "strategy"
+                ]
+                == "fixed"
+            ):
+                attribute["first_seen"] = settings["csvConfig"]["attribute"][
+                    "properties"
+                ]["first_seen"]["value"]
+
+            if (
+                settings["csvConfig"]["attribute"]["properties"]["first_seen"][
+                    "strategy"
+                ]
+                == "column"
+            ):
+                first_seen_column_index = settings["csvConfig"]["attribute"][
+                    "properties"
+                ]["first_seen"]["column"]
+                if (
+                    first_seen_column_index is not None
+                    and first_seen_column_index < len(row)
+                ):
+                    attribute["first_seen"] = row[first_seen_column_index]
+                else:
+                    attribute["first_seen"] = None
+
+        # last_seen extraction
+        if settings["csvConfig"]["attribute"]["properties"]["last_seen"] is not None:
+            if (
+                settings["csvConfig"]["attribute"]["properties"]["last_seen"][
+                    "strategy"
+                ]
+                == "fixed"
+            ):
+                attribute["last_seen"] = settings["csvConfig"]["attribute"][
+                    "properties"
+                ]["last_seen"]["value"]
+
+            if (
+                settings["csvConfig"]["attribute"]["properties"]["last_seen"][
+                    "strategy"
+                ]
+                == "column"
+            ):
+                last_seen_column_index = settings["csvConfig"]["attribute"][
+                    "properties"
+                ]["last_seen"]["column"]
+                if last_seen_column_index is not None and last_seen_column_index < len(
+                    row
+                ):
+                    attribute["last_seen"] = row[last_seen_column_index]
+                else:
+                    attribute["last_seen"] = None
+
+        return attribute
+
     elif settings["csvConfig"]["mode"] == "object":
         raise NotImplementedError("Object mode is not yet implemented")
     else:
         raise ValueError(f"Unsupported CSV mode: {settings['csvConfig']['mode']}")
 
 
-def preview_csv_feed(settings: dict = None):
+def preview_csv_feed(settings: dict = None, limit: int = 5):
     if settings["input_source"] == "network":
         try:
             response = requests.get(settings["url"], headers={"User-Agent": USER_AGENT})
@@ -393,13 +588,13 @@ def preview_csv_feed(settings: dict = None):
                     for line in lines
                     if line.strip() and not line.strip().startswith("#")
                 ]
-                preview_lines = [line for line in lines[:10]]
+                preview_lines = [line for line in lines[:limit]]
                 csv_reader = csv.reader(
                     preview_lines,
                     delimiter=settings["settings"]["csvConfig"]["delimiter"],
                 )
                 parsed_preview = [[cell.strip() for cell in row] for row in csv_reader]
-                
+
                 processed_preview = [
                     process_csv_feed_row(row, settings["settings"])
                     for row in parsed_preview
