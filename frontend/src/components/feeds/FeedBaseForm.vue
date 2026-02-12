@@ -16,9 +16,9 @@ const props = defineProps({
 const emit = defineEmits(["update:modelValue"]);
 
 const local = reactive({
-  name: "",
-  url: "",
-  provider: "",
+  name: "Cloudflare IPs",
+  url: "https://www.cloudflare.com/ips-v4/",
+  provider: "Cloudflare",
   distribution: "0",
   enabled: true,
   description: "",
@@ -35,7 +35,7 @@ watch(
   (value) => {
     Object.assign(local, value);
   },
-  { immediate: true, deep: true },
+  { deep: true },
 );
 
 /**
@@ -135,7 +135,7 @@ function handleDistributionLevelUpdated(distributionLevelId) {
         </div>
 
         <div class="col-10">
-          <label class="form-label" for="feed.url">URL</label>
+          <label class="form-label" for="feed.url">URI</label>
           <div class="input-group mb-3">
             <div class="input-group-prepend">
               <span class="input-group-text">

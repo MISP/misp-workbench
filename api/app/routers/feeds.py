@@ -49,6 +49,25 @@ def create_feed(
     return feeds_repository.create_feed(db=db, feed=feed)
 
 
+@router.post("/feeds/misp/test-connection")
+def test_feed_connection(
+    feed: feed_schemas.FeedCreate,
+    user: user_schemas.User = Security(
+        get_current_active_user, scopes=["feeds:test-connection"]
+    ),
+):
+    return feeds_repository.test_misp_feed_connection(feed=feed)
+
+
+@router.post("/feeds/csv/preview")
+def preview_csv_feed(
+    settings: dict = None,
+    user: user_schemas.User = Security(
+        get_current_active_user, scopes=["feeds:preview-csv"]
+    ),
+):
+    return feeds_repository.preview_csv_feed(settings=settings)
+
 @router.patch("/feeds/{feed_id}", response_model=feed_schemas.Feed)
 def update_feed(
     feed_id: int,
@@ -86,11 +105,3 @@ def fetch_feed(
 
     result = tasks.fetch_feed.delay(feed_id, user.id)
     return {"task": {"id": result.id, "name": "fetch_feed", "status": result.status}}
-
-@router.post("/feeds/test-connection")
-def test_feed_connection(
-    feed: feed_schemas.FeedCreate,
-    db: Session = Depends(get_db),
-    user: user_schemas.User = Security(get_current_active_user, scopes=["feeds:test-connection"]),
-):
-    return feeds_repository.test_feed_connection(db=db, feed=feed)

@@ -6,9 +6,10 @@ import { useTagsStore, useAttributesStore, useEventsStore } from "@/stores";
 
 const props = defineProps({
   modelClass: { type: String, required: true },
-  model: { type: Object, required: true },
+  model: { type: Object, required: false },
   selectedTags: { type: Array, default: () => [] },
   persist: { type: Boolean, default: true },
+  readonly: { type: Boolean, default: false },
 });
 
 const emit = defineEmits(["update:selectedTags"]);
@@ -56,7 +57,8 @@ function initTomSelect() {
 
   tomselect = new TomSelect(selectElement.value, {
     create: false,
-    placeholder: "Click to add a tag...",
+    placeholder: props.readonly ? "" : "Click to add a tag...",
+    readOnly: props.readonly,
     valueField: "name",
     labelField: "name",
     searchField: "name",
