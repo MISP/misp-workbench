@@ -81,7 +81,7 @@ def get_remote_misp_connection(server: server_models.Server):
             key=server.authkey,
             ssl=verify_cert,
             http_headers={
-                "User-Agent": "misp-lite/" + os.environ.get("APP_VERSION", "")
+                "User-Agent": "misp-workbench/" + os.environ.get("APP_VERSION", "")
             },
         )
         remote_misp_version = remote_misp.misp_instance_version

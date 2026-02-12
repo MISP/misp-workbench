@@ -217,7 +217,7 @@ async function downloadAllResults(type, format = "json") {
 
     // filename
     const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-    const filename = `misp-lite-${type}-${timestamp}.${format}`;
+    const filename = `misp-workbench-${type}-${timestamp}.${format}`;
 
     // trigger download
     const a = document.createElement("a");

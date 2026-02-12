@@ -122,13 +122,6 @@ function navAndClose(path) {
   <nav v-if="!$isMobile" class="navbar navbar-expand border-bottom">
     <div class="container-fluid">
       <div class="navbar-nav h5 fw-light">
-        <RouterLink to="/" class="nav-item nav-link">
-          <img
-            src="/images/misp-lite-logo.png"
-            height="30"
-            :style="{ filter: theme === 'dark' ? 'invert(1)' : 'none' }"
-          />
-        </RouterLink>
         <RouterLink to="/explore" class="nav-item nav-link">explore</RouterLink>
         <RouterLink to="/events" class="nav-item nav-link">events</RouterLink>
 
@@ -267,13 +260,13 @@ function navAndClose(path) {
       </button>
 
       <!-- Logo -->
-      <RouterLink to="/" class="navbar-brand mx-auto">
+      <!-- <RouterLink to="/" class="navbar-brand mx-auto">
         <img
           src="/images/misp-lite-no-background.png"
           height="28"
           :style="{ filter: theme === 'dark' ? 'invert(1)' : 'none' }"
         />
-      </RouterLink>
+      </RouterLink> -->
 
       <!-- Notifications -->
       <RouterLink to="/notifications">
