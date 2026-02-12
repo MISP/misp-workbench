@@ -40,10 +40,10 @@ def create_user(db: Session, user: user_schemas.UserCreate):
 
     tasks.send_email(
         {
-            "subject": "misp-lite password",
+            "subject": "misp-workbench password",
             "body": f"your password is: {user.password}",
             "to": user.email,
-            "from": "info@misp-lite.com",
+            "from": "info@misp-workbench.local",
         }
     )
 

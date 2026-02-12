@@ -1,8 +1,8 @@
 [tool.poetry]
-name = "misp-lite-api"
+name = "misp-workbench-api"
 version = "0.1.0"
-description = "MISP, but lightweight"
-authors = ["Luciano Righetti <luciano.righetti@circl.lu>"]
+description = "misp-workbench API server"
+authors = ["Luciano Righetti <luciano.righetti@circl.lu>", "CIRCL <team@circl.lu>"]
 license = "AGPL-3.0"
 
 [tool.poetry.dependencies]

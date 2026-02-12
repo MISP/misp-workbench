@@ -33,7 +33,7 @@ from fastapi_pagination import add_pagination
 logging.config.fileConfig("logging.conf", disable_existing_loggers=False)
 
 # Bootstrap application
-app = FastAPI(title="misp-lite API", version="0.1.0")
+app = FastAPI(title="misp-workbench API", version="0.1.0")
 
 # Add CORS
 origins = [

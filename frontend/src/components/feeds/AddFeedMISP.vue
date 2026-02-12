@@ -253,8 +253,6 @@ if (props.modelValue === null) {
           </div>
         </div>
       </div>
-        </div>
-      </div>
 
       <!-- ADVANCED MODE -->
       <div v-else>

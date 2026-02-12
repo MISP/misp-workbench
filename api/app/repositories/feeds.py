@@ -16,7 +16,7 @@ from datetime import datetime, timedelta
 
 logger = logging.getLogger(__name__)
 
-USER_AGENT = "misp-lite/" + os.environ.get("APP_VERSION", "")
+USER_AGENT = "misp-workbench/" + os.environ.get("APP_VERSION", "")
 
 
 def get_feeds(db: Session, skip: int = 0, limit: int = 100):
