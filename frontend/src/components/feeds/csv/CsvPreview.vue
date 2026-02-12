@@ -1,5 +1,4 @@
 <script setup>
-import TagsSelect from "@/components/tags/TagsSelect.vue";
 defineProps({
   columns: {
     type: Array,
@@ -88,7 +87,7 @@ td.text-truncate {
                 </td>
               </tr>
               <tr v-if="attribute.value">
-                <td>
+                <td colspan="2">
                   <div class="text-truncate" style="max-width: 300px">
                     <span class="text-muted small">#{{ idx + 1 }}</span>
                     <span v-if="attribute.type" class="badge bg-primary ms-2">{{
@@ -101,11 +100,12 @@ td.text-truncate {
               <tr v-if="attribute.tags?.length">
                 <th>tags</th>
                 <td>
-                  <TagsSelect
-                    :tags="attribute.tags"
-                    :persist="false"
-                    :readonly="true"
-                  />
+                  <span
+                    v-for="(tag, tidx) in attribute.tags"
+                    :key="tidx"
+                    class="badge bg-info ms-2"
+                    >{{ tag }}</span
+                  >
                 </td>
               </tr>
               <tr v-if="attribute.comment">
