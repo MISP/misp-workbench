@@ -20,6 +20,8 @@ from app.repositories import notifications as notifications_repository
 from app.repositories import galaxies as galaxies_repository
 from app.repositories import taxonomies as taxonomies_repository
 from app.schemas import event as event_schemas
+from app.schemas import attribute as attribute_schemas
+from app.models import event as event_models
 from celery import Celery
 from celery.signals import worker_ready
 from app.models import user as user_models
@@ -514,6 +516,77 @@ def fetch_feed_event(event_uuid: uuid.UUID, feed_id: int, user_id: int):
 
 
 @app.task
+def fetch_csv_feed(feed_id: int, user_id: int):
+    logger.info("fetch csv feed id=%s job started", feed_id)
+
+    index = 0
+    rows_parsed = 0
+    attributes_created = 0
+    failed_rows = 0
+
+    with Session(engine) as db:
+        user = users_repository.get_user_by_id(db, user_id)
+        db_feed = feeds_repository.get_feed_by_id(db, feed_id=feed_id)
+
+        db_event = events_repository.create_event(
+            db,
+            event_schemas.EventCreate(
+                info="CSV feed import: %s - %s"
+                % (db_feed.name, datetime.now().isoformat()),
+                analysis=event_models.AnalysisLevel.INITIAL,
+                threat_level=event_models.ThreatLevel.UNDEFINED,
+                distribution=db_feed.distribution,
+                user_id=user.id,
+                org_id=user.org_id,
+            ),
+        )
+
+        lines = feeds_repository.fetch_csv_content_from_network(db_feed.url)
+        rows = feeds_repository.parse_csv_feed_lines(db_feed.settings, lines)
+
+        for row in rows:
+            if db_feed.settings["csvConfig"]["header"] and index == 0:
+                continue  # skip the first line if header is present
+
+            try:
+                rows_parsed += 1
+                attribute = feeds_repository.process_csv_feed_row(row, db_feed.settings)
+
+                db_attribute = attribute_schemas.AttributeCreate(
+                    event_id=db_event.id,
+                    type=attribute["type"],
+                    value=attribute["value"],
+                    category=attribute.get("category", "External analysis"),
+                )
+
+                if "distribution" in attribute:
+                    db_attribute.distribution = attribute["distribution"]
+
+                if "comment" in attribute:
+                    db_attribute.comment = attribute["comment"]
+
+                if "to_ids" in attribute:
+                    db_attribute.to_ids = attribute["to_ids"]
+
+                attributes_repository.create_attribute(db, db_attribute)
+                attributes_created += 1
+
+            except Exception as e:
+                failed_rows += 1
+                logger.error("Error processing CSV feed row: %s", e)
+
+            index += 1
+
+    logger.info("fetch csv feed id=%s job finished", feed_id)
+
+    return {
+        "result": "success",
+        "message": "CSV feed=%s processed, %s rows parsed, %s attributes created, %s rows failed."
+        % (db_feed.name, rows_parsed, attributes_created, failed_rows),
+    }
+
+
+@app.task
 def generate_correlations():
     logger.info("generate correlations job started")
 
@@ -560,6 +633,7 @@ def generate_correlations():
                 RedisClient.delete(lock_key)
         except Exception:
             pass
+
 
 @app.task
 def handle_created_sighting(
@@ -817,6 +891,7 @@ def load_galaxies(user_id: int):
             logger.exception("Error loading galaxies: %s", e)
             return False
 
+
 @app.task(name="load_taxonomies")
 def load_taxonomies():
     logger.info("load_taxonomies job started")
@@ -832,6 +907,7 @@ def load_taxonomies():
         except Exception as e:
             logger.exception("Error loading taxonomies: %s", e)
             return False
+
 
 @app.task
 def index_object(object_uuid: uuid.UUID):

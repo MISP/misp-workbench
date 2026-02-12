@@ -251,6 +251,9 @@ def fetch_feed(db: Session, feed_id: int, user: user_schemas.User):
             for event_uuid in feed_events_uuids:
                 tasks.fetch_feed_event.delay(event_uuid, db_feed.id, user.id)
 
+    if db_feed.source_format == "csv":
+        tasks.fetch_csv_feed.delay(db_feed.id, user.id)
+
     logger.info("fetch feed id=%s all event fetch tasks enqueued.", feed_id)
     return {
         "result": "success",
@@ -350,7 +353,7 @@ def test_misp_feed_connection(feed: feed_schemas.FeedCreate):
         )
 
 
-def process_csv_feed_row(row: list, settings: dict):
+def process_csv_feed_row_to_attribute(row: list, settings: dict):
 
     type_mappings = {}
 
@@ -362,7 +365,6 @@ def process_csv_feed_row(row: list, settings: dict):
             type_mappings[mapping["from"]] = mapping["to"]
 
     if settings["csvConfig"]["mode"] == "attribute":
-
         # value extraction
         if settings["csvConfig"]["attribute"]["value_column"] is None:
             return {
@@ -576,45 +578,51 @@ def process_csv_feed_row(row: list, settings: dict):
         raise ValueError(f"Unsupported CSV mode: {settings['csvConfig']['mode']}")
 
 
+def process_csv_feed_row(row: list, settings: dict):
+    if settings["csvConfig"]["mode"] == "attribute": 
+        return process_csv_feed_row_to_attribute(row, settings)
+    elif settings["csvConfig"]["mode"] == "object": 
+        raise NotImplementedError("Object mode is not yet implemented")
+
+def fetch_csv_content_from_network(url: str) -> list:
+    try:
+        response = requests.get(url, headers={"User-Agent": USER_AGENT})
+        if response.status_code == 200:
+            content = response.content.decode("utf-8")
+            lines = content.splitlines()
+            return [
+                line
+                for line in lines
+                if line.strip() and not line.strip().startswith("#")
+            ]
+        else:
+            raise HTTPException(
+                status_code=response.status_code,
+                detail=f"Failed to fetch CSV feed: {response.text}",
+            )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Failed to fetch CSV feed: {str(e)}",
+        )
+
+
 def preview_csv_feed(settings: dict = None, limit: int = 5):
     if settings["input_source"] == "network":
-        try:
-            response = requests.get(settings["url"], headers={"User-Agent": USER_AGENT})
-            if response.status_code == 200:
-                content = response.content.decode("utf-8")
-                lines = content.splitlines()
-                lines = [
-                    line
-                    for line in lines
-                    if line.strip() and not line.strip().startswith("#")
-                ]
-                preview_lines = [line for line in lines[:limit]]
-                csv_reader = csv.reader(
-                    preview_lines,
-                    delimiter=settings["settings"]["csvConfig"]["delimiter"],
-                )
-                parsed_preview = [[cell.strip() for cell in row] for row in csv_reader]
+        lines = fetch_csv_content_from_network(settings["url"])
+        preview_lines = [line for line in lines[:limit]]
+        parsed_preview_lines = parse_csv_feed_lines(settings, preview_lines)
 
-                processed_preview = [
-                    process_csv_feed_row(row, settings["settings"])
-                    for row in parsed_preview
-                ]
+        processed_preview = [
+            process_csv_feed_row(row, settings["settings"])
+            for row in parsed_preview_lines
+        ]
 
-                return {
-                    "result": "success",
-                    "rows": parsed_preview,
-                    "preview": processed_preview,
-                }
-            else:
-                raise HTTPException(
-                    status_code=response.status_code,
-                    detail=f"Failed to fetch CSV feed: {response.text}",
-                )
-        except Exception as e:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Failed to fetch CSV feed: {str(e)}",
-            )
+        return {
+            "result": "success",
+            "rows": parsed_preview_lines,
+            "preview": processed_preview,
+        }
     elif settings["input_source"] == "local":
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -625,6 +633,14 @@ def preview_csv_feed(settings: dict = None, limit: int = 5):
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid mode or missing URI for CSV preview",
         )
+
+def parse_csv_feed_lines(settings, preview_lines):
+    csv_reader = csv.reader(
+            preview_lines,
+            delimiter=settings["csvConfig"]["delimiter"],
+        )
+    parsed_preview = [[cell.strip() for cell in row] for row in csv_reader]
+    return parsed_preview
 
 
 def parse_human_readable_time(time_str):
