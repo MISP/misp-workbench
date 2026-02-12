@@ -1,7 +1,6 @@
 <script setup>
-import { computed } from "vue";
-
-const props = defineProps({
+import TagsSelect from "@/components/tags/TagsSelect.vue";
+defineProps({
   columns: {
     type: Array,
     default: () => [],
@@ -10,14 +9,10 @@ const props = defineProps({
     type: Array,
     required: true,
   },
-  maxRows: {
-    type: Number,
-    default: 5,
+  preview: {
+    type: Array,
+    default: () => [],
   },
-});
-
-const displayedRows = computed(() => {
-  return props.rows.slice(0, props.maxRows);
 });
 
 function formatValue(value) {
@@ -30,11 +25,6 @@ function formatValue(value) {
 }
 </script>
 <style scoped>
-.csv-preview-table {
-  max-height: 240px;
-  overflow: auto;
-}
-
 td.text-truncate {
   max-width: 200px;
   white-space: nowrap;
@@ -45,10 +35,11 @@ td.text-truncate {
 
 <template>
   <div class="csv-preview">
-    <div class="table-responsive csv-preview-table">
+    <div class="table-responsive">
       <table class="table table-sm table-bordered align-middle mb-0">
         <thead class="table-secondary">
           <tr>
+            <th style="width: 30px">#</th>
             <th v-for="(col, idx) in columns" :key="idx" class="text-nowrap">
               {{ col }}
             </th>
@@ -56,7 +47,8 @@ td.text-truncate {
         </thead>
 
         <tbody>
-          <tr v-for="(row, index) in displayedRows" :key="index">
+          <tr v-for="(row, index) in rows" :key="index">
+            <td>{{ index + 1 }}</td>
             <td
               v-for="(col, cidx) in columns"
               :key="cidx"
@@ -67,7 +59,7 @@ td.text-truncate {
             </td>
           </tr>
 
-          <tr v-if="!displayedRows.length">
+          <tr v-if="!rows.length">
             <td
               :colspan="columns.length || columns.length"
               class="text-center text-muted py-3"
@@ -77,12 +69,47 @@ td.text-truncate {
           </tr>
         </tbody>
       </table>
-      <small class="text-muted">
-        showing first {{ displayedRows.length }} row<span
-          v-if="displayedRows.length !== 1"
-          >s</span
+      <div v-if="preview.length > 0" class="mt-4">
+        <div
+          v-for="(attribute, idx) in preview"
+          :key="attribute.type"
+          class="mb-2"
         >
-      </small>
+          <table class="table table-bordered m-0">
+            <tbody>
+              <tr>
+                <td>
+                  <div class="text-truncate" style="max-width: 300px">
+                    <span class="text-muted small">#{{ idx + 1 }}</span>
+                    <span class="badge bg-primary ms-2">{{
+                      attribute.type
+                    }}</span>
+                    <code class="ms-2">{{ attribute.value }}</code>
+                  </div>
+                </td>
+              </tr>
+              <tr v-if="attribute.tags?.length">
+                <th>tags</th>
+                <td>
+                  <TagsSelect
+                    :tags="attribute.tags"
+                    :persist="false"
+                    :readonly="true"
+                  />
+                </td>
+              </tr>
+              <tr v-if="attribute.comment">
+                <th>comment</th>
+                <td>{{ attribute.comment || "" }}</td>
+              </tr>
+              <tr v-if="attribute.timestamp">
+                <th>timestamp</th>
+                <td>{{ attribute.timestamp }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   </div>
 </template>

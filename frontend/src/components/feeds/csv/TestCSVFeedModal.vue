@@ -1,5 +1,6 @@
 <script setup>
 import { ref } from "vue";
+import CsvPreview from "./CsvPreview.vue";
 
 const showRaw = ref(false);
 
@@ -41,7 +42,7 @@ function closeModal() {
 <template>
   <div class="test-modal-backdrop">
     <div class="test-modal">
-      <div class="card shadow-lg">
+      <div class="card">
         <!-- HEADER -->
         <div
           class="card-header d-flex justify-content-between align-items-center"
@@ -53,23 +54,37 @@ function closeModal() {
         </div>
 
         <div class="card-body">
-          {{ testResult.rows[0] }}
-          {{ testResult.preview[0] }}
+          <div v-if="testResult.rows?.length" class="table-responsive">
+            <div class="card mb-2">
+              <div class="card-body">
+                <CsvPreview
+                  v-if="testResult.rows?.length"
+                  :columns="config.settings.csvConfig.columns"
+                  :rows="testResult.rows"
+                  :preview="testResult.preview"
+                />
+              </div>
+            </div>
+          </div>
+          <!-- EMPTY STATE -->
+          <div v-else class="text-muted text-center py-4">No rows parsed.</div>
 
           <hr />
 
+          <!-- RAW JSON -->
           <div>
             <button
               class="btn btn-sm btn-outline-secondary mb-2"
               @click="showRaw = !showRaw"
             >
-              {{ showRaw ? "Hide" : "Show" }} Raw JSON
+              {{ showRaw ? "Hide" : "Show" }} Raw JSON Results
             </button>
 
             <div v-if="showRaw">
-              <pre class="p-3 rounded small overflow-auto"
-                >{{ JSON.stringify(testResult, null, 2) }}
-              </pre>
+              <pre class="p-3 rounded small overflow-auto">
+      {{ JSON.stringify(testResult, null, 2) }}
+    </pre
+              >
             </div>
           </div>
         </div>
