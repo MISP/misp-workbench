@@ -613,7 +613,7 @@ def preview_csv_feed(settings: dict = None, limit: int = 5):
     if settings["input_source"] == "network":
         lines = fetch_csv_content_from_network(settings["url"])
         preview_lines = [line for line in lines[:limit]]
-        parsed_preview_lines = parse_csv_feed_lines(settings, preview_lines)
+        parsed_preview_lines = parse_csv_feed_lines(settings['settings'], preview_lines)
 
         processed_preview = [
             process_csv_feed_row(row, settings["settings"])
