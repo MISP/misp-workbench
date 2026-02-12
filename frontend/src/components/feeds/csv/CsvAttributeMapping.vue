@@ -57,18 +57,18 @@ const attributeProperties = [
 
 const emit = defineEmits(["update:modelValue"]);
 
-const config = computed({
+const csvConfig = computed({
   get: () => props.modelValue,
   set: (val) => emit("update:modelValue", val),
 });
 
-if (!config.value.properties) {
-  config.value.properties = {};
+if (!csvConfig.value.properties) {
+  csvConfig.value.properties = {};
 }
 
 attributeProperties.forEach((prop) => {
-  if (!config.value.properties[prop.key]) {
-    config.value.properties[prop.key] = {
+  if (!csvConfig.value.properties[prop.key]) {
+    csvConfig.value.properties[prop.key] = {
       strategy: null,
       column: null,
       value: null,
@@ -77,27 +77,27 @@ attributeProperties.forEach((prop) => {
 });
 
 const addMapping = () => {
-  config.value.type.mappings.push({ from: "", to: "" });
+  csvConfig.value.type.mappings.push({ from: "", to: "" });
 };
 
 const removeMapping = (idx) => {
-  config.value.type.mappings.splice(idx, 1);
+  csvConfig.value.type.mappings.splice(idx, 1);
 };
 
-if (!config.value.type.mappings) {
-  config.value.type.mappings = [];
+if (!csvConfig.value.type.mappings) {
+  csvConfig.value.type.mappings = [];
 }
 
 function handleFallbackTypeChanged(type) {
-  config.value.type.fallback = type;
+  csvConfig.value.type.fallback = type;
 }
 
 function handleFixedTypeChanged(type) {
-  config.value.type.value = type;
+  csvConfig.value.type.value = type;
 }
 
 function handleMappingTypeChanged(type, idx) {
-  config.value.type.mappings[idx].to = type;
+  csvConfig.value.type.mappings[idx].to = type;
 }
 </script>
 
@@ -113,14 +113,14 @@ function handleMappingTypeChanged(type, idx) {
         <div class="row">
           <div class="mb-3 col-md-4">
             <label class="form-label" for="csvConfig.attribute.value_column"
-              >attribute value column</label
+              >Attribute Value column</label
             >
             <Field
               class="form-select"
               as="select"
               id="csvConfig.attribute.value_column"
               name="csvConfig.attribute.value_column"
-              v-model="config.value_column"
+              v-model="csvConfig.value_column"
               :class="{
                 'is-invalid': errors['csvConfig.attribute.value_column'],
               }"
@@ -142,7 +142,7 @@ function handleMappingTypeChanged(type, idx) {
             <div class="border rounded p-2 text-truncate">
               <span
                 >{{
-                  rows.length > 0 ? rows[0][config.value_column] : "—"
+                  rows.length > 0 ? rows[0][csvConfig.value_column] : "—"
                 }}&nbsp;</span
               >
             </div>
@@ -152,18 +152,18 @@ function handleMappingTypeChanged(type, idx) {
 
         <!-- TYPE STRATEGY -->
         <div class="mb-3">
-          <label class="form-label">Attribute type</label>
+          <label class="form-label">Attribute Type</label>
 
           <div class="form-check">
             <input
               class="form-check-input"
               type="radio"
               value="fixed"
-              v-model="config.type.strategy"
+              v-model="csvConfig.type.strategy"
               id="type-fixed"
             />
             <label class="form-check-label" for="type-fixed">
-              Fixed type
+              Fixed Type
             </label>
           </div>
 
@@ -172,7 +172,7 @@ function handleMappingTypeChanged(type, idx) {
               class="form-check-input"
               type="radio"
               value="column"
-              v-model="config.type.strategy"
+              v-model="csvConfig.type.strategy"
               id="type-column"
             />
             <label class="form-check-label" for="type-column">
@@ -181,26 +181,24 @@ function handleMappingTypeChanged(type, idx) {
           </div>
         </div>
 
-        <div v-if="config.type.strategy === 'column'" class="mb-3">
+        <div v-if="csvConfig.type.strategy === 'column'" class="mb-3">
           <!-- COLUMN SELECT -->
           <div class="row">
             <div class="mb-3 col-md-4">
-              <label class="form-label">type column</label>
-              <select class="form-select mb-3" v-model="config.type.column">
-                <option disabled value="">select column</option>
-                <option v-for="col in columns" :key="col" :value="col">
-                  {{ col }}
+              <label class="form-label">Type column</label>
+              <select class="form-select mb-3" v-model="csvConfig.type.column">
+                <option disabled value="">Select column</option>
+                <option v-for="col in columns" :key="col" :value="col.index">
+                  {{ col.name }}
                 </option>
               </select>
             </div>
             <div class="mb-3 col-md-4">
-              <label class="form-label">sample</label>
+              <label class="form-label">Sample</label>
               <div class="border rounded p-2 text-truncate">
                 <span
                   >{{
-                    rows.length > 0 && config.type.column
-                      ? rows[0][columns.indexOf(config.type.column)]
-                      : "—"
+                    rows.length > 0 ? rows[0][csvConfig.type.column] : "—"
                   }}&nbsp;</span
                 >
               </div>
@@ -234,7 +232,7 @@ function handleMappingTypeChanged(type, idx) {
                   </thead>
                   <tbody>
                     <tr
-                      v-for="(mapping, idx) in config.type.mappings"
+                      v-for="(mapping, idx) in csvConfig.type.mappings"
                       :key="idx"
                     >
                       <td>
@@ -263,7 +261,7 @@ function handleMappingTypeChanged(type, idx) {
                       </td>
                     </tr>
 
-                    <tr v-if="config.type.mappings.length === 0">
+                    <tr v-if="csvConfig.type.mappings.length === 0">
                       <td colspan="3" class="text-muted text-center">
                         No mappings defined
                       </td>
@@ -295,7 +293,7 @@ function handleMappingTypeChanged(type, idx) {
         </div>
 
         <!-- FIXED TYPE -->
-        <div v-if="config.type.strategy === 'fixed'" class="mb-3 col-md-4">
+        <div v-if="csvConfig.type.strategy === 'fixed'" class="mb-3 col-md-4">
           <AttributeTypeSelect
             name="csvConfig.attribute.type.value"
             @attribute-type-updated="handleFixedTypeChanged"
@@ -345,7 +343,7 @@ function handleMappingTypeChanged(type, idx) {
                         type="radio"
                         :name="`prop-${prop.key}`"
                         :value="null"
-                        v-model="config.properties[prop.key].strategy"
+                        v-model="csvConfig.properties[prop.key].strategy"
                       />
                       <label class="form-check-label small text-muted"
                         >Not mapped</label
@@ -358,7 +356,7 @@ function handleMappingTypeChanged(type, idx) {
                         type="radio"
                         :name="`prop-${prop.key}`"
                         value="column"
-                        v-model="config.properties[prop.key].strategy"
+                        v-model="csvConfig.properties[prop.key].strategy"
                       />
                       <label class="form-check-label small">Column</label>
                     </div>
@@ -369,7 +367,7 @@ function handleMappingTypeChanged(type, idx) {
                         type="radio"
                         :name="`prop-${prop.key}`"
                         value="fixed"
-                        v-model="config.properties[prop.key].strategy"
+                        v-model="csvConfig.properties[prop.key].strategy"
                       />
                       <label class="form-check-label small">Fixed value</label>
                     </div>
@@ -378,9 +376,11 @@ function handleMappingTypeChanged(type, idx) {
                   <!-- COLUMN SELECT -->
                   <div class="col-md-6">
                     <select
-                      v-if="config.properties[prop.key].strategy === 'column'"
+                      v-if="
+                        csvConfig.properties[prop.key].strategy === 'column'
+                      "
                       class="form-select form-select-sm"
-                      v-model="config.properties[prop.key].column"
+                      v-model="csvConfig.properties[prop.key].column"
                     >
                       <option disabled value="">Select column</option>
                       <option v-for="col in columns" :key="col" :value="col">
@@ -390,22 +390,22 @@ function handleMappingTypeChanged(type, idx) {
 
                     <!-- FIXED VALUE INPUT -->
                     <div
-                      v-if="config.properties[prop.key].strategy === 'fixed'"
+                      v-if="csvConfig.properties[prop.key].strategy === 'fixed'"
                     >
                       <div v-if="prop.key === 'tags'">
                         <TagsSelect
                           :modelClass="'event'"
-                          :model="config.properties[prop.key].value"
+                          :model="csvConfig.properties[prop.key].value"
                           :persist="false"
                           @update:selectedTags="
-                            config.properties[prop.key].value = $event
+                            csvConfig.properties[prop.key].value = $event
                           "
                         />
                       </div>
                       <div v-else-if="prop.key === 'to_ids'">
                         <select
                           class="form-select form-select-sm"
-                          v-model="config.properties[prop.key].value"
+                          v-model="csvConfig.properties[prop.key].value"
                         >
                           <option disabled value="">Select value</option>
                           <option :value="true">true</option>
@@ -417,7 +417,7 @@ function handleMappingTypeChanged(type, idx) {
                           v-if="prop.key !== 'tags' && prop.key !== 'to_ids'"
                           type="text"
                           class="form-control form-control-sm"
-                          v-model="config.properties[prop.key].value"
+                          v-model="csvConfig.properties[prop.key].value"
                           placeholder="Enter fixed value"
                         />
                       </div>

@@ -75,8 +75,18 @@ td.text-truncate {
           :key="attribute.type"
           class="mb-2"
         >
-          <table class="table table-bordered m-0">
+          <table
+            class="table table-bordered m-0 alert"
+            :class="attribute.error ? 'alert-danger' : 'alert-success'"
+          >
             <tbody>
+              <tr>
+                <td colspan="2" v-if="attribute.error">
+                  <div class="text-danger small">
+                    {{ attribute.error }}
+                  </div>
+                </td>
+              </tr>
               <tr>
                 <td>
                   <div class="text-truncate" style="max-width: 300px">
