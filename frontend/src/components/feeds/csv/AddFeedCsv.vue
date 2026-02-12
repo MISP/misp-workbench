@@ -162,6 +162,12 @@ function previewCsvFeed() {
           <FontAwesomeIcon :icon="faSpinner" spin />
         </div>
         <CsvPreview :rows="csvRows" :columns="columnsComputed" />
+        <small class="text-muted">
+          showing first {{ csvRows.length }} row<span
+            v-if="csvRows.length !== 1"
+            >s</span
+          >
+        </small>
       </div>
     </div>
   </div>
