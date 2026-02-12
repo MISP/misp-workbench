@@ -21,12 +21,12 @@ const props = defineProps({
 const apiError = ref(null);
 const csvRows = ref([]);
 const loadingPreview = ref(false);
-const parseHeader = ref(true);
 
 const csvConfig = reactive({
   mode: "attribute",
   columns: [],
   delimiter: ",",
+  header: true,
   attribute: {
     value_column: null,
     type: {
@@ -63,7 +63,7 @@ watch(
 );
 
 const columnsComputed = computed(() => {
-  if (parseHeader.value && csvRows.value.length > 0) {
+  if (csvConfig.header && csvRows.value.length > 0) {
     const header = csvRows.value[0];
     return header.map((c) => c);
   }
@@ -116,7 +116,7 @@ function previewCsvFeed() {
                 class="form-check-input"
                 type="checkbox"
                 id="parseHeader"
-                v-model="parseHeader"
+                v-model="csvConfig.header"
               />
               <label
                 class="form-check-label small text-muted"
