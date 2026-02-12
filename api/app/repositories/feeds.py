@@ -667,7 +667,7 @@ def get_or_create_feed_event(db: Session, db_feed: feed_models.Feed, user: user_
         db_event = events_repository.create_event(
             db,
             event_schemas.EventCreate(
-                info="CSV Feed Import: %s" % (db_feed.name),
+                info="CSV Feed Import: %s - %s" % (db_feed.name, datetime.now().isoformat()),
                 analysis=event_models.AnalysisLevel.INITIAL,
                 threat_level=event_models.ThreatLevel.UNDEFINED,
                 distribution=db_feed.distribution,

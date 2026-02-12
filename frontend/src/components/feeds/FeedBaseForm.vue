@@ -16,11 +16,12 @@ const props = defineProps({
 const emit = defineEmits(["update:modelValue"]);
 
 const local = reactive({
-  name: "Cloudflare IPs",
-  url: "https://www.cloudflare.com/ips-v4/",
-  provider: "Cloudflare",
+  name: "",
+  url: "",
+  provider: "",
   distribution: "0",
   enabled: true,
+  fixed_event: true,
   description: "",
   input_source: "network",
   schedule: "daily",
@@ -93,7 +94,6 @@ function handleDistributionLevelUpdated(distributionLevelId) {
           </Field>
           <div class="invalid-feedback">{{ errors["feed.enabled"] }}</div>
         </div>
-
         <div class="col-md-6">
           <label class="form-label" for="feed.provider">Provider</label>
           <Field
@@ -118,21 +118,15 @@ function handleDistributionLevelUpdated(distributionLevelId) {
           <div class="invalid-feedback">{{ errors["feed.distribution"] }}</div>
         </div>
 
-        <div class="col-md-2">
+        <!-- <div class="col-md-2">
           <label class="form-label" for="feed.input_source">Source</label>
-          <Field
-            class="form-control"
-            id="feed.input_source"
-            name="feed.input_source"
-            as="select"
-            v-model="local.input_source"
-            :class="{ 'is-invalid': errors['feed.input_source'] }"
-          >
+          <Field class="form-control" id="feed.input_source" name="feed.input_source" as="select"
+            v-model="local.input_source" :class="{ 'is-invalid': errors['feed.input_source'] }">
             <option value="network">Network</option>
             <option value="local" disabled>Local</option>
           </Field>
           <div class="invalid-feedback">{{ errors["feed.input_source"] }}</div>
-        </div>
+        </div> -->
 
         <div class="col-10">
           <label class="form-label" for="feed.url">URI</label>
@@ -154,6 +148,35 @@ function handleDistributionLevelUpdated(distributionLevelId) {
             </Field>
             <div class="invalid-feedback">{{ errors["feed.url"] }}</div>
           </div>
+        </div>
+
+        <div class="col-md-12">
+          <Field
+            class="form-control"
+            id="feed.enabled"
+            name="feed.fixed_event"
+            :value="local.fixed_event"
+            v-model="local.fixed_event"
+            :class="{ 'is-invalid': errors['feed.fixed_event'] }"
+          >
+            <div class="form-check form-switch">
+              <input
+                class="form-check-input"
+                type="checkbox"
+                v-model="local.fixed_event"
+                id="feedFixedEvent"
+              />
+              <label class="form-check-label" for="feedFixedEvent">
+                Fixed Event
+              </label>
+            </div>
+          </Field>
+          <div class="form-text text-muted">
+            If enabled, all attributes from this feed will be associated with a
+            single fixed event. Otherwise, a new event will be created for each
+            fetch.
+          </div>
+          <div class="invalid-feedback">{{ errors["feed.fixed_event"] }}</div>
         </div>
 
         <div class="col-md-6">
