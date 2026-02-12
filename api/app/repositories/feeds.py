@@ -583,6 +583,8 @@ def process_csv_feed_row(row: list, settings: dict):
         return process_csv_feed_row_to_attribute(row, settings)
     elif settings["csvConfig"]["mode"] == "object": 
         raise NotImplementedError("Object mode is not yet implemented")
+    else:
+        raise ValueError(f"Unsupported CSV mode: {settings['csvConfig']['mode']}")
 
 def fetch_csv_content_from_network(url: str) -> list:
     try:
