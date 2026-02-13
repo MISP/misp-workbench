@@ -1,5 +1,4 @@
 import { useAuthStore } from "@/stores";
-import { router } from "@/router";
 
 const baseUrl = `${import.meta.env.VITE_API_URL}`;
 
@@ -15,16 +14,25 @@ export const fetchWrapper = {
 };
 
 function request(method) {
-  return (url, body) => {
+  return async (url, body) => {
+    const authStore = useAuthStore();
+
+    await authStore.ensureValidToken();
+
     const requestOptions = {
       method,
       headers: authHeader(url),
+      url,
     };
+
     if (body) {
       requestOptions.headers["Content-Type"] = "application/json";
       requestOptions.body = JSON.stringify(body);
     }
-    return fetch(url, requestOptions).then(handleResponse);
+
+    return fetch(url, requestOptions).then((response) =>
+      handleResponse(response, requestOptions),
+    );
   };
 }
 
@@ -34,7 +42,9 @@ function postFormData(url, body) {
     headers: authHeader(url),
     body: body,
   };
-  return fetch(url, requestOptions).then(handleResponse);
+  return fetch(url, requestOptions).then((response) =>
+    handleResponse(response, requestOptions),
+  );
 }
 
 function downloadAttachment(url) {
@@ -68,39 +78,56 @@ function authHeader(url) {
   }
 }
 
-function handleResponse(response) {
-  // Read response body as text first. We only JSON.parse when the
-  // Content-Type indicates JSON. For NDJSON or other text types we
-  // return the raw text so callers can stream/parse it themselves.
+async function handleResponse(response, originalRequest) {
   const contentType = response.headers.get("content-type") || "";
-  return response.text().then((text) => {
-    let data = null;
+  const text = await response.text();
 
-    const isJson =
-      contentType.includes("application/json") || contentType.includes("+json");
+  let data = null;
 
-    if (isJson && text) {
-      try {
-        data = JSON.parse(text);
-      } catch (e) {
-        // If parsing fails, fall back to raw text
-        data = text;
-        console.warn("Failed to parse JSON response", e);
-      }
-    } else {
-      // For NDJSON and other textual responses return raw text
+  const isJson =
+    contentType.includes("application/json") || contentType.includes("+json");
+
+  if (isJson && text) {
+    try {
+      data = JSON.parse(text);
+    } catch (e) {
       data = text;
+      console.warn("Failed to parse JSON response", e);
     }
+  } else {
+    data = text;
+  }
 
-    if (!response.ok) {
-      if (response.status === 401 || response.status === 403) {
-        router.push("/login");
+  if (!response.ok) {
+    if (response.status === 401 && originalRequest && !originalRequest._retry) {
+      const authStore = useAuthStore();
+
+      originalRequest._retry = true;
+
+      try {
+        await authStore.refreshAccessToken();
+
+        // Retry original request with new token
+        const newHeaders = {
+          ...originalRequest.headers,
+          Authorization: `Bearer ${authStore.access_token}`,
+        };
+
+        const retryResponse = await fetch(originalRequest.url, {
+          ...originalRequest,
+          headers: newHeaders,
+        });
+
+        return handleResponse(retryResponse); // recursive retry
+      } catch (err) {
+        await authStore.logout();
+        return Promise.reject("Session expired", err);
       }
-
-      const error = (data && data.detail) || response.statusText;
-      return Promise.reject(error);
     }
 
-    return data;
-  });
+    const error = (data && data.detail) || response.statusText;
+    return Promise.reject(error);
+  }
+
+  return data;
 }
