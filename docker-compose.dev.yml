@@ -100,6 +100,13 @@ services:
           "curl -s --user admin:$$OPENSEARCH_DASHBOARDS_PASSWORD -k -X GET http://localhost:5601/api/status | grep '\"state\":\"green\"'"
         ]
 
+  redis-commander:
+    image: rediscommander/redis-commander
+    environment:
+      REDIS_HOSTS: redis://${REDIS_HOSTNAME:-redis}:${REDIS_PORT:-6379}
+    ports:
+      - "8081:8081"
+
   modules:
     ports:
       - "6666:6666"

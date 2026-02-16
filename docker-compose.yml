@@ -16,7 +16,7 @@ x-environment: &default-env
   REDIS_PORT: ${REDIS_PORT:-6379}
   REDIS_CACHE_DB: ${REDIS_CACHE_DB:-0}
   CELERY_BROKER_URL: amqp://${RABBITMQ_DEFAULT_USER:-rabbitmq}:${RABBITMQ_DEFAULT_PASS:-rabbitmq}@${RABBITMQ_HOSTNAME:-rabbitmq}:5672/${RABBITMQ_DEFAULT_VHOST:-rabbitmq}
-  CELERY_RESULT_BACKEND: redis://${REDIS_HOSTNAME:-redis}:${REDIS_PORT:-6379}/${REDIS_CELERY_DB:-0}
+  CELERY_RESULT_BACKEND: redis://${REDIS_HOSTNAME:-redis}:${REDIS_PORT:-6379}/${REDIS_CELERY_DB:-1}
   MODULES_HOST: ${MODULES_HOST:-modules}
   MODULES_PORT: ${MODULES_PORT:-6666}
   STORAGE_ENGINE: ${STORAGE_ENGINE:-local}
@@ -184,6 +184,26 @@ services:
     restart: unless-stopped
     environment:
       <<: *default-env
+    depends_on:
+      - api
+      - redis
+      - rabbitmq
+      - postgres
+    volumes:
+      - attachments-data:/tmp/attachments
+    networks:
+      - backend
+
+  beats:
+    build:
+      context: ./api
+    command: poetry run celery -A app.worker.tasks beat --loglevel=info --scheduler redbeat.RedBeatScheduler
+    restart: unless-stopped
+    environment:
+      <<: *default-env
+      REDIS_URL: redis://${REDIS_HOSTNAME:-redis}:${REDIS_PORT:-6379}/${REDIS_CELERY_DB:-0}
+      CELERY_BROKER_URL: redis://${REDIS_HOSTNAME:-redis}:${REDIS_PORT:-6379}/${REDIS_CELERY_DB:-0}
+      CELERY_RESULT_BACKEND: redis://${REDIS_HOSTNAME:-redis}:${REDIS_PORT:-6379}/${REDIS_CELERY_DB:-1}
     depends_on:
       - api
       - redis

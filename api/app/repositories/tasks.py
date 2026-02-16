@@ -1,7 +1,12 @@
 import os
+from uuid import uuid4
 
+from app.schemas import task as task_schemas
 from fastapi import HTTPException, status
 from app.flower import FlowerClient
+from redbeat import RedBeatSchedulerEntry
+from celery.schedules import schedule as celery_schedule
+from app.worker.tasks import celery_app
 
 flower_url = os.environ.get("FLOWER_URL", "http://flower:5555/")
 
@@ -93,3 +98,26 @@ def autoscale_worker_pool(worker_id: str, min: int = 1, max: int = 1):
         )
 
     return response.json()
+
+
+def schedule_task(task_name: str, params: dict = None, schedule: task_schemas.ScheduleTaskSchedule = None):
+    # TODO: Validate task_name, params and schedule
+
+    scheduled_task_name = str(uuid4())
+    interval = celery_schedule(int(schedule.every))
+    entry = RedBeatSchedulerEntry(
+        scheduled_task_name,
+        task_name,
+        interval,
+        args=[params, scheduled_task_name],
+        app=celery_app,
+    )
+    entry.save()
+
+    return {
+        "task_name": task_name,
+        "params": params,
+        "schedule": schedule,
+        "scheduled_task_name": scheduled_task_name,
+        "status": "scheduled",
+    }

@@ -31,6 +31,7 @@ aiohttp = "^3.13.3"
 bcrypt = "^4.2.0"
 pyjwt = "^2.9.0"
 minio = "^7.2.15"
+celery-redbeat = "^2.3.3"
 
 [tool.poetry.dev-dependencies]
 pytest = "^8.4.1"

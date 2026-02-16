@@ -1,5 +1,6 @@
 from app.auth.security import get_current_active_user
 from app.schemas import user as user_schemas
+from app.schemas import task as task_schemas
 from app.repositories import tasks as tasks_repository
 from fastapi import APIRouter, Query, Security
 
@@ -62,3 +63,12 @@ def shrink_worker_pool_by_id(
     ),
 ):
     return tasks_repository.autoscale_worker_pool(worker_id=worker_id, min=min, max=max)
+
+
+@router.post("/tasks/schedule")
+def schedule_task(task: task_schemas.ScheduleTaskRequest, user: user_schemas.User = Security(
+        get_current_active_user, scopes=["tasks:schedule"]
+    ),
+):
+    
+    return tasks_repository.schedule_task(task_name=task.task_name, params=task.params, schedule=task.schedule)
