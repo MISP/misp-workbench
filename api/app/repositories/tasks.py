@@ -1,6 +1,7 @@
 import os
 from uuid import uuid4
 
+from app.rediscli import get_redis
 from app.schemas import task as task_schemas
 from fastapi import HTTPException, status
 from app.flower import FlowerClient
@@ -9,6 +10,9 @@ from celery.schedules import schedule as celery_schedule
 from app.worker.tasks import celery_app
 
 flower_url = os.environ.get("FLOWER_URL", "http://flower:5555/")
+
+
+CELERY_WORKER_REDIS_DB = 0
 
 
 def get_workers():
@@ -113,7 +117,8 @@ def schedule_task(
         scheduled_task_name,
         task_name,
         interval,
-        args=[params, scheduled_task_name],
+        args=params.get("args", []) if params else [],
+        kwargs=params.get("kwargs", {}) if params else {},
         app=celery_app,
     )
     entry.save()
@@ -125,3 +130,31 @@ def schedule_task(
         "scheduled_task_name": scheduled_task_name,
         "status": "scheduled",
     }
+
+
+def get_scheduled_tasks():
+    RedisClient = get_redis(CELERY_WORKER_REDIS_DB)
+
+    keys = RedisClient.keys("redbeat:*")
+
+    scheduled_tasks = []
+    for key in keys:
+        if key in ["redbeat::lock", "redbeat::beat", "redbeat::schedule"]:
+            continue
+
+        task = RedBeatSchedulerEntry.from_key(key, app=celery_app)
+        scheduled_tasks.append(
+            {
+                "id": task.name,
+                "task_name": task.task,
+                "args": task.args,
+                "kwargs": task.kwargs,
+                "schedule": str(task.schedule),
+                "due_at": task.due_at.isoformat() if task.due_at else None,
+                "last_run_at": task.last_run_at.isoformat() if task.last_run_at else None,
+                "total_run_count": task.total_run_count,
+                "status": "scheduled",
+            }
+        )
+
+    return scheduled_tasks

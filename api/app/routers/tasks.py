@@ -72,3 +72,11 @@ def schedule_task(task: task_schemas.ScheduleTaskRequest, user: user_schemas.Use
 ):
     
     return tasks_repository.schedule_task(task_name=task.task_name, params=task.params, schedule=task.schedule)
+
+@router.get("/tasks/scheduled")
+def get_scheduled_tasks(user: user_schemas.User = Security(
+        get_current_active_user, scopes=["tasks:read"]
+    ),
+):
+    
+    return tasks_repository.get_scheduled_tasks()

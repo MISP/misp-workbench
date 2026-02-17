@@ -183,7 +183,7 @@ def process_feed_event(
 
     db.commit()
 
-    tasks.index_event.delay(local_event.uuid, full_reindex=True)
+    tasks.index_event.delay(str(local_event.uuid), full_reindex=True)
 
     return {"result": "success", "message": "Event processed"}
 
@@ -249,7 +249,7 @@ def fetch_feed(db: Session, feed_id: int, user: user_schemas.User):
                 return {"result": "success", "message": "No new events to fetch"}
 
             for event_uuid in feed_events_uuids:
-                tasks.fetch_feed_event.delay(event_uuid, db_feed.id, user.id)
+                tasks.fetch_feed_event.delay(str(event_uuid), db_feed.id, user.id)
 
     if db_feed.source_format == "csv":
         tasks.fetch_csv_feed.delay(db_feed.id, user.id)

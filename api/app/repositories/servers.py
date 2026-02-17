@@ -144,7 +144,7 @@ def pull_server_by_id_full(
 
     # pull each of the events in different tasks
     for event_uuid in event_uuids:
-        tasks.pull_event_by_uuid.delay(event_uuid, server.id, user.id)
+        tasks.pull_event_by_uuid.delay(str(event_uuid), server.id, user.id)
 
     logger.info("server pull id=%s all event fetch tasks enqueued.", server.id)
     return {
@@ -235,7 +235,7 @@ def pull_event_by_uuid(
 
     # TODO: process tag collection, see app/Model/Event.php::_add()
 
-    tasks.index_event.delay(db_event.uuid, full_reindex=True) # TODO: optimize to index only changes
+    tasks.index_event.delay(str(db_event.uuid), full_reindex=True) # TODO: optimize to index only changes
 
     return db_event
 
@@ -800,7 +800,7 @@ def push_server_by_id_full(
 
     # push each of the events in different tasks
     for event_uuid in event_uuids:
-        tasks.push_event_by_uuid.delay(event_uuid, server.id, user.id)
+        tasks.push_event_by_uuid.delay(str(event_uuid), server.id, user.id)
 
     logger.info("server push id=%s all event fetch tasks enqueued.", server.id)
     return {

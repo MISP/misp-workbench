@@ -16,5 +16,5 @@ class ScheduleTaskSchedule(BaseModel):
 
 class ScheduleTaskRequest(BaseModel):
     task_name: str
-    params: list = []
+    params: dict = {}
     schedule: ScheduleTaskSchedule = None
