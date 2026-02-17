@@ -399,7 +399,6 @@ def create_or_update_pulled_event(
                 db, created.id, event.attributes, user
             )
 
-            # TODO: publish event creation to RabbitMQ
             logger.info(f"Event {event.uuid} created")
             return created
     else:

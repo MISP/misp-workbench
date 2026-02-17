@@ -100,7 +100,11 @@ def autoscale_worker_pool(worker_id: str, min: int = 1, max: int = 1):
     return response.json()
 
 
-def schedule_task(task_name: str, params: dict = None, schedule: task_schemas.ScheduleTaskSchedule = None):
+def schedule_task(
+    task_name: str,
+    params: dict = None,
+    schedule: task_schemas.ScheduleTaskSchedule = None,
+):
     # TODO: Validate task_name, params and schedule
 
     scheduled_task_name = str(uuid4())

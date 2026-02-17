@@ -61,15 +61,25 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
+
+  beat:
+    ports:
+      - "5680:5680"
+    command:
+      [
+        "sh",
+        "-c",
+        "poetry run python -m debugpy --listen 0.0.0.0:5680 -m celery -A app.worker.tasks beat --loglevel=info --scheduler redbeat.RedBeatScheduler"
+      ]
+    volumes:
+      - ./api:/code
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
   flower:
     ports:
       - "5555:5555"
     command: poetry run celery -A app.worker.tasks flower --loglevel=debug --persistent=True --auto_refresh=True --state_save_interval=1000 -n worker1@%h
-
-  rabbitmq:
-    ports:
-      - "5672:5672"
-      - "15672:15672"
 
   frontend:
     command: [ nginx-debug, '-g', 'daemon off;' ]

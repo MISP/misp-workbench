@@ -15,7 +15,7 @@ x-environment: &default-env
   REDIS_HOSTNAME: ${REDIS_HOSTNAME:-redis}
   REDIS_PORT: ${REDIS_PORT:-6379}
   REDIS_CACHE_DB: ${REDIS_CACHE_DB:-0}
-  CELERY_BROKER_URL: amqp://${RABBITMQ_DEFAULT_USER:-rabbitmq}:${RABBITMQ_DEFAULT_PASS:-rabbitmq}@${RABBITMQ_HOSTNAME:-rabbitmq}:5672/${RABBITMQ_DEFAULT_VHOST:-rabbitmq}
+  CELERY_BROKER_URL: redis://${REDIS_HOSTNAME:-redis}:${REDIS_PORT:-6379}/${REDIS_CELERY_DB:-0}
   CELERY_RESULT_BACKEND: redis://${REDIS_HOSTNAME:-redis}:${REDIS_PORT:-6379}/${REDIS_CELERY_DB:-1}
   MODULES_HOST: ${MODULES_HOST:-modules}
   MODULES_PORT: ${MODULES_PORT:-6666}
@@ -119,24 +119,6 @@ services:
     networks:
       - backend
 
-  rabbitmq:
-    image: rabbitmq:3-management
-    restart: unless-stopped
-    environment:
-      RABBITMQ_DEFAULT_VHOST: ${RABBITMQ_DEFAULT_VHOST:-rabbitmq}
-      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:-rabbitmq}
-      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:-rabbitmq}
-    ports:
-      - "15672:15672"
-      - "5672:5672"
-    healthcheck:
-      test: ["CMD", "rabbitmqctl", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks:
-      - backend
-
   minio:
     image: quay.io/minio/minio:latest
     restart: unless-stopped
@@ -187,27 +169,22 @@ services:
     depends_on:
       - api
       - redis
-      - rabbitmq
       - postgres
     volumes:
       - attachments-data:/tmp/attachments
     networks:
       - backend
 
-  beats:
+  beat:
     build:
       context: ./api
     command: poetry run celery -A app.worker.tasks beat --loglevel=info --scheduler redbeat.RedBeatScheduler
     restart: unless-stopped
     environment:
       <<: *default-env
-      REDIS_URL: redis://${REDIS_HOSTNAME:-redis}:${REDIS_PORT:-6379}/${REDIS_CELERY_DB:-0}
-      CELERY_BROKER_URL: redis://${REDIS_HOSTNAME:-redis}:${REDIS_PORT:-6379}/${REDIS_CELERY_DB:-0}
-      CELERY_RESULT_BACKEND: redis://${REDIS_HOSTNAME:-redis}:${REDIS_PORT:-6379}/${REDIS_CELERY_DB:-1}
     depends_on:
       - api
       - redis
-      - rabbitmq
       - postgres
     volumes:
       - attachments-data:/tmp/attachments
