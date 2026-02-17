@@ -7,6 +7,7 @@ export const useTasksStore = defineStore({
   id: "tasks",
   state: () => ({
     tasks: {},
+    scheduledTasks: [],
     workers: {},
     task: {},
     status: {
@@ -56,6 +57,35 @@ export const useTasksStore = defineStore({
       this.status = { loading: true };
       return await fetchWrapper
         .post(`${baseUrl}/workers/${workerId}/shrink?min=${min}&max=${max}`)
+        .catch((error) => (this.status = { error }))
+        .finally(() => (this.status = { loading: false }));
+    },
+    async get_scheduled_tasks() {
+      this.status = { loading: true };
+      fetchWrapper
+        .get(`${baseUrl}/scheduled`)
+        .then((response) => (this.scheduledTasks = response))
+        .catch((error) => (this.status = { error }))
+        .finally(() => (this.status = { loading: false }));
+    },
+    async force_run_scheduled_task(taskId) {
+      this.status = { loading: true };
+      return await fetchWrapper
+        .post(`${baseUrl}/scheduled/${taskId}/run`)
+        .catch((error) => (this.status = { error }))
+        .finally(() => (this.status = { loading: false }));
+    },
+    async delete_scheduled_task(taskId) {
+      this.status = { loading: true };
+      return await fetchWrapper
+        .delete(`${baseUrl}/scheduled/${taskId}`)
+        .catch((error) => (this.status = { error }))
+        .finally(() => (this.status = { loading: false }));
+    },
+    async update_scheduled_task(taskId, taskData) {
+      this.status = { loading: true };
+      return await fetchWrapper
+        .patch(`${baseUrl}/scheduled/${taskId}`, taskData)
         .catch((error) => (this.status = { error }))
         .finally(() => (this.status = { loading: false }));
     },

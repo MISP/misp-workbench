@@ -1,4 +1,6 @@
 <script setup>
+import { faHourglassHalf, faWarning } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
 import { ref } from "vue";
 import { computed } from "vue";
 
@@ -85,6 +87,16 @@ function formatTime(ts) {
             >
               {{ task.name }}
               <span class="ms-2 text-muted small">({{ task.state }})</span>
+              <FontAwesomeIcon
+                v-if="task.state === 'FAILURE'"
+                :icon="faWarning"
+                class="ms-2 text-warning"
+              />
+              <FontAwesomeIcon
+                v-if="task.runtime > 1"
+                :icon="faHourglassHalf"
+                class="ms-2 text-secondary"
+              />
             </button>
           </h2>
           <div
@@ -94,6 +106,7 @@ function formatTime(ts) {
             :data-bs-parent="'#taskAccordion-' + cardId"
           >
             <div class="accordion-body small">
+              {{ task }}
               <ul class="list-group list-group-flush">
                 <li class="list-group-item">
                   <strong>UUID:</strong> {{ task.uuid }}
@@ -107,8 +120,6 @@ function formatTime(ts) {
                 <li class="list-group-item">
                   <strong>Kwargs:</strong> {{ task.kwargs }}
                 </li>
-                <!-- <li class="list-group-item"><strong>Runtime:</strong> {{ task.runtime.toFixed(2) }}s -->
-                <!-- </li> -->
                 <li class="list-group-item">
                   <strong>Received:</strong> {{ formatTime(task.received) }}
                 </li>
@@ -119,9 +130,12 @@ function formatTime(ts) {
                   <strong>Succeeded:</strong> {{ formatTime(task.succeeded) }}
                 </li>
                 <li class="list-group-item">
-                  <strong>Result:</strong> {{ task.result }}
+                  <strong>Runtime:</strong> {{ task.runtime.toFixed(4) }}s
                 </li>
                 <li class="list-group-item">
+                  <strong>Result:</strong> {{ task.result }}
+                </li>
+                <li class="list-group-item" v-if="task.traceback">
                   <pre>
                     {{ task.traceback }}
                   </pre>

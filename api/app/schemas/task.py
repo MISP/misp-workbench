@@ -13,8 +13,14 @@ class ScheduleTaskSchedule(BaseModel):
     every: int
     unit: str = "seconds"
     at: str = None
+    enabled: bool = True
 
 class ScheduleTaskRequest(BaseModel):
     task_name: str
     params: dict = {}
     schedule: ScheduleTaskSchedule = None
+
+class UpdateScheduledTaskRequest(BaseModel):
+    params: dict = None
+    schedule: ScheduleTaskSchedule = None
+    enabled: bool = None

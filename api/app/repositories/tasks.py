@@ -120,6 +120,7 @@ def schedule_task(
         args=params.get("args", []) if params else [],
         kwargs=params.get("kwargs", {}) if params else {},
         app=celery_app,
+        enabled=schedule.enabled if schedule else True,
     )
     entry.save()
 
@@ -143,18 +144,68 @@ def get_scheduled_tasks():
             continue
 
         task = RedBeatSchedulerEntry.from_key(key, app=celery_app)
-        scheduled_tasks.append(
-            {
-                "id": task.name,
-                "task_name": task.task,
-                "args": task.args,
-                "kwargs": task.kwargs,
-                "schedule": str(task.schedule),
-                "due_at": task.due_at.isoformat() if task.due_at else None,
-                "last_run_at": task.last_run_at.isoformat() if task.last_run_at else None,
-                "total_run_count": task.total_run_count,
-                "status": "scheduled",
-            }
-        )
+        scheduled_tasks.append(scheduled_task_to_dict(task))
 
     return scheduled_tasks
+
+
+def delete_scheduled_task(task_name: str):
+
+    try:
+        key = f"redbeat:{task_name}"
+        task = RedBeatSchedulerEntry.from_key(key, app=celery_app)
+        task.delete()
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Scheduled task with name {task_name} not found.",
+        )
+
+
+def update_scheduled_task(
+    task_name: str,
+    params: dict = None,
+    schedule: task_schemas.ScheduleTaskSchedule = None,
+    enabled: bool = None,
+):
+    try:
+        key = f"redbeat:{task_name}"
+        task = RedBeatSchedulerEntry.from_key(key, app=celery_app)
+
+        if params is not None:
+            task.args = params.get("args", [])
+            task.kwargs = params.get("kwargs", {})
+
+        if schedule is not None:
+            task.schedule = celery_schedule(int(schedule.every))
+            task.enabled = schedule.enabled
+
+        if enabled is not None:
+            task.enabled = enabled
+
+        task.save()
+
+        return scheduled_task_to_dict(task)
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Scheduled task with name {task_name} not found.",
+        )
+
+def scheduled_task_to_dict(task):
+    return {
+            "id": task.name,
+            "task_name": task.task,
+            "args": task.args,
+            "kwargs": task.kwargs,
+            "schedule": str(task.schedule),
+            "due_at": task.due_at.isoformat() if task.due_at else None,
+            "last_run_at": (
+                task.last_run_at.isoformat() if task.last_run_at else None
+            ),
+            "total_run_count": task.total_run_count,
+            "enabled": task.enabled,
+            "status": "scheduled",
+        }
+    
+

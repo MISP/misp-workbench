@@ -4,12 +4,14 @@ import { useTasksStore } from "@/stores";
 import Spinner from "@/components/misc/Spinner.vue";
 import WorkerCard from "@/components/tasks/WorkerCard.vue";
 import TaskListCard from "@/components/tasks/TaskListCard.vue";
+import ScheduledTaskListCard from "@/components/tasks/ScheduledTaskListCard.vue";
 
 const tasksStore = useTasksStore();
-const { tasks, workers, status } = storeToRefs(tasksStore);
+const { tasks, workers, scheduledTasks, status } = storeToRefs(tasksStore);
 
 tasksStore.get_workers();
 tasksStore.get_tasks();
+tasksStore.get_scheduled_tasks();
 </script>
 
 <template>
@@ -30,6 +32,7 @@ tasksStore.get_tasks();
         </div>
       </div>
     </div>
+    <ScheduledTaskListCard :scheduledTasks="scheduledTasks" />
     <TaskListCard :tasks="tasks" />
   </div>
 </template>
