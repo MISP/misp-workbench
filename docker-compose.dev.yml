@@ -69,7 +69,7 @@ services:
       [
         "sh",
         "-c",
-        "poetry run python -m debugpy --listen 0.0.0.0:5680 -m celery -A app.worker.tasks beat --loglevel=info --scheduler redbeat.RedBeatScheduler"
+        "poetry run python -m debugpy --listen 0.0.0.0:5680 -m celery -A app.worker.tasks beat --loglevel=debug --scheduler redbeat.RedBeatScheduler"
       ]
     volumes:
       - ./api:/code
