@@ -102,8 +102,13 @@ services:
 
   redis-commander:
     image: rediscommander/redis-commander
+    depends_on:
+      - redis
     environment:
-      REDIS_HOSTS: redis://${REDIS_HOSTNAME:-redis}:${REDIS_PORT:-6379}
+      REDIS_HOST: ${REDIS_HOSTNAME:-redis}
+      REDIS_PORT: ${REDIS_PORT:-6379}
+    networks:
+      - backend
     ports:
       - "8081:8081"
 
