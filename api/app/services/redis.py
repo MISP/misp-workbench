@@ -1,4 +1,6 @@
-import redis as redis_lib
+import importlib
+
+redis_lib = importlib.import_module("redis")
 from app.rediscli import get_redis
 from typing import Optional
 
