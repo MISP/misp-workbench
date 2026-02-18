@@ -48,30 +48,31 @@ function toggle(property, galaxy) {
 </script>
 
 <template>
-  <nav class="navbar">
+  <nav class="navbar position-relative pt-0">
     <div class="container-fluid">
-      <a class="navbar-brand">
+      <div class="position-absolute top-50 start-50 translate-middle">
         <button
           type="button"
           class="btn btn-outline-primary"
           @click="updateGalaxies"
           :disabled="status.updating"
         >
-          <span v-show="status.updating">
+          <span v-if="status.updating">
             <span
-              class="spinner-border spinner-border-sm"
+              class="spinner-border spinner-border-sm me-2"
               role="status"
               aria-hidden="true"
             ></span>
+            Updating...
           </span>
-          <span v-show="!status.updating">Update Galaxies</span>
+          <span v-else>Update Galaxies</span>
         </button>
-      </a>
-      <form class="d-flex" role="search">
-        <div class="input-group d-flex">
-          <span class="input-group-text"
-            ><font-awesome-icon icon="fa-solid fa-magnifying-glass"
-          /></span>
+      </div>
+      <form class="d-flex ms-auto" role="search">
+        <div class="input-group">
+          <span class="input-group-text">
+            <font-awesome-icon icon="fa-solid fa-magnifying-glass" />
+          </span>
           <input
             type="text"
             class="form-control"

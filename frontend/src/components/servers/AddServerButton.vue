@@ -1,6 +1,6 @@
 <style></style>
 <template>
-  <div>
+  <div class="d-flex justify-content-center mx-auto">
     <RouterLink to="/servers/add" class="nav-item nav-link"
       ><button type="button" class="btn btn-outline-primary">
         Add Server
