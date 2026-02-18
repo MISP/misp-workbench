@@ -24,7 +24,7 @@ const local = reactive({
   fixed_event: true,
   description: "",
   input_source: "network",
-  schedule: "daily",
+  schedule: "86400",
   fetch_on_create: true,
 });
 
@@ -182,10 +182,10 @@ function handleDistributionLevelUpdated(distributionLevelId) {
         <div class="col-md-6">
           <label class="form-label">Update interval</label>
           <select class="form-select" v-model="local.schedule">
-            <option value="hourly">Hourly</option>
-            <option value="daily">Daily</option>
-            <option value="weekly">Weekly</option>
-            <option value="manual" disabled>Manual</option>
+            <option value="3600">Hourly</option>
+            <option value="86400">Daily</option>
+            <option value="604800">Weekly</option>
+            <option value="disabled">No automatic updates</option>
           </select>
         </div>
 

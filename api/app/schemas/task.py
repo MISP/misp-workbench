@@ -20,12 +20,12 @@ class ScheduleTaskSchedule(BaseModel):
     day_of_week: str = "*"
     day_of_month: str = "*"
     month_of_year: str = "*"
-    enabled: bool = True
 
 class ScheduleTaskRequest(BaseModel):
     task_name: str
     params: dict = {}
     schedule: ScheduleTaskSchedule = None
+    enabled: bool = False
 
 class UpdateScheduledTaskRequest(BaseModel):
     params: dict = None

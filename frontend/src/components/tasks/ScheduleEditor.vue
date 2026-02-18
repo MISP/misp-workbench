@@ -5,7 +5,7 @@ import { describeCron } from "@/helpers";
 const props = defineProps({
   initialSchedule: {
     type: Object,
-    default: () => ({ type: "interval", every: 1, unit: "minutes" }),
+    default: () => ({ type: "interval", every: 1, unit: "days" }),
   },
 });
 

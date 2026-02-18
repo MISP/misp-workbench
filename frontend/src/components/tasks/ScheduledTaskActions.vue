@@ -84,10 +84,14 @@ function toggleEnable(scheduled_task_id) {
 
 function handleScheduledTaskDeleted() {
   getDeleteModal()?.hide();
+  // Refresh the scheduled tasks list after deletion
+  tasksStore.get_scheduled_tasks();
 }
 
 function handleScheduledTaskUpdated() {
   getConfigureModal()?.hide();
+  // Refresh the scheduled tasks list after update
+  tasksStore.get_scheduled_tasks();
 }
 </script>
 
