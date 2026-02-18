@@ -639,7 +639,7 @@ def preview_csv_feed(settings: dict = None, limit: int = 5):
 def parse_csv_feed_lines(settings, preview_lines):
     csv_reader = csv.reader(
             preview_lines,
-            delimiter=settings["csvConfig"]["delimiter"],
+            delimiter=settings["settings"]["csvConfig"]["delimiter"],
         )
     parsed_preview = [[cell.strip() for cell in row] for row in csv_reader]
     return parsed_preview
