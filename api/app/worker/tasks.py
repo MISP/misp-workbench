@@ -512,6 +512,7 @@ def fetch_csv_feed(feed_id: int, user_id: int):
     with Session(engine) as db:
         user = users_repository.get_user_by_id(db, user_id)
         db_feed = feeds_repository.get_feed_by_id(db, feed_id=feed_id)
+
         db_event = feeds_repository.get_or_create_feed_event(db, db_feed, user)
 
         lines = feeds_repository.fetch_csv_content_from_network(db_feed.url)
@@ -549,6 +550,8 @@ def fetch_csv_feed(feed_id: int, user_id: int):
                 logger.error("Error processing CSV feed row: %s", e)
 
             index += 1
+
+        index_event.delay(str(db_event.uuid), full_reindex=True)
 
     logger.info("fetch csv feed id=%s job finished", feed_id)
 
