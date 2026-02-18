@@ -512,19 +512,7 @@ def fetch_csv_feed(feed_id: int, user_id: int):
     with Session(engine) as db:
         user = users_repository.get_user_by_id(db, user_id)
         db_feed = feeds_repository.get_feed_by_id(db, feed_id=feed_id)
-
-        db_event = events_repository.create_event(
-            db,
-            event_schemas.EventCreate(
-                info="CSV feed import: %s - %s"
-                % (db_feed.name, datetime.now().isoformat()),
-                analysis=event_models.AnalysisLevel.INITIAL,
-                threat_level=event_models.ThreatLevel.UNDEFINED,
-                distribution=db_feed.distribution,
-                user_id=user.id,
-                org_id=user.org_id,
-            ),
-        )
+        db_event = feeds_repository.get_or_create_feed_event(db, db_feed, user)
 
         lines = feeds_repository.fetch_csv_content_from_network(db_feed.url)
         rows = feeds_repository.parse_csv_feed_lines(db_feed.settings, lines)

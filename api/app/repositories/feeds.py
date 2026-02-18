@@ -3,12 +3,14 @@ import logging
 
 import requests
 from app.models import feed as feed_models
+from app.models import event as event_models
 from app.repositories import sync as sync_repository
 from app.repositories import events as events_repository
 from app.repositories import organisations as organisations_repository
 from app.schemas import feed as feed_schemas
 from app.schemas import user as user_schemas
 from app.schemas import attribute as attribute_schemas
+from app.schemas import event as event_schemas
 from app.worker import tasks
 from fastapi import HTTPException, status
 from pymisp import MISPEvent
@@ -613,7 +615,7 @@ def preview_csv_feed(settings: dict = None, limit: int = 5):
     if settings["input_source"] == "network":
         lines = fetch_csv_content_from_network(settings["url"])
         preview_lines = [line for line in lines[:limit]]
-        parsed_preview_lines = parse_csv_feed_lines(settings, preview_lines)
+        parsed_preview_lines = parse_csv_feed_lines(settings['settings'], preview_lines)
 
         processed_preview = [
             process_csv_feed_row(row, settings["settings"])
@@ -644,6 +646,39 @@ def parse_csv_feed_lines(settings, preview_lines):
     parsed_preview = [[cell.strip() for cell in row] for row in csv_reader]
     return parsed_preview
 
+def get_or_create_feed_event(db: Session, db_feed: feed_models.Feed, user: user_schemas.User):
+    if db_feed.fixed_event:
+        if db_feed.event_id is None:
+            db_event = events_repository.create_event(
+                db,
+                event_schemas.EventCreate(
+                    info="CSV Feed Import: %s" % (db_feed.name),
+                    analysis=event_models.AnalysisLevel.INITIAL,
+                    threat_level=event_models.ThreatLevel.UNDEFINED,
+                    distribution=db_feed.distribution,
+                    user_id=user.id,
+                    org_id=user.org_id,
+                ),
+            )
+            db_feed.event_id = db_event.id
+            db.commit()
+            db.refresh(db_feed)
+        else:
+            db_event = events_repository.get_event_by_id(db, db_feed.event_id)
+    else:
+        db_event = events_repository.create_event(
+            db,
+            event_schemas.EventCreate(
+                info="CSV Feed Import: %s - %s" % (db_feed.name, datetime.now().isoformat()),
+                analysis=event_models.AnalysisLevel.INITIAL,
+                threat_level=event_models.ThreatLevel.UNDEFINED,
+                distribution=db_feed.distribution,
+                user_id=user.id,
+                org_id=user.org_id,
+            ),
+        )
+
+    return db_event
 
 def parse_human_readable_time(time_str):
     unit = time_str[-1]
