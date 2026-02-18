@@ -192,20 +192,17 @@ def update_scheduled_task(
             detail=f"Scheduled task with name {task_name} not found.",
         )
 
+
 def scheduled_task_to_dict(task):
     return {
-            "id": task.name,
-            "task_name": task.task,
-            "args": task.args,
-            "kwargs": task.kwargs,
-            "schedule": str(task.schedule),
-            "due_at": task.due_at.isoformat() if task.due_at else None,
-            "last_run_at": (
-                task.last_run_at.isoformat() if task.last_run_at else None
-            ),
-            "total_run_count": task.total_run_count,
-            "enabled": task.enabled,
-            "status": "scheduled",
-        }
-    
-
+        "id": task.name,
+        "task_name": task.task,
+        "args": task.args,
+        "kwargs": task.kwargs,
+        "schedule": str(task.schedule),
+        "due_at": task.due_at.isoformat() if task.due_at else None,
+        "last_run_at": (task.last_run_at.isoformat() if task.last_run_at else None),
+        "total_run_count": task.total_run_count,
+        "enabled": task.enabled,
+        "status": "scheduled",
+    }

@@ -551,7 +551,7 @@ def fetch_csv_feed(feed_id: int, user_id: int):
 
             index += 1
 
-        index_event.delay(str(db_event.uuid), full_reindex=True)
+    index_event.delay(str(db_event.uuid), full_reindex=True)
 
     logger.info("fetch csv feed id=%s job finished", feed_id)
 

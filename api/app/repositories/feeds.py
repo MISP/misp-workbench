@@ -581,12 +581,13 @@ def process_csv_feed_row_to_attribute(row: list, settings: dict):
 
 
 def process_csv_feed_row(row: list, settings: dict):
-    if settings["csvConfig"]["mode"] == "attribute": 
+    if settings["csvConfig"]["mode"] == "attribute":
         return process_csv_feed_row_to_attribute(row, settings)
-    elif settings["csvConfig"]["mode"] == "object": 
+    elif settings["csvConfig"]["mode"] == "object":
         raise NotImplementedError("Object mode is not yet implemented")
     else:
         raise ValueError(f"Unsupported CSV mode: {settings['csvConfig']['mode']}")
+
 
 def fetch_csv_content_from_network(url: str) -> list:
     try:
@@ -615,7 +616,7 @@ def preview_csv_feed(settings: dict = None, limit: int = 5):
     if settings["input_source"] == "network":
         lines = fetch_csv_content_from_network(settings["url"])
         preview_lines = [line for line in lines[:limit]]
-        parsed_preview_lines = parse_csv_feed_lines(settings['settings'], preview_lines)
+        parsed_preview_lines = parse_csv_feed_lines(settings["settings"], preview_lines)
 
         processed_preview = [
             process_csv_feed_row(row, settings["settings"])
@@ -638,38 +639,39 @@ def preview_csv_feed(settings: dict = None, limit: int = 5):
             detail="Invalid mode or missing URI for CSV preview",
         )
 
+
 def parse_csv_feed_lines(settings, preview_lines):
     csv_reader = csv.reader(
-            preview_lines,
-            delimiter=settings["settings"]["csvConfig"]["delimiter"],
-        )
+        preview_lines,
+        delimiter=settings["csvConfig"]["delimiter"],
+    )
     parsed_preview = [[cell.strip() for cell in row] for row in csv_reader]
     return parsed_preview
 
-def get_or_create_feed_event(db: Session, db_feed: feed_models.Feed, user: user_schemas.User):
+
+def get_or_create_feed_event(
+    db: Session, db_feed: feed_models.Feed, user: user_schemas.User
+):
     if db_feed.fixed_event:
         if db_feed.event_id is None:
-            db_event = events_repository.create_event(
-                db,
-                event_schemas.EventCreate(
-                    info="CSV Feed Import: %s" % (db_feed.name),
-                    analysis=event_models.AnalysisLevel.INITIAL,
-                    threat_level=event_models.ThreatLevel.UNDEFINED,
-                    distribution=db_feed.distribution,
-                    user_id=user.id,
-                    org_id=user.org_id,
-                ),
-            )
+            db_event = crate_new_csv_feed_event(db, db_feed, user)
             db_feed.event_id = db_event.id
             db.commit()
             db.refresh(db_feed)
         else:
             db_event = events_repository.get_event_by_id(db, db_feed.event_id)
+
+            if db_event is None or db_event.deleted:
+                db_event = crate_new_csv_feed_event(db, db_feed, user)
+                db_feed.event_id = db_event.id
+                db.commit()
+                db.refresh(db_feed)
     else:
         db_event = events_repository.create_event(
             db,
             event_schemas.EventCreate(
-                info="CSV Feed Import: %s - %s" % (db_feed.name, datetime.now().isoformat()),
+                info="CSV Feed Import: %s - %s"
+                % (db_feed.name, datetime.now().isoformat()),
                 analysis=event_models.AnalysisLevel.INITIAL,
                 threat_level=event_models.ThreatLevel.UNDEFINED,
                 distribution=db_feed.distribution,
@@ -679,6 +681,23 @@ def get_or_create_feed_event(db: Session, db_feed: feed_models.Feed, user: user_
         )
 
     return db_event
+
+
+def crate_new_csv_feed_event(db, db_feed, user):
+    db_event = events_repository.create_event(
+        db,
+        event_schemas.EventCreate(
+            info="CSV Feed Import: %s" % (db_feed.name),
+            analysis=event_models.AnalysisLevel.INITIAL,
+            threat_level=event_models.ThreatLevel.UNDEFINED,
+            distribution=db_feed.distribution,
+            user_id=user.id,
+            org_id=user.org_id,
+        ),
+    )
+
+    return db_event
+
 
 def parse_human_readable_time(time_str):
     unit = time_str[-1]
