@@ -1,3 +1,4 @@
+from typing import Optional
 from uuid import UUID
 
 from pydantic import BaseModel
@@ -10,9 +11,15 @@ class Task(BaseModel):
 
 class ScheduleTaskSchedule(BaseModel):
     type: str = "interval"
-    every: int
+    # interval fields
+    every: Optional[int] = None
     unit: str = "seconds"
-    at: str = None
+    # crontab fields
+    minute: str = "*"
+    hour: str = "*"
+    day_of_week: str = "*"
+    day_of_month: str = "*"
+    month_of_year: str = "*"
     enabled: bool = True
 
 class ScheduleTaskRequest(BaseModel):

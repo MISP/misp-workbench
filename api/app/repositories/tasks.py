@@ -6,7 +6,7 @@ from app.schemas import task as task_schemas
 from fastapi import HTTPException, status
 from app.flower import FlowerClient
 from redbeat import RedBeatSchedulerEntry
-from celery.schedules import schedule as celery_schedule
+from celery.schedules import crontab, schedule as celery_schedule
 from app.worker.tasks import celery_app
 
 flower_url = os.environ.get("FLOWER_URL", "http://flower:5555/")
@@ -112,7 +112,16 @@ def schedule_task(
     # TODO: Validate task_name, params and schedule
 
     scheduled_task_name = str(uuid4())
-    interval = celery_schedule(int(schedule.every))
+    if schedule and schedule.type == "crontab":
+        interval = crontab(
+            minute=schedule.minute,
+            hour=schedule.hour,
+            day_of_week=schedule.day_of_week,
+            day_of_month=schedule.day_of_month,
+            month_of_year=schedule.month_of_year,
+        )
+    else:
+        interval = celery_schedule(int(schedule.every))
     entry = RedBeatSchedulerEntry(
         scheduled_task_name,
         task_name,
@@ -177,7 +186,16 @@ def update_scheduled_task(
             task.kwargs = params.get("kwargs", {})
 
         if schedule is not None:
-            task.schedule = celery_schedule(int(schedule.every))
+            if schedule.type == "crontab":
+                task.schedule = crontab(
+                    minute=schedule.minute,
+                    hour=schedule.hour,
+                    day_of_week=schedule.day_of_week,
+                    day_of_month=schedule.day_of_month,
+                    month_of_year=schedule.month_of_year,
+                )
+            else:
+                task.schedule = celery_schedule(int(schedule.every))
             task.enabled = schedule.enabled
 
         if enabled is not None:

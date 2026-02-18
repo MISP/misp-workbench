@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, watch } from "vue";
 import {
   useTasksStore,
   useFeedsStore,
@@ -7,7 +7,6 @@ import {
   useUsersStore,
 } from "@/stores";
 import { storeToRefs } from "pinia";
-import { parseScheduleString } from "@/helpers";
 import ScheduleEditor from "@/components/tasks/ScheduleEditor.vue";
 
 const tasksStore = useTasksStore();
@@ -20,52 +19,58 @@ const { feeds } = storeToRefs(feedsStore);
 const { servers } = storeToRefs(serversStore);
 const { users } = storeToRefs(usersStore);
 
-const props = defineProps({ scheduled_task: Object });
-const emit = defineEmits(["scheduled-task-updated"]);
+const emit = defineEmits(["scheduled-task-created"]);
 
 const modalEl = ref(null);
 defineExpose({ modalEl });
 
 const TASKS = [
-  { value: "app.worker.tasks.fetch_feed", needsFeed: true, needsUser: true },
-  { value: "app.worker.tasks.load_taxonomies" },
-  { value: "app.worker.tasks.load_galaxies", needsUser: true },
+  {
+    value: "app.worker.tasks.fetch_feed",
+    label: "fetch_feed",
+    needsFeed: true,
+    needsUser: true,
+  },
+  { value: "app.worker.tasks.load_taxonomies", label: "load_taxonomies" },
+  {
+    value: "app.worker.tasks.load_galaxies",
+    label: "load_galaxies",
+    needsUser: true,
+  },
   {
     value: "app.worker.tasks.server_pull_by_id",
+    label: "server_pull_by_id",
     needsServer: true,
     needsUser: true,
   },
 ];
 
-const taskDef = computed(
-  () => TASKS.find((t) => t.value === props.scheduled_task?.task_name) ?? {},
-);
-const needsFeed = computed(() => !!taskDef.value.needsFeed);
-const needsServer = computed(() => !!taskDef.value.needsServer);
-const needsUser = computed(() => !!taskDef.value.needsUser);
-
-// Pre-populate kwargs from the existing task; captured once on mount so user edits aren't overwritten.
-const selectedFeedId = ref(props.scheduled_task?.kwargs?.feed_id ?? null);
-const selectedServerId = ref(props.scheduled_task?.kwargs?.server_id ?? null);
-const selectedUserId = ref(props.scheduled_task?.kwargs?.user_id ?? null);
-
+const selectedTask = ref(null);
+const selectedFeedId = ref(null);
+const selectedServerId = ref(null);
+const selectedUserId = ref(null);
 const scheduleEditorRef = ref(null);
 const scheduleValid = ref(false);
 
-// Parse the current schedule string once; passed as initialSchedule to ScheduleEditor.
-const initialSchedule = parseScheduleString(props.scheduled_task?.schedule);
+const needsFeed = computed(() => !!selectedTask.value?.needsFeed);
+const needsServer = computed(() => !!selectedTask.value?.needsServer);
+const needsUser = computed(() => !!selectedTask.value?.needsUser);
+
+watch(selectedTask, (task) => {
+  selectedFeedId.value = null;
+  selectedServerId.value = null;
+  selectedUserId.value = null;
+  if (task?.needsFeed) feedsStore.getAll();
+  if (task?.needsServer) serversStore.getAll();
+  if (task?.needsUser) usersStore.getAll();
+});
 
 const isValid = computed(() => {
+  if (!selectedTask.value) return false;
   if (needsFeed.value && !selectedFeedId.value) return false;
   if (needsServer.value && !selectedServerId.value) return false;
   if (needsUser.value && !selectedUserId.value) return false;
   return scheduleValid.value;
-});
-
-onMounted(() => {
-  if (needsFeed.value) feedsStore.getAll();
-  if (needsServer.value) serversStore.getAll();
-  if (needsUser.value) usersStore.getAll();
 });
 
 function buildKwargs() {
@@ -79,34 +84,41 @@ function buildKwargs() {
   return kwargs;
 }
 
+function reset() {
+  selectedTask.value = null;
+  selectedFeedId.value = null;
+  selectedServerId.value = null;
+  selectedUserId.value = null;
+  scheduleEditorRef.value?.reset();
+}
+
 async function onSubmit() {
-  const result = await tasksStore.update_scheduled_task(
-    props.scheduled_task.id,
-    {
-      params: { kwargs: buildKwargs() },
-      schedule: scheduleEditorRef.value.buildSchedule(),
-    },
-  );
-  if (result) emit("scheduled-task-updated");
+  const result = await tasksStore.create_scheduled_task({
+    task_name: selectedTask.value.value,
+    params: { kwargs: buildKwargs() },
+    schedule: scheduleEditorRef.value.buildSchedule(),
+  });
+  if (result) {
+    emit("scheduled-task-created");
+    reset();
+  }
 }
 </script>
 
 <template>
   <div
     ref="modalEl"
-    :id="`configureScheduledTaskModal_${scheduled_task.id}`"
+    id="createScheduledTaskModal"
     class="modal fade"
     tabindex="-1"
+    aria-labelledby="createScheduledTaskModalLabel"
     aria-hidden="true"
   >
     <div class="modal-dialog">
       <div class="modal-content">
         <div class="modal-header">
-          <h5 class="modal-title">
-            Configure
-            <code class="text-body-secondary">{{
-              scheduled_task.task_name.replace("app.worker.tasks.", "")
-            }}</code>
+          <h5 class="modal-title" id="createScheduledTaskModalLabel">
+            New Scheduled Task
           </h5>
           <button
             type="button"
@@ -116,10 +128,24 @@ async function onSubmit() {
           ></button>
         </div>
         <div class="modal-body">
-          <div v-if="needsFeed" class="mb-3">
-            <label for="cfgFeedSelect" class="form-label">Feed</label>
+          <div class="mb-3">
+            <label for="createTaskSelect" class="form-label">Task</label>
             <select
-              id="cfgFeedSelect"
+              id="createTaskSelect"
+              v-model="selectedTask"
+              class="form-select"
+            >
+              <option :value="null" disabled>Select a task…</option>
+              <option v-for="task in TASKS" :key="task.value" :value="task">
+                {{ task.label }}
+              </option>
+            </select>
+          </div>
+
+          <div v-if="needsFeed" class="mb-3">
+            <label for="createFeedSelect" class="form-label">Feed</label>
+            <select
+              id="createFeedSelect"
               v-model="selectedFeedId"
               class="form-select"
             >
@@ -131,9 +157,9 @@ async function onSubmit() {
           </div>
 
           <div v-if="needsServer" class="mb-3">
-            <label for="cfgServerSelect" class="form-label">Server</label>
+            <label for="createServerSelect" class="form-label">Server</label>
             <select
-              id="cfgServerSelect"
+              id="createServerSelect"
               v-model="selectedServerId"
               class="form-select"
             >
@@ -149,9 +175,9 @@ async function onSubmit() {
           </div>
 
           <div v-if="needsUser" class="mb-3">
-            <label for="cfgUserSelect" class="form-label">Run as user</label>
+            <label for="createUserSelect" class="form-label">Run as user</label>
             <select
-              id="cfgUserSelect"
+              id="createUserSelect"
               v-model="selectedUserId"
               class="form-select"
             >
@@ -166,7 +192,6 @@ async function onSubmit() {
             <label class="form-label d-block">Schedule</label>
             <ScheduleEditor
               ref="scheduleEditorRef"
-              :initialSchedule="initialSchedule"
               @valid-change="scheduleValid = $event"
             />
           </div>
@@ -199,7 +224,7 @@ async function onSubmit() {
                 aria-hidden="true"
               ></span>
             </span>
-            <span v-else>Save</span>
+            <span v-else>Create</span>
           </button>
         </div>
       </div>

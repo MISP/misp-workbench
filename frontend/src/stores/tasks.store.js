@@ -83,9 +83,24 @@ export const useTasksStore = defineStore({
         .finally(() => (this.status = { loading: false }));
     },
     async update_scheduled_task(taskId, taskData) {
-      this.status = { loading: true };
+      const task = this.scheduledTasks.find((t) => t.id === taskId);
+      const snapshot = task ? { ...task } : null;
+      if (task) Object.assign(task, taskData);
       return await fetchWrapper
         .patch(`${baseUrl}/scheduled/${taskId}`, taskData)
+        .then((response) => {
+          if (task && response) Object.assign(task, response);
+          return response;
+        })
+        .catch((error) => {
+          if (task && snapshot) Object.assign(task, snapshot);
+          this.status = { error };
+        });
+    },
+    async create_scheduled_task(taskData) {
+      this.status = { loading: true };
+      return await fetchWrapper
+        .post(`${baseUrl}/schedule`, taskData)
         .catch((error) => (this.status = { error }))
         .finally(() => (this.status = { loading: false }));
     },

@@ -78,7 +78,7 @@ function openConfigureScheduledTaskModal() {
 
 function toggleEnable(scheduled_task_id) {
   tasksStore.update_scheduled_task(scheduled_task_id, {
-    enabled: props.scheduled_task.enabled,
+    enabled: !props.scheduled_task.enabled,
   });
 }
 
@@ -96,12 +96,18 @@ function handleScheduledTaskUpdated() {
     <div class="btn-group me-2" role="group">
       <button
         type="button"
-        class="btn btn-outline-primary btn-sm"
-        title="Toggle Enable/Disable Scheduled Task"
+        class="btn btn-sm"
+        :class="
+          scheduled_task.enabled ? 'btn-outline-danger' : 'btn-outline-success'
+        "
+        :title="
+          scheduled_task.enabled
+            ? 'Disable Scheduled Task'
+            : 'Enable Scheduled Task'
+        "
         @click.stop="toggleEnable(scheduled_task.id)"
       >
-        <FontAwesomeIcon :icon="faStop" v-if="scheduled_task.enabled" />
-        <FontAwesomeIcon :icon="faPlay" v-if="!scheduled_task.enabled" />
+        <FontAwesomeIcon :icon="scheduled_task.enabled ? faStop : faPlay" />
       </button>
       <button
         v-if="actions.update"
