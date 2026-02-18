@@ -16,9 +16,9 @@ const props = defineProps({
 const emit = defineEmits(["update:modelValue"]);
 
 const local = reactive({
-  name: "Cloudflare IPs",
-  url: "https://www.cloudflare.com/ips-v4/",
-  provider: "Cloudflare",
+  name: "",
+  url: "",
+  provider: "",
   distribution: "0",
   enabled: true,
   description: "",
