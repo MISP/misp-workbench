@@ -4,7 +4,7 @@ from app.schemas import user as user_schemas
 from app.schemas import task as task_schemas
 from app.repositories import tasks as tasks_repository
 from fastapi import APIRouter, Query, Security
-from fastapi import HTTPException, status
+from fastapi import HTTPException
 
 router = APIRouter()
 
