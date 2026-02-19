@@ -117,8 +117,6 @@ services:
     environment:
       REDIS_HOST: ${REDIS_HOSTNAME:-redis}
       REDIS_PORT: ${REDIS_PORT:-6379}
-    networks:
-      - backend
     ports:
       - "8081:8081"
 
