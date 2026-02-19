@@ -786,7 +786,13 @@ def index_attribute(attribute_uuid: str):
         if db_attribute is None:
             raise Exception("Attribute with uuid=%s not found", attribute_uuid)
 
-    attribute = event_schemas.Attribute.model_validate(db_attribute)
+        if db_attribute.event and db_attribute.event.deleted:
+            logger.info(
+                "skipping indexing attribute uuid=%s, event is deleted", attribute_uuid
+            )
+            return True
+
+        attribute = event_schemas.Attribute.model_validate(db_attribute)
 
     OpenSearchClient = get_opensearch_client()
 
