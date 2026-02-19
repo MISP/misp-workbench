@@ -381,7 +381,10 @@ body {
             <ul
               class="list-group list-group-flush"
               style="max-height: 60vh; overflow: auto"
-              v-if="storedExploreSearches.length > 0"
+              v-if="
+                storedExploreSearches.length > 0 ||
+                userRecentSearches.length > 0
+              "
             >
               <li
                 v-for="(term, idx) in storedExploreSearches"

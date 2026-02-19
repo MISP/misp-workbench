@@ -167,7 +167,7 @@ def create_event(db: Session, event: event_schemas.EventCreate) -> event_models.
     db.flush()
     db.refresh(db_event)
 
-    tasks.handle_created_event.delay(db_event.uuid)
+    tasks.handle_created_event.delay(str(db_event.uuid))
 
     return db_event
 
@@ -205,7 +205,7 @@ def create_event_from_pulled_event(db: Session, pulled_event: MISPEvent):
     db.commit()
     db.refresh(event)
 
-    tasks.handle_created_event.delay(event.uuid)
+    tasks.handle_created_event.delay(str(event.uuid))
 
     return event
 
@@ -235,7 +235,7 @@ def update_event_from_pulled_event(
     db.commit()
     db.refresh(existing_event)
 
-    tasks.handle_updated_event.delay(existing_event.uuid)
+    tasks.handle_updated_event.delay(str(existing_event.uuid))
 
     return existing_event
 
@@ -256,7 +256,7 @@ def update_event(db: Session, event_id: int, event: event_schemas.EventUpdate):
     db.commit()
     db.refresh(db_event)
 
-    tasks.handle_updated_event.delay(db_event.uuid)
+    tasks.handle_updated_event.delay(str(db_event.uuid))
 
     return db_event
 
@@ -283,7 +283,7 @@ def delete_event(db: Session, event_id: Union[int, UUID], force: bool = False) -
     db.commit()
     db.refresh(db_event)
 
-    tasks.handle_deleted_event.delay(db_event.uuid)
+    tasks.handle_deleted_event.delay(str(db_event.uuid))
 
 
 def increment_attribute_count(
@@ -529,7 +529,7 @@ def publish_event(db: Session, db_event: event_models.Event) -> event_models.Eve
     db.commit()
     db.refresh(db_event)
 
-    tasks.handle_published_event.delay(db_event.uuid)
+    tasks.handle_published_event.delay(str(db_event.uuid))
 
     return db_event
 
@@ -544,7 +544,7 @@ def unpublish_event(db: Session, db_event: event_models.Event) -> event_models.E
     db.commit()
     db.refresh(db_event)
 
-    tasks.handle_unpublished_event.delay(db_event.uuid)
+    tasks.handle_unpublished_event.delay(str(db_event.uuid))
 
     return db_event
 
@@ -558,7 +558,7 @@ def toggle_event_correlation(
     db.refresh(db_event)
 
     tasks.handle_toggled_event_correlation.delay(
-        db_event.uuid, db_event.disable_correlation
+        str(db_event.uuid), db_event.disable_correlation
     )
 
     return db_event

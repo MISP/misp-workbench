@@ -98,7 +98,7 @@ td.text-truncate {
                 </td>
               </tr>
               <tr v-if="attribute.tags?.length">
-                <th>tags</th>
+                <th style="width: 100px">tags</th>
                 <td>
                   <span
                     v-for="(tag, tidx) in attribute.tags"
@@ -108,12 +108,12 @@ td.text-truncate {
                   >
                 </td>
               </tr>
-              <tr v-if="attribute.comment">
-                <th>comment</th>
+              <tr v-if="attribute.comment" style="width: 50px">
+                <th style="width: 100px">comment</th>
                 <td>{{ attribute.comment || "" }}</td>
               </tr>
               <tr v-if="attribute.timestamp">
-                <th>timestamp</th>
+                <th style="width: 100px">timestamp</th>
                 <td>{{ attribute.timestamp }}</td>
               </tr>
             </tbody>

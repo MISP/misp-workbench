@@ -4,7 +4,7 @@
 * **PostgreSQL**: Data persistance
 * **Redis**: Cache and Celery storage backend
 * **Celery**: Task Queue / Background Jobs
-* **RabbitMQ**: Message queue
+* **Celery Beat**: Task Scheduling
 
 ## Structure
 ```

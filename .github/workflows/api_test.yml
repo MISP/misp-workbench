@@ -45,16 +45,6 @@ jobs:
         ports:
           - 6379:6379
 
-      rabbitmq:
-        image: rabbitmq:3-management
-        ports:
-          - 15672:15672
-          - 5672:5672
-        env:
-          RABBITMQ_DEFAULT_VHOST: rabbitmq
-          RABBITMQ_DEFAULT_USER: rabbitmq
-          RABBITMQ_DEFAULT_PASS: rabbitmq
-
       mailhog:
         image: mailhog/mailhog
         ports:
@@ -137,7 +127,7 @@ jobs:
           REDIS_HOSTNAME: localhost
           REDIS_PORT: 6379
           REDIS_CACHE_DB: 5
-          CELERY_BROKER_URL: amqp://rabbitmq:rabbitmq@localhost:5672/rabbitmq
+          CELERY_BROKER_URL: redis://localhost:6379/0
           CELERY_RESULT_BACKEND: redis://localhost:6379/0
           MAIL_USERNAME: mail-user
           MAIL_PASSWORD: mail-pwd

@@ -1,6 +1,9 @@
 <script setup>
-import { ref } from "vue";
-import { computed } from "vue";
+import { faHourglassHalf, faWarning } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
+import { ref, computed } from "vue";
+
+const activeFilter = ref("ALL"); // ALL | SUCCESS | FAILURE
 
 const props = defineProps({
   tasks: Object,
@@ -17,16 +20,12 @@ const props = defineProps({
 const currentPage = ref(1);
 
 const totalPages = computed(() =>
-  Math.ceil(Object.values(props.tasks).length / props.pageSize),
-);
-
-const sortedTasks = computed(() =>
-  Object.values(props.tasks).sort((a, b) => b.timestamp - a.timestamp),
+  Math.ceil(filteredTasks.value.length / props.pageSize),
 );
 
 const paginatedTasks = computed(() => {
   const start = (currentPage.value - 1) * props.pageSize;
-  return sortedTasks.value.slice(start, start + props.pageSize);
+  return filteredTasks.value.slice(start, start + props.pageSize);
 });
 
 const taskTotalCount = computed(() => Object.keys(props.tasks).length);
@@ -41,6 +40,20 @@ const taskTotalSuccessCount = computed(
       .length,
 );
 
+const filteredTasks = computed(() => {
+  let list = Object.values(props.tasks);
+
+  if (activeFilter.value === "SUCCESS") {
+    list = list.filter((task) => task.state === "SUCCESS");
+  }
+
+  if (activeFilter.value === "FAILURE") {
+    list = list.filter((task) => task.state === "FAILURE");
+  }
+
+  return list.sort((a, b) => b.timestamp - a.timestamp);
+});
+
 function formatTime(ts) {
   if (!ts) return "—";
   const date = new Date(ts * 1000);
@@ -48,23 +61,66 @@ function formatTime(ts) {
 }
 </script>
 
+<style scoped>
+.badge[role="button"] {
+  cursor: pointer;
+}
+</style>
+
 <template>
   <div class="card my-3 shadow">
     <div class="card-header d-flex align-items-center justify-content-start">
       <h5 class="mb-0">Completed Tasks</h5>
       <div class="ms-2">
-        <span class="badge bg-info fs- me-2">total: {{ taskTotalCount }}</span>
+        <span
+          class="badge me-2 bg-info"
+          :class="
+            activeFilter === 'ALL'
+              ? 'shadow border border-warning-subtle'
+              : 'fw-light'
+          "
+          role="button"
+          @click="
+            activeFilter = 'ALL';
+            currentPage = 1;
+          "
+        >
+          total: {{ taskTotalCount }}
+        </span>
         <span
           v-if="taskTotalSuccessCount > 0"
-          class="badge bg-success fs-7 me-2"
-          >succeeded: {{ taskTotalSuccessCount }}</span
+          class="badge me-2 bg-success"
+          :class="
+            activeFilter === 'SUCCESS'
+              ? 'shadow border border-warning-subtle'
+              : 'fw-light'
+          "
+          role="button"
+          @click="
+            activeFilter = 'SUCCESS';
+            currentPage = 1;
+          "
         >
-        <span v-if="taskTotalFailureCount > 0" class="badge bg-danger fs-7 me-3"
-          >failed: {{ taskTotalFailureCount }}</span
+          succeeded: {{ taskTotalSuccessCount }}
+        </span>
+        <span
+          v-if="taskTotalFailureCount > 0"
+          class="badge me-3 bg-danger"
+          :class="
+            activeFilter === 'FAILURE'
+              ? 'shadow border border-warning-subtle'
+              : 'fw-light'
+          "
+          role="button"
+          @click="
+            activeFilter = 'FAILURE';
+            currentPage = 1;
+          "
         >
+          failed: {{ taskTotalFailureCount }}
+        </span>
       </div>
     </div>
-
     <div class="card-body">
       <div v-if="totalPages === 0" class="text-muted">No tasks found.</div>
       <div v-else class="accordion" :id="'taskAccordion-' + cardId">
@@ -85,6 +141,16 @@ function formatTime(ts) {
             >
               {{ task.name }}
               <span class="ms-2 text-muted small">({{ task.state }})</span>
+              <FontAwesomeIcon
+                v-if="task.state === 'FAILURE'"
+                :icon="faWarning"
+                class="ms-2 text-warning"
+              />
+              <FontAwesomeIcon
+                v-if="task.runtime > 1"
+                :icon="faHourglassHalf"
+                class="ms-2 text-secondary"
+              />
             </button>
           </h2>
           <div
@@ -94,6 +160,7 @@ function formatTime(ts) {
             :data-bs-parent="'#taskAccordion-' + cardId"
           >
             <div class="accordion-body small">
+              {{ task }}
               <ul class="list-group list-group-flush">
                 <li class="list-group-item">
                   <strong>UUID:</strong> {{ task.uuid }}
@@ -107,8 +174,6 @@ function formatTime(ts) {
                 <li class="list-group-item">
                   <strong>Kwargs:</strong> {{ task.kwargs }}
                 </li>
-                <!-- <li class="list-group-item"><strong>Runtime:</strong> {{ task.runtime.toFixed(2) }}s -->
-                <!-- </li> -->
                 <li class="list-group-item">
                   <strong>Received:</strong> {{ formatTime(task.received) }}
                 </li>
@@ -119,9 +184,12 @@ function formatTime(ts) {
                   <strong>Succeeded:</strong> {{ formatTime(task.succeeded) }}
                 </li>
                 <li class="list-group-item">
-                  <strong>Result:</strong> {{ task.result }}
+                  <strong>Runtime:</strong> {{ task.runtime?.toFixed(4) }}s
                 </li>
                 <li class="list-group-item">
+                  <strong>Result:</strong> {{ task.result }}
+                </li>
+                <li class="list-group-item" v-if="task.traceback">
                   <pre>
                     {{ task.traceback }}
                   </pre>

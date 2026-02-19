@@ -61,7 +61,7 @@ function handleEventDeleted() {
 
 <template>
   <div v-if="feeds.length === 0 && servers.length === 0">
-    <div class="alert alert-info text-center">
+    <div class="alert alert-warning text-center mt-3">
       No servers or feeds configured. Please add a
       <RouterLink to="/servers/add">server</RouterLink> or a
       <RouterLink to="/feeds/add">feed</RouterLink> to fetch events.

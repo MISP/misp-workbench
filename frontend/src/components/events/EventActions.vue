@@ -89,7 +89,6 @@ function openImportModal() {
   });
 }
 
-/* Cleanup (VERY important in lists) */
 onBeforeUnmount(() => {
   deleteModal.value?.dispose();
   importModal.value?.dispose();
@@ -99,6 +98,7 @@ const emit = defineEmits(["event-updated", "event-deleted"]);
 
 function handleEventDeleted(event) {
   emit("event-deleted", event);
+  deleteModal.value?.hide();
 }
 
 function handleEventUpdated(event) {

@@ -1,7 +1,6 @@
 import logging
 import os
 import smtplib
-import uuid
 from datetime import datetime
 
 from app.database import SQLALCHEMY_DATABASE_URL
@@ -23,26 +22,26 @@ from app.schemas import event as event_schemas
 from app.schemas import attribute as attribute_schemas
 from app.models import event as event_models
 from celery import Celery
-from celery.signals import worker_ready
-from app.models import user as user_models
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 from opensearchpy import helpers as opensearch_helpers
 
 # Celery configuration
-app = Celery()
-app.conf.update(
+celery_app = Celery("misp-workbench")
+celery_app.conf.update(
     broker_url=os.environ.get("CELERY_BROKER_URL"),
     result_backend=os.environ.get("CELERY_RESULT_BACKEND"),
     task_serializer="json",
     result_serializer="json",
     accept_content=["json"],
     worker_pool_restarts=True,
-    broker_transport_options={"visibility_timeout": 60 * 60 * 10},  # 10 hours,
+    broker_transport_options={"visibility_timeout": 60 * 60 * 24},  # 24 hours,
     acks_late=False,
     worker_prefetch_multiplier=1,
     task_time_limit=None,
     task_soft_time_limit=None,
+    beat_scheduler="redbeat.RedBeatScheduler",
+    redbeat_redis_url=os.environ.get("CELERY_BROKER_URL"),
 )
 
 logger = logging.getLogger(__name__)
@@ -50,7 +49,7 @@ logger = logging.getLogger(__name__)
 engine = create_engine(SQLALCHEMY_DATABASE_URL)
 
 
-@app.task
+@celery_app.task
 def server_pull_by_id(server_id: int, user_id: int, technique: str):
     logger.info("pull server_id=%s job started", server_id)
 
@@ -65,8 +64,8 @@ def server_pull_by_id(server_id: int, user_id: int, technique: str):
     return True
 
 
-@app.task
-def pull_event_by_uuid(event_uuid: uuid.UUID, server_id: int, user_id: int):
+@celery_app.task
+def pull_event_by_uuid(event_uuid: str, server_id: int, user_id: int):
     logger.info(
         "pull event uuid=%s from server id=%s, job started", event_uuid, server_id
     )
@@ -95,7 +94,7 @@ def pull_event_by_uuid(event_uuid: uuid.UUID, server_id: int, user_id: int):
     return True
 
 
-@app.task
+@celery_app.task
 def server_push_by_id(server_id: int, user_id: int, technique: str):
     logger.info("push server_id=%s job started", server_id)
 
@@ -110,8 +109,8 @@ def server_push_by_id(server_id: int, user_id: int, technique: str):
     return True
 
 
-@app.task
-def push_event_by_uuid(event_uuid: uuid.UUID, server_id: int, user_id: int):
+@celery_app.task
+def push_event_by_uuid(event_uuid: str, server_id: int, user_id: int):
     logger.info(
         "push event uuid=%s to server id=%s, job started", event_uuid, server_id
     )
@@ -136,8 +135,8 @@ def push_event_by_uuid(event_uuid: uuid.UUID, server_id: int, user_id: int):
     return True
 
 
-@app.task
-def handle_created_event(event_uuid: uuid.UUID):
+@celery_app.task
+def handle_created_event(event_uuid: str):
     logger.info("handling created event uuid=%s job started", event_uuid)
 
     with Session(engine) as db:
@@ -152,8 +151,8 @@ def handle_created_event(event_uuid: uuid.UUID):
     return True
 
 
-@app.task
-def handle_updated_event(event_uuid: uuid.UUID):
+@celery_app.task
+def handle_updated_event(event_uuid: str):
     logger.info("handling updated event uuid=%s job started", event_uuid)
 
     with Session(engine) as db:
@@ -170,13 +169,13 @@ def handle_updated_event(event_uuid: uuid.UUID):
             db, "updated", event=db_event
         )
 
-        index_event.delay(db_event.uuid, full_reindex=False)
+        index_event.delay(str(db_event.uuid), full_reindex=False)
 
     return True
 
 
-@app.task
-def handle_deleted_event(event_uuid: uuid.UUID):
+@celery_app.task
+def handle_deleted_event(event_uuid: str):
     logger.info("handling deleted event uuid=%s job started", event_uuid)
 
     with Session(engine) as db:
@@ -188,12 +187,12 @@ def handle_deleted_event(event_uuid: uuid.UUID):
             db, "deleted", event=db_event
         )
 
-        delete_indexed_event.delay(event_uuid)
+        delete_indexed_event.delay(str(event_uuid))
 
     return True
 
 
-@app.task
+@celery_app.task
 def handle_created_attribute(attribute_id: int, object_id: int | None, event_id: int):
     logger.info("handling created attribute id=%s job started", attribute_id)
     with Session(engine) as db:
@@ -205,12 +204,12 @@ def handle_created_attribute(attribute_id: int, object_id: int | None, event_id:
             db, "created", attribute=db_attribute
         )
 
-        index_attribute.delay(db_attribute.uuid)
+        index_attribute.delay(str(db_attribute.uuid))
 
     return True
 
 
-@app.task
+@celery_app.task
 def handle_updated_attribute(attribute_id: int, object_id: int | None, event_id: int):
     logger.info("handling updated attribute id=%s job started", attribute_id)
     with Session(engine) as db:
@@ -219,12 +218,12 @@ def handle_updated_attribute(attribute_id: int, object_id: int | None, event_id:
             db, "updated", attribute=db_attribute
         )
 
-        index_attribute.delay(db_attribute.uuid)
+        index_attribute.delay(str(db_attribute.uuid))
 
     return True
 
 
-@app.task
+@celery_app.task
 def handle_deleted_attribute(attribute_id: int, object_id: int | None, event_id: int):
     logger.info("handling deleted attribute id=%s job started", attribute_id)
     with Session(engine) as db:
@@ -236,12 +235,12 @@ def handle_deleted_attribute(attribute_id: int, object_id: int | None, event_id:
             db, "deleted", attribute=db_attribute
         )
 
-        delete_indexed_attribute.delay(db_attribute.uuid)
+        delete_indexed_attribute.delay(str(db_attribute.uuid))
 
     return True
 
 
-@app.task
+@celery_app.task
 def handle_created_object(object_id: int, event_id: int):
     logger.info("handling created object id=%s job started", object_id)
 
@@ -253,12 +252,12 @@ def handle_created_object(object_id: int, event_id: int):
             db, "created", object=db_object
         )
 
-        index_object.delay(db_object.uuid)
+        index_object.delay(str(db_object.uuid))
 
     return True
 
 
-@app.task
+@celery_app.task
 def handle_updated_object(object_id: int, event_id: int):
     logger.info("handling updated object id=%s job started", object_id)
 
@@ -268,12 +267,12 @@ def handle_updated_object(object_id: int, event_id: int):
             db, "updated", object=db_object
         )
 
-        index_object.delay(db_object.uuid)
+        index_object.delay(str(db_object.uuid))
 
     return True
 
 
-@app.task
+@celery_app.task
 def handle_deleted_object(object_id: int, event_id: int):
     logger.info("handling deleted object id=%s job started", object_id)
 
@@ -285,12 +284,12 @@ def handle_deleted_object(object_id: int, event_id: int):
             db, "deleted", object=db_object
         )
 
-        delete_indexed_object.delay(db_object.uuid)
+        delete_indexed_object.delay(str(db_object.uuid))
 
     return True
 
 
-@app.task
+@celery_app.task
 def send_email(email: dict):
     logger.info("sending email job started")
 
@@ -313,8 +312,8 @@ def send_email(email: dict):
     return True
 
 
-@app.task
-def index_event(event_uuid: uuid.UUID, full_reindex: bool = False):
+@celery_app.task
+def index_event(event_uuid: str, full_reindex: bool = False):
     logger.info("index event uuid=%s job started", event_uuid)
 
     with Session(engine) as db:
@@ -470,21 +469,7 @@ def index_event(event_uuid: uuid.UUID, full_reindex: bool = False):
 
     return True
 
-
-@app.task
-def fetch_feed_async(feed_id: int, user_id: int):
-    logger.info("fetch feed id=%s job started", feed_id)
-
-    with Session(engine) as db:
-        user = users_repository.get_user_by_id(db, user_id)
-        feeds_repository.fetch_feed(db, feed_id, user)
-
-    logger.info("fetch feed id=%s job finished", feed_id)
-
-    return True
-
-
-@app.task
+@celery_app.task
 def fetch_feed(feed_id: int, user_id: int):
     logger.info("fetch feed id=%s job started", feed_id)
 
@@ -501,8 +486,8 @@ def fetch_feed(feed_id: int, user_id: int):
         }
 
 
-@app.task
-def fetch_feed_event(event_uuid: uuid.UUID, feed_id: int, user_id: int):
+@celery_app.task
+def fetch_feed_event(event_uuid: str, feed_id: int, user_id: int):
     logger.info("fetch feed event uuid=%s job started", event_uuid)
 
     with Session(engine) as db:
@@ -515,7 +500,7 @@ def fetch_feed_event(event_uuid: uuid.UUID, feed_id: int, user_id: int):
     return result
 
 
-@app.task
+@celery_app.task
 def fetch_csv_feed(feed_id: int, user_id: int):
     logger.info("fetch csv feed id=%s job started", feed_id)
 
@@ -528,18 +513,7 @@ def fetch_csv_feed(feed_id: int, user_id: int):
         user = users_repository.get_user_by_id(db, user_id)
         db_feed = feeds_repository.get_feed_by_id(db, feed_id=feed_id)
 
-        db_event = events_repository.create_event(
-            db,
-            event_schemas.EventCreate(
-                info="CSV feed import: %s - %s"
-                % (db_feed.name, datetime.now().isoformat()),
-                analysis=event_models.AnalysisLevel.INITIAL,
-                threat_level=event_models.ThreatLevel.UNDEFINED,
-                distribution=db_feed.distribution,
-                user_id=user.id,
-                org_id=user.org_id,
-            ),
-        )
+        db_event = feeds_repository.get_or_create_feed_event(db, db_feed, user)
 
         lines = feeds_repository.fetch_csv_content_from_network(db_feed.url)
         rows = feeds_repository.parse_csv_feed_lines(db_feed.settings, lines)
@@ -577,6 +551,8 @@ def fetch_csv_feed(feed_id: int, user_id: int):
 
             index += 1
 
+    index_event.delay(str(db_event.uuid), full_reindex=True)
+
     logger.info("fetch csv feed id=%s job finished", feed_id)
 
     return {
@@ -586,7 +562,7 @@ def fetch_csv_feed(feed_id: int, user_id: int):
     }
 
 
-@app.task
+@celery_app.task
 def generate_correlations():
     logger.info("generate correlations job started")
 
@@ -635,7 +611,7 @@ def generate_correlations():
             pass
 
 
-@app.task
+@celery_app.task
 def handle_created_sighting(
     value: str, organisation: str, sighting_type: str, timestamp: float = None
 ):
@@ -669,7 +645,7 @@ def handle_created_sighting(
             )
 
 
-@app.task
+@celery_app.task
 def handle_created_correlation(
     source_attribute_uuid: str,
     source_event_uuid: str,
@@ -697,8 +673,8 @@ def handle_created_correlation(
     return True
 
 
-@app.task
-def handle_published_event(event_uuid: uuid.UUID):
+@celery_app.task
+def handle_published_event(event_uuid: str):
     logger.info("handling published event uuid=%s job started", event_uuid)
 
     with Session(engine) as db:
@@ -715,8 +691,8 @@ def handle_published_event(event_uuid: uuid.UUID):
     return True
 
 
-@app.task
-def handle_unpublished_event(event_uuid: uuid.UUID):
+@celery_app.task
+def handle_unpublished_event(event_uuid: str):
     logger.info("handling unpublished event uuid=%s job started", event_uuid)
 
     with Session(engine) as db:
@@ -733,8 +709,8 @@ def handle_unpublished_event(event_uuid: uuid.UUID):
     return True
 
 
-@app.task
-def handle_toggled_event_correlation(event_uuid: uuid.UUID, disable_correlation: bool):
+@celery_app.task
+def handle_toggled_event_correlation(event_uuid: str, disable_correlation: bool):
     logger.info("handling toggled event correlation uuid=%s job started", event_uuid)
 
     with Session(engine) as db:
@@ -759,8 +735,8 @@ def handle_toggled_event_correlation(event_uuid: uuid.UUID, disable_correlation:
     return True
 
 
-@app.task
-def delete_indexed_event(event_uuid: uuid.UUID):
+@celery_app.task
+def delete_indexed_event(event_uuid: str):
     logger.info("deleting indexed event uuid=%s job started", event_uuid)
 
     OpenSearchClient = get_opensearch_client()
@@ -801,8 +777,8 @@ def delete_indexed_event(event_uuid: uuid.UUID):
     return True
 
 
-@app.task
-def index_attribute(attribute_uuid: uuid.UUID):
+@celery_app.task
+def index_attribute(attribute_uuid: str):
     logger.info("indexing attribute uuid=%s job started", attribute_uuid)
 
     with Session(engine) as db:
@@ -842,8 +818,8 @@ def index_attribute(attribute_uuid: uuid.UUID):
     return True
 
 
-@app.task
-def delete_indexed_attribute(attribute_uuid: uuid.UUID):
+@celery_app.task
+def delete_indexed_attribute(attribute_uuid: str):
     logger.info("deleting indexed attribute uuid=%s job started", attribute_uuid)
 
     OpenSearchClient = get_opensearch_client()
@@ -864,7 +840,7 @@ def delete_indexed_attribute(attribute_uuid: uuid.UUID):
     return True
 
 
-@app.task(name="load_galaxies")
+@celery_app.task()
 def load_galaxies(user_id: int):
     """Load galaxies from the bundled misp-galaxy submodule into the database.
 
@@ -892,7 +868,7 @@ def load_galaxies(user_id: int):
             return False
 
 
-@app.task(name="load_taxonomies")
+@celery_app.task()
 def load_taxonomies():
     logger.info("load_taxonomies job started")
 
@@ -909,8 +885,8 @@ def load_taxonomies():
             return False
 
 
-@app.task
-def index_object(object_uuid: uuid.UUID):
+@celery_app.task
+def index_object(object_uuid: str):
     logger.info("indexing object uuid=%s job started", object_uuid)
 
     with Session(engine) as db:
@@ -948,8 +924,8 @@ def index_object(object_uuid: uuid.UUID):
     return True
 
 
-@app.task
-def delete_indexed_object(object_uuid: uuid.UUID):
+@celery_app.task
+def delete_indexed_object(object_uuid: str):
     logger.info("deleting indexed object uuid=%s job started", object_uuid)
 
     OpenSearchClient = get_opensearch_client()
