@@ -79,6 +79,16 @@ const DETECTORS = [
     regex: /^[a-fA-F0-9]{32}$/,
   },
   {
+    type: "ip-src",
+    category: "Network activity",
+    regex: /^(?:\d{1,3}\.){3}\d{1,3}\/(?:[0-9]|[12][0-9]|3[0-2])$/,
+  },
+  {
+    type: "ip-src",
+    category: "Network activity",
+    regex: /^[0-9a-fA-F:]+\/(?:[0-9]|[1-9][0-9]|1[01][0-9]|12[0-8])$/,
+  },
+  {
     type: "ip-dst",
     category: "Network activity",
     regex: /^(?:\d{1,3}\.){3}\d{1,3}$/,
