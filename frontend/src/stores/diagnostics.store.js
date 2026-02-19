@@ -7,6 +7,8 @@ export const useDiagnosticsStore = defineStore({
   id: "diagnostics",
   state: () => ({
     opensearch: null,
+    redis: null,
+    postgres: null,
     status: {
       loading: false,
       error: false,
@@ -18,6 +20,22 @@ export const useDiagnosticsStore = defineStore({
       fetchWrapper
         .get(`${baseUrl}/opensearch`)
         .then((response) => (this.opensearch = response))
+        .catch((error) => (this.status = { error }))
+        .finally(() => (this.status = { loading: false }));
+    },
+    async getRedis() {
+      this.status = { loading: true };
+      fetchWrapper
+        .get(`${baseUrl}/redis`)
+        .then((response) => (this.redis = response))
+        .catch((error) => (this.status = { error }))
+        .finally(() => (this.status = { loading: false }));
+    },
+    async getPostgres() {
+      this.status = { loading: true };
+      fetchWrapper
+        .get(`${baseUrl}/postgres`)
+        .then((response) => (this.postgres = response))
         .catch((error) => (this.status = { error }))
         .finally(() => (this.status = { loading: false }));
     },

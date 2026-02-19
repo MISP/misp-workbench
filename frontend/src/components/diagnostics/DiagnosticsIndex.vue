@@ -3,6 +3,8 @@ import { ref, onMounted, onUnmounted } from "vue";
 import { useTasksStore, useDiagnosticsStore } from "@/stores";
 import WorkersCard from "@/components/diagnostics/WorkersCard.vue";
 import OpenSearchCard from "@/components/diagnostics/OpenSearchCard.vue";
+import RedisCard from "@/components/diagnostics/RedisCard.vue";
+import PostgresCard from "@/components/diagnostics/PostgresCard.vue";
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
 import { faRotate } from "@fortawesome/free-solid-svg-icons";
 
@@ -18,6 +20,8 @@ let timer = null;
 function refresh() {
   tasksStore.get_workers();
   diagnosticsStore.getOpensearch();
+  diagnosticsStore.getRedis();
+  diagnosticsStore.getPostgres();
   lastUpdated.value = new Date();
 }
 
@@ -92,6 +96,8 @@ function formatTime(date) {
       <!-- Cards -->
       <div class="card-body">
         <OpenSearchCard />
+        <RedisCard />
+        <PostgresCard />
         <WorkersCard />
       </div>
     </div>

@@ -1,9 +1,12 @@
 import logging
 
 from app.auth.security import get_current_active_user
+from app.database import engine
 from app.opensearch import OpenSearchClient
+from app.rediscli import RedisClient
 from app.schemas import user as user_schemas
 from fastapi import APIRouter, Security
+from sqlalchemy import text
 
 router = APIRouter()
 
@@ -75,4 +78,100 @@ def get_opensearch_diagnostics(
             "indices": [],
             "nodes": [],
             "shards": [],
+        }
+
+
+@router.get("/diagnostics/redis")
+def get_redis_diagnostics(
+    user: user_schemas.User = Security(get_current_active_user, scopes=["tasks:read"]),
+):
+    try:
+        info = RedisClient.info()
+        keyspace = {k: v for k, v in info.items() if k.startswith("db")}
+        return {
+            "connected": True,
+            "version": info.get("redis_version"),
+            "mode": info.get("redis_mode"),
+            "uptime_seconds": info.get("uptime_in_seconds"),
+            "connected_clients": info.get("connected_clients"),
+            "blocked_clients": info.get("blocked_clients"),
+            "memory_used": info.get("used_memory_human"),
+            "memory_peak": info.get("used_memory_peak_human"),
+            "memory_fragmentation_ratio": info.get("mem_fragmentation_ratio"),
+            "total_commands_processed": info.get("total_commands_processed"),
+            "total_connections_received": info.get("total_connections_received"),
+            "keyspace_hits": info.get("keyspace_hits"),
+            "keyspace_misses": info.get("keyspace_misses"),
+            "keyspace": keyspace,
+        }
+    except Exception as e:
+        logger.error("Failed to fetch Redis diagnostics: %s", e)
+        return {
+            "connected": False,
+            "error": str(e),
+        }
+
+
+@router.get("/diagnostics/postgres")
+def get_postgres_diagnostics(
+    user: user_schemas.User = Security(get_current_active_user, scopes=["tasks:read"]),
+):
+    try:
+        with engine.connect() as conn:
+            version = conn.execute(text("SELECT version()")).scalar()
+            db_name = conn.execute(text("SELECT current_database()")).scalar()
+            db_size = conn.execute(
+                text("SELECT pg_size_pretty(pg_database_size(current_database()))")
+            ).scalar()
+            max_connections = conn.execute(
+                text("SELECT setting::int FROM pg_settings WHERE name = 'max_connections'")
+            ).scalar()
+            conn_rows = conn.execute(
+                text("""
+                    SELECT state, count(*) as count
+                    FROM pg_stat_activity
+                    WHERE datname = current_database()
+                    GROUP BY state
+                """)
+            ).fetchall()
+            table_rows = conn.execute(
+                text("""
+                    SELECT
+                        relname,
+                        n_live_tup,
+                        n_dead_tup,
+                        pg_size_pretty(pg_total_relation_size(relid)) AS size,
+                        pg_total_relation_size(relid) AS size_bytes
+                    FROM pg_stat_user_tables
+                    ORDER BY size_bytes DESC
+                """)
+            ).fetchall()
+
+        connections = {row.state or "unknown": row.count for row in conn_rows}
+        connections["max"] = max_connections
+        connections["total"] = sum(v for k, v in connections.items() if k != "max")
+
+        tables = [
+            {
+                "name": row.relname,
+                "live_rows": row.n_live_tup,
+                "dead_rows": row.n_dead_tup,
+                "size": row.size,
+            }
+            for row in table_rows
+        ]
+
+        return {
+            "connected": True,
+            "version": version,
+            "database": db_name,
+            "db_size": db_size,
+            "connections": connections,
+            "tables": tables,
+        }
+    except Exception as e:
+        logger.error("Failed to fetch PostgreSQL diagnostics: %s", e)
+        return {
+            "connected": False,
+            "error": str(e),
         }
