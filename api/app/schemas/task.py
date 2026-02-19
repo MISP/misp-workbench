@@ -13,7 +13,6 @@ class ScheduleTaskSchedule(BaseModel):
     type: str = "interval"
     # interval fields
     every: Optional[int] = None
-    unit: str = "seconds"
     # crontab fields
     minute: str = "*"
     hour: str = "*"
