@@ -20,7 +20,24 @@ export const getAttributeTypeValidationSchema = (type) => {
       Yup.object().shape({
         attribute: Yup.object().shape({
           value: Yup.string()
-            .matches(ipRegex({ exact: true }), "Invalid IP address.")
+            .test("ip-or-cidr", "Invalid IP address or CIDR.", (value) => {
+              if (!value) return false;
+              const parts = value.split("/");
+              if (parts.length === 1) {
+                return ipRegex({ exact: true }).test(value);
+              }
+              if (parts.length === 2) {
+                const [ip, prefix] = parts;
+                const prefixNum = parseInt(prefix, 10);
+                if (ipRegex.v4({ exact: true }).test(ip)) {
+                  return prefixNum >= 0 && prefixNum <= 32;
+                }
+                if (ipRegex.v6({ exact: true }).test(ip)) {
+                  return prefixNum >= 0 && prefixNum <= 128;
+                }
+              }
+              return false;
+            })
             .required(),
         }),
       }),

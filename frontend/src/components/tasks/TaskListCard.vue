@@ -184,7 +184,8 @@ function formatTime(ts) {
                   <strong>Succeeded:</strong> {{ formatTime(task.succeeded) }}
                 </li>
                 <li class="list-group-item">
-                  <strong>Runtime:</strong> {{ task.runtime?.toFixed(4) }}s
+                  <strong>Runtime:</strong>
+                  {{ task.runtime ? task.runtime.toFixed(4) + "s" : "" }}
                 </li>
                 <li class="list-group-item">
                   <strong>Result:</strong> {{ task.result }}
