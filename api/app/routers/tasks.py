@@ -98,7 +98,7 @@ def delete_scheduled_task(
     ),
 ):
     try:
-        uuid_obj = uuid.UUID(task_name, version=4)
+        uuid.UUID(task_name, version=4)
     except ValueError:
         raise HTTPException(
             status_code=400, detail="Invalid task_name, must be a valid UUID4 string"
