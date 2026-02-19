@@ -1,31 +1,98 @@
 <script setup>
-import { storeToRefs } from "pinia";
-import { useTasksStore } from "@/stores";
-import Spinner from "@/components/misc/Spinner.vue";
-import WorkerCard from "@/components/tasks/WorkerCard.vue";
+import { ref, onMounted, onUnmounted } from "vue";
+import { useTasksStore, useDiagnosticsStore } from "@/stores";
+import WorkersCard from "@/components/diagnostics/WorkersCard.vue";
+import OpenSearchCard from "@/components/diagnostics/OpenSearchCard.vue";
+import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
+import { faRotate } from "@fortawesome/free-solid-svg-icons";
+
+const REFRESH_INTERVAL_MS = 30_000;
 
 const tasksStore = useTasksStore();
-const { workers, status } = storeToRefs(tasksStore);
+const diagnosticsStore = useDiagnosticsStore();
 
-tasksStore.get_workers();
+const autoRefresh = ref(true);
+const lastUpdated = ref(null);
+let timer = null;
+
+function refresh() {
+  tasksStore.get_workers();
+  diagnosticsStore.getOpensearch();
+  lastUpdated.value = new Date();
+}
+
+function startTimer() {
+  timer = setInterval(refresh, REFRESH_INTERVAL_MS);
+}
+
+function stopTimer() {
+  clearInterval(timer);
+  timer = null;
+}
+
+function toggleAutoRefresh() {
+  autoRefresh.value = !autoRefresh.value;
+  if (autoRefresh.value) {
+    startTimer();
+  } else {
+    stopTimer();
+  }
+}
+
+onMounted(() => {
+  refresh();
+  startTimer();
+});
+
+onUnmounted(() => {
+  stopTimer();
+});
+
+function formatTime(date) {
+  if (!date) return null;
+  return date.toLocaleTimeString();
+}
 </script>
 
 <template>
   <div class="container mt-4">
-    <div class="card my-3 shadow">
-      <div class="card-header d-flex align-items-center justify-content-start">
-        <h5 class="mb-0">Workers</h5>
-      </div>
-      <div class="card-body">
-        <Spinner v-if="status.loading" />
-        <div v-if="!status.loading">
-          <WorkerCard
-            v-for="(worker, name) in workers"
-            :key="name"
-            :workerName="name"
-            :worker="worker"
+    <div class="card shadow">
+      <!-- Global card header -->
+      <div class="card-header d-flex align-items-center gap-3">
+        <h5 class="mb-0 me-auto">Diagnostics</h5>
+
+        <span v-if="lastUpdated" class="text-muted small">
+          Updated at {{ formatTime(lastUpdated) }}
+        </span>
+
+        <button
+          class="btn btn-sm btn-outline-secondary"
+          title="Refresh now"
+          @click="refresh"
+        >
+          <FontAwesomeIcon :icon="faRotate" />
+        </button>
+
+        <div
+          class="form-check form-switch mb-0 d-flex align-items-center gap-2"
+        >
+          <input
+            class="form-check-input"
+            type="checkbox"
+            id="autoRefreshToggle"
+            :checked="autoRefresh"
+            @change="toggleAutoRefresh"
           />
+          <label class="form-check-label small" for="autoRefreshToggle">
+            Auto-refresh (30s)
+          </label>
         </div>
+      </div>
+
+      <!-- Cards -->
+      <div class="card-body">
+        <OpenSearchCard />
+        <WorkersCard />
       </div>
     </div>
   </div>
