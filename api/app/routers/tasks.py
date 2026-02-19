@@ -76,7 +76,7 @@ def schedule_task(
 ):
 
     return tasks_repository.schedule_task(
-        task_name=task.task_name, params=task.params, schedule=task.schedule
+        task_name=task.task_name, params=task.params, schedule=task.schedule, enabled=task.enabled
     )
 
 

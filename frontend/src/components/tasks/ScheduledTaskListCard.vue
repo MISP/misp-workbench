@@ -3,14 +3,26 @@ import { computed, ref, nextTick } from "vue";
 import { authHelper, formatSchedule } from "@/helpers";
 import { Modal } from "bootstrap";
 import { storeToRefs } from "pinia";
-import { useAuthStore, useTasksStore } from "@/stores";
+import {
+  useAuthStore,
+  useTasksStore,
+  useFeedsStore,
+  useServersStore,
+} from "@/stores";
 import ScheduledTaskActions from "@/components/tasks/ScheduledTaskActions.vue";
 import CreateScheduledTaskModal from "@/components/tasks/CreateScheduledTaskModal.vue";
 
 const authStore = useAuthStore();
 const tasksStore = useTasksStore();
+const feedsStore = useFeedsStore();
+const serversStore = useServersStore();
 
 const { scopes } = storeToRefs(authStore);
+const { feeds } = storeToRefs(feedsStore);
+const { servers } = storeToRefs(serversStore);
+
+feedsStore.getAll();
+serversStore.getAll();
 
 defineProps({
   scheduledTasks: {
@@ -60,6 +72,23 @@ const formatDate = (isoString) => {
   });
 };
 
+const getResourceLabel = (task) => {
+  const kwargs = task.kwargs || {};
+  if (kwargs.feed_id) {
+    const feed = Object.values(feeds.value).find(
+      (f) => f.id === kwargs.feed_id,
+    );
+    return feed ? feed.name : `Feed #${kwargs.feed_id}`;
+  }
+  if (kwargs.server_id) {
+    const server = Object.values(servers.value).find(
+      (s) => s.id === kwargs.server_id,
+    );
+    return server ? server.name : `Server #${kwargs.server_id}`;
+  }
+  return null;
+};
+
 const statusColor = (status) => {
   switch (status) {
     case "scheduled":
@@ -101,6 +130,7 @@ const statusColor = (status) => {
           <thead class="table">
             <tr>
               <th>task</th>
+              <th>resource</th>
               <th>last run</th>
               <th>next run</th>
               <th>frequency</th>
@@ -112,6 +142,7 @@ const statusColor = (status) => {
           <tbody>
             <tr v-for="task in scheduledTasks" :key="task.id">
               <td>{{ task.task_name.replace("app.worker.tasks.", "") }}</td>
+              <td>{{ getResourceLabel(task) ?? "—" }}</td>
               <td>{{ formatDate(task.last_run_at) }}</td>
               <td>{{ formatDate(task.due_at) }}</td>
               <td>{{ formatSchedule(task.schedule) }}</td>
@@ -122,7 +153,7 @@ const statusColor = (status) => {
               </td>
             </tr>
             <tr v-if="scheduledTasks.length === 0">
-              <td colspan="7" class="text-center py-2">No scheduled tasks</td>
+              <td colspan="8" class="text-center py-2">No scheduled tasks</td>
             </tr>
           </tbody>
         </table>

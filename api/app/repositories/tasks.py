@@ -108,6 +108,7 @@ def schedule_task(
     task_name: str,
     params: dict = None,
     schedule: task_schemas.ScheduleTaskSchedule = None,
+    enabled: bool = False,
 ):
     # TODO: Validate task_name, params and schedule
 
@@ -129,7 +130,7 @@ def schedule_task(
         args=params.get("args", []) if params else [],
         kwargs=params.get("kwargs", {}) if params else {},
         app=celery_app,
-        enabled=schedule.enabled if schedule else True,
+        enabled=enabled
     )
     entry.save()
 

@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed, watch, reactive } from "vue";
 import { router } from "@/router";
-import { useFeedsStore, useToastsStore } from "@/stores";
+import { useFeedsStore, useToastsStore, useTasksStore } from "@/stores";
 
 import FeedTypeSelector from "@/components/feeds/FeedTypeSelector.vue";
 import FeedBaseForm from "@/components/feeds/FeedBaseForm.vue";
@@ -13,6 +13,7 @@ import AddFeedJson from "@/components/feeds/json/AddFeedJson.vue";
 
 const feedsStore = useFeedsStore();
 const toastsStore = useToastsStore();
+const tasksStore = useTasksStore();
 
 const feedType = ref("misp");
 const apiError = ref(null);
@@ -22,7 +23,7 @@ const config = ref({
   url: "",
   input_source: "network",
   enabled: true,
-  schedule: "daily",
+  schedule: "86400",
   provider: "",
   distribution: 1,
   fetch_on_create: true,
@@ -75,6 +76,53 @@ function submit() {
   return feedsStore
     .create(feed)
     .then((response) => {
+      // Create scheduled task if schedule is defined
+      if (config.value.schedule && config.value.schedule !== "disabled") {
+        // Convert numeric schedule value to interval configuration
+        const intervalSeconds = parseInt(config.value.schedule);
+        let unit = "seconds";
+        let every = 1;
+
+        // Convert seconds to appropriate units for the scheduler
+        if (intervalSeconds >= 604800) {
+          // weekly
+          every = intervalSeconds / 604800;
+          unit = "weeks";
+        } else if (intervalSeconds >= 86400) {
+          // daily
+          every = intervalSeconds / 86400;
+          unit = "days";
+        } else if (intervalSeconds >= 3600) {
+          // hourly
+          every = intervalSeconds / 3600;
+          unit = "hours";
+        } else if (intervalSeconds > 0) {
+          // less than an hour
+          every = intervalSeconds;
+          unit = "seconds";
+        }
+
+        const taskData = {
+          task_name: "app.worker.tasks.fetch_feed",
+          params: {
+            kwargs: {
+              feed_id: response.id,
+            },
+          },
+          schedule: {
+            type: "interval",
+            every: every,
+            unit: unit,
+          },
+          enabled: response.enabled,
+        };
+
+        tasksStore.create_scheduled_task(taskData).catch((error) => {
+          console.error("Failed to create scheduled task:", error);
+          // Continue with feed creation even if task creation fails
+        });
+      }
+
       toastsStore.push(
         `Feed "${response.name}" created successfully!`,
         "success",
