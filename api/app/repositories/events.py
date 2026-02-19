@@ -276,8 +276,10 @@ def delete_event(db: Session, event_id: Union[int, UUID], force: bool = False) -
     db_event.deleted = True
 
     if force:
+        event_uuid = str(db_event.uuid)
         db.delete(db_event)
         db.commit()
+        tasks.delete_indexed_event.delay(event_uuid)
         return
 
     db.commit()
