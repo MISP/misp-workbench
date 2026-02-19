@@ -43,11 +43,15 @@ onUnmounted(() => document.removeEventListener("click", _handleDocumentClick));
   position: sticky;
   top: 1rem;
   z-index: 1;
-  width: 300px;
+  width: 270px;
 }
 
 .saved-searches-panel .list-group {
   scrollbar-gutter: stable;
+}
+
+.card-header-sm {
+  padding: 0.25rem 0.5rem;
 }
 
 .card {
@@ -82,16 +86,16 @@ onUnmounted(() => document.removeEventListener("click", _handleDocumentClick));
   >
     <div class="card">
       <div
-        class="card-header d-flex justify-content-between align-items-center"
+        class="card-header card-header-sm d-flex justify-content-between align-items-center"
         role="button"
         tabindex="0"
         @click="toggleOpen"
         @keydown.enter.prevent="toggleOpen"
         @keydown.space.prevent="toggleOpen"
       >
-        <div>
+        <div class="mt-1">
           <strong>search history</strong>
-          <span class="text-muted ms-2">
+          <span class="text-muted ms-1">
             ({{ savedSearches.length + recentSearches.length }})
           </span>
         </div>

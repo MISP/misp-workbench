@@ -77,15 +77,21 @@ watch(
     if (v?.length > 0) animatedPlaceholder.value = "";
   },
 );
+
+function saveCurrentSearch() {
+  if (!props.modelValue || props.modelValue.trim().length === 0) return;
+
+  emit("save", props.modelValue);
+}
 </script>
 
 <template>
   <div class="w-100">
-    <div class="input-group mb-1">
+    <div class="input-group justify-content-center">
       <button
         class="btn btn-outline-secondary"
         type="button"
-        @click="emit('save', modelValue)"
+        @click="saveCurrentSearch"
       >
         <FontAwesomeIcon :icon="faFloppyDisk" />
       </button>
@@ -99,6 +105,7 @@ watch(
         @focus="isFocused = true"
         @blur="isFocused = false"
         @keyup.enter="emit('search')"
+        style="max-width: 800px"
       />
       <datalist id="previous-searches">
         <option v-for="term in storedSearches" :key="term">{{ term }}</option>
@@ -107,7 +114,9 @@ watch(
         <FontAwesomeIcon :icon="faMagnifyingGlass" />
       </button>
     </div>
-    <span class="text-muted fst-italic small d-flex align-items-center">
+    <span
+      class="text-muted fst-italic small d-flex align-items-center justify-content-center mt-1"
+    >
       Lucene query syntax supported
       <button
         type="button"

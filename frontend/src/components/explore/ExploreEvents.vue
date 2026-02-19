@@ -13,6 +13,7 @@ import EventResultCard from "./EventResultCard.vue";
 import ExploreSearchBar from "./ExploreSearchBar.vue";
 import ExploreSearchHistory from "./ExploreSearchHistory.vue";
 import ExploreResultsSection from "./ExploreResultsSection.vue";
+import ExploreTimeRangeFilter from "./ExploreTimeRangeFilter.vue";
 
 const props = defineProps({
   page_size: {
@@ -22,6 +23,7 @@ const props = defineProps({
 });
 
 const searchQuery = ref("");
+const activeTimeRange = ref(null);
 
 const eventsStore = useEventsStore();
 const attributesStore = useAttributesStore();
@@ -48,17 +50,20 @@ const storedExploreSearches = computed(
   () => userSettings.value?.explore?.saved_searches || [],
 );
 
+function buildQuery() {
+  const parts = [];
+  if (searchQuery.value) parts.push(searchQuery.value);
+  if (activeTimeRange.value) {
+    const { from, to } = activeTimeRange.value;
+    parts.push(`@timestamp:[${from} TO ${to}]`);
+  }
+  return parts.join(" AND ");
+}
+
 function search() {
-  eventsStore.search({
-    page: 1,
-    size: props.page_size,
-    query: searchQuery.value,
-  });
-  attributesStore.search({
-    page: 1,
-    size: props.page_size,
-    query: searchQuery.value,
-  });
+  const query = buildQuery();
+  eventsStore.search({ page: 1, size: props.page_size, query });
+  attributesStore.search({ page: 1, size: props.page_size, query });
 
   if (
     searchQuery.value &&
@@ -73,15 +78,11 @@ function search() {
 }
 
 function onEventsPageChange(page) {
-  eventsStore.search({ page, size: props.page_size, query: searchQuery.value });
+  eventsStore.search({ page, size: props.page_size, query: buildQuery() });
 }
 
 function onAttributesPageChange(page) {
-  attributesStore.search({
-    page,
-    size: props.page_size,
-    query: searchQuery.value,
-  });
+  attributesStore.search({ page, size: props.page_size, query: buildQuery() });
 }
 
 async function downloadAllResults(type, format = "json") {
@@ -154,8 +155,11 @@ body {
 </style>
 
 <template>
-  <div class="row mb-3 justify-content-center align-items-start">
-    <div class="col-auto">
+  <div class="row mb-3 align-items-start">
+    <div
+      class="d-none d-md-block col-md-auto order-md-1 mb-0"
+      style="width: 300px"
+    >
       <ExploreSearchHistory
         :saved-searches="storedExploreSearches"
         :recent-searches="userRecentSearches"
@@ -165,7 +169,7 @@ body {
         @forget="forgetRecentSearch"
       />
     </div>
-    <div class="col-12 col-md-6">
+    <div class="col-12 col-md order-1 order-md-2">
       <ExploreSearchBar
         v-model="searchQuery"
         :stored-searches="storedExploreSearches"
@@ -173,8 +177,18 @@ body {
         @save="saveSearch"
       />
     </div>
+    <div class="col-12 col-md-auto order-2 order-md-3 mt-2 mt-md-0">
+      <ExploreTimeRangeFilter
+        @change="
+          (r) => {
+            activeTimeRange = r;
+            search();
+          }
+        "
+      />
+    </div>
 
-    <div id="results">
+    <div id="results" class="col-12 mt-3 order-4">
       <ExploreResultsSection
         title="Events"
         :docs="event_docs"
