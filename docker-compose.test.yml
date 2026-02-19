@@ -1,6 +1,8 @@
 services:
 
   api:
+    mem_limit: 2g
+    memswap_limit: 2g
     volumes:
       - ./api:/code
     ports:
@@ -8,17 +10,62 @@ services:
       - "5677:5677"
       - "5678:5678"
     entrypoint: [ "bash", "-c", "./entrypoint.dev.sh" ]
+    networks:
+      - backend
 
   postgres:
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-misp_test}
 
+  opensearch:
+    environment:
+      - cluster.name=opensearch-cluster
+      - node.name=opensearch-misp1
+      - discovery.type=single-node
+      - bootstrap.memory_lock=true
+      - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"
+      - "DISABLE_INSTALL_DEMO_CONFIG=true"
+      - "DISABLE_SECURITY_PLUGIN=true"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
+    ports:
+      - "9200:9200"
+      - "9600:9600"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9200"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  dashboards:
+    environment:
+      OPENSEARCH_HOSTS: "http://${OPENSEARCH_HOSTNAME:-opensearch}:${OPENSEARCH_PORT:-9200}"
+      DISABLE_SECURITY_DASHBOARDS_PLUGIN: true
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "curl -s --user admin:$$OPENSEARCH_DASHBOARDS_PASSWORD -k -X GET http://localhost:5601/api/status | grep '\"state\":\"green\"'"
+        ]
+
   worker:
     volumes:
       - ./api:/code
+    networks:
+      - backend
 
   mailhog:
     image: mailhog/mailhog
     ports:
       - "8025:8025"
       - "1025:1025"
+    networks:
+      - backend
+
+networks:
+  backend:
