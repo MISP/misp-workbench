@@ -109,6 +109,7 @@ def schedule_task(
     params: dict = None,
     schedule: task_schemas.ScheduleTaskSchedule = None,
     enabled: bool = False,
+    user_id: str = None
 ):
     # TODO: Validate task_name, params and schedule
 
@@ -123,6 +124,11 @@ def schedule_task(
         )
     else:
         interval = celery_schedule(int(schedule.every))
+
+    kwargs = params.get("kwargs", {}) if params else {}
+    if "user_id" not in kwargs:
+        kwargs["user_id"] = user_id
+
     entry = RedBeatSchedulerEntry(
         scheduled_task_name,
         task_name,
@@ -177,6 +183,7 @@ def update_scheduled_task(
     params: dict = None,
     schedule: task_schemas.ScheduleTaskSchedule = None,
     enabled: bool = None,
+    user_id: str = None
 ):
     try:
         key = f"redbeat:{task_name}"
@@ -185,6 +192,9 @@ def update_scheduled_task(
         if params is not None:
             task.args = params.get("args", [])
             task.kwargs = params.get("kwargs", {})
+            
+        if not "user_id" in task.kwargs:
+            task.kwargs["user_id"] = user_id
 
         if schedule is not None:
             if schedule.type == "crontab":

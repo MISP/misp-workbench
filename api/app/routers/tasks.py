@@ -76,7 +76,7 @@ def schedule_task(
 ):
 
     return tasks_repository.schedule_task(
-        task_name=task.task_name, params=task.params, schedule=task.schedule, enabled=task.enabled
+        task_name=task.task_name, params=task.params, schedule=task.schedule, enabled=task.enabled, user_id=user.id
     )
 
 
@@ -123,4 +123,4 @@ def update_scheduled_task(
             status_code=400, detail="Invalid task_name, must be a valid UUID4 string"
         )
 
-    return tasks_repository.update_scheduled_task(task_name=task_name, params=task.params, schedule=task.schedule, enabled=task.enabled)
+    return tasks_repository.update_scheduled_task(task_name=task_name, params=task.params, schedule=task.schedule, enabled=task.enabled, user_id=user.id)
