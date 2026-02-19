@@ -78,29 +78,7 @@ function submit() {
     .then((response) => {
       // Create scheduled task if schedule is defined
       if (config.value.schedule && config.value.schedule !== "disabled") {
-        // Convert numeric schedule value to interval configuration
         const intervalSeconds = parseInt(config.value.schedule);
-        let unit = "seconds";
-        let every = 1;
-
-        // Convert seconds to appropriate units for the scheduler
-        if (intervalSeconds >= 604800) {
-          // weekly
-          every = intervalSeconds / 604800;
-          unit = "weeks";
-        } else if (intervalSeconds >= 86400) {
-          // daily
-          every = intervalSeconds / 86400;
-          unit = "days";
-        } else if (intervalSeconds >= 3600) {
-          // hourly
-          every = intervalSeconds / 3600;
-          unit = "hours";
-        } else if (intervalSeconds > 0) {
-          // less than an hour
-          every = intervalSeconds;
-          unit = "seconds";
-        }
 
         const taskData = {
           task_name: "app.worker.tasks.fetch_feed",
@@ -111,8 +89,7 @@ function submit() {
           },
           schedule: {
             type: "interval",
-            every: every,
-            unit: unit,
+            every: intervalSeconds,
           },
           enabled: response.enabled,
         };
