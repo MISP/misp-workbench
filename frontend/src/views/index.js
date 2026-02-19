@@ -33,6 +33,7 @@ export { default as EditObject } from "./objects/EditObject.vue";
 export { default as ViewRemoteEvent } from "./events/ViewRemoteEvent.vue";
 export { default as ExploreEvents } from "./explore/ExploreEvents.vue";
 export { default as TasksIndex } from "./tasks/TasksIndex.vue";
+export { default as DiagnosticsIndex } from "./diagnostics/DiagnosticsIndex.vue";
 export { default as IndexCorrelations } from "./correlations/IndexCorrelations.vue";
 export { default as IndexRuntimeSettings } from "./settings/runtime/IndexRuntimeSettings.vue";
 export { default as IndexUserSettings } from "./settings/user/IndexUserSettings.vue";
