@@ -23,6 +23,7 @@ const config = ref({
   url: "",
   input_source: "network",
   enabled: true,
+  fixed_event: true,
   schedule: "86400",
   provider: "",
   distribution: 1,
@@ -91,7 +92,7 @@ function submit() {
             type: "interval",
             every: intervalSeconds,
           },
-          enabled: response.enabled,
+          enabled: config.value.fetch_on_create,
         };
 
         tasksStore.create_scheduled_task(taskData).catch((error) => {
@@ -116,6 +117,7 @@ function getFeedFromConfig() {
     provider: config.value.provider,
     source_format: feedType.value,
     enabled: config.value.enabled,
+    fixed_event: config.value.fixed_event,
     distribution: parseInt(config.value.distribution),
     input_source: config.value.input_source,
   };
