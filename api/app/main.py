@@ -4,6 +4,7 @@ from app.routers import (
     attachments,
     attributes,
     auth,
+    diagnostics,
     events,
     feeds,
     galaxies,
@@ -115,6 +116,9 @@ app.include_router(runtime_settings.router, tags=["Runtime Settings"])
 
 # User Settings resource
 app.include_router(user_settings.router, tags=["User Settings"])
+
+# Diagnostics resource
+app.include_router(diagnostics.router, tags=["Diagnostics"])
 
 # Notifications resource
 app.include_router(notifications.router, tags=["Notifications"])
