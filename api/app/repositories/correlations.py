@@ -236,8 +236,15 @@ def correlate_document(doc, runtimeSettings: RuntimeSettings):
     OpenSearchClient = get_opensearch_client()
 
     value = doc["_source"].get("value")
+    event_uuid = doc["_source"].get("event_uuid")
 
     if not value:
+        return
+
+    if not event_uuid:
+        logger.warning(
+            f"correlate_document: skipping attribute {doc['_id']} - event_uuid is None"
+        )
         return
 
     match_types = runtimeSettings.get_value("correlations.matchTypes", ["term", "cidr"])

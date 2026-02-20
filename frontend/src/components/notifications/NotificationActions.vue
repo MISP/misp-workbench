@@ -1,16 +1,22 @@
 <script setup>
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
-import { faBellSlash } from "@fortawesome/free-solid-svg-icons";
+import { faBellSlash, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { useNotificationsStore } from "@/stores";
 
 const notificationsStore = useNotificationsStore();
 
 const props = defineProps(["notification"]);
-const emit = defineEmits(["notification-unfollowed"]);
+const emit = defineEmits(["notification-unfollowed", "notification-deleted"]);
 
 function unfollowNotification() {
   notificationsStore.unfollow(props.notification.id).then(() => {
     emit("notification-unfollowed", props.notification.id);
+  });
+}
+
+function deleteNotification() {
+  notificationsStore.delete(props.notification.id).then(() => {
+    emit("notification-deleted", props.notification.id);
   });
 }
 </script>
@@ -34,6 +40,13 @@ function unfollowNotification() {
         @click="unfollowNotification"
       >
         <FontAwesomeIcon :icon="faBellSlash" />
+      </button>
+      <button
+        type="button"
+        class="btn btn-outline-danger btn-sm"
+        @click="deleteNotification"
+      >
+        <FontAwesomeIcon :icon="faTrash" />
       </button>
     </div>
   </div>

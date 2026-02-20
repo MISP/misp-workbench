@@ -204,6 +204,11 @@ function navAndClose(path) {
                 >tasks</RouterLink
               >
             </li>
+            <li>
+              <RouterLink to="/diagnostics" class="dropdown-item fw-light"
+                >diagnostics</RouterLink
+              >
+            </li>
             <li><hr class="dropdown-divider" /></li>
             <li>
               <RouterLink to="/settings/runtime" class="dropdown-item fw-light"
@@ -414,6 +419,15 @@ function navAndClose(path) {
                 @click.prevent="navAndClose('/tasks')"
               >
                 tasks
+              </RouterLink>
+            </li>
+            <li>
+              <RouterLink
+                to="/diagnostics"
+                class="list-group-item list-group-item-action ps-4"
+                @click.prevent="navAndClose('/diagnostics')"
+              >
+                diagnostics
               </RouterLink>
             </li>
             <li>
