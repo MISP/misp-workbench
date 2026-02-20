@@ -481,6 +481,25 @@ def create_correlation_notifications(db: Session, type: str, correlation: dict):
 
     return notifications
 
+def delete_notification(db: Session, notification_id: int, user_id: int):
+    notification = (
+        db.query(notification_models.Notification)
+        .filter(
+            notification_models.Notification.id == notification_id,
+            notification_models.Notification.user_id == user_id,
+        )
+        .first()
+    )
+
+    if not notification:
+        return None
+
+    db.delete(notification)
+    db.commit()
+
+    return {"status": "success"}
+
+
 def invalidate_follow_cache(entity_type: str, entity_uuid: str):
     RedisClient = get_redis_client()
     RedisClient.delete(f"notifications:followers:{entity_type}:{entity_uuid}")
