@@ -205,6 +205,7 @@ function formatRelativeTime(dateString) {
               <NotificationActions
                 :notification="notification"
                 @notification-unfollowed="onPageChange(1)"
+                @notification-deleted="onPageChange(1)"
               />
             </td>
           </tr>

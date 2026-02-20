@@ -61,3 +61,19 @@ async def unfollow_notification(
     ),
 ):
     return notifications_repository.unfollow_notification(db, notification_id, user.id)
+
+
+@router.delete(
+    "/notifications/{notification_id}",
+)
+async def delete_notification(
+    notification_id: int,
+    db: Session = Depends(get_db),
+    user: user_schemas.User = Security(
+        get_current_active_user, scopes=["notifications:update"]
+    ),
+):
+    result = notifications_repository.delete_notification(db, notification_id, user.id)
+    if result is None:
+        raise HTTPException(status_code=404, detail="Notification not found")
+    return result
