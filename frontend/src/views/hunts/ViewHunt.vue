@@ -2,7 +2,7 @@
 import { ref } from "vue";
 import { storeToRefs } from "pinia";
 import { RouterLink } from "vue-router";
-import { useHuntsStore } from "@/stores";
+import { useHuntsStore, useTasksStore, useToastsStore } from "@/stores";
 import Spinner from "@/components/misc/Spinner.vue";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
@@ -14,12 +14,41 @@ dayjs.extend(relativeTime);
 const props = defineProps({ id: { type: String, required: true } });
 
 const huntsStore = useHuntsStore();
+const tasksStore = useTasksStore();
+const toastsStore = useToastsStore();
 const { hunt, status } = storeToRefs(huntsStore);
 
 const runResult = ref(null);
 const runError = ref(null);
 
+const scheduleInterval = ref("86400");
+const scheduleError = ref(null);
+const scheduling = ref(false);
+
 huntsStore.getById(props.id);
+
+async function saveSchedule() {
+  if (scheduleInterval.value === "disabled") {
+    toastsStore.push(
+      "Use the Tasks view to remove an existing schedule.",
+      "info",
+    );
+    return;
+  }
+  scheduleError.value = null;
+  scheduling.value = true;
+  const taskData = {
+    task_name: "app.worker.tasks.run_hunt",
+    params: { kwargs: { hunt_id: parseInt(props.id) } },
+    schedule: { type: "interval", every: parseInt(scheduleInterval.value) },
+    enabled: true,
+  };
+  await tasksStore
+    .create_scheduled_task(taskData)
+    .then(() => toastsStore.push("Hunt scheduled successfully.", "success"))
+    .catch((err) => (scheduleError.value = err?.message || String(err)))
+    .finally(() => (scheduling.value = false));
+}
 
 async function runHunt() {
   runResult.value = null;
@@ -93,6 +122,43 @@ async function runHunt() {
           <code class="d-block p-2 bg-body-secondary rounded">{{
             hunt.query
           }}</code>
+        </div>
+      </div>
+    </div>
+
+    <!-- Schedule section -->
+    <div class="card mb-3">
+      <div class="card-body">
+        <div
+          class="d-flex justify-content-between align-items-center gap-3 flex-wrap"
+        >
+          <div>
+            <strong>Schedule</strong>
+            <div class="text-muted small">
+              Automatically re-run this hunt at a fixed interval.
+            </div>
+          </div>
+          <div class="d-flex gap-2 align-items-center">
+            <select
+              class="form-select form-select-sm"
+              v-model="scheduleInterval"
+              style="width: auto"
+            >
+              <option value="3600">Hourly</option>
+              <option value="86400">Daily</option>
+              <option value="604800">Weekly</option>
+            </select>
+            <button
+              class="btn btn-outline-primary btn-sm"
+              :disabled="scheduling"
+              @click="saveSchedule"
+            >
+              {{ scheduling ? "Saving…" : "Schedule" }}
+            </button>
+          </div>
+        </div>
+        <div v-if="scheduleError" class="alert alert-danger mt-3 mb-0 small">
+          {{ scheduleError }}
         </div>
       </div>
     </div>

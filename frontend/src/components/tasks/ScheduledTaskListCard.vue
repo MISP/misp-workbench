@@ -7,6 +7,7 @@ import {
   useAuthStore,
   useTasksStore,
   useFeedsStore,
+  useHuntsStore,
   useServersStore,
 } from "@/stores";
 import ScheduledTaskActions from "@/components/tasks/ScheduledTaskActions.vue";
@@ -15,13 +16,16 @@ import CreateScheduledTaskModal from "@/components/tasks/CreateScheduledTaskModa
 const authStore = useAuthStore();
 const tasksStore = useTasksStore();
 const feedsStore = useFeedsStore();
+const huntsStore = useHuntsStore();
 const serversStore = useServersStore();
 
 const { scopes } = storeToRefs(authStore);
 const { feeds } = storeToRefs(feedsStore);
+const { hunts } = storeToRefs(huntsStore);
 const { servers } = storeToRefs(serversStore);
 
 feedsStore.getAll();
+huntsStore.getAll();
 serversStore.getAll();
 
 defineProps({
@@ -85,6 +89,12 @@ const getResourceLabel = (task) => {
       (s) => s.id === kwargs.server_id,
     );
     return server ? server.name : `Server #${kwargs.server_id}`;
+  }
+  if (kwargs.hunt_id) {
+    const hunt = Object.values(hunts.value).find(
+      (h) => h.id === kwargs.hunt_id,
+    );
+    return hunt ? hunt.name : `Hunt #${kwargs.hunt_id}`;
   }
   return null;
 };

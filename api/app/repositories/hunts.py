@@ -71,27 +71,19 @@ def delete_hunt(db: Session, hunt_id: int, user_id: int):
     return {"status": "success"}
 
 
-def execute_hunt(db: Session, hunt_id: int, user_id: int):
-    db_hunt = get_hunt_by_id(db, hunt_id, user_id)
-    if not db_hunt:
-        return None
-
+def _run_hunt_query(db: Session, db_hunt: hunt_models.Hunt):
     index = INDEX_MAP.get(db_hunt.index_target, "misp-attributes")
     OpenSearchClient = get_opensearch_client()
 
     body = {
         "size": 100,
-        "query": {
-            "query_string": {
-                "query": db_hunt.query,
-            }
-        },
+        "query": {"query_string": {"query": db_hunt.query}},
     }
 
     try:
         response = OpenSearchClient.search(index=index, body=body)
     except Exception as e:
-        logger.error("Hunt %s execution failed: %s", hunt_id, e)
+        logger.error("Hunt %s execution failed: %s", db_hunt.id, e)
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=f"Search engine error: {e}",
@@ -111,3 +103,18 @@ def execute_hunt(db: Session, hunt_id: int, user_id: int):
         "total": total,
         "hits": [h["_source"] for h in hits],
     }
+
+
+def execute_hunt_system(db: Session, hunt_id: int):
+    """Execute a hunt without user ownership check — for scheduled/system calls."""
+    db_hunt = db.query(hunt_models.Hunt).filter(hunt_models.Hunt.id == hunt_id).first()
+    if not db_hunt:
+        return None
+    return _run_hunt_query(db, db_hunt)
+
+
+def execute_hunt(db: Session, hunt_id: int, user_id: int):
+    db_hunt = get_hunt_by_id(db, hunt_id, user_id)
+    if not db_hunt:
+        return None
+    return _run_hunt_query(db, db_hunt)
