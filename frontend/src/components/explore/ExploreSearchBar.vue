@@ -13,7 +13,12 @@ const props = defineProps({
   storedSearches: { type: Array, default: () => [] },
 });
 
-const emit = defineEmits(["update:modelValue", "search", "save"]);
+const emit = defineEmits([
+  "update:modelValue",
+  "search",
+  "save",
+  "save-as-hunt",
+]);
 
 const isFocused = ref(false);
 const animatedPlaceholder = ref("Search something (Lucene Query Syntax) ...");
@@ -88,13 +93,36 @@ function saveCurrentSearch() {
 <template>
   <div class="w-100">
     <div class="input-group justify-content-center">
-      <button
-        class="btn btn-outline-secondary"
-        type="button"
-        @click="saveCurrentSearch"
-      >
-        <FontAwesomeIcon :icon="faFloppyDisk" />
-      </button>
+      <div class="dropdown">
+        <button
+          class="btn btn-outline-secondary dropdown-toggle"
+          type="button"
+          data-bs-toggle="dropdown"
+          aria-expanded="false"
+        >
+          <FontAwesomeIcon :icon="faFloppyDisk" />
+        </button>
+        <ul class="dropdown-menu">
+          <li>
+            <a
+              class="dropdown-item"
+              href="#"
+              @click.prevent="saveCurrentSearch"
+            >
+              Save Search
+            </a>
+          </li>
+          <li>
+            <a
+              class="dropdown-item"
+              href="#"
+              @click.prevent="emit('save-as-hunt')"
+            >
+              Save as Hunt
+            </a>
+          </li>
+        </ul>
+      </div>
       <input
         type="text"
         class="form-control text-console"

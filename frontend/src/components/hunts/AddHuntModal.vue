@@ -2,6 +2,11 @@
 import { ref, reactive, computed } from "vue";
 import { useHuntsStore, useToastsStore } from "@/stores";
 
+const props = defineProps({
+  initialQuery: { type: String, default: "" },
+  initialIndexTarget: { type: String, default: "attributes" },
+});
+
 const huntsStore = useHuntsStore();
 const toastsStore = useToastsStore();
 
@@ -10,8 +15,8 @@ const emit = defineEmits(["created", "close"]);
 const hunt = reactive({
   name: "",
   description: "",
-  query: "",
-  index_target: "attributes",
+  query: props.initialQuery,
+  index_target: props.initialIndexTarget,
   status: "active",
 });
 
@@ -22,8 +27,8 @@ const canSubmit = computed(() => hunt.name && hunt.query);
 function reset() {
   hunt.name = "";
   hunt.description = "";
-  hunt.query = "";
-  hunt.index_target = "attributes";
+  hunt.query = props.initialQuery;
+  hunt.index_target = props.initialIndexTarget;
   hunt.status = "active";
   apiError.value = null;
 }

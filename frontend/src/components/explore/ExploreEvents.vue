@@ -14,6 +14,7 @@ import ExploreSearchBar from "./ExploreSearchBar.vue";
 import ExploreSearchHistory from "./ExploreSearchHistory.vue";
 import ExploreResultsSection from "./ExploreResultsSection.vue";
 import ExploreTimeRangeFilter from "./ExploreTimeRangeFilter.vue";
+import AddHuntModal from "@/components/hunts/AddHuntModal.vue";
 
 const props = defineProps({
   page_size: {
@@ -24,6 +25,7 @@ const props = defineProps({
 
 const searchQuery = ref("");
 const activeTimeRange = ref(null);
+const huntModalOpen = ref(false);
 
 const eventsStore = useEventsStore();
 const attributesStore = useAttributesStore();
@@ -175,6 +177,7 @@ body {
         :stored-searches="storedExploreSearches"
         @search="search"
         @save="saveSearch"
+        @save-as-hunt="huntModalOpen = true"
       />
     </div>
     <div class="col-12 col-md-auto order-2 order-md-3 mt-2 mt-md-0">
@@ -224,4 +227,11 @@ body {
       </ExploreResultsSection>
     </div>
   </div>
+
+  <AddHuntModal
+    v-if="huntModalOpen"
+    :initial-query="buildQuery()"
+    @created="huntModalOpen = false"
+    @close="huntModalOpen = false"
+  />
 </template>
