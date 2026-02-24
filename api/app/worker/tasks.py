@@ -515,7 +515,7 @@ def fetch_csv_feed(feed_id: int, user_id: int):
 
         db_event = feeds_repository.get_or_create_feed_event(db, db_feed, user)
 
-        lines = feeds_repository.fetch_csv_content_from_network(db_feed.url)
+        lines = feeds_repository.fetch_csv_content_from_network(db_feed.url, extra_headers=db_feed.headers)
         rows = feeds_repository.parse_csv_feed_lines(db_feed.settings, lines)
 
         for row in rows:

@@ -103,9 +103,16 @@ def delete_feed(db: Session, feed_id: int) -> None:
     db.commit()
 
 
+def build_feed_headers(feed) -> dict:
+    headers = {"User-Agent": USER_AGENT}
+    if feed.headers:
+        headers.update(feed.headers)
+    return headers
+
+
 def fetch_feed_event_by_uuid(feed, event_uuid):
     url = f"{feed.url}/{event_uuid}.json"
-    response = requests.get(url, headers={"User-Agent": USER_AGENT})
+    response = requests.get(url, headers=build_feed_headers(feed))
     if response.status_code == 200:
         return response.json()
     else:
@@ -190,8 +197,8 @@ def process_feed_event(
     return {"result": "success", "message": "Event processed"}
 
 
-def get_feed_manifest(feed: feed_models.Feed):
-    return requests.get(f"{feed.url}/manifest.json")
+def get_feed_manifest(feed):
+    return requests.get(f"{feed.url}/manifest.json", headers=build_feed_headers(feed))
 
 
 def fetch_feed(db: Session, feed_id: int, user: user_schemas.User):
@@ -650,9 +657,12 @@ def process_csv_feed_row(row: list, settings: dict):
         raise ValueError(f"Unsupported CSV mode: {settings['csvConfig']['mode']}")
 
 
-def fetch_csv_content_from_network(url: str) -> list:
+def fetch_csv_content_from_network(url: str, extra_headers: dict = None) -> list:
+    headers = {"User-Agent": USER_AGENT}
+    if extra_headers:
+        headers.update(extra_headers)
     try:
-        response = requests.get(url, headers={"User-Agent": USER_AGENT})
+        response = requests.get(url, headers=headers)
         if response.status_code == 200:
             content = response.content.decode("utf-8")
             lines = content.splitlines()
