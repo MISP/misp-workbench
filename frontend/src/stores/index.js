@@ -8,6 +8,7 @@ export * from "./servers.store";
 export * from "./roles.store";
 export * from "./modules.store";
 export * from "./feeds.store";
+export * from "./feed-events.store";
 export * from "./toasts.store";
 export * from "./taxonomies.store";
 export * from "./galaxies.store";

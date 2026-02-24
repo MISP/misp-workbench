@@ -1,18 +1,39 @@
 <script setup>
+import { computed } from "vue";
 import { storeToRefs } from "pinia";
 import { useRemoteMISPReportsStore } from "@/stores";
 import Spinner from "@/components/misc/Spinner.vue";
 import { marked } from "marked";
 import DOMPurify from "dompurify";
 
-const props = defineProps(["server_id", "event_id"]);
+const props = defineProps({
+  // Server mode: fetch from API
+  server_id: { type: [String, Number], default: null },
+  event_id: { type: [String, Number], default: null },
+  // Feed mode: render inline data directly
+  reports: { type: Array, default: null },
+});
+
+const isRemote = computed(() => !!props.server_id);
+
 const remoteMISPReportsStore = useRemoteMISPReportsStore();
 const { remote_event_reports, status } = storeToRefs(remoteMISPReportsStore);
 
-remoteMISPReportsStore.get_remote_server_event_reports(
-  props.server_id,
-  props.event_id,
-);
+if (isRemote.value) {
+  remoteMISPReportsStore.get_remote_server_event_reports(
+    props.server_id,
+    props.event_id,
+  );
+}
+
+// Normalise feed reports `{ uuid, name, content }` to match server shape
+// `{ EventReport: { id, name, content } }` so the template stays uniform.
+const displayReports = computed(() => {
+  if (isRemote.value) return remote_event_reports.value;
+  return (props.reports ?? []).map((report) => ({
+    EventReport: { id: report.uuid, ...report },
+  }));
+});
 </script>
 
 <template>
@@ -20,7 +41,7 @@ remoteMISPReportsStore.get_remote_server_event_reports(
   <div v-if="status.error" class="text-danger">
     Error loading reports: {{ status.error }}
   </div>
-  <div v-if="!status.loading && remote_event_reports.length === 0">
+  <div v-if="!status.loading && displayReports.length === 0">
     <div class="alert alert-secondary" role="alert">
       No event reports found for this event.
     </div>
@@ -31,7 +52,7 @@ remoteMISPReportsStore.get_remote_server_event_reports(
         class="accordion-item"
         style="max-height: 800px; overflow-y: auto"
         :key="report.EventReport.id"
-        v-for="report in remote_event_reports"
+        v-for="report in displayReports"
       >
         <h2
           class="accordion-header"
@@ -51,8 +72,7 @@ remoteMISPReportsStore.get_remote_server_event_reports(
           :id="`eventReport${report.EventReport.id}`"
           class="accordion-collapse collapse"
           :class="{
-            show:
-              report.EventReport.id === remote_event_reports[0].EventReport.id,
+            show: report.EventReport.id === displayReports[0].EventReport.id,
           }"
           data-bs-parent="#eventReporstAccordion"
         >

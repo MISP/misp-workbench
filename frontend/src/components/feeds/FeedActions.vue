@@ -58,12 +58,19 @@ function fetchFeed(feed) {
         >
           <font-awesome-icon icon="fa-solid fa-download" />
         </button>
+        <RouterLink
+          v-if="feed.source_format === 'misp'"
+          :to="`/feeds/explore/${feed.id}`"
+          class="btn btn-outline-primary btn-sm"
+          title="Preview feed events"
+        >
+          <font-awesome-icon icon="fa-solid fa-magnifying-glass" />
+        </RouterLink>
         <button
+          v-else
           type="button"
           class="btn btn-outline-primary btn-sm"
-          data-toggle="tooltip"
-          data-placement="top"
-          title="Preview"
+          title="Preview (only available for MISP feeds)"
           disabled
         >
           <font-awesome-icon icon="fa-solid fa-magnifying-glass" />
