@@ -109,7 +109,7 @@ const size = computed(() => {
 
 const attachment_uuid = computed(() => {
   const uuidAttr = attachment.value.attributes.find(
-    (attr) => attr.type === "attachment",
+    (attr) => attr.type === "attachment" || attr.type === "malware-sample",
   );
   return uuidAttr ? uuidAttr.uuid : null;
 });
