@@ -109,7 +109,7 @@ const size = computed(() => {
 
 const attachment_uuid = computed(() => {
   const uuidAttr = attachment.value.attributes.find(
-    (attr) => attr.type === "attachment",
+    (attr) => attr.type === "attachment" || attr.type === "malware-sample",
   );
   return uuidAttr ? uuidAttr.uuid : null;
 });
@@ -186,6 +186,7 @@ async function downloadAttachment() {
         <div class="text-end">
           <div class="btn-group" role="group" aria-label="Attachment actions">
             <button
+              v-if="attachment_uuid"
               type="button"
               class="btn btn-outline-primary"
               @click="downloadAttachment"

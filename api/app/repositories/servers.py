@@ -1,5 +1,6 @@
 import os
 import logging
+from types import SimpleNamespace
 from typing import Union
 
 from app.models import server as server_models
@@ -530,6 +531,68 @@ def test_server_connection(db: Session, server_id: int) -> None:
             status="error",
             error=ex.detail,
         )
+
+
+def preview_pull_server(
+    request: server_schemas.PreviewPullRequest,
+) -> server_schemas.PreviewPullResponse:
+    temp_server = SimpleNamespace(
+        url=request.url,
+        authkey=request.authkey,
+        self_signed=request.self_signed,
+    )
+
+    try:
+        remote_misp = get_remote_misp_connection(temp_server)
+    except Exception as ex:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(ex))
+
+    pull_rules = request.pull_rules or {}
+    timestamp = pull_rules.get("timestamp")
+    required_tags = pull_rules.get("tags") or []
+    required_orgs = pull_rules.get("orgs") or []
+
+    if isinstance(required_tags, str):
+        required_tags = [required_tags]
+    if isinstance(required_orgs, str):
+        required_orgs = [required_orgs]
+
+    try:
+        filtered_events = remote_misp.search_index(published=True, timestamp=timestamp, minimal=True)
+        all_events = remote_misp.search_index(published=True, minimal=True)
+    except Exception as ex:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Failed to fetch events from remote server: %s" % ex,
+        )
+
+    total = len(all_events)
+    filtered = list(filtered_events)
+
+    if required_tags:
+        def event_has_tag(event, tag_name):
+            for tag_entry in event.get("EventTag", []):
+                tag = tag_entry.get("Tag", tag_entry)
+                name = tag.get("name", "") if isinstance(tag, dict) else ""
+                if name == tag_name:
+                    return True
+            return False
+
+        filtered = [e for e in filtered if any(event_has_tag(e, t) for t in required_tags)]
+
+    if required_orgs:
+        filtered = [
+            e for e in filtered
+            if e.get("Orgc", {}).get("name", "") in required_orgs
+        ]
+
+    total_filtered = len(filtered)
+
+    return server_schemas.PreviewPullResponse(
+        total=total,
+        total_filtered=total_filtered,
+        message="%d of %d events would be pulled" % (total_filtered, total),
+    )
 
 
 def get_remote_events_index(

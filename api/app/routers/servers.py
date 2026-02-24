@@ -64,6 +64,19 @@ def pull_server(
 
 
 @router.post(
+    "/servers/preview-pull",
+    response_model=server_schemas.PreviewPullResponse,
+)
+def preview_pull(
+    request: server_schemas.PreviewPullRequest,
+    user: user_schemas.User = Security(
+        get_current_active_user, scopes=["servers:read"]
+    ),
+):
+    return servers_repository.preview_pull_server(request)
+
+
+@router.post(
     "/servers/",
     response_model=server_schemas.Server,
     status_code=status.HTTP_201_CREATED,

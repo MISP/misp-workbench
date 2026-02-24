@@ -30,10 +30,8 @@ function toggleEnable(feed) {
     <table v-show="!status.loading" class="table table-striped text-start">
       <thead>
         <tr>
-          <th scope="col">id</th>
-          <th scope="col">name</th>
-          <th scope="col">provider</th>
-          <th scope="col" v-if="!$isMobile">url</th>
+          <th scope="col">feed</th>
+          <th scope="col" v-if="!$isMobile">provider</th>
           <th scope="col" v-if="!$isMobile">format</th>
           <th scope="col" v-if="!$isMobile">source</th>
           <th scope="col" class="text-end">enabled</th>
@@ -42,12 +40,23 @@ function toggleEnable(feed) {
       </thead>
       <tbody>
         <tr :key="feed.id" v-for="feed in feeds">
+          <!-- Name + URL -->
           <td>
-            <RouterLink :to="`/feeds/${feed.id}`">{{ feed.id }}</RouterLink>
+            <RouterLink
+              :to="`/feeds/${feed.id}`"
+              class="fw-semibold text-decoration-none"
+            >
+              {{ feed.name }}
+            </RouterLink>
+            <div
+              class="text-muted small text-truncate"
+              style="max-width: 320px"
+              :title="feed.url"
+            >
+              {{ feed.url }}
+            </div>
           </td>
-          <td>{{ feed.name }}</td>
           <td>{{ feed.provider }}</td>
-          <td v-if="!$isMobile">{{ feed.url }}</td>
           <td v-if="!$isMobile">{{ feed.source_format }}</td>
           <td v-if="!$isMobile">{{ feed.input_source }}</td>
           <td class="text-end">

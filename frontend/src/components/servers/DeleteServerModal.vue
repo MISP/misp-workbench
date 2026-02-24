@@ -1,4 +1,5 @@
 <script setup>
+import { Modal } from "bootstrap";
 import { useServersStore } from "@/stores";
 import { storeToRefs } from "pinia";
 
@@ -13,7 +14,10 @@ function onSubmit() {
     .delete(props.server_id)
     .then(() => {
       emit("server-deleted", { server_id: props.server_id });
-      document.getElementById("closeModalButton").click();
+      const modalEl = document.getElementById(
+        `deleteServerModal-${props.server_id}`,
+      );
+      Modal.getInstance(modalEl)?.hide();
     })
     .catch((error) => (status.error = error));
 }
@@ -48,7 +52,6 @@ function onSubmit() {
         </div>
         <div class="modal-footer">
           <button
-            id="closeModalButton"
             type="button"
             data-bs-dismiss="modal"
             class="btn btn-secondary"

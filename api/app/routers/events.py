@@ -1,4 +1,3 @@
-from datetime import datetime
 import json
 
 from typing import Optional, Annotated
@@ -40,7 +39,12 @@ async def get_events_parameters(
     uuid: Optional[str] = Query(None),
     include_attributes: bool = Query(False),
 ):
-    return {"info": info, "deleted": deleted, "uuid": uuid, "include_attributes": include_attributes}
+    return {
+        "info": info,
+        "deleted": deleted,
+        "uuid": uuid,
+        "include_attributes": include_attributes,
+    }
 
 
 @router.get("/events/", response_model=Page[event_schemas.Event])
@@ -50,7 +54,11 @@ async def get_events(
     user: user_schemas.User = Security(get_current_active_user, scopes=["events:read"]),
 ) -> Page[event_schemas.Event]:
     return events_repository.get_events(
-        db, params["info"], params["deleted"], params["uuid"], params["include_attributes"]
+        db,
+        params["info"],
+        params["deleted"],
+        params["uuid"],
+        params["include_attributes"],
     )
 
 
@@ -259,7 +267,8 @@ def get_event_attachments(
             status_code=status.HTTP_404_NOT_FOUND, detail="Event not found"
         )
 
-    return objects_repository.get_objects(
+    attachments = []
+    objects = objects_repository.get_objects(
         db,
         event_uuid=db_event.uuid,
         deleted=False,
@@ -267,6 +276,14 @@ def get_event_attachments(
             "688c46fb-5edb-40a3-8273-1af7923e2215"  # TODO: get the object template from the json file
         ],
     )
+
+    for file_object in objects:
+        for attribute in file_object.attributes:
+            if attribute.type == "attachment" or attribute.type == "malware-sample":
+                attachments.append(file_object)
+                break
+
+    return attachments
 
 
 @router.post(
