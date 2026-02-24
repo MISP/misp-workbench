@@ -1,6 +1,5 @@
 <script setup>
 import { storeToRefs } from "pinia";
-import { RouterLink } from "vue-router";
 import Spinner from "@/components/misc/Spinner.vue";
 import { useServersStore } from "@/stores";
 import DeleteServerModal from "@/components/servers/DeleteServerModal.vue";
@@ -18,71 +17,97 @@ function handleServerDeleted() {
 
 <template>
   <Spinner v-if="status.loading" />
-  <div v-if="status.error" class="text-danger">
-    Error loading servers: {{ status.error }}
+  <div v-if="status.error" class="alert alert-danger">
+    {{ status.error }}
   </div>
   <div class="table-responsive-sm">
-    <table v-show="!status.loading" class="table table-striped">
+    <table v-show="!status.loading" class="table table-striped align-middle">
       <thead>
         <tr>
-          <th scope="col">id</th>
-          <th scope="col">name</th>
-          <th scope="col" v-if="!$isMobile">url</th>
-          <th scope="col">sync actions</th>
-          <th scope="col" class="text-end">actions</th>
+          <th scope="col">server</th>
+          <th scope="col" class="d-none d-md-table-cell">sync</th>
+          <th scope="col">actions</th>
+          <th scope="col" class="text-end">manage</th>
         </tr>
       </thead>
       <tbody>
         <tr :key="server.id" v-for="server in servers">
+          <!-- Name + URL -->
           <td>
-            <RouterLink :to="`/servers/${server.id}`">{{
-              server.id
-            }}</RouterLink>
+            <RouterLink
+              :to="`/servers/${server.id}`"
+              class="fw-semibold text-decoration-none"
+            >
+              {{ server.name }}
+            </RouterLink>
+            <div
+              class="text-muted small text-truncate"
+              style="max-width: 320px"
+              :title="server.url"
+            >
+              {{ server.url }}
+            </div>
           </td>
-          <td>{{ server.name }}</td>
-          <td v-if="!$isMobile">{{ server.url }}</td>
+
+          <!-- Pull / Push enabled badges -->
+          <td class="d-none d-md-table-cell">
+            <span
+              class="badge me-1"
+              :class="server.pull ? 'bg-primary' : 'bg-secondary'"
+              title="Pull"
+            >
+              pull
+            </span>
+            <span
+              class="badge"
+              :class="server.push ? 'bg-success' : 'bg-secondary'"
+              title="Push"
+            >
+              push
+            </span>
+          </td>
+
+          <!-- Sync actions: test connection, pull, push, explore -->
           <td>
             <ServerSyncActions :server="server" />
           </td>
+
+          <!-- Edit / View / Delete -->
           <td class="text-end">
             <div class="btn-toolbar float-end" role="toolbar">
-              <div
-                class="flex-wrap"
-                :class="{
-                  'btn-group-vertical': $isMobile,
-                  'btn-group me-2': !$isMobile,
-                }"
-                aria-label="Server Actions"
-              >
-                <RouterLink
-                  :to="`/servers/update/${server.id}`"
-                  class="btn btn-outline-primary btn-sm"
-                >
-                  <font-awesome-icon icon="fa-solid fa-pen" />
-                </RouterLink>
+              <div class="btn-group btn-group-sm me-2" role="group">
                 <RouterLink
                   :to="`/servers/${server.id}`"
-                  class="btn btn-outline-primary btn-sm"
+                  class="btn btn-outline-primary"
+                  title="View"
                 >
                   <font-awesome-icon icon="fa-solid fa-eye" />
                 </RouterLink>
+                <RouterLink
+                  :to="`/servers/update/${server.id}`"
+                  class="btn btn-outline-primary"
+                  title="Edit"
+                >
+                  <font-awesome-icon icon="fa-solid fa-pen" />
+                </RouterLink>
               </div>
-              <div class="btn-group me-2" role="group">
+              <div class="btn-group btn-group-sm" role="group">
                 <button
                   type="button"
-                  class="btn btn-danger btn-sm"
+                  class="btn btn-danger"
                   data-bs-toggle="modal"
                   :data-bs-target="'#deleteServerModal-' + server.id"
+                  title="Delete"
                 >
                   <font-awesome-icon icon="fa-solid fa-trash" />
                 </button>
               </div>
             </div>
+            <DeleteServerModal
+              @server-deleted="handleServerDeleted"
+              :server_id="server.id"
+            />
           </td>
-          <DeleteServerModal
-            @server-deleted="handleServerDeleted"
-            :server_id="server.id"
-          />
         </tr>
       </tbody>
     </table>

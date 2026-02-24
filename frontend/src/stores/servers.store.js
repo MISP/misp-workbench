@@ -20,6 +20,7 @@ export const useServersStore = defineStore({
       loading_events: false,
       updating: false,
       creating: false,
+      previewing: false,
       error: false,
     },
   }),
@@ -66,6 +67,12 @@ export const useServersStore = defineStore({
       return await fetchWrapper
         .post(`${baseUrl}/${id}/test-connection`)
         .catch((error) => (this.status = { error }));
+    },
+    async previewPull(serverConfig) {
+      this.status.previewing = true;
+      return await fetchWrapper
+        .post(`${baseUrl}/preview-pull`, serverConfig)
+        .finally(() => (this.status.previewing = false));
     },
     async pull(id) {
       return await fetchWrapper

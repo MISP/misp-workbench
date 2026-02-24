@@ -70,3 +70,16 @@ class TestServerConnectionResponse(BaseModel):
     status: str
     version: Optional[str] = None
     error: Optional[str] = None
+
+
+class PreviewPullRequest(BaseModel):
+    url: str
+    authkey: str
+    self_signed: bool = False
+    pull_rules: Optional[dict] = None
+
+
+class PreviewPullResponse(BaseModel):
+    total: int
+    total_filtered: int
+    message: str

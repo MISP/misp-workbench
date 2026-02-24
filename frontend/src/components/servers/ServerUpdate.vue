@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch } from "vue";
+import { computed } from "vue";
 import { Form, Field } from "vee-validate";
 import { storeToRefs } from "pinia";
 import { useServersStore } from "@/stores";
@@ -11,12 +11,11 @@ import PullRulesEditor from "@/components/servers/PullRulesEditor.vue";
 const serversStore = useServersStore();
 const { server, status } = storeToRefs(serversStore);
 
-const pullRules = ref(JSON.stringify(server.value.pull_rules, null, 2));
-watch(pullRules, (newVal) => {
-  try {
-    const rules = JSON.parse(newVal);
-    server.value.pull_rules = rules;
-  } catch {}
+const pullRules = computed({
+  get: () => server.value.pull_rules ?? {},
+  set: (val) => {
+    server.value.pull_rules = val;
+  },
 });
 
 function onSubmit(values, { setErrors }) {
@@ -123,45 +122,25 @@ function handleRemoteOrgUpdated(orgId) {
             {{ errors["server.remote_org_id"] }}
           </div>
         </div>
-        <div class="mb-3">
-          <label for="server.push">push</label>
-          <Field
-            class="form-control"
+        <div class="form-check form-switch mb-3">
+          <input
+            class="form-check-input"
+            type="checkbox"
+            role="switch"
             id="server.push"
-            name="server.push"
-            :value="server.push"
             v-model="server.push"
-            :class="{ 'is-invalid': errors['server.push'] }"
-          >
-            <div class="form-check">
-              <input
-                class="form-check-input"
-                type="checkbox"
-                v-model="server.push"
-              />
-            </div>
-          </Field>
-          <div class="invalid-feedback">{{ errors["server.push"] }}</div>
+          />
+          <label class="form-check-label" for="server.push">Push</label>
         </div>
-        <div class="mb-3">
-          <label for="server.pull">pull</label>
-          <Field
-            class="form-control"
+        <div class="form-check form-switch mb-3">
+          <input
+            class="form-check-input"
+            type="checkbox"
+            role="switch"
             id="server.pull"
-            name="server.pull"
-            :value="server.pull"
             v-model="server.pull"
-            :class="{ 'is-invalid': errors['server.pull'] }"
-          >
-            <div class="form-check">
-              <input
-                class="form-check-input"
-                type="checkbox"
-                v-model="server.pull"
-              />
-            </div>
-          </Field>
-          <div class="invalid-feedback">{{ errors["server.pull"] }}</div>
+          />
+          <label class="form-check-label" for="server.pull">Pull</label>
         </div>
         <div class="mb-3">
           <label for="server.pull_rules">pull_rules</label>
@@ -175,199 +154,111 @@ function handleRemoteOrgUpdated(orgId) {
           <PullRulesEditor v-model="pullRules" />
           <div class="invalid-feedback">{{ errors["server.pull_rules"] }}</div>
         </div>
-        <div class="mb-3">
-          <label for="server.push_sightings">push_sightings</label>
-          <Field
-            class="form-control"
+        <div class="form-check form-switch mb-3">
+          <input
+            class="form-check-input"
+            type="checkbox"
+            role="switch"
             id="server.push_sightings"
-            name="server.push_sightings"
-            :value="server.push_sightings"
             v-model="server.push_sightings"
-            :class="{ 'is-invalid': errors['server.push_sightings'] }"
+          />
+          <label class="form-check-label" for="server.push_sightings"
+            >Push Sightings</label
           >
-            <div class="form-check">
-              <input
-                class="form-check-input"
-                type="checkbox"
-                v-model="server.push_sightings"
-              />
-            </div>
-          </Field>
-          <div class="invalid-feedback">
-            {{ errors["server.push_sightings"] }}
-          </div>
         </div>
-        <div class="mb-3">
-          <label for="server.push_galaxy_clusters">push_galaxy_clusters</label>
-          <Field
-            class="form-control"
+        <div class="form-check form-switch mb-3">
+          <input
+            class="form-check-input"
+            type="checkbox"
+            role="switch"
             id="server.push_galaxy_clusters"
-            name="server.push_galaxy_clusters"
-            :value="server.push_galaxy_clusters"
             v-model="server.push_galaxy_clusters"
-            :class="{ 'is-invalid': errors['server.push_galaxy_clusters'] }"
+          />
+          <label class="form-check-label" for="server.push_galaxy_clusters"
+            >Push Galaxy Clusters</label
           >
-            <div class="form-check">
-              <input
-                class="form-check-input"
-                type="checkbox"
-                v-model="server.push_galaxy_clusters"
-              />
-            </div>
-          </Field>
-          <div class="invalid-feedback">
-            {{ errors["server.push_galaxy_clusters"] }}
-          </div>
         </div>
-        <div class="mb-3">
-          <label for="server.pull_galaxy_clusters">pull_galaxy_clusters</label>
-          <Field
-            class="form-control"
+        <div class="form-check form-switch mb-3">
+          <input
+            class="form-check-input"
+            type="checkbox"
+            role="switch"
             id="server.pull_galaxy_clusters"
-            name="server.pull_galaxy_clusters"
-            :value="server.pull_galaxy_clusters"
             v-model="server.pull_galaxy_clusters"
-            :class="{ 'is-invalid': errors['server.pull_galaxy_clusters'] }"
+          />
+          <label class="form-check-label" for="server.pull_galaxy_clusters"
+            >Pull Galaxy Clusters</label
           >
-            <div class="form-check">
-              <input
-                class="form-check-input"
-                type="checkbox"
-                v-model="server.pull_galaxy_clusters"
-              />
-            </div>
-          </Field>
-          <div class="invalid-feedback">
-            {{ errors["server.pull_galaxy_clusters"] }}
-          </div>
         </div>
-        <div class="mb-3">
-          <label for="server.publish_without_email"
-            >publish_without_email</label
-          >
-          <Field
-            class="form-control"
+        <div class="form-check form-switch mb-3">
+          <input
+            class="form-check-input"
+            type="checkbox"
+            role="switch"
             id="server.publish_without_email"
-            name="server.publish_without_email"
-            :value="server.publish_without_email"
             v-model="server.publish_without_email"
-            :class="{ 'is-invalid': errors['server.publish_without_email'] }"
+          />
+          <label class="form-check-label" for="server.publish_without_email"
+            >Publish Without Email</label
           >
-            <div class="form-check">
-              <input
-                class="form-check-input"
-                type="checkbox"
-                v-model="server.publish_without_email"
-              />
-            </div>
-          </Field>
-          <div class="invalid-feedback">
-            {{ errors["server.publish_without_email"] }}
-          </div>
         </div>
-        <div class="mb-3">
-          <label for="server.unpublish_event">unpublish_event</label>
-          <Field
-            class="form-control"
+        <div class="form-check form-switch mb-3">
+          <input
+            class="form-check-input"
+            type="checkbox"
+            role="switch"
             id="server.unpublish_event"
-            name="server.unpublish_event"
-            :value="server.unpublish_event"
             v-model="server.unpublish_event"
-            :class="{ 'is-invalid': errors['server.unpublish_event'] }"
+          />
+          <label class="form-check-label" for="server.unpublish_event"
+            >Unpublish Event</label
           >
-            <div class="form-check">
-              <input
-                class="form-check-input"
-                type="checkbox"
-                v-model="server.unpublish_event"
-              />
-            </div>
-          </Field>
-          <div class="invalid-feedback">
-            {{ errors["server.unpublish_event"] }}
-          </div>
         </div>
-        <div class="mb-3">
-          <label for="server.self_signed">self_signed</label>
-          <Field
-            class="form-control"
+        <div class="form-check form-switch mb-3">
+          <input
+            class="form-check-input"
+            type="checkbox"
+            role="switch"
             id="server.self_signed"
-            name="server.self_signed"
-            :value="server.self_signed"
             v-model="server.self_signed"
-            :class="{ 'is-invalid': errors['server.self_signed'] }"
+          />
+          <label class="form-check-label" for="server.self_signed"
+            >Self Signed</label
           >
-            <div class="form-check">
-              <input
-                class="form-check-input"
-                type="checkbox"
-                v-model="server.self_signed"
-              />
-            </div>
-          </Field>
-          <div class="invalid-feedback">{{ errors["server.self_signed"] }}</div>
         </div>
-        <div class="mb-3">
-          <label for="server.internal">internal</label>
-          <Field
-            class="form-control"
+        <div class="form-check form-switch mb-3">
+          <input
+            class="form-check-input"
+            type="checkbox"
+            role="switch"
             id="server.internal"
-            name="server.internal"
-            :value="server.internal"
             v-model="server.internal"
-            :class="{ 'is-invalid': errors['server.internal'] }"
-          >
-            <div class="form-check">
-              <input
-                class="form-check-input"
-                type="checkbox"
-                v-model="server.internal"
-              />
-            </div>
-          </Field>
-          <div class="invalid-feedback">{{ errors["server.internal"] }}</div>
+          />
+          <label class="form-check-label" for="server.internal">Internal</label>
         </div>
-        <div class="mb-3">
-          <label for="server.skip_proxy">skip_proxy</label>
-          <Field
-            class="form-control"
+        <div class="form-check form-switch mb-3">
+          <input
+            class="form-check-input"
+            type="checkbox"
+            role="switch"
             id="server.skip_proxy"
-            name="server.skip_proxy"
-            :value="server.skip_proxy"
             v-model="server.skip_proxy"
-            :class="{ 'is-invalid': errors['server.skip_proxy'] }"
+          />
+          <label class="form-check-label" for="server.skip_proxy"
+            >Skip Proxy</label
           >
-            <div class="form-check">
-              <input
-                class="form-check-input"
-                type="checkbox"
-                v-model="server.skip_proxy"
-              />
-            </div>
-          </Field>
-          <div class="invalid-feedback">{{ errors["server.skip_proxy"] }}</div>
         </div>
-        <div class="mb-3">
-          <label for="server.caching_enabled">caching_enabled</label>
-          <Field
-            class="form-control"
+        <div class="form-check form-switch mb-3">
+          <input
+            class="form-check-input"
+            type="checkbox"
+            role="switch"
             id="server.caching_enabled"
-            name="server.caching_enabled"
-            :value="server.caching_enabled"
             v-model="server.caching_enabled"
-            :class="{ 'is-invalid': errors['server.caching_enabled'] }"
+          />
+          <label class="form-check-label" for="server.caching_enabled"
+            >Caching Enabled</label
           >
-            <div class="form-check">
-              <input
-                class="form-check-input"
-                type="checkbox"
-                v-model="server.caching_enabled"
-              />
-            </div>
-          </Field>
-          <div class="invalid-feedback">
-            {{ errors["server.caching_enabled"] }}
-          </div>
         </div>
         <div class="mb-3">
           <label for="server.priority">priority</label>
