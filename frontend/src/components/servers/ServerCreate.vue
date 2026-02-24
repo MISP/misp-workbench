@@ -38,8 +38,8 @@ const canPreview = computed(() => !!server.url && !!server.authkey);
 function onSubmit(_, { setErrors }) {
   return serversStore
     .create(server)
-    .then((response) => {
-      router.push(`/servers/${response.id}`);
+    .then(() => {
+      router.push("/servers");
     })
     .catch((error) => setErrors({ apiError: error }));
 }
