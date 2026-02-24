@@ -28,7 +28,6 @@ function handleServerDeleted() {
           <th scope="col">id</th>
           <th scope="col">name</th>
           <th scope="col" v-if="!$isMobile">url</th>
-          <th scope="col" v-if="!$isMobile">org_id</th>
           <th scope="col">sync actions</th>
           <th scope="col" class="text-end">actions</th>
         </tr>
@@ -42,7 +41,6 @@ function handleServerDeleted() {
           </td>
           <td>{{ server.name }}</td>
           <td v-if="!$isMobile">{{ server.url }}</td>
-          <td v-if="!$isMobile">{{ server.org_id }}</td>
           <td>
             <ServerSyncActions :server="server" />
           </td>
