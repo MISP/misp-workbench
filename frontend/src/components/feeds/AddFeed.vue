@@ -28,6 +28,7 @@ const config = ref({
   provider: "",
   distribution: 1,
   fetch_on_create: true,
+  headers: {},
   rules: {},
   settings: {},
 });
@@ -120,6 +121,7 @@ function getFeedFromConfig() {
     fixed_event: config.value.fixed_event,
     distribution: parseInt(config.value.distribution),
     input_source: config.value.input_source,
+    headers: config.value.headers ?? {},
   };
 }
 

@@ -26,7 +26,26 @@ const local = reactive({
   input_source: "network",
   schedule: "86400",
   fetch_on_create: true,
+  headers: {},
 });
+
+const auth = reactive({
+  type: "none",
+  header_name: "Authorization",
+  header_value: "",
+});
+
+watch(
+  auth,
+  () => {
+    if (auth.type === "header" && auth.header_name && auth.header_value) {
+      local.headers = { [auth.header_name]: auth.header_value };
+    } else {
+      local.headers = {};
+    }
+  },
+  { deep: true },
+);
 
 /**
  * Sync incoming modelValue → local state
@@ -147,6 +166,34 @@ function handleDistributionLevelUpdated(distributionLevelId) {
             >
             </Field>
             <div class="invalid-feedback">{{ errors["feed.url"] }}</div>
+          </div>
+        </div>
+
+        <div class="col-12">
+          <label class="form-label">Authentication</label>
+          <select class="form-select mb-2" v-model="auth.type">
+            <option value="none">No Authentication</option>
+            <option value="header">Auth Header</option>
+          </select>
+          <div v-if="auth.type === 'header'" class="row g-2">
+            <div class="col-md-4">
+              <label class="form-label small text-muted">Header Name</label>
+              <input
+                class="form-control"
+                type="text"
+                v-model="auth.header_name"
+                placeholder="Authorization"
+              />
+            </div>
+            <div class="col-md-8">
+              <label class="form-label small text-muted">Secret</label>
+              <input
+                class="form-control"
+                type="password"
+                v-model="auth.header_value"
+                placeholder="Bearer token123"
+              />
+            </div>
           </div>
         </div>
 
