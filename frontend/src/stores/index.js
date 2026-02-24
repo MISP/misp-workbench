@@ -26,3 +26,4 @@ export * from "./sightings.store";
 export * from "./runtimeSettings.store";
 export * from "./userSettings.store";
 export * from "./notifications.store";
+export * from "./hunts.store";

@@ -44,6 +44,10 @@ import {
   IndexRuntimeSettings,
   IndexUserSettings,
   IndexNotifications,
+  IndexHunts,
+  AddHunt,
+  EditHunt,
+  ViewHunt,
 } from "@/views";
 
 export const router = createRouter({
@@ -104,6 +108,10 @@ export const router = createRouter({
     { path: "/settings/runtime", component: IndexRuntimeSettings },
     { path: "/settings/user", component: IndexUserSettings },
     { path: "/notifications", component: IndexNotifications },
+    { path: "/hunts", component: IndexHunts },
+    { path: "/hunts/add", component: AddHunt },
+    { path: "/hunts/update/:id", component: EditHunt, props: true },
+    { path: "/hunts/:id", component: ViewHunt, props: true },
   ],
 });
 
