@@ -49,6 +49,43 @@ def create_feed(
     return feeds_repository.create_feed(db=db, feed=feed)
 
 
+@router.get("/feeds/{feed_id}/explore")
+def explore_misp_feed(
+    feed_id: int,
+    page: int = 0,
+    limit: int = 20,
+    db: Session = Depends(get_db),
+    user: user_schemas.User = Security(
+        get_current_active_user, scopes=["feeds:read"]
+    ),
+):
+    return feeds_repository.explore_misp_feed(db, feed_id, page=page, limit=limit)
+
+
+@router.get("/feeds/{feed_id}/explore/{event_uuid}")
+def explore_misp_feed_event(
+    feed_id: int,
+    event_uuid: str,
+    db: Session = Depends(get_db),
+    user: user_schemas.User = Security(
+        get_current_active_user, scopes=["feeds:read"]
+    ),
+):
+    return feeds_repository.explore_misp_feed_event(db, feed_id, event_uuid)
+
+
+@router.post("/feeds/{feed_id}/explore/{event_uuid}/fetch")
+def fetch_single_feed_event(
+    feed_id: int,
+    event_uuid: str,
+    db: Session = Depends(get_db),
+    user: user_schemas.User = Security(
+        get_current_active_user, scopes=["feeds:fetch"]
+    ),
+):
+    return feeds_repository.fetch_single_feed_event(db, feed_id, event_uuid, user)
+
+
 @router.post("/feeds/misp/test-connection")
 def test_feed_connection(
     feed: feed_schemas.FeedCreate,

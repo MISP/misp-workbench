@@ -325,6 +325,67 @@ def filter_feed_by_rules(rules: dict, manifest: dict):
     return filtered_manifest
 
 
+def explore_misp_feed(db: Session, feed_id: int, page: int = 0, limit: int = 20):
+    feed = get_feed_by_id(db, feed_id)
+    if not feed:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Feed not found"
+        )
+
+    if feed.source_format != "misp":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Feed is not a MISP feed",
+        )
+
+    req = get_feed_manifest(feed)
+    if req.status_code != 200:
+        raise HTTPException(
+            status_code=req.status_code,
+            detail=f"Failed to fetch feed manifest: {req.text}",
+        )
+
+    manifest = req.json()
+    total = len(manifest)
+
+    filtered_manifest = filter_feed_by_rules(feed.rules, manifest)
+    total_filtered = len(filtered_manifest)
+
+    items = list(filtered_manifest.items())
+    page_items = items[page * limit : (page + 1) * limit]
+
+    events = [{"uuid": uuid, **event_data} for uuid, event_data in page_items]
+
+    return {
+        "events": events,
+        "total": total,
+        "total_filtered": total_filtered,
+        "page": page,
+        "limit": limit,
+    }
+
+
+def explore_misp_feed_event(db: Session, feed_id: int, event_uuid: str):
+    feed = get_feed_by_id(db, feed_id)
+    if not feed:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Feed not found"
+        )
+
+    return fetch_feed_event_by_uuid(feed, event_uuid)
+
+
+def fetch_single_feed_event(db: Session, feed_id: int, event_uuid: str, user):
+    feed = get_feed_by_id(db, feed_id)
+    if not feed:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Feed not found"
+        )
+
+    result = tasks.fetch_feed_event.delay(event_uuid, feed_id, user.id)
+    return {"task": {"id": result.id, "name": "fetch_feed_event", "status": result.status}}
+
+
 def test_misp_feed_connection(feed: feed_schemas.FeedCreate):
     try:
         response = get_feed_manifest(feed)

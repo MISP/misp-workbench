@@ -41,6 +41,14 @@ function openDeleteFeedModal() {
               aria-label="Feed Actions"
             >
               <RouterLink
+                v-if="feed.source_format === 'misp'"
+                :to="`/feeds/explore/${feed.id}`"
+                class="btn btn-outline-primary"
+                title="Explore feed events"
+              >
+                <font-awesome-icon icon="fa-solid fa-magnifying-glass" />
+              </RouterLink>
+              <RouterLink
                 :to="`/feeds/update/${feed.id}`"
                 class="btn btn-outline-primary"
               >
