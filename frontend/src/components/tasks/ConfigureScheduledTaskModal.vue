@@ -69,7 +69,7 @@ onMounted(() => {
 });
 
 function buildKwargs() {
-  const kwargs = {};
+  const kwargs = { ...(props.scheduled_task?.kwargs ?? {}) };
   if (needsFeed.value) kwargs.feed_id = selectedFeedId.value;
   if (needsServer.value) {
     kwargs.server_id = selectedServerId.value;
