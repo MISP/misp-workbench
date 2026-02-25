@@ -952,7 +952,7 @@ def delete_indexed_object(object_uuid: str):
 
 
 @celery_app.task
-def run_hunt(hunt_id: int):
+def run_hunt(hunt_id: int, **kwargs):
     logger.info("run hunt id=%s job started", hunt_id)
 
     with Session(engine) as db:
