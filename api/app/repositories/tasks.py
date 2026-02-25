@@ -189,6 +189,12 @@ def update_scheduled_task(
         key = f"redbeat:{task_name}"
         task = RedBeatSchedulerEntry.from_key(key, app=celery_app)
 
+        if task is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Scheduled task with name {task_name} not found.",
+            )
+        
         if params is not None:
             task.args = params.get("args", [])
             task.kwargs = params.get("kwargs", {})
@@ -207,7 +213,6 @@ def update_scheduled_task(
                 )
             else:
                 task.schedule = celery_schedule(int(schedule.every))
-            task.enabled = schedule.enabled
 
         if enabled is not None:
             task.enabled = enabled
