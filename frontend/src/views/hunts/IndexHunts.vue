@@ -2,41 +2,25 @@
 import { ref } from "vue";
 import { storeToRefs } from "pinia";
 import { RouterLink } from "vue-router";
-import { useHuntsStore, useToastsStore } from "@/stores";
+import { useHuntsStore } from "@/stores";
 import Spinner from "@/components/misc/Spinner.vue";
 import AddHuntModal from "@/components/hunts/AddHuntModal.vue";
+import HuntActions from "@/components/hunts/HuntActions.vue";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
-import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
-import { faPen, faPlay, faTrash } from "@fortawesome/free-solid-svg-icons";
 
 dayjs.extend(relativeTime);
 
 const huntsStore = useHuntsStore();
-const toastsStore = useToastsStore();
 const { hunts, status } = storeToRefs(huntsStore);
 
 huntsStore.getAll();
 
 const addModalOpen = ref(false);
-const deletingId = ref(null);
 
 function onHuntCreated() {
   addModalOpen.value = false;
   huntsStore.getAll();
-}
-
-async function deleteHunt(hunt) {
-  if (!confirm(`Delete hunt "${hunt.name}"?`)) return;
-  deletingId.value = hunt.id;
-  await huntsStore
-    .delete(hunt.id)
-    .then(() => {
-      toastsStore.push(`Hunt "${hunt.name}" deleted.`, "success");
-      huntsStore.getAll();
-    })
-    .catch((err) => toastsStore.push(err || "Failed to delete hunt.", "danger"))
-    .finally(() => (deletingId.value = null));
 }
 </script>
 
@@ -106,30 +90,7 @@ async function deleteHunt(hunt) {
             </span>
           </td>
           <td class="text-end">
-            <div class="btn-group btn-group-sm">
-              <RouterLink
-                :to="`/hunts/${hunt.id}`"
-                class="btn btn-outline-success"
-                title="View / Run"
-              >
-                <FontAwesomeIcon :icon="faPlay" />
-              </RouterLink>
-              <RouterLink
-                :to="`/hunts/update/${hunt.id}`"
-                class="btn btn-outline-primary"
-                title="Edit"
-              >
-                <FontAwesomeIcon :icon="faPen" />
-              </RouterLink>
-              <button
-                class="btn btn-outline-danger"
-                title="Delete"
-                :disabled="deletingId === hunt.id"
-                @click="deleteHunt(hunt)"
-              >
-                <FontAwesomeIcon :icon="faTrash" />
-              </button>
-            </div>
+            <HuntActions :hunt="hunt" @deleted="huntsStore.getAll()" />
           </td>
         </tr>
       </tbody>
