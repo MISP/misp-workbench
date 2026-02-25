@@ -25,6 +25,9 @@ const { scheduledTasks } = storeToRefs(tasksStore);
 
 const runResult = ref(null);
 const runError = ref(null);
+const cachedResult = ref(null);
+const displayResult = computed(() => runResult.value ?? cachedResult.value);
+const resultIsCached = computed(() => !runResult.value && !!cachedResult.value);
 
 const scheduleInterval = ref("86400");
 const scheduleError = ref(null);
@@ -32,6 +35,9 @@ const scheduling = ref(false);
 
 huntsStore.getById(props.id);
 tasksStore.get_scheduled_tasks();
+huntsStore.getResults(props.id).then((r) => {
+  if (r) cachedResult.value = r;
+});
 
 const huntSchedules = computed(() =>
   scheduledTasks.value.filter((t) => t.kwargs?.hunt_id === parseInt(props.id)),
@@ -217,24 +223,31 @@ async function runHunt() {
           {{ runError }}
         </div>
 
-        <template v-if="runResult">
+        <template v-if="displayResult">
           <hr />
-          <div class="d-flex gap-4 mb-3">
-            <div>
-              <span class="fs-3 fw-bold">{{ runResult.total }}</span>
-              <div class="text-muted small">total matches</div>
+          <div class="d-flex justify-content-between align-items-start mb-3">
+            <div class="d-flex gap-4">
+              <div>
+                <span class="fs-3 fw-bold">{{ displayResult.total }}</span>
+                <div class="text-muted small">total matches</div>
+              </div>
+              <div>
+                <span class="fs-3 fw-bold text-primary">{{
+                  displayResult.hits.length
+                }}</span>
+                <div class="text-muted small">shown (max 100)</div>
+              </div>
             </div>
-            <div>
-              <span class="fs-3 fw-bold text-primary">{{
-                runResult.hits.length
-              }}</span>
-              <div class="text-muted small">shown (max 100)</div>
-            </div>
+            <span v-if="resultIsCached" class="badge bg-secondary">
+              last run results
+            </span>
           </div>
 
           <!-- Attribute results -->
           <div
-            v-if="hunt.index_target === 'attributes' && runResult.hits.length"
+            v-if="
+              hunt.index_target === 'attributes' && displayResult.hits.length
+            "
             class="table-responsive"
           >
             <table class="table table-sm table-striped">
@@ -247,7 +260,7 @@ async function runHunt() {
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="(hit, i) in runResult.hits" :key="i">
+                <tr v-for="(hit, i) in displayResult.hits" :key="i">
                   <td>
                     <code>{{ hit.type }}</code>
                   </td>
@@ -278,7 +291,9 @@ async function runHunt() {
 
           <!-- Event results -->
           <div
-            v-else-if="hunt.index_target === 'events' && runResult.hits.length"
+            v-else-if="
+              hunt.index_target === 'events' && displayResult.hits.length
+            "
             class="table-responsive"
           >
             <table class="table table-sm table-striped">
@@ -291,7 +306,7 @@ async function runHunt() {
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="(hit, i) in runResult.hits" :key="i">
+                <tr v-for="(hit, i) in displayResult.hits" :key="i">
                   <td>
                     <RouterLink
                       v-if="hit.uuid"
@@ -312,7 +327,7 @@ async function runHunt() {
           </div>
 
           <div
-            v-else-if="runResult.total === 0"
+            v-else-if="displayResult.total === 0"
             class="text-muted text-center py-3"
           >
             No matches found.

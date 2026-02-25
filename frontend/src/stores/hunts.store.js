@@ -59,5 +59,8 @@ export const useHuntsStore = defineStore({
         .post(`${baseUrl}/${id}/run`)
         .finally(() => (this.status.running = false));
     },
+    async getResults(id) {
+      return await fetchWrapper.get(`${baseUrl}/${id}/results`);
+    },
   },
 });

@@ -1,9 +1,12 @@
 import logging
 
+import json
+
 from app.models import hunt as hunt_models
 from app.schemas import hunt as hunt_schemas
 from app.services.opensearch import get_opensearch_client
 from app.repositories import notifications as notifications_repository
+from app.services.redis import get_redis_client
 from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -63,12 +66,20 @@ def update_hunt(
     return db_hunt
 
 
+def get_hunt_results(hunt_id: int):
+    data = get_redis_client().get(f"hunt:results:{hunt_id}")
+    if data is None:
+        return None
+    return json.loads(data)
+
+
 def delete_hunt(db: Session, hunt_id: int, user_id: int):
     db_hunt = get_hunt_by_id(db, hunt_id, user_id)
     if not db_hunt:
         return None
     db.delete(db_hunt)
     db.commit()
+    get_redis_client().delete(f"hunt:results:{hunt_id}")
     from app.repositories import tasks as tasks_repository
     tasks_repository.delete_scheduled_tasks_for_hunt(hunt_id)
     return {"status": "success"}
@@ -96,18 +107,25 @@ def _run_hunt_query(db: Session, db_hunt: hunt_models.Hunt):
     total = response["hits"]["total"]["value"]
     prev_total = db_hunt.last_match_count
 
+    hit_sources = [h["_source"] for h in hits]
+
     db_hunt.last_run_at = datetime.now(timezone.utc)
     db_hunt.last_match_count = total
     db_hunt.updated_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(db_hunt)
 
+    get_redis_client().set(
+        f"hunt:results:{db_hunt.id}",
+        json.dumps({"total": total, "hits": hit_sources}),
+    )
+
     notifications_repository.create_hunt_notification(db, db_hunt, total, prev_total)
 
     return {
         "hunt": hunt_schemas.Hunt.model_validate(db_hunt),
         "total": total,
-        "hits": [h["_source"] for h in hits],
+        "hits": hit_sources,
     }
 
 

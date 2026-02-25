@@ -92,6 +92,22 @@ async def delete_hunt(
         )
 
 
+@router.get("/hunts/{hunt_id}/results")
+async def get_hunt_results(
+    hunt_id: int,
+    db: Session = Depends(get_db),
+    user: user_schemas.User = Security(
+        get_current_active_user, scopes=["hunts:read"]
+    ),
+):
+    db_hunt = hunts_repository.get_hunt_by_id(db, hunt_id=hunt_id, user_id=user.id)
+    if not db_hunt:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Hunt not found"
+        )
+    return hunts_repository.get_hunt_results(hunt_id)
+
+
 @router.post("/hunts/{hunt_id}/run")
 async def run_hunt(
     hunt_id: int,
