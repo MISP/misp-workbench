@@ -8,8 +8,10 @@ import AddHuntModal from "@/components/hunts/AddHuntModal.vue";
 import HuntActions from "@/components/hunts/HuntActions.vue";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
+import utc from "dayjs/plugin/utc";
 
 dayjs.extend(relativeTime);
+dayjs.extend(utc);
 
 const huntsStore = useHuntsStore();
 const { hunts, status } = storeToRefs(huntsStore);
@@ -73,7 +75,11 @@ function onHuntCreated() {
             <span class="badge bg-secondary">{{ hunt.index_target }}</span>
           </td>
           <td v-if="!$isMobile" class="text-muted small">
-            {{ hunt.last_run_at ? dayjs(hunt.last_run_at).fromNow() : "never" }}
+            {{
+              hunt.last_run_at
+                ? dayjs.utc(hunt.last_run_at).local().fromNow()
+                : "never"
+            }}
           </td>
           <td v-if="!$isMobile">
             <span v-if="hunt.last_match_count != null" class="fw-bold">
@@ -90,7 +96,11 @@ function onHuntCreated() {
             </span>
           </td>
           <td class="text-end">
-            <HuntActions :hunt="hunt" @deleted="huntsStore.getAll()" />
+            <HuntActions
+              :hunt="hunt"
+              @deleted="huntsStore.getAll()"
+              @ran="(updated) => Object.assign(hunt, updated)"
+            />
           </td>
         </tr>
       </tbody>

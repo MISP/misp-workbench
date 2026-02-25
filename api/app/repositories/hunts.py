@@ -7,7 +7,7 @@ from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from fastapi_pagination.ext.sqlalchemy import paginate
-from datetime import datetime
+from datetime import datetime, timezone
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +40,7 @@ def create_hunt(db: Session, hunt: hunt_schemas.HuntCreate, user_id: int):
     db_hunt = hunt_models.Hunt(
         **hunt.model_dump(),
         user_id=user_id,
-        created_at=datetime.now(),
+        created_at=datetime.now(timezone.utc),
     )
     db.add(db_hunt)
     db.commit()
@@ -56,7 +56,7 @@ def update_hunt(
         return None
     for key, value in hunt.model_dump(exclude_unset=True).items():
         setattr(db_hunt, key, value)
-    db_hunt.updated_at = datetime.now()
+    db_hunt.updated_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(db_hunt)
     return db_hunt
@@ -92,9 +92,9 @@ def _run_hunt_query(db: Session, db_hunt: hunt_models.Hunt):
     hits = response["hits"]["hits"]
     total = response["hits"]["total"]["value"]
 
-    db_hunt.last_run_at = datetime.now()
+    db_hunt.last_run_at = datetime.now(timezone.utc)
     db_hunt.last_match_count = total
-    db_hunt.updated_at = datetime.now()
+    db_hunt.updated_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(db_hunt)
 

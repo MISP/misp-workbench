@@ -14,7 +14,7 @@ const props = defineProps({
   hunt: { type: Object, required: true },
 });
 
-const emit = defineEmits(["deleted"]);
+const emit = defineEmits(["deleted", "ran"]);
 
 const huntsStore = useHuntsStore();
 const toastsStore = useToastsStore();
@@ -26,9 +26,10 @@ async function runHunt() {
   running.value = true;
   await huntsStore
     .run(props.hunt.id)
-    .then(() =>
-      toastsStore.push(`Hunt "${props.hunt.name}" started.`, "success"),
-    )
+    .then((result) => {
+      toastsStore.push(`Hunt "${props.hunt.name}" started.`, "success");
+      emit("ran", result.hunt);
+    })
     .catch((err) => toastsStore.push(err || "Failed to run hunt.", "danger"))
     .finally(() => (running.value = false));
 }
