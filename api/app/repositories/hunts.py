@@ -3,6 +3,7 @@ import logging
 from app.models import hunt as hunt_models
 from app.schemas import hunt as hunt_schemas
 from app.services.opensearch import get_opensearch_client
+from app.repositories import notifications as notifications_repository
 from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -91,12 +92,15 @@ def _run_hunt_query(db: Session, db_hunt: hunt_models.Hunt):
 
     hits = response["hits"]["hits"]
     total = response["hits"]["total"]["value"]
+    prev_total = db_hunt.last_match_count
 
     db_hunt.last_run_at = datetime.now(timezone.utc)
     db_hunt.last_match_count = total
     db_hunt.updated_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(db_hunt)
+
+    notifications_repository.create_hunt_notification(db, db_hunt, total, prev_total)
 
     return {
         "hunt": hunt_schemas.Hunt.model_validate(db_hunt),

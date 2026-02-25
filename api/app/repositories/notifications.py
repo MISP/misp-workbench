@@ -1,6 +1,7 @@
 from typing import Union
 import uuid
 from app.models import user as user_models
+from app.models import hunt as hunt_models
 from app.models import notification as notification_models
 from app.models import organisation as organisation_models
 from app.models import object as object_models
@@ -10,7 +11,7 @@ from app.repositories import user_settings as user_settings_repository
 from sqlalchemy import select, update, text
 from sqlalchemy.orm import Session
 from fastapi_pagination.ext.sqlalchemy import paginate
-from datetime import datetime
+from datetime import datetime, timezone
 from app.services.redis import get_redis_client
 import json
 import copy
@@ -503,3 +504,33 @@ def delete_notification(db: Session, notification_id: int, user_id: int):
 def invalidate_follow_cache(entity_type: str, entity_uuid: str):
     RedisClient = get_redis_client()
     RedisClient.delete(f"notifications:followers:{entity_type}:{entity_uuid}")
+
+
+def create_hunt_notification(
+    db: Session,
+    hunt: hunt_models.Hunt,
+    total: int,
+    prev_total: int | None,
+):
+    """Create a notification for the hunt owner on first run or when match count changes."""
+    is_first_run = prev_total is None
+    if not is_first_run and total == prev_total:
+        return
+
+    ntype = "hunt.result.first_run" if is_first_run else "hunt.result.changed"
+    notification = notification_models.Notification(
+        user_id=hunt.user_id,
+        type=ntype,
+        entity_type="hunt",
+        entity_uuid=uuid.uuid4(),
+        read=False,
+        payload={
+            "hunt_id": hunt.id,
+            "hunt_name": hunt.name,
+            "total": total,
+            "previous_total": prev_total,
+        },
+        created_at=datetime.now(timezone.utc),
+    )
+    db.add(notification)
+    db.commit()

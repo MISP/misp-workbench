@@ -39,6 +39,8 @@ const title = computed(() => {
       return `object updated`;
     case "object.deleted":
       return `object deleted`;
+    case "hunt.result.changed":
+      return `hunt matches`;
     default:
       return props.notification?.title || "unknown notification";
   }
@@ -116,6 +118,39 @@ const title = computed(() => {
         <span class="badge bg-info text-dark me-2">{{
           notification.payload.object_name
         }}</span>
+      </div>
+    </div>
+    <div v-if="notification.type.startsWith('hunt.result.changed')">
+      <div class="text-muted small">
+        {{ title }} for <code>{{ notification.payload.hunt_name }}</code>
+      </div>
+      <div>
+        <span class="text-dark me-2">
+          <span
+            v-if="
+              notification.payload.total - notification.payload.previous_total >
+              0
+            "
+            class="badge bg-danger text-dark me-2"
+            >{{
+              notification.payload.total - notification.payload.previous_total
+            }}
+            new matches</span
+          >
+          <span
+            v-if="
+              notification.payload.total -
+                notification.payload.previous_total <=
+              0
+            "
+            class="badge bg-secondary text-dark me-2"
+          >
+            {{
+              notification.payload.total - notification.payload.previous_total
+            }}
+            lost matches</span
+          >
+        </span>
       </div>
     </div>
     <div v-else>{{ title }}</div>
