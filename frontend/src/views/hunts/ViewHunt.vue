@@ -1,14 +1,16 @@
 <script setup>
-import { ref } from "vue";
+import { ref, computed } from "vue";
 import { storeToRefs } from "pinia";
 import { RouterLink } from "vue-router";
 import { useHuntsStore, useTasksStore, useToastsStore } from "@/stores";
 import Spinner from "@/components/misc/Spinner.vue";
+import ScheduledTaskActions from "@/components/tasks/ScheduledTaskActions.vue";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import relativeTime from "dayjs/plugin/relativeTime";
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
 import { faArrowLeft, faPen } from "@fortawesome/free-solid-svg-icons";
+import { formatSchedule } from "@/helpers";
 
 dayjs.extend(utc);
 dayjs.extend(relativeTime);
@@ -19,6 +21,7 @@ const huntsStore = useHuntsStore();
 const tasksStore = useTasksStore();
 const toastsStore = useToastsStore();
 const { hunt, status } = storeToRefs(huntsStore);
+const { scheduledTasks } = storeToRefs(tasksStore);
 
 const runResult = ref(null);
 const runError = ref(null);
@@ -28,15 +31,13 @@ const scheduleError = ref(null);
 const scheduling = ref(false);
 
 huntsStore.getById(props.id);
+tasksStore.get_scheduled_tasks();
+
+const huntSchedules = computed(() =>
+  scheduledTasks.value.filter((t) => t.kwargs?.hunt_id === parseInt(props.id)),
+);
 
 async function saveSchedule() {
-  if (scheduleInterval.value === "disabled") {
-    toastsStore.push(
-      "Use the Tasks view to remove an existing schedule.",
-      "info",
-    );
-    return;
-  }
   scheduleError.value = null;
   scheduling.value = true;
   const taskData = {
@@ -47,7 +48,10 @@ async function saveSchedule() {
   };
   await tasksStore
     .create_scheduled_task(taskData)
-    .then(() => toastsStore.push("Hunt scheduled successfully.", "success"))
+    .then(() => {
+      toastsStore.push("Hunt scheduled successfully.", "success");
+      tasksStore.get_scheduled_tasks();
+    })
     .catch((err) => (scheduleError.value = err?.message || String(err)))
     .finally(() => (scheduling.value = false));
 }
@@ -135,15 +139,36 @@ async function runHunt() {
     <!-- Schedule section -->
     <div class="card mb-3">
       <div class="card-body">
-        <div
-          class="d-flex justify-content-between align-items-center gap-3 flex-wrap"
-        >
-          <div>
-            <strong>Schedule</strong>
-            <div class="text-muted small">
-              Automatically re-run this hunt at a fixed interval.
+        <strong>Schedule</strong>
+        <div class="text-muted small mb-3">
+          Automatically re-run this hunt at a fixed interval.
+        </div>
+
+        <!-- Existing schedules -->
+        <template v-if="huntSchedules.length">
+          <div
+            v-for="task in huntSchedules"
+            :key="task.id"
+            class="d-flex align-items-center justify-content-between border rounded px-3 py-2 mb-2"
+          >
+            <div class="small">
+              <span
+                class="badge me-2"
+                :class="task.enabled ? 'bg-success' : 'bg-secondary'"
+                >{{ task.enabled ? "enabled" : "disabled" }}</span
+              >
+              {{ formatSchedule(task.schedule) }}
             </div>
+            <ScheduledTaskActions
+              :scheduled_task="task"
+              @scheduled-task-deleted="tasksStore.get_scheduled_tasks()"
+              @scheduled-task-updated="tasksStore.get_scheduled_tasks()"
+            />
           </div>
+        </template>
+
+        <!-- Add schedule form (shown only when no schedules exist) -->
+        <template v-else>
           <div class="d-flex gap-2 align-items-center">
             <select
               class="form-select form-select-sm"
@@ -162,10 +187,10 @@ async function runHunt() {
               {{ scheduling ? "Saving…" : "Schedule" }}
             </button>
           </div>
-        </div>
-        <div v-if="scheduleError" class="alert alert-danger mt-3 mb-0 small">
-          {{ scheduleError }}
-        </div>
+          <div v-if="scheduleError" class="alert alert-danger mt-3 mb-0 small">
+            {{ scheduleError }}
+          </div>
+        </template>
       </div>
     </div>
 
