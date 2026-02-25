@@ -122,7 +122,7 @@ function navAndClose(path) {
   <nav v-if="!$isMobile" class="navbar navbar-expand border-bottom">
     <div class="container-fluid">
       <div class="navbar-nav h5 fw-light">
-        <RouterLink to="/hunts" class="nav-item nav-link">hunts</RouterLink>
+        <RouterLink to="/hunts" class="nav-item nav-link">hunt</RouterLink>
         <RouterLink to="/explore" class="nav-item nav-link">explore</RouterLink>
         <RouterLink to="/events" class="nav-item nav-link">events</RouterLink>
 
@@ -318,7 +318,7 @@ function navAndClose(path) {
             class="list-group-item list-group-item-action"
             @click.prevent="navAndClose('/hunts')"
           >
-            hunts
+            hunt
           </RouterLink>
         </li>
         <li>
