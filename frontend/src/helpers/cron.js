@@ -129,7 +129,7 @@ export function parseScheduleString(scheduleStr) {
  *   "<crontab: 28 12 * * * (...)>" → "at 12:28"
  */
 export function formatSchedule(scheduleStr) {
-  if (!scheduleStr || typeof scheduleStr !== "string") return "-";
+  if (!scheduleStr) return "-";
 
   const freqMatch = scheduleStr.match(/<freq:\s*([\d.]+)\s*(\w+)>/);
   if (freqMatch) {
@@ -137,7 +137,7 @@ export function formatSchedule(scheduleStr) {
     const unit = freqMatch[2];
     const display =
       value % 1 === 0 ? String(value) : value.toFixed(2).replace(/\.?0+$/, "");
-    return `every ${display} ${value === 1 ? unit : unit + "s"}`;
+    return `every ${display} ${value === 1 ? unit : unit}`;
   }
 
   const crontabMatch = scheduleStr.match(
