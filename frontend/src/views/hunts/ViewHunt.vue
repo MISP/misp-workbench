@@ -5,10 +5,12 @@ import { RouterLink } from "vue-router";
 import { useHuntsStore, useTasksStore, useToastsStore } from "@/stores";
 import Spinner from "@/components/misc/Spinner.vue";
 import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc";
 import relativeTime from "dayjs/plugin/relativeTime";
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
 import { faArrowLeft, faPen } from "@fortawesome/free-solid-svg-icons";
 
+dayjs.extend(utc);
 dayjs.extend(relativeTime);
 
 const props = defineProps({ id: { type: String, required: true } });
@@ -111,9 +113,13 @@ async function runHunt() {
           </div>
           <div class="col-md-4">
             <div class="text-muted small mb-1">Last run</div>
-            <span>{{
-              hunt.last_run_at ? dayjs(hunt.last_run_at).fromNow() : "never"
-            }}</span>
+            <span>
+              {{
+                hunt.last_run_at
+                  ? dayjs.utc(hunt.last_run_at).local().fromNow()
+                  : "never"
+              }}</span
+            >
           </div>
         </div>
 
