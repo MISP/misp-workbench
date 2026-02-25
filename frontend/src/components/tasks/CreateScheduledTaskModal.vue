@@ -196,7 +196,11 @@ async function onSubmit() {
               class="form-select"
             >
               <option :value="null" disabled>Select a hunt…</option>
-              <option v-for="hunt in hunts" :key="hunt.id" :value="hunt.id">
+              <option
+                v-for="hunt in hunts.items"
+                :key="hunt.id"
+                :value="hunt.id"
+              >
                 #{{ hunt.id }} — {{ hunt.name }}
               </option>
             </select>
