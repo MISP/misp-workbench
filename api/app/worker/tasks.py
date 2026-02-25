@@ -794,10 +794,12 @@ def index_attribute(attribute_uuid: str):
             return True
 
         attribute = event_schemas.Attribute.model_validate(db_attribute)
+        event_uuid = db_attribute.event.uuid if db_attribute.event else None
 
     OpenSearchClient = get_opensearch_client()
 
     attribute_raw = attribute.model_dump()
+    attribute_raw["event_uuid"] = str(event_uuid) if event_uuid else None
 
     # convert timestamp to datetime so it can be indexed
     attribute_raw["@timestamp"] = datetime.fromtimestamp(
