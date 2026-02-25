@@ -69,6 +69,8 @@ def delete_hunt(db: Session, hunt_id: int, user_id: int):
         return None
     db.delete(db_hunt)
     db.commit()
+    from app.repositories import tasks as tasks_repository
+    tasks_repository.delete_scheduled_tasks_for_hunt(hunt_id)
     return {"status": "success"}
 
 
