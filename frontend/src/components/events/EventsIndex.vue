@@ -38,7 +38,10 @@ function handleEventDeleted() {
   width: 100%;
   word-break: break-word;
 }
-
+.eventInfoColumn a {
+  color: inherit;
+  text-decoration: none;
+}
 .btn-toolbar {
   flex-wrap: nowrap !important;
 }
@@ -83,7 +86,11 @@ function handleEventDeleted() {
       </thead>
       <tbody>
         <tr :key="event.uuid" v-for="event in events.items">
-          <td class="eventInfoColumn text-start">{{ event.info }}</td>
+          <td class="eventInfoColumn text-start">
+            <RouterLink :to="`/events/${event.uuid}`">{{
+              event.info
+            }}</RouterLink>
+          </td>
           <td>
             <TagsIndex :tags="event.tags" />
           </td>
