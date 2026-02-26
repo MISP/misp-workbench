@@ -16,3 +16,12 @@ class Hunt(Base):
     last_match_count = Column(Integer, nullable=True, default=0)
     created_at = Column(DateTime, nullable=False)
     updated_at = Column(DateTime, nullable=True)
+
+
+class HuntRunHistory(Base):
+    __tablename__ = "hunt_run_history"
+
+    id = Column(Integer, primary_key=True, index=True)
+    hunt_id = Column(Integer, ForeignKey("hunts.id", ondelete="CASCADE"), nullable=False, index=True)
+    run_at = Column(DateTime(timezone=True), nullable=False)
+    match_count = Column(Integer, nullable=False)

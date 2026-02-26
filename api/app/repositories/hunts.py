@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 INDEX_MAP = {
     "attributes": "misp-attributes",
     "events": "misp-events",
+    "correlations": "misp-attribute-correlations",
 }
 
 
@@ -73,13 +74,40 @@ def get_hunt_results(hunt_id: int):
     return json.loads(data)
 
 
+def get_hunt_history(db: Session, hunt_id: int) -> list[dict]:
+    redis = get_redis_client()
+    history_key = f"hunt:history:{hunt_id}"
+    raw = redis.lrange(history_key, 0, -1)
+    if raw:
+        return [json.loads(entry) for entry in raw]
+
+    # Cache miss — load from DB, populate cache, return
+    rows = (
+        db.query(hunt_models.HuntRunHistory)
+        .filter(hunt_models.HuntRunHistory.hunt_id == hunt_id)
+        .order_by(hunt_models.HuntRunHistory.run_at.asc())
+        .limit(90)
+        .all()
+    )
+    entries = [
+        {"run_at": row.run_at.isoformat(), "match_count": row.match_count}
+        for row in rows
+    ]
+    if entries:
+        redis.rpush(history_key, *[json.dumps(e) for e in entries])
+        redis.ltrim(history_key, -90, -1)
+    return entries
+
+
 def delete_hunt(db: Session, hunt_id: int, user_id: int):
     db_hunt = get_hunt_by_id(db, hunt_id, user_id)
     if not db_hunt:
         return None
     db.delete(db_hunt)
     db.commit()
-    get_redis_client().delete(f"hunt:results:{hunt_id}")
+    redis = get_redis_client()
+    redis.delete(f"hunt:results:{hunt_id}")
+    redis.delete(f"hunt:history:{hunt_id}")
     from app.repositories import tasks as tasks_repository
     tasks_repository.delete_scheduled_tasks_for_hunt(hunt_id)
     return {"status": "success"}
@@ -109,16 +137,24 @@ def _run_hunt_query(db: Session, db_hunt: hunt_models.Hunt):
 
     hit_sources = [h["_source"] for h in hits]
 
-    db_hunt.last_run_at = datetime.now(timezone.utc)
+    now = datetime.now(timezone.utc)
+    db_hunt.last_run_at = now
     db_hunt.last_match_count = total
-    db_hunt.updated_at = datetime.now(timezone.utc)
+    db_hunt.updated_at = now
+    db.add(hunt_models.HuntRunHistory(hunt_id=db_hunt.id, run_at=now, match_count=total))
     db.commit()
     db.refresh(db_hunt)
 
-    get_redis_client().set(
+    redis = get_redis_client()
+    redis.set(
         f"hunt:results:{db_hunt.id}",
         json.dumps({"total": total, "hits": hit_sources}),
     )
+
+    history_key = f"hunt:history:{db_hunt.id}"
+    entry = json.dumps({"run_at": now.isoformat(), "match_count": total})
+    redis.rpush(history_key, entry)
+    redis.ltrim(history_key, -90, -1)
 
     notifications_repository.create_hunt_notification(db, db_hunt, total, prev_total)
 
@@ -127,6 +163,18 @@ def _run_hunt_query(db: Session, db_hunt: hunt_models.Hunt):
         "total": total,
         "hits": hit_sources,
     }
+
+
+def get_active_correlation_hunts(db: Session) -> list[hunt_models.Hunt]:
+    """Return all active hunts that target the correlations index."""
+    return (
+        db.query(hunt_models.Hunt)
+        .filter(
+            hunt_models.Hunt.status == "active",
+            hunt_models.Hunt.index_target == "correlations",
+        )
+        .all()
+    )
 
 
 def execute_hunt_system(db: Session, hunt_id: int):

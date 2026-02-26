@@ -602,6 +602,7 @@ def generate_correlations():
             return False
 
         logger.info("generate correlations job finished")
+        run_correlation_hunts.delay()
         return True
     finally:
         # Release the lock. If Redis isn't available this is a noop.
@@ -728,6 +729,8 @@ def handle_toggled_event_correlation(event_uuid: str, disable_correlation: bool)
                 correlations_repository.correlate_event(
                     runtimeSettings, str(event_uuid)
                 )
+
+            run_correlation_hunts.delay()
 
         logger.info(
             "handling toggled event correlation uuid=%s job finished", event_uuid
@@ -962,4 +965,16 @@ def run_hunt(hunt_id: int, **kwargs):
         total = result["total"] if result else 0
         logger.info("run hunt id=%s finished, %s matches", hunt_id, total)
 
+    return True
+
+
+@celery_app.task
+def run_correlation_hunts():
+    """Re-run all active correlation hunts. Called after correlations are regenerated."""
+    logger.info("run_correlation_hunts job started")
+    with Session(engine) as db:
+        hunts = hunts_repository.get_active_correlation_hunts(db)
+        for hunt in hunts:
+            run_hunt.delay(hunt.id)
+    logger.info("run_correlation_hunts job finished, %s hunts queued", len(hunts))
     return True

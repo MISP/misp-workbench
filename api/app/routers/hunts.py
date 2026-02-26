@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, List
 
 from app.auth.security import get_current_active_user
 from app.db.session import get_db
@@ -106,6 +106,22 @@ async def get_hunt_results(
             status_code=status.HTTP_404_NOT_FOUND, detail="Hunt not found"
         )
     return hunts_repository.get_hunt_results(hunt_id)
+
+
+@router.get("/hunts/{hunt_id}/history", response_model=List[hunt_schemas.HuntRunHistoryEntry])
+async def get_hunt_history(
+    hunt_id: int,
+    db: Session = Depends(get_db),
+    user: user_schemas.User = Security(
+        get_current_active_user, scopes=["hunts:read"]
+    ),
+):
+    db_hunt = hunts_repository.get_hunt_by_id(db, hunt_id=hunt_id, user_id=user.id)
+    if not db_hunt:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Hunt not found"
+        )
+    return hunts_repository.get_hunt_history(db, hunt_id)
 
 
 @router.post("/hunts/{hunt_id}/run")
