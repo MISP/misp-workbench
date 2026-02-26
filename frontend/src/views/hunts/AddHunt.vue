@@ -75,6 +75,7 @@ function cancel() {
         >
           <option value="attributes">Attributes</option>
           <option value="events">Events</option>
+          <option value="correlations">Correlations</option>
         </select>
       </div>
 
@@ -85,10 +86,26 @@ function cancel() {
           class="form-control font-monospace"
           rows="4"
           v-model="hunt.query"
-          placeholder="e.g. type:ip-dst AND value:192.168.*"
+          :placeholder="
+            hunt.index_target === 'correlations'
+              ? 'e.g. target_attribute_value:192.168.1.1'
+              : 'e.g. type:ip-dst AND value:192.168.*'
+          "
         />
         <div class="form-text text-muted">
           Standard Lucene query string syntax supported.
+        </div>
+        <div
+          v-if="hunt.index_target === 'correlations'"
+          class="alert alert-info mt-2 mb-0 small"
+        >
+          <strong>Correlation index fields:</strong>
+          <code>target_attribute_value</code>,
+          <code>target_attribute_type</code>, <code>source_event_uuid</code>,
+          <code>target_event_uuid</code>, <code>source_attribute_uuid</code>,
+          <code>target_attribute_uuid</code>, <code>match_type</code> (term |
+          prefix | fuzzy | cidr),
+          <code>score</code>
         </div>
       </div>
 

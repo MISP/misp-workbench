@@ -76,6 +76,7 @@ function cancel() {
         >
           <option value="attributes">Attributes</option>
           <option value="events">Events</option>
+          <option value="correlations">Correlations</option>
         </select>
       </div>
 
@@ -89,6 +90,18 @@ function cancel() {
         />
         <div class="form-text text-muted">
           Standard Lucene query string syntax supported.
+        </div>
+        <div
+          v-if="form.index_target === 'correlations'"
+          class="alert alert-info mt-2 mb-0 small"
+        >
+          <strong>Correlation index fields:</strong>
+          <code>target_attribute_value</code>,
+          <code>target_attribute_type</code>, <code>source_event_uuid</code>,
+          <code>target_event_uuid</code>, <code>source_attribute_uuid</code>,
+          <code>target_attribute_uuid</code>, <code>match_type</code> (term |
+          prefix | fuzzy | cidr),
+          <code>score</code>
         </div>
       </div>
 

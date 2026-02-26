@@ -11,6 +11,25 @@ import relativeTime from "dayjs/plugin/relativeTime";
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
 import { faArrowLeft, faPen } from "@fortawesome/free-solid-svg-icons";
 import { formatSchedule } from "@/helpers";
+import { Line } from "vue-chartjs";
+import {
+  Chart as ChartJS,
+  LineElement,
+  PointElement,
+  LinearScale,
+  CategoryScale,
+  Filler,
+  Tooltip,
+} from "chart.js";
+
+ChartJS.register(
+  LineElement,
+  PointElement,
+  LinearScale,
+  CategoryScale,
+  Filler,
+  Tooltip,
+);
 
 dayjs.extend(utc);
 dayjs.extend(relativeTime);
@@ -29,6 +48,34 @@ const cachedResult = ref(null);
 const displayResult = computed(() => runResult.value ?? cachedResult.value);
 const resultIsCached = computed(() => !runResult.value && !!cachedResult.value);
 
+const history = ref([]);
+const sparklineData = computed(() => ({
+  labels: history.value.map((e) =>
+    dayjs.utc(e.run_at).local().format("MMM D HH:mm"),
+  ),
+  datasets: [
+    {
+      data: history.value.map((e) => e.match_count),
+      borderColor: "#0d6efd",
+      backgroundColor: "rgba(13,110,253,0.12)",
+      fill: true,
+      tension: 0.3,
+      pointRadius: history.value.length > 20 ? 0 : 3,
+      pointHoverRadius: 4,
+    },
+  ],
+}));
+const sparklineOptions = ref({
+  responsive: true,
+  maintainAspectRatio: false,
+  animation: false,
+  plugins: {
+    legend: { display: false },
+    tooltip: { mode: "index", intersect: false },
+  },
+  scales: { x: { display: false }, y: { display: false, beginAtZero: true } },
+});
+
 const scheduleInterval = ref("86400");
 const scheduleError = ref(null);
 const scheduling = ref(false);
@@ -37,6 +84,9 @@ huntsStore.getById(props.id);
 tasksStore.get_scheduled_tasks();
 huntsStore.getResults(props.id).then((r) => {
   if (r) cachedResult.value = r;
+});
+huntsStore.getHistory(props.id).then((h) => {
+  if (h) history.value = h;
 });
 
 const huntSchedules = computed(() =>
@@ -69,11 +119,13 @@ async function runHunt() {
     .run(props.id)
     .then((result) => {
       runResult.value = result;
-      // update local match count
       if (hunt.value) {
         hunt.value.last_match_count = result.total;
         hunt.value.last_run_at = new Date().toISOString();
       }
+      huntsStore.getHistory(props.id).then((h) => {
+        if (h) history.value = h;
+      });
     })
     .catch((err) => (runError.value = err?.message || String(err)));
 }
@@ -138,6 +190,19 @@ async function runHunt() {
           <code class="d-block p-2 bg-body-secondary rounded">{{
             hunt.query
           }}</code>
+        </div>
+
+        <div v-if="history.length > 1" class="mt-3">
+          <div class="text-muted small mb-1">
+            Match history ({{ history.length }} runs)
+          </div>
+          <div>
+            <Line
+              :chart-data="sparklineData"
+              :chart-options="sparklineOptions"
+              height="80"
+            />
+          </div>
         </div>
       </div>
     </div>
@@ -321,6 +386,64 @@ async function runHunt() {
                   </td>
                   <td class="text-muted small">{{ hit.orgc_id }}</td>
                   <td class="text-muted small">{{ hit.date }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Correlation results -->
+          <div
+            v-else-if="
+              hunt.index_target === 'correlations' && displayResult.hits.length
+            "
+            class="table-responsive"
+          >
+            <table class="table table-sm table-striped">
+              <thead>
+                <tr>
+                  <th>source event</th>
+                  <th>source attr</th>
+                  <th>target value</th>
+                  <th>match type</th>
+                  <th>score</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="(hit, i) in displayResult.hits" :key="i">
+                  <td>
+                    <RouterLink
+                      v-if="hit.source_event_uuid"
+                      :to="`/events/${hit.source_event_uuid}`"
+                      class="text-decoration-none small font-monospace"
+                    >
+                      {{ hit.source_event_uuid }}
+                    </RouterLink>
+                    <span v-else class="text-muted small">—</span>
+                  </td>
+                  <td>
+                    <RouterLink
+                      v-if="hit.source_attribute_uuid"
+                      :to="`/attributes/${hit.source_attribute_uuid}`"
+                      class="text-decoration-none small font-monospace"
+                    >
+                      {{ hit.source_attribute_uuid }}
+                    </RouterLink>
+                    <span v-else class="text-muted small">—</span>
+                  </td>
+                  <td class="text-truncate" style="max-width: 220px">
+                    <RouterLink
+                      v-if="hit.target_attribute_uuid"
+                      :to="`/attributes/${hit.target_attribute_uuid}`"
+                      class="text-decoration-none"
+                    >
+                      {{ hit.target_attribute_value }}
+                    </RouterLink>
+                    <span v-else>{{ hit.target_attribute_value }}</span>
+                  </td>
+                  <td>
+                    <code class="small">{{ hit.match_type }}</code>
+                  </td>
+                  <td class="text-muted small">{{ hit.score }}</td>
                 </tr>
               </tbody>
             </table>
