@@ -2,7 +2,7 @@
 import { ref } from "vue";
 import { storeToRefs } from "pinia";
 import { RouterLink } from "vue-router";
-import { useHuntsStore } from "@/stores";
+import { useHuntsStore, useTasksStore } from "@/stores";
 import Spinner from "@/components/misc/Spinner.vue";
 import AddHuntModal from "@/components/hunts/AddHuntModal.vue";
 import HuntActions from "@/components/hunts/HuntActions.vue";
@@ -10,14 +10,22 @@ import HuntSparkline from "@/components/hunts/HuntSparkline.vue";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
 import utc from "dayjs/plugin/utc";
+import { formatSchedule } from "@/helpers";
 
 dayjs.extend(relativeTime);
 dayjs.extend(utc);
 
 const huntsStore = useHuntsStore();
+const tasksStore = useTasksStore();
 const { hunts, status } = storeToRefs(huntsStore);
+const { scheduledTasks } = storeToRefs(tasksStore);
 
 huntsStore.getAll();
+tasksStore.get_scheduled_tasks();
+
+function huntSchedule(huntId) {
+  return scheduledTasks.value.find((t) => t.kwargs?.hunt_id === huntId) ?? null;
+}
 
 const addModalOpen = ref(false);
 
@@ -50,6 +58,7 @@ function onHuntCreated() {
           <th>name</th>
           <th v-if="!$isMobile">target</th>
           <th v-if="!$isMobile">last run</th>
+          <th v-if="!$isMobile">frequency</th>
           <th v-if="!$isMobile">matches</th>
           <th class="text-end">status</th>
           <th class="text-end">actions</th>
@@ -81,6 +90,12 @@ function onHuntCreated() {
                 ? dayjs.utc(hunt.last_run_at).local().fromNow()
                 : "never"
             }}
+          </td>
+          <td v-if="!$isMobile" class="text-muted small">
+            <template v-if="huntSchedule(hunt.id)">
+              {{ formatSchedule(huntSchedule(hunt.id).schedule) }}
+            </template>
+            <span v-else>manual</span>
           </td>
           <td v-if="!$isMobile">
             <HuntSparkline :hunt-id="hunt.id" :last-run-at="hunt.last_run_at" />
