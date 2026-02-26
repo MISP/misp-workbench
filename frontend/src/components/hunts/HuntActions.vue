@@ -5,6 +5,7 @@ import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
 import {
   faPen,
   faPlay,
+  faPause,
   faTrash,
   faEye,
 } from "@fortawesome/free-solid-svg-icons";
@@ -14,24 +15,25 @@ const props = defineProps({
   hunt: { type: Object, required: true },
 });
 
-const emit = defineEmits(["deleted", "ran"]);
+const emit = defineEmits(["deleted", "ran", "toggled"]);
 
 const huntsStore = useHuntsStore();
 const toastsStore = useToastsStore();
 
-const running = ref(false);
+const toggling = ref(false);
 const deleting = ref(false);
 
-async function runHunt() {
-  running.value = true;
+async function toggleStatus() {
+  toggling.value = true;
+  const newStatus = props.hunt.status === "active" ? "paused" : "active";
   await huntsStore
-    .run(props.hunt.id)
-    .then((result) => {
-      toastsStore.push(`Hunt "${props.hunt.name}" started.`, "success");
-      emit("ran", result.hunt);
+    .update(props.hunt.id, { status: newStatus })
+    .then((updated) => {
+      toastsStore.push(`Hunt "${props.hunt.name}" ${newStatus}.`, "success");
+      emit("toggled", updated);
     })
-    .catch((err) => toastsStore.push(err || "Failed to run hunt.", "danger"))
-    .finally(() => (running.value = false));
+    .catch((err) => toastsStore.push(err || "Failed to update hunt.", "danger"))
+    .finally(() => (toggling.value = false));
 }
 
 async function deleteHunt() {
@@ -81,12 +83,17 @@ async function deleteHunt() {
   >
     <div class="btn-group btn-group-sm me-2" role="group">
       <button
-        class="btn btn-outline-success btn-sm"
-        title="Run Hunt"
-        :disabled="running"
-        @click="runHunt"
+        class="btn btn-sm"
+        :class="
+          hunt.status === 'active'
+            ? 'btn-outline-warning'
+            : 'btn-outline-success'
+        "
+        :title="hunt.status === 'active' ? 'Pause hunt' : 'Activate hunt'"
+        :disabled="toggling"
+        @click="toggleStatus"
       >
-        <FontAwesomeIcon :icon="faPlay" />
+        <FontAwesomeIcon :icon="hunt.status === 'active' ? faPause : faPlay" />
       </button>
     </div>
     <div class="btn-group btn-group-sm me-2" role="group">

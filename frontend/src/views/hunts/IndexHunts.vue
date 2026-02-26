@@ -113,6 +113,7 @@ function onHuntCreated() {
               :hunt="hunt"
               @deleted="huntsStore.getAll()"
               @ran="(updated) => Object.assign(hunt, updated)"
+              @toggled="(updated) => Object.assign(hunt, updated)"
             />
           </td>
         </tr>
