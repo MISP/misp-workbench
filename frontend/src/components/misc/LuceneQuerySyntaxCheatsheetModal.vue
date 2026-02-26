@@ -74,9 +74,6 @@ const filteredExamples = computed(() => {
 </script>
 
 <style>
-.modal {
-  z-index: 10;
-}
 .lucene-modal-body {
   height: 65vh;
   display: flex;

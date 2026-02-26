@@ -2,11 +2,10 @@
 import { ref, onMounted, onUnmounted, watch } from "vue";
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
 import {
-  faFileLines,
   faFloppyDisk,
   faMagnifyingGlass,
 } from "@fortawesome/free-solid-svg-icons";
-import LuceneQuerySyntaxCheatsheet from "./LuceneQuerySyntaxCheatsheetModal.vue";
+import LuceneQuerySyntaxHint from "@/components/misc/LuceneQuerySyntaxHint.vue";
 
 const props = defineProps({
   modelValue: { type: String, default: "" },
@@ -142,19 +141,6 @@ function saveCurrentSearch() {
         <FontAwesomeIcon :icon="faMagnifyingGlass" />
       </button>
     </div>
-    <span
-      class="text-muted fst-italic small d-flex align-items-center justify-content-center mt-1"
-    >
-      Lucene query syntax supported
-      <button
-        type="button"
-        class="btn btn-sm d-flex align-items-center"
-        data-bs-toggle="modal"
-        data-bs-target="#luceneQuerySyntaxCheatsheetModal"
-      >
-        <FontAwesomeIcon :icon="faFileLines" class="ms-1 cursor-pointer" />
-      </button>
-    </span>
-    <LuceneQuerySyntaxCheatsheet />
+    <LuceneQuerySyntaxHint />
   </div>
 </template>

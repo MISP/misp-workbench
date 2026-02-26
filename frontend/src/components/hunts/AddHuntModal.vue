@@ -1,6 +1,10 @@
 <script setup>
 import { ref, reactive, computed } from "vue";
 import { useHuntsStore, useToastsStore } from "@/stores";
+import LuceneQuerySyntaxHint from "@/components/misc/LuceneQuerySyntaxHint.vue";
+import EventsPropertiesModal from "@/components/misc/EventsPropertiesModal.vue";
+import AttributesPropertiesModal from "@/components/misc/AttributesPropertiesModal.vue";
+import CorrelationPropertiesModal from "@/components/misc/CorrelationPropertiesModal.vue";
 
 const props = defineProps({
   initialQuery: { type: String, default: "" },
@@ -138,21 +142,19 @@ function close() {
                   : 'e.g. type:ip-dst AND value:192.168.*'
               "
             />
-            <div class="form-text text-muted">
-              Standard Lucene query string syntax supported.
-            </div>
-            <div
-              v-if="hunt.index_target === 'correlations'"
-              class="alert alert-info mt-2 mb-0 small"
-            >
-              <strong>Correlation index fields:</strong>
-              <code>target_attribute_value</code>,
-              <code>target_attribute_type</code>,
-              <code>source_event_uuid</code>, <code>target_event_uuid</code>,
-              <code>source_attribute_uuid</code>,
-              <code>target_attribute_uuid</code>, <code>match_type</code> (term
-              | prefix | fuzzy | cidr),
-              <code>score</code>
+            <div class="form-text text-muted d-flex gap-3">
+              <div>
+                <LuceneQuerySyntaxHint />
+              </div>
+              <div class="ms-auto">
+                <AttributesPropertiesModal
+                  v-if="hunt.index_target === 'attributes'"
+                />
+                <EventsPropertiesModal v-if="hunt.index_target === 'events'" />
+                <CorrelationPropertiesModal
+                  v-if="hunt.index_target === 'correlations'"
+                />
+              </div>
             </div>
           </div>
 
