@@ -193,46 +193,50 @@ body {
       />
     </div>
 
-    <div id="results" class="col-12 mt-3 order-4">
-      <ExploreResultsSection
-        title="Events"
-        :docs="event_docs"
-        :status="eventsStatus"
-        :page-count="eventsPageCount"
-        border-color="#0d6efd"
-        @page-change="onEventsPageChange"
-        @download="downloadAllResults('events', $event)"
-      >
-        <template #header-extra>
-          <EventsPropertiesModal />
-        </template>
-        <EventResultCard
-          v-for="result in event_docs.results"
-          :key="result._source.uuid"
-          :event="result"
-          class="mb-2"
-        />
-      </ExploreResultsSection>
+    <div id="results" class="col-12 mt-3 order-4 d-flex flex-column">
+      <div :style="{ order: event_docs?.total > 0 ? 0 : 1 }">
+        <ExploreResultsSection
+          title="Events"
+          :docs="event_docs"
+          :status="eventsStatus"
+          :page-count="eventsPageCount"
+          border-color="#0d6efd"
+          @page-change="onEventsPageChange"
+          @download="downloadAllResults('events', $event)"
+        >
+          <template #header-extra>
+            <EventsPropertiesModal />
+          </template>
+          <EventResultCard
+            v-for="result in event_docs.results"
+            :key="result._source.uuid"
+            :event="result"
+            class="mb-2"
+          />
+        </ExploreResultsSection>
+      </div>
 
-      <ExploreResultsSection
-        title="Attributes"
-        :docs="attribute_docs"
-        :status="attributesStatus"
-        :page-count="attributesPageCount"
-        border-color="#198754"
-        @page-change="onAttributesPageChange"
-        @download="downloadAllResults('attributes', $event)"
-      >
-        <template #header-extra>
-          <AttributesPropertiesModal />
-        </template>
-        <AttributeResultCard
-          v-for="result in attribute_docs.results"
-          :key="result._source.uuid"
-          :attribute="result"
-          class="mb-2"
-        />
-      </ExploreResultsSection>
+      <div :style="{ order: attribute_docs?.total > 0 ? 0 : 1 }">
+        <ExploreResultsSection
+          title="Attributes"
+          :docs="attribute_docs"
+          :status="attributesStatus"
+          :page-count="attributesPageCount"
+          border-color="#198754"
+          @page-change="onAttributesPageChange"
+          @download="downloadAllResults('attributes', $event)"
+        >
+          <template #header-extra>
+            <AttributesPropertiesModal />
+          </template>
+          <AttributeResultCard
+            v-for="result in attribute_docs.results"
+            :key="result._source.uuid"
+            :attribute="result"
+            class="mb-2"
+          />
+        </ExploreResultsSection>
+      </div>
     </div>
   </div>
 
