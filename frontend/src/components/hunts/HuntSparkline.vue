@@ -1,25 +1,26 @@
 <script setup>
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, onMounted, watch } from "vue";
 import { useHuntsStore } from "@/stores";
 import Sparkline from "@/components/charts/Sparkline.vue";
 
-const props = defineProps({ huntId: { type: Number, required: true } });
+const props = defineProps({
+  huntId: { type: Number, required: true },
+  lastRunAt: { type: String, default: null },
+});
 
 const huntsStore = useHuntsStore();
 const history = ref([]);
 
-onMounted(() => {
+function fetchHistory() {
   huntsStore.getHistory(props.huntId).then((h) => {
     if (h) history.value = h;
   });
-});
+}
+
+onMounted(fetchHistory);
+watch(() => props.lastRunAt, fetchHistory);
 
 const counts = computed(() => history.value.map((e) => e.match_count));
-const lastCount = computed(() =>
-  history.value.length
-    ? history.value[history.value.length - 1].match_count
-    : null,
-);
 </script>
 
 <template>
@@ -28,6 +29,5 @@ const lastCount = computed(() =>
       <Sparkline :points="counts" />
     </div>
   </div>
-  <span v-else-if="counts.length === 1" class="fw-bold">{{ lastCount }}</span>
-  <span v-else class="text-muted">—</span>
+  <span v-else-if="counts.length <= 1" class="fw-bold">—</span>
 </template>

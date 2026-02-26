@@ -83,7 +83,7 @@ function onHuntCreated() {
             }}
           </td>
           <td v-if="!$isMobile">
-            <HuntSparkline :hunt-id="hunt.id" />
+            <HuntSparkline :hunt-id="hunt.id" :last-run-at="hunt.last_run_at" />
           </td>
           <td class="text-end">
             <span
