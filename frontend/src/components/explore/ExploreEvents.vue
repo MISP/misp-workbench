@@ -15,6 +15,8 @@ import ExploreSearchHistory from "./ExploreSearchHistory.vue";
 import ExploreResultsSection from "./ExploreResultsSection.vue";
 import ExploreTimeRangeFilter from "./ExploreTimeRangeFilter.vue";
 import AddHuntModal from "@/components/hunts/AddHuntModal.vue";
+import EventsPropertiesModal from "@/components/misc/EventsPropertiesModal.vue";
+import AttributesPropertiesModal from "@/components/misc/AttributesPropertiesModal.vue";
 
 const props = defineProps({
   page_size: {
@@ -201,6 +203,9 @@ body {
         @page-change="onEventsPageChange"
         @download="downloadAllResults('events', $event)"
       >
+        <template #header-extra>
+          <EventsPropertiesModal />
+        </template>
         <EventResultCard
           v-for="result in event_docs.results"
           :key="result._source.uuid"
@@ -218,6 +223,9 @@ body {
         @page-change="onAttributesPageChange"
         @download="downloadAllResults('attributes', $event)"
       >
+        <template #header-extra>
+          <AttributesPropertiesModal />
+        </template>
         <AttributeResultCard
           v-for="result in attribute_docs.results"
           :key="result._source.uuid"

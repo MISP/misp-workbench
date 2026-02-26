@@ -51,6 +51,8 @@ const isOpen = ref(true);
         </span>
       </div>
 
+      <slot name="header-extra" />
+
       <div v-if="docs?.total > 0" class="btn-group me-2">
         <button
           type="button"
