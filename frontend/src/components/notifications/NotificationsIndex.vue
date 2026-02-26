@@ -82,6 +82,13 @@ function markAllAsRead() {
   });
 }
 
+function deleteAll() {
+  notificationsStore.deleteAll().then(() => {
+    onPageChange(1);
+    unreadNotifications.value = 0;
+  });
+}
+
 dayjs.extend(utc);
 dayjs.extend(timezone);
 dayjs.extend(relativeTime);
@@ -119,13 +126,20 @@ function formatRelativeTime(dateString) {
                 unread
               </button>
             </div>
-            <div class="ms-4">
+            <div class="ms-4 d-flex gap-2">
               <button
                 type="button"
                 class="btn btn-outline-primary"
                 @click="markAllAsRead()"
               >
                 mark all as read
+              </button>
+              <button
+                type="button"
+                class="btn btn-outline-danger"
+                @click="deleteAll()"
+              >
+                delete all
               </button>
             </div>
             <div class="ms-4">

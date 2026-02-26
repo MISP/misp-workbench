@@ -57,5 +57,12 @@ export const useNotificationsStore = defineStore("notifications", {
         .catch((error) => (this.status = { error }))
         .finally(() => (this.status = { loading: false }));
     },
+    async deleteAll() {
+      this.status = { loading: true };
+      return fetchWrapper
+        .delete(`${baseUrl}/all`)
+        .catch((error) => (this.status = { error }))
+        .finally(() => (this.status = { loading: false }));
+    },
   },
 });

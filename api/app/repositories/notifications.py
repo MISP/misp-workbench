@@ -482,6 +482,14 @@ def create_correlation_notifications(db: Session, type: str, correlation: dict):
 
     return notifications
 
+def delete_all_notifications(db: Session, user_id: int):
+    db.query(notification_models.Notification).filter(
+        notification_models.Notification.user_id == user_id,
+    ).delete()
+    db.commit()
+    return {"status": "success"}
+
+
 def delete_notification(db: Session, notification_id: int, user_id: int):
     notification = (
         db.query(notification_models.Notification)
