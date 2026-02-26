@@ -6,6 +6,7 @@ import { useHuntsStore } from "@/stores";
 import Spinner from "@/components/misc/Spinner.vue";
 import AddHuntModal from "@/components/hunts/AddHuntModal.vue";
 import HuntActions from "@/components/hunts/HuntActions.vue";
+import HuntSparkline from "@/components/hunts/HuntSparkline.vue";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
 import utc from "dayjs/plugin/utc";
@@ -82,10 +83,7 @@ function onHuntCreated() {
             }}
           </td>
           <td v-if="!$isMobile">
-            <span v-if="hunt.last_match_count != null" class="fw-bold">
-              {{ hunt.last_match_count }}
-            </span>
-            <span v-else class="text-muted">—</span>
+            <HuntSparkline :hunt-id="hunt.id" />
           </td>
           <td class="text-end">
             <span

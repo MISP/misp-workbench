@@ -59,7 +59,6 @@ const sparklineData = computed(() => ({
       borderColor: "#0d6efd",
       backgroundColor: "rgba(13,110,253,0.12)",
       fill: true,
-      tension: 0.3,
       pointRadius: history.value.length > 20 ? 0 : 3,
       pointHoverRadius: 4,
     },
