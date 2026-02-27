@@ -7,6 +7,7 @@ import {
   useAuthStore,
   useTasksStore,
   useFeedsStore,
+  useHuntsStore,
   useServersStore,
 } from "@/stores";
 import ScheduledTaskActions from "@/components/tasks/ScheduledTaskActions.vue";
@@ -15,13 +16,16 @@ import CreateScheduledTaskModal from "@/components/tasks/CreateScheduledTaskModa
 const authStore = useAuthStore();
 const tasksStore = useTasksStore();
 const feedsStore = useFeedsStore();
+const huntsStore = useHuntsStore();
 const serversStore = useServersStore();
 
 const { scopes } = storeToRefs(authStore);
 const { feeds } = storeToRefs(feedsStore);
+const { hunts } = storeToRefs(huntsStore);
 const { servers } = storeToRefs(serversStore);
 
 feedsStore.getAll();
+huntsStore.getAll();
 serversStore.getAll();
 
 defineProps({
@@ -72,19 +76,34 @@ const formatDate = (isoString) => {
   });
 };
 
-const getResourceLabel = (task) => {
+const getResourceLink = (task) => {
   const kwargs = task.kwargs || {};
   if (kwargs.feed_id) {
     const feed = Object.values(feeds.value).find(
       (f) => f.id === kwargs.feed_id,
     );
-    return feed ? feed.name : `Feed #${kwargs.feed_id}`;
+    return {
+      label: feed ? feed.name : `Feed #${kwargs.feed_id}`,
+      to: `/feeds/${kwargs.feed_id}`,
+    };
   }
   if (kwargs.server_id) {
     const server = Object.values(servers.value).find(
       (s) => s.id === kwargs.server_id,
     );
-    return server ? server.name : `Server #${kwargs.server_id}`;
+    return {
+      label: server ? server.name : `Server #${kwargs.server_id}`,
+      to: `/servers/${kwargs.server_id}`,
+    };
+  }
+  if (kwargs.hunt_id) {
+    const hunt = (hunts.value?.items ?? []).find(
+      (h) => h.id === kwargs.hunt_id,
+    );
+    return {
+      label: hunt ? hunt.name : `Hunt #${kwargs.hunt_id}`,
+      to: `/hunts/${kwargs.hunt_id}`,
+    };
   }
   return null;
 };
@@ -142,7 +161,17 @@ const statusColor = (status) => {
           <tbody>
             <tr v-for="task in scheduledTasks" :key="task.id">
               <td>{{ task.task_name.replace("app.worker.tasks.", "") }}</td>
-              <td>{{ getResourceLabel(task) ?? "—" }}</td>
+              <td>
+                <template
+                  v-for="link in [getResourceLink(task)]"
+                  :key="link?.to"
+                >
+                  <RouterLink v-if="link" :to="link.to">{{
+                    link.label
+                  }}</RouterLink>
+                  <span v-else>—</span>
+                </template>
+              </td>
               <td>{{ formatDate(task.last_run_at) }}</td>
               <td>{{ formatDate(task.due_at) }}</td>
               <td>{{ formatSchedule(task.schedule) }}</td>

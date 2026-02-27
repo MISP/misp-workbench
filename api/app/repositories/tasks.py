@@ -189,6 +189,12 @@ def update_scheduled_task(
         key = f"redbeat:{task_name}"
         task = RedBeatSchedulerEntry.from_key(key, app=celery_app)
 
+        if task is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Scheduled task with name {task_name} not found.",
+            )
+        
         if params is not None:
             task.args = params.get("args", [])
             task.kwargs = params.get("kwargs", {})
@@ -207,7 +213,6 @@ def update_scheduled_task(
                 )
             else:
                 task.schedule = celery_schedule(int(schedule.every))
-            task.enabled = schedule.enabled
 
         if enabled is not None:
             task.enabled = enabled
@@ -220,6 +225,22 @@ def update_scheduled_task(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Scheduled task with name {task_name} not found.",
         )
+
+
+def delete_scheduled_tasks_for_hunt(hunt_id: int):
+    """Delete all RedBeat scheduled tasks whose kwargs contain the given hunt_id."""
+    RedisClient = get_redis(CELERY_WORKER_REDIS_DB)
+    keys = RedisClient.keys("redbeat:*")
+
+    for key in keys:
+        if key in ["redbeat::lock", "redbeat::beat", "redbeat::schedule"]:
+            continue
+        try:
+            task = RedBeatSchedulerEntry.from_key(key, app=celery_app)
+            if task.kwargs.get("hunt_id") == hunt_id:
+                task.delete()
+        except Exception:
+            continue
 
 
 def scheduled_task_to_dict(task):

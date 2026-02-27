@@ -8,6 +8,7 @@ from app.routers import (
     events,
     feeds,
     galaxies,
+    hunts,
     modules,
     object_templates,
     objects,
@@ -24,7 +25,7 @@ from app.routers import (
     sightings,
     runtime_settings,
     user_settings,
-    notifications
+    notifications,
 )
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -119,6 +120,9 @@ app.include_router(user_settings.router, tags=["User Settings"])
 
 # Diagnostics resource
 app.include_router(diagnostics.router, tags=["Diagnostics"])
+
+# Hunts resource
+app.include_router(hunts.router, tags=["Hunts"])
 
 # Notifications resource
 app.include_router(notifications.router, tags=["Notifications"])

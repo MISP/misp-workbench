@@ -160,7 +160,6 @@ function formatTime(ts) {
             :data-bs-parent="'#taskAccordion-' + cardId"
           >
             <div class="accordion-body small">
-              {{ task }}
               <ul class="list-group list-group-flush">
                 <li class="list-group-item">
                   <strong>UUID:</strong> {{ task.uuid }}
