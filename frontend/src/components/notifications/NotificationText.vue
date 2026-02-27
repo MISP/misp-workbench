@@ -127,7 +127,7 @@ const deltaMatches = computed(() => {
         }}</span>
       </div>
     </div>
-    <div v-if="notification.type.startsWith('hunt.result.changed')">
+    <div v-else-if="notification.type.startsWith('hunt.result.changed')">
       <div class="text-muted small">
         {{ title }} for <code>{{ notification.payload.hunt_name }}</code>
       </div>
