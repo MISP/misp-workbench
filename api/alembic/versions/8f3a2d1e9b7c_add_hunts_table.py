@@ -40,7 +40,9 @@ def upgrade():
         ),
         sa.ForeignKeyConstraint(["user_id"], ["users.id"]),
     )
+    op.create_index("ix_hunts_user_id", "hunts", ["user_id"])
 
 
 def downgrade():
+    op.drop_index("ix_hunts_user_id", table_name="hunts")
     op.drop_table("hunts")
