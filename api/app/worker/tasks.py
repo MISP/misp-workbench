@@ -17,6 +17,7 @@ from app.repositories import correlations as correlations_repository
 from app.repositories import attributes as attributes_repository
 from app.repositories import notifications as notifications_repository
 from app.repositories import galaxies as galaxies_repository
+from app.repositories import hunts as hunts_repository
 from app.repositories import taxonomies as taxonomies_repository
 from app.schemas import event as event_schemas
 from app.schemas import attribute as attribute_schemas
@@ -601,6 +602,7 @@ def generate_correlations():
             return False
 
         logger.info("generate correlations job finished")
+        run_correlation_hunts.delay()
         return True
     finally:
         # Release the lock. If Redis isn't available this is a noop.
@@ -728,6 +730,8 @@ def handle_toggled_event_correlation(event_uuid: str, disable_correlation: bool)
                     runtimeSettings, str(event_uuid)
                 )
 
+            run_correlation_hunts.delay()
+
         logger.info(
             "handling toggled event correlation uuid=%s job finished", event_uuid
         )
@@ -793,10 +797,12 @@ def index_attribute(attribute_uuid: str):
             return True
 
         attribute = event_schemas.Attribute.model_validate(db_attribute)
+        event_uuid = db_attribute.event.uuid if db_attribute.event else None
 
     OpenSearchClient = get_opensearch_client()
 
     attribute_raw = attribute.model_dump()
+    attribute_raw["event_uuid"] = str(event_uuid) if event_uuid else None
 
     # convert timestamp to datetime so it can be indexed
     attribute_raw["@timestamp"] = datetime.fromtimestamp(
@@ -947,4 +953,28 @@ def delete_indexed_object(object_uuid: str):
 
     logger.info("deleting indexed object uuid=%s job finished", object_uuid)
 
+    return True
+
+
+@celery_app.task
+def run_hunt(hunt_id: int, **kwargs):
+    logger.info("run hunt id=%s job started", hunt_id)
+
+    with Session(engine) as db:
+        result = hunts_repository.execute_hunt_system(db, hunt_id=hunt_id)
+        total = result["total"] if result else 0
+        logger.info("run hunt id=%s finished, %s matches", hunt_id, total)
+
+    return True
+
+
+@celery_app.task
+def run_correlation_hunts():
+    """Re-run all active correlation hunts. Called after correlations are regenerated."""
+    logger.info("run_correlation_hunts job started")
+    with Session(engine) as db:
+        hunts = hunts_repository.get_active_correlation_hunts(db)
+        for hunt in hunts:
+            run_hunt.delay(hunt.id)
+    logger.info("run_correlation_hunts job finished, %s hunts queued", len(hunts))
     return True

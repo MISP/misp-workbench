@@ -63,6 +63,16 @@ async def unfollow_notification(
     return notifications_repository.unfollow_notification(db, notification_id, user.id)
 
 
+@router.delete("/notifications/all")
+async def delete_all_notifications(
+    db: Session = Depends(get_db),
+    user: user_schemas.User = Security(
+        get_current_active_user, scopes=["notifications:update"]
+    ),
+):
+    return notifications_repository.delete_all_notifications(db, user.id)
+
+
 @router.delete(
     "/notifications/{notification_id}",
 )

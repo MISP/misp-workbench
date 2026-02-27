@@ -68,8 +68,14 @@ onMounted(() => {
   if (needsUser.value) usersStore.getAll();
 });
 
+const MANAGED_KEYS = new Set(["feed_id", "server_id", "technique", "user_id"]);
+
 function buildKwargs() {
-  const kwargs = {};
+  const existing = props.scheduled_task?.kwargs ?? {};
+  // Start with unmanaged kwargs (e.g. hunt_id) so they are always preserved.
+  const kwargs = Object.fromEntries(
+    Object.entries(existing).filter(([k]) => !MANAGED_KEYS.has(k)),
+  );
   if (needsFeed.value) kwargs.feed_id = selectedFeedId.value;
   if (needsServer.value) {
     kwargs.server_id = selectedServerId.value;

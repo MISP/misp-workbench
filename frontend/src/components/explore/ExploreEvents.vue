@@ -14,6 +14,9 @@ import ExploreSearchBar from "./ExploreSearchBar.vue";
 import ExploreSearchHistory from "./ExploreSearchHistory.vue";
 import ExploreResultsSection from "./ExploreResultsSection.vue";
 import ExploreTimeRangeFilter from "./ExploreTimeRangeFilter.vue";
+import AddHuntModal from "@/components/hunts/AddHuntModal.vue";
+import EventsPropertiesModal from "@/components/misc/EventsPropertiesModal.vue";
+import AttributesPropertiesModal from "@/components/misc/AttributesPropertiesModal.vue";
 
 const props = defineProps({
   page_size: {
@@ -24,6 +27,7 @@ const props = defineProps({
 
 const searchQuery = ref("");
 const activeTimeRange = ref(null);
+const huntModalOpen = ref(false);
 
 const eventsStore = useEventsStore();
 const attributesStore = useAttributesStore();
@@ -175,6 +179,7 @@ body {
         :stored-searches="storedExploreSearches"
         @search="search"
         @save="saveSearch"
+        @save-as-hunt="huntModalOpen = true"
       />
     </div>
     <div class="col-12 col-md-auto order-2 order-md-3 mt-2 mt-md-0">
@@ -188,40 +193,57 @@ body {
       />
     </div>
 
-    <div id="results" class="col-12 mt-3 order-4">
-      <ExploreResultsSection
-        title="Events"
-        :docs="event_docs"
-        :status="eventsStatus"
-        :page-count="eventsPageCount"
-        border-color="#0d6efd"
-        @page-change="onEventsPageChange"
-        @download="downloadAllResults('events', $event)"
-      >
-        <EventResultCard
-          v-for="result in event_docs.results"
-          :key="result._source.uuid"
-          :event="result"
-          class="mb-2"
-        />
-      </ExploreResultsSection>
+    <div id="results" class="col-12 mt-3 order-4 d-flex flex-column">
+      <div :style="{ order: event_docs?.total > 0 ? 0 : 1 }">
+        <ExploreResultsSection
+          title="Events"
+          :docs="event_docs"
+          :status="eventsStatus"
+          :page-count="eventsPageCount"
+          border-color="#0d6efd"
+          @page-change="onEventsPageChange"
+          @download="downloadAllResults('events', $event)"
+        >
+          <template #header-extra>
+            <EventsPropertiesModal />
+          </template>
+          <EventResultCard
+            v-for="result in event_docs.results"
+            :key="result._source.uuid"
+            :event="result"
+            class="mb-2"
+          />
+        </ExploreResultsSection>
+      </div>
 
-      <ExploreResultsSection
-        title="Attributes"
-        :docs="attribute_docs"
-        :status="attributesStatus"
-        :page-count="attributesPageCount"
-        border-color="#198754"
-        @page-change="onAttributesPageChange"
-        @download="downloadAllResults('attributes', $event)"
-      >
-        <AttributeResultCard
-          v-for="result in attribute_docs.results"
-          :key="result._source.uuid"
-          :attribute="result"
-          class="mb-2"
-        />
-      </ExploreResultsSection>
+      <div :style="{ order: attribute_docs?.total > 0 ? 0 : 1 }">
+        <ExploreResultsSection
+          title="Attributes"
+          :docs="attribute_docs"
+          :status="attributesStatus"
+          :page-count="attributesPageCount"
+          border-color="#198754"
+          @page-change="onAttributesPageChange"
+          @download="downloadAllResults('attributes', $event)"
+        >
+          <template #header-extra>
+            <AttributesPropertiesModal />
+          </template>
+          <AttributeResultCard
+            v-for="result in attribute_docs.results"
+            :key="result._source.uuid"
+            :attribute="result"
+            class="mb-2"
+          />
+        </ExploreResultsSection>
+      </div>
     </div>
   </div>
+
+  <AddHuntModal
+    v-if="huntModalOpen"
+    :initial-query="buildQuery()"
+    @created="huntModalOpen = false"
+    @close="huntModalOpen = false"
+  />
 </template>

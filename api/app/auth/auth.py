@@ -117,6 +117,13 @@ oauth2_scheme = OAuth2PasswordBearer(
         "settings:read": "Read settings.",
         "settings:update": "Update settings.",
         "settings:delete": "Delete settings.",
+        "hunts:create": "Create hunts.",
+        "hunts:read": "Read hunts.",
+        "hunts:update": "Update hunts.",
+        "hunts:delete": "Delete hunts.",
+        "hunts:run": "Run hunts.",
+        "notifications:read": "Read notifications.",
+        "notifications:update": "Update notifications.",
     },
 )
 
@@ -217,6 +224,8 @@ def get_scopes_for_user(user: user_schemas.User):
         scopes.add("workers:*")
         scopes.add("correlations:*")
         scopes.add("settings:*")
+        scopes.add("hunts:*")
+        scopes.add("notifications:*")
 
     if user.role.perm_auth:
         scopes.add("auth:login")
