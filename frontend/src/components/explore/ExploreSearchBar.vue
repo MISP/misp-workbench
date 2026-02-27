@@ -2,18 +2,22 @@
 import { ref, onMounted, onUnmounted, watch } from "vue";
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
 import {
-  faFileLines,
   faFloppyDisk,
   faMagnifyingGlass,
 } from "@fortawesome/free-solid-svg-icons";
-import LuceneQuerySyntaxCheatsheet from "./LuceneQuerySyntaxCheatsheetModal.vue";
+import LuceneQuerySyntaxHint from "@/components/misc/LuceneQuerySyntaxHint.vue";
 
 const props = defineProps({
   modelValue: { type: String, default: "" },
   storedSearches: { type: Array, default: () => [] },
 });
 
-const emit = defineEmits(["update:modelValue", "search", "save"]);
+const emit = defineEmits([
+  "update:modelValue",
+  "search",
+  "save",
+  "save-as-hunt",
+]);
 
 const isFocused = ref(false);
 const animatedPlaceholder = ref("Search something (Lucene Query Syntax) ...");
@@ -88,13 +92,36 @@ function saveCurrentSearch() {
 <template>
   <div class="w-100">
     <div class="input-group justify-content-center">
-      <button
-        class="btn btn-outline-secondary"
-        type="button"
-        @click="saveCurrentSearch"
-      >
-        <FontAwesomeIcon :icon="faFloppyDisk" />
-      </button>
+      <div class="dropdown">
+        <button
+          class="btn btn-outline-secondary dropdown-toggle"
+          type="button"
+          data-bs-toggle="dropdown"
+          aria-expanded="false"
+        >
+          <FontAwesomeIcon :icon="faFloppyDisk" />
+        </button>
+        <ul class="dropdown-menu">
+          <li>
+            <a
+              class="dropdown-item"
+              href="#"
+              @click.prevent="saveCurrentSearch"
+            >
+              Save Search
+            </a>
+          </li>
+          <li>
+            <a
+              class="dropdown-item"
+              href="#"
+              @click.prevent="emit('save-as-hunt')"
+            >
+              Save as Hunt
+            </a>
+          </li>
+        </ul>
+      </div>
       <input
         type="text"
         class="form-control text-console"
@@ -114,19 +141,6 @@ function saveCurrentSearch() {
         <FontAwesomeIcon :icon="faMagnifyingGlass" />
       </button>
     </div>
-    <span
-      class="text-muted fst-italic small d-flex align-items-center justify-content-center mt-1"
-    >
-      Lucene query syntax supported
-      <button
-        type="button"
-        class="btn btn-sm d-flex align-items-center"
-        data-bs-toggle="modal"
-        data-bs-target="#luceneQuerySyntaxCheatsheetModal"
-      >
-        <FontAwesomeIcon :icon="faFileLines" class="ms-1 cursor-pointer" />
-      </button>
-    </span>
-    <LuceneQuerySyntaxCheatsheet />
+    <LuceneQuerySyntaxHint />
   </div>
 </template>

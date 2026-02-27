@@ -39,9 +39,18 @@ const title = computed(() => {
       return `object updated`;
     case "object.deleted":
       return `object deleted`;
+    case "hunt.result.changed":
+      return `hunt matches`;
     default:
       return props.notification?.title || "unknown notification";
   }
+});
+
+const deltaMatches = computed(() => {
+  if (props.notification?.type !== "hunt.result.changed") return null;
+  const total = props.notification.payload.total || 0;
+  const previousTotal = props.notification.payload.previous_total || 0;
+  return total - previousTotal;
 });
 </script>
 
@@ -116,6 +125,27 @@ const title = computed(() => {
         <span class="badge bg-info text-dark me-2">{{
           notification.payload.object_name
         }}</span>
+      </div>
+    </div>
+    <div v-else-if="notification.type.startsWith('hunt.result.changed')">
+      <div class="text-muted small">
+        {{ title }} for <code>{{ notification.payload.hunt_name }}</code>
+      </div>
+      <div>
+        <span class="text-dark me-2">
+          <span v-if="deltaMatches > 0" class="badge bg-danger text-dark me-2"
+            >{{ deltaMatches }} new match{{
+              deltaMatches > 1 ? "es" : ""
+            }}</span
+          >
+          <span
+            v-if="deltaMatches <= 0"
+            class="badge bg-secondary text-dark me-2"
+          >
+            {{ deltaMatches }}
+            lost match{{ deltaMatches < -1 ? "es" : "" }}</span
+          >
+        </span>
       </div>
     </div>
     <div v-else>{{ title }}</div>

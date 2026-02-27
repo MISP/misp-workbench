@@ -3,6 +3,7 @@ import { ref, computed, watch } from "vue";
 import {
   useTasksStore,
   useFeedsStore,
+  useHuntsStore,
   useServersStore,
   useUsersStore,
 } from "@/stores";
@@ -11,11 +12,13 @@ import ScheduleEditor from "@/components/tasks/ScheduleEditor.vue";
 
 const tasksStore = useTasksStore();
 const feedsStore = useFeedsStore();
+const huntsStore = useHuntsStore();
 const serversStore = useServersStore();
 const usersStore = useUsersStore();
 
 const { status } = storeToRefs(tasksStore);
 const { feeds } = storeToRefs(feedsStore);
+const { hunts } = storeToRefs(huntsStore);
 const { servers } = storeToRefs(serversStore);
 const { users } = storeToRefs(usersStore);
 
@@ -43,17 +46,24 @@ const TASKS = [
     needsServer: true,
     needsUser: true,
   },
+  {
+    value: "app.worker.tasks.run_hunt",
+    label: "run_hunt",
+    needsHunt: true,
+  },
 ];
 
 const selectedTask = ref(null);
 const selectedFeedId = ref(null);
 const selectedServerId = ref(null);
+const selectedHuntId = ref(null);
 const selectedUserId = ref(null);
 const scheduleEditorRef = ref(null);
 const scheduleValid = ref(false);
 
 const needsFeed = computed(() => !!selectedTask.value?.needsFeed);
 const needsServer = computed(() => !!selectedTask.value?.needsServer);
+const needsHunt = computed(() => !!selectedTask.value?.needsHunt);
 const needsUser = computed(() => !!selectedTask.value?.needsUser);
 
 watch(selectedTask, (task) => {
@@ -62,6 +72,7 @@ watch(selectedTask, (task) => {
   selectedUserId.value = null;
   if (task?.needsFeed) feedsStore.getAll();
   if (task?.needsServer) serversStore.getAll();
+  if (task?.needsHunt) huntsStore.getAll();
   if (task?.needsUser) usersStore.getAll();
 });
 
@@ -69,6 +80,7 @@ const isValid = computed(() => {
   if (!selectedTask.value) return false;
   if (needsFeed.value && !selectedFeedId.value) return false;
   if (needsServer.value && !selectedServerId.value) return false;
+  if (needsHunt.value && !selectedHuntId.value) return false;
   if (needsUser.value && !selectedUserId.value) return false;
   return scheduleValid.value;
 });
@@ -80,6 +92,7 @@ function buildKwargs() {
     kwargs.server_id = selectedServerId.value;
     kwargs.technique = "full";
   }
+  if (needsHunt.value) kwargs.hunt_id = selectedHuntId.value;
   if (needsUser.value) kwargs.user_id = selectedUserId.value;
   return kwargs;
 }
@@ -88,6 +101,7 @@ function reset() {
   selectedTask.value = null;
   selectedFeedId.value = null;
   selectedServerId.value = null;
+  selectedHuntId.value = null;
   selectedUserId.value = null;
   scheduleEditorRef.value?.reset();
 }
@@ -170,6 +184,24 @@ async function onSubmit() {
                 :value="server.id"
               >
                 #{{ server.id }} — {{ server.name }}
+              </option>
+            </select>
+          </div>
+
+          <div v-if="needsHunt" class="mb-3">
+            <label for="createHuntSelect" class="form-label">Hunt</label>
+            <select
+              id="createHuntSelect"
+              v-model="selectedHuntId"
+              class="form-select"
+            >
+              <option :value="null" disabled>Select a hunt…</option>
+              <option
+                v-for="hunt in hunts.items"
+                :key="hunt.id"
+                :value="hunt.id"
+              >
+                #{{ hunt.id }} — {{ hunt.name }}
               </option>
             </select>
           </div>

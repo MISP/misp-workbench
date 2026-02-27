@@ -119,6 +119,8 @@ services:
       REDIS_PORT: ${REDIS_PORT:-6379}
     ports:
       - "8081:8081"
+    networks:
+      - backend
 
   modules:
     ports:

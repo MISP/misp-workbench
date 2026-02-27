@@ -40,3 +40,7 @@ export { default as IndexCorrelations } from "./correlations/IndexCorrelations.v
 export { default as IndexRuntimeSettings } from "./settings/runtime/IndexRuntimeSettings.vue";
 export { default as IndexUserSettings } from "./settings/user/IndexUserSettings.vue";
 export { default as IndexNotifications } from "./notifications/IndexNotifications.vue";
+export { default as IndexHunts } from "./hunts/IndexHunts.vue";
+export { default as AddHunt } from "./hunts/AddHunt.vue";
+export { default as EditHunt } from "./hunts/EditHunt.vue";
+export { default as ViewHunt } from "./hunts/ViewHunt.vue";
