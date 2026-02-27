@@ -530,7 +530,7 @@ def create_hunt_notification(
         user_id=hunt.user_id,
         type=ntype,
         entity_type="hunt",
-        entity_uuid=uuid.uuid4(),
+        entity_uuid=hunt.uuid,
         read=False,
         payload={
             "hunt_id": hunt.id,
