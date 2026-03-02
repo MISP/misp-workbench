@@ -549,7 +549,12 @@ def _notification_email_body(notification: notification_models.Notification) -> 
 def _enqueue_notification_emails(
     db: Session, notifications: list[notification_models.Notification]
 ):
-    """Dispatch a send_email task for each notification's recipient."""
+    """Dispatch a send_email task for each notification's recipient.
+
+    Respects the per-user ``notifications.email_notifications`` setting
+    (namespace "notifications", key "email_notifications").  Defaults to
+    ``True`` when the setting is absent (opt-out model).
+    """
     if not notifications:
         return
     # Lazy import to avoid circular dependency with tasks module
@@ -559,8 +564,11 @@ def _enqueue_notification_emails(
     from_addr = settings.Mail.username
 
     user_cache: dict[int, user_models.User] = {}
+    email_enabled_cache: dict[int, bool] = {}
+
     for notification in notifications:
         user_id = notification.user_id
+
         if user_id not in user_cache:
             user = db.get(user_models.User, user_id)
             if user:
@@ -568,6 +576,13 @@ def _enqueue_notification_emails(
 
         user = user_cache.get(user_id)
         if not user or not user.email:
+            continue
+
+        if user_id not in email_enabled_cache:
+            ns = user_settings_repository.get_user_setting(db, user_id, "notifications")
+            email_enabled_cache[user_id] = (ns.value.get("email_notifications", True) if ns else True)
+
+        if not email_enabled_cache[user_id]:
             continue
 
         send_email.delay(
