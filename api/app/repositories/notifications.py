@@ -551,17 +551,26 @@ def _enqueue_notification_emails(
 ):
     """Dispatch a send_email task for each notification's recipient.
 
-    Respects the per-user ``notifications.email_notifications`` setting
-    (namespace "notifications", key "email_notifications").  Defaults to
-    ``True`` when the setting is absent (opt-out model).
+    Respects two controls:
+    - Per-user opt-out: user_settings namespace "notifications",
+      key "email_notifications" (bool, default True).
+    - Global rate limit: runtime setting "notifications.email_max_per_hour"
+      (int, default 10).  Tracked per-user in Redis with a 1-hour sliding
+      window.  Set to 0 to disable the limit.
     """
     if not notifications:
         return
     # Lazy import to avoid circular dependency with tasks module
     from app.worker.tasks import send_email  # noqa: PLC0415
+    from app.services.runtime_settings_provider import get_runtime_settings  # noqa: PLC0415
 
-    settings = get_settings()
-    from_addr = settings.Mail.username
+    app_settings = get_settings()
+    from_addr = app_settings.Mail.username
+
+    runtime = get_runtime_settings(db)
+    email_max_per_hour = runtime.get_value("notifications.email_max_per_hour", default=10)
+
+    RedisClient = get_redis_client()
 
     user_cache: dict[int, user_models.User] = {}
     email_enabled_cache: dict[int, bool] = {}
@@ -580,10 +589,18 @@ def _enqueue_notification_emails(
 
         if user_id not in email_enabled_cache:
             ns = user_settings_repository.get_user_setting(db, user_id, "notifications")
-            email_enabled_cache[user_id] = (ns.value.get("email_notifications", True) if ns else True)
+            email_enabled_cache[user_id] = ns.value.get("email_notifications", True) if ns else True
 
         if not email_enabled_cache[user_id]:
             continue
+
+        if email_max_per_hour > 0:
+            throttle_key = f"notifications:email_throttle:{user_id}"
+            count = RedisClient.incr(throttle_key)
+            if count == 1:
+                RedisClient.expire(throttle_key, 3600)
+            if count > email_max_per_hour:
+                continue
 
         send_email.delay(
             {

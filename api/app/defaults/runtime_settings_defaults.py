@@ -13,5 +13,10 @@ DEFAULT_SETTINGS = {
             "domain|ip",
         ],
         "opensearchFlushBulkSize": 100,
-    }
+    },
+    "notifications": {
+        # Maximum number of notification emails sent per user per hour.
+        # Set to 0 to disable the limit.
+        "email_max_per_hour": 10,
+    },
 }
