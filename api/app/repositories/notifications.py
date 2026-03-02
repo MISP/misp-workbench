@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 from fastapi_pagination.ext.sqlalchemy import paginate
 from datetime import datetime, timezone
 from app.services.redis import get_redis_client
+from app.settings import get_settings
 import json
 import copy
 
@@ -224,6 +225,7 @@ def create_event_notifications(db: Session, type: str, event: event_models.Event
     if notifications:
         db.add_all(notifications)
         db.commit()
+        _enqueue_notification_emails(db, notifications)
 
     return notifications
 
@@ -343,6 +345,7 @@ def create_attribute_notifications(
     if notifications:
         db.add_all(notifications)
         db.commit()
+        _enqueue_notification_emails(db, notifications)
 
     return notifications
 
@@ -404,6 +407,7 @@ def create_object_notifications(db: Session, type: str, object: object_models.Ob
     if notifications:
         db.add_all(notifications)
         db.commit()
+        _enqueue_notification_emails(db, notifications)
 
     return notifications
 
@@ -443,6 +447,7 @@ def create_sighting_notifications(
     if notifications:
         db.add_all(notifications)
         db.commit()
+        _enqueue_notification_emails(db, notifications)
 
     return notifications
 
@@ -479,8 +484,10 @@ def create_correlation_notifications(db: Session, type: str, correlation: dict):
     if notifications:
         db.add_all(notifications)
         db.commit()
+        _enqueue_notification_emails(db, notifications)
 
     return notifications
+
 
 def delete_all_notifications(db: Session, user_id: int):
     db.query(notification_models.Notification).filter(
@@ -514,6 +521,65 @@ def invalidate_follow_cache(entity_type: str, entity_uuid: str):
     RedisClient.delete(f"notifications:followers:{entity_type}:{entity_uuid}")
 
 
+def _notification_email_subject(notification_type: str) -> str:
+    prefixes = {
+        "hunt.": "Hunt Results",
+        "attribute.sighting.": "New Sighting",
+        "attribute.correlation.": "New Correlation",
+        "attribute.": "Attribute Update",
+        "event.attribute.": "Attribute Update",
+        "event.object.": "Object Update",
+        "object.": "Object Update",
+        "organisation.event.": "Event Update from Followed Organisation",
+        "event.": "Event Update",
+    }
+    for prefix, label in prefixes.items():
+        if notification_type.startswith(prefix):
+            return f"[misp-workbench] {label}"
+    return "[misp-workbench] New Notification"
+
+
+def _notification_email_body(notification: notification_models.Notification) -> str:
+    lines = [f"Notification type: {notification.type}", ""]
+    for key, value in (notification.payload or {}).items():
+        lines.append(f"  {key}: {value}")
+    return "\n".join(lines)
+
+
+def _enqueue_notification_emails(
+    db: Session, notifications: list[notification_models.Notification]
+):
+    """Dispatch a send_email task for each notification's recipient."""
+    if not notifications:
+        return
+    # Lazy import to avoid circular dependency with tasks module
+    from app.worker.tasks import send_email  # noqa: PLC0415
+
+    settings = get_settings()
+    from_addr = settings.Mail.username
+
+    user_cache: dict[int, user_models.User] = {}
+    for notification in notifications:
+        user_id = notification.user_id
+        if user_id not in user_cache:
+            user = db.get(user_models.User, user_id)
+            if user:
+                user_cache[user_id] = user
+
+        user = user_cache.get(user_id)
+        if not user or not user.email:
+            continue
+
+        send_email.delay(
+            {
+                "from": from_addr,
+                "to": user.email,
+                "subject": _notification_email_subject(notification.type),
+                "body": _notification_email_body(notification),
+            }
+        )
+
+
 def create_hunt_notification(
     db: Session,
     hunt: hunt_models.Hunt,
@@ -542,3 +608,4 @@ def create_hunt_notification(
     )
     db.add(notification)
     db.commit()
+    _enqueue_notification_emails(db, [notification])

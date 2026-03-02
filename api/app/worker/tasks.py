@@ -307,7 +307,10 @@ def send_email(email: dict):
     with smtplib.SMTP(
         os.environ.get("MAIL_SERVER"), os.environ.get("MAIL_PORT")
     ) as server:
-        server.login(os.environ.get("MAIL_USERNAME"), os.environ.get("MAIL_PASSWORD"))
+        username = os.environ.get("MAIL_USERNAME")
+        password = os.environ.get("MAIL_PASSWORD")
+        if username and password:
+            server.login(username, password)
         server.sendmail(sender, receiver, message)
 
     return True
