@@ -49,8 +49,9 @@ def wait_for_garage(retries=30, delay=2):
             if code == 200:
                 print("Garage is ready.", flush=True)
                 return
-        except Exception:
-            pass
+        except Exception as e:
+            # Ignore transient errors while waiting for Garage, but log them for troubleshooting.
+            print(f"Waiting for Garage admin API failed with: {e!r}", file=sys.stderr, flush=True)
         time.sleep(delay)
     print("ERROR: Garage did not become ready.", file=sys.stderr)
     sys.exit(1)
