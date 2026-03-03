@@ -15,7 +15,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | Database | PostgreSQL 16 |
 | Search | OpenSearch 3 |
 | Broker/Cache | Redis |
-| Storage | MinIO (S3) or local filesystem |
+| Storage | Garage (S3) or local filesystem |
 | Task Monitor | Flower (port 5555) |
 
 ## Commands
@@ -128,7 +128,7 @@ To debug tests: `docker compose exec api poetry run python -m debugpy --listen 0
 See `.env.dev.dist` for the full list. Required secrets to set:
 - `OAUTH2_SECRET_KEY` / `OAUTH2_REFRESH_SECRET_KEY`
 - Database credentials
-- MinIO credentials (if `STORAGE_ENGINE=minio`)
+- Garage/S3 credentials (if `STORAGE_ENGINE=s3`)
 
 ## CI
 

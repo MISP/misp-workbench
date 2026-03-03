@@ -126,6 +126,12 @@ services:
     networks:
       - backend
 
+  garage:
+    volumes:
+      - garage-data:/var/lib/garage/data
+      - garage-meta:/var/lib/garage/meta
+      - ./garage.dev.toml:/etc/garage.toml:ro
+
   modules:
     ports:
       - "6666:6666"

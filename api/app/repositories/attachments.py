@@ -6,7 +6,7 @@ import os
 
 
 from fastapi.responses import StreamingResponse
-from app.services.minio import get_minio_client
+from app.services.s3 import get_s3_client
 from app.services.attachments import get_attachment, get_attachment_template
 from starlette import status
 import app.schemas.event as event_schemas
@@ -30,15 +30,12 @@ def store_attachment(
     settings: Settings = get_settings(),
 ) -> str:
     try:
-        # upload file to minio
-        if settings.Storage.engine == "minio":
-            MinioClient = get_minio_client()
-            MinioClient.put_object(
-                settings.Storage.minio.bucket,
-                filename,
-                io.BytesIO(file_content),
-                length=len(file_content),
-                part_size=10 * 1024 * 1024,
+        if settings.Storage.engine == "s3":
+            S3Client = get_s3_client()
+            S3Client.put_object(
+                Bucket=settings.Storage.s3.bucket,
+                Key=filename,
+                Body=file_content,
             )
 
         # upload file to local storage
@@ -187,7 +184,7 @@ def upload_attachments_to_event(
                 if db_file_object_attr.type == "attachment"
             ][0]
 
-            store_attachment(attachment_attribute_db.uuid, file_content)
+            store_attachment(str(attachment_attribute_db.uuid), file_content)
 
             file_objects.append(db_file_object)
 

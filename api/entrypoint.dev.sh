@@ -4,6 +4,11 @@ set -e
 # run migrations
 poetry run alembic upgrade head
 
+# bootstrap Garage S3 (layout, key, bucket)
+if [ "$STORAGE_ENGINE" = "s3" ]; then
+  poetry run python -m app.s3setup
+fi
+
 # create admin org and user
 poetry run python -m app.cli create-organisation ADMIN
 poetry run python -m app.cli create-user admin@admin.test admin 1 1

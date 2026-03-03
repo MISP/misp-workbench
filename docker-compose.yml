@@ -20,11 +20,13 @@ x-environment: &default-env
   MODULES_HOST: ${MODULES_HOST:-modules}
   MODULES_PORT: ${MODULES_PORT:-6666}
   STORAGE_ENGINE: ${STORAGE_ENGINE:-local}
-  MINIO_HOST: ${MINIO_HOST:-minio:9000}
-  MINIO_BUCKET: ${MINIO_BUCKET:-attachments}
-  MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
-  MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
-  MINIO_SECURE: ${MINIO_SECURE:-true}
+  S3_ENDPOINT: ${S3_ENDPOINT:-garage:3900}
+  S3_BUCKET: ${S3_BUCKET:-attachments}
+  S3_ACCESS_KEY: ${S3_ACCESS_KEY:-}
+  S3_SECRET_KEY: ${S3_SECRET_KEY:-}
+  S3_SECURE: ${S3_SECURE:-false}
+  GARAGE_ADMIN_URL: ${GARAGE_ADMIN_URL:-http://garage:3903}
+  GARAGE_ADMIN_TOKEN: ${GARAGE_ADMIN_TOKEN:-garage-dev-admin-token}
   FLOWER_BASIC_AUTH: ${FLOWER_BASIC_AUTH:-flower:flower}
   MAIL_USERNAME: ${MAIL_USERNAME}
   MAIL_PASSWORD: ${MAIL_PASSWORD}
@@ -119,20 +121,18 @@ services:
     networks:
       - backend
 
-  minio:
-    image: quay.io/minio/minio:latest
+  garage:
+    image: dxflrs/garage:v2.2.0
     restart: unless-stopped
-    command: server /data --console-address ":9001"
-    environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
     ports:
-      - "9000:9000"
-      - "9001:9001"
+      - "3900:3900"
+      - "3903:3903"
     volumes:
-      - minio-data:/data
+      - garage-data:/var/lib/garage/data
+      - garage-meta:/var/lib/garage/meta
+      - ./garage.toml:/etc/garage.toml:ro
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      test: ["CMD", "curl", "-f", "http://localhost:3903/health"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -254,7 +254,8 @@ services:
 volumes:
   opensearch-data:
   postgres-data:
-  minio-data:
+  garage-data:
+  garage-meta:
   attachments-data:
   os_data:
   os_logs:

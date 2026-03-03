@@ -1,6 +1,6 @@
 
 from app.settings import Settings, get_settings
-from app.services.minio import get_minio_client
+from app.services.s3 import get_s3_client
 from app.services.object_templates import get_local_object_templates
 import base64
 
@@ -8,11 +8,11 @@ def get_attachment(
     attachment_uuid: str,
     settings: Settings = get_settings(),
 ) -> bytes:
-    if settings.Storage.engine == "minio":
-        MinioClient = get_minio_client()
+    if settings.Storage.engine == "s3":
+        S3Client = get_s3_client()
 
-        data = MinioClient.get_object(settings.Storage.minio.bucket, attachment_uuid)
-        return data.read()
+        data = S3Client.get_object(Bucket=settings.Storage.s3.bucket, Key=attachment_uuid)
+        return data["Body"].read()
 
     # get attachment from local storage
     if settings.Storage.engine == "local":
