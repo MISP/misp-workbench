@@ -17,8 +17,6 @@ if not ADMIN_TOKEN:
 ACCESS_KEY = os.environ["S3_ACCESS_KEY"]
 SECRET_KEY = os.environ["S3_SECRET_KEY"]
 BUCKET = os.environ["S3_BUCKET"]
-ENDPOINT = os.environ["S3_ENDPOINT"]
-SECURE = os.environ.get("S3_SECURE", "false").lower() == "true"
 
 
 def _admin(method, path, data=None):
