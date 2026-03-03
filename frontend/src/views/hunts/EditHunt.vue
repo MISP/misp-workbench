@@ -4,6 +4,7 @@ import { router } from "@/router";
 import { useHuntsStore, useToastsStore } from "@/stores";
 import { storeToRefs } from "pinia";
 import Spinner from "@/components/misc/Spinner.vue";
+import LuceneQuerySyntaxHint from "@/components/misc/LuceneQuerySyntaxHint.vue";
 
 const props = defineProps({ id: { type: String, required: true } });
 
@@ -88,9 +89,7 @@ function cancel() {
           rows="4"
           v-model="form.query"
         />
-        <div class="form-text text-muted">
-          Standard Lucene query string syntax supported.
-        </div>
+        <LuceneQuerySyntaxHint />
         <div
           v-if="form.index_target === 'correlations'"
           class="alert alert-info mt-2 mb-0 small"

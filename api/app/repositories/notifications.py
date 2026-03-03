@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 from fastapi_pagination.ext.sqlalchemy import paginate
 from datetime import datetime, timezone
 from app.services.redis import get_redis_client
+from app.settings import get_settings
 import json
 import copy
 
@@ -224,6 +225,7 @@ def create_event_notifications(db: Session, type: str, event: event_models.Event
     if notifications:
         db.add_all(notifications)
         db.commit()
+        _enqueue_notification_emails(db, notifications)
 
     return notifications
 
@@ -343,6 +345,7 @@ def create_attribute_notifications(
     if notifications:
         db.add_all(notifications)
         db.commit()
+        _enqueue_notification_emails(db, notifications)
 
     return notifications
 
@@ -404,6 +407,7 @@ def create_object_notifications(db: Session, type: str, object: object_models.Ob
     if notifications:
         db.add_all(notifications)
         db.commit()
+        _enqueue_notification_emails(db, notifications)
 
     return notifications
 
@@ -443,6 +447,7 @@ def create_sighting_notifications(
     if notifications:
         db.add_all(notifications)
         db.commit()
+        _enqueue_notification_emails(db, notifications)
 
     return notifications
 
@@ -479,8 +484,10 @@ def create_correlation_notifications(db: Session, type: str, correlation: dict):
     if notifications:
         db.add_all(notifications)
         db.commit()
+        _enqueue_notification_emails(db, notifications)
 
     return notifications
+
 
 def delete_all_notifications(db: Session, user_id: int):
     db.query(notification_models.Notification).filter(
@@ -514,6 +521,97 @@ def invalidate_follow_cache(entity_type: str, entity_uuid: str):
     RedisClient.delete(f"notifications:followers:{entity_type}:{entity_uuid}")
 
 
+def _notification_email_subject(notification_type: str) -> str:
+    prefixes = {
+        "hunt.": "Hunt Results",
+        "attribute.sighting.": "New Sighting",
+        "attribute.correlation.": "New Correlation",
+        "attribute.": "Attribute Update",
+        "event.attribute.": "Attribute Update",
+        "event.object.": "Object Update",
+        "object.": "Object Update",
+        "organisation.event.": "Event Update from Followed Organisation",
+        "event.": "Event Update",
+    }
+    for prefix, label in prefixes.items():
+        if notification_type.startswith(prefix):
+            return f"[misp-workbench] {label}"
+    return "[misp-workbench] New Notification"
+
+
+def _notification_email_body(notification: notification_models.Notification) -> str:
+    lines = [f"Notification type: {notification.type}", ""]
+    for key, value in (notification.payload or {}).items():
+        lines.append(f"  {key}: {value}")
+    return "\n".join(lines)
+
+
+def _enqueue_notification_emails(
+    db: Session, notifications: list[notification_models.Notification]
+):
+    """Dispatch a send_email task for each notification's recipient.
+
+    Respects two controls:
+    - Per-user opt-out: user_settings namespace "notifications",
+      key "email_notifications" (bool, default True).
+    - Global rate limit: runtime setting "notifications.email_max_per_hour"
+      (int, default 10).  Tracked per-user in Redis with a 1-hour sliding
+      window.  Set to 0 to disable the limit.
+    """
+    if not notifications:
+        return
+    # Lazy import to avoid circular dependency with tasks module
+    from app.worker.tasks import send_email  # noqa: PLC0415
+    from app.services.runtime_settings_provider import get_runtime_settings  # noqa: PLC0415
+
+    app_settings = get_settings()
+    from_addr = app_settings.Mail.username
+
+    runtime = get_runtime_settings(db)
+    email_max_per_hour = runtime.get_value("notifications.email_max_per_hour", default=10)
+
+    RedisClient = get_redis_client()
+
+    user_cache: dict[int, user_models.User] = {}
+    email_enabled_cache: dict[int, bool] = {}
+
+    for notification in notifications:
+        user_id = notification.user_id
+
+        if user_id not in user_cache:
+            user = db.get(user_models.User, user_id)
+            if user:
+                user_cache[user_id] = user
+
+        user = user_cache.get(user_id)
+        if not user or not user.email:
+            continue
+
+        if user_id not in email_enabled_cache:
+            ns = user_settings_repository.get_user_setting(db, user_id, "notifications")
+            email_enabled_cache[user_id] = ns.value.get("email_notifications", True) if ns else True
+
+        if not email_enabled_cache[user_id]:
+            continue
+
+        if email_max_per_hour > 0:
+            throttle_key = f"notifications:email_throttle:{user_id}"
+            count = RedisClient.incr(throttle_key)
+            if count == 1:
+                RedisClient.expire(throttle_key, 3600)
+            if count > email_max_per_hour:
+                continue
+
+        send_email.delay(
+            {
+                "from": from_addr,
+                "to": user.email,
+                "subject": _notification_email_subject(notification.type),
+                "body": _notification_email_body(notification),
+            }
+        )
+
+
 def create_hunt_notification(
     db: Session,
     hunt: hunt_models.Hunt,
@@ -530,7 +628,7 @@ def create_hunt_notification(
         user_id=hunt.user_id,
         type=ntype,
         entity_type="hunt",
-        entity_uuid=hunt.uuid,
+        entity_uuid=None,
         read=False,
         payload={
             "hunt_id": hunt.id,
@@ -542,3 +640,4 @@ def create_hunt_notification(
     )
     db.add(notification)
     db.commit()
+    _enqueue_notification_emails(db, [notification])

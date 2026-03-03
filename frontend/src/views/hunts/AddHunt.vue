@@ -2,6 +2,7 @@
 import { ref, reactive, computed } from "vue";
 import { router } from "@/router";
 import { useHuntsStore, useToastsStore } from "@/stores";
+import LuceneQuerySyntaxHint from "@/components/misc/LuceneQuerySyntaxHint.vue";
 
 const huntsStore = useHuntsStore();
 const toastsStore = useToastsStore();
@@ -92,9 +93,7 @@ function cancel() {
               : 'e.g. type:ip-dst AND value:192.168.*'
           "
         />
-        <div class="form-text text-muted">
-          Standard Lucene query string syntax supported.
-        </div>
+        <LuceneQuerySyntaxHint />
         <div
           v-if="hunt.index_target === 'correlations'"
           class="alert alert-info mt-2 mb-0 small"

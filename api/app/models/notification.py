@@ -17,7 +17,7 @@ class Notification(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     type = Column(String, nullable=False)
     entity_type = Column(String(255))
-    entity_uuid = Column(UUID(as_uuid=True), unique=False, nullable=False)
+    entity_uuid = Column(UUID(as_uuid=True), unique=False, nullable=True)
     read = Column(Boolean, default=False)
     payload = Column(JSON, nullable=False, default={})
     created_at = Column(DateTime, nullable=False)
