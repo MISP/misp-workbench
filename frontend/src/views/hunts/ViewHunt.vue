@@ -197,8 +197,8 @@ async function runHunt() {
           </div>
           <div>
             <Line
-              :chart-data="sparklineData"
-              :chart-options="sparklineOptions"
+              :data="sparklineData"
+              :options="sparklineOptions"
               height="80"
             />
           </div>
