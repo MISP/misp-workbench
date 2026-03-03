@@ -10,7 +10,10 @@ import urllib.error
 import urllib.request
 
 ADMIN_URL = os.environ.get("GARAGE_ADMIN_URL", "http://garage:3903")
-ADMIN_TOKEN = os.environ.get("GARAGE_ADMIN_TOKEN", "garage-dev-admin-token")
+ADMIN_TOKEN = os.environ.get("GARAGE_ADMIN_TOKEN")
+if not ADMIN_TOKEN:
+    print("ERROR: GARAGE_ADMIN_TOKEN environment variable must be set for Garage admin operations.", file=sys.stderr)
+    sys.exit(1)
 ACCESS_KEY = os.environ["S3_ACCESS_KEY"]
 SECRET_KEY = os.environ["S3_SECRET_KEY"]
 BUCKET = os.environ["S3_BUCKET"]
