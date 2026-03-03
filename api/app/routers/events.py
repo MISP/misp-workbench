@@ -268,7 +268,6 @@ def get_event_attachments(
             status_code=status.HTTP_404_NOT_FOUND, detail="Event not found"
         )
 
-    attachments = []
     objects = objects_repository.get_objects(
         db,
         event_uuid=db_event.uuid,
