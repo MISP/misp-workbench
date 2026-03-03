@@ -1,6 +1,7 @@
 import logging
 import os
 import smtplib
+from email.message import EmailMessage
 from datetime import datetime
 
 from app.database import SQLALCHEMY_DATABASE_URL
@@ -294,24 +295,28 @@ def handle_deleted_object(object_id: int, event_id: int):
 def send_email(email: dict):
     logger.info("sending email job started")
 
-    sender = f'<{email["from"]}>'
-    receiver = f'<{email["to"]}>'
+    mail_server = os.environ.get("MAIL_SERVER")
+    mail_port = os.environ.get("MAIL_PORT")
+    if not mail_server:
+        logger.warning("MAIL_SERVER not configured, skipping email send")
+        return False
 
-    message = f"""\
-    Subject: {email["subject"]}
-    To: {receiver}
-    From: {sender}
+    msg = EmailMessage()
+    msg["Subject"] = email["subject"]
+    msg["From"] = email["from"]
+    msg["To"] = email["to"]
+    msg.set_content(email["body"])
 
-    {email["body"]}"""
-
-    with smtplib.SMTP(
-        os.environ.get("MAIL_SERVER"), os.environ.get("MAIL_PORT")
-    ) as server:
-        username = os.environ.get("MAIL_USERNAME")
-        password = os.environ.get("MAIL_PASSWORD")
-        if username and password:
-            server.login(username, password)
-        server.sendmail(sender, receiver, message)
+    try:
+        with smtplib.SMTP(mail_server, mail_port) as server:
+            username = os.environ.get("MAIL_USERNAME")
+            password = os.environ.get("MAIL_PASSWORD")
+            if username and password:
+                server.login(username, password)
+            server.send_message(msg)
+    except (smtplib.SMTPException, OSError) as e:
+        logger.error("Failed to send email: %s", e)
+        return False
 
     return True
 
