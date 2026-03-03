@@ -9,7 +9,7 @@ class NotificationBase(BaseModel):
     user_id: int
     type: str
     entity_type: str
-    entity_uuid: UUID
+    entity_uuid: Optional[UUID] = None
     read: bool = False
     payload: Optional[dict] = {}
     created_at: datetime = datetime.now()

@@ -25,7 +25,7 @@ def upgrade():
         sa.Column("user_id", sa.Integer(), nullable=False),
         sa.Column("type", sa.String(100), nullable=False),
         sa.Column("entity_type", sa.String(255)),
-        sa.Column("entity_uuid", sa.types.Uuid(as_uuid=False), nullable=False),
+        sa.Column("entity_uuid", sa.types.Uuid(as_uuid=False), nullable=True),
         sa.Column("read", sa.Boolean, default=False),
         sa.Column("payload", sa.JSON(), nullable=False, default={}),
         sa.Column(
