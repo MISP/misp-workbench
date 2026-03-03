@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 
@@ -222,35 +223,40 @@ def get_storage_diagnostics(
         }
 
     if engine_name == "s3":
+        import urllib.request
+
         s3 = settings.Storage.s3
+        admin_url = os.environ.get("GARAGE_ADMIN_URL", "http://garage:3903")
+        admin_token = os.environ.get("GARAGE_ADMIN_TOKEN", "")
         base = {"engine": "s3", "endpoint": s3.endpoint, "bucket": s3.bucket, "secure": s3.secure}
 
         try:
             from app.s3cli import S3Client
 
             S3Client.head_bucket(Bucket=s3.bucket)
+        except Exception as e:
+            logger.error("Failed to connect to S3 storage: %s", e)
+            return {**base, "connected": False, "error": str(e)}
 
-            object_count = 0
-            total_size = 0
-            paginator = S3Client.get_paginator("list_objects_v2")
-            for page in paginator.paginate(Bucket=s3.bucket):
-                for obj in page.get("Contents", []):
-                    object_count += 1
-                    total_size += obj.get("Size", 0)
+        try:
+            req = urllib.request.Request(
+                f"{admin_url}/v2/GetBucketInfo?globalAlias={s3.bucket}",
+                headers={"Authorization": f"Bearer {admin_token}"},
+            )
+            with urllib.request.urlopen(req) as resp:
+                info = json.loads(resp.read())
 
+            objects = info.get("objects", 0)
+            bytes_ = info.get("bytes", 0)
             return {
                 **base,
                 "connected": True,
-                "object_count": object_count,
-                "total_size": total_size,
-                "total_size_human": _format_bytes(total_size),
+                "object_count": objects,
+                "total_size": bytes_,
+                "total_size_human": _format_bytes(bytes_),
             }
         except Exception as e:
-            logger.error("Failed to fetch storage diagnostics: %s", e)
-            return {
-                **base,
-                "connected": False,
-                "error": str(e),
-            }
+            logger.warning("Garage admin API unavailable, skipping bucket stats: %s", e)
+            return {**base, "connected": True}
 
     return {"engine": engine_name}
