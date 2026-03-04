@@ -56,8 +56,9 @@ const followed = ref(false);
 
 const deleteObjectModal = ref(null);
 onMounted(() => {
+  if (!props.object?.uuid) return;
   deleteObjectModal.value = new Modal(
-    document.getElementById(`deleteObjectModal_${props.object.id}`),
+    document.getElementById(`deleteObjectModal_${props.object.uuid}`),
   );
   followed.value = isFollowingEntity("objects", props.object.uuid);
 });
@@ -67,7 +68,7 @@ function openDeleteObjectModal() {
 }
 
 function handleObjectDeleted() {
-  emit("object-deleted", props.object.id);
+  emit("object-deleted", props.object.uuid);
 }
 
 function followObject() {
@@ -104,7 +105,7 @@ function followObject() {
     <div class="btn-group me-2" role="group">
       <RouterLink
         v-if="actions.view"
-        :to="`/objects/${object.id}`"
+        :to="`/objects/${object.uuid}`"
         class="btn btn-outline-primary btn-sm"
         title="View Object"
       >
@@ -113,7 +114,7 @@ function followObject() {
 
       <RouterLink
         v-if="actions.update"
-        :to="`/objects/update/${object.id}`"
+        :to="`/objects/update/${object.uuid}`"
         class="btn btn-outline-primary btn-sm"
         title="Update Object"
       >
@@ -170,14 +171,17 @@ function followObject() {
 
     <ul class="dropdown-menu dropdown-menu-end">
       <li v-if="actions.view">
-        <RouterLink class="dropdown-item" :to="`/objects/${object.id}`">
+        <RouterLink class="dropdown-item" :to="`/objects/${object.uuid}`">
           <FontAwesomeIcon :icon="faEye" class="me-2" />
           View
         </RouterLink>
       </li>
 
       <li v-if="actions.update">
-        <RouterLink class="dropdown-item" :to="`/objects/update/${object.id}`">
+        <RouterLink
+          class="dropdown-item"
+          :to="`/objects/update/${object.uuid}`"
+        >
           <FontAwesomeIcon :icon="faPen" class="me-2" />
           Update
         </RouterLink>
@@ -219,10 +223,10 @@ function followObject() {
 
   <!-- MODALS -->
   <DeleteObjectModal
-    :key="object.id"
-    :id="`deleteObjectModal_${object.id}`"
+    :key="object.uuid"
+    :id="`deleteObjectModal_${object.uuid}`"
     @object-deleted="handleObjectDeleted"
     :modal="deleteObjectModal"
-    :object_id="object.id"
+    :object_id="object.uuid"
   />
 </template>

@@ -24,7 +24,11 @@ objectStore.getById(route.params.id);
 
 <template>
   <Spinner v-if="status.loading" />
-  <ViewObject v-show="!status.loading" :object="object" :status="status" />
+  <ViewObject
+    v-if="!status.loading && !status.error"
+    :object="object"
+    :status="status"
+  />
   <div v-if="status.error" class="text-danger">
     Error loading object: {{ status.error }}
   </div>
