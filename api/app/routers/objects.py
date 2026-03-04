@@ -1,5 +1,5 @@
 from uuid import UUID
-from typing import Optional
+from typing import Optional, Union
 
 from app.auth.security import get_current_active_user
 from app.db.session import get_db
@@ -38,13 +38,18 @@ def get_objects(
 
 @router.get("/objects/{object_id}", response_model=object_schemas.Object)
 def get_object_by_id(
-    object_id: int,
+    object_id: Union[int, UUID],
     db: Session = Depends(get_db),
     user: user_schemas.User = Security(
         get_current_active_user, scopes=["objects:read"]
     ),
 ):
-    db_object = objects_repository.get_object_by_id(db, object_id=object_id)
+    
+    if isinstance(object_id, int):
+        db_object = objects_repository.get_object_by_id(db, object_id=object_id)
+    else:
+        db_object = objects_repository.get_object_by_uuid(db, object_uuid=object_id)
+    
     if db_object is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Object not found"
@@ -102,7 +107,7 @@ def update_object(
 
 @router.delete("/objects/{object_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_object(
-    object_id: int,
+    object_id: Union[int, UUID],
     db: Session = Depends(get_db),
     user: user_schemas.User = Security(
         get_current_active_user, scopes=["objects:delete"]

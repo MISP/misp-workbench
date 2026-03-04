@@ -1,6 +1,7 @@
 import logging
 import time
-import uuid
+from typing import Union
+from uuid import UUID, uuid4
 
 from app.models import attribute as attribute_models
 from app.models import event as event_models
@@ -66,7 +67,7 @@ def get_objects(
     db: Session,
     event_uuid: str = None,
     deleted: bool = False,
-    template_uuid: list[uuid.UUID] = None,
+    template_uuid: list[UUID] = None,
 ) -> list[object_models.Object]:
     query = db.query(object_models.Object)
 
@@ -100,7 +101,7 @@ def get_object_by_id(db: Session, object_id: int):
     )
 
 
-def get_object_by_uuid(db: Session, object_uuid: uuid.UUID):
+def get_object_by_uuid(db: Session, object_uuid: UUID):
     return (
         db.query(object_models.Object)
         .filter(object_models.Object.uuid == object_uuid)
@@ -316,7 +317,7 @@ def update_object(
     for attribute in object.new_attributes:
         attribute.object_id = db_object.id
         attribute.event_id = db_object.event_id
-        attribute.uuid = str(uuid.uuid4())
+        attribute.uuid = str(uuid4())
         attributes_repository.create_attribute(db, attribute)
 
     # existing attribute
@@ -336,8 +337,12 @@ def update_object(
     return db_object
 
 
-def delete_object(db: Session, object_id: int) -> object_models.Object:
-    db_object = get_object_by_id(db, object_id=object_id)
+def delete_object(db: Session, object_id: Union[int, UUID]) -> object_models.Object:
+    
+    if isinstance(object_id, int):
+        db_object = get_object_by_id(db, object_id=object_id)
+    else:
+        db_object = get_object_by_uuid(db, object_uuid=object_id)
 
     if db_object is None:
         raise HTTPException(

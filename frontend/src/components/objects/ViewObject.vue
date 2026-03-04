@@ -1,5 +1,4 @@
 <script setup>
-import Sparkline from "@/components/charts/Sparkline.vue";
 import DistributionLevel from "@/components/enums/DistributionLevel.vue";
 import ObjectAttributesList from "@/components/objects/ObjectAttributesList.vue";
 import ObjectActions from "@/components/objects/ObjectActions.vue";
@@ -38,12 +37,29 @@ div.row h3 {
       ></span>
     </span>
     <div v-if="!status.loading">
-      <div class="event-title card-header border-bottom">
-        <div class="row">
-          <div class="col-10">
-            <h3>{{ object.name }} #{{ object.id }}</h3>
+      <div class="attribute-title card-header border-bottom">
+        <div class="row align-items-center">
+          <div class="col-md-8 col-sm-12">
+            <h6 class="mb-0 text-truncate">
+              <RouterLink
+                :to="`/events/${object.event_uuid}`"
+                class="text-decoration-none text-primary"
+              >
+                Event #{{ object.event_uuid }}
+              </RouterLink>
+              <span class="text-muted"> / </span>
+              <span class="text-secondary"
+                >Object
+                <span class="badge badge-pill bg-secondary">
+                  {{ object.name }}</span
+                >
+                #{{ object.uuid }}</span
+              >
+            </h6>
           </div>
-          <div class="col-2 text-end">
+          <div
+            class="col-md-4 col-sm-12 text-md-end text-sm-start mt-sm-2 mt-md-0"
+          >
             <ObjectActions
               :object="object"
               @object-deleted="handleObjectDeleted"
@@ -111,52 +127,6 @@ div.row h3 {
                   </tbody>
                 </table>
               </div>
-            </div>
-          </div>
-        </div>
-        <div class="col-xs-12 col-sm-12 col-md-12 col-lg-6 col-xl-3">
-          <div class="mt-2 card">
-            <div class="card-body">
-              <div class="d-flex justify-content-between align-items-center">
-                <div>
-                  <p class="mb-0 text-muted">activity</p>
-                  <Sparkline :data="[2, 3, 5, 7, 18, 8, 6, 15, 23, 20, 21]" />
-                </div>
-              </div>
-            </div>
-            <div class="card-footer text-muted">
-              <p class="card-text fst-italic fw-light">
-                <small class="text-muted"
-                  >last day/week/<span class="fw-bold text-decoration-underline"
-                    >month</span
-                  ></small
-                >
-              </p>
-            </div>
-          </div>
-          <div class="mt-2 card">
-            <div class="card-body">
-              <div class="d-flex justify-content-between align-items-center">
-                <div>
-                  <p class="mb-0 text-muted">sightings</p>
-                  <h2>423</h2>
-                </div>
-                <span
-                  class="badge badge-pill badge-cyan badge-red bg-danger fs-5"
-                >
-                  <font-awesome-icon icon="fa-solid fa-up-long" />
-                  <span class="font-weight-semibold ml-1">16.71%</span>
-                </span>
-              </div>
-            </div>
-            <div class="card-footer text-muted">
-              <p class="card-text fst-italic fw-light">
-                <small class="text-muted"
-                  >last day/week/<span class="fw-bold text-decoration-underline"
-                    >month</span
-                  ></small
-                >
-              </p>
             </div>
           </div>
         </div>
