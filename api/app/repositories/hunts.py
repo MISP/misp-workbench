@@ -5,6 +5,7 @@ import json
 from app.models import hunt as hunt_models
 from app.schemas import hunt as hunt_schemas
 from app.services.opensearch import get_opensearch_client
+from app.services import rulezet
 from app.repositories import notifications as notifications_repository
 from app.services.redis import get_redis_client
 from fastapi import HTTPException, status
@@ -113,7 +114,36 @@ def delete_hunt(db: Session, hunt_id: int, user_id: int):
     return {"status": "success"}
 
 
-def _run_hunt_query(db: Session, db_hunt: hunt_models.Hunt):
+def _persist_hunt_run(
+    db: Session,
+    db_hunt: hunt_models.Hunt,
+    total: int,
+    hits: list,
+    prev_total: int,
+):
+    now = datetime.now(timezone.utc)
+    db_hunt.last_run_at = now
+    db_hunt.last_match_count = total
+    db_hunt.updated_at = now
+    db.add(hunt_models.HuntRunHistory(hunt_id=db_hunt.id, run_at=now, match_count=total))
+    db.commit()
+    db.refresh(db_hunt)
+
+    redis = get_redis_client()
+    redis.set(
+        f"hunt:results:{db_hunt.id}",
+        json.dumps({"total": total, "hits": hits}),
+    )
+
+    history_key = f"hunt:history:{db_hunt.id}"
+    entry = json.dumps({"run_at": now.isoformat(), "match_count": total})
+    redis.rpush(history_key, entry)
+    redis.ltrim(history_key, -90, -1)
+
+    notifications_repository.create_hunt_notification(db, db_hunt, total, prev_total)
+
+
+def _run_opensearch_hunt(db: Session, db_hunt: hunt_models.Hunt):
     index = INDEX_MAP.get(db_hunt.index_target, "misp-attributes")
     OpenSearchClient = get_opensearch_client()
 
@@ -133,36 +163,41 @@ def _run_hunt_query(db: Session, db_hunt: hunt_models.Hunt):
 
     hits = response["hits"]["hits"]
     total = response["hits"]["total"]["value"]
-    prev_total = db_hunt.last_match_count
-
     hit_sources = [h["_source"] for h in hits]
 
-    now = datetime.now(timezone.utc)
-    db_hunt.last_run_at = now
-    db_hunt.last_match_count = total
-    db_hunt.updated_at = now
-    db.add(hunt_models.HuntRunHistory(hunt_id=db_hunt.id, run_at=now, match_count=total))
-    db.commit()
-    db.refresh(db_hunt)
-
-    redis = get_redis_client()
-    redis.set(
-        f"hunt:results:{db_hunt.id}",
-        json.dumps({"total": total, "hits": hit_sources}),
-    )
-
-    history_key = f"hunt:history:{db_hunt.id}"
-    entry = json.dumps({"run_at": now.isoformat(), "match_count": total})
-    redis.rpush(history_key, entry)
-    redis.ltrim(history_key, -90, -1)
-
-    notifications_repository.create_hunt_notification(db, db_hunt, total, prev_total)
+    _persist_hunt_run(db, db_hunt, total, hit_sources, db_hunt.last_match_count)
 
     return {
         "hunt": hunt_schemas.Hunt.model_validate(db_hunt),
         "total": total,
         "hits": hit_sources,
     }
+
+
+def _run_rulezet_hunt(db: Session, db_hunt: hunt_models.Hunt):
+    try:
+        rules = rulezet.lookup(db_hunt.query)
+        if not isinstance(rules, list):
+            rules = []
+    except Exception as e:
+        logger.error("Rulezet hunt %s failed: %s", db_hunt.id, e)
+        rules = []
+
+    total = len(rules)
+
+    _persist_hunt_run(db, db_hunt, total, rules, db_hunt.last_match_count)
+
+    return {
+        "hunt": hunt_schemas.Hunt.model_validate(db_hunt),
+        "total": total,
+        "hits": rules,
+    }
+
+
+def _run_hunt(db: Session, db_hunt: hunt_models.Hunt):
+    if db_hunt.hunt_type == "rulezet":
+        return _run_rulezet_hunt(db, db_hunt)
+    return _run_opensearch_hunt(db, db_hunt)
 
 
 def get_active_correlation_hunts(db: Session) -> list[hunt_models.Hunt]:
@@ -182,11 +217,11 @@ def execute_hunt_system(db: Session, hunt_id: int):
     db_hunt = db.query(hunt_models.Hunt).filter(hunt_models.Hunt.id == hunt_id).first()
     if not db_hunt:
         return None
-    return _run_hunt_query(db, db_hunt)
+    return _run_hunt(db, db_hunt)
 
 
 def execute_hunt(db: Session, hunt_id: int, user_id: int):
     db_hunt = get_hunt_by_id(db, hunt_id, user_id)
     if not db_hunt:
         return None
-    return _run_hunt_query(db, db_hunt)
+    return _run_hunt(db, db_hunt)
