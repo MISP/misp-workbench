@@ -220,6 +220,7 @@ def untag_event(
 @router.post(
     "/events/{event_id}/upload_attachments/",
     status_code=status.HTTP_200_OK,
+    response_model=list[object_schemas.Object],
 )
 async def upload_attachments(
     event_id: Union[int, UUID],
@@ -229,7 +230,7 @@ async def upload_attachments(
     user: user_schemas.User = Security(
         get_current_active_user, scopes=["events:update"]
     ),
-) -> list[object_schemas.Object]:
+):
     if isinstance(event_id, int):
         db_event = events_repository.get_event_by_id(db, event_id=event_id)
     else:
@@ -260,14 +261,13 @@ def get_event_attachments(
     event_uuid: str,
     db: Session = Depends(get_db),
     user: user_schemas.User = Security(get_current_active_user, scopes=["events:read"]),
-) -> Page[object_schemas.Object]:
+):
     db_event = events_repository.get_event_by_uuid(db, event_uuid=event_uuid)
     if db_event is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Event not found"
         )
 
-    attachments = []
     objects = objects_repository.get_objects(
         db,
         event_uuid=db_event.uuid,
@@ -277,13 +277,7 @@ def get_event_attachments(
         ],
     )
 
-    for file_object in objects:
-        for attribute in file_object.attributes:
-            if attribute.type == "attachment" or attribute.type == "malware-sample":
-                attachments.append(file_object)
-                break
-
-    return attachments
+    return objects
 
 
 @router.post(

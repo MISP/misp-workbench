@@ -1,6 +1,6 @@
 # misp-workbench
 
-This repository provides a modern MISP-compatible stack: a Python backend API with Celery background workers, a Vue.js frontend, and supporting services — OpenSearch for indexed attributes and correlation results, Redis for task brokering and caching/notification state, and MinIO for attachment storage — all orchestrated via Docker Compose to enable local development, feed ingestion, correlation generation, and notification processing.
+This repository provides a modern MISP-compatible stack: a Python backend API with Celery background workers, a Vue.js frontend, and supporting services — OpenSearch for indexed attributes and correlation results, Redis for task brokering and caching/notification state, and Garage/S3 for attachment storage — all orchestrated via Docker Compose to enable local development, feed ingestion, correlation generation, and notification processing.
 
 This tool is designed for security analysts who want to work with MISP IOCs (Indicators of Compromise) without the complexity of managing a full MISP instance or participating in the MISP community. It provides a streamlined, self-contained solution for ingesting, correlating, and analyzing threat intelligence data.
 
@@ -13,7 +13,7 @@ Some screenshots are available [here](docs/screenshots/).
 - **API (FastAPI)**: a FastAPI-based backend exposing REST/JSON endpoints and automatic OpenAPI documentation; async handlers and Pydantic models are used for validation, serialization, and dependency injection. The API is served (in production/dev) via an ASGI server (e.g., Uvicorn) and is the primary integration point for the frontend, feeds, and external services.
 - **OpenSearch**: used to index and search attributes, correlation results, and feed items. It provides mappings, analyzers, aggregations, and query APIs the backend relies on for fast lookups, correlation scans, and persisted feed data; configured for local dev via docker-compose.
 - **OpenSearch Dashboards**: an optional visualization and exploration UI that connects to OpenSearch for inspecting indexed data, building queries, and creating dashboards to aid debugging, analytics, and operational monitoring.
-- **Storage & attachments**: OpenSearch stores indexed attributes and correlation results; MinIO (or compatible S3) is used for attachment storage when configured.
+- **Storage & attachments**: OpenSearch stores indexed attributes and correlation results; Garage (or compatible S3) is used for attachment storage when configured.
 
 ### Quick start
 
@@ -25,6 +25,23 @@ cp .env.dev.dist .env.dev
 cp frontend/.env.dist frontend/.env
 git submodule update --remote --recursive
 docker compose -f docker-compose.yml -f docker-compose.dev.yml --env-file=".env.dev" up --build
+```
+
+#### Production setup
+
+Before starting the production stack, create the Garage config file from the template and fill in your secrets:
+
+```bash
+cp garage.toml.dist garage.toml
+# edit garage.toml: set rpc_secret (64 hex chars) and admin_token
+```
+
+Then start the stack:
+
+```bash
+cp .env.dist .env
+# edit .env: set OAUTH2_SECRET_KEY, OAUTH2_REFRESH_SECRET_KEY, GARAGE_ADMIN_TOKEN, S3_ACCESS_KEY, S3_SECRET_KEY, etc.
+docker compose --env-file=".env" up --build
 ```
 
 > **default credentials:** `admin@admin.test:admin`

@@ -30,7 +30,7 @@ pydantic-settings = "^2.2.1"
 aiohttp = "^3.13.3"
 bcrypt = "^4.2.0"
 pyjwt = "^2.9.0"
-minio = "^7.2.15"
+boto3 = "^1.35"
 celery-redbeat = "^2.3.3"
 
 [tool.poetry.dev-dependencies]

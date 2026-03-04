@@ -207,6 +207,28 @@ $ docker compose restart worker
 docker compose exec worker poetry run celery -A app.worker.tasks purge
 ``` 
 
+### Garage / s3 (storage)
+```bash
+$ docker compose exec garage /garage bucket info attachments
+2026-03-03T12:39:03.777834Z  INFO garage_net::netapp: Connected to 127.0.0.1:3901, negotiating handshake...
+2026-03-03T12:39:03.818976Z  INFO garage_net::netapp: Connection established to 4d6c2d1af395f2ed
+==== BUCKET INFORMATION ====
+Bucket:          94931a582d8647b7e3420604219d32cc0631c92655c95d7cb4770580c79e9ac3
+Created:         2026-03-03 12:32:51.537 +00:00
+
+Size:            38.8 kiB (39.8 KB)
+Objects:         1
+
+Website access:  false
+
+Global alias:    attachments
+
+==== KEYS FOR THIS BUCKET ====
+Permissions  Access key                       Local aliases
+RWO          GK000000000000000000000000  api  
+```
+
+
 ## Futher reading
 * https://fastapi.tiangolo.com/deployment/docker/#container-images
 * https://fastapi.tiangolo.com/tutorial/sql-databases/

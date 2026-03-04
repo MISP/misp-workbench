@@ -9,6 +9,7 @@ export const useDiagnosticsStore = defineStore({
     opensearch: null,
     redis: null,
     postgres: null,
+    storage: null,
     status: {
       loading: false,
       error: false,
@@ -36,6 +37,14 @@ export const useDiagnosticsStore = defineStore({
       fetchWrapper
         .get(`${baseUrl}/postgres`)
         .then((response) => (this.postgres = response))
+        .catch((error) => (this.status = { error }))
+        .finally(() => (this.status = { loading: false }));
+    },
+    async getStorage() {
+      this.status = { loading: true };
+      fetchWrapper
+        .get(`${baseUrl}/storage`)
+        .then((response) => (this.storage = response))
         .catch((error) => (this.status = { error }))
         .finally(() => (this.status = { loading: false }));
     },

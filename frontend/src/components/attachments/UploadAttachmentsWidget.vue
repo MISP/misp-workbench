@@ -11,7 +11,7 @@ import {
 import AttachmentIcon from "@/components/attachments/AttachmentIcon.vue";
 
 const props = defineProps(["event_uuid"]);
-const emit = defineEmits(["object-added", "object-deleted"]);
+const emit = defineEmits(["object-created", "object-deleted"]);
 
 const attachmentsStore = useAttachmentsStore();
 const { attachments, status } = storeToRefs(attachmentsStore);
@@ -71,7 +71,7 @@ const uploadFiles = () => {
       files.value = [];
       status.value = { uploading: false };
       response.forEach((object) => {
-        emit("object-added", object);
+        emit("object-created", object);
       });
       status.value = { uploading: false };
     })

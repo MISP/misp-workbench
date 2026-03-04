@@ -38,31 +38,31 @@ class ModuleSettings(BaseModel):
     port: int = int(os.environ["MODULES_PORT"]) or 6666
 
 
-class MinioSettings(BaseModel):
-    host: str = (
-        os.environ["MINIO_HOST"] if os.environ["STORAGE_ENGINE"] == "minio" else ""
+class S3Settings(BaseModel):
+    endpoint: str = (
+        os.environ["S3_ENDPOINT"] if os.environ["STORAGE_ENGINE"] == "s3" else ""
     )
     access_key: str = (
-        os.environ["MINIO_ROOT_USER"] if os.environ["STORAGE_ENGINE"] == "minio" else ""
+        os.environ["S3_ACCESS_KEY"] if os.environ["STORAGE_ENGINE"] == "s3" else ""
     )
     secret_key: str = (
-        os.environ["MINIO_ROOT_PASSWORD"]
-        if os.environ["STORAGE_ENGINE"] == "minio"
+        os.environ["S3_SECRET_KEY"]
+        if os.environ["STORAGE_ENGINE"] == "s3"
         else ""
     )
     bucket: str = (
-        os.environ["MINIO_BUCKET"] if os.environ["STORAGE_ENGINE"] == "minio" else ""
+        os.environ["S3_BUCKET"] if os.environ["STORAGE_ENGINE"] == "s3" else ""
     )
     secure: bool = (
-        os.environ["MINIO_SECURE"] == "true"
-        if os.environ["STORAGE_ENGINE"] == "minio"
-        else ""
+        os.environ["S3_SECURE"] == "true"
+        if os.environ["STORAGE_ENGINE"] == "s3"
+        else False
     )
 
 
 class StorageSettings(BaseModel):
     engine: str = os.environ["STORAGE_ENGINE"] or "local"
-    minio: MinioSettings = MinioSettings()
+    s3: S3Settings = S3Settings()
 
 class RedisSettings(BaseModel):
     host: str = os.environ["REDIS_HOSTNAME"] or "localhost"

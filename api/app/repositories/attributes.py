@@ -193,7 +193,7 @@ def create_attribute_from_pulled_attribute(
     if pulled_attribute.data is not None:
         # store file
         attachments_repository.store_attachment(
-            pulled_attribute.uuid, pulled_attribute.data.getvalue()
+            str(pulled_attribute.uuid), pulled_attribute.data.getvalue()
         )
 
     # TODO: process sigthings
@@ -255,7 +255,7 @@ def update_attribute_from_pulled_attribute(
     if pulled_attribute.data is not None:
         # store file
         attachments_repository.store_attachment(
-            pulled_attribute.uuid, pulled_attribute.data.getvalue()
+            str(pulled_attribute.uuid), pulled_attribute.data.getvalue()
         )
 
     capture_attribute_tags(
