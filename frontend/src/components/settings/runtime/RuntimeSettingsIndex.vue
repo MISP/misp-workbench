@@ -9,8 +9,8 @@ import {
   faCode,
   faSlidersH,
   faTrash,
-  faPlus,
 } from "@fortawesome/free-solid-svg-icons";
+import AttributeTypeSelect from "@/components/enums/AttributeTypeSelect.vue";
 
 const toastsStore = useToastsStore();
 const runtimeSettingsStore = useRuntimeSettingsStore();
@@ -86,15 +86,13 @@ async function saveFormNamespace(namespace) {
 
 // Correlations: CIDR attribute types
 const newCidrType = ref("");
-function addCidrType() {
+function addCidrType(type) {
+  if (!type) return;
   const types = formValues.correlations?.possibleCdirAttributeTypes || [];
-  if (newCidrType.value && !types.includes(newCidrType.value)) {
-    formValues.correlations.possibleCdirAttributeTypes = [
-      ...types,
-      newCidrType.value,
-    ];
-    newCidrType.value = "";
+  if (!types.includes(type)) {
+    formValues.correlations.possibleCdirAttributeTypes = [...types, type];
   }
+  newCidrType.value = "";
 }
 function removeCidrType(type) {
   formValues.correlations.possibleCdirAttributeTypes = (
@@ -325,22 +323,11 @@ const KNOWN_NAMESPACES = ["correlations", "notifications"];
                             </button>
                           </li>
                         </ul>
-                        <div class="input-group input-group-sm">
-                          <input
-                            type="text"
-                            class="form-control"
-                            placeholder="Add attribute type…"
-                            v-model="newCidrType"
-                            @keyup.enter="addCidrType"
-                          />
-                          <button
-                            class="btn btn-outline-secondary"
-                            type="button"
-                            @click="addCidrType"
-                          >
-                            <FontAwesomeIcon :icon="faPlus" />
-                          </button>
-                        </div>
+                        <AttributeTypeSelect
+                          name="newCidrType"
+                          :selected="newCidrType"
+                          @attribute-type-updated="addCidrType"
+                        />
                       </div>
                     </div>
 
