@@ -16,6 +16,7 @@ const form = reactive({
   name: "",
   description: "",
   query: "",
+  hunt_type: "opensearch",
   index_target: "attributes",
   status: "active",
 });
@@ -69,39 +70,58 @@ function cancel() {
       </div>
 
       <div class="mb-3">
-        <label class="form-label" for="hunt-target">Search index</label>
-        <select
-          id="hunt-target"
-          class="form-select"
-          v-model="form.index_target"
-        >
-          <option value="attributes">Attributes</option>
-          <option value="events">Events</option>
-          <option value="correlations">Correlations</option>
-        </select>
+        <label class="form-label">Hunt Type</label>
+        <div>
+          <span class="badge bg-secondary">{{ form.hunt_type }}</span>
+        </div>
       </div>
 
-      <div class="mb-3">
-        <label class="form-label" for="hunt-query">Lucene Query</label>
-        <textarea
-          id="hunt-query"
-          class="form-control font-monospace"
-          rows="4"
-          v-model="form.query"
-        />
-        <LuceneQuerySyntaxHint />
-        <div
-          v-if="form.index_target === 'correlations'"
-          class="alert alert-info mt-2 mb-0 small"
-        >
-          <strong>Correlation index fields:</strong>
-          <code>target_attribute_value</code>,
-          <code>target_attribute_type</code>, <code>source_event_uuid</code>,
-          <code>target_event_uuid</code>, <code>source_attribute_uuid</code>,
-          <code>target_attribute_uuid</code>, <code>match_type</code> (term |
-          prefix | fuzzy | cidr),
-          <code>score</code>
+      <template v-if="form.hunt_type === 'opensearch'">
+        <div class="mb-3">
+          <label class="form-label" for="hunt-target">Search index</label>
+          <select
+            id="hunt-target"
+            class="form-select"
+            v-model="form.index_target"
+          >
+            <option value="attributes">Attributes</option>
+            <option value="events">Events</option>
+            <option value="correlations">Correlations</option>
+          </select>
         </div>
+
+        <div class="mb-3">
+          <label class="form-label" for="hunt-query">Lucene Query</label>
+          <textarea
+            id="hunt-query"
+            class="form-control font-monospace"
+            rows="4"
+            v-model="form.query"
+          />
+          <LuceneQuerySyntaxHint />
+          <div
+            v-if="form.index_target === 'correlations'"
+            class="alert alert-info mt-2 mb-0 small"
+          >
+            <strong>Correlation index fields:</strong>
+            <code>target_attribute_value</code>,
+            <code>target_attribute_type</code>, <code>source_event_uuid</code>,
+            <code>target_event_uuid</code>, <code>source_attribute_uuid</code>,
+            <code>target_attribute_uuid</code>, <code>match_type</code> (term |
+            prefix | fuzzy | cidr),
+            <code>score</code>
+          </div>
+        </div>
+      </template>
+
+      <div v-else class="mb-3">
+        <label class="form-label" for="hunt-cve">CVE ID</label>
+        <input
+          id="hunt-cve"
+          class="form-control font-monospace"
+          v-model="form.query"
+          placeholder="CVE-2024-1234"
+        />
       </div>
 
       <div class="mb-4">

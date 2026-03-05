@@ -7,7 +7,8 @@ class HuntBase(BaseModel):
     name: str
     description: Optional[str] = None
     query: str
-    index_target: Literal["attributes", "events", "correlations"] = "attributes"
+    hunt_type: Literal["opensearch", "rulezet"] = "opensearch"
+    index_target: Optional[Literal["attributes", "events", "correlations"]] = "attributes"
     status: Literal["active", "paused"] = "active"
 
 
@@ -19,6 +20,7 @@ class HuntUpdate(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
     query: Optional[str] = None
+    hunt_type: Optional[Literal["opensearch", "rulezet"]] = None
     index_target: Optional[Literal["attributes", "events", "correlations"]] = None
     status: Optional[Literal["active", "paused"]] = None
 

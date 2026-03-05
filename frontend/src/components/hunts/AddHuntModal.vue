@@ -20,6 +20,7 @@ const hunt = reactive({
   name: "",
   description: "",
   query: props.initialQuery,
+  hunt_type: "opensearch",
   index_target: props.initialIndexTarget,
   status: "active",
 });
@@ -32,6 +33,7 @@ function reset() {
   hunt.name = "";
   hunt.description = "";
   hunt.query = props.initialQuery;
+  hunt.hunt_type = "opensearch";
   hunt.index_target = props.initialIndexTarget;
   hunt.status = "active";
   apiError.value = null;
@@ -84,9 +86,39 @@ function close() {
 
         <div class="card-body">
           <p class="text-muted small mb-3">
-            A hunt runs a Lucene query against your indexed attributes or
-            events, tracking how many matches are found each time.
+            A hunt periodically checks for new matches and notifies you when the
+            count changes.
           </p>
+
+          <div class="mb-3">
+            <label class="form-label">Hunt Type</label>
+            <div class="d-flex gap-3">
+              <div class="form-check">
+                <input
+                  class="form-check-input"
+                  type="radio"
+                  id="modal-type-opensearch"
+                  value="opensearch"
+                  v-model="hunt.hunt_type"
+                />
+                <label class="form-check-label" for="modal-type-opensearch"
+                  >OpenSearch query</label
+                >
+              </div>
+              <div class="form-check">
+                <input
+                  class="form-check-input"
+                  type="radio"
+                  id="modal-type-rulezet"
+                  value="rulezet"
+                  v-model="hunt.hunt_type"
+                />
+                <label class="form-check-label" for="modal-type-rulezet"
+                  >Rulezet Vuln check</label
+                >
+              </div>
+            </div>
+          </div>
 
           <div class="mb-3">
             <label class="form-label" for="modal-hunt-name">Name</label>
@@ -94,7 +126,11 @@ function close() {
               id="modal-hunt-name"
               class="form-control"
               v-model="hunt.name"
-              placeholder="e.g. Suspicious IPs"
+              :placeholder="
+                hunt.hunt_type === 'opensearch'
+                  ? 'e.g. Suspicious IPs'
+                  : 'e.g. SharePoint RCE CVEs'
+              "
               autofocus
             />
           </div>
@@ -112,50 +148,64 @@ function close() {
             />
           </div>
 
-          <div class="mb-3">
-            <label class="form-label" for="modal-hunt-target"
-              >Search index</label
-            >
-            <select
-              id="modal-hunt-target"
-              class="form-select"
-              v-model="hunt.index_target"
-            >
-              <option value="attributes">Attributes</option>
-              <option value="events">Events</option>
-              <option value="correlations">Correlations</option>
-            </select>
-          </div>
+          <template v-if="hunt.hunt_type === 'opensearch'">
+            <div class="mb-3">
+              <label class="form-label" for="modal-hunt-target"
+                >Search index</label
+              >
+              <select
+                id="modal-hunt-target"
+                class="form-select"
+                v-model="hunt.index_target"
+              >
+                <option value="attributes">Attributes</option>
+                <option value="events">Events</option>
+                <option value="correlations">Correlations</option>
+              </select>
+            </div>
 
-          <div class="mb-3">
-            <label class="form-label" for="modal-hunt-query"
-              >Lucene Query</label
-            >
-            <textarea
-              id="modal-hunt-query"
-              class="form-control font-monospace"
-              rows="3"
-              v-model="hunt.query"
-              :placeholder="
-                hunt.index_target === 'correlations'
-                  ? 'e.g. target_attribute_value:192.168.1.1'
-                  : 'e.g. type:ip-dst AND value:192.168.*'
-              "
-            />
-            <div class="form-text text-muted d-flex gap-3">
-              <div>
-                <LuceneQuerySyntaxHint />
-              </div>
-              <div class="ms-auto">
-                <AttributesPropertiesModal
-                  v-if="hunt.index_target === 'attributes'"
-                />
-                <EventsPropertiesModal v-if="hunt.index_target === 'events'" />
-                <CorrelationPropertiesModal
-                  v-if="hunt.index_target === 'correlations'"
-                />
+            <div class="mb-3">
+              <label class="form-label" for="modal-hunt-query"
+                >Lucene Query</label
+              >
+              <textarea
+                id="modal-hunt-query"
+                class="form-control font-monospace"
+                rows="3"
+                v-model="hunt.query"
+                :placeholder="
+                  hunt.index_target === 'correlations'
+                    ? 'e.g. target_attribute_value:192.168.1.1'
+                    : 'e.g. type:ip-dst AND value:192.168.*'
+                "
+              />
+              <div class="form-text text-muted d-flex gap-3">
+                <div>
+                  <LuceneQuerySyntaxHint />
+                </div>
+                <div class="ms-auto">
+                  <AttributesPropertiesModal
+                    v-if="hunt.index_target === 'attributes'"
+                  />
+                  <EventsPropertiesModal
+                    v-if="hunt.index_target === 'events'"
+                  />
+                  <CorrelationPropertiesModal
+                    v-if="hunt.index_target === 'correlations'"
+                  />
+                </div>
               </div>
             </div>
+          </template>
+
+          <div v-else class="mb-3">
+            <label class="form-label" for="modal-hunt-cve">Vuln ID</label>
+            <input
+              id="modal-hunt-cve"
+              class="form-control font-monospace"
+              v-model="hunt.query"
+              placeholder="e.g. CVE-2024-1234"
+            />
           </div>
 
           <div class="mb-2">
