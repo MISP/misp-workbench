@@ -19,3 +19,7 @@ class NotificationBase(BaseModel):
 class Notification(NotificationBase):
     id: int
     model_config = ConfigDict(from_attributes=True)
+
+
+class StatusResponse(BaseModel):
+    status: str
