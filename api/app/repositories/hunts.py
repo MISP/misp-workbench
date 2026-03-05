@@ -23,10 +23,10 @@ INDEX_MAP = {
 }
 
 
-def get_hunts(db: Session, user_id: int, params: dict = {}):
+def get_hunts(db: Session, user_id: int, params: hunt_schemas.HuntQueryParams = None):
     query = select(hunt_models.Hunt).where(hunt_models.Hunt.user_id == user_id)
-    if params.get("filter"):
-        query = query.where(hunt_models.Hunt.name.ilike(f"%{params['filter']}%"))
+    if params and params.filter:
+        query = query.where(hunt_models.Hunt.name.ilike(f"%{params.filter}%"))
     query = query.order_by(hunt_models.Hunt.created_at.desc())
     return paginate(db, query)
 
