@@ -1,4 +1,5 @@
 from app.services.opensearch import get_opensearch_client
+from app.schemas import correlation as correlation_schemas
 from fastapi import HTTPException, status
 from opensearchpy import helpers as opensearch_helpers
 from app.services.runtime_settings import RuntimeSettings
@@ -23,7 +24,7 @@ BULK_BUFFER = []
 BULK_SIZE = 100
 
 
-def get_correlations(params: dict, page: int = 0, from_value: int = 0, size: int = 100):
+def get_correlations(params: correlation_schemas.CorrelationQueryParams, page: int = 0, from_value: int = 0, size: int = 100):
     OpenSearchClient = get_opensearch_client()
 
     query = {
@@ -36,25 +37,25 @@ def get_correlations(params: dict, page: int = 0, from_value: int = 0, size: int
         },
     }
 
-    if params.get("source_attribute_uuid"):
+    if params.source_attribute_uuid:
         query["query"]["bool"]["must"].append(
-            {"term": {"source_attribute_uuid.keyword": params["source_attribute_uuid"]}}
+            {"term": {"source_attribute_uuid.keyword": params.source_attribute_uuid}}
         )
-    if params.get("source_event_uuid"):
+    if params.source_event_uuid:
         query["query"]["bool"]["must"].append(
-            {"term": {"source_event_uuid.keyword": params["source_event_uuid"]}}
+            {"term": {"source_event_uuid.keyword": params.source_event_uuid}}
         )
-    if params.get("target_attribute_uuid"):
+    if params.target_attribute_uuid:
         query["query"]["bool"]["must"].append(
-            {"term": {"target_attribute_uuid.keyword": params["target_attribute_uuid"]}}
+            {"term": {"target_attribute_uuid.keyword": params.target_attribute_uuid}}
         )
-    if params.get("target_event_uuid"):
+    if params.target_event_uuid:
         query["query"]["bool"]["must"].append(
-            {"term": {"target_event_uuid.keyword": params["target_event_uuid"]}}
+            {"term": {"target_event_uuid.keyword": params.target_event_uuid}}
         )
-    if params.get("match_type"):
+    if params.match_type:
         query["query"]["bool"]["must"].append(
-            {"term": {"match_type.keyword": params["match_type"]}}
+            {"term": {"match_type.keyword": params.match_type}}
         )
     if not query["query"]["bool"]["must"]:
         query = {"query": {"match_all": {}}, "from": from_value, "size": size}
