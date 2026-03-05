@@ -9,6 +9,7 @@ from app.models import attribute as attribute_models
 from app.models import event as event_models
 from app.models import feed as feed_models
 from app.models import galaxy as galaxy_models
+from app.models import hunt as hunt_models
 from app.models import module as module_models
 from app.models import object as object_models
 from app.models import object_reference as object_reference_models
@@ -79,6 +80,8 @@ class ApiTester:
         db.query(sharing_groups_models.SharingGroupServer).delete(synchronize_session=False)
         db.query(sharing_groups_models.SharingGroup).delete(synchronize_session=False)
         db.query(server_models.Server).delete(synchronize_session=False)
+        db.query(hunt_models.HuntRunHistory).delete(synchronize_session=False)
+        db.query(hunt_models.Hunt).delete(synchronize_session=False)
         db.query(notification_models.Notification).delete(synchronize_session=False)
         db.query(user_models.User).delete(synchronize_session=False)
         db.query(module_models.ModuleSettings).delete(synchronize_session=False)
@@ -512,3 +515,38 @@ class ApiTester:
         db.refresh(notification_1)
 
         yield notification_1
+
+    @pytest.fixture(scope="class")
+    def hunt_1(self, db: Session, api_tester_user: user_models.User):
+        from datetime import datetime, timezone
+
+        hunt_1 = hunt_models.Hunt(
+            user_id=api_tester_user.id,
+            name="Test Hunt",
+            description="A test hunt description",
+            query="ip:1.2.3.4",
+            hunt_type="opensearch",
+            index_target="attributes",
+            status="active",
+            created_at=datetime(2024, 1, 1, 0, 0, 0, tzinfo=timezone.utc),
+        )
+        db.add(hunt_1)
+        db.commit()
+        db.refresh(hunt_1)
+
+        yield hunt_1
+
+    @pytest.fixture(scope="class")
+    def hunt_run_history_1(self, db: Session, hunt_1: hunt_models.Hunt):
+        from datetime import datetime, timezone
+
+        entry = hunt_models.HuntRunHistory(
+            hunt_id=hunt_1.id,
+            run_at=datetime(2024, 1, 1, 12, 0, 0, tzinfo=timezone.utc),
+            match_count=5,
+        )
+        db.add(entry)
+        db.commit()
+        db.refresh(entry)
+
+        yield entry

@@ -1,6 +1,10 @@
-from typing import Optional, Literal
+from typing import Any, Optional, Literal
 from datetime import datetime
 from pydantic import BaseModel, ConfigDict
+
+
+class HuntQueryParams(BaseModel):
+    filter: Optional[str] = None
 
 
 class HuntBase(BaseModel):
@@ -39,3 +43,14 @@ class HuntRunHistoryEntry(BaseModel):
     run_at: datetime
     match_count: int
     model_config = ConfigDict(from_attributes=True)
+
+
+class HuntResults(BaseModel):
+    total: int
+    hits: list[dict[str, Any]]
+
+
+class HuntRunResult(BaseModel):
+    hunt: Hunt
+    total: int
+    hits: list[dict[str, Any]]
