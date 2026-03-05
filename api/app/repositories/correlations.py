@@ -158,9 +158,9 @@ def build_cidr_query(uuid, event_uuid, doc):
     ):
         cidr = doc["_source"]["value"]
     elif doc["_source"]["type"] in ["ip-src|port", "ip-dst|port"]:
-        cidr = doc["_source"]["value"].split("/")[0]
+        cidr = doc["_source"]["value"].split("|")[0]
     elif doc["_source"]["type"] == "domain|ip":
-        cidr = doc["_source"]["value"].split("/")[1]
+        cidr = doc["_source"]["value"].split("|")[1]
     else:
         raise ValueError(f"Unsupported CIDR type: {doc['_source']['type']}")
 
