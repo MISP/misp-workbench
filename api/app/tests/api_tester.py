@@ -16,6 +16,7 @@ from app.models import organisation as organisation_models
 from app.models import server as server_models
 from app.models import sharing_groups as sharing_groups_models
 from app.models import tag as tag_models
+from app.models import notification as notification_models
 from app.models import taxonomy as taxonomy_models
 from app.models import user as user_models
 from app.settings import get_settings
@@ -78,6 +79,7 @@ class ApiTester:
         db.query(sharing_groups_models.SharingGroupServer).delete(synchronize_session=False)
         db.query(sharing_groups_models.SharingGroup).delete(synchronize_session=False)
         db.query(server_models.Server).delete(synchronize_session=False)
+        db.query(notification_models.Notification).delete(synchronize_session=False)
         db.query(user_models.User).delete(synchronize_session=False)
         db.query(module_models.ModuleSettings).delete(synchronize_session=False)
         db.query(taxonomy_models.TaxonomyEntry).delete(synchronize_session=False)
@@ -491,3 +493,22 @@ class ApiTester:
         db.refresh(threat_actor_galaxy_cluster_apt29)
 
         yield threat_actor_galaxy_cluster_apt29
+
+    @pytest.fixture(scope="class")
+    def notification_1(self, db: Session, api_tester_user: user_models.User):
+        from datetime import datetime
+
+        notification_1 = notification_models.Notification(
+            user_id=api_tester_user.id,
+            type="event.created",
+            entity_type="event",
+            entity_uuid="ba4b11b6-dcce-4315-8fd0-67b69160ea76",
+            read=False,
+            payload={"event_name": "Test Event", "event_uuid": "ba4b11b6-dcce-4315-8fd0-67b69160ea76"},
+            created_at=datetime(2024, 1, 1, 0, 0, 0),
+        )
+        db.add(notification_1)
+        db.commit()
+        db.refresh(notification_1)
+
+        yield notification_1
