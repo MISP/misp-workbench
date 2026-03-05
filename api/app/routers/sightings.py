@@ -54,9 +54,9 @@ def create_sightings(
     ),
 ) -> sighting_schemas.SightingCreateResponse:
     if isinstance(sightings, list):
-        payload = [s.model_dump() for s in sightings]
+        payload = [s.model_dump(exclude_none=True) for s in sightings]
     else:
-        payload = sightings.model_dump()
+        payload = sightings.model_dump(exclude_none=True)
     return sightings_repository.create_sightings(user, payload)
 
 
