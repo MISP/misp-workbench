@@ -67,5 +67,13 @@ services:
     networks:
       - backend
 
+  garage:
+    volumes:
+      - garage-data:/var/lib/garage/data
+      - garage-meta:/var/lib/garage/meta
+      - ./garage.test.toml:/etc/garage.toml:ro
+    networks:
+      - backend
+
 networks:
   backend:
