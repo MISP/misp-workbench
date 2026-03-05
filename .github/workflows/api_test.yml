@@ -110,7 +110,7 @@ jobs:
       - name: Run tests
         working-directory: api
         run: |
-          poetry run pytest
+          poetry run pytest --cov=app --cov-report=xml
         env:
           POSTGRES_HOSTNAME: localhost
           POSTGRES_PORT: 5432
@@ -137,3 +137,8 @@ jobs:
           MODULES_PORT: 6666
           STORAGE_ENGINE: local
           FLOWER_BASIC_AUTH: flower:flower
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./api/coverage.xml
+          token: ${{ secrets.CODECOV_TOKEN }}
