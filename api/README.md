@@ -93,6 +93,25 @@ app/test_main.py .                                                              
 ============================================================================================ 1 passed in 0.33s ============================================================================================
 ```
 
+### Coverage
+
+```console
+$ docker compose exec api poetry run pytest --cov=app --cov-report=html
+========================================================= test session starts ==========================================================
+platform linux -- Python 3.11.15, pytest-8.4.2, pluggy-1.6.0
+rootdir: /code
+configfile: pyproject.toml
+plugins: cov-6.3.0, anyio-4.12.1
+collected 92 items                                                                                                                     
+
+app/tests/api/test_attributes.py .........                                                                                       [  9%]
+[...]
+============================================================ tests coverage ============================================================
+___________________________________________ coverage: platform linux, python 3.11.15-final-0 ___________________________________________
+
+Coverage HTML written to dir htmlcov
+=================================================== 92 passed, 2 warnings in 15.39s ====================================================
+```
 
 ### Debugging tests
 1. Run:
