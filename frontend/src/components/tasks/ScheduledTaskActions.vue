@@ -8,7 +8,7 @@ import {
   faCog,
   faTrash,
   faPlay,
-  faStop,
+  faPause,
 } from "@fortawesome/free-solid-svg-icons";
 import { useAuthStore, useTasksStore } from "@/stores";
 import DeleteScheduledTaskModal from "@/components/tasks/DeleteScheduledTaskModal.vue";
@@ -102,7 +102,7 @@ function handleScheduledTaskUpdated() {
         type="button"
         class="btn btn-sm"
         :class="
-          scheduled_task.enabled ? 'btn-outline-danger' : 'btn-outline-success'
+          scheduled_task.enabled ? 'btn-outline-warning' : 'btn-outline-success'
         "
         :title="
           scheduled_task.enabled
@@ -111,7 +111,7 @@ function handleScheduledTaskUpdated() {
         "
         @click.stop="toggleEnable(scheduled_task.id)"
       >
-        <FontAwesomeIcon :icon="scheduled_task.enabled ? faStop : faPlay" />
+        <FontAwesomeIcon :icon="scheduled_task.enabled ? faPause : faPlay" />
       </button>
       <button
         v-if="actions.update"

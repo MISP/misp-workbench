@@ -160,6 +160,10 @@ async function runHunt() {
       <div class="card-body">
         <div class="row g-3">
           <div class="col-md-4">
+            <div class="text-muted small mb-1">Type</div>
+            <span class="badge bg-primary">{{ hunt.hunt_type }}</span>
+          </div>
+          <div v-if="hunt.hunt_type === 'opensearch'" class="col-md-4">
             <div class="text-muted small mb-1">Search index</div>
             <span class="badge bg-secondary">{{ hunt.index_target }}</span>
           </div>
@@ -185,7 +189,9 @@ async function runHunt() {
         </div>
 
         <div class="mt-3">
-          <div class="text-muted small mb-1">Query</div>
+          <div class="text-muted small mb-1">
+            {{ hunt.hunt_type === "rulezet" ? "CVE ID" : "Query" }}
+          </div>
           <code class="d-block p-2 bg-body-secondary rounded">{{
             hunt.query
           }}</code>
@@ -293,9 +299,15 @@ async function runHunt() {
             <div class="d-flex gap-4">
               <div>
                 <span class="fs-3 fw-bold">{{ displayResult.total }}</span>
-                <div class="text-muted small">total matches</div>
+                <div class="text-muted small">
+                  {{
+                    hunt.hunt_type === "rulezet"
+                      ? "rules found"
+                      : "total matches"
+                  }}
+                </div>
               </div>
-              <div>
+              <div v-if="hunt.hunt_type !== 'rulezet'">
                 <span class="fs-3 fw-bold text-primary">{{
                   displayResult.hits.length
                 }}</span>
@@ -310,7 +322,9 @@ async function runHunt() {
           <!-- Attribute results -->
           <div
             v-if="
-              hunt.index_target === 'attributes' && displayResult.hits.length
+              hunt.hunt_type !== 'rulezet' &&
+              hunt.index_target === 'attributes' &&
+              displayResult.hits.length
             "
             class="table-responsive"
           >
@@ -385,6 +399,66 @@ async function runHunt() {
                   </td>
                   <td class="text-muted small">{{ hit.orgc_id }}</td>
                   <td class="text-muted small">{{ hit.date }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Rulezet results -->
+          <div
+            v-else-if="
+              hunt.hunt_type === 'rulezet' && displayResult.hits.length
+            "
+            class="table-responsive"
+          >
+            <table class="table table-sm table-striped align-middle">
+              <thead>
+                <tr>
+                  <th>format</th>
+                  <th>title</th>
+                  <th>author</th>
+                  <th>date</th>
+                  <th>source</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="(rule, i) in displayResult.hits" :key="i">
+                  <td>
+                    <span class="badge bg-secondary font-monospace">{{
+                      rule.format ?? "—"
+                    }}</span>
+                  </td>
+                  <td style="max-width: 320px">
+                    <a
+                      v-if="rule.detail_url"
+                      :href="rule.detail_url"
+                      target="_blank"
+                      rel="noopener"
+                      class="text-decoration-none"
+                    >
+                      {{ rule.title ?? "—" }}
+                    </a>
+                    <span v-else>{{ rule.title ?? "—" }}</span>
+                  </td>
+                  <td class="text-muted small text-nowrap">
+                    {{ rule.author ?? "—" }}
+                  </td>
+                  <td class="text-muted small text-nowrap">
+                    {{ rule.creation_date ?? "—" }}
+                  </td>
+                  <td class="small">
+                    <a
+                      v-if="rule.source"
+                      :href="rule.source"
+                      target="_blank"
+                      rel="noopener"
+                      class="text-decoration-none text-truncate d-block"
+                      style="max-width: 200px"
+                    >
+                      {{ rule.source }}
+                    </a>
+                    <span v-else class="text-muted">—</span>
+                  </td>
                 </tr>
               </tbody>
             </table>

@@ -5,7 +5,6 @@ RulezetClient = requests.Session()
 
 def lookup(vuln_id: str) -> dict:
 
-    vuln_id = vuln_id.upper()
     detection_data = RulezetClient.get(
         f"https://rulezet.org/api/rule/public/search_rules_by_cve?cve_ids={vuln_id.lower()}"
     ).json()
@@ -14,9 +13,8 @@ def lookup(vuln_id: str) -> dict:
         return {"error": "Vulnerability not found"}
 
     if (
-        detection_data["rules"] != {}
-        and detection_data["rules"][vuln_id.lower()] is not None
+        "results" in detection_data
     ):
-        return detection_data["rules"][vuln_id.lower()]
+        return detection_data["results"]
 
     return []

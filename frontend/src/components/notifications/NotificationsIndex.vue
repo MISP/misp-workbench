@@ -73,6 +73,9 @@ function handleNotificationClick(notification) {
   if (notification.type.startsWith("attribute")) {
     router.push(`/attributes/${notification.entity_uuid}`);
   }
+  if (notification.type.startsWith("hunt")) {
+    router.push(`/hunts/${notification.payload.hunt_id}`);
+  }
 }
 
 function markAllAsRead() {

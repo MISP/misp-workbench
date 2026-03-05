@@ -391,7 +391,7 @@ def get_vulnerability_attributes(
             )
         query = query.where(attribute_models.Attribute.event_id == db_event.id)
 
-    results = db.execute(query).scalars().all()
+    results = db.execute(query).scalars().unique().all()
 
     return results
 
