@@ -1,5 +1,7 @@
 # misp-workbench
 
+[![codecov](https://codecov.io/gh/MISP/misp-workbench/branch/main/graph/badge.svg)](https://codecov.io/gh/MISP/misp-workbench)
+
 This repository provides a modern MISP-compatible stack: a Python backend API with Celery background workers, a Vue.js frontend, and supporting services — OpenSearch for indexed attributes and correlation results, Redis for task brokering and caching/notification state, and Garage/S3 for attachment storage — all orchestrated via Docker Compose to enable local development, feed ingestion, correlation generation, and notification processing.
 
 This tool is designed for security analysts who want to work with MISP IOCs (Indicators of Compromise) without the complexity of managing a full MISP instance or participating in the MISP community. It provides a streamlined, self-contained solution for ingesting, correlating, and analyzing threat intelligence data.

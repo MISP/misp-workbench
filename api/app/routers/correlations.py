@@ -2,6 +2,7 @@ import logging
 from app.auth.security import get_current_active_user
 from app.schemas import user as user_schemas
 from app.schemas import task as task_schemas
+from app.schemas import correlation as correlation_schemas
 from app.repositories import correlations as correlations_repository
 from app.worker import tasks
 from fastapi import APIRouter, Security, Query, Depends, status
@@ -18,25 +19,25 @@ async def get_correlations_parameters(
     target_attribute_uuid: Optional[str] = None,
     target_event_uuid: Optional[str] = None,
     match_type: Optional[str] = None,
-):
-    return {
-        "source_attribute_uuid": source_attribute_uuid,
-        "source_event_uuid": source_event_uuid,
-        "target_attribute_uuid": target_attribute_uuid,
-        "target_event_uuid": target_event_uuid,
-        "match_type": match_type,
-    }
+) -> correlation_schemas.CorrelationQueryParams:
+    return correlation_schemas.CorrelationQueryParams(
+        source_attribute_uuid=source_attribute_uuid,
+        source_event_uuid=source_event_uuid,
+        target_attribute_uuid=target_attribute_uuid,
+        target_event_uuid=target_event_uuid,
+        match_type=match_type,
+    )
 
 
-@router.get("/correlations/")
+@router.get("/correlations/", response_model=correlation_schemas.CorrelationListResponse)
 def get_correlations(
-    params: dict = Depends(get_correlations_parameters),
+    params: correlation_schemas.CorrelationQueryParams = Depends(get_correlations_parameters),
     page: int = Query(1, ge=1),
     size: int = Query(10, ge=1, le=100),
     user: user_schemas.User = Security(
         get_current_active_user, scopes=["correlations:read"]
     ),
-):
+) -> correlation_schemas.CorrelationListResponse:
     from_value = (page - 1) * size
 
     return correlations_repository.get_correlations(
@@ -44,14 +45,16 @@ def get_correlations(
     )
 
 
-@router.get("/correlations/events/{source_event_uuid}/top")
+@router.get(
+    "/correlations/events/{source_event_uuid}/top",
+    response_model=list[correlation_schemas.CorrelationEventBucket],
+)
 def get_top_correlated_events(
     source_event_uuid: str,
     user: user_schemas.User = Security(
         get_current_active_user, scopes=["correlations:read"]
     ),
-):
-
+) -> list[correlation_schemas.CorrelationEventBucket]:
     return correlations_repository.get_top_correlated_events(
         source_event_uuid=source_event_uuid
     )
@@ -66,7 +69,7 @@ def run_correlations(
     user: user_schemas.User = Security(
         get_current_active_user, scopes=["correlations:create"]
     ),
-):
+) -> task_schemas.Task:
     task = tasks.generate_correlations.delay()
     logger.info("Enqueued generate_correlations task with ID: %s", task.id)
 
@@ -77,20 +80,25 @@ def run_correlations(
     )
 
 
-@router.get("/correlations/stats")
+@router.get(
+    "/correlations/stats",
+    response_model=correlation_schemas.CorrelationStatsResponse,
+)
 def get_correlations_stats(
     user: user_schemas.User = Security(
         get_current_active_user, scopes=["correlations:read"]
     ),
-):
-
+) -> correlation_schemas.CorrelationStatsResponse:
     return correlations_repository.get_correlations_stats()
 
 
-@router.delete("/correlations/")
+@router.delete(
+    "/correlations/",
+    response_model=correlation_schemas.CorrelationDeleteResponse,
+)
 def delete_correlations(
     user: user_schemas.User = Security(
         get_current_active_user, scopes=["correlations:delete"]
     ),
-):
+) -> correlation_schemas.CorrelationDeleteResponse:
     return correlations_repository.delete_correlations()
