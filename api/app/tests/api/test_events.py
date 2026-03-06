@@ -215,8 +215,6 @@ class TestEventsResource(ApiTester):
         )
         assert event_tag is None
 
-    # ---- Additional fixtures for extended tests ----
-
     @pytest.fixture(scope="class")
     def event_2(
         self,
