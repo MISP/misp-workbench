@@ -214,3 +214,522 @@ class TestEventsResource(ApiTester):
             .first()
         )
         assert event_tag is None
+
+    @pytest.fixture(scope="class")
+    def event_2(
+        self,
+        db: Session,
+        organisation_1: organisation_models.Organisation,
+        user_1: user_models.User,
+    ):
+        """A second event used for force-delete and other destructive tests."""
+        event_2 = event_models.Event(
+            info="test event 2 for force delete",
+            user_id=user_1.id,
+            orgc_id=1,
+            org_id=organisation_1.id,
+            date="2020-01-01",
+            uuid="d8a2b0c1-aaaa-bbbb-cccc-ef1234567890",
+            timestamp=1577836800,
+        )
+        db.add(event_2)
+        db.commit()
+        db.refresh(event_2)
+        yield event_2
+
+    @pytest.fixture(scope="class")
+    def event_for_filter(
+        self,
+        db: Session,
+        organisation_1: organisation_models.Organisation,
+        user_1: user_models.User,
+    ):
+        """A stable event used for filter/search tests that won't be mutated."""
+        ev = event_models.Event(
+            info="stable filter test event",
+            user_id=user_1.id,
+            orgc_id=1,
+            org_id=organisation_1.id,
+            date="2020-01-01",
+            uuid="f1f7e2a3-0000-0000-0000-000000000001",
+            timestamp=1577836800,
+        )
+        db.add(ev)
+        db.commit()
+        db.refresh(ev)
+        yield ev
+
+    # ---- GET /events/{event_id} ----
+
+    @pytest.mark.parametrize("scopes", [["events:read"]])
+    def test_get_event_by_id(
+        self,
+        client: TestClient,
+        event_1: event_models.Event,
+        auth_token: auth.Token,
+    ):
+        response = client.get(
+            f"/events/{event_1.id}",
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+        data = response.json()
+
+        assert response.status_code == status.HTTP_200_OK
+        assert data["id"] == event_1.id
+
+    @pytest.mark.parametrize("scopes", [["events:read"]])
+    def test_get_event_by_uuid(
+        self,
+        client: TestClient,
+        event_1: event_models.Event,
+        auth_token: auth.Token,
+    ):
+        response = client.get(
+            f"/events/{event_1.uuid}",
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+        data = response.json()
+
+        assert response.status_code == status.HTTP_200_OK
+        assert data["id"] == event_1.id
+
+    @pytest.mark.parametrize("scopes", [["events:read"]])
+    def test_get_event_not_found(
+        self,
+        client: TestClient,
+        auth_token: auth.Token,
+    ):
+        response = client.get(
+            "/events/999999",
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+        assert response.json()["detail"] == "Event not found"
+
+    # ---- GET /events/ with filters ----
+
+    @pytest.mark.parametrize("scopes", [["events:read"]])
+    def test_get_events_filter_by_info(
+        self,
+        client: TestClient,
+        event_for_filter: event_models.Event,
+        auth_token: auth.Token,
+    ):
+        response = client.get(
+            "/events/",
+            params={"info": "stable filter"},
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+        data = response.json()["items"]
+
+        assert response.status_code == status.HTTP_200_OK
+        assert len(data) == 1
+        assert data[0]["id"] == event_for_filter.id
+
+    @pytest.mark.parametrize("scopes", [["events:read"]])
+    def test_get_events_filter_by_info_no_results(
+        self,
+        client: TestClient,
+        auth_token: auth.Token,
+    ):
+        response = client.get(
+            "/events/",
+            params={"info": "xyzzy_nonexistent_event_string_99999"},
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+        data = response.json()["items"]
+
+        assert response.status_code == status.HTTP_200_OK
+        assert len(data) == 0
+
+    @pytest.mark.parametrize("scopes", [["events:read"]])
+    def test_get_events_filter_by_uuid(
+        self,
+        client: TestClient,
+        event_for_filter: event_models.Event,
+        auth_token: auth.Token,
+    ):
+        response = client.get(
+            "/events/",
+            params={"uuid": str(event_for_filter.uuid)},
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+        data = response.json()["items"]
+
+        assert response.status_code == status.HTTP_200_OK
+        assert len(data) == 1
+        assert data[0]["id"] == event_for_filter.id
+
+    @pytest.mark.parametrize("scopes", [["events:read"]])
+    def test_get_events_filter_by_deleted_true(
+        self,
+        client: TestClient,
+        event_1: event_models.Event,
+        auth_token: auth.Token,
+    ):
+        # event_1 was soft-deleted by test_delete_event
+        response = client.get(
+            "/events/",
+            params={"deleted": True},
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+        data = response.json()["items"]
+
+        assert response.status_code == status.HTTP_200_OK
+        assert any(item["id"] == event_1.id for item in data)
+
+    @pytest.mark.parametrize("scopes", [["events:read"]])
+    def test_get_events_filter_by_deleted_false(
+        self,
+        client: TestClient,
+        event_1: event_models.Event,
+        event_for_filter: event_models.Event,
+        auth_token: auth.Token,
+    ):
+        # event_1 was soft-deleted; event_for_filter was not
+        response = client.get(
+            "/events/",
+            params={"deleted": False},
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+        data = response.json()["items"]
+
+        assert response.status_code == status.HTTP_200_OK
+        ids = [item["id"] for item in data]
+        assert event_1.id not in ids
+        assert event_for_filter.id in ids
+
+    # ---- DELETE /events/{event_id} force ----
+
+    @pytest.mark.parametrize("scopes", [["events:delete"]])
+    def test_delete_event_force(
+        self,
+        client: TestClient,
+        event_2: event_models.Event,
+        db: Session,
+        auth_token: auth.Token,
+    ):
+        response = client.delete(
+            f"/events/{event_2.id}",
+            params={"force": True},
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+
+        assert response.status_code == status.HTTP_204_NO_CONTENT
+
+        db.expire_all()
+        deleted = (
+            db.query(event_models.Event)
+            .filter(event_models.Event.id == event_2.id)
+            .first()
+        )
+        assert deleted is None
+
+    # ---- Tag/untag 404 cases ----
+
+    @pytest.mark.parametrize("scopes", [["events:update"]])
+    def test_tag_event_event_not_found(
+        self,
+        client: TestClient,
+        tlp_white_tag: tag_models.Tag,
+        auth_token: auth.Token,
+    ):
+        response = client.post(
+            f"/events/999999/tag/{tlp_white_tag.name}",
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+        assert response.json()["detail"] == "Event not found"
+
+    @pytest.mark.parametrize("scopes", [["events:update"]])
+    def test_tag_event_tag_not_found(
+        self,
+        client: TestClient,
+        event_1: event_models.Event,
+        auth_token: auth.Token,
+    ):
+        response = client.post(
+            f"/events/{event_1.id}/tag/nonexistent:tag",
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+        assert response.json()["detail"] == "Tag not found"
+
+    @pytest.mark.parametrize("scopes", [["events:update"]])
+    def test_untag_event_event_not_found(
+        self,
+        client: TestClient,
+        tlp_white_tag: tag_models.Tag,
+        auth_token: auth.Token,
+    ):
+        response = client.delete(
+            f"/events/999999/tag/{tlp_white_tag.name}",
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+        assert response.json()["detail"] == "Event not found"
+
+    @pytest.mark.parametrize("scopes", [["events:update"]])
+    def test_untag_event_tag_not_found(
+        self,
+        client: TestClient,
+        event_1: event_models.Event,
+        auth_token: auth.Token,
+    ):
+        response = client.delete(
+            f"/events/{event_1.id}/tag/nonexistent:tag",
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+        assert response.json()["detail"] == "Tag not found"
+
+    # ---- POST /events/{uuid}/publish ----
+
+    @pytest.mark.parametrize("scopes", [["events:publish"]])
+    def test_publish_event(
+        self,
+        client: TestClient,
+        event_1: event_models.Event,
+        auth_token: auth.Token,
+    ):
+        # event_1 has published=False after test_update_event
+        response = client.post(
+            f"/events/{event_1.uuid}/publish",
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+        data = response.json()
+
+        assert response.status_code == status.HTTP_200_OK
+        assert str(event_1.uuid) in data["message"]
+
+    @pytest.mark.parametrize("scopes", [["events:publish"]])
+    def test_publish_event_not_found(
+        self,
+        client: TestClient,
+        auth_token: auth.Token,
+    ):
+        response = client.post(
+            "/events/00000000-0000-0000-0000-000000000000/publish",
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+        assert response.json()["detail"] == "Event not found"
+
+    # ---- POST /events/{uuid}/unpublish ----
+
+    @pytest.mark.parametrize("scopes", [["events:publish"]])
+    def test_unpublish_event(
+        self,
+        client: TestClient,
+        event_1: event_models.Event,
+        auth_token: auth.Token,
+    ):
+        # event_1 was published by test_publish_event
+        response = client.post(
+            f"/events/{event_1.uuid}/unpublish",
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+        data = response.json()
+
+        assert response.status_code == status.HTTP_200_OK
+        assert str(event_1.uuid) in data["message"]
+
+    @pytest.mark.parametrize("scopes", [["events:publish"]])
+    def test_unpublish_event_not_found(
+        self,
+        client: TestClient,
+        auth_token: auth.Token,
+    ):
+        response = client.post(
+            "/events/00000000-0000-0000-0000-000000000000/unpublish",
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+        assert response.json()["detail"] == "Event not found"
+
+    # ---- POST /events/{uuid}/toggle-correlation ----
+
+    @pytest.mark.parametrize("scopes", [["events:update"]])
+    def test_toggle_correlation(
+        self,
+        client: TestClient,
+        event_1: event_models.Event,
+        auth_token: auth.Token,
+    ):
+        response = client.post(
+            f"/events/{event_1.uuid}/toggle-correlation",
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+        data = response.json()
+
+        assert response.status_code == status.HTTP_200_OK
+        assert "disable_correlation" in data["message"]
+
+    @pytest.mark.parametrize("scopes", [["events:update"]])
+    def test_toggle_correlation_not_found(
+        self,
+        client: TestClient,
+        auth_token: auth.Token,
+    ):
+        response = client.post(
+            "/events/00000000-0000-0000-0000-000000000000/toggle-correlation",
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+        assert response.json()["detail"] == "Event not found"
+
+    # ---- POST /events/{uuid}/import ----
+
+    @pytest.mark.parametrize("scopes", [["events:import"]])
+    def test_import_data(
+        self,
+        client: TestClient,
+        event_1: event_models.Event,
+        auth_token: auth.Token,
+    ):
+        response = client.post(
+            f"/events/{event_1.uuid}/import",
+            json={
+                "attributes": [
+                    {
+                        "type": "ip-dst",
+                        "value": "192.168.1.100",
+                        "category": "Network activity",
+                    },
+                    {
+                        "type": "domain",
+                        "value": "example-import.com",
+                        "category": "Network activity",
+                    },
+                ]
+            },
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+        data = response.json()
+
+        assert response.status_code == status.HTTP_202_ACCEPTED
+        assert data["imported_attributes"] == 2
+        assert data["total_attributes"] == 2
+        assert data["failed_attributes"] == 0
+        assert data["event_uuid"] == str(event_1.uuid)
+
+    @pytest.mark.parametrize("scopes", [["events:import"]])
+    def test_import_data_not_found(
+        self,
+        client: TestClient,
+        auth_token: auth.Token,
+    ):
+        response = client.post(
+            "/events/00000000-0000-0000-0000-000000000000/import",
+            json={"attributes": []},
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+        assert response.json()["detail"] == "Event not found"
+
+    # ---- POST /events/force-index ----
+
+    @pytest.mark.parametrize("scopes", [["events:update"]])
+    def test_force_index_by_uuid(
+        self,
+        client: TestClient,
+        event_1: event_models.Event,
+        auth_token: auth.Token,
+    ):
+        response = client.post(
+            "/events/force-index",
+            params={"uuid": str(event_1.uuid)},
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+        data = response.json()
+
+        assert response.status_code == status.HTTP_202_ACCEPTED
+        assert str(event_1.uuid) in data["message"]
+
+    @pytest.mark.parametrize("scopes", [["events:update"]])
+    def test_force_index_by_id(
+        self,
+        client: TestClient,
+        event_1: event_models.Event,
+        auth_token: auth.Token,
+    ):
+        response = client.post(
+            "/events/force-index",
+            params={"id": event_1.id},
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+        data = response.json()
+
+        assert response.status_code == status.HTTP_202_ACCEPTED
+        assert str(event_1.uuid) in data["message"]
+
+    @pytest.mark.parametrize("scopes", [["events:update"]])
+    def test_force_index_by_id_not_found(
+        self,
+        client: TestClient,
+        auth_token: auth.Token,
+    ):
+        response = client.post(
+            "/events/force-index",
+            params={"id": 999999},
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+        assert response.json()["detail"] == "Event not found"
+
+    @pytest.mark.parametrize("scopes", [["events:update"]])
+    def test_force_index_all_events(
+        self,
+        client: TestClient,
+        event_1: event_models.Event,
+        auth_token: auth.Token,
+    ):
+        response = client.post(
+            "/events/force-index",
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+        data = response.json()
+
+        assert response.status_code == status.HTTP_202_ACCEPTED
+        assert "all events" in data["message"]
+
+    # ---- GET /events/{uuid}/attachments ----
+
+    @pytest.mark.parametrize("scopes", [["events:read"]])
+    def test_get_event_attachments(
+        self,
+        client: TestClient,
+        event_1: event_models.Event,
+        auth_token: auth.Token,
+    ):
+        response = client.get(
+            f"/events/{event_1.uuid}/attachments",
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert "items" in response.json()
+
+    @pytest.mark.parametrize("scopes", [["events:read"]])
+    def test_get_event_attachments_not_found(
+        self,
+        client: TestClient,
+        auth_token: auth.Token,
+    ):
+        response = client.get(
+            "/events/00000000-0000-0000-0000-000000000000/attachments",
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+        assert response.json()["detail"] == "Event not found"
