@@ -113,22 +113,33 @@ function navAndClose(path) {
 }
 
 .navbar-expand .navbar-nav .nav-link {
-  line-height: 2em;
+  line-height: 1.5em;
 }
 </style>
 
 <template>
   <!-- ================= DESKTOP NAV ================= -->
-  <nav v-if="!$isMobile" class="navbar navbar-expand border-bottom">
+  <nav v-if="!$isMobile" class="navbar navbar-expand border-bottom py-1">
     <div class="container-fluid">
-      <div class="navbar-nav h5 fw-light">
-        <RouterLink to="/hunts" class="nav-item nav-link">hunt</RouterLink>
-        <RouterLink to="/explore" class="nav-item nav-link">explore</RouterLink>
-        <RouterLink to="/events" class="nav-item nav-link">events</RouterLink>
+      <div class="navbar-nav fw-light align-items-center">
+        <RouterLink to="/" class="navbar-brand me-3 d-flex align-items-center">
+          <img
+            src="/images/misp-workbench-icon.png"
+            height="26"
+            alt="misp-workbench"
+          />
+        </RouterLink>
+        <RouterLink to="/hunts" class="nav-item nav-link py-1">hunt</RouterLink>
+        <RouterLink to="/explore" class="nav-item nav-link py-1"
+          >explore</RouterLink
+        >
+        <RouterLink to="/events" class="nav-item nav-link py-1"
+          >events</RouterLink
+        >
 
         <div class="nav-item dropdown">
           <a
-            class="nav-link dropdown-toggle"
+            class="nav-link dropdown-toggle py-1"
             href="#"
             id="syncDropdown"
             role="button"
@@ -154,7 +165,7 @@ function navAndClose(path) {
 
         <div class="nav-item dropdown">
           <a
-            class="nav-link dropdown-toggle"
+            class="nav-link dropdown-toggle py-1"
             href="#"
             id="internalsDropdown"
             role="button"
@@ -226,12 +237,12 @@ function navAndClose(path) {
       </div>
 
       <div class="d-flex align-items-center gap-2">
-        <button class="btn btn-outline btn-lg" @click="switchTheme">
+        <button class="btn btn-outline btn-sm" @click="switchTheme">
           <FontAwesomeIcon :icon="theme === 'light' ? faMoon : faSun" />
         </button>
 
         <RouterLink to="/notifications">
-          <button class="btn btn-outline btn-lg position-relative">
+          <button class="btn btn-outline btn-sm position-relative">
             <FontAwesomeIcon :icon="faBell" />
             <span
               v-if="unreadNotifications > 0"
@@ -245,7 +256,7 @@ function navAndClose(path) {
 
         <button
           @click="authStore.logout()"
-          class="btn btn-outline text-danger btn-lg"
+          class="btn btn-outline text-danger btn-sm"
         >
           <FontAwesomeIcon :icon="faRightFromBracket" />
         </button>

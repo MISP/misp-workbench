@@ -1,4 +1,4 @@
-# misp-workbench
+![misp-workbench](frontend/public/images/misp-workbench-hori-color.jpg)
 
 [![codecov](https://codecov.io/gh/MISP/misp-workbench/branch/main/graph/badge.svg)](https://codecov.io/gh/MISP/misp-workbench)
 
