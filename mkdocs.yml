@@ -39,6 +39,7 @@ nav:
       - JSON Feeds: feeds/json.md
       - Freetext Feeds: feeds/freetext.md
     - Hunts: hunts.md
+    - Correlations: correlations.md
   - Getting Started: getting-started.md
   - Configuration: configuration.md
   - Architecture: architecture.md
