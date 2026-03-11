@@ -17,6 +17,7 @@ from pymisp import MISPEvent
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
 import csv
+import json
 
 logger = logging.getLogger(__name__)
 
@@ -265,6 +266,9 @@ def fetch_feed(db: Session, feed_id: int, user: user_schemas.User):
 
     if db_feed.source_format == "freetext":
         tasks.fetch_freetext_feed.delay(db_feed.id, user.id)
+
+    if db_feed.source_format == "json":
+        tasks.fetch_json_feed.delay(db_feed.id, user.id)
 
     logger.info("fetch feed id=%s all event fetch tasks enqueued.", feed_id)
     return {
@@ -723,12 +727,17 @@ def parse_csv_feed_lines(settings, preview_lines):
     return parsed_preview
 
 
+def _feed_import_label(db_feed: feed_models.Feed) -> str:
+    return "%s Feed Import" % db_feed.source_format.upper()
+
+
 def get_or_create_feed_event(
     db: Session, db_feed: feed_models.Feed, user: user_schemas.User
 ):
+    label = _feed_import_label(db_feed)
     if db_feed.fixed_event:
         if db_feed.event_id is None:
-            db_event = crate_new_csv_feed_event(db, db_feed, user)
+            db_event = _create_feed_event(db, db_feed, user, label)
             db_feed.event_id = db_event.id
             db.commit()
             db.refresh(db_feed)
@@ -736,7 +745,7 @@ def get_or_create_feed_event(
             db_event = events_repository.get_event_by_id(db, db_feed.event_id)
 
             if db_event is None or db_event.deleted:
-                db_event = crate_new_csv_feed_event(db, db_feed, user)
+                db_event = _create_feed_event(db, db_feed, user, label)
                 db_feed.event_id = db_event.id
                 db.commit()
                 db.refresh(db_feed)
@@ -744,8 +753,7 @@ def get_or_create_feed_event(
         db_event = events_repository.create_event(
             db,
             event_schemas.EventCreate(
-                info="CSV Feed Import: %s - %s"
-                % (db_feed.name, datetime.now().isoformat()),
+                info="%s: %s - %s" % (label, db_feed.name, datetime.now().isoformat()),
                 analysis=event_models.AnalysisLevel.INITIAL,
                 threat_level=event_models.ThreatLevel.UNDEFINED,
                 distribution=db_feed.distribution,
@@ -757,11 +765,11 @@ def get_or_create_feed_event(
     return db_event
 
 
-def crate_new_csv_feed_event(db, db_feed, user):
-    db_event = events_repository.create_event(
+def _create_feed_event(db, db_feed, user, label: str):
+    return events_repository.create_event(
         db,
         event_schemas.EventCreate(
-            info="CSV Feed Import: %s" % (db_feed.name),
+            info="%s: %s" % (label, db_feed.name),
             analysis=event_models.AnalysisLevel.INITIAL,
             threat_level=event_models.ThreatLevel.UNDEFINED,
             distribution=db_feed.distribution,
@@ -770,7 +778,174 @@ def crate_new_csv_feed_event(db, db_feed, user):
         ),
     )
 
-    return db_event
+
+def get_json_path(obj, path: str):
+    """Traverse a dot-notation path on a nested dict, returning None if any key is missing."""
+    if not path:
+        return obj
+    for key in path.split("."):
+        if isinstance(obj, dict):
+            obj = obj.get(key)
+        else:
+            return None
+    return obj
+
+
+def fetch_json_content_from_network(url: str, extra_headers: dict = None) -> str:
+    """Fetch raw text content from a URL for JSON/NDJSON feeds."""
+    headers = {"User-Agent": USER_AGENT}
+    if extra_headers:
+        headers.update(extra_headers)
+    try:
+        response = requests.get(url, headers=headers)
+        if response.status_code == 200:
+            return response.content.decode("utf-8")
+        else:
+            raise HTTPException(
+                status_code=response.status_code,
+                detail=f"Failed to fetch JSON feed: {response.text}",
+            )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Failed to fetch JSON feed: {str(e)}",
+        )
+
+
+def parse_json_feed_items(content: str, json_cfg: dict) -> list:
+    """Parse raw text content into a list of JSON objects based on the configured format."""
+    fmt = json_cfg.get("format", "array")
+    items_path = json_cfg.get("items_path") or ""
+
+    if fmt == "ndjson":
+        items = []
+        for line in content.splitlines():
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue
+            try:
+                obj = json.loads(line)
+                if isinstance(obj, dict):
+                    items.append(obj)
+            except (json.JSONDecodeError, ValueError):
+                continue
+        return items
+
+    try:
+        data = json.loads(content)
+    except (json.JSONDecodeError, ValueError) as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Failed to parse JSON: {e}",
+        )
+
+    node = get_json_path(data, items_path)
+
+    if isinstance(node, list):
+        return node
+    elif isinstance(node, dict):
+        return [node]
+    elif node is None:
+        path_desc = f" at path '{items_path}'" if items_path else ""
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"No data found{path_desc}",
+        )
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Expected array or object at path '{items_path}', got {type(node).__name__}",
+        )
+
+
+def process_json_item_to_attribute(item, settings: dict):
+    cfg = settings["jsonConfig"]["attribute"]
+    value_path = cfg.get("value") or ""
+
+    if not isinstance(item, dict):
+        # Primitive item (string, number) — use directly when no path is configured
+        if value_path:
+            return {
+                "value": None,
+                "type": None,
+                "error": f"Cannot traverse path '{value_path}' on a non-object item",
+            }
+        value = str(item)
+    else:
+        value = get_json_path(item, value_path)
+        if value is None:
+            return {
+                "value": None,
+                "type": None,
+                "error": f"Field '{value_path}' not found in item",
+            }
+        value = str(value)
+
+    type_cfg = cfg.get("type") or {}
+    if type_cfg.get("strategy") == "fixed":
+        type_value = type_cfg.get("value")
+    elif type_cfg.get("strategy") == "field":
+        raw_type = get_json_path(item, type_cfg.get("field") or "")
+        if raw_type is None:
+            return {
+                "value": value,
+                "type": None,
+                "error": f"Type field '{type_cfg.get('field')}' not found in item",
+            }
+        type_value = str(raw_type)
+        for mapping in type_cfg.get("mappings") or []:
+            if mapping.get("from") == type_value:
+                type_value = mapping.get("to")
+                break
+    else:
+        type_value = None
+
+    attribute = {"value": value, "type": type_value}
+
+    for prop in ("comment", "to_ids", "tags"):
+        prop_cfg = (cfg.get("properties") or {}).get(prop)
+        if prop_cfg is None:
+            continue
+        if prop_cfg.get("strategy") == "fixed":
+            attribute[prop] = prop_cfg.get("value")
+        elif prop_cfg.get("strategy") == "field":
+            raw = get_json_path(item, prop_cfg.get("field") or "")
+            if prop == "to_ids":
+                attribute[prop] = str(raw).strip().lower() in ["yes", "1", "true"] if raw is not None else False
+            elif prop == "tags":
+                if isinstance(raw, list):
+                    attribute[prop] = [str(t) for t in raw]
+                elif raw is not None:
+                    attribute[prop] = [t.strip() for t in str(raw).split(",")]
+                else:
+                    attribute[prop] = []
+            else:
+                attribute[prop] = str(raw) if raw is not None else ""
+
+    return attribute
+
+
+def preview_json_feed(settings: dict = None, limit: int = 5):
+    if settings.get("input_source") != "network":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Local file preview is not yet supported",
+        )
+
+    content = fetch_json_content_from_network(settings["url"])
+    json_cfg = (settings.get("settings") or {}).get("jsonConfig") or {}
+    items = parse_json_feed_items(content, json_cfg)
+
+    preview_items = items[:limit]
+    nested_settings = settings.get("settings") or {}
+    processed = [
+        process_json_item_to_attribute(item, nested_settings)
+        for item in preview_items
+    ]
+
+    return {"result": "success", "items": preview_items, "preview": processed}
 
 
 def parse_human_readable_time(time_str):

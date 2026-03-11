@@ -632,6 +632,68 @@ def fetch_freetext_feed(feed_id: int, user_id: int):
 
 
 @celery_app.task
+def fetch_json_feed(feed_id: int, user_id: int):
+    logger.info("fetch json feed id=%s job started", feed_id)
+
+    items_processed = 0
+    attributes_created = 0
+    failed_items = 0
+
+    with Session(engine) as db:
+        user = users_repository.get_user_by_id(db, user_id)
+        db_feed = feeds_repository.get_feed_by_id(db, feed_id=feed_id)
+
+        db_event = feeds_repository.get_or_create_feed_event(db, db_feed, user)
+
+        content = feeds_repository.fetch_json_content_from_network(
+            db_feed.url, extra_headers=db_feed.headers
+        )
+        json_cfg = (db_feed.settings or {}).get("jsonConfig") or {}
+        items = feeds_repository.parse_json_feed_items(content, json_cfg)
+
+        for item in items:
+            try:
+                items_processed += 1
+                attribute = feeds_repository.process_json_item_to_attribute(
+                    item, db_feed.settings
+                )
+
+                if attribute.get("error") or not attribute.get("type") or not attribute.get("value"):
+                    failed_items += 1
+                    continue
+
+                db_attribute = attribute_schemas.AttributeCreate(
+                    event_id=db_event.id,
+                    type=attribute["type"],
+                    value=attribute["value"],
+                    category=attribute.get("category", "External analysis"),
+                )
+
+                if "comment" in attribute:
+                    db_attribute.comment = attribute["comment"]
+
+                if "to_ids" in attribute:
+                    db_attribute.to_ids = attribute["to_ids"]
+
+                attributes_repository.create_attribute(db, db_attribute)
+                attributes_created += 1
+
+            except Exception as e:
+                failed_items += 1
+                logger.error("Error processing JSON feed item: %s", e)
+
+    index_event.delay(str(db_event.uuid), full_reindex=True)
+
+    logger.info("fetch json feed id=%s job finished", feed_id)
+
+    return {
+        "result": "success",
+        "message": "JSON feed=%s processed, %s items, %s attributes created, %s failed."
+        % (db_feed.name, items_processed, attributes_created, failed_items),
+    }
+
+
+@celery_app.task
 def generate_correlations():
     logger.info("generate correlations job started")
 
