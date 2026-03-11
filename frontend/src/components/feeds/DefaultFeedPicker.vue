@@ -29,12 +29,14 @@ const filtered = computed(() => {
 const FORMAT_LABELS = {
   misp: "MISP",
   csv: "CSV",
+  freetext: "Freetext",
   json: "JSON",
 };
 
 const FORMAT_CLASSES = {
   misp: "bg-primary",
   csv: "bg-success",
+  freetext: "bg-warning text-dark",
   json: "bg-info text-dark",
 };
 </script>

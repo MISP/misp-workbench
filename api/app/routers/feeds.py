@@ -4,6 +4,7 @@ from pathlib import Path
 from app.auth.security import get_current_active_user
 from app.db.session import get_db
 from app.repositories import feeds as feeds_repository
+from app.repositories import freetext as freetext_repository
 from app.schemas import feed as feed_schemas
 from app.schemas import user as user_schemas
 from app.worker import tasks
@@ -33,8 +34,7 @@ def get_default_feeds(
     result = []
     for entry in raw:
         feed = entry["Feed"]
-        if feed.get("source_format") == "freetext":
-            continue
+        pass
         result.append(
             {
                 "name": feed["name"],
@@ -141,6 +141,16 @@ def preview_csv_feed(
     ),
 ):
     return feeds_repository.preview_csv_feed(settings=settings)
+
+@router.post("/feeds/freetext/preview")
+def preview_freetext_feed(
+    settings: dict = None,
+    user: user_schemas.User = Security(
+        get_current_active_user, scopes=["feeds:preview-csv"]
+    ),
+):
+    return freetext_repository.preview_freetext_feed(settings=settings)
+
 
 @router.patch("/feeds/{feed_id}", response_model=feed_schemas.Feed)
 def update_feed(

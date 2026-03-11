@@ -22,6 +22,13 @@ const feedTypes = [
     icon: "bi bi-table",
   },
   {
+    value: "freetext",
+    label: "Freetext",
+    description:
+      "Single-value-per-line feeds with automatic or fixed attribute type detection.",
+    icon: "bi bi-file-text",
+  },
+  {
     value: "json",
     label: "JSON",
     description: "Structured JSON feeds with custom field mapping.",
@@ -59,7 +66,7 @@ function select(value) {
 <template>
   <div class="feed-type-selector">
     <div class="row g-3">
-      <div v-for="type in feedTypes" :key="type.value" class="col-md-4">
+      <div v-for="type in feedTypes" :key="type.value" class="col-md-3">
         <label
           class="feed-type-card card h-100"
           :class="{ active: modelValue === type.value }"

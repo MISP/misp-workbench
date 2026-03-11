@@ -263,6 +263,9 @@ def fetch_feed(db: Session, feed_id: int, user: user_schemas.User):
     if db_feed.source_format == "csv":
         tasks.fetch_csv_feed.delay(db_feed.id, user.id)
 
+    if db_feed.source_format == "freetext":
+        tasks.fetch_freetext_feed.delay(db_feed.id, user.id)
+
     logger.info("fetch feed id=%s all event fetch tasks enqueued.", feed_id)
     return {
         "result": "success",
