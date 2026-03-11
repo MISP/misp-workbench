@@ -645,27 +645,13 @@ def fetch_json_feed(feed_id: int, user_id: int):
 
         db_event = feeds_repository.get_or_create_feed_event(db, db_feed, user)
 
-        data = feeds_repository.fetch_json_content_from_network(
+        content = feeds_repository.fetch_json_content_from_network(
             db_feed.url, extra_headers=db_feed.headers
         )
         json_cfg = (db_feed.settings or {}).get("jsonConfig") or {}
-        items_path = json_cfg.get("items_path") or ""
-        items = feeds_repository.get_json_path(data, items_path)
-
-        if not isinstance(items, list):
-            logger.error(
-                "fetch json feed id=%s: expected array at '%s', got %s",
-                feed_id, items_path, type(items).__name__,
-            )
-            return {
-                "result": "error",
-                "message": f"Expected JSON array at path '{items_path}'",
-            }
+        items = feeds_repository.parse_json_feed_items(content, json_cfg)
 
         for item in items:
-            if not isinstance(item, dict):
-                failed_items += 1
-                continue
             try:
                 items_processed += 1
                 attribute = feeds_repository.process_json_item_to_attribute(

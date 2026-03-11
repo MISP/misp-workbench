@@ -18,6 +18,7 @@ const processedPreview = ref([]);
 const loadingPreview = ref(false);
 
 const jsonConfig = reactive({
+  format: "array",
   items_path: "",
   attribute: {
     value: "",
@@ -53,6 +54,13 @@ watch(
 
 watch(
   () => jsonConfig.items_path,
+  () => {
+    if (props.modelValue.url) loadPreview();
+  },
+);
+
+watch(
+  () => jsonConfig.format,
   () => {
     if (props.modelValue.url) loadPreview();
   },
@@ -150,15 +158,42 @@ function typeBadgeClass(type) {
       </div>
       <div class="card-body">
         <div class="mb-3">
+          <label class="form-label fw-semibold">Format</label>
+          <div class="d-flex gap-3">
+            <div
+              class="form-check"
+              v-for="opt in [
+                { value: 'array', label: 'JSON array' },
+                { value: 'object', label: 'JSON object' },
+                { value: 'ndjson', label: 'NDJSON (one object per line)' },
+              ]"
+              :key="opt.value"
+            >
+              <input
+                class="form-check-input"
+                type="radio"
+                :id="`fmt-${opt.value}`"
+                :value="opt.value"
+                v-model="jsonConfig.format"
+              />
+              <label class="form-check-label" :for="`fmt-${opt.value}`">{{
+                opt.label
+              }}</label>
+            </div>
+          </div>
+        </div>
+
+        <div v-if="jsonConfig.format !== 'ndjson'" class="mb-3">
           <label class="form-label fw-semibold">Items path</label>
           <input
             type="text"
             class="form-control font-monospace"
-            placeholder="e.g. data.indicators (leave empty if root is the array)"
+            placeholder="e.g. data.indicators (leave empty if root is the array/object)"
             v-model="jsonConfig.items_path"
           />
           <div class="form-text">
-            Dot-notation path to the JSON array containing the items to ingest.
+            Dot-notation path to the JSON array or object to ingest. Leave empty
+            to use the root.
           </div>
         </div>
 
@@ -185,9 +220,11 @@ function typeBadgeClass(type) {
             style="max-height: 240px; overflow-y: auto"
           >
             <pre
-              class="mb-0 small font-monospace"
+              v-for="(item, idx) in previewItems"
+              :key="idx"
+              class="mb-1 small font-monospace"
               style="white-space: pre-wrap"
-              >{{ JSON.stringify(previewItems[0], null, 2) }}</pre
+              >{{ JSON.stringify(item, null, 2) }}</pre
             >
           </div>
         </div>
@@ -210,21 +247,26 @@ function typeBadgeClass(type) {
           <input
             type="text"
             class="form-control font-monospace"
-            placeholder="e.g. value or nested.field"
+            placeholder="e.g. value or nested.field — leave empty to use item directly"
             list="json-field-suggestions"
             v-model="jsonConfig.attribute.value"
           />
           <datalist id="json-field-suggestions">
             <option v-for="key in sampleKeys" :key="key" :value="key" />
           </datalist>
-          <div
-            v-if="previewItems[0] && jsonConfig.attribute.value"
-            class="form-text"
-          >
-            Sample:
-            <code>{{
-              previewItems[0][jsonConfig.attribute.value] ?? "—"
-            }}</code>
+          <div class="form-text">
+            <span v-if="previewItems.length && !sampleKeys.length">
+              Items are plain values — leave empty to use each item directly.
+            </span>
+            <span v-else-if="previewItems[0] && jsonConfig.attribute.value">
+              Sample:
+              <code>{{
+                previewItems[0][jsonConfig.attribute.value] ?? "—"
+              }}</code>
+            </span>
+            <span v-else>
+              Dot-notation path to the attribute value within each item.
+            </span>
           </div>
         </div>
 
@@ -342,144 +384,152 @@ function typeBadgeClass(type) {
   <!-- Optional Properties -->
   <div class="mb-4">
     <div class="card">
-      <div class="card-header">
+      <div
+        class="card-header d-flex justify-content-between align-items-center"
+        style="cursor: pointer"
+        data-bs-toggle="collapse"
+        data-bs-target="#optionalPropertiesBody"
+      >
         <h5 class="mb-0">Optional Properties</h5>
+        <i class="bi bi-chevron-down"></i>
       </div>
-      <div class="card-body">
-        <!-- Comment -->
-        <div class="mb-3">
-          <label class="form-label fw-semibold">Comment</label>
-          <div class="d-flex gap-3 mb-2">
-            <div
-              class="form-check"
-              v-for="opt in ['none', 'fixed', 'field']"
-              :key="opt"
-            >
-              <input
-                class="form-check-input"
-                type="radio"
-                :id="`comment-${opt}`"
-                :value="opt"
-                :checked="getPropertyStrategy('comment') === opt"
-                @change="setPropertyStrategy('comment', opt)"
-              />
-              <label
-                class="form-check-label text-capitalize"
-                :for="`comment-${opt}`"
-                >{{ opt }}</label
+      <div id="optionalPropertiesBody" class="collapse">
+        <div class="card-body">
+          <!-- Comment -->
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Comment</label>
+            <div class="d-flex gap-3 mb-2">
+              <div
+                class="form-check"
+                v-for="opt in ['none', 'fixed', 'field']"
+                :key="opt"
               >
+                <input
+                  class="form-check-input"
+                  type="radio"
+                  :id="`comment-${opt}`"
+                  :value="opt"
+                  :checked="getPropertyStrategy('comment') === opt"
+                  @change="setPropertyStrategy('comment', opt)"
+                />
+                <label
+                  class="form-check-label text-capitalize"
+                  :for="`comment-${opt}`"
+                  >{{ opt }}</label
+                >
+              </div>
             </div>
-          </div>
-          <input
-            v-if="getPropertyStrategy('comment') === 'fixed'"
-            type="text"
-            class="form-control"
-            placeholder="Fixed comment value"
-            v-model="jsonConfig.attribute.properties.comment.value"
-          />
-          <input
-            v-if="getPropertyStrategy('comment') === 'field'"
-            type="text"
-            class="form-control font-monospace"
-            placeholder="Field name (e.g. description)"
-            list="json-field-suggestions"
-            v-model="jsonConfig.attribute.properties.comment.field"
-          />
-        </div>
-
-        <!-- Tags -->
-        <div class="mb-3">
-          <label class="form-label fw-semibold">Tags</label>
-          <div class="d-flex gap-3 mb-2">
-            <div
-              class="form-check"
-              v-for="opt in ['none', 'fixed', 'field']"
-              :key="opt"
-            >
-              <input
-                class="form-check-input"
-                type="radio"
-                :id="`tags-${opt}`"
-                :value="opt"
-                :checked="getPropertyStrategy('tags') === opt"
-                @change="setPropertyStrategy('tags', opt)"
-              />
-              <label
-                class="form-check-label text-capitalize"
-                :for="`tags-${opt}`"
-                >{{ opt }}</label
-              >
-            </div>
-          </div>
-          <input
-            v-if="getPropertyStrategy('tags') === 'fixed'"
-            type="text"
-            class="form-control"
-            placeholder="Comma-separated tags"
-            :value="
-              (jsonConfig.attribute.properties.tags?.value ?? []).join(', ')
-            "
-            @input="
-              jsonConfig.attribute.properties.tags.value = $event.target.value
-                .split(',')
-                .map((t) => t.trim())
-                .filter(Boolean)
-            "
-          />
-          <input
-            v-if="getPropertyStrategy('tags') === 'field'"
-            type="text"
-            class="form-control font-monospace"
-            placeholder="Field name (e.g. tags)"
-            list="json-field-suggestions"
-            v-model="jsonConfig.attribute.properties.tags.field"
-          />
-        </div>
-
-        <!-- To IDS -->
-        <div class="mb-3">
-          <label class="form-label fw-semibold">To IDS</label>
-          <div class="d-flex gap-3 mb-2">
-            <div
-              class="form-check"
-              v-for="opt in ['none', 'fixed', 'field']"
-              :key="opt"
-            >
-              <input
-                class="form-check-input"
-                type="radio"
-                :id="`to-ids-${opt}`"
-                :value="opt"
-                :checked="getPropertyStrategy('to_ids') === opt"
-                @change="setPropertyStrategy('to_ids', opt)"
-              />
-              <label
-                class="form-check-label text-capitalize"
-                :for="`to-ids-${opt}`"
-                >{{ opt }}</label
-              >
-            </div>
-          </div>
-          <div
-            v-if="getPropertyStrategy('to_ids') === 'fixed'"
-            class="form-check form-switch"
-          >
             <input
-              class="form-check-input"
-              type="checkbox"
-              id="toIdsFixed"
-              v-model="jsonConfig.attribute.properties.to_ids.value"
+              v-if="getPropertyStrategy('comment') === 'fixed'"
+              type="text"
+              class="form-control"
+              placeholder="Fixed comment value"
+              v-model="jsonConfig.attribute.properties.comment.value"
             />
-            <label class="form-check-label" for="toIdsFixed">Enabled</label>
+            <input
+              v-if="getPropertyStrategy('comment') === 'field'"
+              type="text"
+              class="form-control font-monospace"
+              placeholder="Field name (e.g. description)"
+              list="json-field-suggestions"
+              v-model="jsonConfig.attribute.properties.comment.field"
+            />
           </div>
-          <input
-            v-if="getPropertyStrategy('to_ids') === 'field'"
-            type="text"
-            class="form-control font-monospace"
-            placeholder="Field name (e.g. to_ids)"
-            list="json-field-suggestions"
-            v-model="jsonConfig.attribute.properties.to_ids.field"
-          />
+
+          <!-- Tags -->
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Tags</label>
+            <div class="d-flex gap-3 mb-2">
+              <div
+                class="form-check"
+                v-for="opt in ['none', 'fixed', 'field']"
+                :key="opt"
+              >
+                <input
+                  class="form-check-input"
+                  type="radio"
+                  :id="`tags-${opt}`"
+                  :value="opt"
+                  :checked="getPropertyStrategy('tags') === opt"
+                  @change="setPropertyStrategy('tags', opt)"
+                />
+                <label
+                  class="form-check-label text-capitalize"
+                  :for="`tags-${opt}`"
+                  >{{ opt }}</label
+                >
+              </div>
+            </div>
+            <input
+              v-if="getPropertyStrategy('tags') === 'fixed'"
+              type="text"
+              class="form-control"
+              placeholder="Comma-separated tags"
+              :value="
+                (jsonConfig.attribute.properties.tags?.value ?? []).join(', ')
+              "
+              @input="
+                jsonConfig.attribute.properties.tags.value = $event.target.value
+                  .split(',')
+                  .map((t) => t.trim())
+                  .filter(Boolean)
+              "
+            />
+            <input
+              v-if="getPropertyStrategy('tags') === 'field'"
+              type="text"
+              class="form-control font-monospace"
+              placeholder="Field name (e.g. tags)"
+              list="json-field-suggestions"
+              v-model="jsonConfig.attribute.properties.tags.field"
+            />
+          </div>
+
+          <!-- To IDS -->
+          <div class="mb-3">
+            <label class="form-label fw-semibold">To IDS</label>
+            <div class="d-flex gap-3 mb-2">
+              <div
+                class="form-check"
+                v-for="opt in ['none', 'fixed', 'field']"
+                :key="opt"
+              >
+                <input
+                  class="form-check-input"
+                  type="radio"
+                  :id="`to-ids-${opt}`"
+                  :value="opt"
+                  :checked="getPropertyStrategy('to_ids') === opt"
+                  @change="setPropertyStrategy('to_ids', opt)"
+                />
+                <label
+                  class="form-check-label text-capitalize"
+                  :for="`to-ids-${opt}`"
+                  >{{ opt }}</label
+                >
+              </div>
+            </div>
+            <div
+              v-if="getPropertyStrategy('to_ids') === 'fixed'"
+              class="form-check form-switch"
+            >
+              <input
+                class="form-check-input"
+                type="checkbox"
+                id="toIdsFixed"
+                v-model="jsonConfig.attribute.properties.to_ids.value"
+              />
+              <label class="form-check-label" for="toIdsFixed">Enabled</label>
+            </div>
+            <input
+              v-if="getPropertyStrategy('to_ids') === 'field'"
+              type="text"
+              class="form-control font-monospace"
+              placeholder="Field name (e.g. to_ids)"
+              list="json-field-suggestions"
+              v-model="jsonConfig.attribute.properties.to_ids.field"
+            />
+          </div>
         </div>
       </div>
     </div>

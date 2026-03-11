@@ -17,6 +17,7 @@ from pymisp import MISPEvent
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
 import csv
+import json
 
 logger = logging.getLogger(__name__)
 
@@ -790,14 +791,15 @@ def get_json_path(obj, path: str):
     return obj
 
 
-def fetch_json_content_from_network(url: str, extra_headers: dict = None):
+def fetch_json_content_from_network(url: str, extra_headers: dict = None) -> str:
+    """Fetch raw text content from a URL for JSON/NDJSON feeds."""
     headers = {"User-Agent": USER_AGENT}
     if extra_headers:
         headers.update(extra_headers)
     try:
         response = requests.get(url, headers=headers)
         if response.status_code == 200:
-            return response.json()
+            return response.content.decode("utf-8")
         else:
             raise HTTPException(
                 status_code=response.status_code,
@@ -812,17 +814,74 @@ def fetch_json_content_from_network(url: str, extra_headers: dict = None):
         )
 
 
-def process_json_item_to_attribute(item: dict, settings: dict):
-    cfg = settings["jsonConfig"]["attribute"]
+def parse_json_feed_items(content: str, json_cfg: dict) -> list:
+    """Parse raw text content into a list of JSON objects based on the configured format."""
+    fmt = json_cfg.get("format", "array")
+    items_path = json_cfg.get("items_path") or ""
 
-    value = get_json_path(item, cfg.get("value") or "")
-    if value is None:
-        return {
-            "value": None,
-            "type": None,
-            "error": f"Field '{cfg.get('value')}' not found in item",
-        }
-    value = str(value)
+    if fmt == "ndjson":
+        items = []
+        for line in content.splitlines():
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue
+            try:
+                obj = json.loads(line)
+                if isinstance(obj, dict):
+                    items.append(obj)
+            except (json.JSONDecodeError, ValueError):
+                continue
+        return items
+
+    try:
+        data = json.loads(content)
+    except (json.JSONDecodeError, ValueError) as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Failed to parse JSON: {e}",
+        )
+
+    node = get_json_path(data, items_path)
+
+    if isinstance(node, list):
+        return node
+    elif isinstance(node, dict):
+        return [node]
+    elif node is None:
+        path_desc = f" at path '{items_path}'" if items_path else ""
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"No data found{path_desc}",
+        )
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Expected array or object at path '{items_path}', got {type(node).__name__}",
+        )
+
+
+def process_json_item_to_attribute(item, settings: dict):
+    cfg = settings["jsonConfig"]["attribute"]
+    value_path = cfg.get("value") or ""
+
+    if not isinstance(item, dict):
+        # Primitive item (string, number) — use directly when no path is configured
+        if value_path:
+            return {
+                "value": None,
+                "type": None,
+                "error": f"Cannot traverse path '{value_path}' on a non-object item",
+            }
+        value = str(item)
+    else:
+        value = get_json_path(item, value_path)
+        if value is None:
+            return {
+                "value": None,
+                "type": None,
+                "error": f"Field '{value_path}' not found in item",
+            }
+        value = str(value)
 
     type_cfg = cfg.get("type") or {}
     if type_cfg.get("strategy") == "fixed":
@@ -875,23 +934,15 @@ def preview_json_feed(settings: dict = None, limit: int = 5):
             detail="Local file preview is not yet supported",
         )
 
-    data = fetch_json_content_from_network(settings["url"])
+    content = fetch_json_content_from_network(settings["url"])
     json_cfg = (settings.get("settings") or {}).get("jsonConfig") or {}
-    items_path = json_cfg.get("items_path") or ""
-    items = get_json_path(data, items_path)
-
-    if not isinstance(items, list):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Expected a JSON array at path '{items_path}', got {type(items).__name__ if items is not None else 'null'}",
-        )
+    items = parse_json_feed_items(content, json_cfg)
 
     preview_items = items[:limit]
     nested_settings = settings.get("settings") or {}
     processed = [
         process_json_item_to_attribute(item, nested_settings)
         for item in preview_items
-        if isinstance(item, dict)
     ]
 
     return {"result": "success", "items": preview_items, "preview": processed}
