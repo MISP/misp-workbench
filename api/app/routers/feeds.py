@@ -158,7 +158,7 @@ def test_feed_connection(
 def preview_csv_feed(
     settings: dict = None,
     user: user_schemas.User = Security(
-        get_current_active_user, scopes=["feeds:preview-csv"]
+        get_current_active_user, scopes=["feeds:preview"]
     ),
 ):
     return feeds_repository.preview_csv_feed(settings=settings)
@@ -167,7 +167,7 @@ def preview_csv_feed(
 def preview_json_feed(
     settings: dict = None,
     user: user_schemas.User = Security(
-        get_current_active_user, scopes=["feeds:preview-csv"]
+        get_current_active_user, scopes=["feeds:preview"]
     ),
 ):
     return feeds_repository.preview_json_feed(settings=settings)
@@ -177,7 +177,7 @@ def preview_json_feed(
 def preview_freetext_feed(
     settings: dict = None,
     user: user_schemas.User = Security(
-        get_current_active_user, scopes=["feeds:preview-csv"]
+        get_current_active_user, scopes=["feeds:preview"]
     ),
 ):
     return freetext_repository.preview_freetext_feed(settings=settings)

@@ -1,3 +1,6 @@
+import json
+from unittest.mock import patch
+
 import pytest
 from app.auth import auth
 from app.models import feed as feed_models
@@ -196,4 +199,182 @@ class TestFeedsResource(ApiTester):
             "/feeds/defaults", headers={"Authorization": "Bearer " + auth_token}
         )
 
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+
+_PREVIEW_SCOPE = ["feeds:preview"]
+
+_BASE_REQUEST = {
+    "url": "http://test.local/feed.json",
+    "input_source": "network",
+}
+
+_ARRAY_FEED = json.dumps([
+    {"indicator": "1.2.3.4", "type": "ip-dst"},
+    {"indicator": "5.6.7.8", "type": "ip-dst"},
+    {"indicator": "example.com", "type": "domain"},
+])
+
+_OBJECT_FEED = json.dumps({"indicator": "1.2.3.4", "type": "ip-dst"})
+
+_NDJSON_FEED = '{"indicator":"1.2.3.4"}\n{"indicator":"5.6.7.8"}\n{"indicator":"example.com"}'
+
+_PRIMITIVE_FEED = json.dumps(["1.2.3.4", "5.6.7.8", "example.com"])
+
+
+def _settings(fmt="array", items_path="", value_field="indicator", type_strategy="fixed",
+              type_value="ip-dst", type_field="type", mappings=None):
+    return {
+        "jsonConfig": {
+            "format": fmt,
+            "items_path": items_path,
+            "attribute": {
+                "value": value_field,
+                "type": {
+                    "strategy": type_strategy,
+                    "value": type_value,
+                    "field": type_field,
+                    "mappings": mappings or [],
+                },
+                "properties": {"comment": None, "tags": None, "to_ids": None},
+            },
+        }
+    }
+
+
+class TestJsonFeedPreview(ApiTester):
+    @pytest.mark.parametrize("scopes", [_PREVIEW_SCOPE])
+    def test_preview_array_feed_fixed_type(self, client: TestClient, auth_token: auth.Token):
+        with patch("app.repositories.feeds.fetch_json_content_from_network", return_value=_ARRAY_FEED):
+            response = client.post(
+                "/feeds/json/preview",
+                json={**_BASE_REQUEST, "settings": _settings()},
+                headers={"Authorization": "Bearer " + auth_token},
+            )
+        assert response.status_code == status.HTTP_200_OK
+        data = response.json()
+        assert data["result"] == "success"
+        assert len(data["items"]) == 3
+        assert len(data["preview"]) == 3
+        assert data["preview"][0]["value"] == "1.2.3.4"
+        assert data["preview"][0]["type"] == "ip-dst"
+
+    @pytest.mark.parametrize("scopes", [_PREVIEW_SCOPE])
+    def test_preview_array_feed_field_type(self, client: TestClient, auth_token: auth.Token):
+        with patch("app.repositories.feeds.fetch_json_content_from_network", return_value=_ARRAY_FEED):
+            response = client.post(
+                "/feeds/json/preview",
+                json={**_BASE_REQUEST, "settings": _settings(type_strategy="field")},
+                headers={"Authorization": "Bearer " + auth_token},
+            )
+        assert response.status_code == status.HTTP_200_OK
+        preview = response.json()["preview"]
+        assert preview[0]["type"] == "ip-dst"
+        assert preview[2]["type"] == "domain"
+
+    @pytest.mark.parametrize("scopes", [_PREVIEW_SCOPE])
+    def test_preview_array_feed_type_mappings(self, client: TestClient, auth_token: auth.Token):
+        mappings = [{"from": "ip-dst", "to": "ip-src"}]
+        with patch("app.repositories.feeds.fetch_json_content_from_network", return_value=_ARRAY_FEED):
+            response = client.post(
+                "/feeds/json/preview",
+                json={**_BASE_REQUEST, "settings": _settings(
+                    type_strategy="field", mappings=mappings
+                )},
+                headers={"Authorization": "Bearer " + auth_token},
+            )
+        assert response.status_code == status.HTTP_200_OK
+        preview = response.json()["preview"]
+        assert preview[0]["type"] == "ip-src"
+        assert preview[2]["type"] == "domain"  # unmapped passes through
+
+    @pytest.mark.parametrize("scopes", [_PREVIEW_SCOPE])
+    def test_preview_object_feed(self, client: TestClient, auth_token: auth.Token):
+        with patch("app.repositories.feeds.fetch_json_content_from_network", return_value=_OBJECT_FEED):
+            response = client.post(
+                "/feeds/json/preview",
+                json={**_BASE_REQUEST, "settings": _settings(fmt="object")},
+                headers={"Authorization": "Bearer " + auth_token},
+            )
+        assert response.status_code == status.HTTP_200_OK
+        data = response.json()
+        assert len(data["items"]) == 1
+        assert data["preview"][0]["value"] == "1.2.3.4"
+
+    @pytest.mark.parametrize("scopes", [_PREVIEW_SCOPE])
+    def test_preview_ndjson_feed(self, client: TestClient, auth_token: auth.Token):
+        with patch("app.repositories.feeds.fetch_json_content_from_network", return_value=_NDJSON_FEED):
+            response = client.post(
+                "/feeds/json/preview",
+                json={**_BASE_REQUEST, "settings": _settings(fmt="ndjson")},
+                headers={"Authorization": "Bearer " + auth_token},
+            )
+        assert response.status_code == status.HTTP_200_OK
+        data = response.json()
+        assert len(data["items"]) == 3
+        assert data["preview"][1]["value"] == "5.6.7.8"
+
+    @pytest.mark.parametrize("scopes", [_PREVIEW_SCOPE])
+    def test_preview_with_nested_items_path(self, client: TestClient, auth_token: auth.Token):
+        feed_data = json.dumps({"response": {"data": [{"indicator": "1.2.3.4"}]}})
+        with patch("app.repositories.feeds.fetch_json_content_from_network", return_value=feed_data):
+            response = client.post(
+                "/feeds/json/preview",
+                json={**_BASE_REQUEST, "settings": _settings(items_path="response.data")},
+                headers={"Authorization": "Bearer " + auth_token},
+            )
+        assert response.status_code == status.HTTP_200_OK
+        assert response.json()["preview"][0]["value"] == "1.2.3.4"
+
+    @pytest.mark.parametrize("scopes", [_PREVIEW_SCOPE])
+    def test_preview_primitive_items(self, client: TestClient, auth_token: auth.Token):
+        with patch("app.repositories.feeds.fetch_json_content_from_network", return_value=_PRIMITIVE_FEED):
+            response = client.post(
+                "/feeds/json/preview",
+                json={**_BASE_REQUEST, "settings": _settings(value_field="")},
+                headers={"Authorization": "Bearer " + auth_token},
+            )
+        assert response.status_code == status.HTTP_200_OK
+        preview = response.json()["preview"]
+        assert preview[0]["value"] == "1.2.3.4"
+        assert preview[0]["type"] == "ip-dst"
+
+    @pytest.mark.parametrize("scopes", [_PREVIEW_SCOPE])
+    def test_preview_limited_to_5_items(self, client: TestClient, auth_token: auth.Token):
+        large_feed = json.dumps([{"indicator": str(i)} for i in range(20)])
+        with patch("app.repositories.feeds.fetch_json_content_from_network", return_value=large_feed):
+            response = client.post(
+                "/feeds/json/preview",
+                json={**_BASE_REQUEST, "settings": _settings()},
+                headers={"Authorization": "Bearer " + auth_token},
+            )
+        assert response.status_code == status.HTTP_200_OK
+        assert len(response.json()["items"]) == 5
+
+    @pytest.mark.parametrize("scopes", [_PREVIEW_SCOPE])
+    def test_preview_wrong_items_path_returns_400(self, client: TestClient, auth_token: auth.Token):
+        with patch("app.repositories.feeds.fetch_json_content_from_network", return_value=_ARRAY_FEED):
+            response = client.post(
+                "/feeds/json/preview",
+                json={**_BASE_REQUEST, "settings": _settings(items_path="does.not.exist")},
+                headers={"Authorization": "Bearer " + auth_token},
+            )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    @pytest.mark.parametrize("scopes", [_PREVIEW_SCOPE])
+    def test_preview_local_source_returns_400(self, client: TestClient, auth_token: auth.Token):
+        response = client.post(
+            "/feeds/json/preview",
+            json={**_BASE_REQUEST, "input_source": "local", "settings": _settings()},
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    @pytest.mark.parametrize("scopes", [[]])
+    def test_preview_unauthorized(self, client: TestClient, auth_token: auth.Token):
+        response = client.post(
+            "/feeds/json/preview",
+            json={**_BASE_REQUEST, "settings": _settings()},
+            headers={"Authorization": "Bearer " + auth_token},
+        )
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
