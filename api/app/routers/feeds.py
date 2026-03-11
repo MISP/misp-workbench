@@ -17,6 +17,26 @@ _DEFAULTS_PATH = Path(__file__).parent.parent / "defaults" / "default-feeds.json
 router = APIRouter()
 
 
+def _to_dict(value) -> dict:
+    """Parse a value that may be a dict, a JSON string, or a doubly-encoded JSON string."""
+    if not value:
+        return {}
+    if isinstance(value, dict):
+        return value
+    if isinstance(value, str):
+        try:
+            parsed = json.loads(value)
+            if isinstance(parsed, dict):
+                return parsed
+            if isinstance(parsed, str):
+                inner = json.loads(parsed)
+                if isinstance(inner, dict):
+                    return inner
+        except (json.JSONDecodeError, ValueError):
+            pass
+    return {}
+
+
 @router.get("/feeds/", response_model=list[feed_schemas.Feed])
 def get_feeds(
     skip: int = 0,
@@ -50,8 +70,8 @@ def get_default_feeds(
                 "input_source": feed.get("input_source", "network"),
                 "delete_local_file": feed.get("delete_local_file", False),
                 "lookup_visible": feed.get("lookup_visible", False),
-                "rules": json.loads(feed["rules"]) if feed.get("rules") and isinstance(feed["rules"], str) else (feed.get("rules") or {}),
-                "settings": json.loads(feed["settings"]) if feed.get("settings") and isinstance(feed["settings"], str) else (feed.get("settings") or {}),
+                "rules": _to_dict(feed.get("rules")),
+                "settings": _to_dict(feed.get("settings")),
             }
         )
     return result

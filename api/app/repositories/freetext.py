@@ -1,3 +1,4 @@
+import ipaddress
 import re
 from typing import Optional
 
@@ -10,13 +11,6 @@ _PATTERNS: list[tuple[str, re.Pattern]] = [
     ("sha256", re.compile(r"^[a-fA-F0-9]{64}$")),
     ("sha1", re.compile(r"^[a-fA-F0-9]{40}$")),
     ("md5", re.compile(r"^[a-fA-F0-9]{32}$")),
-    ("ip-src", re.compile(r"^\d{1,3}(\.\d{1,3}){3}(/\d{1,2})?$")),
-    (
-        "ip-src",
-        re.compile(
-            r"^([0-9a-fA-F]{1,4}:){2,7}[0-9a-fA-F]{1,4}(/\d{1,3})?$"
-        ),
-    ),  # IPv6
     ("url", re.compile(r"^https?://", re.IGNORECASE)),
     ("email-src", re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")),
     ("cve", re.compile(r"^CVE-\d{4}-\d+$", re.IGNORECASE)),
@@ -29,9 +23,26 @@ _PATTERNS: list[tuple[str, re.Pattern]] = [
 ]
 
 
+def _is_ip(value: str) -> bool:
+    """Return True if value is a valid IP address or CIDR network (v4 or v6)."""
+    try:
+        ipaddress.ip_address(value)
+        return True
+    except ValueError:
+        pass
+    try:
+        ipaddress.ip_network(value, strict=False)
+        return True
+    except ValueError:
+        pass
+    return False
+
+
 def detect_type(value: str) -> Optional[str]:
     """Detect the most likely MISP attribute type for a freetext value."""
     value = value.strip()
+    if _is_ip(value):
+        return "ip-src"
     for type_name, pattern in _PATTERNS:
         if pattern.match(value):
             return type_name
