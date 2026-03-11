@@ -40,6 +40,7 @@ nav:
       - Freetext Feeds: feeds/freetext.md
     - Hunts: hunts.md
     - Correlations: correlations.md
+    - Notifications: notifications.md
   - Getting Started: getting-started.md
   - Configuration: configuration.md
   - Architecture: architecture.md
