@@ -60,6 +60,7 @@ watch(
       previewCsvFeed();
     }
   },
+  { immediate: true },
 );
 
 const columnsComputed = computed(() => {
@@ -161,10 +162,21 @@ function previewCsvFeed() {
           Loading preview...
           <FontAwesomeIcon :icon="faSpinner" spin />
         </div>
-        <CsvPreview :rows="csvRows" :columns="columnsComputed" />
+        <CsvPreview
+          :rows="csvConfig.header ? csvRows.slice(1) : csvRows"
+          :columns="columnsComputed"
+        />
         <small class="text-muted">
-          showing first {{ csvRows.length }} row<span
-            v-if="csvRows.length !== 1"
+          showing first
+          {{
+            csvConfig.header ? Math.max(0, csvRows.length - 1) : csvRows.length
+          }}
+          row<span
+            v-if="
+              (csvConfig.header
+                ? Math.max(0, csvRows.length - 1)
+                : csvRows.length) !== 1
+            "
             >s</span
           >
         </small>

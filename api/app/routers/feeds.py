@@ -1,3 +1,6 @@
+import json
+from pathlib import Path
+
 from app.auth.security import get_current_active_user
 from app.db.session import get_db
 from app.repositories import feeds as feeds_repository
@@ -6,6 +9,8 @@ from app.schemas import user as user_schemas
 from app.worker import tasks
 from fastapi import APIRouter, Depends, HTTPException, Security, status
 from sqlalchemy.orm import Session
+
+_DEFAULTS_PATH = Path(__file__).parent.parent / "defaults" / "default-feeds.json"
 
 router = APIRouter()
 
@@ -18,6 +23,36 @@ def get_feeds(
     user: feed_schemas.Feed = Security(get_current_active_user, scopes=["feeds:read"]),
 ):
     return feeds_repository.get_feeds(db, skip=skip, limit=limit)
+
+
+@router.get("/feeds/defaults")
+def get_default_feeds(
+    user: user_schemas.User = Security(get_current_active_user, scopes=["feeds:read"]),
+):
+    raw = json.loads(_DEFAULTS_PATH.read_text())
+    result = []
+    for entry in raw:
+        feed = entry["Feed"]
+        result.append(
+            {
+                "name": feed["name"],
+                "provider": feed["provider"],
+                "url": feed["url"],
+                "source_format": feed["source_format"],
+                "enabled": feed.get("enabled", False),
+                "distribution": int(feed.get("distribution", 0)),
+                "fixed_event": feed.get("fixed_event", False),
+                "delta_merge": feed.get("delta_merge", False),
+                "publish": feed.get("publish", False),
+                "override_ids": feed.get("override_ids", False),
+                "input_source": feed.get("input_source", "network"),
+                "delete_local_file": feed.get("delete_local_file", False),
+                "lookup_visible": feed.get("lookup_visible", False),
+                "rules": json.loads(feed["rules"]) if feed.get("rules") and isinstance(feed["rules"], str) else (feed.get("rules") or {}),
+                "settings": json.loads(feed["settings"]) if feed.get("settings") and isinstance(feed["settings"], str) else (feed.get("settings") or {}),
+            }
+        )
+    return result
 
 
 @router.get("/feeds/{feed_id}", response_model=feed_schemas.Feed)

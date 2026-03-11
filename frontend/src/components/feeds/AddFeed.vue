@@ -10,6 +10,7 @@ import AddFeedCsv from "@/components/feeds/csv/AddFeedCsv.vue";
 import TestCSVFeedModal from "@/components/feeds/csv/TestCSVFeedModal.vue";
 import TestMISPFeedConnectionModal from "@/components/feeds/misp/TestMISPFeedConnectionModal.vue";
 import AddFeedJson from "@/components/feeds/json/AddFeedJson.vue";
+import DefaultFeedPicker from "@/components/feeds/DefaultFeedPicker.vue";
 
 const feedsStore = useFeedsStore();
 const toastsStore = useToastsStore();
@@ -17,6 +18,7 @@ const tasksStore = useTasksStore();
 
 const feedType = ref("misp");
 const apiError = ref(null);
+const showDefaultPicker = ref(false);
 
 const config = ref({
   name: "",
@@ -116,13 +118,33 @@ function getFeedFromConfig() {
     name: config.value.name,
     url: config.value.url,
     provider: config.value.provider,
-    source_format: feedType.value,
+    source_format: config.value.source_format ?? feedType.value,
     enabled: config.value.enabled,
     fixed_event: config.value.fixed_event,
     distribution: parseInt(config.value.distribution),
     input_source: config.value.input_source,
     headers: config.value.headers ?? {},
   };
+}
+
+function applyDefaultFeed(feed) {
+  // Map source_format to a supported type selector value
+  const typeMap = { misp: "misp", csv: "csv", json: "json" };
+  feedType.value = typeMap[feed.source_format] ?? "misp";
+  config.value = {
+    ...config.value,
+    name: feed.name,
+    url: feed.url,
+    provider: feed.provider,
+    source_format: feed.source_format,
+    enabled: feed.enabled,
+    distribution: feed.distribution,
+    fixed_event: feed.fixed_event,
+    input_source: feed.input_source,
+    rules: feed.rules ?? {},
+    settings: feed.settings ?? {},
+  };
+  showDefaultPicker.value = false;
 }
 
 function cancel() {
@@ -235,10 +257,22 @@ function closeCSVFeedTestResult() {
     </div>
     <div class="card-body d-flex flex-column">
       <div class="container-lg">
-        <div class="mb-4">
+        <div class="mb-4 d-flex align-items-center justify-content-between">
           <p class="text-muted mb-0">
             Configure an external feed and how its data is ingested.
           </p>
+          <button
+            type="button"
+            class="btn btn-outline-secondary btn-sm"
+            @click="showDefaultPicker = !showDefaultPicker"
+          >
+            <i class="bi bi-list-ul me-1"></i>
+            {{ showDefaultPicker ? "Hide defaults" : "Select from defaults" }}
+          </button>
+        </div>
+
+        <div v-if="showDefaultPicker" class="mb-4">
+          <DefaultFeedPicker @select="applyDefaultFeed" />
         </div>
 
         <div class="mb-4">
