@@ -17,6 +17,7 @@ Some screenshots are available [here](docs/screenshots/).
 - **OpenSearch Dashboards**: an optional visualization and exploration UI that connects to OpenSearch for inspecting indexed data, building queries, and creating dashboards to aid debugging, analytics, and operational monitoring.
 - **Storage & attachments**: OpenSearch stores indexed attributes and correlation results; Garage (or compatible S3) is used for attachment storage when configured.
 
+
 ### Quick start
 
 1. Start the development stack (uses compose files in the repo):
@@ -91,3 +92,21 @@ If you want to contribute, start by reading the component READMEs (`api/README.m
 ### License
 
 This project is available under the terms in `LICENSE`.
+
+
+### Screenshots
+
+#### Explore
+Browse and search MISP events and their attributes using Lucene queries against indexed documents in OpenSearch. Filter by type, category, or free text to quickly locate indicators across all ingested data.
+
+![misp-workbench-explore-view](docs/screenshots/misp-workbench-explore-view.png)
+
+#### Hunts
+Define and run attribute searches (hunts) against the OpenSearch index to proactively look for indicators of interest. Results are saved and can be revisited.
+
+![misp-workbench-explore-view](docs/screenshots/misp-workbench-hunts-view.png)
+
+#### Sources
+Manage JSON, Freetext, CSV and MISP feed sources. Configure ingestion schedules, trigger manual fetches, and track sync status for each source.
+
+![misp-workbench-explore-view](docs/screenshots/misp-workbench-json-feeds-view.png)
