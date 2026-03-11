@@ -107,6 +107,12 @@ function submit() {
         });
       }
 
+      if (config.value.fetch_on_create) {
+        feedsStore.fetch(response.id).catch((error) => {
+          console.error("Failed to enqueue immediate feed fetch:", error);
+        });
+      }
+
       toastsStore.push(
         `Feed "${response.name}" created successfully!`,
         "success",
