@@ -5,6 +5,7 @@ from app.auth.security import get_current_active_user
 from app.db.session import get_db
 from app.repositories import feeds as feeds_repository
 from app.repositories import freetext as freetext_repository
+from app.repositories import tasks as tasks_repository
 from app.schemas import feed as feed_schemas
 from app.schemas import user as user_schemas
 from app.worker import tasks
@@ -172,6 +173,7 @@ def delete_feed(
         get_current_active_user, scopes=["feeds:delete"]
     ),
 ):
+    tasks_repository.delete_scheduled_tasks_for_feed(feed_id)
     return feeds_repository.delete_feed(db=db, feed_id=feed_id)
 
 
