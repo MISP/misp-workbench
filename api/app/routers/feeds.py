@@ -33,6 +33,8 @@ def get_default_feeds(
     result = []
     for entry in raw:
         feed = entry["Feed"]
+        if feed.get("source_format") == "freetext":
+            continue
         result.append(
             {
                 "name": feed["name"],

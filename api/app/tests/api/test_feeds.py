@@ -146,3 +146,54 @@ class TestFeedsResource(ApiTester):
         )
 
         assert response.status_code == status.HTTP_204_NO_CONTENT
+
+    @pytest.mark.parametrize("scopes", [["feeds:read"]])
+    def test_get_default_feeds(self, client: TestClient, auth_token: auth.Token):
+        response = client.get(
+            "/feeds/defaults", headers={"Authorization": "Bearer " + auth_token}
+        )
+        data = response.json()
+
+        assert response.status_code == status.HTTP_200_OK
+        assert isinstance(data, list)
+        assert len(data) > 0
+
+    @pytest.mark.parametrize("scopes", [["feeds:read"]])
+    def test_get_default_feeds_schema(self, client: TestClient, auth_token: auth.Token):
+        response = client.get(
+            "/feeds/defaults", headers={"Authorization": "Bearer " + auth_token}
+        )
+        data = response.json()
+
+        required_fields = {"name", "provider", "url", "source_format", "input_source"}
+        for feed in data:
+            assert required_fields.issubset(feed.keys())
+            assert isinstance(feed["name"], str)
+            assert isinstance(feed["url"], str)
+            assert isinstance(feed["provider"], str)
+            assert isinstance(feed["source_format"], str)
+            assert isinstance(feed["distribution"], int)
+            assert isinstance(feed["rules"], dict)
+            assert isinstance(feed["settings"], dict)
+
+    @pytest.mark.parametrize("scopes", [["feeds:read"]])
+    def test_get_default_feeds_no_freetext(
+        self, client: TestClient, auth_token: auth.Token
+    ):
+        response = client.get(
+            "/feeds/defaults", headers={"Authorization": "Bearer " + auth_token}
+        )
+        data = response.json()
+
+        source_formats = {feed["source_format"] for feed in data}
+        assert "freetext" not in source_formats
+
+    @pytest.mark.parametrize("scopes", [[]])
+    def test_get_default_feeds_unauthorized(
+        self, client: TestClient, auth_token: auth.Token
+    ):
+        response = client.get(
+            "/feeds/defaults", headers={"Authorization": "Bearer " + auth_token}
+        )
+
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED

@@ -15,14 +15,10 @@ onMounted(async () => {
   loading.value = false;
 });
 
-const supported = computed(() =>
-  defaults.value.filter((f) => f.source_format !== "freetext"),
-);
-
 const filtered = computed(() => {
   const q = search.value.toLowerCase();
-  if (!q) return supported.value;
-  return supported.value.filter(
+  if (!q) return defaults.value;
+  return defaults.value.filter(
     (f) =>
       f.name.toLowerCase().includes(q) ||
       f.provider.toLowerCase().includes(q) ||
