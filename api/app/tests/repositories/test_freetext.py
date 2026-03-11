@@ -1,4 +1,3 @@
-import pytest
 from app.repositories.freetext import detect_type
 
 
