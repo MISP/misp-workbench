@@ -31,15 +31,17 @@ theme:
 
 nav:
   - Home: index.md
+  - Features:
+    - Feeds:
+      - Overview: feeds/index.md
+      - MISP Feeds: feeds/misp.md
+      - CSV Feeds: feeds/csv.md
+      - JSON Feeds: feeds/json.md
+      - Freetext Feeds: feeds/freetext.md
+    - Hunts: hunts.md
   - Getting Started: getting-started.md
   - Configuration: configuration.md
   - Architecture: architecture.md
-  - Feeds:
-    - Overview: feeds/index.md
-    - MISP Feeds: feeds/misp.md
-    - CSV Feeds: feeds/csv.md
-    - JSON Feeds: feeds/json.md
-    - Freetext Feeds: feeds/freetext.md
   - Development: development.md
 
 markdown_extensions:
