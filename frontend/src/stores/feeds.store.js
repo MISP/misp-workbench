@@ -81,5 +81,10 @@ export const useFeedsStore = defineStore({
         .post(`${baseUrl}/csv/preview`, settings)
         .catch((error) => (this.status.error = error));
     },
+    async getDefaults() {
+      return await fetchWrapper
+        .get(`${baseUrl}/defaults`)
+        .catch((error) => (this.status.error = error));
+    },
   },
 });

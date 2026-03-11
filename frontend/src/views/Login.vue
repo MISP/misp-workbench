@@ -10,6 +10,7 @@ const schema = Yup.object().shape({
 });
 
 const theme = ref(localStorage.getItem("theme") || "light");
+document.documentElement.setAttribute("data-bs-theme", theme.value);
 
 function onSubmit(values, { setErrors }) {
   const authStore = useAuthStore();
