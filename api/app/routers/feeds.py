@@ -163,6 +163,16 @@ def preview_csv_feed(
 ):
     return feeds_repository.preview_csv_feed(settings=settings)
 
+@router.post("/feeds/json/preview")
+def preview_json_feed(
+    settings: dict = None,
+    user: user_schemas.User = Security(
+        get_current_active_user, scopes=["feeds:preview-csv"]
+    ),
+):
+    return feeds_repository.preview_json_feed(settings=settings)
+
+
 @router.post("/feeds/freetext/preview")
 def preview_freetext_feed(
     settings: dict = None,
