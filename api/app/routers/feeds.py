@@ -1,5 +1,6 @@
 import json
 from pathlib import Path
+import logging
 
 from app.auth.security import get_current_active_user
 from app.db.session import get_db
@@ -33,7 +34,7 @@ def _to_dict(value) -> dict:
                 if isinstance(inner, dict):
                     return inner
         except (json.JSONDecodeError, ValueError):
-            pass
+            logging.debug("Failed to parse value as JSON or nested JSON in _to_dict; returning empty dict", exc_info=True)
     return {}
 
 
