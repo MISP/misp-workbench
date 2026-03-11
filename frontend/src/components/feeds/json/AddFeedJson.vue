@@ -39,7 +39,10 @@ const jsonConfig = reactive({
 watch(
   jsonConfig,
   () => {
-    emit("update:modelValue", { settings: { jsonConfig: { ...jsonConfig } } });
+    emit("update:modelValue", {
+      ...props.modelValue,
+      settings: { jsonConfig: { ...jsonConfig } },
+    });
   },
   { deep: true },
 );
@@ -50,13 +53,6 @@ watch(
     if (newUri && newUri !== oldUri) loadPreview();
   },
   { immediate: true },
-);
-
-watch(
-  () => jsonConfig.items_path,
-  () => {
-    if (props.modelValue.url) loadPreview();
-  },
 );
 
 watch(
@@ -190,6 +186,8 @@ function typeBadgeClass(type) {
             class="form-control font-monospace"
             placeholder="e.g. data.indicators (leave empty if root is the array/object)"
             v-model="jsonConfig.items_path"
+            @blur="loadPreview"
+            @keyup.enter="loadPreview"
           />
           <div class="form-text">
             Dot-notation path to the JSON array or object to ingest. Leave empty
