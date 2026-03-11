@@ -35,7 +35,6 @@ def get_default_feeds(
     result = []
     for entry in raw:
         feed = entry["Feed"]
-        pass
         result.append(
             {
                 "name": feed["name"],
