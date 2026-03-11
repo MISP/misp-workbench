@@ -11,6 +11,7 @@ from app.settings import get_settings
 from app.services.runtime_settings_provider import get_runtime_settings
 from app.repositories import events as events_repository
 from app.repositories import feeds as feeds_repository
+from app.repositories import freetext as freetext_repository
 from app.repositories import servers as servers_repository
 from app.repositories import objects as objects_repository
 from app.repositories import users as users_repository
@@ -567,6 +568,65 @@ def fetch_csv_feed(feed_id: int, user_id: int):
     return {
         "result": "success",
         "message": "CSV feed=%s processed, %s rows parsed, %s attributes created, %s rows failed."
+        % (db_feed.name, rows_parsed, attributes_created, failed_rows),
+    }
+
+
+@celery_app.task
+def fetch_freetext_feed(feed_id: int, user_id: int):
+    logger.info("fetch freetext feed id=%s job started", feed_id)
+
+    rows_parsed = 0
+    attributes_created = 0
+    failed_rows = 0
+
+    with Session(engine) as db:
+        user = users_repository.get_user_by_id(db, user_id)
+        db_feed = feeds_repository.get_feed_by_id(db, feed_id=feed_id)
+
+        db_event = feeds_repository.get_or_create_feed_event(db, db_feed, user)
+
+        lines = feeds_repository.fetch_csv_content_from_network(
+            db_feed.url, extra_headers=db_feed.headers
+        )
+
+        freetext_config = (db_feed.settings or {}).get("freetextConfig", {})
+        type_detection = freetext_config.get("type_detection", "automatic")
+        fixed_type = freetext_config.get("fixed_type")
+
+        for line in lines:
+            value = line.strip()
+            if not value:
+                continue
+
+            try:
+                rows_parsed += 1
+
+                if type_detection == "fixed" and fixed_type:
+                    attr_type = fixed_type
+                else:
+                    attr_type = freetext_repository.detect_type(value)
+
+                db_attribute = attribute_schemas.AttributeCreate(
+                    event_id=db_event.id,
+                    type=attr_type,
+                    value=value,
+                    category="External analysis",
+                )
+                attributes_repository.create_attribute(db, db_attribute)
+                attributes_created += 1
+
+            except Exception as e:
+                failed_rows += 1
+                logger.error("Error processing freetext feed line: %s", e)
+
+    index_event.delay(str(db_event.uuid), full_reindex=True)
+
+    logger.info("fetch freetext feed id=%s job finished", feed_id)
+
+    return {
+        "result": "success",
+        "message": "Freetext feed=%s processed, %s rows parsed, %s attributes created, %s rows failed."
         % (db_feed.name, rows_parsed, attributes_created, failed_rows),
     }
 

@@ -177,7 +177,7 @@ class TestFeedsResource(ApiTester):
             assert isinstance(feed["settings"], dict)
 
     @pytest.mark.parametrize("scopes", [["feeds:read"]])
-    def test_get_default_feeds_no_freetext(
+    def test_get_default_feeds_source_formats(
         self, client: TestClient, auth_token: auth.Token
     ):
         response = client.get(
@@ -186,7 +186,7 @@ class TestFeedsResource(ApiTester):
         data = response.json()
 
         source_formats = {feed["source_format"] for feed in data}
-        assert "freetext" not in source_formats
+        assert source_formats.issubset({"misp", "csv", "freetext", "json"})
 
     @pytest.mark.parametrize("scopes", [[]])
     def test_get_default_feeds_unauthorized(

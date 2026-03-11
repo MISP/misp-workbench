@@ -10,6 +10,7 @@ import AddFeedCsv from "@/components/feeds/csv/AddFeedCsv.vue";
 import TestCSVFeedModal from "@/components/feeds/csv/TestCSVFeedModal.vue";
 import TestMISPFeedConnectionModal from "@/components/feeds/misp/TestMISPFeedConnectionModal.vue";
 import AddFeedJson from "@/components/feeds/json/AddFeedJson.vue";
+import AddFeedFreetext from "@/components/feeds/freetext/AddFeedFreetext.vue";
 import DefaultFeedPicker from "@/components/feeds/DefaultFeedPicker.vue";
 
 const feedsStore = useFeedsStore();
@@ -41,6 +42,8 @@ const typeComponent = computed(() => {
       return AddFeedCsv;
     case "json":
       return AddFeedJson;
+    case "freetext":
+      return AddFeedFreetext;
     case "misp":
     default:
       return AddFeedMISP;
@@ -129,7 +132,12 @@ function getFeedFromConfig() {
 
 function applyDefaultFeed(feed) {
   // Map source_format to a supported type selector value
-  const typeMap = { misp: "misp", csv: "csv", json: "json" };
+  const typeMap = {
+    misp: "misp",
+    csv: "csv",
+    json: "json",
+    freetext: "freetext",
+  };
   feedType.value = typeMap[feed.source_format] ?? "misp";
   config.value = {
     ...config.value,

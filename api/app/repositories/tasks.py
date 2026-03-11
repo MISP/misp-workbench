@@ -227,6 +227,22 @@ def update_scheduled_task(
         )
 
 
+def delete_scheduled_tasks_for_feed(feed_id: int):
+    """Delete all RedBeat scheduled tasks whose kwargs contain the given feed_id."""
+    RedisClient = get_redis(CELERY_WORKER_REDIS_DB)
+    keys = RedisClient.keys("redbeat:*")
+
+    for key in keys:
+        if key in ["redbeat::lock", "redbeat::beat", "redbeat::schedule"]:
+            continue
+        try:
+            task = RedBeatSchedulerEntry.from_key(key, app=celery_app)
+            if task.kwargs.get("feed_id") == feed_id:
+                task.delete()
+        except Exception:
+            continue
+
+
 def delete_scheduled_tasks_for_hunt(hunt_id: int):
     """Delete all RedBeat scheduled tasks whose kwargs contain the given hunt_id."""
     RedisClient = get_redis(CELERY_WORKER_REDIS_DB)

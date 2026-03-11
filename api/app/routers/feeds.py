@@ -1,9 +1,12 @@
 import json
 from pathlib import Path
+import logging
 
 from app.auth.security import get_current_active_user
 from app.db.session import get_db
 from app.repositories import feeds as feeds_repository
+from app.repositories import freetext as freetext_repository
+from app.repositories import tasks as tasks_repository
 from app.schemas import feed as feed_schemas
 from app.schemas import user as user_schemas
 from app.worker import tasks
@@ -13,6 +16,26 @@ from sqlalchemy.orm import Session
 _DEFAULTS_PATH = Path(__file__).parent.parent / "defaults" / "default-feeds.json"
 
 router = APIRouter()
+
+
+def _to_dict(value) -> dict:
+    """Parse a value that may be a dict, a JSON string, or a doubly-encoded JSON string."""
+    if not value:
+        return {}
+    if isinstance(value, dict):
+        return value
+    if isinstance(value, str):
+        try:
+            parsed = json.loads(value)
+            if isinstance(parsed, dict):
+                return parsed
+            if isinstance(parsed, str):
+                inner = json.loads(parsed)
+                if isinstance(inner, dict):
+                    return inner
+        except (json.JSONDecodeError, ValueError):
+            logging.debug("Failed to parse value as JSON or nested JSON in _to_dict; returning empty dict", exc_info=True)
+    return {}
 
 
 @router.get("/feeds/", response_model=list[feed_schemas.Feed])
@@ -33,8 +56,6 @@ def get_default_feeds(
     result = []
     for entry in raw:
         feed = entry["Feed"]
-        if feed.get("source_format") == "freetext":
-            continue
         result.append(
             {
                 "name": feed["name"],
@@ -50,8 +71,8 @@ def get_default_feeds(
                 "input_source": feed.get("input_source", "network"),
                 "delete_local_file": feed.get("delete_local_file", False),
                 "lookup_visible": feed.get("lookup_visible", False),
-                "rules": json.loads(feed["rules"]) if feed.get("rules") and isinstance(feed["rules"], str) else (feed.get("rules") or {}),
-                "settings": json.loads(feed["settings"]) if feed.get("settings") and isinstance(feed["settings"], str) else (feed.get("settings") or {}),
+                "rules": _to_dict(feed.get("rules")),
+                "settings": _to_dict(feed.get("settings")),
             }
         )
     return result
@@ -142,6 +163,16 @@ def preview_csv_feed(
 ):
     return feeds_repository.preview_csv_feed(settings=settings)
 
+@router.post("/feeds/freetext/preview")
+def preview_freetext_feed(
+    settings: dict = None,
+    user: user_schemas.User = Security(
+        get_current_active_user, scopes=["feeds:preview-csv"]
+    ),
+):
+    return freetext_repository.preview_freetext_feed(settings=settings)
+
+
 @router.patch("/feeds/{feed_id}", response_model=feed_schemas.Feed)
 def update_feed(
     feed_id: int,
@@ -162,6 +193,7 @@ def delete_feed(
         get_current_active_user, scopes=["feeds:delete"]
     ),
 ):
+    tasks_repository.delete_scheduled_tasks_for_feed(feed_id)
     return feeds_repository.delete_feed(db=db, feed_id=feed_id)
 
 
