@@ -82,7 +82,11 @@ function onHuntCreated() {
             </div>
           </td>
           <td v-if="!$isMobile">
-            <span class="badge bg-secondary">{{ hunt.index_target }}</span>
+            <span class="badge bg-secondary">{{
+              hunt.hunt_type === "opensearch"
+                ? hunt.index_target
+                : hunt.hunt_type
+            }}</span>
           </td>
           <td v-if="!$isMobile" class="text-muted small">
             {{
