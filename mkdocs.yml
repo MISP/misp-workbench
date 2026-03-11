@@ -1,0 +1,61 @@
+site_name: misp-workbench
+site_description: A modern MISP-compatible threat intelligence platform
+repo_url: https://github.com/MISP/misp-workbench
+repo_name: MISP/misp-workbench
+
+theme:
+  name: material
+  logo: images/misp-workbench-icon.png
+  favicon: images/misp-workbench-icon.png
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - toc.integrate
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+  palette:
+    - scheme: default
+      primary: deep purple
+      accent: purple
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: deep purple
+      accent: purple
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+
+nav:
+  - Home: index.md
+  - Getting Started: getting-started.md
+  - Configuration: configuration.md
+  - Architecture: architecture.md
+  - Feeds:
+    - Overview: feeds/index.md
+    - MISP Feeds: feeds/misp.md
+    - CSV Feeds: feeds/csv.md
+    - JSON Feeds: feeds/json.md
+    - Freetext Feeds: feeds/freetext.md
+  - Development: development.md
+
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences
+  - admonition
+  - pymdownx.details
+  - pymdownx.tabbed:
+      alternate_style: true
+  - attr_list
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+
+docs_dir: docs
