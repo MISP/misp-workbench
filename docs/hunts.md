@@ -48,7 +48,7 @@ Looks up detection rules from [rulezet.org](https://rulezet.org) by Vuln ID. The
 
 ### Creating a scheduled task for a _Hunt_
 
-1. Go to ***Internals*** → ***Tasks*** to open the scheduled tasks view, then click the ***+ New*** button.
+1. Go to ***internals*** → ***tasks*** to open the scheduled tasks view, then click the ***+ New*** button.
     <img src="../screenshots/hunts/misp-workbench-6_hunts_scheduled-task-add-button.png" style="max-width: 100%; height: auto;">
 2. Select ***run_task*** as the task type, then select the hunt you want to run periodically. The run frequency can be defined using a fixed interval or a crontab expression for more granular scheduling.
     <img src="../screenshots/hunts/misp-workbench-7_hunts_scheduled-task-add-scheduled-hunt.png" style="height: 500px;">

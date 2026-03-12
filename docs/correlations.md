@@ -1,6 +1,9 @@
 # Correlations
-
 Correlations identify attributes that share a common value across different events. They are stored in the `misp-attribute-correlations` OpenSearch index and can be queried, regenerated, or deleted via the API.
+
+<img src="../screenshots/correlations/misp-workbench-1_correlations-view.png">
+
+Correlations are computed automatically when an attribute is added or updated. To force a full re-run across all your data, go to ***internals*** → ***correlations*** and click the ***Re-run Correlations*** button. This may take some time depending on how large is your dataset.
 
 ## How it works
 
@@ -18,6 +21,21 @@ Each correlation document records:
 | `target_event_uuid` | Event the target attribute belongs to |
 | `match_type` | How the match was found (`term`, `prefix`, `fuzzy`, `cidr`) |
 | `score` | OpenSearch relevance score |
+
+
+## Correlating Events
+When attributes within an _Event_ have correlations, a _Related Events_ widget displays the number of correlations and the UUID of each related _Event_.
+
+<img src="../screenshots/correlations/misp-workbench-2_correlations-event-view.png">
+
+
+When an _Attribute_ has a correlation, it displays a <span style="color: rgb(255, 193, 7);">:fontawesome-solid-sitemap:</span> icon.
+
+<img src="../screenshots/correlations/misp-workbench-3_correlations-attribute-row.png" style="height: 150px;">
+
+Clicking the <span style="color: rgb(255, 193, 7);">:fontawesome-solid-sitemap:</span> icon opens a modal with the correlation details for that _Attribute_.
+
+<img src="../screenshots/correlations/misp-workbench-4_correlations-attribute-correlation-modal.png" style="height: 300px;">
 
 ## Match types
 
@@ -38,7 +56,7 @@ Active match types and tuning parameters are controlled by runtime settings:
 | `correlations.maxCorrelationsPerDoc` | `1000` | Max matches stored per attribute |
 | `correlations.opensearchFlushBulkSize` | `100` | Bulk write buffer size |
 
-## Running correlations
+## Running correlations via the API
 
 Enqueues a Celery task that scans all attributes and generates correlation documents.
 
