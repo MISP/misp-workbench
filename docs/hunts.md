@@ -28,7 +28,7 @@ Looks up detection rules from [rulezet.org](https://rulezet.org) by Vuln ID. The
     - _OpenSearch_ hunt:
     
     <img src="../screenshots/hunts/misp-workbench-1_hunts_new-opensearch-hunt.png" style="height: 500px;">
-
+    
     - _Rulezet_ hunt:
     
     <img src="../screenshots/hunts/misp-workbench-2_hunts_new-rulezet-hunt.png" style="height: 500px;">
