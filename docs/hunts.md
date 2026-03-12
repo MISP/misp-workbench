@@ -12,14 +12,6 @@ Executes a Lucene query against one of the three OpenSearch indices (`attributes
 
 Looks up detection rules from [rulezet.org](https://rulezet.org) by Vuln ID. The `query` field must be a vulnerability identifier (e.g. `CVE-2021-44228`, `ghsa-q4qf-26fw-9qw6`). Results contain the detection rules published for that vulnerability. The `index_target` field is ignored for rulezet hunts.
 
-```json
-{
-  "name": "Log4Shell detection rules",
-  "query": "CVE-2021-44228",
-  "hunt_type": "rulezet"
-}
-```
-
 ## Concepts
 
 | Term | Description |
@@ -30,7 +22,41 @@ Looks up detection rules from [rulezet.org](https://rulezet.org) by Vuln ID. The
 | **Status** | `active` or `paused` — paused hunts are skipped during scheduled runs |
 | **Run history** | Each execution stores a timestamp and match count |
 
-## Creating a hunt
+
+## Creating a _Hunt_
+1. Go to the ***hunt*** menu option in the main nav bar and click the ***+ New Hunt*** button.
+    - _OpenSearch_ hunt:
+    
+    <img src="../screenshots/hunts/misp-workbench-1_hunts_new-opensearch-hunt.png" style="height: 500px;">
+
+    - _Rulezet_ hunt:
+    
+    <img src="../screenshots/hunts/misp-workbench-2_hunts_new-rulezet-hunt.png" style="height: 500px;">
+
+2. Click the eye icon on the newly created hunt to view its details. To run the hunt immediately, click the ***Run Now*** button.
+    <img src="../screenshots/hunts/misp-workbench-3_hunts_view-opensearch-hunt.png" style="max-width: 100%; height: auto;">
+
+3. Once results are available, you can see the matches and the delta compared to the previous run.
+
+    <img src="../screenshots/hunts/misp-workbench-4_hunts_view-opensearch-hunt-matches.png" style="max-width: 100%; height: auto;">
+
+4. When a hunt produces a new match or its results differ from the previous run, the user receives a notification.
+
+    <img src="../screenshots/hunts/misp-workbench-5_hunts_view-opensearch-hunt-matches-notification.png" style="max-width: 100%; height: auto;">
+
+5. You can schedule the hunt to run periodically using the ***Schedule*** widget, which supports hourly, daily, or weekly automatic runs. For more granular control, you can define a custom recurring scheduled task.
+
+### Creating a scheduled task for a _Hunt_
+
+1. Go to ***Internals*** → ***Tasks*** to open the scheduled tasks view, then click the ***+ New*** button.
+    <img src="../screenshots/hunts/misp-workbench-6_hunts_scheduled-task-add-button.png" style="max-width: 100%; height: auto;">
+2. Select ***run_task*** as the task type, then select the hunt you want to run periodically. The run frequency can be defined using a fixed interval or a crontab expression for more granular scheduling.
+    <img src="../screenshots/hunts/misp-workbench-7_hunts_scheduled-task-add-scheduled-hunt.png" style="height: 500px;">
+3. You can pause a scheduled task at any time.
+    <img src="../screenshots/hunts/misp-workbench-8_hunts_scheduled-task-created-scheduled-hunt.png" style="max-width: 100%; height: auto;">
+
+
+## Creating a _Hunt_ using the API
 
 A hunt requires a name and a Lucene query. All other fields are optional.
 
@@ -48,7 +74,7 @@ POST /hunts/
 
 Required scopes: `hunts:create`
 
-## Running a hunt
+## Running a _Hunt_
 
 ```
 POST /hunts/{hunt_id}/run
