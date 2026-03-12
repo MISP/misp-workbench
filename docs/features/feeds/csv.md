@@ -2,22 +2,24 @@
 
 CSV feeds ingest delimited text files where each row becomes a MISP attribute.
 
+<img src="../../../screenshots/feeds/misp-workbench-1_csv-feed.png">
+
 ## Configuration
 
-### Format options
+### Format options and preview
 
 | Field | Options | Description |
 |---|---|---|
 | **Delimiter** | `,` `;` `\|` `\t` ` ` | Column separator |
 | **First row is header** | on / off | Skip the first row during ingestion |
 
-### Attribute mapping
+<img src="../../../screenshots/feeds/misp-workbench-2_csv-feed-preview.png">
 
-Configure how CSV columns are mapped to MISP attribute fields.
+### Attribute value mapping
 
-#### Value column
+Configure how CSV columns are mapped to MISP attribute fields. Select which column (by index or header name) contains the indicator value.
 
-Select which column (by index or header name) contains the indicator value.
+<img src="../../../screenshots/feeds/misp-workbench-3_csv-feed-value-mapping.png">
 
 #### Type strategy
 
@@ -42,6 +44,9 @@ Each property can be:
 | `comment` | Free text |
 | `first_seen` | Timestamp |
 | `last_seen` | Timestamp |
+
+
+<img src="../../../screenshots/feeds/misp-workbench-4_csv-feed-advanced-value-mapping.png">
 
 ## Example
 

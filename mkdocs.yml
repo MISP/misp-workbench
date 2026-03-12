@@ -32,16 +32,17 @@ theme:
 nav:
   - Home: index.md
   - Features:
-    - Feeds:
-      - Overview: feeds/index.md
-      - MISP Feeds: feeds/misp.md
-      - CSV Feeds: feeds/csv.md
-      - JSON Feeds: feeds/json.md
-      - Freetext Feeds: feeds/freetext.md
-    - Explore: explore.md
-    - Hunts: hunts.md
-    - Correlations: correlations.md
-    - Notifications: notifications.md
+    - Overview: features/index.md
+    - Feeds: 
+      - Overview: features/feeds/index.md
+      - MISP Feeds: features/feeds/misp.md
+      - CSV Feeds: features/feeds/csv.md
+      - JSON Feeds: features/feeds/json.md
+      - Freetext Feeds: features/feeds/freetext.md
+    - Explore: features/explore.md
+    - Hunts: features/hunts.md
+    - Correlations: features/correlations.md
+    - Notifications: features/notifications.md
   - Getting Started: getting-started.md
   - Configuration: configuration.md
   - Architecture: architecture.md

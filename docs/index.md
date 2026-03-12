@@ -8,10 +8,11 @@ A modern MISP-compatible threat intelligence platform. It provides a self-contai
 
 | Feature | Description |
 |---|---|
-| **Feed ingestion** | Ingest MISP, CSV, JSON, and Freetext feeds on a schedule or on demand |
-| **Correlations** | Batch and incremental correlation scans over indexed attributes |
-| **Search & hunts** | Lucene queries against OpenSearch for fast indicator lookups |
-| **Notifications** | Event-driven notifications processed by Celery workers |
+| [Feed ingestion](features/feeds/index.md) | Ingest MISP, CSV, JSON, and Freetext feeds on a schedule or on demand |
+| [Correlations](features/correlations.md) | Batch and incremental correlation scans over indexed attributes |
+| [Explore](features/explore.md) | Lucene queries against OpenSearch for fast indicator lookups |
+| [Hunt](features/hunts.md) | Hunts are saved searches that run periodically and trigger alerts. |
+| [Notifications](features/notifications.md) | Event-driven notifications processed by Celery workers |
 | **REST API** | FastAPI backend with automatic OpenAPI documentation |
 | **Storage** | Garage (S3-compatible) or local filesystem for attachments |
 
@@ -35,7 +36,7 @@ A modern MISP-compatible threat intelligence platform. It provides a self-contai
 ## Quick links
 
 - [Getting Started](getting-started.md)
+- [Features](features/index.md)
 - [Configuration reference](configuration.md)
 - [Architecture overview](architecture.md)
-- [Feed types](feeds/index.md)
 - [Development guide](development.md)

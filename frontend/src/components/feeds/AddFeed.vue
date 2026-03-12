@@ -155,7 +155,7 @@ function applyDefaultFeed(feed) {
     distribution: feed.distribution,
     fixed_event: feed.fixed_event,
     input_source: feed.input_source,
-    rules: {},
+    rules: feed.rules ?? {},
     settings: feed.settings ?? {},
   };
   showDefaultPicker.value = false;

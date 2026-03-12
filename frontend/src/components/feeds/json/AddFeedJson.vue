@@ -2,8 +2,27 @@
 import { ref, reactive, watch, computed } from "vue";
 import { useFeedsStore } from "@/stores";
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
-import { faSpinner } from "@fortawesome/free-solid-svg-icons";
+import { faSpinner, faChevronDown } from "@fortawesome/free-solid-svg-icons";
 import AttributeTypeSelect from "@/components/enums/AttributeTypeSelect.vue";
+import TagsSelect from "@/components/tags/TagsSelect.vue";
+
+const attributeProperties = [
+  {
+    key: "comment",
+    label: "comment",
+    help: "Free-text comment for the attribute",
+  },
+  {
+    key: "tags",
+    label: "tags",
+    help: "Comma-separated list of tags",
+  },
+  {
+    key: "to_ids",
+    label: "to_ids",
+    help: "Whether the attribute should be marked as to_ids (true/false)",
+  },
+];
 
 const feedsStore = useFeedsStore();
 const emit = defineEmits(["update:modelValue"]);
@@ -62,6 +81,20 @@ watch(
   },
 );
 
+watch(
+  () => [
+    jsonConfig.attribute.value,
+    jsonConfig.attribute.type.strategy,
+    jsonConfig.attribute.type.value,
+    jsonConfig.attribute.type.field,
+    jsonConfig.attribute.type.mappings,
+  ],
+  () => {
+    if (props.modelValue.url && previewItems.value.length) loadPreview();
+  },
+  { deep: true },
+);
+
 function loadPreview() {
   loadingPreview.value = true;
   apiError.value = null;
@@ -97,22 +130,16 @@ function removeTypeMapping(idx) {
   jsonConfig.attribute.type.mappings.splice(idx, 1);
 }
 
-function setPropertyStrategy(prop, strategy) {
-  if (strategy === "none") {
-    jsonConfig.attribute.properties[prop] = null;
-  } else if (strategy === "fixed") {
-    jsonConfig.attribute.properties[prop] = {
-      strategy: "fixed",
-      value: prop === "to_ids" ? false : prop === "tags" ? [] : "",
+// Initialise properties so v-model bindings work from the start
+attributeProperties.forEach((prop) => {
+  if (!jsonConfig.attribute.properties[prop.key]) {
+    jsonConfig.attribute.properties[prop.key] = {
+      strategy: null,
+      field: null,
+      value: null,
     };
-  } else {
-    jsonConfig.attribute.properties[prop] = { strategy: "field", field: "" };
   }
-}
-
-function getPropertyStrategy(prop) {
-  return jsonConfig.attribute.properties[prop]?.strategy ?? "none";
-}
+});
 
 const TYPE_BADGE = {
   "ip-src": "bg-danger",
@@ -379,154 +406,159 @@ function typeBadgeClass(type) {
     </div>
   </div>
 
-  <!-- Optional Properties -->
+  <!-- Advanced property mappings -->
   <div class="mb-4">
     <div class="card">
-      <div
-        class="card-header d-flex justify-content-between align-items-center"
-        style="cursor: pointer"
-        data-bs-toggle="collapse"
-        data-bs-target="#optionalPropertiesBody"
-      >
-        <h5 class="mb-0">Optional Properties</h5>
-        <i class="bi bi-chevron-down"></i>
+      <div class="card-header py-2">
+        <button
+          class="btn m-0"
+          type="button"
+          data-bs-toggle="collapse"
+          data-bs-target="#advancedCardBody"
+          aria-expanded="false"
+          aria-controls="advancedCardBody"
+        >
+          Advanced property mappings
+          <FontAwesomeIcon :icon="faChevronDown" class="ms-1" />
+        </button>
       </div>
-      <div id="optionalPropertiesBody" class="collapse">
+
+      <div class="collapse collapsed" id="advancedCardBody">
         <div class="card-body">
-          <!-- Comment -->
-          <div class="mb-3">
-            <label class="form-label fw-semibold">Comment</label>
-            <div class="d-flex gap-3 mb-2">
-              <div
-                class="form-check"
-                v-for="opt in ['none', 'fixed', 'field']"
-                :key="opt"
-              >
-                <input
-                  class="form-check-input"
-                  type="radio"
-                  :id="`comment-${opt}`"
-                  :value="opt"
-                  :checked="getPropertyStrategy('comment') === opt"
-                  @change="setPropertyStrategy('comment', opt)"
-                />
-                <label
-                  class="form-check-label text-capitalize"
-                  :for="`comment-${opt}`"
-                  >{{ opt }}</label
-                >
-              </div>
-            </div>
-            <input
-              v-if="getPropertyStrategy('comment') === 'fixed'"
-              type="text"
-              class="form-control"
-              placeholder="Fixed comment value"
-              v-model="jsonConfig.attribute.properties.comment.value"
-            />
-            <input
-              v-if="getPropertyStrategy('comment') === 'field'"
-              type="text"
-              class="form-control font-monospace"
-              placeholder="Field name (e.g. description)"
-              list="json-field-suggestions"
-              v-model="jsonConfig.attribute.properties.comment.field"
-            />
+          <div class="text-muted small mb-3">
+            Optionally map JSON fields to additional attribute properties.
           </div>
 
-          <!-- Tags -->
-          <div class="mb-3">
-            <label class="form-label fw-semibold">Tags</label>
-            <div class="d-flex gap-3 mb-2">
-              <div
-                class="form-check"
-                v-for="opt in ['none', 'fixed', 'field']"
-                :key="opt"
-              >
-                <input
-                  class="form-check-input"
-                  type="radio"
-                  :id="`tags-${opt}`"
-                  :value="opt"
-                  :checked="getPropertyStrategy('tags') === opt"
-                  @change="setPropertyStrategy('tags', opt)"
-                />
-                <label
-                  class="form-check-label text-capitalize"
-                  :for="`tags-${opt}`"
-                  >{{ opt }}</label
-                >
-              </div>
-            </div>
-            <input
-              v-if="getPropertyStrategy('tags') === 'fixed'"
-              type="text"
-              class="form-control"
-              placeholder="Comma-separated tags"
-              :value="
-                (jsonConfig.attribute.properties.tags?.value ?? []).join(', ')
-              "
-              @input="
-                jsonConfig.attribute.properties.tags.value = $event.target.value
-                  .split(',')
-                  .map((t) => t.trim())
-                  .filter(Boolean)
-              "
-            />
-            <input
-              v-if="getPropertyStrategy('tags') === 'field'"
-              type="text"
-              class="form-control font-monospace"
-              placeholder="Field name (e.g. tags)"
-              list="json-field-suggestions"
-              v-model="jsonConfig.attribute.properties.tags.field"
-            />
-          </div>
+          <div
+            v-for="prop in attributeProperties"
+            :key="prop.key"
+            class="row align-items-center mb-3"
+          >
+            <!-- LABEL -->
+            <label class="col-sm-3 col-form-label">
+              {{ prop.label }}
+            </label>
 
-          <!-- To IDS -->
-          <div class="mb-3">
-            <label class="form-label fw-semibold">To IDS</label>
-            <div class="d-flex gap-3 mb-2">
-              <div
-                class="form-check"
-                v-for="opt in ['none', 'fixed', 'field']"
-                :key="opt"
-              >
-                <input
-                  class="form-check-input"
-                  type="radio"
-                  :id="`to-ids-${opt}`"
-                  :value="opt"
-                  :checked="getPropertyStrategy('to_ids') === opt"
-                  @change="setPropertyStrategy('to_ids', opt)"
-                />
-                <label
-                  class="form-check-label text-capitalize"
-                  :for="`to-ids-${opt}`"
-                  >{{ opt }}</label
-                >
+            <!-- CONTROLS -->
+            <div class="col-sm-9">
+              <!-- STRATEGY SWITCH -->
+              <div class="d-flex align-items-center gap-3 mb-2">
+                <div class="form-check form-check-inline">
+                  <input
+                    class="form-check-input"
+                    type="radio"
+                    :name="`prop-${prop.key}`"
+                    :value="null"
+                    v-model="jsonConfig.attribute.properties[prop.key].strategy"
+                  />
+                  <label class="form-check-label small text-muted"
+                    >Not mapped</label
+                  >
+                </div>
+
+                <div class="form-check form-check-inline">
+                  <input
+                    class="form-check-input"
+                    type="radio"
+                    :name="`prop-${prop.key}`"
+                    value="field"
+                    v-model="jsonConfig.attribute.properties[prop.key].strategy"
+                  />
+                  <label class="form-check-label small">Field</label>
+                </div>
+
+                <div class="form-check form-check-inline">
+                  <input
+                    class="form-check-input"
+                    type="radio"
+                    :name="`prop-${prop.key}`"
+                    value="fixed"
+                    v-model="jsonConfig.attribute.properties[prop.key].strategy"
+                  />
+                  <label class="form-check-label small">Fixed value</label>
+                </div>
               </div>
+
+              <!-- FIELD SELECT -->
+              <div class="col-md-10">
+                <div
+                  class="row"
+                  v-if="
+                    jsonConfig.attribute.properties[prop.key].strategy ===
+                    'field'
+                  "
+                >
+                  <div class="col-md-6">
+                    <input
+                      type="text"
+                      class="form-control form-control-sm font-monospace"
+                      placeholder="Field path (e.g. description)"
+                      list="json-field-suggestions"
+                      v-model="jsonConfig.attribute.properties[prop.key].field"
+                    />
+                  </div>
+                  <div class="col-md-6">
+                    <code>
+                      {{
+                        previewItems.length > 0 &&
+                        jsonConfig.attribute.properties[prop.key].field
+                          ? (previewItems[0][
+                              jsonConfig.attribute.properties[prop.key].field
+                            ] ?? "—")
+                          : "—"
+                      }}
+                    </code>
+                  </div>
+                </div>
+
+                <!-- FIXED VALUE INPUT -->
+                <div class="col-md-6">
+                  <div
+                    v-if="
+                      jsonConfig.attribute.properties[prop.key].strategy ===
+                      'fixed'
+                    "
+                  >
+                    <div v-if="prop.key === 'tags'">
+                      <TagsSelect
+                        :modelClass="'event'"
+                        :model="jsonConfig.attribute.properties[prop.key].value"
+                        :persist="false"
+                        @update:selectedTags="
+                          jsonConfig.attribute.properties[prop.key].value =
+                            $event
+                        "
+                      />
+                    </div>
+                    <div v-else-if="prop.key === 'to_ids'">
+                      <select
+                        class="form-select form-select-sm"
+                        v-model="
+                          jsonConfig.attribute.properties[prop.key].value
+                        "
+                      >
+                        <option disabled value="">Select value</option>
+                        <option :value="true">true</option>
+                        <option :value="false">false</option>
+                      </select>
+                    </div>
+                    <div v-else>
+                      <input
+                        type="text"
+                        class="form-control form-control-sm"
+                        v-model="
+                          jsonConfig.attribute.properties[prop.key].value
+                        "
+                        placeholder="Enter fixed value"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <small class="text-muted d-block mt-1">
+                {{ prop.help }}
+              </small>
             </div>
-            <div
-              v-if="getPropertyStrategy('to_ids') === 'fixed'"
-              class="form-check form-switch"
-            >
-              <input
-                class="form-check-input"
-                type="checkbox"
-                id="toIdsFixed"
-                v-model="jsonConfig.attribute.properties.to_ids.value"
-              />
-              <label class="form-check-label" for="toIdsFixed">Enabled</label>
-            </div>
-            <input
-              v-if="getPropertyStrategy('to_ids') === 'field'"
-              type="text"
-              class="form-control font-monospace"
-              placeholder="Field name (e.g. to_ids)"
-              list="json-field-suggestions"
-              v-model="jsonConfig.attribute.properties.to_ids.field"
-            />
           </div>
         </div>
       </div>

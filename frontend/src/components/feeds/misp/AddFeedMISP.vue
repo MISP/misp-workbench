@@ -1,13 +1,7 @@
 <script setup>
-import { ref, reactive, watch } from "vue";
+import { ref, reactive, watch, nextTick } from "vue";
 import TagsSelect from "@/components/tags/TagsSelect.vue";
 import OrganisationsMultiSelect from "@/components/organisations/OrganisationsMultiSelect.vue";
-
-const DEFAULT_FEED_RULES = {
-  rules: {
-    timestamp: "30d",
-  },
-};
 
 const props = defineProps({
   modelValue: {
@@ -38,52 +32,51 @@ const basic = reactive({
 
 const advancedJson = ref("");
 
+function buildAndEmitRules() {
+  let rules = null;
+
+  if (mode.value === "basic") {
+    if (basic.timestamp.enabled) {
+      rules = {
+        timestamp: `${basic.timestamp.value}${basic.timestamp.unit}`,
+      };
+    }
+    if (basic.tags.enabled && basic.tags.tags.length > 0) {
+      if (!rules) rules = {};
+      rules.tags = basic.tags.tags;
+    }
+    if (basic.orgs.enabled && basic.orgs.orgs.length > 0) {
+      if (!rules) rules = {};
+      rules.orgs = basic.orgs.orgs;
+    }
+  } else {
+    try {
+      rules = advancedJson.value ? JSON.parse(advancedJson.value) : null;
+    } catch {
+      return;
+    }
+  }
+
+  emit("update:modelValue", { ...props.modelValue, rules: rules ?? {} });
+}
+
 /**
- * Emit rules depending on mode
+ * Emit rules on mount (immediate) and whenever the UI changes.
+ */
+watch([mode, basic, advancedJson], buildAndEmitRules, {
+  deep: true,
+  immediate: true,
+});
+
+/**
+ * Re-emit rules when the parent replaces config (e.g. default feed selected).
+ * We detect this by watching the URL — it changes on default feed selection
+ * but stays the same when this component emits (because we spread modelValue).
  */
 watch(
-  [mode, basic, advancedJson],
-  () => {
-    let rules = null;
-
-    if (mode.value === "basic") {
-      if (basic.timestamp.enabled) {
-        rules = {
-          timestamp: `${basic.timestamp.value}${basic.timestamp.unit}`,
-        };
-      }
-      if (basic.tags.enabled && basic.tags.tags.length > 0) {
-        if (!rules) {
-          rules = {};
-        }
-        rules.tags = basic.tags.tags;
-      }
-      if (basic.orgs.enabled && basic.orgs.orgs.length > 0) {
-        if (!rules) {
-          rules = {};
-        }
-        rules.orgs = basic.orgs.orgs;
-      }
-    } else {
-      try {
-        rules = advancedJson.value ? JSON.parse(advancedJson.value) : null;
-      } catch {
-        // Invalid JSON
-        return;
-      }
-    }
-
-    emit("update:modelValue", rules ? { rules } : {});
-  },
-  { deep: true },
+  () => props.modelValue.url,
+  () => nextTick(buildAndEmitRules),
 );
-
-if (
-  props.modelValue.rules === null ||
-  Object.keys(props.modelValue.rules).length === 0
-) {
-  emit("update:modelValue", DEFAULT_FEED_RULES);
-}
 </script>
 
 <template>

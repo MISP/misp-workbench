@@ -2,6 +2,12 @@
 
 MISP feeds follow the standard MISP feed format: a `manifest.json` index file and individual event JSON files at the same base URL.
 
+<img src="../../../screenshots/feeds/misp-workbench-2_misp-feed.png">
+
+Additional rules such a filtering based on _Organisations_, or _Tags_ or _Timestamp_. By default events from the last 30 days are fetched.
+
+<img src="../../../screenshots/feeds/misp-workbench-3_misp-feed-rules.png">
+
 ## How it works
 
 1. The worker fetches `<url>/manifest.json` to get the list of event UUIDs.
@@ -33,4 +39,6 @@ Beyond the [common settings](index.md#common-settings), MISP feeds support:
 
 ## Testing the connection
 
-Use the **Preview** button on the Add Feed form to verify the URL is reachable and returns a valid manifest before saving.
+Use the **Preview** button on the Add Feed form to verify the URL is reachable and returns a valid manifest before saving. The preview will also show how many events will be dropped after applying the configured filtering rules.
+
+<img src="../../../screenshots/feeds/misp-workbench-4_misp-feed-preview.png" style="height: 250px;">

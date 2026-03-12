@@ -2,6 +2,8 @@
 
 JSON feeds ingest structured JSON data where each item in a collection becomes a MISP attribute. Nested fields are accessed using dot-notation paths.
 
+<img src="../../../screenshots/feeds/misp-workbench-1_json-feed.png">
+
 ## Supported formats
 
 | Format | Description |
@@ -15,6 +17,12 @@ JSON feeds ingest structured JSON data where each item in a collection becomes a
 ### Items path
 
 Dot-notation path to the array or object within the JSON document. Leave empty if the root element is the array.
+
+<img src="../../../screenshots/feeds/misp-workbench-2_csv-feed-preview.png">
+
+After the items path is configured, the preview is re-rendered.
+
+<img src="../../../screenshots/feeds/misp-workbench-3_json-feed-preview-with-json-path.png">
 
 **Examples:**
 
@@ -35,6 +43,8 @@ Dot-notation path to the attribute value within each item.
 - `"value"` — reads `item.value`
 - `"data.indicator"` — reads `item.data.indicator`
 - *(empty)* — use the item itself directly (for primitive arrays like `["1.2.3.4", "5.6.7.8"]`)
+
+<img src="../../../screenshots/feeds/misp-workbench-4_json-feed-attribute-mapping.png">
 
 #### Type strategy
 

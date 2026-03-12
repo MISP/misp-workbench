@@ -2,7 +2,7 @@
 
 Notifications are event-driven alerts delivered to users when something they follow changes. They are stored in PostgreSQL and optionally dispatched by email via Celery.
 
-<img src="../screenshots/notifications/misp-workbench-1_notifications-hunt.png">
+<img src="../../screenshots/notifications/misp-workbench-1_notifications-hunt.png">
 
 ## How it works
 
@@ -22,12 +22,12 @@ User reads notifications via GET /notifications
 ## Following entities
 
 To follow an _Event_ or _Attribute_ one can click on the :fa:fontawesome-solid-star: icon.
-<img src="../screenshots/notifications/misp-workbench-2_notifications-follow-event.png" style="height: 150px;">
+<img src="../../screenshots/notifications/misp-workbench-2_notifications-follow-event.png" style="height: 150px;">
 
 Follows are stored in user settings under the `notifications` namespace. The `follow` key holds lists of UUIDs per entity type.
 
 You check the followed entities by navigating to ***internals*** → ***user settings*** → ***notifications***.
-<img src="..screenshots/notifications/misp-workbench-3_notifications-user-settings.png">
+<img src="../../screenshots/notifications/misp-workbench-3_notifications-user-settings.png">
 
 ### Using the API
 
