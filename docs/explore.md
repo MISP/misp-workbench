@@ -52,7 +52,7 @@ The sidebar panel tracks two lists:
 
 <img src="../screenshots/explore/misp-workbench-5_explore_search-history.png" style="height: 400px;">
 
-Recent searches are added automatically when you run a new query. You can promote a recent search to saved (persisted server-side) by clicking the floppy disk icon next to it.
+Recent searches are added automatically when you run a new query. You can promote a recent search to saved (persisted server-side) by clicking the :fontawesome-solid-floppy-disk: icon next to it.
 
 You can re-run a search by clicking on it from the search history panel.
 
@@ -61,7 +61,7 @@ You can re-run a search by clicking on it from the search history panel.
 Any query — including the active time range filter — can be turned into a Hunt directly from the search bar.
 
 1. Type or select a query.
-2. Click the **save** dropdown (floppy disk icon) → **Save as Hunt**.
+2. Click the :fontawesome-solid-floppy-disk: dropdown → **Save as Hunt**.
         <img src="../screenshots/explore/misp-workbench-6_explore_save-search-as-hunt.png" style="height: 200px;">
 3. The current query (plus any `@timestamp` range clause) is pre-filled in the Hunt creation modal.
 4. Give the hunt a name and confirm. The hunt is immediately available in the [Hunts](hunts.md) view.
