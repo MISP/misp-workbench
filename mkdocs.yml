@@ -1,0 +1,71 @@
+site_name: misp-workbench documentation
+site_description: A modern MISP-compatible threat intelligence platform
+repo_url: https://github.com/MISP/misp-workbench
+repo_name: MISP/misp-workbench
+
+theme:
+  name: material
+  logo: images/misp-workbench-icon.png
+  favicon: images/misp-workbench-icon.png
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - toc.integrate
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+  palette:
+    - scheme: default
+      primary: deep purple
+      accent: purple
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: deep purple
+      accent: purple
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+
+nav:
+  - Home: index.md
+  - Features:
+    - Overview: features/index.md
+    - Feeds: 
+      - Overview: features/feeds/index.md
+      - MISP Feeds: features/feeds/misp.md
+      - CSV Feeds: features/feeds/csv.md
+      - JSON Feeds: features/feeds/json.md
+      - Freetext Feeds: features/feeds/freetext.md
+    - Explore: features/explore.md
+    - Hunts: features/hunts.md
+    - Correlations: features/correlations.md
+    - Notifications: features/notifications.md
+    - Enrichments: features/enrichments.md
+  - Getting Started: getting-started.md
+  - Configuration: configuration.md
+  - Architecture: architecture.md
+  - Development: development.md
+
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences
+  - admonition
+  - pymdownx.details
+  - pymdownx.tabbed:
+      alternate_style: true
+  - attr_list
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+
+docs_dir: docs

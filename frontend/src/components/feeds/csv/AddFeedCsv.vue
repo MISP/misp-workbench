@@ -187,13 +187,13 @@ function previewCsvFeed() {
   <CsvAttributeMapping
     v-if="csvConfig.mode === 'attribute'"
     v-model="csvConfig.attribute"
-    :rows="csvRows"
+    :rows="csvConfig.header ? csvRows.slice(1) : csvRows"
     :columns="columnsWithIndex"
   />
   <CsvObjectMapping
     v-else-if="csvConfig.mode === 'object'"
     v-model="csvConfig.object"
-    :rows="csvRows"
+    :rows="csvConfig.header ? csvRows.slice(1) : csvRows"
     :columns="columnsWithIndex"
   />
 </template>

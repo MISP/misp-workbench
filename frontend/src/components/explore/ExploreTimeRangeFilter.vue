@@ -102,6 +102,7 @@ function _initPickers() {
       altFormat: "Y-m-d H:i",
       allowInput: true,
       disableMobile: true,
+      defaultDate: absoluteFrom.value || undefined,
       onChange: (_, dateStr) => {
         absoluteFrom.value = dateStr;
       },
@@ -115,6 +116,7 @@ function _initPickers() {
       altFormat: "Y-m-d H:i",
       allowInput: true,
       disableMobile: true,
+      defaultDate: absoluteTo.value || undefined,
       onChange: (_, dateStr) => {
         absoluteTo.value = dateStr;
       },

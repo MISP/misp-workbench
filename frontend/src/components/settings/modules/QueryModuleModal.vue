@@ -19,6 +19,12 @@ const request = ref({
 const requestJson = ref(JSON.stringify(request.value, null, 2));
 
 function queryModule() {
+  try {
+    request.value = JSON.parse(requestJson.value);
+  } catch {
+    status.value = { error: "Invalid JSON in request payload" };
+    return;
+  }
   return modulesStore
     .query(request.value)
     .catch((error) => (status.error = error));
