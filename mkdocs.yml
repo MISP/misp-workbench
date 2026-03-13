@@ -1,4 +1,4 @@
-site_name: misp-workbench
+site_name: misp-workbench documentation
 site_description: A modern MISP-compatible threat intelligence platform
 repo_url: https://github.com/MISP/misp-workbench
 repo_name: MISP/misp-workbench
@@ -43,6 +43,7 @@ nav:
     - Hunts: features/hunts.md
     - Correlations: features/correlations.md
     - Notifications: features/notifications.md
+    - Enrichments: features/enrichments.md
   - Getting Started: getting-started.md
   - Configuration: configuration.md
   - Architecture: architecture.md
