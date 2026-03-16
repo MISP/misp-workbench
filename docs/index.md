@@ -14,6 +14,8 @@ A modern MISP-compatible threat intelligence platform. It provides a self-contai
 | [Enrichments](features/enrichments.md) | IOC enrichment powered by [misp-modules](https://github.com/MISP/misp-modules) |
 | [Hunt](features/hunts.md) | Hunts are saved searches that run periodically and trigger alerts. |
 | [Notifications](features/notifications.md) | Event-driven notifications processed by Celery workers |
+| [Batch Import](features/batch-import.md) | Easily import a list of indicators and add them as attributes to an event in a single operation. |
+| [OpenSearch](features/opensearch/index.md) | Full-text search, dashboards, and ingestion pipelines |
 | **REST API** | FastAPI backend with automatic OpenAPI documentation |
 | **Storage** | Garage (S3-compatible) or local filesystem for attachments |
 
