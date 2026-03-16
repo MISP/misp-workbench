@@ -45,6 +45,10 @@ nav:
     - Notifications: features/notifications.md
     - Enrichments: features/enrichments.md
     - Batch Import: features/batch-import.md
+    - OpenSearch:
+      - Overview: features/opensearch/index.md
+      - Dashboards: features/opensearch/dashboards.md
+      - Ingest Pipelines: features/opensearch/ingest-pipelines.md
   - Getting Started: getting-started.md
   - Configuration: configuration.md
   - Architecture: architecture.md
