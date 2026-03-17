@@ -4,8 +4,8 @@ import { storeToRefs } from "pinia";
 import { useFeedsStore, useToastsStore } from "@/stores";
 import { router } from "@/router";
 import FeedBaseForm from "@/components/feeds/FeedBaseForm.vue";
-import AddFeedMISP from "@/components/feeds/misp/AddFeedMISP.vue";
-import TestMISPFeedConnectionModal from "@/components/feeds/misp/TestMISPFeedConnectionModal.vue";
+import AddFeedCsv from "@/components/feeds/csv/AddFeedCsv.vue";
+import TestCSVFeedModal from "@/components/feeds/csv/TestCSVFeedModal.vue";
 
 const feedsStore = useFeedsStore();
 const toastsStore = useToastsStore();
@@ -22,31 +22,31 @@ const config = ref({
   fixed_event: feed.value.fixed_event,
   input_source: feed.value.input_source,
   headers: feed.value.headers ?? {},
-  rules: feed.value.rules ?? {},
+  settings: feed.value.settings ?? {},
 });
 
 // test modal state
 const testResultOpen = ref(false);
-const testResult = reactive({
-  success: false,
-  message: "",
-  total_events: 0,
-});
+const testResult = reactive({});
 
-function submit() {
-  const payload = {
+function buildPayload() {
+  return {
     id: feed.value.id,
     name: config.value.name,
     url: config.value.url,
     provider: config.value.provider,
-    source_format: "misp",
+    source_format: "csv",
     distribution: parseInt(config.value.distribution),
     enabled: config.value.enabled,
     fixed_event: config.value.fixed_event,
     input_source: config.value.input_source,
     headers: config.value.headers ?? {},
-    rules: config.value.rules ?? {},
+    settings: config.value.settings ?? {},
   };
+}
+
+function submit() {
+  const payload = buildPayload();
 
   return feedsStore
     .update(payload)
@@ -64,32 +64,13 @@ function cancel() {
   router.push(`/feeds/${feed.value.id}`);
 }
 
-function test() {
-  const payload = {
-    name: config.value.name,
-    url: config.value.url,
-    provider: config.value.provider,
-    source_format: "misp",
-    distribution: parseInt(config.value.distribution),
-    enabled: config.value.enabled,
-    fixed_event: config.value.fixed_event,
-    input_source: config.value.input_source,
-    headers: config.value.headers ?? {},
-    rules: config.value.rules ?? {},
-  };
+function preview() {
+  const payload = buildPayload();
 
   return feedsStore
-    .testMISPFeedConnection(payload)
+    .previewCsvFeed(payload)
     .then((response) => {
-      if (response.result === "success") {
-        testResult.success = true;
-        testResult.message = "Connection successful!";
-        testResult.total_events = response.total_events;
-        testResult.total_filtered_events = response.total_filtered_events;
-      } else {
-        testResult.success = false;
-        testResult.message = `Connection failed: ${response.message}`;
-      }
+      testResult.value = response;
       testResultOpen.value = true;
     })
     .catch((error) => {
@@ -107,7 +88,7 @@ function closeTestResult() {
 <template>
   <div class="card">
     <div class="card-header border-bottom">
-      <h3>Update MISP Feed</h3>
+      <h3>Update CSV Feed</h3>
     </div>
     <div class="card-body d-flex flex-column">
       <div class="container-lg">
@@ -122,9 +103,7 @@ function closeTestResult() {
           </div>
         </div>
 
-        <div class="mb-4">
-          <AddFeedMISP v-model="config" />
-        </div>
+        <AddFeedCsv v-model="config" />
 
         <div v-if="apiError" class="w-100 alert alert-danger mt-3 mb-3">
           {{ apiError }}
@@ -134,7 +113,7 @@ function closeTestResult() {
           <button class="btn btn-outline-secondary" @click="cancel">
             Cancel
           </button>
-          <button class="btn btn-success" @click="test">Test Connection</button>
+          <button class="btn btn-success" @click="preview">Preview</button>
           <button
             class="btn btn-primary"
             :class="{ disabled: status.updating }"
@@ -153,9 +132,10 @@ function closeTestResult() {
       </div>
     </div>
   </div>
-  <TestMISPFeedConnectionModal
+  <TestCSVFeedModal
     v-if="testResultOpen"
-    :testResult="testResult"
+    :config="config"
+    :testResult="testResult.value"
     @closeModal="closeTestResult"
   />
 </template>

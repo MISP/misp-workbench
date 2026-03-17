@@ -73,10 +73,10 @@ export const useFeedsStore = defineStore({
       this.status = { updating: true };
       return await fetchWrapper
         .post(`${baseUrl}/misp/test-connection`, feed)
-        .catch((error) => (this.status.error = error));
+        .catch((error) => (this.status.error = error))
+        .finally(() => (this.status.updating = false));
     },
     async previewCsvFeed(settings) {
-      this.status = { loading: true };
       return await fetchWrapper
         .post(`${baseUrl}/csv/preview`, settings)
         .catch((error) => (this.status.error = error));
