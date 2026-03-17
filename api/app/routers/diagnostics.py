@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import urllib.request
 
 from app.auth.security import get_current_active_user
 from app.database import engine
@@ -223,8 +224,6 @@ def get_storage_diagnostics(
         }
 
     if engine_name == "s3":
-        import urllib.request
-
         s3 = settings.Storage.s3
         admin_url = os.environ.get("GARAGE_ADMIN_URL", "http://garage:3903")
         admin_token = os.environ.get("GARAGE_ADMIN_TOKEN", "")
@@ -260,3 +259,48 @@ def get_storage_diagnostics(
             return {**base, "connected": True}
 
     return {"engine": engine_name}
+
+
+@router.get("/diagnostics/modules")
+def get_modules_diagnostics(
+    user: user_schemas.User = Security(get_current_active_user, scopes=["tasks:read"]),
+):
+    settings = get_settings()
+    host = settings.Modules.host
+    port = settings.Modules.port
+    url = f"http://{host}:{port}/modules"
+
+    try:
+        req = urllib.request.Request(url, headers={"Accept": "application/json"})
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            modules = json.loads(resp.read())
+
+        counts = {}
+        for m in modules:
+            mod_type = m.get("type", "unknown")
+            counts[mod_type] = counts.get(mod_type, 0) + 1
+
+        return {
+            "connected": True,
+            "url": url,
+            "total": len(modules),
+            "counts": counts,
+            "modules": [
+                {
+                    "name": m.get("name"),
+                    "type": m.get("type"),
+                    "meta_name": m.get("meta", {}).get("name"),
+                    "description": m.get("meta", {}).get("description"),
+                    "version": m.get("meta", {}).get("version"),
+                    "module_type": m.get("meta", {}).get("module-type", []),
+                }
+                for m in modules
+            ],
+        }
+    except Exception as e:
+        logger.error("Failed to fetch MISP modules diagnostics: %s", e)
+        return {
+            "connected": False,
+            "url": url,
+            "error": str(e),
+        }
