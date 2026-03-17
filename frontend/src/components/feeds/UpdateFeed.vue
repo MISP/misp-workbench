@@ -8,6 +8,7 @@ import { storeToRefs } from "pinia";
 import { useFeedsStore } from "@/stores";
 import EditFeedMISP from "@/components/feeds/misp/EditFeedMISP.vue";
 import EditFeedCsv from "@/components/feeds/csv/EditFeedCsv.vue";
+import EditFeedFreetext from "@/components/feeds/freetext/EditFeedFreetext.vue";
 import EditFeedLegacy from "@/components/feeds/EditFeedLegacy.vue";
 
 const feedsStore = useFeedsStore();
@@ -19,6 +20,8 @@ const editComponent = computed(() => {
       return EditFeedMISP;
     case "csv":
       return EditFeedCsv;
+    case "freetext":
+      return EditFeedFreetext;
     default:
       return EditFeedLegacy;
   }

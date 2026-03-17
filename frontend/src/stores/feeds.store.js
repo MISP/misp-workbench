@@ -89,11 +89,9 @@ export const useFeedsStore = defineStore({
         .finally(() => (this.status.loading = false));
     },
     async previewFreetextFeed(settings) {
-      this.status = { loading: true };
       return await fetchWrapper
         .post(`${baseUrl}/freetext/preview`, settings)
-        .catch((error) => (this.status.error = error))
-        .finally(() => (this.status.loading = false));
+        .catch((error) => (this.status.error = error));
     },
     async getDefaults() {
       return await fetchWrapper

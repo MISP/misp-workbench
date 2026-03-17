@@ -19,9 +19,11 @@ const apiError = ref(null);
 const previewRows = ref([]);
 const loadingPreview = ref(false);
 
+const saved = props.modelValue?.settings?.freetextConfig;
+
 const freetextConfig = reactive({
-  type_detection: "automatic",
-  fixed_type: null,
+  type_detection: saved?.type_detection ?? "automatic",
+  fixed_type: saved?.fixed_type ?? null,
 });
 
 // Emit config changes to parent without triggering preview reload
@@ -29,6 +31,7 @@ watch(
   freetextConfig,
   () => {
     emit("update:modelValue", {
+      ...props.modelValue,
       settings: { freetextConfig: { ...freetextConfig } },
     });
   },
