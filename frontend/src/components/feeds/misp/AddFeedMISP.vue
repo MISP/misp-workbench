@@ -14,23 +14,34 @@ const emit = defineEmits(["update:modelValue"]);
 
 const mode = ref("basic");
 
+function parseTimestamp(ts) {
+  const match = String(ts).match(/^(\d+)([dwm])$/);
+  if (match)
+    return { enabled: true, value: parseInt(match[1]), unit: match[2] };
+  return { enabled: true, value: 30, unit: "d" };
+}
+
+const initialRules = props.modelValue?.rules;
+
 const basic = reactive({
-  timestamp: {
-    enabled: true,
-    value: 30,
-    unit: "d",
-  },
+  timestamp: initialRules?.timestamp
+    ? parseTimestamp(initialRules.timestamp)
+    : { enabled: true, value: 30, unit: "d" },
   tags: {
-    enabled: false,
-    tags: [],
+    enabled: !!initialRules?.tags?.length,
+    tags: initialRules?.tags ? [...initialRules.tags] : [],
   },
   orgs: {
-    enabled: false,
-    orgs: [],
+    enabled: !!initialRules?.orgs?.length,
+    orgs: initialRules?.orgs ? [...initialRules.orgs] : [],
   },
 });
 
-const advancedJson = ref("");
+const advancedJson = ref(
+  initialRules && Object.keys(initialRules).length
+    ? JSON.stringify(initialRules, null, 2)
+    : "",
+);
 
 function buildAndEmitRules() {
   let rules = null;
