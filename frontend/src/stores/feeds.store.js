@@ -82,11 +82,9 @@ export const useFeedsStore = defineStore({
         .catch((error) => (this.status.error = error));
     },
     async previewJsonFeed(settings) {
-      this.status = { loading: true };
       return await fetchWrapper
         .post(`${baseUrl}/json/preview`, settings)
-        .catch((error) => (this.status.error = error))
-        .finally(() => (this.status.loading = false));
+        .catch((error) => (this.status.error = error));
     },
     async previewFreetextFeed(settings) {
       return await fetchWrapper

@@ -36,21 +36,23 @@ const previewItems = ref([]);
 const processedPreview = ref([]);
 const loadingPreview = ref(false);
 
+const saved = props.modelValue?.settings?.jsonConfig;
+
 const jsonConfig = reactive({
-  format: "array",
-  items_path: "",
+  format: saved?.format ?? "array",
+  items_path: saved?.items_path ?? "",
   attribute: {
-    value: "",
+    value: saved?.attribute?.value ?? "",
     type: {
-      strategy: "fixed",
-      value: null,
-      field: "",
-      mappings: [],
+      strategy: saved?.attribute?.type?.strategy ?? "fixed",
+      value: saved?.attribute?.type?.value ?? null,
+      field: saved?.attribute?.type?.field ?? "",
+      mappings: saved?.attribute?.type?.mappings ?? [],
     },
     properties: {
-      comment: null,
-      tags: null,
-      to_ids: null,
+      comment: saved?.attribute?.properties?.comment ?? null,
+      tags: saved?.attribute?.properties?.tags ?? null,
+      to_ids: saved?.attribute?.properties?.to_ids ?? null,
     },
   },
 });

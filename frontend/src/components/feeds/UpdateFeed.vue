@@ -9,6 +9,7 @@ import { useFeedsStore } from "@/stores";
 import EditFeedMISP from "@/components/feeds/misp/EditFeedMISP.vue";
 import EditFeedCsv from "@/components/feeds/csv/EditFeedCsv.vue";
 import EditFeedFreetext from "@/components/feeds/freetext/EditFeedFreetext.vue";
+import EditFeedJson from "@/components/feeds/json/EditFeedJson.vue";
 import EditFeedLegacy from "@/components/feeds/EditFeedLegacy.vue";
 
 const feedsStore = useFeedsStore();
@@ -22,6 +23,8 @@ const editComponent = computed(() => {
       return EditFeedCsv;
     case "freetext":
       return EditFeedFreetext;
+    case "json":
+      return EditFeedJson;
     default:
       return EditFeedLegacy;
   }
