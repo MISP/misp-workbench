@@ -22,24 +22,26 @@ const apiError = ref(null);
 const csvRows = ref([]);
 const loadingPreview = ref(false);
 
+const saved = props.modelValue?.settings?.csvConfig;
+
 const csvConfig = reactive({
-  mode: "attribute",
-  columns: [],
-  delimiter: ",",
-  header: true,
+  mode: saved?.mode ?? "attribute",
+  columns: saved?.columns ?? [],
+  delimiter: saved?.delimiter ?? ",",
+  header: saved?.header ?? true,
   attribute: {
-    value_column: null,
+    value_column: saved?.attribute?.value_column ?? null,
     type: {
-      strategy: "fixed",
-      value: null,
-      column: null,
-      mappings: [],
+      strategy: saved?.attribute?.type?.strategy ?? "fixed",
+      value: saved?.attribute?.type?.value ?? null,
+      column: saved?.attribute?.type?.column ?? null,
+      mappings: saved?.attribute?.type?.mappings ?? [],
     },
-    properties: {},
+    properties: saved?.attribute?.properties ?? {},
   },
   object: {
-    template: null,
-    mappings: {},
+    template: saved?.object?.template ?? null,
+    mappings: saved?.object?.mappings ?? {},
   },
 });
 
@@ -47,6 +49,7 @@ watch(
   [csvConfig],
   () => {
     emit("update:modelValue", {
+      ...props.modelValue,
       settings: csvConfig ? { csvConfig } : {},
     });
   },

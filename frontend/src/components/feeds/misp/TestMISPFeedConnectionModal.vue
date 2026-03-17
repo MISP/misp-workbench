@@ -50,3 +50,23 @@ function closeModal() {
     </div>
   </div>
 </template>
+
+<style scoped>
+.test-modal-backdrop {
+  position: fixed;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+}
+
+.test-modal .card {
+  width: 520px;
+  max-width: calc(100% - 2rem);
+}
+</style>

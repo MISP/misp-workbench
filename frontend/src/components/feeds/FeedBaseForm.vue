@@ -27,6 +27,7 @@ const local = reactive({
   schedule: "86400",
   fetch_on_create: true,
   headers: {},
+  ...props.modelValue,
 });
 
 const auth = reactive({
