@@ -6,8 +6,8 @@ authors = ["Luciano Righetti <luciano.righetti@circl.lu>", "CIRCL <team@circl.lu
 license = "AGPL-3.0"
 
 [tool.poetry.dependencies]
-python = "^3.9"
-fastapi = "0.115.7"
+python = "^3.10"
+fastapi = "^0.115.12"
 uvicorn = "^0.29.0"
 pymisp = "^2.4.159"
 pydantic = "^2.7.1"
@@ -21,9 +21,9 @@ celery = "^5.5.1"
 flower = "^2.0.0"
 Jinja2 = "^3.1.6"
 redis = "^4.3.3"
-typer = {extras = ["all"], version = "^0.12.3"}
+typer = {extras = ["all"], version = "^0.15.2"}
 fastapi-pagination = "^0.12.24"
-httpx = "^0.23.1"
+httpx = "^0.28.1"
 asgiref = "^3.6.0"
 opensearch-py = "^2.5.0"
 pydantic-settings = "^2.2.1"
@@ -32,6 +32,7 @@ bcrypt = "^4.2.0"
 pyjwt = "^2.12.0"
 boto3 = "^1.35"
 celery-redbeat = "^2.3.3"
+fastmcp = "^2.0"
 
 [tool.poetry.dev-dependencies]
 pytest = "^8.4.1"
