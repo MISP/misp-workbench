@@ -135,6 +135,9 @@ oauth2_scheme = OAuth2PasswordBearer(
         "mcp:search_galaxy": "Search galaxy clusters via MCP.",
         "mcp:search_taxonomy": "Search taxonomies via MCP.",
         "mcp:get_sightings": "Get sightings via MCP.",
+        "mcp:list_hunts": "List hunts via MCP.",
+        "mcp:get_hunt_results": "Get hunt results via MCP.",
+        "mcp:run_hunt": "Run hunts via MCP.",
     },
 )
 

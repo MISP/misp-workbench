@@ -12,9 +12,12 @@ from app.repositories import attributes as attributes_repository
 from app.repositories import correlations as correlations_repository
 from app.repositories import events as events_repository
 from app.repositories import freetext as freetext_repository
+from app.repositories import hunts as hunts_repository
 from app.repositories import sightings as sightings_repository
 from app.repositories import users as users_repository
+from app.models import hunt as hunt_models
 from app.schemas import event as event_schemas
+from app.schemas import hunt as hunt_schemas
 from app.schemas import sighting as sighting_schemas
 from app.schemas import tag as tag_schemas
 from app.schemas.attribute import AttributeType
@@ -36,8 +39,8 @@ MCP_AUTH_ENABLED = os.environ.get("MCP_AUTH_ENABLED", "false").lower() == "true"
 # ── Auth ────────────────────────────────────────────────────────────────────
 
 
-class MISPTokenVerifier(TokenVerifier):
-    """Validates JWT tokens using the existing MISP OAuth2 auth flow."""
+class AuthTokenVerifier(TokenVerifier):
+    """Validates JWT tokens using the existing MISP Workbench OAuth2 auth flow."""
 
     async def verify_token(self, token: str) -> Optional[AccessToken]:
         settings = get_settings()
@@ -99,7 +102,7 @@ def _check_scope(scope: str) -> None:
 
 mcp = FastMCP(
     name="MISP Workbench",
-    auth=MISPTokenVerifier() if MCP_AUTH_ENABLED else None,
+    auth=AuthTokenVerifier() if MCP_AUTH_ENABLED else None,
     instructions=(
         "You are connected to a MISP-compatible threat intelligence platform. "
         "Use these tools to search events, attributes (IOCs), correlations, "
@@ -770,6 +773,105 @@ def get_sighting_activity(
             for b in buckets
         ],
     }
+
+
+@mcp.tool
+def list_hunts(filter: Optional[str] = None) -> list[dict]:
+    """List saved threat hunts.
+
+    Hunts are saved queries that run against the OpenSearch indices
+    (attributes, events, or correlations) or against Rulezet. They track
+    match counts over time so analysts can spot emerging threats.
+
+    Args:
+        filter: Optional name substring to filter hunts (case-insensitive).
+
+    Returns hunt metadata: id, name, description, query, hunt_type,
+    index_target, status, last_run_at, last_match_count.
+    """
+    _check_scope("mcp:list_hunts")
+    db = SessionLocal()
+    try:
+        query = db.query(hunt_models.Hunt)
+        if filter:
+            query = query.where(hunt_models.Hunt.name.ilike(f"%{filter}%"))
+        query = query.order_by(hunt_models.Hunt.created_at.desc()).limit(100)
+        hunts = query.all()
+        return [
+            hunt_schemas.Hunt.model_validate(h).model_dump(mode="json")
+            for h in hunts
+        ]
+    finally:
+        db.close()
+
+
+@mcp.tool
+def get_hunt_results(hunt_id: int) -> dict:
+    """Get the latest results from a saved hunt.
+
+    Returns the cached results from the most recent run of the hunt,
+    including total match count and the matching hits (up to 100).
+    Use list_hunts first to find the hunt ID.
+
+    Args:
+        hunt_id: The hunt ID (from list_hunts).
+    """
+    _check_scope("mcp:get_hunt_results")
+    results = hunts_repository.get_hunt_results(hunt_id)
+    if results is None:
+        return {"error": f"No results available for hunt {hunt_id}. It may not have been run yet."}
+    return results
+
+
+@mcp.tool
+def get_hunt_history(hunt_id: int) -> dict:
+    """Get the run history for a hunt showing match counts over time.
+
+    Returns up to 90 recent runs with timestamps and match counts.
+    Useful for spotting trends — a rising match count may indicate
+    an emerging threat.
+
+    Args:
+        hunt_id: The hunt ID (from list_hunts).
+    """
+    _check_scope("mcp:get_hunt_results")
+    db = SessionLocal()
+    try:
+        history = hunts_repository.get_hunt_history(db, hunt_id)
+        return {
+            "hunt_id": hunt_id,
+            "total_runs": len(history),
+            "history": history,
+        }
+    finally:
+        db.close()
+
+
+@mcp.tool
+def run_hunt(hunt_id: int) -> dict:
+    """Execute a saved hunt and return the results.
+
+    Runs the hunt query against its configured index and returns
+    matching hits. Also updates the hunt's last_run_at and
+    last_match_count, and appends to the run history.
+
+    Args:
+        hunt_id: The hunt ID (from list_hunts).
+    """
+    _check_scope("mcp:run_hunt")
+    db = SessionLocal()
+    try:
+        result = hunts_repository.execute_hunt_system(db, hunt_id)
+        if result is None:
+            return {"error": f"Hunt {hunt_id} not found"}
+        return {
+            "hunt_id": hunt_id,
+            "name": result["hunt"].name,
+            "total": result["total"],
+            "hits": result["hits"],
+        }
+    finally:
+        db.close()
 
 
 # ── Resources ──────────────────────────────────────────────────────────────
