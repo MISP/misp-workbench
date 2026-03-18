@@ -12,8 +12,10 @@ from app.repositories import attributes as attributes_repository
 from app.repositories import correlations as correlations_repository
 from app.repositories import events as events_repository
 from app.repositories import freetext as freetext_repository
+from app.repositories import sightings as sightings_repository
 from app.repositories import users as users_repository
 from app.schemas import event as event_schemas
+from app.schemas import sighting as sighting_schemas
 from app.schemas import tag as tag_schemas
 from app.schemas.attribute import AttributeType
 from app.schemas.correlation import CorrelationQueryParams
@@ -672,6 +674,102 @@ def search_taxonomy(query: str, size: int = 20) -> dict:
                         return {"query": query, "total": len(matches), "results": matches}
 
     return {"query": query, "total": len(matches), "results": matches}
+
+
+@mcp.tool
+def get_sightings(
+    value: Optional[str] = None,
+    attribute_uuid: Optional[str] = None,
+    type: Optional[str] = None,
+    page: int = 1,
+    size: int = 10,
+) -> dict:
+    """Search for sightings of an indicator.
+
+    Sightings record when and where an IOC was observed. Use this to answer
+    "has this indicator been seen before?" and "how many times?".
+
+    Args:
+        value: IOC value to search for (e.g. an IP, domain, hash).
+            Searches via OpenSearch query_string against the value field.
+        attribute_uuid: Filter by specific attribute UUID.
+        type: Sighting type filter — "positive" (confirmed seen),
+            "negative" (confirmed not seen), or "expiration".
+        page: Page number (default 1).
+        size: Results per page (default 10, max 100).
+
+    Returns sighting records with value, type, timestamp, observer org,
+    and linked attribute UUID.
+    """
+    _check_scope("mcp:get_sightings")
+    size = min(size, 100)
+    from_value = (page - 1) * size
+
+    if value:
+        client = get_opensearch_client()
+        query_body: dict = {
+            "from": from_value,
+            "size": size,
+            "query": {"bool": {"must": [{"query_string": {"query": value, "default_field": "value"}}]}},
+            "sort": [{"@timestamp": {"order": "desc"}}],
+        }
+        if type:
+            query_body["query"]["bool"]["must"].append({"term": {"type.keyword": type}})
+        response = client.search(index="misp-sightings", body=query_body)
+        return {
+            "total": response["hits"]["total"]["value"],
+            "page": page,
+            "size": size,
+            "results": [hit["_source"] for hit in response["hits"]["hits"]],
+        }
+
+    params = sighting_schemas.SightingQueryParams(
+        attribute_uuid=attribute_uuid, type=type
+    )
+    result = sightings_repository.get_sightings(
+        params=params, page=page, from_value=from_value, size=size
+    )
+    return {
+        "total": result["total"],
+        "page": page,
+        "size": size,
+        "results": [hit["_source"] for hit in result["results"]],
+    }
+
+
+@mcp.tool
+def get_sighting_activity(
+    value: str,
+    period: str = "7d",
+    interval: str = "1d",
+) -> dict:
+    """Get a sighting activity histogram for an indicator over time.
+
+    Shows how often an IOC was observed (positive sightings) across
+    time buckets — useful for spotting activity spikes or trends.
+
+    Args:
+        value: The IOC value to get activity for.
+        period: Time window to look back, e.g. "7d", "30d", "90d" (default "7d").
+        interval: Bucket size, e.g. "1h", "1d", "1w" (default "1d").
+
+    Returns time-series buckets with doc_count per interval.
+    """
+    _check_scope("mcp:get_sightings")
+    params = sighting_schemas.SightingActivityParams(
+        value=value, period=period, interval=interval
+    )
+    activity = sightings_repository.get_sightings_activity_by_value(params)
+    buckets = activity.get("sightings_over_time", {}).get("buckets", [])
+    return {
+        "value": value,
+        "period": period,
+        "interval": interval,
+        "buckets": [
+            {"date": b["key_as_string"], "count": b["doc_count"]}
+            for b in buckets
+        ],
+    }
 
 
 # ── Resources ──────────────────────────────────────────────────────────────
