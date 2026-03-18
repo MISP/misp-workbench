@@ -341,11 +341,13 @@ def search_attributes(query: str, page: int = 1, size: int = 10) -> dict:
     misp://galaxies resources to discover available tag values.
     """
     _check_scope("mcp:search_attributes")
+    logger.info(f"Searching attributes with query: {query}, page: {page}, size: {size}")
     size = min(size, 100)
     from_value = (page - 1) * size
     result = attributes_repository.search_attributes(
         query=query, page=page, from_value=from_value, size=size
     )
+    logger.info(f"Found {result['total']} attributes matching query: {query}")
     return {
         "total": result["total"],
         "page": page,
@@ -367,15 +369,17 @@ def get_event(event_uuid: str, summary: bool = True) -> dict:
             only if you need the raw attribute data.
     """
     _check_scope("mcp:get_event")
+    logger.debug(f"Retrieving event with UUID: {event_uuid}, summary: {summary}")
     db = SessionLocal()
     try:
         event = events_repository.get_event_by_uuid(db, event_uuid)
         if not event:
+            logger.debug(f"Event with UUID {event_uuid} not found")
             return {"error": f"Event with UUID {event_uuid} not found"}
         data = event_schemas.Event.model_validate(event).model_dump(mode="json")
 
         if summary:
-            return {
+            result = {
                 "uuid": data["uuid"],
                 "info": data["info"],
                 "date": data["date"],
@@ -388,7 +392,10 @@ def get_event(event_uuid: str, summary: bool = True) -> dict:
                 "organisation": data.get("organisation", {}).get("name"),
                 "tags": [t["name"] for t in data.get("tags", [])],
             }
+            logger.debug(f"Returning summary for event {event_uuid}")
+            return result
 
+        logger.debug(f"Returning full event data for {event_uuid}")
         return data
     finally:
         db.close()
@@ -416,8 +423,11 @@ def get_correlations(
       - score (float)
     """
     _check_scope("mcp:get_correlations")
+    logger.debug(f"Getting correlations for attribute_value: {attribute_value}, event_uuid: {event_uuid}")
     if not attribute_value and not event_uuid:
-        return {"error": "Provide either attribute_value or event_uuid"}
+        error_msg = "Provide either attribute_value or event_uuid"
+        logger.debug(error_msg)
+        return {"error": error_msg}
 
     size = min(size, 100)
     from_value = (page - 1) * size
@@ -440,8 +450,10 @@ def get_correlations(
         response = client.search(
             index="misp-attribute-correlations", body=search_body
         )
+        total = response["hits"]["total"]["value"]
+        logger.debug(f"Found {total} correlations for attribute value: {attribute_value}")
         return {
-            "total": response["hits"]["total"]["value"],
+            "total": total,
             "page": page,
             "size": size,
             "results": [hit["_source"] for hit in response["hits"]["hits"]],
@@ -451,6 +463,7 @@ def get_correlations(
     result = correlations_repository.get_correlations(
         params, page=page, from_value=from_value, size=size
     )
+    logger.debug(f"Found {result['total']} correlations for event_uuid: {event_uuid}")
     return {
         "total": result["total"],
         "page": page,
@@ -468,10 +481,13 @@ def detect_indicator_type(values: list[str]) -> list[dict]:
     Accepts up to 100 values at a time.
     """
     _check_scope("mcp:detect_indicator_type")
+    logger.debug(f"Detecting indicator types for {len(values)} values")
     values = values[:100]
-    return [
+    result = [
         {"value": v, "type": freetext_repository.detect_type(v)} for v in values
     ]
+    logger.debug(f"Detected types for {len(result)} values")
+    return result
 
 
 @mcp.tool
@@ -482,7 +498,10 @@ def get_statistics() -> dict:
     top correlated events, and top correlated attributes.
     """
     _check_scope("mcp:get_statistics")
-    return correlations_repository.get_correlations_stats()
+    logger.debug("Retrieving database statistics")
+    result = correlations_repository.get_correlations_stats()
+    logger.debug(f"Retrieved statistics with {result.get('total_correlations', 0)} total correlations")
+    return result
 
 
 @mcp.tool
@@ -493,6 +512,7 @@ def get_tags(filter: Optional[str] = None) -> list[dict]:
     Returns up to 100 tags sorted by name.
     """
     _check_scope("mcp:get_tags")
+    logger.debug(f"Retrieving tags with filter: {filter}")
     db = SessionLocal()
     try:
         query = select(tag_models.Tag).where(
@@ -505,10 +525,12 @@ def get_tags(filter: Optional[str] = None) -> list[dict]:
         query = query.order_by(tag_models.Tag.name).limit(100)
         results = db.execute(query).scalars().all()
 
-        return [
+        result = [
             tag_schemas.Tag.model_validate(t).model_dump(mode="json")
             for t in results
         ]
+        logger.debug(f"Retrieved {len(result)} tags")
+        return result
     finally:
         db.close()
 
@@ -529,8 +551,10 @@ def get_index_mapping(index: str) -> dict:
     by ingest pipelines (e.g. GeoIP, ASN lookups).
     """
     _check_scope("mcp:get_index_mapping")
+    logger.debug(f"Retrieving index mapping for index: {index}")
     client = get_opensearch_client()
     mapping = client.indices.get_mapping(index=index)
+    logger.debug(f"Retrieved mapping for index: {index}")
     return mapping
 
 
@@ -560,10 +584,13 @@ def search_galaxy(
       - search_galaxy("malware", "emotet") — look up the Emotet malware family
     """
     _check_scope("mcp:search_galaxy")
+    logger.debug(f"Searching galaxy {galaxy_type} with query: {query}, size: {size}")
     size = min(size, 50)
     cluster_file = _CLUSTERS_DIR / f"{galaxy_type}.json"
     if not cluster_file.is_file():
-        return {"error": f"Galaxy cluster '{galaxy_type}' not found"}
+        error_msg = f"Galaxy cluster '{galaxy_type}' not found"
+        logger.debug(error_msg)
+        return {"error": error_msg}
 
     cluster_data = json.loads(cluster_file.read_text())
     query_lower = query.lower()
@@ -593,12 +620,14 @@ def search_galaxy(
             if len(matches) >= size:
                 break
 
-    return {
+    result = {
         "galaxy_type": galaxy_type,
         "query": query,
         "total": len(matches),
         "results": matches,
     }
+    logger.debug(f"Found {len(matches)} matches in galaxy {galaxy_type}")
+    return result
 
 
 @mcp.tool
@@ -620,6 +649,7 @@ def search_taxonomy(query: str, size: int = 20) -> dict:
       - search_taxonomy("osint") — find OSINT-related taxonomy tags
     """
     _check_scope("mcp:search_taxonomy")
+    logger.debug(f"Searching taxonomy with query: {query}, size: {size}")
     size = min(size, 100)
     query_lower = query.lower()
     matches = []
@@ -663,7 +693,9 @@ def search_taxonomy(query: str, size: int = 20) -> dict:
                             "description": e_desc[:200] + "..." if len(e_desc) > 200 else e_desc or None,
                         })
                         if len(matches) >= size:
-                            return {"query": query, "total": len(matches), "results": matches}
+                            result = {"query": query, "total": len(matches), "results": matches}
+                            logger.debug(f"Found {len(matches)} taxonomy matches")
+                            return result
             else:
                 # Predicate-only tag (no sub-values)
                 if pred_matches:
@@ -674,9 +706,13 @@ def search_taxonomy(query: str, size: int = 20) -> dict:
                         "description": pred_desc[:200] + "..." if len(pred_desc) > 200 else pred_desc or None,
                     })
                     if len(matches) >= size:
-                        return {"query": query, "total": len(matches), "results": matches}
+                        result = {"query": query, "total": len(matches), "results": matches}
+                        logger.debug(f"Found {len(matches)} taxonomy matches")
+                        return result
 
-    return {"query": query, "total": len(matches), "results": matches}
+    result = {"query": query, "total": len(matches), "results": matches}
+    logger.debug(f"Found {len(matches)} taxonomy matches")
+    return result
 
 
 @mcp.tool
@@ -705,6 +741,7 @@ def get_sightings(
     and linked attribute UUID.
     """
     _check_scope("mcp:get_sightings")
+    logger.debug(f"Retrieving sightings for value: {value}, attribute_uuid: {attribute_uuid}, type: {type}")
     size = min(size, 100)
     from_value = (page - 1) * size
 
@@ -719,8 +756,10 @@ def get_sightings(
         if type:
             query_body["query"]["bool"]["must"].append({"term": {"type.keyword": type}})
         response = client.search(index="misp-sightings", body=query_body)
+        total = response["hits"]["total"]["value"]
+        logger.debug(f"Found {total} sightings for value: {value}")
         return {
-            "total": response["hits"]["total"]["value"],
+            "total": total,
             "page": page,
             "size": size,
             "results": [hit["_source"] for hit in response["hits"]["hits"]],
@@ -732,6 +771,7 @@ def get_sightings(
     result = sightings_repository.get_sightings(
         params=params, page=page, from_value=from_value, size=size
     )
+    logger.debug(f"Found {result['total']} sightings for attribute_uuid: {attribute_uuid}")
     return {
         "total": result["total"],
         "page": page,
@@ -759,12 +799,13 @@ def get_sighting_activity(
     Returns time-series buckets with doc_count per interval.
     """
     _check_scope("mcp:get_sightings")
+    logger.debug(f"Getting sighting activity for value: {value}, period: {period}, interval: {interval}")
     params = sighting_schemas.SightingActivityParams(
         value=value, period=period, interval=interval
     )
     activity = sightings_repository.get_sightings_activity_by_value(params)
     buckets = activity.get("sightings_over_time", {}).get("buckets", [])
-    return {
+    result = {
         "value": value,
         "period": period,
         "interval": interval,
@@ -773,6 +814,8 @@ def get_sighting_activity(
             for b in buckets
         ],
     }
+    logger.debug(f"Retrieved sighting activity with {len(buckets)} time buckets")
+    return result
 
 
 @mcp.tool
@@ -790,6 +833,7 @@ def list_hunts(filter: Optional[str] = None) -> list[dict]:
     index_target, status, last_run_at, last_match_count.
     """
     _check_scope("mcp:list_hunts")
+    logger.debug(f"Listing hunts with filter: {filter}")
     db = SessionLocal()
     try:
         query = db.query(hunt_models.Hunt)
@@ -797,10 +841,12 @@ def list_hunts(filter: Optional[str] = None) -> list[dict]:
             query = query.where(hunt_models.Hunt.name.ilike(f"%{filter}%"))
         query = query.order_by(hunt_models.Hunt.created_at.desc()).limit(100)
         hunts = query.all()
-        return [
+        result = [
             hunt_schemas.Hunt.model_validate(h).model_dump(mode="json")
             for h in hunts
         ]
+        logger.debug(f"Retrieved {len(result)} hunts")
+        return result
     finally:
         db.close()
 
@@ -817,9 +863,13 @@ def get_hunt_results(hunt_id: int) -> dict:
         hunt_id: The hunt ID (from list_hunts).
     """
     _check_scope("mcp:get_hunt_results")
+    logger.debug(f"Retrieving results for hunt ID: {hunt_id}")
     results = hunts_repository.get_hunt_results(hunt_id)
     if results is None:
-        return {"error": f"No results available for hunt {hunt_id}. It may not have been run yet."}
+        error_msg = f"No results available for hunt {hunt_id}. It may not have been run yet."
+        logger.debug(error_msg)
+        return {"error": error_msg}
+    logger.debug(f"Retrieved results for hunt ID: {hunt_id}")
     return results
 
 
@@ -834,15 +884,18 @@ def get_hunt_history(hunt_id: int) -> dict:
     Args:
         hunt_id: The hunt ID (from list_hunts).
     """
-    _check_scope("mcp:get_hunt_results")
+    _check_scope("mcp:get_hunt_history")
+    logger.debug(f"Retrieving history for hunt ID: {hunt_id}")
     db = SessionLocal()
     try:
         history = hunts_repository.get_hunt_history(db, hunt_id)
-        return {
+        result = {
             "hunt_id": hunt_id,
             "total_runs": len(history),
             "history": history,
         }
+        logger.debug(f"Retrieved history for hunt ID: {hunt_id} with {len(history)} runs")
+        return result
     finally:
         db.close()
 
@@ -859,11 +912,15 @@ def run_hunt(hunt_id: int) -> dict:
         hunt_id: The hunt ID (from list_hunts).
     """
     _check_scope("mcp:run_hunt")
+    logger.debug(f"Running hunt with ID: {hunt_id}")
     db = SessionLocal()
     try:
         result = hunts_repository.execute_hunt_system(db, hunt_id)
         if result is None:
-            return {"error": f"Hunt {hunt_id} not found"}
+            error_msg = f"Hunt {hunt_id} not found"
+            logger.debug(error_msg)
+            return {"error": error_msg}
+        logger.debug(f"Completed hunt {hunt_id} with {result['total']} matches")
         return {
             "hunt_id": hunt_id,
             "name": result["hunt"].name,
