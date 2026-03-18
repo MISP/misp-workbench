@@ -33,7 +33,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi_pagination import add_pagination
 
 # setup loggers
-logging.config.fileConfig("logging.conf", disable_existing_loggers=False)
+# Import and use our custom logging setup
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+from setup_logging import setup_logging
+
+setup_logging()
 
 # MCP server (mounted as ASGI sub-app)
 mcp_app = mcp.mcp.http_app(path="/")
