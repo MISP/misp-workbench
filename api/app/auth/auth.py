@@ -132,6 +132,8 @@ oauth2_scheme = OAuth2PasswordBearer(
         "mcp:get_statistics": "Get statistics via MCP.",
         "mcp:get_tags": "List tags via MCP.",
         "mcp:get_index_mapping": "Get index mappings via MCP.",
+        "mcp:search_galaxy": "Search galaxy clusters via MCP.",
+        "mcp:search_taxonomy": "Search taxonomies via MCP.",
     },
 )
 
