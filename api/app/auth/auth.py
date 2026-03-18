@@ -124,6 +124,14 @@ oauth2_scheme = OAuth2PasswordBearer(
         "hunts:run": "Run hunts.",
         "notifications:read": "Read notifications.",
         "notifications:update": "Update notifications.",
+        "mcp:search_events": "Search events via MCP.",
+        "mcp:search_attributes": "Search attributes via MCP.",
+        "mcp:get_event": "Get event details via MCP.",
+        "mcp:get_correlations": "Get correlations via MCP.",
+        "mcp:detect_indicator_type": "Detect indicator types via MCP.",
+        "mcp:get_statistics": "Get statistics via MCP.",
+        "mcp:get_tags": "List tags via MCP.",
+        "mcp:get_index_mapping": "Get index mappings via MCP.",
     },
 )
 
@@ -226,6 +234,7 @@ def get_scopes_for_user(user: user_schemas.User):
         scopes.add("settings:*")
         scopes.add("hunts:*")
         scopes.add("notifications:*")
+        scopes.add("mcp:*")
 
     if user.role.perm_auth:
         scopes.add("auth:login")

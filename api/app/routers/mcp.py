@@ -1,23 +1,99 @@
 import logging
+import os
 from typing import Optional
 
+from app.auth.auth import is_token_revoked
 from app.database import SessionLocal
 from app.models import tag as tag_models
 from app.repositories import attributes as attributes_repository
 from app.repositories import correlations as correlations_repository
 from app.repositories import events as events_repository
 from app.repositories import freetext as freetext_repository
+from app.repositories import users as users_repository
 from app.schemas import event as event_schemas
 from app.schemas import tag as tag_schemas
 from app.schemas.correlation import CorrelationQueryParams
 from app.services.opensearch import get_opensearch_client
+from app.settings import get_settings
 from fastmcp import FastMCP
+from fastmcp.server.auth import AccessToken, TokenVerifier
+from fastmcp.server.dependencies import get_access_token
+from jwt import decode as jwt_decode
+from jwt.exceptions import InvalidTokenError
 from sqlalchemy.sql import select
 
 logger = logging.getLogger(__name__)
 
+MCP_AUTH_ENABLED = os.environ.get("MCP_AUTH_ENABLED", "false").lower() == "true"
+
+
+# ── Auth ────────────────────────────────────────────────────────────────────
+
+
+class MISPTokenVerifier(TokenVerifier):
+    """Validates JWT tokens using the existing MISP OAuth2 auth flow."""
+
+    async def verify_token(self, token: str) -> Optional[AccessToken]:
+        settings = get_settings()
+        try:
+            payload = jwt_decode(
+                token,
+                settings.OAuth2.secret_key,
+                algorithms=[settings.OAuth2.algorithm],
+            )
+
+            if is_token_revoked(payload):
+                logger.debug("MCP auth: token revoked")
+                return None
+
+            username: str = payload.get("sub")
+            if not username:
+                return None
+
+            db = SessionLocal()
+            try:
+                user = users_repository.get_user_by_email(db, email=username)
+                if user is None or user.disabled:
+                    logger.debug("MCP auth: user not found or disabled")
+                    return None
+            finally:
+                db.close()
+
+            scopes = payload.get("scopes", [])
+            return AccessToken(
+                token=token,
+                client_id=username,
+                scopes=scopes,
+                expires_at=payload.get("exp"),
+                claims=payload,
+            )
+        except InvalidTokenError:
+            logger.debug("MCP auth: invalid token")
+            return None
+
+
+def _check_scope(scope: str) -> None:
+    """Check that the current request has the required MCP scope.
+
+    Skipped when MCP_AUTH_ENABLED is false (dev mode).
+    Accepts wildcard scopes: ``*`` (full access) and ``mcp:*`` (all MCP tools).
+    """
+    if not MCP_AUTH_ENABLED:
+        return
+
+    token = get_access_token()
+    if token is None:
+        raise PermissionError("Authentication required")
+
+    if "*" in token.scopes or "mcp:*" in token.scopes or scope in token.scopes:
+        return
+
+    raise PermissionError(f"Missing required scope: {scope}")
+
+
 mcp = FastMCP(
     name="MISP Workbench",
+    auth=MISPTokenVerifier() if MCP_AUTH_ENABLED else None,
     instructions=(
         "You are connected to a MISP-compatible threat intelligence platform. "
         "Use these tools to search events, attributes (IOCs), correlations, "
@@ -110,6 +186,7 @@ def search_events(query: str, page: int = 1, size: int = 10) -> dict:
       - "tags.name:tlp\\:white" — events tagged TLP:WHITE (escape the colon)
       - "published:true AND analysis:2" — published, completed events
     """
+    _check_scope("mcp:search_events")
     size = min(size, 100)
     from_value = (page - 1) * size
     result = events_repository.search_events(
@@ -159,6 +236,7 @@ def search_attributes(query: str, page: int = 1, size: int = 10) -> dict:
       - "comment:apt*" — attributes with APT-related comments
       - "tags.name:tlp\\:red" — attributes tagged TLP:RED
     """
+    _check_scope("mcp:search_attributes")
     size = min(size, 100)
     from_value = (page - 1) * size
     result = attributes_repository.search_attributes(
@@ -184,6 +262,7 @@ def get_event(event_uuid: str, summary: bool = True) -> dict:
             Use summary=True first to understand the event, then summary=False
             only if you need the raw attribute data.
     """
+    _check_scope("mcp:get_event")
     db = SessionLocal()
     try:
         event = events_repository.get_event_by_uuid(db, event_uuid)
@@ -232,6 +311,7 @@ def get_correlations(
       - match_type: "term" (exact), "prefix", "fuzzy", "cidr"
       - score (float)
     """
+    _check_scope("mcp:get_correlations")
     if not attribute_value and not event_uuid:
         return {"error": "Provide either attribute_value or event_uuid"}
 
@@ -283,6 +363,7 @@ def detect_indicator_type(values: list[str]) -> list[dict]:
     URLs, domains, email addresses, CVE identifiers, and more.
     Accepts up to 100 values at a time.
     """
+    _check_scope("mcp:detect_indicator_type")
     values = values[:100]
     return [
         {"value": v, "type": freetext_repository.detect_type(v)} for v in values
@@ -296,6 +377,7 @@ def get_statistics() -> dict:
     Returns correlation statistics including total correlation count,
     top correlated events, and top correlated attributes.
     """
+    _check_scope("mcp:get_statistics")
     return correlations_repository.get_correlations_stats()
 
 
@@ -306,6 +388,7 @@ def get_tags(filter: Optional[str] = None) -> list[dict]:
     Optionally filter by name substring (case-insensitive).
     Returns up to 100 tags sorted by name.
     """
+    _check_scope("mcp:get_tags")
     db = SessionLocal()
     try:
         query = select(tag_models.Tag).where(
@@ -341,6 +424,7 @@ def get_index_mapping(index: str) -> dict:
     Returns the full field mapping including any enrichment fields added
     by ingest pipelines (e.g. GeoIP, ASN lookups).
     """
+    _check_scope("mcp:get_index_mapping")
     client = get_opensearch_client()
     mapping = client.indices.get_mapping(index=index)
     return mapping
