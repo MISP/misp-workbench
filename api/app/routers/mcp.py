@@ -34,7 +34,7 @@ from app.auth.security import get_current_active_user
 from app.schemas import user as user_schemas
 from app.settings import get_settings
 from datetime import timedelta
-from fastapi import APIRouter, Depends, Request, Security
+from fastapi import APIRouter, Request, Security
 from fastmcp import FastMCP
 from fastmcp.server.auth import AccessToken, TokenVerifier
 from fastmcp.server.dependencies import get_access_token
