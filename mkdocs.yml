@@ -44,6 +44,9 @@ nav:
     - Correlations: features/correlations.md
     - Notifications: features/notifications.md
     - Enrichments: features/enrichments.md
+    - MCP Server:
+      - Overview: features/mcp/index.md
+      - MCP Inspector: features/mcp/mcp-inspector.md
     - Batch Import: features/batch-import.md
     - OpenSearch:
       - Overview: features/opensearch/index.md
