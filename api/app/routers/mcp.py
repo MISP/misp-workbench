@@ -314,7 +314,9 @@ def enrich_indicator_prompt(value: str, module: str) -> str:
 # ── Tools ───────────────────────────────────────────────────────────────────
 
 
-@mcp.tool
+@mcp.tool(
+    annotations={"readOnlyHint": True, "openWorldHint": False, "destructiveHint": False, "idempotentHint": True}
+)
 def search_events(query: str, page: int = 1, size: int = 10) -> dict:
     """Search threat intelligence events by keyword or OpenSearch query string.
 
@@ -361,7 +363,9 @@ def search_events(query: str, page: int = 1, size: int = 10) -> dict:
     }
 
 
-@mcp.tool
+@mcp.tool(
+    annotations={"readOnlyHint": True, "openWorldHint": False, "destructiveHint": False, "idempotentHint": True}
+)
 def search_attributes(query: str, page: int = 1, size: int = 10) -> dict:
     """Search indicators of compromise (IOCs) in the attribute index.
 
@@ -419,7 +423,9 @@ def search_attributes(query: str, page: int = 1, size: int = 10) -> dict:
     }
 
 
-@mcp.tool
+@mcp.tool(
+    annotations={"readOnlyHint": True, "openWorldHint": False, "destructiveHint": False, "idempotentHint": True}
+)
 def get_event(event_uuid: str, summary: bool = True) -> dict:
     """Retrieve details of a threat intelligence event by UUID.
 
@@ -464,7 +470,9 @@ def get_event(event_uuid: str, summary: bool = True) -> dict:
         db.close()
 
 
-@mcp.tool
+@mcp.tool(
+    annotations={"readOnlyHint": True, "openWorldHint": False, "destructiveHint": False, "idempotentHint": True}
+)
 def get_correlations(
     attribute_value: Optional[str] = None,
     event_uuid: Optional[str] = None,
@@ -535,7 +543,9 @@ def get_correlations(
     }
 
 
-@mcp.tool
+@mcp.tool(
+    annotations={"readOnlyHint": True, "openWorldHint": False, "destructiveHint": False, "idempotentHint": True}
+)
 def detect_indicator_type(values: list[str]) -> list[dict]:
     """Classify freetext values into MISP attribute types.
 
@@ -553,7 +563,9 @@ def detect_indicator_type(values: list[str]) -> list[dict]:
     return result
 
 
-@mcp.tool
+@mcp.tool(
+    annotations={"readOnlyHint": True, "openWorldHint": False, "destructiveHint": False, "idempotentHint": True}
+)
 def get_statistics() -> dict:
     """Get an overview of the threat intelligence database.
 
@@ -567,7 +579,9 @@ def get_statistics() -> dict:
     return result
 
 
-@mcp.tool
+@mcp.tool(
+    annotations={"readOnlyHint": True, "openWorldHint": False, "destructiveHint": False, "idempotentHint": True}
+)
 def get_tags(filter: Optional[str] = None) -> list[dict]:
     """List available tags for classifying threat intelligence.
 
@@ -598,7 +612,9 @@ def get_tags(filter: Optional[str] = None) -> list[dict]:
         db.close()
 
 
-@mcp.tool
+@mcp.tool(
+    annotations={"readOnlyHint": True, "openWorldHint": True, "destructiveHint": False, "idempotentHint": True}
+)
 def get_index_mapping(index: str) -> dict:
     """Get the OpenSearch index mapping to discover all available fields.
 
@@ -621,7 +637,9 @@ def get_index_mapping(index: str) -> dict:
     return mapping
 
 
-@mcp.tool
+@mcp.tool(
+    annotations={"readOnlyHint": True, "openWorldHint": False, "destructiveHint": False, "idempotentHint": True}
+)
 def search_galaxy(
     galaxy_type: str,
     query: str,
@@ -693,7 +711,9 @@ def search_galaxy(
     return result
 
 
-@mcp.tool
+@mcp.tool(
+    annotations={"readOnlyHint": True, "openWorldHint": False, "destructiveHint": False, "idempotentHint": True}
+)
 def search_taxonomy(query: str, size: int = 20) -> dict:
     """Search across all MISP taxonomies for matching tags.
 
@@ -778,7 +798,9 @@ def search_taxonomy(query: str, size: int = 20) -> dict:
     return result
 
 
-@mcp.tool
+@mcp.tool(
+    annotations={"readOnlyHint": True, "openWorldHint": False, "destructiveHint": False, "idempotentHint": True}
+)
 def get_sightings(
     value: Optional[str] = None,
     attribute_uuid: Optional[str] = None,
@@ -843,7 +865,9 @@ def get_sightings(
     }
 
 
-@mcp.tool
+@mcp.tool(
+    annotations={"readOnlyHint": True, "openWorldHint": False, "destructiveHint": False, "idempotentHint": True}
+)
 def get_sighting_activity(
     value: str,
     period: str = "7d",
@@ -881,7 +905,9 @@ def get_sighting_activity(
     return result
 
 
-@mcp.tool
+@mcp.tool(
+    annotations={"readOnlyHint": True, "openWorldHint": False, "destructiveHint": False, "idempotentHint": True}
+)
 def list_hunts(filter: Optional[str] = None) -> list[dict]:
     """List saved threat hunts.
 
@@ -914,7 +940,9 @@ def list_hunts(filter: Optional[str] = None) -> list[dict]:
         db.close()
 
 
-@mcp.tool
+@mcp.tool(
+    annotations={"readOnlyHint": True, "openWorldHint": False, "destructiveHint": False, "idempotentHint": True}
+)
 def get_hunt_results(hunt_id: int) -> dict:
     """Get the latest results from a saved hunt.
 
@@ -936,7 +964,9 @@ def get_hunt_results(hunt_id: int) -> dict:
     return results
 
 
-@mcp.tool
+@mcp.tool(
+    annotations={"readOnlyHint": True, "openWorldHint": False, "destructiveHint": False, "idempotentHint": True}
+)
 def get_hunt_history(hunt_id: int) -> dict:
     """Get the run history for a hunt showing match counts over time.
 
@@ -963,7 +993,9 @@ def get_hunt_history(hunt_id: int) -> dict:
         db.close()
 
 
-@mcp.tool
+@mcp.tool(
+    annotations={"readOnlyHint": False, "destructiveHint": False, "idempotentHint": False, "openWorldHint": True}
+)
 def run_hunt(hunt_id: int) -> dict:
     """Execute a saved hunt and return the results.
 
@@ -994,7 +1026,9 @@ def run_hunt(hunt_id: int) -> dict:
         db.close()
 
 
-@mcp.tool
+@mcp.tool(
+    annotations={"readOnlyHint": True, "openWorldHint": True, "destructiveHint": False, "idempotentHint": True}
+)
 def get_event_reports(event_uuid: str) -> dict:
     """Retrieve event reports attached to a specific MISP event.
 
@@ -1012,7 +1046,9 @@ def get_event_reports(event_uuid: str) -> dict:
     return {"event_uuid": event_uuid, "total": len(results), "results": results}
 
 
-@mcp.tool
+@mcp.tool(
+    annotations={"readOnlyHint": True, "openWorldHint": True, "destructiveHint": False, "idempotentHint": True}
+)
 def search_event_reports(
     query: Optional[str] = None,
     name: Optional[str] = None,
@@ -1068,7 +1104,9 @@ def search_event_reports(
     return {"total": total, "page": page, "size": size, "results": results}
 
 
-@mcp.tool
+@mcp.tool(
+    annotations={"readOnlyHint": False, "destructiveHint": False, "idempotentHint": False, "openWorldHint": True}
+)
 def create_event_report(event_uuid: str, name: str, content: str) -> dict:
     """Create a new report attached to a MISP event.
 
@@ -1146,7 +1184,9 @@ _MODULE_ALIASES = {
 }
 
 
-@mcp.tool
+@mcp.tool(
+    annotations={"readOnlyHint": True, "openWorldHint": True, "destructiveHint": False, "idempotentHint": True}
+)
 def enrich_indicator(value: str, type: str, module: str) -> dict:
     """Enrich an indicator using a MISP expansion module.
 
@@ -1187,7 +1227,9 @@ def enrich_indicator(value: str, type: str, module: str) -> dict:
         db.close()
 
 
-@mcp.tool
+@mcp.tool(
+    annotations={"readOnlyHint": True, "openWorldHint": False, "destructiveHint": False, "idempotentHint": True}
+)
 def list_modules(enabled_only: bool = True) -> list[dict]:
     """List available MISP enrichment modules.
 
@@ -1230,7 +1272,9 @@ def list_modules(enabled_only: bool = True) -> list[dict]:
         db.close()
 
 
-@mcp.tool
+@mcp.tool(
+    annotations={"readOnlyHint": True, "openWorldHint": False, "destructiveHint": False, "idempotentHint": True}
+)
 def get_notifications(
     read: Optional[bool] = None,
     type: Optional[str] = None,
