@@ -27,6 +27,12 @@ from app.schemas.attribute import AttributeType
 from app.schemas.correlation import CorrelationQueryParams
 from app.services.opensearch import get_opensearch_client
 from app.settings import get_settings
+from app.auth.auth import create_access_token, get_scopes_for_user
+from app.auth.security import get_current_active_user, oauth2_scheme
+from app.schemas import user as user_schemas
+from app.settings import get_settings
+from datetime import timedelta
+from fastapi import APIRouter, Depends, Request, Security
 from fastmcp import FastMCP
 from fastmcp.server.auth import AccessToken, TokenVerifier
 from fastmcp.server.dependencies import get_access_token
@@ -37,6 +43,43 @@ from sqlalchemy.sql import select
 logger = logging.getLogger(__name__)
 
 MCP_AUTH_ENABLED = os.environ.get("MCP_AUTH_ENABLED", "false").lower() == "true"
+
+router = APIRouter()
+
+
+@router.get("/mcp/config")
+def get_mcp_config(
+    request: Request,
+    user: user_schemas.User = Security(get_current_active_user, scopes=["mcp:config"]),
+):
+    """Return a ready-to-use MCP client configuration for this server.
+
+    Requires the mcp:config scope. Generates a dedicated MCP token scoped to
+    mcp:* only, valid for the configured refresh token lifetime. Save the
+    response as .mcp.json to use it directly with the MCP client.
+    """
+    settings = get_settings()
+    user_scopes = get_scopes_for_user(user)
+    if "*" in user_scopes or "mcp:*" in user_scopes:
+        mcp_scopes = ["mcp:*"]
+    else:
+        mcp_scopes = [s for s in user_scopes if s.startswith("mcp:")]
+    mcp_token = create_access_token(
+        data={"sub": user.email, "scopes": mcp_scopes},
+        expires_delta=timedelta(days=settings.OAuth2.refresh_token_expire_days),
+    )
+    base_url = str(request.base_url).rstrip("/")
+    return {
+        "mcpServers": {
+            "misp-workbench": {
+                "type": "http",
+                "url": f"{base_url}/mcp",
+                "headers": {
+                    "Authorization": f"Bearer {mcp_token}",
+                },
+            }
+        }
+    }
 
 
 # ── Auth ────────────────────────────────────────────────────────────────────

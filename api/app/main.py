@@ -138,6 +138,9 @@ app.include_router(hunts.router, tags=["Hunts"])
 # Notifications resource
 app.include_router(notifications.router, tags=["Notifications"])
 
+# MCP config endpoint (must be registered before the /mcp mount)
+app.include_router(mcp.router, tags=["MCP"])
+
 # MCP server (Streamable HTTP at /mcp)
 app.mount("/mcp", mcp_app)
 
