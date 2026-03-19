@@ -13,12 +13,14 @@ from app.repositories import correlations as correlations_repository
 from app.repositories import events as events_repository
 from app.repositories import freetext as freetext_repository
 from app.repositories import hunts as hunts_repository
+from app.repositories import modules as modules_repository
 from app.repositories import reports as reports_repository
 from app.repositories import sightings as sightings_repository
 from app.repositories import users as users_repository
 from app.models import hunt as hunt_models
 from app.schemas import event as event_schemas
 from app.schemas import hunt as hunt_schemas
+from app.schemas import module as module_schemas
 from app.schemas import sighting as sighting_schemas
 from app.schemas import tag as tag_schemas
 from app.schemas.attribute import AttributeType
@@ -246,6 +248,20 @@ def daily_summary() -> str:
         "3) Highlight high-threat events (threat_level:1). "
         "4) List newly seen IOC types and categories. "
         "5) Summarize key findings and recommended watch items."
+    )
+
+
+@mcp.prompt
+def enrich_indicator_prompt(value: str, module: str) -> str:
+    """Enrich an indicator with a MISP expansion module and summarize the results."""
+    return (
+        f"Enrich the indicator \"{value}\" using the \"{module}\" module: "
+        f"1) Detect its MISP attribute type using detect_indicator_type. "
+        f"2) Call enrich_indicator with the detected type and module \"{module}\". "
+        "3) If the module returns an error, check that it is enabled and suggest alternatives. "
+        "4) Summarize the enrichment results in a concise report: key facts, "
+        "geo/ASN data if present, related domains or IPs, reputation scores, "
+        "and any other relevant context returned by the module."
     )
 
 
@@ -1004,6 +1020,43 @@ def search_event_reports(
         f"Event reports search returned {total} total, {len(results)} in page {page}"
     )
     return {"total": total, "page": page, "size": size, "results": results}
+
+
+@mcp.tool
+def enrich_indicator(value: str, type: str, module: str) -> dict:
+    """Enrich an indicator using a MISP expansion module.
+
+    Sends the indicator to the specified misp-module for enrichment and returns
+    the results (new attributes, objects, related context). The module must be
+    enabled in the platform configuration.
+
+    Examples:
+        enrich_indicator("8.8.8.8", "ip-dst", "geoip_country")
+        enrich_indicator("evil.com", "domain", "whois")
+        enrich_indicator("d41d8cd98f00b204e9800998ecf8427e", "md5", "virustotal")
+
+    Args:
+        value: The indicator value to enrich (e.g. "8.8.8.8", "evil.com").
+        type: The MISP attribute type (e.g. "ip-dst", "domain", "md5").
+        module: The module name to use for enrichment (e.g. "geoip_country").
+    """
+    _check_scope("mcp:enrich_indicator")
+    logger.debug(f"Enriching indicator value={value} type={type} with module={module}")
+    db = SessionLocal()
+    try:
+        query = module_schemas.ModuleQuery(
+            module=module,
+            attribute={"type": type, "value": value, "uuid": ""},
+        )
+        result = modules_repository.query_module(db, query)
+        logger.debug(f"Enrichment completed for {value} via {module}")
+        return result
+    except Exception as e:
+        error_msg = str(e)
+        logger.debug(f"Enrichment failed for {value} via {module}: {error_msg}")
+        return {"error": error_msg}
+    finally:
+        db.close()
 
 
 # ── Resources ──────────────────────────────────────────────────────────────
