@@ -17,6 +17,8 @@ from app.repositories import modules as modules_repository
 from app.repositories import reports as reports_repository
 from app.repositories import sightings as sightings_repository
 from app.repositories import users as users_repository
+from app.models import notification as notification_models
+from app.schemas import notifications as notification_schemas
 from app.models import hunt as hunt_models
 from app.schemas import event as event_schemas
 from app.schemas import hunt as hunt_schemas
@@ -38,6 +40,7 @@ from fastmcp.server.auth import AccessToken, TokenVerifier
 from fastmcp.server.dependencies import get_access_token
 from jwt import decode as jwt_decode
 from jwt.exceptions import InvalidTokenError
+from sqlalchemy import func
 from sqlalchemy.sql import select
 
 logger = logging.getLogger(__name__)
@@ -1180,6 +1183,128 @@ def enrich_indicator(value: str, type: str, module: str) -> dict:
         error_msg = str(e)
         logger.debug(f"Enrichment failed for {value} via {module}: {error_msg}")
         return {"error": error_msg}
+    finally:
+        db.close()
+
+
+@mcp.tool
+def list_modules(enabled_only: bool = True) -> list[dict]:
+    """List available MISP enrichment modules.
+
+    Returns modules registered in the platform, optionally filtered to only
+    enabled ones. Use this before calling enrich_indicator to discover which
+    modules are available and what attribute types they accept.
+
+    Args:
+        enabled_only: If True (default), return only enabled modules.
+            Set to False to list all modules including disabled ones.
+
+    Each result includes:
+      - name: module identifier (pass this to enrich_indicator)
+      - type: module category ("expansion", "hover", "import", "export", etc.)
+      - description: what the module does
+      - module_type: list of MISP module type tags
+      - input_types: attribute types the module can enrich
+      - output_types: attribute types the module produces
+      - enabled: whether the module is enabled
+    """
+    _check_scope("mcp:list_modules")
+    logger.debug(f"Listing modules, enabled_only={enabled_only}")
+    db = SessionLocal()
+    try:
+        modules = modules_repository.get_modules(db, enabled=True if enabled_only else None)
+        result = []
+        for m in modules:
+            result.append({
+                "name": m.name,
+                "type": m.type,
+                "description": m.meta.description,
+                "module_type": m.meta.module_type,
+                "input_types": m.misp_attributes.input or [],
+                "output_types": m.misp_attributes.output or [],
+                "enabled": m.enabled,
+            })
+        logger.debug(f"Retrieved {len(result)} modules")
+        return result
+    finally:
+        db.close()
+
+
+@mcp.tool
+def get_notifications(
+    read: Optional[bool] = None,
+    type: Optional[str] = None,
+    page: int = 1,
+    size: int = 20,
+) -> dict:
+    """Get notifications for the currently authenticated user.
+
+    Returns platform notifications such as new sightings, correlations,
+    hunt result changes, and event/attribute updates for items the user follows.
+
+    Notification types include:
+      - event.created / event.updated / event.deleted
+      - event.attribute.created / event.attribute.updated
+      - event.object.created / event.object.updated
+      - attribute.sighting.positive / attribute.sighting.negative
+      - attribute.correlation.created
+      - hunt.result.first_run / hunt.result.changed
+      - organisation.event.created / organisation.event.updated
+
+    Args:
+        read: Filter by read status. Omit for all, True for read only, False for unread.
+        type: Filter by notification type substring (case-insensitive),
+            e.g. "event", "hunt", "sighting", "correlation".
+        page: Page number (1-based, default 1).
+        size: Results per page (default 20, max 100).
+    """
+    _check_scope("mcp:get_notifications")
+
+    token = get_access_token()
+    if token is None:
+        return {"error": "Authentication required to retrieve notifications"}
+
+    size = min(size, 100)
+    offset = (page - 1) * size
+
+    db = SessionLocal()
+    try:
+        user = users_repository.get_user_by_email(db, token.client_id)
+        if user is None:
+            return {"error": "User not found"}
+
+        base_query = select(notification_models.Notification).where(
+            notification_models.Notification.user_id == user.id
+        )
+        if read is not None:
+            base_query = base_query.where(notification_models.Notification.read == read)
+        if type is not None:
+            base_query = base_query.where(
+                notification_models.Notification.type.ilike(f"%{type}%")
+            )
+
+        total = db.execute(
+            select(func.count()).select_from(base_query.subquery())
+        ).scalar()
+
+        rows = db.execute(
+            base_query.order_by(notification_models.Notification.created_at.desc())
+            .offset(offset)
+            .limit(size)
+        ).scalars().all()
+
+        results = [
+            notification_schemas.Notification.model_validate(n).model_dump(mode="json")
+            for n in rows
+        ]
+
+        return {
+            "total": total,
+            "page": page,
+            "size": size,
+            "unread_in_page": sum(1 for r in results if not r["read"]),
+            "results": results,
+        }
     finally:
         db.close()
 
