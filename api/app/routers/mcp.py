@@ -1065,6 +1065,14 @@ def search_event_reports(
     return {"total": total, "page": page, "size": size, "results": results}
 
 
+_MODULE_ALIASES = {
+    "geolocation": "mmdb_lookup",
+    "geoip": "mmdb_lookup",
+    "geo": "mmdb_lookup",
+    "ip2geo": "mmdb_lookup",
+}
+
+
 @mcp.tool
 def enrich_indicator(value: str, type: str, module: str) -> dict:
     """Enrich an indicator using a MISP expansion module.
@@ -1073,17 +1081,21 @@ def enrich_indicator(value: str, type: str, module: str) -> dict:
     the results (new attributes, objects, related context). The module must be
     enabled in the platform configuration.
 
+    Common aliases are resolved automatically:
+        "geolocation", "geoip", "geo", "ip2geo" → mmdb_lookup
+
     Examples:
-        enrich_indicator("8.8.8.8", "ip-dst", "geoip_country")
+        enrich_indicator("8.8.8.8", "ip-dst", "geolocation")
         enrich_indicator("evil.com", "domain", "whois")
         enrich_indicator("d41d8cd98f00b204e9800998ecf8427e", "md5", "virustotal")
 
     Args:
         value: The indicator value to enrich (e.g. "8.8.8.8", "evil.com").
         type: The MISP attribute type (e.g. "ip-dst", "domain", "md5").
-        module: The module name to use for enrichment (e.g. "geoip_country").
+        module: The module name to use for enrichment (e.g. "mmdb_lookup").
     """
     _check_scope("mcp:enrich_indicator")
+    module = _MODULE_ALIASES.get(module.lower(), module)
     logger.debug(f"Enriching indicator value={value} type={type} with module={module}")
     db = SessionLocal()
     try:
