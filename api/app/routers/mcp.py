@@ -1065,6 +1065,76 @@ def search_event_reports(
     return {"total": total, "page": page, "size": size, "results": results}
 
 
+@mcp.tool
+def create_event_report(event_uuid: str, name: str, content: str) -> dict:
+    """Create a new report attached to a MISP event.
+
+    Event reports are textual documents written in Markdown that provide
+    narrative analysis and context for a threat intelligence event.
+    Always use Markdown formatting for structure and readability.
+
+    ## Report quality guidelines
+
+    Write reports following threat intelligence industry standards (MITRE ATT&CK,
+    STIX, MISP best practices). A high-quality report should include:
+
+    ### Recommended structure
+
+    1. **Executive Summary** — 2-3 sentence overview: what happened, who is affected,
+       and the assessed threat level.
+
+    2. **Threat Overview** — Nature of the threat (malware, phishing, APT campaign,
+       vulnerability exploitation, etc.), first seen / last seen dates, and affected
+       sectors or geographies.
+
+    3. **Technical Analysis** — Detailed breakdown of observed TTPs mapped to
+       MITRE ATT&CK (e.g. T1566.001 Spearphishing Attachment). Reference the
+       specific IOCs from the event (IPs, domains, hashes, CVEs) with their roles
+       (C2, dropper, payload, etc.).
+
+    4. **Indicators of Compromise** — Summarise key IOCs in a Markdown table:
+       | Type | Value | Context |
+       |------|-------|---------|
+
+    5. **Attribution** (if applicable) — Assessed threat actor, confidence level
+       (use CTI confidence vocabulary: low / medium / high), and supporting evidence.
+
+    6. **Recommended Actions** — Prioritised, actionable mitigations: block rules,
+       patch recommendations, detection queries, hunting pivots.
+
+    7. **References** — Links to external reports, CVE entries, vendor advisories.
+
+    ### Style rules
+    - Use TLP labels (e.g. `TLP:AMBER`) to indicate sharing restrictions.
+    - Express confidence using hedging language: *likely*, *possibly*, *assessed with
+      high confidence*, etc.
+    - Keep IOC values in inline code blocks: `8.8.8.8`, `evil.com`.
+    - Use ATT&CK technique IDs inline: *Lateral Movement via T1021.002 (SMB/Windows
+      Admin Shares)*.
+    - Avoid speculation beyond available evidence; note gaps explicitly.
+
+    Args:
+        event_uuid: UUID of the event to attach the report to.
+        name: Title of the report (e.g. "Technical Analysis — Cobalt Strike Campaign").
+        content: Report body in Markdown following the structure above.
+    """
+    _check_scope("mcp:create_event_report")
+    logger.debug(f"Creating event report for event_uuid={event_uuid} name={name}")
+    db = SessionLocal()
+    try:
+        event = events_repository.get_event_by_uuid(db, event_uuid=event_uuid)
+        if event is None:
+            return {"error": f"Event {event_uuid} not found"}
+        result = reports_repository.create_event_report(
+            event=event,
+            report={"name": name, "content": content},
+        )
+        logger.debug(f"Created event report {result.get('uuid')} for event {event_uuid}")
+        return result
+    finally:
+        db.close()
+
+
 _MODULE_ALIASES = {
     "geolocation": "mmdb_lookup",
     "geoip": "mmdb_lookup",

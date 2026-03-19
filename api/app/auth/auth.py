@@ -139,6 +139,7 @@ oauth2_scheme = OAuth2PasswordBearer(
         "mcp:get_hunt_results": "Get hunt results via MCP.",
         "mcp:run_hunt": "Run hunts via MCP.",
         "mcp:config": "Generate an MCP client configuration token.",
+        "mcp:create_event_report": "Create event reports via MCP.",
     },
 )
 
