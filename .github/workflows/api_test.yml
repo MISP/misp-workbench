@@ -91,6 +91,43 @@ jobs:
           PYTHONDONTWRITEBYTECODE: 1
         run: poetry install --no-interaction --no-root
 
+      - name: Create OpenSearch indices
+        run: |
+          OPENSEARCH_URL="http://localhost:9200"
+
+          echo "Waiting for OpenSearch..."
+          for i in $(seq 1 30); do
+            curl -s "${OPENSEARCH_URL}" >/dev/null 2>&1 && break
+            echo "Not ready yet ($i/30), retrying in 3s..."
+            sleep 3
+          done
+
+          echo "Creating ingest pipelines..."
+          for file in opensearch/pipelines/*.json; do
+            NAME=$(basename "$file" .json)
+            echo "  pipeline: $NAME"
+            curl -s -X PUT "${OPENSEARCH_URL}/_ingest/pipeline/${NAME}" \
+              -H "Content-Type: application/json" -d "@${file}"
+          done
+
+          echo "Creating index templates..."
+          for file in opensearch/index-templates/*.json; do
+            NAME=$(basename "$file" .json)
+            echo "  template: $NAME"
+            curl -s -X PUT "${OPENSEARCH_URL}/_index_template/${NAME}" \
+              -H "Content-Type: application/json" -d "@${file}"
+          done
+
+          echo "Creating indices..."
+          for file in opensearch/mappings/*.json; do
+            NAME=$(basename "$file" .json)
+            echo "  index: $NAME"
+            curl -s -X PUT "${OPENSEARCH_URL}/${NAME}" \
+              -H "Content-Type: application/json" -d "@${file}"
+          done
+
+          echo "OpenSearch setup complete."
+
       - name: Run DB migrations
         working-directory: api
         run: |
@@ -137,6 +174,7 @@ jobs:
           MODULES_PORT: 6666
           STORAGE_ENGINE: local
           FLOWER_BASIC_AUTH: flower:flower
+          MCP_AUTH_ENABLED: true
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
         with:
