@@ -13,6 +13,7 @@ from app.repositories import correlations as correlations_repository
 from app.repositories import events as events_repository
 from app.repositories import freetext as freetext_repository
 from app.repositories import hunts as hunts_repository
+from app.repositories import reports as reports_repository
 from app.repositories import sightings as sightings_repository
 from app.repositories import users as users_repository
 from app.models import hunt as hunt_models
@@ -929,6 +930,80 @@ def run_hunt(hunt_id: int) -> dict:
         }
     finally:
         db.close()
+
+
+@mcp.tool
+def get_event_reports(event_uuid: str) -> dict:
+    """Retrieve event reports attached to a specific MISP event.
+
+    Event reports are textual documents (markdown or plain text) attached to
+    events, containing analysis, context, or narrative descriptions.
+
+    Args:
+        event_uuid: The UUID of the event whose reports to retrieve.
+    """
+    _check_scope("mcp:get_event_reports")
+    logger.debug(f"Retrieving event reports for event_uuid: {event_uuid}")
+    hits = reports_repository.get_event_reports_by_event_uuid(event_uuid)
+    results = [h["_source"] for h in hits]
+    logger.debug(f"Found {len(results)} reports for event {event_uuid}")
+    return {"event_uuid": event_uuid, "total": len(results), "results": results}
+
+
+@mcp.tool
+def search_event_reports(
+    query: Optional[str] = None,
+    name: Optional[str] = None,
+    event_uuid: Optional[str] = None,
+    page: int = 1,
+    size: int = 10,
+) -> dict:
+    """Search event reports across all MISP events.
+
+    Supports full-text search on report content and name, filtering by event
+    UUID, and pagination. Results are sorted by most recent first.
+
+    Args:
+        query: Full-text search query across report name and content.
+        name: Filter by report name (partial match).
+        event_uuid: Filter reports belonging to a specific event UUID.
+        page: Page number (1-based).
+        size: Number of results per page (max 100).
+    """
+    _check_scope("mcp:search_event_reports")
+    logger.debug(
+        f"Searching event reports: query={query}, name={name}, event_uuid={event_uuid}"
+    )
+    size = min(size, 100)
+    from_value = (page - 1) * size
+
+    client = get_opensearch_client()
+    must_clauses: list = [{"term": {"deleted": False}}]
+
+    if query:
+        must_clauses.append(
+            {"multi_match": {"query": query, "fields": ["name", "content"]}}
+        )
+    if name:
+        must_clauses.append({"match": {"name": name}})
+    if event_uuid:
+        must_clauses.append({"term": {"event_uuid.keyword": event_uuid}})
+
+    query_body = {
+        "from": from_value,
+        "size": size,
+        "query": {"bool": {"must": must_clauses}},
+        "sort": [{"@timestamp": {"order": "desc"}}],
+    }
+
+    response = client.search(index="misp-event-reports", body=query_body)
+    hits = response["hits"]["hits"]
+    total = response["hits"]["total"]["value"]
+    results = [h["_source"] for h in hits]
+    logger.debug(
+        f"Event reports search returned {total} total, {len(results)} in page {page}"
+    )
+    return {"total": total, "page": page, "size": size, "results": results}
 
 
 # ── Resources ──────────────────────────────────────────────────────────────
