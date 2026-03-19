@@ -30,7 +30,7 @@ from app.schemas.correlation import CorrelationQueryParams
 from app.services.opensearch import get_opensearch_client
 from app.settings import get_settings
 from app.auth.auth import create_access_token, get_scopes_for_user
-from app.auth.security import get_current_active_user, oauth2_scheme
+from app.auth.security import get_current_active_user
 from app.schemas import user as user_schemas
 from app.settings import get_settings
 from datetime import timedelta
