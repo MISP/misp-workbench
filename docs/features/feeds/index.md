@@ -28,7 +28,7 @@ All feed types share a set of base settings:
 
 A curated list of well-known public feeds is bundled at `api/app/defaults/default-feeds.json`. When adding a feed, click **Select from defaults** to browse and auto-populate the form.
 
-<img src="../screenshots/feeds/misp-workbench-1_default-feeds.png">
+<img src="../../screenshots/feeds/misp-workbench-1_default-feeds.png">
 
 ## Scheduled tasks
 
