@@ -8,6 +8,9 @@ The MCP server is served at `/mcp` using the [Streamable HTTP transport](https:/
 - **resources** — static reference data (attribute types, taxonomies, galaxies, query syntax)
 - **prompts** — reusable analysis templates (threat reports, IOC lookups, actor profiles)
 
+<video width="1080" controls>
+  <source src="../../../screenshots/claude-code/claude-code_4-analyse-ioc-misp-workbench-mcp.webm.webm" type="video/mp4">
+</video>
 
 ## Quick start
 

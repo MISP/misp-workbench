@@ -46,6 +46,7 @@ nav:
     - Enrichments: features/enrichments.md
     - MCP Server:
       - Overview: features/mcp/index.md
+      - Claude Code: features/mcp/claude.md
       - MCP Inspector: features/mcp/mcp-inspector.md
     - Batch Import: features/batch-import.md
     - OpenSearch:
