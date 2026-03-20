@@ -15,9 +15,6 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from app.services.redis import get_redis_client
 
-# see: https://fastapi.tiangolo.com/tutorial/security/oauth2-jwt/
-# see: https://fastapi.tiangolo.com/advanced/security/
-
 
 class Token(BaseModel):
     access_token: str
@@ -124,6 +121,29 @@ oauth2_scheme = OAuth2PasswordBearer(
         "hunts:run": "Run hunts.",
         "notifications:read": "Read notifications.",
         "notifications:update": "Update notifications.",
+        "mcp:list_tools": "List MCP tools.",
+        "mcp:list_resources": "List MCP resources.",
+        "mcp:list_prompts": "List MCP prompts.",
+        "mcp:search_events": "Search events via MCP.",
+        "mcp:search_attributes": "Search attributes via MCP.",
+        "mcp:get_event": "Get event details via MCP.",
+        "mcp:get_correlations": "Get correlations via MCP.",
+        "mcp:detect_indicator_type": "Detect indicator types via MCP.",
+        "mcp:get_statistics": "Get statistics via MCP.",
+        "mcp:get_tags": "List tags via MCP.",
+        "mcp:get_index_mapping": "Get index mappings via MCP.",
+        "mcp:search_galaxy": "Search galaxy clusters via MCP.",
+        "mcp:search_taxonomy": "Search taxonomies via MCP.",
+        "mcp:get_sightings": "Get sightings via MCP.",
+        "mcp:list_hunts": "List hunts via MCP.",
+        "mcp:get_hunt_results": "Get hunt results via MCP.",
+        "mcp:run_hunt": "Run hunts via MCP.",
+        "mcp:config": "Generate an MCP client configuration token.",
+        "mcp:get_event_reports": "Get event reports via MCP.",
+        "mcp:search_event_reports": "Search event reports via MCP.",
+        "mcp:create_event_report": "Create event reports via MCP.",
+        "mcp:get_notifications": "Get user notifications via MCP.",
+        "mcp:list_modules": "List enrichment modules via MCP.",
     },
 )
 
@@ -226,6 +246,7 @@ def get_scopes_for_user(user: user_schemas.User):
         scopes.add("settings:*")
         scopes.add("hunts:*")
         scopes.add("notifications:*")
+        scopes.add("mcp:*")
 
     if user.role.perm_auth:
         scopes.add("auth:login")

@@ -75,7 +75,7 @@ reportsStore.getReportsByEventId(props.event_uuid);
           }"
           data-bs-parent="#eventReporstAccordion"
         >
-          <div class="accordion-body bg-white">
+          <div class="accordion-body">
             <div
               class="markdown-body"
               v-html="DOMPurify.sanitize(marked(report._source.content))"
@@ -86,3 +86,75 @@ reportsStore.getReportsByEventId(props.event_uuid);
     </div>
   </div>
 </template>
+
+<style scoped>
+.markdown-body {
+  color: var(--bs-body-color);
+  background-color: transparent;
+}
+
+.markdown-body :deep(h1),
+.markdown-body :deep(h2),
+.markdown-body :deep(h3),
+.markdown-body :deep(h4),
+.markdown-body :deep(h5),
+.markdown-body :deep(h6) {
+  color: var(--bs-body-color);
+}
+
+.markdown-body :deep(a) {
+  color: var(--bs-link-color);
+}
+
+.markdown-body :deep(code) {
+  background-color: var(--bs-secondary-bg);
+  color: var(--bs-body-color);
+  padding: 0.15em 0.35em;
+  border-radius: 0.25rem;
+}
+
+.markdown-body :deep(pre) {
+  background-color: var(--bs-secondary-bg);
+  border: 1px solid var(--bs-border-color);
+  border-radius: 0.375rem;
+  padding: 1rem;
+}
+
+.markdown-body :deep(pre code) {
+  background-color: transparent;
+  padding: 0;
+}
+
+.markdown-body :deep(blockquote) {
+  border-left: 4px solid var(--bs-border-color);
+  color: var(--bs-secondary-color);
+  padding-left: 1rem;
+  margin-left: 0;
+}
+
+.markdown-body :deep(table) {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.markdown-body :deep(table th),
+.markdown-body :deep(table td) {
+  border: 1px solid var(--bs-border-color);
+  padding: 0.5rem 0.75rem;
+  background-color: transparent;
+}
+
+.markdown-body :deep(table tr),
+.markdown-body :deep(table tr:nth-child(even)),
+.markdown-body :deep(table tr:nth-child(odd)) {
+  background-color: transparent;
+}
+
+.markdown-body :deep(table thead th) {
+  background-color: var(--bs-secondary-bg);
+}
+
+.markdown-body :deep(hr) {
+  border-color: var(--bs-border-color);
+}
+</style>

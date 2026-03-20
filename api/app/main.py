@@ -9,6 +9,7 @@ from app.routers import (
     feeds,
     galaxies,
     hunts,
+    mcp,
     modules,
     object_templates,
     objects,
@@ -32,10 +33,19 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi_pagination import add_pagination
 
 # setup loggers
-logging.config.fileConfig("logging.conf", disable_existing_loggers=False)
+# Import and use our custom logging setup
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+from setup_logging import setup_logging
+
+setup_logging()
+
+# MCP server (mounted as ASGI sub-app)
+mcp_app = mcp.mcp.http_app(path="/")
 
 # Bootstrap application
-app = FastAPI(title="misp-workbench API", version="0.1.0")
+app = FastAPI(title="misp-workbench API", version="0.1.0", lifespan=mcp_app.lifespan)
 
 # Add CORS
 origins = [
@@ -43,6 +53,7 @@ origins = [
     "http://localhost:8080",
     "http://localhost:3000",
     "http://localhost:3001",
+    "http://localhost:6274",
 ]
 app.add_middleware(
     CORSMiddleware,
@@ -126,5 +137,11 @@ app.include_router(hunts.router, tags=["Hunts"])
 
 # Notifications resource
 app.include_router(notifications.router, tags=["Notifications"])
+
+# MCP config endpoint (must be registered before the /mcp mount)
+app.include_router(mcp.router, tags=["MCP"])
+
+# MCP server (Streamable HTTP at /mcp)
+app.mount("/mcp", mcp_app)
 
 add_pagination(app)

@@ -1,3 +1,5 @@
+from typing import Optional
+
 import typer
 from app.database import SessionLocal
 from app.repositories import organisations as organisations_repository
@@ -46,12 +48,12 @@ def create_user(email: str, password: str, organisation_id: int, role_id: int):
 
 
 @app.command()
-def load_galaxies(user_id: int = None):
+def load_galaxies(user_id: Optional[int] = None):
     tasks.load_galaxies.delay(user_id)
 
 
 @app.command()
-def load_taxonomies(user_id: int = None):
+def load_taxonomies(user_id: Optional[int] = None):
     tasks.load_taxonomies.delay()
 
 
