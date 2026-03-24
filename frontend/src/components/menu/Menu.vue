@@ -133,10 +133,6 @@ function navAndClose(path) {
         <RouterLink to="/explore" class="nav-item nav-link py-1"
           >explore</RouterLink
         >
-        <RouterLink to="/events" class="nav-item nav-link py-1"
-          >events</RouterLink
-        >
-
         <div class="nav-item dropdown">
           <a
             class="nav-link dropdown-toggle py-1"
@@ -339,15 +335,6 @@ function navAndClose(path) {
             @click.prevent="navAndClose('/explore')"
           >
             explore
-          </RouterLink>
-        </li>
-        <li>
-          <RouterLink
-            to="/events"
-            class="list-group-item list-group-item-action"
-            @click.prevent="navAndClose('/events')"
-          >
-            events
           </RouterLink>
         </li>
         <!-- Sources submenu -->

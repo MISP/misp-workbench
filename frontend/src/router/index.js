@@ -4,7 +4,6 @@ import { useAuthStore } from "@/stores";
 import {
   Home,
   Login,
-  IndexEvents,
   ViewEvent,
   IndexUsers,
   AddUser,
@@ -56,7 +55,6 @@ export const router = createRouter({
   routes: [
     { path: "/", component: Home },
     { path: "/login", component: Login },
-    { path: "/events", component: IndexEvents },
     { path: "/events/:id", component: ViewEvent, props: true },
     { path: "/events/update/:id", component: EditEvent, props: true },
     { path: "/events/add", component: AddEvent },
