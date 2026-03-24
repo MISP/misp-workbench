@@ -21,7 +21,7 @@ const props = defineProps({
 const emit = defineEmits(["page-change", "download", "sort-change"]);
 
 const SORT_FIELDS = [
-  { value: "_score", label: "Relevant" },
+  { value: "_score", label: "Relevance" },
   { value: "@timestamp", label: "Date" },
 ];
 
