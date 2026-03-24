@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed } from "vue";
+import { ref, computed, watch } from "vue";
 import { storeToRefs } from "pinia";
 import { useLocalStorageRef } from "@/helpers/local-storage";
 import {
@@ -81,6 +81,26 @@ function search() {
     userRecentSearches.value.shift();
   }
 }
+
+watch(event_docs, (docs) => {
+  if (
+    activeTab.value === "attributes" &&
+    attribute_docs.value?.total === 0 &&
+    docs?.total > 0
+  ) {
+    activeTab.value = "events";
+  }
+});
+
+watch(attribute_docs, (docs) => {
+  if (
+    activeTab.value === "events" &&
+    event_docs.value?.total === 0 &&
+    docs?.total > 0
+  ) {
+    activeTab.value = "attributes";
+  }
+});
 
 function onEventsPageChange(page) {
   eventsStore.search({ page, size: props.page_size, query: buildQuery() });
