@@ -67,12 +67,14 @@ async def search_events(
     query: str = Query(..., min_length=0),
     page: int = Query(1, ge=1),
     size: int = Query(10, ge=1, le=100),
+    sort_by: Optional[str] = Query("@timestamp", pattern="^(_score|@timestamp)$"),
+    sort_order: Optional[str] = Query("desc", pattern="^(asc|desc)$"),
     user: user_schemas.User = Security(get_current_active_user, scopes=["events:read"]),
 ):
 
     from_value = (page - 1) * size
 
-    return events_repository.search_events(query, page, from_value, size)
+    return events_repository.search_events(query, page, from_value, size, sort_by, sort_order)
 
 
 @router.get("/events/export")

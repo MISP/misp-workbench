@@ -104,8 +104,9 @@ const src = computed(() => props.attribute._source);
     </div>
 
     <div class="card-footer d-flex justify-content-between text-muted small">
-      <span>
-        <Timestamp :timestamp="src.timestamp" />
+      <Timestamp :timestamp="src.timestamp" />
+      <span v-if="attribute._score != null" class="badge text-bg-secondary">
+        score: {{ attribute._score.toFixed(2) }}
       </span>
     </div>
   </div>

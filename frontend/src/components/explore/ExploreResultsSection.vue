@@ -1,17 +1,40 @@
 <script setup>
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
-import { faFileDownload, faSpinner } from "@fortawesome/free-solid-svg-icons";
+import {
+  faFileDownload,
+  faSpinner,
+  faSortUp,
+  faSortDown,
+} from "@fortawesome/free-solid-svg-icons";
 import ApiError from "@/components/misc/ApiError.vue";
 import Paginate from "vuejs-paginate-next";
 
-defineProps({
+const props = defineProps({
   title: { type: String, required: true },
   docs: { type: Object, default: null },
   status: { type: Object, required: true },
   pageCount: { type: Number, default: 0 },
+  sortBy: { type: String, default: "@timestamp" },
+  sortOrder: { type: String, default: "desc" },
 });
 
-const emit = defineEmits(["page-change", "download"]);
+const emit = defineEmits(["page-change", "download", "sort-change"]);
+
+const SORT_FIELDS = [
+  { value: "_score", label: "Relevant" },
+  { value: "@timestamp", label: "Date" },
+];
+
+function setSortBy(value) {
+  emit("sort-change", { sortBy: value, sortOrder: props.sortOrder });
+}
+
+function toggleSortOrder() {
+  emit("sort-change", {
+    sortBy: props.sortBy,
+    sortOrder: props.sortOrder === "asc" ? "desc" : "asc",
+  });
+}
 </script>
 
 <template>
@@ -19,10 +42,11 @@ const emit = defineEmits(["page-change", "download"]);
     class="result-section mb-3 col-12 col-md-10 mx-auto"
     v-if="docs?.results || status.error"
   >
-    <div v-if="docs?.total > 0" class="d-flex justify-content-end">
+    <div class="d-flex justify-content-end gap-2">
       <div class="btn-group mt-2 mb-2">
         <slot name="header-extra" />
         <button
+          v-if="docs?.total > 0"
           type="button"
           class="btn btn-sm btn-outline-info dropdown-toggle"
           data-bs-toggle="dropdown"
@@ -43,6 +67,35 @@ const emit = defineEmits(["page-change", "download"]);
           </li>
         </ul>
       </div>
+      <div class="btn-group mt-2 mb-2">
+        <button
+          type="button"
+          class="btn btn-sm btn-outline-secondary"
+          @click="toggleSortOrder"
+        >
+          <FontAwesomeIcon
+            :icon="sortOrder === 'asc' ? faSortUp : faSortDown"
+          />
+        </button>
+        <button
+          type="button"
+          class="btn btn-sm btn-outline-secondary dropdown-toggle"
+          data-bs-toggle="dropdown"
+        >
+          {{ SORT_FIELDS.find((f) => f.value === sortBy)?.label }}
+        </button>
+        <ul class="dropdown-menu">
+          <li v-for="field in SORT_FIELDS" :key="field.value">
+            <button
+              class="dropdown-item"
+              :class="{ active: sortBy === field.value }"
+              @click="setSortBy(field.value)"
+            >
+              {{ field.label }}
+            </button>
+          </li>
+        </ul>
+      </div>
     </div>
     <slot />
     <div class="d-flex justify-content-center">
@@ -56,10 +109,6 @@ const emit = defineEmits(["page-change", "download"]);
         No {{ title.toLowerCase() }} found.
         <div v-if="docs.timed_out" class="alert alert-danger mt-3">
           Request timed out.
-        </div>
-
-        <div v-if="docs?.total > 0" class="card-footer text-muted text-center">
-          <div class="mt-2">{{ docs.total }} results · {{ docs.took }}ms</div>
         </div>
       </div>
     </div>

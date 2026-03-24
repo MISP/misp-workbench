@@ -29,6 +29,16 @@ const searchQuery = ref("");
 const activeTimeRange = ref(null);
 const huntModalOpen = ref(false);
 const activeTab = useLocalStorageRef("explore_active_tab", "events");
+const eventsSortBy = useLocalStorageRef("explore_events_sort_by", "@timestamp");
+const eventsSortOrder = useLocalStorageRef("explore_events_sort_order", "desc");
+const attributesSortBy = useLocalStorageRef(
+  "explore_attributes_sort_by",
+  "@timestamp",
+);
+const attributesSortOrder = useLocalStorageRef(
+  "explore_attributes_sort_order",
+  "desc",
+);
 
 const eventsStore = useEventsStore();
 const attributesStore = useAttributesStore();
@@ -67,8 +77,20 @@ function buildQuery() {
 
 function search() {
   const query = buildQuery();
-  eventsStore.search({ page: 1, size: props.page_size, query });
-  attributesStore.search({ page: 1, size: props.page_size, query });
+  eventsStore.search({
+    page: 1,
+    size: props.page_size,
+    query,
+    sort_by: eventsSortBy.value,
+    sort_order: eventsSortOrder.value,
+  });
+  attributesStore.search({
+    page: 1,
+    size: props.page_size,
+    query,
+    sort_by: attributesSortBy.value,
+    sort_order: attributesSortOrder.value,
+  });
 
   if (
     searchQuery.value &&
@@ -103,11 +125,47 @@ watch(attribute_docs, (docs) => {
 });
 
 function onEventsPageChange(page) {
-  eventsStore.search({ page, size: props.page_size, query: buildQuery() });
+  eventsStore.search({
+    page,
+    size: props.page_size,
+    query: buildQuery(),
+    sort_by: eventsSortBy.value,
+    sort_order: eventsSortOrder.value,
+  });
 }
 
 function onAttributesPageChange(page) {
-  attributesStore.search({ page, size: props.page_size, query: buildQuery() });
+  attributesStore.search({
+    page,
+    size: props.page_size,
+    query: buildQuery(),
+    sort_by: attributesSortBy.value,
+    sort_order: attributesSortOrder.value,
+  });
+}
+
+function onEventsSortChange({ sortBy, sortOrder }) {
+  eventsSortBy.value = sortBy;
+  eventsSortOrder.value = sortOrder;
+  eventsStore.search({
+    page: 1,
+    size: props.page_size,
+    query: buildQuery(),
+    sort_by: sortBy,
+    sort_order: sortOrder,
+  });
+}
+
+function onAttributesSortChange({ sortBy, sortOrder }) {
+  attributesSortBy.value = sortBy;
+  attributesSortOrder.value = sortOrder;
+  attributesStore.search({
+    page: 1,
+    size: props.page_size,
+    query: buildQuery(),
+    sort_by: sortBy,
+    sort_order: sortOrder,
+  });
 }
 
 async function downloadAllResults(type, format = "json") {
@@ -266,8 +324,11 @@ body {
               :docs="event_docs"
               :status="eventsStatus"
               :page-count="eventsPageCount"
+              :sort-by="eventsSortBy"
+              :sort-order="eventsSortOrder"
               @page-change="onEventsPageChange"
               @download="downloadAllResults('events', $event)"
+              @sort-change="onEventsSortChange"
             >
               <template #header-extra>
                 <EventsPropertiesModal />
@@ -287,8 +348,11 @@ body {
               :docs="attribute_docs"
               :status="attributesStatus"
               :page-count="attributesPageCount"
+              :sort-by="attributesSortBy"
+              :sort-order="attributesSortOrder"
               @page-change="onAttributesPageChange"
               @download="downloadAllResults('attributes', $event)"
+              @sort-change="onAttributesSortChange"
             >
               <template #header-extra>
                 <AttributesPropertiesModal />
