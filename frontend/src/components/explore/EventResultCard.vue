@@ -80,8 +80,11 @@ const analysisMap = {
       </p>
     </div>
 
-    <div class="card-footer text-muted">
+    <div class="card-footer d-flex justify-content-between text-muted small">
       <Timestamp :timestamp="event._source.timestamp" />
+      <span v-if="event._score != null" class="badge text-bg-secondary">
+        score: {{ event._score.toFixed(2) }}
+      </span>
     </div>
   </div>
 </template>

@@ -401,6 +401,8 @@ def search_attributes(
     page: int = 0,
     from_value: int = 0,
     size: int = 10,
+    sort_by: str = "@timestamp",
+    sort_order: str = "desc",
 ):
     OpenSearchClient = get_opensearch_client()
 
@@ -408,6 +410,7 @@ def search_attributes(
         "query": {"query_string": {"query": query, "default_field": "value"}},
         "from": from_value,
         "size": size,
+        "sort": [{sort_by: {"order": sort_order}}],
     }
     response = OpenSearchClient.search(index="misp-attributes", body=search_body)
 

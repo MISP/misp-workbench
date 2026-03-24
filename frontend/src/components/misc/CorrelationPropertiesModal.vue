@@ -31,12 +31,12 @@ pre {
 <template>
   <button
     type="button"
-    class="btn btn-sm btn-link p-0 text-decoration-none"
+    class="btn btn-sm btn-outline-info"
     data-bs-toggle="modal"
     data-bs-target="#correlationDocSchemaModal"
   >
-    open schema
-    <FontAwesomeIcon :icon="faFileCode" class="ms-1" />
+    <FontAwesomeIcon :icon="faFileCode" class="me-1" />
+    View schema
   </button>
 
   <Teleport to="body">

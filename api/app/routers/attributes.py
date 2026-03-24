@@ -50,6 +50,8 @@ async def search_attributes(
     query: str = Query(..., min_length=0),
     page: int = Query(1, ge=1),
     size: int = Query(10, ge=1, le=100),
+    sort_by: Optional[str] = Query("@timestamp", pattern="^(_score|@timestamp)$"),
+    sort_order: Optional[str] = Query("desc", pattern="^(asc|desc)$"),
     user: user_schemas.User = Security(
         get_current_active_user, scopes=["attributes:read"]
     ),
@@ -57,7 +59,7 @@ async def search_attributes(
 
     from_value = (page - 1) * size
 
-    return attributes_repository.search_attributes(query, page, from_value, size)
+    return attributes_repository.search_attributes(query, page, from_value, size, sort_by, sort_order)
 
 @router.get("/attributes/export")
 async def export_attributes(

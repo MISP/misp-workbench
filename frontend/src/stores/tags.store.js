@@ -22,7 +22,7 @@ export const useTagsStore = defineStore("tags", {
       const isCacheValid = now - this.lastFetched < CACHE_TTL;
 
       if (!hasFilter && this.tags.length > 0 && isCacheValid) {
-        return this.tags;
+        return { items: this.tags };
       }
 
       try {
