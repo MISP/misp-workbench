@@ -39,6 +39,7 @@ nav:
       - CSV Feeds: features/feeds/csv.md
       - JSON Feeds: features/feeds/json.md
       - Freetext Feeds: features/feeds/freetext.md
+      - API Reference: features/api/index.md
     - Explore: features/explore.md
     - Hunts: features/hunts.md
     - Correlations: features/correlations.md
@@ -57,6 +58,11 @@ nav:
   - Configuration: configuration.md
   - Architecture: architecture.md
   - Development: development.md
+  - API Reference: features/api/index.md
+
+plugins:
+  - search
+  - swagger-ui-tag
 
 markdown_extensions:
   - pymdownx.highlight:
