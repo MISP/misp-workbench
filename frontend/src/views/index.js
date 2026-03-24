@@ -1,6 +1,5 @@
 export { default as Home } from "./Home.vue";
 export { default as Login } from "./Login.vue";
-export { default as IndexEvents } from "./events/IndexEvents.vue";
 export { default as ViewEvent } from "./events/ViewEvent.vue";
 export { default as EditEvent } from "./events/EditEvent.vue";
 export { default as AddEvent } from "./events/AddEvent.vue";

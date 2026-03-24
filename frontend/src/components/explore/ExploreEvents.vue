@@ -28,6 +28,7 @@ const props = defineProps({
 const searchQuery = ref("");
 const activeTimeRange = ref(null);
 const huntModalOpen = ref(false);
+const activeTab = useLocalStorageRef("explore_active_tab", "events");
 
 const eventsStore = useEventsStore();
 const attributesStore = useAttributesStore();
@@ -193,49 +194,94 @@ body {
       />
     </div>
 
-    <div id="results" class="col-12 mt-3 order-4 d-flex flex-column">
-      <div :style="{ order: event_docs?.total > 0 ? 0 : 1 }">
-        <ExploreResultsSection
-          title="Events"
-          :docs="event_docs"
-          :status="eventsStatus"
-          :page-count="eventsPageCount"
-          border-color="#0d6efd"
-          @page-change="onEventsPageChange"
-          @download="downloadAllResults('events', $event)"
-        >
-          <template #header-extra>
-            <EventsPropertiesModal />
-          </template>
-          <EventResultCard
-            v-for="result in event_docs.results"
-            :key="result._source.uuid"
-            :event="result"
-            class="mb-2"
-          />
-        </ExploreResultsSection>
-      </div>
+    <div id="results" class="col-12 mt-3 order-4">
+      <div class="col-12 mx-auto">
+        <ul class="nav nav-tabs">
+          <li class="nav-item">
+            <button
+              class="nav-link"
+              :class="{ active: activeTab === 'events' }"
+              @click="activeTab = 'events'"
+            >
+              Events
+              <span
+                v-if="event_docs?.total != null"
+                class="badge ms-1"
+                :class="
+                  activeTab === 'events'
+                    ? 'text-bg-primary'
+                    : 'text-bg-secondary'
+                "
+              >
+                {{ event_docs.total }}
+              </span>
+            </button>
+          </li>
+          <li class="nav-item">
+            <button
+              class="nav-link"
+              :class="{ active: activeTab === 'attributes' }"
+              @click="activeTab = 'attributes'"
+            >
+              Attributes
+              <span
+                v-if="attribute_docs?.total != null"
+                class="badge ms-1"
+                :class="
+                  activeTab === 'attributes'
+                    ? 'text-bg-success'
+                    : 'text-bg-secondary'
+                "
+              >
+                {{ attribute_docs.total }}
+              </span>
+            </button>
+          </li>
+        </ul>
 
-      <div :style="{ order: attribute_docs?.total > 0 ? 0 : 1 }">
-        <ExploreResultsSection
-          title="Attributes"
-          :docs="attribute_docs"
-          :status="attributesStatus"
-          :page-count="attributesPageCount"
-          border-color="#198754"
-          @page-change="onAttributesPageChange"
-          @download="downloadAllResults('attributes', $event)"
-        >
-          <template #header-extra>
-            <AttributesPropertiesModal />
-          </template>
-          <AttributeResultCard
-            v-for="result in attribute_docs.results"
-            :key="result._source.uuid"
-            :attribute="result"
-            class="mb-2"
-          />
-        </ExploreResultsSection>
+        <div class="border border-top-0 rounded-bottom mb-3">
+          <div v-show="activeTab === 'events'">
+            <ExploreResultsSection
+              title="Events"
+              :docs="event_docs"
+              :status="eventsStatus"
+              :page-count="eventsPageCount"
+              @page-change="onEventsPageChange"
+              @download="downloadAllResults('events', $event)"
+            >
+              <template #header-extra>
+                <EventsPropertiesModal />
+              </template>
+              <EventResultCard
+                v-for="result in event_docs.results"
+                :key="result._source.uuid"
+                :event="result"
+                class="mb-2"
+              />
+            </ExploreResultsSection>
+          </div>
+
+          <div v-show="activeTab === 'attributes'">
+            <ExploreResultsSection
+              title="Attributes"
+              :docs="attribute_docs"
+              :status="attributesStatus"
+              :page-count="attributesPageCount"
+              @page-change="onAttributesPageChange"
+              @download="downloadAllResults('attributes', $event)"
+            >
+              <template #header-extra>
+                <AttributesPropertiesModal />
+              </template>
+              <AttributeResultCard
+                v-for="result in attribute_docs.results"
+                :key="result._source.uuid"
+                :attribute="result"
+                class="mb-2"
+              />
+            </ExploreResultsSection>
+          </div>
+        </div>
       </div>
     </div>
   </div>
