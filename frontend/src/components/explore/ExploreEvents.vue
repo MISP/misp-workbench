@@ -40,6 +40,17 @@ const attributesSortOrder = useLocalStorageRef(
   "desc",
 );
 
+const eventsFilters = ref([]);
+const attributesFilters = ref([]);
+
+function applyFilters(baseQuery, filters) {
+  const parts = [
+    baseQuery,
+    ...filters.map((f) => `${f.field}:"${f.value}"`),
+  ].filter(Boolean);
+  return parts.join(" AND ");
+}
+
 const eventsStore = useEventsStore();
 const attributesStore = useAttributesStore();
 const userSettingsStore = useUserSettingsStore();
@@ -76,18 +87,18 @@ function buildQuery() {
 }
 
 function search() {
-  const query = buildQuery();
+  const base = buildQuery();
   eventsStore.search({
     page: 1,
     size: props.page_size,
-    query,
+    query: applyFilters(base, eventsFilters.value),
     sort_by: eventsSortBy.value,
     sort_order: eventsSortOrder.value,
   });
   attributesStore.search({
     page: 1,
     size: props.page_size,
-    query,
+    query: applyFilters(base, attributesFilters.value),
     sort_by: attributesSortBy.value,
     sort_order: attributesSortOrder.value,
   });
@@ -128,7 +139,7 @@ function onEventsPageChange(page) {
   eventsStore.search({
     page,
     size: props.page_size,
-    query: buildQuery(),
+    query: applyFilters(buildQuery(), eventsFilters.value),
     sort_by: eventsSortBy.value,
     sort_order: eventsSortOrder.value,
   });
@@ -138,7 +149,7 @@ function onAttributesPageChange(page) {
   attributesStore.search({
     page,
     size: props.page_size,
-    query: buildQuery(),
+    query: applyFilters(buildQuery(), attributesFilters.value),
     sort_by: attributesSortBy.value,
     sort_order: attributesSortOrder.value,
   });
@@ -150,7 +161,7 @@ function onEventsSortChange({ sortBy, sortOrder }) {
   eventsStore.search({
     page: 1,
     size: props.page_size,
-    query: buildQuery(),
+    query: applyFilters(buildQuery(), eventsFilters.value),
     sort_by: sortBy,
     sort_order: sortOrder,
   });
@@ -162,9 +173,31 @@ function onAttributesSortChange({ sortBy, sortOrder }) {
   attributesStore.search({
     page: 1,
     size: props.page_size,
-    query: buildQuery(),
+    query: applyFilters(buildQuery(), attributesFilters.value),
     sort_by: sortBy,
     sort_order: sortOrder,
+  });
+}
+
+function onEventsFilterChange(filters) {
+  eventsFilters.value = filters;
+  eventsStore.search({
+    page: 1,
+    size: props.page_size,
+    query: applyFilters(buildQuery(), filters),
+    sort_by: eventsSortBy.value,
+    sort_order: eventsSortOrder.value,
+  });
+}
+
+function onAttributesFilterChange(filters) {
+  attributesFilters.value = filters;
+  attributesStore.search({
+    page: 1,
+    size: props.page_size,
+    query: applyFilters(buildQuery(), filters),
+    sort_by: attributesSortBy.value,
+    sort_order: attributesSortOrder.value,
   });
 }
 
@@ -326,9 +359,12 @@ body {
               :page-count="eventsPageCount"
               :sort-by="eventsSortBy"
               :sort-order="eventsSortOrder"
+              :filter-fields="['organisation', 'tags']"
+              :visible="activeTab === 'events'"
               @page-change="onEventsPageChange"
               @download="downloadAllResults('events', $event)"
               @sort-change="onEventsSortChange"
+              @filter-change="onEventsFilterChange"
             >
               <template #header-extra>
                 <EventsPropertiesModal />
@@ -350,9 +386,12 @@ body {
               :page-count="attributesPageCount"
               :sort-by="attributesSortBy"
               :sort-order="attributesSortOrder"
+              :filter-fields="['organisation', 'tags', 'type']"
+              :visible="activeTab === 'attributes'"
               @page-change="onAttributesPageChange"
               @download="downloadAllResults('attributes', $event)"
               @sort-change="onAttributesSortChange"
+              @filter-change="onAttributesFilterChange"
             >
               <template #header-extra>
                 <AttributesPropertiesModal />
