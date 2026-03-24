@@ -19,27 +19,30 @@ const emit = defineEmits(["page-change", "download"]);
     class="result-section mb-3 col-12 col-md-10 mx-auto"
     v-if="docs?.results || status.error"
   >
-    <div v-if="docs?.total > 0" class="d-flex justify-content-end">
-      <button
-        type="button"
-        class="btn btn-outline-primary dropdown-toggle m-2"
-        data-bs-toggle="dropdown"
-        :disabled="status.exporting"
-      >
-        <span v-if="status.exporting">
-          <FontAwesomeIcon :icon="faSpinner" spin class="ms-2" />
-        </span>
-        <span v-else class="ms-2">
-          <FontAwesomeIcon :icon="faFileDownload" /> Download
-        </span>
-      </button>
-      <ul class="dropdown-menu dropdown-menu-end">
-        <li>
-          <button class="dropdown-item" @click="emit('download', 'json')">
-            All results (JSON)
-          </button>
-        </li>
-      </ul>
+    <div v-if="docs?.total > 0" class="d-flex justify-content-end m-2">
+      <div class="btn-group">
+        <slot name="header-extra" />
+        <button
+          type="button"
+          class="btn btn-sm btn-outline-info dropdown-toggle"
+          data-bs-toggle="dropdown"
+          :disabled="status.exporting"
+        >
+          <span v-if="status.exporting">
+            <FontAwesomeIcon :icon="faSpinner" spin />
+          </span>
+          <span v-else>
+            <FontAwesomeIcon :icon="faFileDownload" /> Download
+          </span>
+        </button>
+        <ul class="dropdown-menu dropdown-menu-end">
+          <li>
+            <button class="dropdown-item" @click="emit('download', 'json')">
+              All results (JSON)
+            </button>
+          </li>
+        </ul>
+      </div>
     </div>
 
     <slot />
