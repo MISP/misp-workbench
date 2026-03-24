@@ -44,28 +44,29 @@ const emit = defineEmits(["page-change", "download"]);
         </ul>
       </div>
     </div>
-
     <slot />
+    <div class="d-flex justify-content-center">
+      <div v-if="status?.error" class="alert alert-danger mt-3">
+        <ApiError :errors="status.error" />
+      </div>
+      <div
+        v-if="docs && docs.total === 0"
+        class="text-center text-muted fst-italic mt-3"
+      >
+        No {{ title.toLowerCase() }} found.
+        <div v-if="docs.timed_out" class="alert alert-danger mt-3">
+          Request timed out.
+        </div>
+
+        <div v-if="docs?.total > 0" class="card-footer text-muted text-center">
+          <div class="mt-2">{{ docs.total }} results · {{ docs.took }}ms</div>
+        </div>
+      </div>
+    </div>
     <Paginate
       v-if="pageCount > 1"
       :page-count="pageCount"
       :click-handler="(page) => emit('page-change', page)"
     />
-  </div>
-  <div v-if="status?.error" class="alert alert-danger mt-3">
-    <ApiError :errors="status.error" />
-  </div>
-  <div
-    v-if="docs && docs.total === 0"
-    class="text-center text-muted m-3 fst-italic"
-  >
-    No {{ title.toLowerCase() }} found.
-    <div v-if="docs.timed_out" class="alert alert-danger mt-2">
-      Request timed out.
-    </div>
-
-    <div v-if="docs?.total > 0" class="card-footer text-muted text-center">
-      <div class="mt-2">{{ docs.total }} results · {{ docs.took }}ms</div>
-    </div>
   </div>
 </template>
