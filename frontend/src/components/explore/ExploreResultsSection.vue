@@ -157,7 +157,7 @@ function onTypesChanged(types) {
       <div class="btn-group mt-2 mb-2">
         <button
           type="button"
-          class="btn btn-sm btn-outline-secondary"
+          class="btn btn-sm btn-outline-info"
           @click="toggleSortOrder"
         >
           <FontAwesomeIcon
@@ -166,7 +166,7 @@ function onTypesChanged(types) {
         </button>
         <button
           type="button"
-          class="btn btn-sm btn-outline-secondary dropdown-toggle"
+          class="btn btn-sm btn-outline-info dropdown-toggle"
           data-bs-toggle="dropdown"
         >
           {{ SORT_FIELDS.find((f) => f.value === sortBy)?.label }}
@@ -182,11 +182,12 @@ function onTypesChanged(types) {
             </button>
           </li>
         </ul>
-
+      </div>
+      <div class="btn-group mt-2 mb-2">
         <button
           ref="filterButtonEl"
           type="button"
-          class="btn btn-sm btn-outline-secondary dropdown-toggle position-relative"
+          class="btn btn-sm btn-outline-info dropdown-toggle position-relative"
           :class="{ active: totalFilterCount > 0 }"
           data-bs-toggle="dropdown"
           data-bs-auto-close="outside"
