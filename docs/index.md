@@ -17,7 +17,7 @@ A modern MISP-compatible threat intelligence platform. It provides a self-contai
 | [Notifications](features/notifications.md) | Event-driven notifications processed by Celery workers |
 | [Batch Import](features/batch-import.md) | Easily import a list of indicators and add them as attributes to an event in a single operation. |
 | [OpenSearch](features/opensearch/index.md) | Full-text search, dashboards, and ingestion pipelines |
-| **REST API** | FastAPI backend with automatic OpenAPI documentation |
+| [REST API](features/api/index.md) | FastAPI backend with automatic OpenAPI documentation |
 | **Storage** | Garage (S3-compatible) or local filesystem for attachments |
 
 ## Screenshots
