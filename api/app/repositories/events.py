@@ -362,7 +362,7 @@ def create_event_from_fetched_event(
     user: user_schemas.User,
 ) -> event_models.Event:
     db_event = event_models.Event(
-        org_id=user.org_id,
+        org_id=Orgc.id,
         date=fetched_event.date,
         info=fetched_event.info,
         user_id=user.id,
@@ -448,6 +448,7 @@ def update_event_from_fetched_event(
     db_event.published = fetched_event.published
     db_event.analysis = event_models.AnalysisLevel(fetched_event.analysis)
     db_event.object_count = len(fetched_event.objects)
+    db_event.org_id = Orgc.id
     db_event.orgc_id = Orgc.id
     db_event.timestamp = fetched_event.timestamp.timestamp()
     db_event.distribution = feed.distribution
