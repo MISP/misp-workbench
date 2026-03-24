@@ -41,8 +41,9 @@ const analysisMap = {
     </div>
 
     <div class="card-body">
-      <h6 class="card-subtitle mb-2">{{ event._source.info }}</h6>
-
+      <div class="alert alert-info h6 mt-2" role="alert">
+        {{ event._source.info }}
+      </div>
       <div class="d-flex align-items-center gap-2 mb-2 flex-wrap">
         <span
           v-if="threatLevelMap[event._source.threat_level]"
