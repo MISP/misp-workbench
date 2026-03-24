@@ -52,7 +52,10 @@ const emit = defineEmits(["page-change", "download"]);
   <div v-if="status?.error" class="alert alert-danger mt-3">
     <ApiError :errors="status.error" />
   </div>
-  <div v-if="docs && docs.total === 0" class="text-center text-muted mt-3">
+  <div
+    v-if="docs && docs.total === 0"
+    class="text-center text-muted m-3 fst-italic"
+  >
     No {{ title.toLowerCase() }} found.
     <div v-if="docs.timed_out" class="alert alert-danger mt-2">
       Request timed out.
