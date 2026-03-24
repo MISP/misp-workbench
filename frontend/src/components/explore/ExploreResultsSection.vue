@@ -19,8 +19,8 @@ const emit = defineEmits(["page-change", "download"]);
     class="result-section mb-3 col-12 col-md-10 mx-auto"
     v-if="docs?.results || status.error"
   >
-    <div v-if="docs?.total > 0" class="d-flex justify-content-end m-2">
-      <div class="btn-group">
+    <div v-if="docs?.total > 0" class="d-flex justify-content-end">
+      <div class="btn-group mt-2 mb-2">
         <slot name="header-extra" />
         <button
           type="button"
