@@ -928,11 +928,16 @@ def index_attribute(attribute_uuid: str):
 
         attribute = event_schemas.Attribute.model_validate(db_attribute)
         event_uuid = db_attribute.event.uuid if db_attribute.event else None
+        object_uuid = None
+        if db_attribute.object_id:
+            db_object = objects_repository.get_object_by_id(db, db_attribute.object_id)
+            object_uuid = db_object.uuid if db_object else None
 
     OpenSearchClient = get_opensearch_client()
 
     attribute_raw = attribute.model_dump()
     attribute_raw["event_uuid"] = str(event_uuid) if event_uuid else None
+    attribute_raw["object_uuid"] = str(object_uuid) if object_uuid else None
 
     # convert timestamp to datetime so it can be indexed
     attribute_raw["@timestamp"] = datetime.fromtimestamp(
@@ -1035,6 +1040,7 @@ def index_object(object_uuid: str):
         db_object = objects_repository.get_object_by_uuid(db, object_uuid)
         if db_object is None:
             raise Exception("Object with uuid=%s not found", object_uuid)
+        event_uuid = str(db_object.event.uuid)
 
     object = event_schemas.Object.model_validate(db_object)
 
@@ -1046,7 +1052,10 @@ def index_object(object_uuid: str):
     object_raw["@timestamp"] = datetime.fromtimestamp(
         object_raw["timestamp"]
     ).isoformat()
-    object_raw["event_uuid"] = str(db_object.event.uuid)
+    object_raw["event_uuid"] = event_uuid
+
+    # pop attributes and index them separately in misp-attributes (consistent with index_event)
+    object_attributes = object_raw.pop("attributes", [])
 
     response = OpenSearchClient.index(
         index="misp-objects",
@@ -1061,7 +1070,42 @@ def index_object(object_uuid: str):
         )
         raise Exception("Failed to index object.")
 
-    logger.info("indexed object uuid=%s job finished", object_uuid)
+    logger.info("indexed object uuid=%s", object_uuid)
+
+    if object_attributes:
+        attribute_docs = []
+        for attribute in object_attributes:
+            attribute["@timestamp"] = datetime.fromtimestamp(
+                attribute["timestamp"]
+            ).isoformat()
+            attribute["event_uuid"] = event_uuid
+            attribute["object_uuid"] = str(object_raw["uuid"])
+            attribute["data"] = ""
+            attribute_docs.append(
+                {
+                    "_id": attribute["uuid"],
+                    "_index": "misp-attributes",
+                    "_source": attribute,
+                }
+            )
+
+        success, failed = opensearch_helpers.bulk(
+            OpenSearchClient, attribute_docs, refresh=True
+        )
+        if failed:
+            logger.error(
+                "Failed to index attributes of object uuid=%s. Failed: %s",
+                object_uuid,
+                failed,
+            )
+            raise Exception("Failed to index object attributes.")
+        logger.info(
+            "indexed %s attributes of object uuid=%s",
+            len(attribute_docs),
+            object_uuid,
+        )
+
+    logger.info("indexing object uuid=%s job finished", object_uuid)
 
     return True
 
