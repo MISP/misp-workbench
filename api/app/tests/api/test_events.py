@@ -18,12 +18,10 @@ class TestEventsResource(ApiTester):
         client: TestClient,
         user_1: user_models.User,
         event_1: event_models.Event,
-        attribute_1: attribute_models.Attribute,
         auth_token: auth.Token,
     ):
         response = client.get(
-            "/events/", headers={"Authorization": "Bearer " + auth_token},
-            params={"include_attributes": True}
+            "/events/", headers={"Authorization": "Bearer " + auth_token}
         )
         data = response.json()["items"]
 
@@ -35,10 +33,6 @@ class TestEventsResource(ApiTester):
         assert data[0]["org_id"] == event_1.org_id
         assert data[0]["orgc_id"] == event_1.orgc_id
         assert data[0]["user_id"] == user_1.id
-        assert data[0]["attributes"][0]["event_id"] == attribute_1.event_id
-        assert data[0]["attributes"][0]["value"] == attribute_1.value
-        assert data[0]["attributes"][0]["category"] == attribute_1.category
-        assert data[0]["attributes"][0]["type"] == attribute_1.type
 
     @pytest.mark.parametrize("scopes", [[]])
     def test_get_events_unauthorized(
@@ -245,6 +239,8 @@ class TestEventsResource(ApiTester):
         user_1: user_models.User,
     ):
         """A stable event used for filter/search tests that won't be mutated."""
+        from app.worker.tasks import index_event as _index_event
+
         ev = event_models.Event(
             info="stable filter test event",
             user_id=user_1.id,
@@ -257,6 +253,7 @@ class TestEventsResource(ApiTester):
         db.add(ev)
         db.commit()
         db.refresh(ev)
+        _index_event(str(ev.uuid), full_reindex=False)
         yield ev
 
     # ---- GET /events/{event_id} ----

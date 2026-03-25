@@ -10,7 +10,7 @@ from app.schemas import user as user_schemas
 from app.worker import tasks
 from fastapi import APIRouter, Depends, HTTPException, Security, status, Response
 from sqlalchemy.orm import Session
-from fastapi_pagination import Page
+from fastapi_pagination import Page, Params
 
 router = APIRouter()
 
@@ -26,39 +26,32 @@ async def get_objects_parameters(
 @router.get("/objects/", response_model=Page[object_schemas.Object])
 def get_objects(
     params: dict = Depends(get_objects_parameters),
-    db: Session = Depends(get_db),
+    page_params: Params = Depends(),
     user: user_schemas.User = Security(
         get_current_active_user, scopes=["objects:read"]
     ),
 ) -> Page[object_schemas.Object]:
-    return objects_repository.get_objects(
-        db, params["event_uuid"], params["deleted"], params["template_uuid"]
+    return objects_repository.get_objects_from_opensearch(
+        page_params,
+        params["event_uuid"],
+        params["deleted"],
+        params["template_uuid"],
     )
 
 
 @router.get("/objects/{object_id}", response_model=object_schemas.Object)
 def get_object_by_id(
     object_id: Union[int, UUID],
-    db: Session = Depends(get_db),
     user: user_schemas.User = Security(
         get_current_active_user, scopes=["objects:read"]
     ),
 ):
-    
-    if isinstance(object_id, int):
-        db_object = objects_repository.get_object_by_id(db, object_id=object_id)
-    else:
-        db_object = objects_repository.get_object_by_uuid(db, object_uuid=object_id)
-    
-    if db_object is None:
+    os_object = objects_repository.get_object_from_opensearch(object_id)
+    if os_object is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Object not found"
         )
-    
-    object = object_schemas.Object.from_orm(db_object)
-    object.event_uuid = str(db_object.event.uuid)
-
-    return object
+    return os_object
 
 @router.post(
     "/objects/",

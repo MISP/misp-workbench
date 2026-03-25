@@ -31,7 +31,8 @@ class AttributeBase(BaseModel):
 class Attribute(AttributeBase):
     id: int
     tags: list[Tag] = []
-    correlations: list[dict] = None
+    correlations: Optional[list[dict]] = None
+    expanded: Optional[dict] = None
     model_config = ConfigDict(from_attributes=True)
 
 

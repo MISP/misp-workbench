@@ -1,6 +1,7 @@
 import logging
+import math
 import time
-from typing import Union
+from typing import Optional, Union
 from uuid import UUID, uuid4
 
 from app.models import attribute as attribute_models
@@ -19,6 +20,7 @@ from app.schemas import user as user_schemas
 from app.worker import tasks
 from app.services.opensearch import get_opensearch_client
 from fastapi import HTTPException, status
+from fastapi_pagination import Page, Params
 from fastapi_pagination.ext.sqlalchemy import paginate
 from pymisp import MISPObject
 from sqlalchemy.orm import Session
@@ -91,6 +93,110 @@ def get_objects(
         obj.attributes = enrich_object_attributes_with_correlations(obj.attributes)
 
     return objects_page
+
+
+def get_objects_from_opensearch(
+    params: Params,
+    event_uuid: str = None,
+    deleted: bool = False,
+    template_uuid: list = None,
+) -> Page[object_schemas.Object]:
+    client = get_opensearch_client()
+
+    must_clauses = [{"term": {"deleted": bool(deleted)}}]
+    if event_uuid is not None:
+        must_clauses.append({"term": {"event_uuid.keyword": event_uuid}})
+    if template_uuid is not None:
+        must_clauses.append(
+            {"terms": {"template_uuid.keyword": [str(u) for u in template_uuid]}}
+        )
+
+    query_body = {
+        "query": {"bool": {"must": must_clauses}},
+        "from": (params.page - 1) * params.size,
+        "size": params.size,
+        "sort": [{"timestamp": {"order": "desc"}}],
+    }
+
+    response = client.search(index="misp-objects", body=query_body)
+    total = response["hits"]["total"]["value"]
+    hits = response["hits"]["hits"]
+
+    if not hits:
+        return Page(items=[], total=total, page=params.page, size=params.size, pages=0)
+
+    # Batch-fetch attributes for all returned objects
+    object_uuids = [str(hit["_source"]["uuid"]) for hit in hits]
+    attr_response = client.search(
+        index="misp-attributes",
+        body={
+            "query": {"terms": {"object_uuid": object_uuids}},
+            "size": 10000,
+        },
+    )
+
+    raw_by_uuid: dict = {}
+    for attr_hit in attr_response["hits"]["hits"]:
+        src = attr_hit["_source"]
+        key = src.get("object_uuid")
+        if key:
+            raw_by_uuid.setdefault(key, []).append(src)
+
+    # Build and correlate per-object attribute lists
+    attrs_by_uuid: dict = {}
+    for obj_uuid, raw_attrs in raw_by_uuid.items():
+        built = [attribute_schemas.Attribute.model_validate(s) for s in raw_attrs]
+        attrs_by_uuid[obj_uuid] = enrich_object_attributes_with_correlations(built)
+
+    items = []
+    for hit in hits:
+        source = hit["_source"]
+        obj_uuid = str(source.get("uuid", ""))
+        source["attributes"] = attrs_by_uuid.get(obj_uuid, [])
+        source.setdefault("object_references", [])
+        items.append(object_schemas.Object.model_validate(source))
+
+    pages = math.ceil(total / params.size) if params.size > 0 else 0
+    return Page(items=items, total=total, page=params.page, size=params.size, pages=pages)
+
+
+def get_object_from_opensearch(
+    object_id: Union[int, UUID],
+) -> Optional[object_schemas.Object]:
+    client = get_opensearch_client()
+
+    if isinstance(object_id, int):
+        response = client.search(
+            index="misp-objects",
+            body={"query": {"term": {"id": object_id}}, "size": 1},
+        )
+        hits = response["hits"]["hits"]
+        if not hits:
+            return None
+        source = hits[0]["_source"]
+    else:
+        try:
+            doc = client.get(index="misp-objects", id=str(object_id))
+            source = doc["_source"]
+        except NotFoundError:
+            return None
+
+    obj_uuid = str(source.get("uuid", ""))
+    attr_response = client.search(
+        index="misp-attributes",
+        body={"query": {"term": {"object_uuid": obj_uuid}}, "size": 10000},
+    )
+
+    attributes = []
+    attributes = [
+        attribute_schemas.Attribute.model_validate(h["_source"])
+        for h in attr_response["hits"]["hits"]
+    ]
+    attributes = enrich_object_attributes_with_correlations(attributes)
+    source["attributes"] = attributes
+    source.setdefault("object_references", [])
+
+    return object_schemas.Object.model_validate(source)
 
 
 def get_object_by_id(db: Session, object_id: int):

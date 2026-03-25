@@ -1,5 +1,6 @@
+import math
 import time
-from typing import Iterable, Union
+from typing import Iterable, Optional, Union
 from uuid import UUID
 from app.models.event import DistributionLevel
 from app.services.opensearch import get_opensearch_client
@@ -12,11 +13,11 @@ from app.schemas import attribute as attribute_schemas
 from app.schemas import event as event_schemas
 from app.worker import tasks
 from fastapi import HTTPException, status
+from fastapi_pagination import Page, Params
 from fastapi_pagination.ext.sqlalchemy import paginate
 from pymisp import MISPAttribute, MISPTag
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import select
-from fastapi_pagination import Page
 from collections import defaultdict
 from opensearchpy.exceptions import NotFoundError
 
@@ -84,6 +85,75 @@ def get_attributes(
     page_results = paginate(db, query)
 
     return enrich_attributes_page_with_correlations(page_results)
+
+
+def get_attributes_from_opensearch(
+    params: Params,
+    event_uuid: str = None,
+    deleted: bool = None,
+    object_id: int = None,
+    type: str = None,
+) -> Page[attribute_schemas.Attribute]:
+    client = get_opensearch_client()
+
+    must_clauses = []
+    if event_uuid is not None:
+        must_clauses.append({"term": {"event_uuid.keyword": event_uuid}})
+    if deleted is not None:
+        must_clauses.append({"term": {"deleted": deleted}})
+    if type is not None:
+        must_clauses.append({"term": {"type.keyword": type}})
+
+    # Mirror SQL behaviour: always filter by object_id (None → standalone attributes only)
+    if object_id is None:
+        must_clauses.append(
+            {"bool": {"must_not": [{"exists": {"field": "object_id"}}]}}
+        )
+    else:
+        must_clauses.append({"term": {"object_id": object_id}})
+
+    query_body = {
+        "query": {"bool": {"must": must_clauses}},
+        "from": (params.page - 1) * params.size,
+        "size": params.size,
+        "sort": [{"timestamp": {"order": "desc"}}],
+    }
+
+    response = client.search(index="misp-attributes", body=query_body)
+    total = response["hits"]["total"]["value"]
+    hits = response["hits"]["hits"]
+
+    items = [attribute_schemas.Attribute.model_validate(hit["_source"]) for hit in hits]
+
+    pages = math.ceil(total / params.size) if params.size > 0 else 0
+    attributes_page = Page(
+        items=items, total=total, page=params.page, size=params.size, pages=pages
+    )
+    return enrich_attributes_page_with_correlations(attributes_page)
+
+
+def get_attribute_from_opensearch(
+    attribute_id: Union[int, UUID],
+) -> Optional[attribute_schemas.Attribute]:
+    client = get_opensearch_client()
+
+    if isinstance(attribute_id, int):
+        response = client.search(
+            index="misp-attributes",
+            body={"query": {"term": {"id": attribute_id}}, "size": 1},
+        )
+        hits = response["hits"]["hits"]
+        if not hits:
+            return None
+        source = hits[0]["_source"]
+    else:
+        try:
+            doc = client.get(index="misp-attributes", id=str(attribute_id))
+            source = doc["_source"]
+        except NotFoundError:
+            return None
+
+    return attribute_schemas.Attribute.model_validate(source)
 
 
 def get_attribute_by_id(

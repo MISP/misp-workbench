@@ -11,7 +11,7 @@ from app.schemas import attribute as attribute_schemas
 from app.schemas import user as user_schemas
 from app.worker import tasks
 from fastapi import APIRouter, Depends, HTTPException, Response, Security, status, Query
-from fastapi_pagination import Page
+from fastapi_pagination import Page, Params
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
@@ -35,13 +35,17 @@ async def get_attributes_parameters(
 @router.get("/attributes/", response_model=Page[attribute_schemas.Attribute])
 def get_attributes(
     params: dict = Depends(get_attributes_parameters),
-    db: Session = Depends(get_db),
+    page_params: Params = Depends(),
     user: user_schemas.User = Security(
         get_current_active_user, scopes=["attributes:read"]
     ),
 ) -> Page[attribute_schemas.Attribute]:
-    return attributes_repository.get_attributes(
-        db, params["event_uuid"], params["deleted"], params["object_id"], params["type"]
+    return attributes_repository.get_attributes_from_opensearch(
+        page_params,
+        params["event_uuid"],
+        params["deleted"],
+        params["object_id"],
+        params["type"],
     )
 
 
@@ -79,30 +83,16 @@ async def export_attributes(
 @router.get("/attributes/{attribute_id}", response_model=attribute_schemas.Attribute)
 def get_attribute_by_id(
     attribute_id: Union[int, UUID],
-    db: Session = Depends(get_db),
     user: user_schemas.User = Security(
         get_current_active_user, scopes=["attributes:read"]
     ),
 ) -> attribute_schemas.Attribute:
-
-    if isinstance(attribute_id, UUID):
-        db_attribute = attributes_repository.get_attribute_by_uuid(
-            db, attribute_uuid=attribute_id
-        )
-    else:
-        db_attribute = attributes_repository.get_attribute_by_id(
-            db, attribute_id=attribute_id
-        )
-
-    if db_attribute is None:
+    os_attribute = attributes_repository.get_attribute_from_opensearch(attribute_id)
+    if os_attribute is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Attribute not found"
         )
-    
-    attribute = attribute_schemas.Attribute.from_orm(db_attribute)
-    attribute.event_uuid = str(db_attribute.event.uuid)
-
-    return attribute
+    return os_attribute
 
 
 @router.post(

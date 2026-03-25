@@ -25,7 +25,7 @@ from fastapi import (
     Form,
     Query,
 )
-from fastapi_pagination import Page
+from fastapi_pagination import Page, Params
 from sqlalchemy.orm import Session
 from starlette import status
 from fastapi.responses import JSONResponse
@@ -50,15 +50,14 @@ async def get_events_parameters(
 @router.get("/events/", response_model=Page[event_schemas.Event])
 async def get_events(
     params: dict = Depends(get_events_parameters),
-    db: Session = Depends(get_db),
+    page_params: Params = Depends(),
     user: user_schemas.User = Security(get_current_active_user, scopes=["events:read"]),
 ) -> Page[event_schemas.Event]:
-    return events_repository.get_events(
-        db,
+    return events_repository.get_events_from_opensearch(
+        page_params,
         params["info"],
         params["deleted"],
         params["uuid"],
-        params["include_attributes"],
     )
 
 
@@ -96,20 +95,14 @@ async def export_events(
 @router.get("/events/{event_id}", response_model=event_schemas.Event)
 def get_event_by_id(
     event_id: Union[int, UUID],
-    db: Session = Depends(get_db),
     user: user_schemas.User = Security(get_current_active_user, scopes=["events:read"]),
 ) -> event_schemas.Event:
-
-    if isinstance(event_id, int):
-        db_event = events_repository.get_event_by_id(db, event_id=event_id)
-    else:
-        db_event = events_repository.get_event_by_uuid(db, event_uuid=event_id)
-
-    if db_event is None:
+    os_event = events_repository.get_event_from_opensearch(event_id)
+    if os_event is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Event not found"
         )
-    return db_event
+    return os_event
 
 
 @router.post(

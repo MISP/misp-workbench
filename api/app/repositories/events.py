@@ -1,8 +1,9 @@
 import logging
+import math
 import time
 from datetime import datetime
 from uuid import UUID
-from typing import Union, Iterable
+from typing import Optional, Union, Iterable
 from app.worker import tasks
 from app.services.opensearch import get_opensearch_client
 from app.services.vulnerability_lookup import lookup as vulnerability_lookup
@@ -17,7 +18,9 @@ from app.schemas import user as user_schemas
 import app.schemas.attribute as attribute_schemas
 import app.schemas.vulnerability as vulnerability_schemas
 from fastapi import HTTPException, status, Query
+from fastapi_pagination import Page, Params
 from fastapi_pagination.ext.sqlalchemy import paginate
+from opensearchpy.exceptions import NotFoundError
 from pymisp import MISPEvent, MISPOrganisation
 from sqlalchemy.orm import Session, noload
 from sqlalchemy.sql import select
@@ -50,6 +53,68 @@ def get_events(db: Session, info: str = Query(None), deleted: bool = Query(None)
     query = query.order_by(event_models.Event.timestamp.desc())
 
     return paginate(db, query)
+
+
+def get_events_from_opensearch(
+    params: Params,
+    info: str = None,
+    deleted: bool = None,
+    uuid: str = None,
+) -> Page[event_schemas.Event]:
+    client = get_opensearch_client()
+
+    must_clauses = []
+    if info is not None:
+        must_clauses.append({"match": {"info": info}})
+    if deleted is not None:
+        must_clauses.append({"term": {"deleted": deleted}})
+    if uuid is not None:
+        must_clauses.append({"term": {"uuid.keyword": uuid}})
+
+    query_body = {
+        "query": {"bool": {"must": must_clauses}},
+        "from": (params.page - 1) * params.size,
+        "size": params.size,
+        "sort": [{"timestamp": {"order": "desc"}}],
+    }
+
+    response = client.search(index="misp-events", body=query_body)
+    total = response["hits"]["total"]["value"]
+    hits = response["hits"]["hits"]
+
+    items = []
+    for hit in hits:
+        source = hit["_source"]
+        source.setdefault("attributes", [])
+        source.setdefault("objects", [])
+        items.append(event_schemas.Event.model_validate(source))
+
+    pages = math.ceil(total / params.size) if params.size > 0 else 0
+    return Page(items=items, total=total, page=params.page, size=params.size, pages=pages)
+
+
+def get_event_from_opensearch(event_id: Union[int, UUID]) -> Optional[event_schemas.Event]:
+    client = get_opensearch_client()
+
+    if isinstance(event_id, int):
+        response = client.search(
+            index="misp-events",
+            body={"query": {"term": {"id": event_id}}, "size": 1},
+        )
+        hits = response["hits"]["hits"]
+        if not hits:
+            return None
+        source = hits[0]["_source"]
+    else:
+        try:
+            doc = client.get(index="misp-events", id=str(event_id))
+            source = doc["_source"]
+        except NotFoundError:
+            return None
+
+    source.setdefault("attributes", [])
+    source.setdefault("objects", [])
+    return event_schemas.Event.model_validate(source)
 
 
 def search_events(

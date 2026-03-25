@@ -96,7 +96,23 @@ class ApiTester:
         try:
             pass
         finally:
-            # teardown
+            # clean OpenSearch docs left over from previous test classes
+            try:
+                from app.services.opensearch import get_opensearch_client
+
+                os_client = get_opensearch_client()
+                for index in ("misp-events", "misp-attributes", "misp-objects"):
+                    try:
+                        os_client.delete_by_query(
+                            index=index,
+                            body={"query": {"match_all": {}}},
+                            refresh=True,
+                            ignore=[404],
+                        )
+                    except Exception:
+                        pass
+            except Exception:
+                pass
             self.teardown_db(db)
 
     # MISP data model fixtures
@@ -157,6 +173,8 @@ class ApiTester:
         organisation_1: organisation_models.Organisation,
         user_1: user_models.User,
     ):
+        from app.worker.tasks import index_event as _index_event
+
         event_1 = event_models.Event(
             info="test event",
             user_id=user_1.id,
@@ -169,11 +187,14 @@ class ApiTester:
         db.add(event_1)
         db.commit()
         db.refresh(event_1)
+        _index_event(str(event_1.uuid), full_reindex=False)
 
         yield event_1
 
     @pytest.fixture(scope="class")
     def attribute_1(self, db: Session, event_1: event_models.Event):
+        from app.worker.tasks import index_attribute as _index_attribute
+
         attribute_1 = attribute_models.Attribute(
             event_id=event_1.id,
             category="Network activity",
@@ -185,11 +206,14 @@ class ApiTester:
         db.add(attribute_1)
         db.commit()
         db.refresh(attribute_1)
+        _index_attribute(str(attribute_1.uuid))
 
         yield attribute_1
 
     @pytest.fixture(scope="class")
     def object_1(self, db: Session, event_1: event_models.Event):
+        from app.worker.tasks import index_object as _index_object
+
         object_1 = object_models.Object(
             event_id=event_1.id,
             uuid="90e06ef6-26f8-40dd-9fb7-75897445e2a0",
@@ -201,6 +225,7 @@ class ApiTester:
         db.add(object_1)
         db.commit()
         db.refresh(object_1)
+        _index_object(str(object_1.uuid))
 
         yield object_1
 
