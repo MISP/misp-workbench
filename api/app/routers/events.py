@@ -132,7 +132,7 @@ def create_event(
     event_create_request.org_id = user.org_id
 
     db_event = events_repository.create_event(db=db, event=event_create_request)
-    tasks.index_event.delay(str(db_event.uuid), full_reindex=True)
+    tasks.index_event(str(db_event.uuid), full_reindex=True)
 
     return db_event
 
@@ -186,6 +186,7 @@ def tag_event(
         )
 
     tags_repository.tag_event(db=db, event=event, tag=tag)
+    tasks.index_event(str(event.uuid), full_reindex=False)
 
     return Response(status_code=status.HTTP_201_CREATED)
 
@@ -215,6 +216,7 @@ def untag_event(
         )
 
     tags_repository.untag_event(db=db, event=event, tag=tag)
+    tasks.index_event(str(event.uuid), full_reindex=False)
 
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 

@@ -172,7 +172,7 @@ def handle_updated_event(event_uuid: str):
             db, "updated", event=db_event
         )
 
-        index_event.delay(str(db_event.uuid), full_reindex=False)
+        index_event(str(db_event.uuid), full_reindex=False)
 
     return True
 
@@ -190,7 +190,7 @@ def handle_deleted_event(event_uuid: str):
             db, "deleted", event=db_event
         )
 
-        delete_indexed_event.delay(str(event_uuid))
+        delete_indexed_event(str(event_uuid))
 
     return True
 
@@ -207,7 +207,7 @@ def handle_created_attribute(attribute_id: int, object_id: int | None, event_id:
             db, "created", attribute=db_attribute
         )
 
-        index_attribute.delay(str(db_attribute.uuid))
+        index_attribute(str(db_attribute.uuid))
 
     return True
 
@@ -221,7 +221,7 @@ def handle_updated_attribute(attribute_id: int, object_id: int | None, event_id:
             db, "updated", attribute=db_attribute
         )
 
-        index_attribute.delay(str(db_attribute.uuid))
+        index_attribute(str(db_attribute.uuid))
 
     return True
 
@@ -238,7 +238,7 @@ def handle_deleted_attribute(attribute_id: int, object_id: int | None, event_id:
             db, "deleted", attribute=db_attribute
         )
 
-        delete_indexed_attribute.delay(str(db_attribute.uuid))
+        delete_indexed_attribute(str(db_attribute.uuid))
 
     return True
 
@@ -255,7 +255,7 @@ def handle_created_object(object_id: int, event_id: int):
             db, "created", object=db_object
         )
 
-        index_object.delay(str(db_object.uuid))
+        index_object(str(db_object.uuid))
 
     return True
 
@@ -270,7 +270,7 @@ def handle_updated_object(object_id: int, event_id: int):
             db, "updated", object=db_object
         )
 
-        index_object.delay(str(db_object.uuid))
+        index_object(str(db_object.uuid))
 
     return True
 
@@ -287,7 +287,7 @@ def handle_deleted_object(object_id: int, event_id: int):
             db, "deleted", object=db_object
         )
 
-        delete_indexed_object.delay(str(db_object.uuid))
+        delete_indexed_object(str(db_object.uuid))
 
     return True
 

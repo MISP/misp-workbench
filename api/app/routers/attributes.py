@@ -199,6 +199,7 @@ def tag_attribute(
         )
 
     tags_repository.tag_attribute(db=db, attribute=attribute, tag=tag)
+    tasks.index_attribute(str(attribute.uuid))
 
     return Response(status_code=status.HTTP_201_CREATED)
 
@@ -228,5 +229,6 @@ def untag_attribute(
         )
 
     tags_repository.untag_attribute(db=db, attribute=attribute, tag=tag)
+    tasks.index_attribute(str(attribute.uuid))
 
     return Response(status_code=status.HTTP_204_NO_CONTENT)

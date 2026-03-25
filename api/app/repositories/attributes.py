@@ -140,7 +140,7 @@ def create_attribute(
     db.refresh(db_attribute)
 
     if db_attribute is not None:
-        tasks.handle_created_attribute.delay(
+        tasks.handle_created_attribute(
             db_attribute.id, db_attribute.object_id, db_attribute.event_id
         )
 
@@ -291,7 +291,7 @@ def update_attribute(
     db.commit()
     db.refresh(db_attribute)
 
-    tasks.handle_updated_attribute.delay(
+    tasks.handle_updated_attribute(
         db_attribute.id, db_attribute.object_id, db_attribute.event_id
     )
 
@@ -316,7 +316,7 @@ def delete_attribute(db: Session, attribute_id: int | str) -> None:
     db.commit()
     db.refresh(db_attribute)
 
-    tasks.handle_deleted_attribute.delay(
+    tasks.handle_deleted_attribute(
         db_attribute.id, db_attribute.object_id, db_attribute.event_id
     )
 

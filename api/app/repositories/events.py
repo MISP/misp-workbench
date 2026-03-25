@@ -170,7 +170,7 @@ def create_event(db: Session, event: event_schemas.EventCreate) -> event_models.
     db.flush()
     db.refresh(db_event)
 
-    tasks.handle_created_event.delay(str(db_event.uuid))
+    tasks.handle_created_event(str(db_event.uuid))
 
     return db_event
 
@@ -259,7 +259,7 @@ def update_event(db: Session, event_id: int, event: event_schemas.EventUpdate):
     db.commit()
     db.refresh(db_event)
 
-    tasks.handle_updated_event.delay(str(db_event.uuid))
+    tasks.handle_updated_event(str(db_event.uuid))
 
     return db_event
 
@@ -282,13 +282,13 @@ def delete_event(db: Session, event_id: Union[int, UUID], force: bool = False) -
         event_uuid = str(db_event.uuid)
         db.delete(db_event)
         db.commit()
-        tasks.delete_indexed_event.delay(event_uuid)
+        tasks.delete_indexed_event(event_uuid)
         return
 
     db.commit()
     db.refresh(db_event)
 
-    tasks.handle_deleted_event.delay(str(db_event.uuid))
+    tasks.handle_deleted_event(str(db_event.uuid))
 
 
 def increment_attribute_count(
@@ -535,7 +535,8 @@ def publish_event(db: Session, db_event: event_models.Event) -> event_models.Eve
     db.commit()
     db.refresh(db_event)
 
-    tasks.handle_published_event.delay(str(db_event.uuid))
+    tasks.handle_published_event(str(db_event.uuid))
+    tasks.index_event(str(db_event.uuid), full_reindex=False)
 
     return db_event
 
@@ -550,7 +551,8 @@ def unpublish_event(db: Session, db_event: event_models.Event) -> event_models.E
     db.commit()
     db.refresh(db_event)
 
-    tasks.handle_unpublished_event.delay(str(db_event.uuid))
+    tasks.handle_unpublished_event(str(db_event.uuid))
+    tasks.index_event(str(db_event.uuid), full_reindex=False)
 
     return db_event
 
@@ -563,9 +565,10 @@ def toggle_event_correlation(
     db.commit()
     db.refresh(db_event)
 
-    tasks.handle_toggled_event_correlation.delay(
+    tasks.handle_toggled_event_correlation(
         str(db_event.uuid), db_event.disable_correlation
     )
+    tasks.index_event(str(db_event.uuid), full_reindex=False)
 
     return db_event
 

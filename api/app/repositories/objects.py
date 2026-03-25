@@ -150,7 +150,7 @@ def create_object(
 
     db.refresh(db_object)
 
-    tasks.handle_created_object.delay(db_object.id, db_object.event_id)
+    tasks.handle_created_object(db_object.id, db_object.event_id)
 
     return db_object
 
@@ -332,7 +332,7 @@ def update_object(
     db.commit()
     db.refresh(db_object)
 
-    tasks.handle_updated_object.delay(db_object.id, db_object.event_id)
+    tasks.handle_updated_object(db_object.id, db_object.event_id)
 
     return db_object
 
@@ -359,7 +359,7 @@ def delete_object(db: Session, object_id: Union[int, UUID]) -> object_models.Obj
     db.commit()
     db.refresh(db_object)
 
-    tasks.handle_deleted_object.delay(db_object.id, db_object.event_id)
+    tasks.handle_deleted_object(db_object.id, db_object.event_id)
 
     return db_object
 
