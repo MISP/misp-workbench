@@ -1,6 +1,4 @@
-from typing import Optional
-
-from typing import Union
+from typing import Optional, Union
 from uuid import UUID
 from app.auth.security import get_current_active_user
 from app.db.session import get_db
@@ -80,14 +78,14 @@ async def export_attributes(
         status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid format specified"
     )
 
-@router.get("/attributes/{attribute_id}", response_model=attribute_schemas.Attribute)
-def get_attribute_by_id(
-    attribute_id: Union[int, UUID],
+@router.get("/attributes/{attribute_uuid}", response_model=attribute_schemas.Attribute)
+def get_attribute_by_uuid(
+    attribute_uuid: UUID,
     user: user_schemas.User = Security(
         get_current_active_user, scopes=["attributes:read"]
     ),
 ) -> attribute_schemas.Attribute:
-    os_attribute = attributes_repository.get_attribute_from_opensearch(attribute_id)
+    os_attribute = attributes_repository.get_attribute_from_opensearch(attribute_uuid)
     if os_attribute is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Attribute not found"
@@ -107,76 +105,66 @@ def create_attribute(
         get_current_active_user, scopes=["attributes:create"]
     ),
 ) -> attribute_schemas.Attribute:
-    if attribute.event_id is None:
-        if attribute.event_uuid is None:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Event ID or UUID must be provided",
-            )
-        event = events_repository.get_event_by_uuid(
-            db, event_uuid=str(attribute.event_uuid)
+    if attribute.event_uuid is None and attribute.event_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Event ID or UUID must be provided",
         )
+
+    if attribute.event_uuid is None:
+        event = events_repository.get_event_from_opensearch(attribute.event_id)
     else:
-        event = events_repository.get_event_by_id(db, event_id=attribute.event_id)
+        event = events_repository.get_event_from_opensearch(attribute.event_uuid)
 
     if event is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Event not found"
         )
 
-    attribute.event_id = event.id
-    db_attribute = attributes_repository.create_attribute(db=db, attribute=attribute)
-
-    return db_attribute
+    attribute.event_uuid = event.uuid
+    return attributes_repository.create_attribute(db=db, attribute=attribute)
 
 
-@router.patch("/attributes/{attribute_id}", response_model=attribute_schemas.Attribute)
+@router.patch("/attributes/{attribute_uuid}", response_model=attribute_schemas.Attribute)
 def update_attribute(
-    attribute_id: int,
+    attribute_uuid: UUID,
     attribute: attribute_schemas.AttributeUpdate,
     db: Session = Depends(get_db),
     user: user_schemas.User = Security(
         get_current_active_user, scopes=["attributes:update"]
     ),
 ) -> attribute_schemas.Attribute:
-    attribute_db = attributes_repository.get_attribute_by_id(
-        db, attribute_id=attribute_id
+    return attributes_repository.update_attribute(
+        db=db, attribute_id=attribute_uuid, attribute=attribute
     )
 
-    attribute_db = attributes_repository.update_attribute(
-        db=db, attribute_id=attribute_id, attribute=attribute
-    )
-    event = events_repository.get_event_by_id(db, event_id=attribute_db.event_id)
 
-    return attribute_db
-
-
-@router.delete("/attributes/{attribute_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/attributes/{attribute_uuid}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_attribute(
-    attribute_id: int,
+    attribute_uuid: UUID,
     db: Session = Depends(get_db),
     user: user_schemas.User = Security(
         get_current_active_user, scopes=["attributes:delete"]
     ),
 ):
-    attributes_repository.delete_attribute(db=db, attribute_id=attribute_id)
+    attributes_repository.delete_attribute(db=db, attribute_id=attribute_uuid)
 
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.post(
-    "/attributes/{attribute_id}/tag/{tag}",
+    "/attributes/{attribute_uuid}/tag/{tag}",
     status_code=status.HTTP_201_CREATED,
 )
 def tag_attribute(
-    attribute_id: int,
+    attribute_uuid: UUID,
     tag: str,
     db: Session = Depends(get_db),
     user: user_schemas.User = Security(
         get_current_active_user, scopes=["attributes:update"]
     ),
 ):
-    attribute = attributes_repository.get_attribute_by_id(db, attribute_id=attribute_id)
+    attribute = attributes_repository.get_attribute_from_opensearch(attribute_uuid)
     if attribute is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Attribute not found"
@@ -195,18 +183,18 @@ def tag_attribute(
 
 
 @router.delete(
-    "/attributes/{attribute_id}/tag/{tag}",
+    "/attributes/{attribute_uuid}/tag/{tag}",
     status_code=status.HTTP_204_NO_CONTENT,
 )
 def untag_attribute(
-    attribute_id: int,
+    attribute_uuid: UUID,
     tag: str,
     db: Session = Depends(get_db),
     user: user_schemas.User = Security(
         get_current_active_user, scopes=["attributes:update"]
     ),
 ):
-    attribute = attributes_repository.get_attribute_by_id(db, attribute_id=attribute_id)
+    attribute = attributes_repository.get_attribute_from_opensearch(attribute_uuid)
     if attribute is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Attribute not found"

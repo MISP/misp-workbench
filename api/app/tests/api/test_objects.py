@@ -1,6 +1,5 @@
 import pytest
 from app.auth import auth
-from app.models import event as event_models
 from app.models import object as object_models
 from app.tests.api_tester import ApiTester
 from fastapi import status
@@ -23,7 +22,7 @@ class TestObjectsResource(ApiTester):
         assert response.status_code == status.HTTP_200_OK
 
         assert len(data['items']) == 1
-        assert data['items'][0]["id"] == object_1.id
+        assert data['items'][0]["uuid"] == str(object_1.uuid)
         assert data['items'][0]["name"] == object_1.name
         assert data['items'][0]["template_version"] == object_1.template_version
         assert data['items'][0]["timestamp"] == object_1.timestamp
@@ -39,7 +38,7 @@ class TestObjectsResource(ApiTester):
 
     @pytest.mark.parametrize("scopes", [["objects:create"]])
     def test_create_object(
-        self, client: TestClient, event_1: event_models.Event, auth_token: auth.Token
+        self, client: TestClient, event_1: object, auth_token: auth.Token
     ):
         response = client.post(
             "/objects/",
@@ -55,15 +54,15 @@ class TestObjectsResource(ApiTester):
         data = response.json()
 
         assert response.status_code == status.HTTP_201_CREATED
-        assert data["id"] is not None
-        assert data["event_id"] == event_1.id
+        assert data["uuid"] is not None
+        assert data["event_uuid"] == str(event_1.uuid)
         assert data["template_version"] == 0
         assert data["timestamp"] == 1655283899
         assert data["deleted"] is False
 
     @pytest.mark.parametrize("scopes", [["objects:read"]])
     def test_create_object_unauthorized(
-        self, client: TestClient, event_1: event_models.Event, auth_token: auth.Token
+        self, client: TestClient, event_1: object, auth_token: auth.Token
     ):
         response = client.post(
             "/objects/",
@@ -80,7 +79,7 @@ class TestObjectsResource(ApiTester):
 
     @pytest.mark.parametrize("scopes", [["objects:create"]])
     def test_create_object_incomplete(
-        self, client: TestClient, event_1: event_models.Event, auth_token: auth.Token
+        self, client: TestClient, event_1: object, auth_token: auth.Token
     ):
         # missing value
         response = client.post(
@@ -100,7 +99,7 @@ class TestObjectsResource(ApiTester):
         auth_token: auth.Token,
     ):
         response = client.patch(
-            f"/objects/{object_1.id}",
+            f"/objects/{object_1.uuid}",
             json={
                 "name": "updated via API",
                 "comment": "test comment",
@@ -121,7 +120,7 @@ class TestObjectsResource(ApiTester):
         auth_token: auth.Token,
     ):
         response = client.delete(
-            f"/objects/{object_1.id}",
+            f"/objects/{object_1.uuid}",
             headers={"Authorization": "Bearer " + auth_token},
         )
 

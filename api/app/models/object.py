@@ -16,7 +16,6 @@ class Object(Base):
     description = Column(String)
     template_uuid = Column(String)
     template_version = Column(Integer, nullable=False)
-    event_id = Column(Integer, ForeignKey("events.id"), nullable=False)
     uuid = Column(UUID(as_uuid=True), unique=True, default=uuid.uuid4)
     timestamp = Column(Integer, nullable=False)
     distribution: Mapped[DistributionLevel] = mapped_column(
@@ -29,11 +28,6 @@ class Object(Base):
     deleted = Column(Boolean, nullable=False, default=False)
     first_seen = Column(Integer)
     last_seen = Column(Integer)
-    event = relationship(
-        "Event",
-        lazy="joined",
-        viewonly=True
-    )
     attributes = relationship("Attribute", lazy="subquery", cascade="all, delete-orphan")
     object_references = relationship("ObjectReference", lazy="subquery", cascade="all, delete-orphan")
 
@@ -46,7 +40,6 @@ class Object(Base):
             "description": self.description if self.description else self.name,
             "template_uuid": self.template_uuid,
             "template_version": self.template_version,
-            "event_id": self.event_id,
             "uuid": str(self.uuid),
             "timestamp": self.timestamp,
             "distribution": self.distribution.value if self.distribution else None,

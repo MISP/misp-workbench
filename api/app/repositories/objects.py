@@ -5,7 +5,6 @@ from typing import Optional, Union
 from uuid import UUID, uuid4
 
 from app.models import attribute as attribute_models
-from app.models import event as event_models
 from app.models import feed as feed_models
 from app.models import object as object_models
 from app.models import user as user_models
@@ -74,13 +73,20 @@ def get_objects(
     query = db.query(object_models.Object)
 
     if event_uuid is not None:
-        db_event = events_repository.get_event_by_uuid(event_uuid=event_uuid, db=db)
-        if db_event is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="Event not found"
-            )
-
-        query = query.filter(object_models.Object.event_id == db_event.id)
+        os_client = get_opensearch_client()
+        _resp = os_client.search(
+            index="misp-objects",
+            body={
+                "query": {"term": {"event_uuid.keyword": str(event_uuid)}},
+                "size": 10000,
+                "_source": ["uuid"],
+            },
+        )
+        object_uuids = [h["_source"]["uuid"] for h in _resp["hits"]["hits"]]
+        if not object_uuids:
+            from fastapi_pagination import Page as _Page
+            return _Page(items=[], total=0, page=1, size=50, pages=0)
+        query = query.filter(object_models.Object.uuid.in_(object_uuids))
 
     if template_uuid is not None:
         query = query.filter(object_models.Object.template_uuid.in_(template_uuid))
@@ -217,58 +223,68 @@ def get_object_by_uuid(db: Session, object_uuid: UUID):
 
 def create_object(
     db: Session, object: object_schemas.ObjectCreate
-) -> object_models.Object:
-    # TODO: MispObject::beforeValidate() && MispObject::$validate
-    db_object = object_models.Object(
-        event_id=object.event_id,
-        name=object.name,
-        meta_category=object.meta_category,
-        description=object.description,
-        template_uuid=object.template_uuid,
-        template_version=object.template_version,
-        uuid=object.uuid,
-        timestamp=object.timestamp or time.time(),
-        distribution=(
-            event_schemas.DistributionLevel(object.distribution)
-            if object.distribution is not None
-            else event_schemas.DistributionLevel.INHERIT_EVENT
-        ),
-        sharing_group_id=object.sharing_group_id,
-        comment=object.comment,
-        deleted=object.deleted,
-        first_seen=object.first_seen,
-        last_seen=object.last_seen,
-    )
+) -> object_schemas.Object:
+    from datetime import datetime as _datetime
 
-    db.add(db_object)
-    db.commit()
-    db.refresh(db_object)
+    client = get_opensearch_client()
+    object_uuid = str(object.uuid or uuid4())
 
-    for attribute in object.attributes:
-        attribute.object_id = db_object.id
-        attribute.event_id = object.event_id
-        attributes_repository.create_attribute(db, attribute)
+    event_uuid = str(object.event_uuid) if object.event_uuid else None
 
-    for object_reference in object.object_references:
-        object_reference.object_id = db_object.id
-        object_reference.event_id = db_object.event_id
+    dist = object.distribution
+    dist_val = dist.value if hasattr(dist, "value") else (dist if dist is not None else 5)
+
+    obj_doc = {
+        "uuid": object_uuid,
+        "event_uuid": event_uuid,
+        "name": object.name,
+        "meta_category": object.meta_category,
+        "description": object.description,
+        "template_uuid": object.template_uuid,
+        "template_version": object.template_version,
+        "timestamp": object.timestamp,
+        "distribution": dist_val,
+        "sharing_group_id": object.sharing_group_id,
+        "comment": object.comment or "",
+        "deleted": object.deleted or False,
+        "first_seen": object.first_seen,
+        "last_seen": object.last_seen,
+        "object_references": [],
+        "@timestamp": _datetime.fromtimestamp(object.timestamp).isoformat(),
+    }
+
+    client.index(index="misp-objects", id=object_uuid, body=obj_doc, refresh=True)
+
+    built_attrs = []
+    for attr in (object.attributes or []):
+        attr.object_id = None
+        attr.event_uuid = event_uuid
+        attr_schema = attributes_repository.create_attribute(db, attr)
+        client.update(
+            index="misp-attributes",
+            id=str(attr_schema.uuid),
+            body={"doc": {"object_uuid": object_uuid}},
+            refresh=True,
+        )
+        built_attrs.append(attr_schema)
+
+    for object_reference in (object.object_references or []):
+        object_reference.event_uuid = event_uuid
         object_references_repository.create_object_reference(db, object_reference)
 
-    db.refresh(db_object)
+    tasks.handle_created_object(object_uuid, event_uuid)
 
-    tasks.handle_created_object(db_object.id, db_object.event_id)
-
-    return db_object
+    obj_doc["attributes"] = built_attrs
+    return object_schemas.Object.model_validate(obj_doc)
 
 
 def create_object_from_pulled_object(
-    db: Session, pulled_object: MISPObject, local_event_id: int, user: user_models.User
+    db: Session, pulled_object: MISPObject, event_uuid: str, user: user_models.User
 ) -> object_models.Object:
     # TODO: process sharing group // captureSG
     # TODO: enforce warninglist
 
     db_object = object_models.Object(
-        event_id=local_event_id,
         name=pulled_object.name,
         meta_category=pulled_object["meta-category"],
         description=pulled_object.description,
@@ -295,14 +311,14 @@ def create_object_from_pulled_object(
     for pulled_attribute in pulled_object.attributes:
         local_object_attribute = (
             attributes_repository.create_attribute_from_pulled_attribute(
-                db, pulled_attribute, local_event_id, user
+                db, pulled_attribute, event_uuid, user
             )
         )
         db_object.attributes.append(local_object_attribute)
 
     for pulled_object_reference in pulled_object.ObjectReference:
         local_object_reference = object_references_repository.create_object_reference_from_pulled_object_reference(
-            db, pulled_object_reference, local_event_id
+            db, pulled_object_reference, event_uuid
         )
         db_object.object_references.append(local_object_reference)
 
@@ -315,7 +331,7 @@ def update_object_from_pulled_object(
     db: Session,
     local_object: object_models.Object,
     pulled_object: MISPObject,
-    local_event_id: int,
+    event_uuid: str,
     user: user_models.User,
 ):
 
@@ -341,17 +357,16 @@ def update_object_from_pulled_object(
             if local_attribute is None:
                 local_attribute = (
                     attributes_repository.create_attribute_from_pulled_attribute(
-                        db, pulled_object_attribute, local_event_id, user
+                        db, pulled_object_attribute, event_uuid, user
                     )
                 )
             else:
                 pulled_object_attribute.id = local_attribute.id
                 attributes_repository.update_attribute_from_pulled_attribute(
-                    db, local_attribute, pulled_object_attribute, local_event_id, user
+                    db, local_attribute, pulled_object_attribute, event_uuid, user
                 )
 
         object_patch = object_schemas.ObjectUpdate(
-            event_id=local_event_id,
             name=pulled_object.name,
             meta_category=pulled_object["meta-category"],
             description=pulled_object.description,
@@ -384,7 +399,7 @@ def update_object_from_pulled_object(
 
             if local_object_reference is None:
                 local_object_reference = object_references_repository.create_object_reference_from_pulled_object_reference(
-                    db, pulled_object_reference, local_event_id
+                    db, pulled_object_reference, event_uuid
                 )
                 local_object.object_references.append(local_object_reference)
             else:
@@ -397,103 +412,101 @@ def update_object_from_pulled_object(
                         db,
                         local_object_reference,
                         pulled_object_reference,
-                        local_event_id,
+                        event_uuid,
                     )
 
         update_object(db, local_object.id, object_patch)
 
 
 def update_object(
-    db: Session, object_id: int, object: object_schemas.ObjectUpdate
-) -> object_models.Object:
-    db_object = get_object_by_id(db, object_id=object_id)
+    db: Session, object_id: Union[int, UUID], object: object_schemas.ObjectUpdate
+) -> object_schemas.Object:
+    client = get_opensearch_client()
+    os_obj = get_object_from_opensearch(object_id)
+    if os_obj is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Object not found")
 
-    if db_object is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Object not found"
+    patch = object.model_dump(
+        exclude_unset=True,
+        exclude={"attributes", "new_attributes", "update_attributes", "delete_attributes"},
+    )
+    for k, v in list(patch.items()):
+        if hasattr(v, "value"):
+            patch[k] = v.value
+
+    if patch:
+        client.update(index="misp-objects", id=str(os_obj.uuid), body={"doc": patch}, refresh=True)
+
+    for attr in (object.new_attributes or []):
+        attr.object_id = None
+        attr.event_uuid = os_obj.event_uuid
+        attr_schema = attributes_repository.create_attribute(db, attr)
+        client.update(
+            index="misp-attributes",
+            id=str(attr_schema.uuid),
+            body={"doc": {"object_uuid": str(os_obj.uuid)}},
+            refresh=True,
         )
 
-    object_patch = object.model_dump(exclude_unset=True)
-    for key, value in object_patch.items():
-        if key == "attributes":
-            continue
-        setattr(db_object, key, value)
+    for attr in (object.update_attributes or []):
+        attributes_repository.update_attribute(db, attr.uuid, attr)
 
-    # new attribute
-    for attribute in object.new_attributes:
-        attribute.object_id = db_object.id
-        attribute.event_id = db_object.event_id
-        attribute.uuid = str(uuid4())
-        attributes_repository.create_attribute(db, attribute)
+    for attr_id in (object.delete_attributes or []):
+        attributes_repository.delete_attribute(db, attr_id)
 
-    # existing attribute
-    for attribute in object.update_attributes:
-        attributes_repository.update_attribute(db, attribute.id, attribute)
+    tasks.handle_updated_object(str(os_obj.uuid), str(os_obj.event_uuid) if os_obj.event_uuid else None)
 
-    # delete attribute
-    for attribute_id in object.delete_attributes:
-        attributes_repository.delete_attribute(db, attribute_id)
-
-    db.add(db_object)
-    db.commit()
-    db.refresh(db_object)
-
-    tasks.handle_updated_object(db_object.id, db_object.event_id)
-
-    return db_object
+    return get_object_from_opensearch(os_obj.uuid)
 
 
-def delete_object(db: Session, object_id: Union[int, UUID]) -> object_models.Object:
-    
-    if isinstance(object_id, int):
-        db_object = get_object_by_id(db, object_id=object_id)
-    else:
-        db_object = get_object_by_uuid(db, object_uuid=object_id)
+def delete_object(db: Session, object_id: Union[int, UUID]) -> None:
+    client = get_opensearch_client()
+    os_obj = get_object_from_opensearch(object_id)
+    if os_obj is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Object not found")
 
-    if db_object is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Object not found"
+    client.update(index="misp-objects", id=str(os_obj.uuid), body={"doc": {"deleted": True}}, refresh=True)
+
+    for attr in os_obj.attributes:
+        client.update(
+            index="misp-attributes",
+            id=str(attr.uuid),
+            body={"doc": {"deleted": True}},
+            refresh=True,
         )
 
-    db_object.deleted = True
-
-    # delete attributes
-    for attribute in db_object.attributes:
-        attributes_repository.delete_attribute(db, attribute.id)
-
-    db.add(db_object)
-    db.commit()
-    db.refresh(db_object)
-
-    tasks.handle_deleted_object(db_object.id, db_object.event_id)
-
-    return db_object
+    tasks.handle_deleted_object(str(os_obj.uuid), str(os_obj.event_uuid) if os_obj.event_uuid else None)
 
 
 def create_objects_from_fetched_event(
     db: Session,
-    local_event: event_models.Event,
+    local_event: event_schemas.Event,
     objects: list[MISPObject],
     feed: feed_models.Feed,
     user: user_schemas.User,
 ):
 
     for object in objects:
-        create_object_from_pulled_object(db, object, local_event.id, user)
+        create_object_from_pulled_object(db, object, str(local_event.uuid), user)
 
 
 def update_objects_from_fetched_event(
     db: Session,
-    local_event: event_models.Event,
+    local_event: event_schemas.Event,
     event: event_schemas.Event,
     feed: feed_models.Feed,
     user: user_schemas.User,
-) -> event_models.Event:
-    local_event_objects = (
-        db.query(object_models.Object.uuid, object_models.Object.timestamp)
-        .filter(object_models.Object.event_id == local_event.id)
-        .all()
+) -> event_schemas.Event:
+    from app.services.opensearch import get_opensearch_client as _get_os_client
+    _os = _get_os_client()
+    _resp = _os.search(
+        index="misp-objects",
+        body={"query": {"term": {"event_uuid.keyword": str(local_event.uuid)}}, "size": 10000},
     )
+    local_event_objects = [
+        (h["_source"]["uuid"], h["_source"].get("timestamp", 0))
+        for h in _resp["hits"]["hits"]
+    ]
     local_event_dict = {str(uuid): timestamp for uuid, timestamp in local_event_objects}
 
     new_objects = [
@@ -555,7 +568,6 @@ def update_objects_from_fetched_event(
 
             for attribute in updated_object.attributes:
                 attribute.object_id = db_object.id
-                attribute.event_id = local_event.id
 
             # process attributes
             local_event = attributes_repository.update_attributes_from_fetched_event(
@@ -588,7 +600,7 @@ def update_objects_from_fetched_event(
 
                 db_object_reference = object_reference_models.ObjectReference(
                     uuid=reference.uuid,
-                    event_id=local_event.id,
+                    event_uuid=str(local_event.uuid),
                     object_id=db_object.id,
                     referenced_uuid=referenced.uuid,
                     referenced_id=referenced.id if referenced else None,

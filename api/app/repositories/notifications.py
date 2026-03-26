@@ -5,7 +5,6 @@ from app.models import hunt as hunt_models
 from app.models import notification as notification_models
 from app.models import organisation as organisation_models
 from app.models import object as object_models
-from app.models import event as event_models
 from app.models import attribute as attribute_models
 from app.repositories import user_settings as user_settings_repository
 from sqlalchemy import select, update, text
@@ -186,7 +185,7 @@ def build_event_notification(
     )
 
 
-def create_event_notifications(db: Session, type: str, event: event_models.Event):
+def create_event_notifications(db: Session, type: str, event):
     """Create notifications for users following the organisation or event."""
 
     # Get event organisation
@@ -288,16 +287,16 @@ def build_attribute_notification(
 
 
 def create_attribute_notifications(
-    db: Session, type: str, attribute: attribute_models.Attribute
+    db: Session, type: str, attribute
 ):
     """Create notifications for users following event of the attribute."""
 
-    # get event
-    event = (
-        db.query(event_models.Event)
-        .filter(event_models.Event.id == attribute.event_id)
-        .first()
-    )
+    event = None
+    event_uuid_val = getattr(attribute, "event_uuid", None)
+    if event_uuid_val:
+        from app.repositories import events as events_repository_local
+        from uuid import UUID as _UUID
+        event = events_repository_local.get_event_from_opensearch(_UUID(str(event_uuid_val)))
 
     if not event:
         return []
@@ -368,15 +367,15 @@ def build_object_notification(
     )
 
 
-def create_object_notifications(db: Session, type: str, object: object_models.Object):
+def create_object_notifications(db: Session, type: str, object):
     """Create notifications for users following event of the object."""
 
-    # get event
-    event = (
-        db.query(event_models.Event)
-        .filter(event_models.Event.id == object.event_id)
-        .first()
-    )
+    event = None
+    event_uuid_val = getattr(object, "event_uuid", None)
+    if event_uuid_val:
+        from app.repositories import events as events_repository_local
+        from uuid import UUID as _UUID
+        event = events_repository_local.get_event_from_opensearch(_UUID(str(event_uuid_val)))
 
     if not event:
         return []

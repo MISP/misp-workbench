@@ -66,10 +66,8 @@ def create_object(
     ),
 ):
     
-    if object.event_id:
-        event = events_repository.get_event_by_id(db, event_id=object.event_id)
-    elif object.event_uuid:
-        event = events_repository.get_event_by_uuid(db, event_uuid=object.event_uuid)
+    if object.event_uuid:
+        event = events_repository.get_event_from_opensearch(object.event_uuid)
     else:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Event UUID is required"
@@ -80,15 +78,13 @@ def create_object(
             status_code=status.HTTP_404_NOT_FOUND, detail="Event not found"
         )
 
-    object.event_id = event.id
-    object_db = objects_repository.create_object(db=db, object=object)
-
-    return object_db
+    object.event_uuid = event.uuid
+    return objects_repository.create_object(db=db, object=object)
 
 
 @router.patch("/objects/{object_id}", response_model=object_schemas.Object)
 def update_object(
-    object_id: int,
+    object_id: Union[int, UUID],
     object: object_schemas.ObjectUpdate,
     db: Session = Depends(get_db),
     user: user_schemas.User = Security(

@@ -8,7 +8,7 @@ from pydantic import BaseModel, ConfigDict
 class ObjectReferenceBase(BaseModel):
     uuid: UUID
     object_id: int
-    event_id: int
+    event_uuid: Optional[UUID] = None
     source_uuid: Optional[UUID] = None
     referenced_uuid: Optional[UUID] = None
     timestamp: int

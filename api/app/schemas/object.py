@@ -13,7 +13,6 @@ class ObjectBase(BaseModel):
     description: Optional[str] = None
     template_uuid: Optional[str] = None
     template_version: int
-    event_id: Optional[int] = None
     event_uuid: Optional[UUID] = None
     uuid: Optional[UUID] = None
     timestamp: int
@@ -27,7 +26,6 @@ class ObjectBase(BaseModel):
 
 
 class Object(ObjectBase):
-    id: int
     attributes: list[Attribute] = []
     object_references: list[ObjectReference] = []
     model_config = ConfigDict(from_attributes=True)

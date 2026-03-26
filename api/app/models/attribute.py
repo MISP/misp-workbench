@@ -19,7 +19,6 @@ class Attribute(Base):
     id = Column(
         Integer, primary_key=True, index=True, autoincrement=True, nullable=False
     )
-    event_id = Column(Integer, ForeignKey("events.id"), index=True, nullable=False)
     object_id = Column(Integer, ForeignKey("objects.id"))
     object_relation = Column(String(255), index=True)
     category = Column(String(255), index=True)
@@ -41,13 +40,6 @@ class Attribute(Base):
     disable_correlation = Column(Boolean, default=False)
     first_seen = Column(BigInteger(), index=True)
     last_seen = Column(BigInteger(), index=True)
-    event = relationship(
-        "Event",
-        lazy="joined",
-        viewonly=True
-    )
-    tags = relationship("Tag", secondary="attribute_tags", lazy="subquery")
-
     def to_misp_format(
         self,
         settings: Settings = get_settings(),
@@ -56,7 +48,6 @@ class Attribute(Base):
 
         attr_json = {
             "id": self.id,
-            "event_id": self.event_id,
             "object_id": self.object_id,
             "object_relation": self.object_relation,
             "category": self.category,
@@ -72,7 +63,7 @@ class Attribute(Base):
             "disable_correlation": self.disable_correlation,
             "first_seen": self.first_seen,
             "last_seen": self.last_seen,
-            "Tag": [tag.to_misp_format() for tag in self.tags],
+            "Tag": [],
         }
 
         # if its a file attribute, we need to handle it differently

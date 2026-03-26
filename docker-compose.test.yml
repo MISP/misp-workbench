@@ -1,8 +1,7 @@
 services:
 
   api:
-    mem_limit: 2g
-    memswap_limit: 2g
+    mem_limit: 4g
     volumes:
       - ./api:/code
     ports:

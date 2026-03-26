@@ -8,7 +8,6 @@ from pydantic import BaseModel, ConfigDict
 
 
 class AttributeBase(BaseModel):
-    event_id: Optional[int] = None
     object_id: Optional[int] = None
     event_uuid: Optional[UUID] = None
     object_relation: Optional[str] = None
@@ -29,7 +28,6 @@ class AttributeBase(BaseModel):
 
 
 class Attribute(AttributeBase):
-    id: int
     tags: list[Tag] = []
     correlations: Optional[list[dict]] = None
     expanded: Optional[dict] = None

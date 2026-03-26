@@ -24,7 +24,7 @@ class Feed(Base):
     source_format = Column(String, nullable=False)
     fixed_event = Column(Boolean, nullable=False, default=False)
     delta_merge = Column(Boolean, nullable=False, default=False)
-    event_id = Column(Integer, ForeignKey("events.id"), nullable=True)
+    event_uuid = Column(String, nullable=True)
     publish = Column(Boolean, nullable=False, default=False)
     override_ids = Column(Boolean, nullable=False, default=False)
     settings = Column(JSON, nullable=False, default={})

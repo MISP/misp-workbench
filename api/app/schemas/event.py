@@ -38,7 +38,6 @@ class EventBase(BaseModel):
 
 
 class Event(EventBase):
-    id: int
     attributes: list[Attribute] = []
     objects: list[Object] = []
     sharing_group: Optional[SharingGroup] = None

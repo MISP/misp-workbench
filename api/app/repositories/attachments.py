@@ -77,12 +77,12 @@ def upload_attachments_to_event(
                 meta_category=template["meta_category"],
                 template_version=template["version"],
                 comment=attachment.filename,
-                event_id=event.id,
+                event_uuid=event.uuid,
                 timestamp=int(time.time()),
             )
 
             filename_attribute = attribute_schemas.AttributeCreate(
-                event_id=event.id,
+                event_uuid=event.uuid,
                 object_relation="filename",
                 category=attachment_meta.get("category", "External analysis"),
                 type="filename",
@@ -100,7 +100,7 @@ def upload_attachments_to_event(
             sha1.update(file_content)
             sha1 = sha1.hexdigest()
             sha1_attribute = attribute_schemas.AttributeCreate(
-                event_id=event.id,
+                event_uuid=event.uuid,
                 object_relation="sha1",
                 category="External analysis",
                 type="sha1",
@@ -115,7 +115,7 @@ def upload_attachments_to_event(
             sha256.update(file_content)
             sha256 = sha256.hexdigest()
             sha256_attribute = attribute_schemas.AttributeCreate(
-                event_id=event.id,
+                event_uuid=event.uuid,
                 object_relation="sha256",
                 category="External analysis",
                 type="sha256",
@@ -128,7 +128,7 @@ def upload_attachments_to_event(
             # get file md5
             md5sum = hashlib.md5(file_content).hexdigest()
             md5_attribute = attribute_schemas.AttributeCreate(
-                event_id=event.id,
+                event_uuid=event.uuid,
                 object_relation="md5",
                 category="External analysis",
                 type="md5",
@@ -141,7 +141,7 @@ def upload_attachments_to_event(
             # get file size
             size = len(file_content)
             size_attribute = attribute_schemas.AttributeCreate(
-                event_id=event.id,
+                event_uuid=event.uuid,
                 object_relation="size-in-bytes",
                 disable_correlation=True,
                 category="Other",
@@ -154,7 +154,7 @@ def upload_attachments_to_event(
 
             # attachment attribute
             attachment_attribute = attribute_schemas.AttributeCreate(
-                event_id=event.id,
+                event_uuid=event.uuid,
                 object_relation="attachment",
                 category="Payload delivery",
                 type="attachment",
@@ -167,7 +167,7 @@ def upload_attachments_to_event(
             # malware analysis
             if attachment_meta.get("is_malware", False):
                 malware_attribute = attribute_schemas.AttributeCreate(
-                    event_id=event.id,
+                    event_uuid=event.uuid,
                     object_relation="malware",
                     category="External analysis",
                     type="malware",

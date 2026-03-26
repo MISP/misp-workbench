@@ -75,7 +75,6 @@ class ApiTester:
         db.query(attribute_models.Attribute).delete(synchronize_session=False)
         db.query(object_reference_models.ObjectReference).delete(synchronize_session=False)
         db.query(object_models.Object).delete(synchronize_session=False)
-        db.query(event_models.Event).delete(synchronize_session=False)
         db.query(sharing_groups_models.SharingGroupOrganisation).delete(synchronize_session=False)
         db.query(sharing_groups_models.SharingGroupServer).delete(synchronize_session=False)
         db.query(sharing_groups_models.SharingGroup).delete(synchronize_session=False)
@@ -173,30 +172,30 @@ class ApiTester:
         organisation_1: organisation_models.Organisation,
         user_1: user_models.User,
     ):
-        from app.worker.tasks import index_event as _index_event
+        from datetime import datetime
+        from uuid import UUID
+        from app.repositories import events as events_repository
+        from app.schemas import event as event_schemas
 
-        event_1 = event_models.Event(
+        event_create = event_schemas.EventCreate(
             info="test event",
             user_id=user_1.id,
             orgc_id=1,
             org_id=organisation_1.id,
-            date="2020-01-01",
-            uuid="ba4b11b6-dcce-4315-8fd0-67b69160ea76",
+            date=datetime(2020, 1, 1),
+            uuid=UUID("ba4b11b6-dcce-4315-8fd0-67b69160ea76"),
             timestamp=1577836800,
         )
-        db.add(event_1)
-        db.commit()
-        db.refresh(event_1)
-        _index_event(str(event_1.uuid), full_reindex=False)
+        event_1 = events_repository.create_event(db=db, event=event_create)
 
         yield event_1
 
     @pytest.fixture(scope="class")
-    def attribute_1(self, db: Session, event_1: event_models.Event):
-        from app.worker.tasks import index_attribute as _index_attribute
+    def attribute_1(self, db: Session, event_1):
+        from datetime import datetime
+        from app.services.opensearch import get_opensearch_client
 
         attribute_1 = attribute_models.Attribute(
-            event_id=event_1.id,
             category="Network activity",
             type="ip-src",
             value="127.0.0.1",
@@ -206,16 +205,41 @@ class ApiTester:
         db.add(attribute_1)
         db.commit()
         db.refresh(attribute_1)
-        _index_attribute(str(attribute_1.uuid))
+
+        client = get_opensearch_client()
+        client.index(
+            index="misp-attributes",
+            id=str(attribute_1.uuid),
+            body={
+                "uuid": str(attribute_1.uuid),
+                "event_uuid": str(event_1.uuid),
+                "category": attribute_1.category,
+                "type": attribute_1.type,
+                "value": attribute_1.value,
+                "timestamp": attribute_1.timestamp,
+                "@timestamp": datetime.fromtimestamp(attribute_1.timestamp).isoformat(),
+                "deleted": attribute_1.deleted or False,
+                "to_ids": attribute_1.to_ids or False,
+                "disable_correlation": attribute_1.disable_correlation or False,
+                "distribution": attribute_1.distribution.value if attribute_1.distribution else 0,
+                "sharing_group_id": attribute_1.sharing_group_id,
+                "comment": attribute_1.comment,
+                "first_seen": attribute_1.first_seen,
+                "last_seen": attribute_1.last_seen,
+                "data": "",
+                "tags": [],
+            },
+            refresh=True,
+        )
 
         yield attribute_1
 
     @pytest.fixture(scope="class")
-    def object_1(self, db: Session, event_1: event_models.Event):
-        from app.worker.tasks import index_object as _index_object
+    def object_1(self, db: Session, event_1):
+        from datetime import datetime
+        from app.services.opensearch import get_opensearch_client
 
         object_1 = object_models.Object(
-            event_id=event_1.id,
             uuid="90e06ef6-26f8-40dd-9fb7-75897445e2a0",
             name="test object",
             template_version=0,
@@ -225,16 +249,40 @@ class ApiTester:
         db.add(object_1)
         db.commit()
         db.refresh(object_1)
-        _index_object(str(object_1.uuid))
+
+        client = get_opensearch_client()
+        client.index(
+            index="misp-objects",
+            id=str(object_1.uuid),
+            body={
+                "uuid": str(object_1.uuid),
+                "event_uuid": str(event_1.uuid),
+                "name": object_1.name,
+                "meta_category": object_1.meta_category,
+                "template_uuid": object_1.template_uuid,
+                "template_version": object_1.template_version,
+                "timestamp": object_1.timestamp,
+                "@timestamp": datetime.fromtimestamp(object_1.timestamp).isoformat(),
+                "deleted": object_1.deleted,
+                "distribution": object_1.distribution.value if object_1.distribution else 0,
+                "sharing_group_id": object_1.sharing_group_id,
+                "first_seen": object_1.first_seen,
+                "last_seen": object_1.last_seen,
+                "object_references": [],
+            },
+            refresh=True,
+        )
 
         yield object_1
 
     @pytest.fixture(scope="class")
     def object_attribute_1(
-        self, db: Session, event_1: event_models.Event, object_1: object_models.Object
+        self, db: Session, event_1, object_1: object_models.Object
     ):
+        from datetime import datetime
+        from app.services.opensearch import get_opensearch_client
+
         object_attribute_1 = attribute_models.Attribute(
-            event_id=event_1.id,
             object_id=object_1.id,
             category="Network activity",
             type="ip-src",
@@ -245,6 +293,26 @@ class ApiTester:
         db.add(object_attribute_1)
         db.commit()
         db.refresh(object_attribute_1)
+
+        client = get_opensearch_client()
+        client.index(
+            index="misp-attributes",
+            id=str(object_attribute_1.uuid),
+            body={
+                "uuid": str(object_attribute_1.uuid),
+                "event_uuid": str(event_1.uuid),
+                "object_uuid": str(object_1.uuid),
+                "category": object_attribute_1.category,
+                "type": object_attribute_1.type,
+                "value": object_attribute_1.value,
+                "timestamp": object_attribute_1.timestamp,
+                "@timestamp": datetime.fromtimestamp(object_attribute_1.timestamp).isoformat(),
+                "deleted": False,
+                "data": "",
+                "tags": [],
+            },
+            refresh=True,
+        )
 
         yield object_attribute_1
 
@@ -390,7 +458,7 @@ class ApiTester:
             source_format="misp",
             fixed_event=False,
             delta_merge=False,
-            event_id=None,
+            event_uuid=None,
             publish=False,
             override_ids=False,
             settings=None,

@@ -23,7 +23,7 @@ class ObjectReference(Base):
     uuid = Column(UUID(as_uuid=True), unique=True, default=uuid.uuid4)
     timestamp = Column(Integer, nullable=False)
     object_id = Column(Integer, ForeignKey("objects.id"), nullable=False)
-    event_id = Column(Integer, ForeignKey("events.id"), nullable=False)
+    event_uuid = Column(UUID(as_uuid=True), nullable=True)
     source_uuid = Column(UUID(as_uuid=True))
     referenced_uuid = Column(UUID(as_uuid=True))
     referenced_id = Column(Integer, nullable=True)
@@ -41,7 +41,7 @@ class ObjectReference(Base):
             "uuid": str(self.uuid),
             "timestamp": self.timestamp,
             "object_id": self.object_id,
-            "event_id": self.event_id,
+            "event_uuid": str(self.event_uuid) if self.event_uuid else None,
             "source_uuid": str(self.source_uuid) if self.source_uuid else None,
             "referenced_uuid": str(self.referenced_uuid) if self.referenced_uuid else None,
             "referenced_id": self.referenced_id,

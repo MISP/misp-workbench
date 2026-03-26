@@ -1,4 +1,5 @@
 import time
+from uuid import UUID
 
 from app.models import object_reference as object_reference_models
 from app.schemas import object_reference as object_reference_schemas
@@ -13,7 +14,7 @@ def create_object_reference(
     db_object_reference = object_reference_models.ObjectReference(
         uuid=object_reference.uuid,
         object_id=object_reference.object_id,
-        event_id=object_reference.event_id,
+        event_uuid=object_reference.event_uuid,
         source_uuid=object_reference.source_uuid,
         referenced_uuid=object_reference.referenced_uuid,
         timestamp=object_reference.timestamp or time.time(),
@@ -32,11 +33,11 @@ def create_object_reference(
 
 
 def create_object_reference_from_pulled_object_reference(
-    db: Session, pulled_object_reference: MISPObjectReference, local_event_id: int
+    db: Session, pulled_object_reference: MISPObjectReference, event_uuid: UUID
 ):
     db_object_refence = object_reference_models.ObjectReference(
         uuid=pulled_object_reference.uuid,
-        event_id=local_event_id,
+        event_uuid=event_uuid,
         source_uuid=pulled_object_reference.object_uuid,
         referenced_uuid=pulled_object_reference.referenced_uuid,
         timestamp=pulled_object_reference.timestamp,
@@ -59,9 +60,9 @@ def update_object_reference_from_pulled_object_reference(
     db: Session,
     db_object_reference: object_reference_models.ObjectReference,
     pulled_object_reference: MISPObjectReference,
-    local_event_id: int,
+    event_uuid: UUID,
 ):
-    db_object_reference.event_id = local_event_id
+    db_object_reference.event_uuid = event_uuid
     db_object_reference.source_uuid = pulled_object_reference.object_uuid
     db_object_reference.referenced_uuid = pulled_object_reference.referenced_uuid
     db_object_reference.timestamp = pulled_object_reference.timestamp
