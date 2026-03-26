@@ -1,6 +1,5 @@
 import pytest
 from app.auth import auth
-from app.models import attribute as attribute_models
 from app.models import tag as tag_models
 from app.tests.api_tester import ApiTester
 from fastapi import status
@@ -13,7 +12,7 @@ class TestAttributesResource(ApiTester):
     def test_get_attributes(
         self,
         client: TestClient,
-        attribute_1: attribute_models.Attribute,
+        attribute_1,
         auth_token: auth.Token,
     ):
         response = client.get(
@@ -98,7 +97,7 @@ class TestAttributesResource(ApiTester):
     def test_update_attribute(
         self,
         client: TestClient,
-        attribute_1: attribute_models.Attribute,
+        attribute_1,
         auth_token: auth.Token,
     ):
         response = client.patch(
@@ -119,7 +118,7 @@ class TestAttributesResource(ApiTester):
     def test_delete_attribute(
         self,
         client: TestClient,
-        attribute_1: attribute_models.Attribute,
+        attribute_1,
         auth_token: auth.Token,
     ):
         response = client.delete(
@@ -134,7 +133,7 @@ class TestAttributesResource(ApiTester):
         self,
         client: TestClient,
         event_1: object,
-        attribute_1: attribute_models.Attribute,
+        attribute_1,
         tlp_white_tag: tag_models.Tag,
         auth_token: auth.Token,
         db: Session,
@@ -157,7 +156,7 @@ class TestAttributesResource(ApiTester):
         self,
         client: TestClient,
         event_1: object,
-        attribute_1: attribute_models.Attribute,
+        attribute_1,
         tlp_white_tag: tag_models.Tag,
         auth_token: auth.Token,
         db: Session,

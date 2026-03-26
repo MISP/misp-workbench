@@ -1,6 +1,5 @@
 import pytest
 from app.auth import auth
-from app.models import attribute as attribute_models
 from app.models import organisation as organisation_models
 from app.models import tag as tag_models
 from app.models import user as user_models

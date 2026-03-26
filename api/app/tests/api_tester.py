@@ -5,14 +5,11 @@ import pytest
 from app.auth import auth
 from app.db.session import get_db
 from app.main import app
-from app.models import attribute as attribute_models
 from app.models import event as event_models
 from app.models import feed as feed_models
 from app.models import galaxy as galaxy_models
 from app.models import hunt as hunt_models
 from app.models import module as module_models
-from app.models import object as object_models
-from app.models import object_reference as object_reference_models
 from app.models import organisation as organisation_models
 from app.models import server as server_models
 from app.models import sharing_groups as sharing_groups_models
@@ -72,9 +69,6 @@ class ApiTester:
         db.query(tag_models.AttributeTag).delete(synchronize_session=False)
         db.query(tag_models.EventTag).delete(synchronize_session=False)
         db.query(tag_models.Tag).delete(synchronize_session=False)
-        db.query(attribute_models.Attribute).delete(synchronize_session=False)
-        db.query(object_reference_models.ObjectReference).delete(synchronize_session=False)
-        db.query(object_models.Object).delete(synchronize_session=False)
         db.query(sharing_groups_models.SharingGroupOrganisation).delete(synchronize_session=False)
         db.query(sharing_groups_models.SharingGroupServer).delete(synchronize_session=False)
         db.query(sharing_groups_models.SharingGroup).delete(synchronize_session=False)
@@ -192,125 +186,78 @@ class ApiTester:
 
     @pytest.fixture(scope="class")
     def attribute_1(self, db: Session, event_1):
-        from datetime import datetime
-        from app.services.opensearch import get_opensearch_client
+        from uuid import UUID
+        from app.repositories import attributes as attributes_repository
+        from app.schemas import attribute as attribute_schemas
 
-        attribute_1 = attribute_models.Attribute(
+        attr_create = attribute_schemas.AttributeCreate(
             category="Network activity",
             type="ip-src",
             value="127.0.0.1",
-            uuid="7f2fd15d-3c63-47ba-8a39-2c4b0b3314b0",
+            uuid=UUID("7f2fd15d-3c63-47ba-8a39-2c4b0b3314b0"),
             timestamp=157783680,
+            event_uuid=event_1.uuid,
+            deleted=False,
+            to_ids=False,
+            disable_correlation=False,
         )
-        db.add(attribute_1)
-        db.commit()
-        db.refresh(attribute_1)
-
-        client = get_opensearch_client()
-        client.index(
-            index="misp-attributes",
-            id=str(attribute_1.uuid),
-            body={
-                "uuid": str(attribute_1.uuid),
-                "event_uuid": str(event_1.uuid),
-                "category": attribute_1.category,
-                "type": attribute_1.type,
-                "value": attribute_1.value,
-                "timestamp": attribute_1.timestamp,
-                "@timestamp": datetime.fromtimestamp(attribute_1.timestamp).isoformat(),
-                "deleted": attribute_1.deleted or False,
-                "to_ids": attribute_1.to_ids or False,
-                "disable_correlation": attribute_1.disable_correlation or False,
-                "distribution": attribute_1.distribution.value if attribute_1.distribution else 0,
-                "sharing_group_id": attribute_1.sharing_group_id,
-                "comment": attribute_1.comment,
-                "first_seen": attribute_1.first_seen,
-                "last_seen": attribute_1.last_seen,
-                "data": "",
-                "tags": [],
-            },
-            refresh=True,
-        )
-
-        yield attribute_1
+        yield attributes_repository.create_attribute(db, attr_create)
 
     @pytest.fixture(scope="class")
     def object_1(self, db: Session, event_1):
         from datetime import datetime
+        from uuid import UUID as _UUID
         from app.services.opensearch import get_opensearch_client
 
-        object_1 = object_models.Object(
-            uuid="90e06ef6-26f8-40dd-9fb7-75897445e2a0",
-            name="test object",
-            template_version=0,
-            timestamp=1577836800,
-            deleted=False,
-        )
-        db.add(object_1)
-        db.commit()
-        db.refresh(object_1)
+        obj_uuid = "90e06ef6-26f8-40dd-9fb7-75897445e2a0"
+        obj_doc = {
+            "uuid": obj_uuid,
+            "event_uuid": str(event_1.uuid),
+            "name": "test object",
+            "meta_category": None,
+            "template_uuid": None,
+            "template_version": 0,
+            "timestamp": 1577836800,
+            "@timestamp": datetime.fromtimestamp(1577836800).isoformat(),
+            "deleted": False,
+            "distribution": 0,
+            "sharing_group_id": None,
+            "first_seen": None,
+            "last_seen": None,
+            "comment": "",
+            "object_references": [],
+        }
 
         client = get_opensearch_client()
-        client.index(
-            index="misp-objects",
-            id=str(object_1.uuid),
-            body={
-                "uuid": str(object_1.uuid),
-                "event_uuid": str(event_1.uuid),
-                "name": object_1.name,
-                "meta_category": object_1.meta_category,
-                "template_uuid": object_1.template_uuid,
-                "template_version": object_1.template_version,
-                "timestamp": object_1.timestamp,
-                "@timestamp": datetime.fromtimestamp(object_1.timestamp).isoformat(),
-                "deleted": object_1.deleted,
-                "distribution": object_1.distribution.value if object_1.distribution else 0,
-                "sharing_group_id": object_1.sharing_group_id,
-                "first_seen": object_1.first_seen,
-                "last_seen": object_1.last_seen,
-                "object_references": [],
-            },
-            refresh=True,
-        )
+        client.index(index="misp-objects", id=obj_uuid, body=obj_doc, refresh=True)
 
-        yield object_1
+        from app.schemas import object as object_schemas
+        yield object_schemas.Object.model_validate(obj_doc)
 
     @pytest.fixture(scope="class")
     def object_attribute_1(
-        self, db: Session, event_1, object_1: object_models.Object
+        self, db: Session, event_1, object_1
     ):
-        from datetime import datetime
+        from uuid import UUID
+        from app.repositories import attributes as attributes_repository
+        from app.schemas import attribute as attribute_schemas
         from app.services.opensearch import get_opensearch_client
 
-        object_attribute_1 = attribute_models.Attribute(
-            object_id=object_1.id,
+        attr_create = attribute_schemas.AttributeCreate(
             category="Network activity",
             type="ip-src",
             value="127.0.0.2",
-            uuid="1355e435-aa0f-4f06-acd3-b44498131e82",
+            uuid=UUID("1355e435-aa0f-4f06-acd3-b44498131e82"),
             timestamp=1577836800,
+            event_uuid=event_1.uuid,
+            deleted=False,
         )
-        db.add(object_attribute_1)
-        db.commit()
-        db.refresh(object_attribute_1)
+        object_attribute_1 = attributes_repository.create_attribute(db, attr_create)
 
-        client = get_opensearch_client()
-        client.index(
+        get_opensearch_client().update(
             index="misp-attributes",
             id=str(object_attribute_1.uuid),
-            body={
-                "uuid": str(object_attribute_1.uuid),
-                "event_uuid": str(event_1.uuid),
-                "object_uuid": str(object_1.uuid),
-                "category": object_attribute_1.category,
-                "type": object_attribute_1.type,
-                "value": object_attribute_1.value,
-                "timestamp": object_attribute_1.timestamp,
-                "@timestamp": datetime.fromtimestamp(object_attribute_1.timestamp).isoformat(),
-                "deleted": False,
-                "data": "",
-                "tags": [],
-            },
+            body={"doc": {"object_uuid": str(object_1.uuid)}},
             refresh=True,
         )
 

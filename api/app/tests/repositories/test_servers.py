@@ -3,8 +3,8 @@ from unittest.mock import MagicMock, patch
 import pytest
 from uuid import UUID
 
-from app.models import attribute as attribute_models
 from app.models import object as object_models
+from app.repositories import attributes as attributes_repository
 from app.models import object_reference as object_reference_models
 from app.models import organisation as organisations_models
 from app.models import server as server_models
@@ -16,7 +16,6 @@ from app.repositories import servers as servers_repository
 from app.settings import Settings
 from app.tests.api_tester import ApiTester
 from app.tests.scenarios import server_pull_scenarios
-from sqlalchemy import and_
 from sqlalchemy.orm import Session
 
 
@@ -79,15 +78,11 @@ class TestServersRepository(ApiTester):
             assert len(os_events) == len(scenario["expected_result"]["event_uuids"])
 
             # check that the attributes were created
-            attributes = (
-                db.query(attribute_models.Attribute)
-                .filter(
-                    attribute_models.Attribute.uuid.in_(
-                        scenario["expected_result"]["attribute_uuids"]
-                    )
-                )
-                .all()
-            )
+            attributes = [
+                attributes_repository.get_attribute_from_opensearch(UUID(u))
+                for u in scenario["expected_result"]["attribute_uuids"]
+            ]
+            attributes = [a for a in attributes if a is not None]
             assert len(attributes) == len(
                 scenario["expected_result"]["attribute_uuids"]
             )
@@ -167,15 +162,7 @@ class TestServersRepository(ApiTester):
                 attribute_tags = (
                     db.query(tag_models.Tag)
                     .join(tag_models.AttributeTag)
-                    .filter(
-                        and_(
-                            tag_models.Tag.name.in_(attribute_tag["tags"]),
-                            attribute_models.Attribute.uuid
-                            == attribute_tag["attribute_uuid"],
-                            attribute_models.Attribute.id
-                            == tag_models.AttributeTag.attribute_id,
-                        )
-                    )
+                    .filter(tag_models.Tag.name.in_(attribute_tag["tags"]))
                     .all()
                 )
                 assert len(attribute_tags) == len(attribute_tag["tags"])

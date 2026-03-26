@@ -5,7 +5,6 @@ from typing import Iterable, Optional, Union
 from uuid import UUID, uuid4
 from app.models.event import DistributionLevel
 from app.services.opensearch import get_opensearch_client
-from app.models import attribute as attribute_models
 from app.models import tag as tag_models
 from app.models import user as user_models
 from app.repositories import attachments as attachments_repository
@@ -14,10 +13,8 @@ from app.schemas import event as event_schemas
 from app.worker import tasks
 from fastapi import HTTPException, status
 from fastapi_pagination import Page, Params
-from fastapi_pagination.ext.sqlalchemy import paginate
 from pymisp import MISPAttribute, MISPTag
 from sqlalchemy.orm import Session
-from sqlalchemy.sql import select
 from collections import defaultdict
 from opensearchpy.exceptions import NotFoundError
 
@@ -55,28 +52,6 @@ def enrich_attributes_page_with_correlations(
         attr.correlations = correlation_map.get(str(attr.uuid), [])
 
     return attributes_page
-
-
-def get_attributes(
-    db: Session,
-    event_uuid: str = None,
-    deleted: bool = None,
-    object_id: int = None,
-    type: str = None,
-) -> Page[attribute_schemas.Attribute]:
-    query = select(attribute_models.Attribute)
-
-    if deleted is not None:
-        query = query.where(attribute_models.Attribute.deleted == deleted)
-
-    if type is not None:
-        query = query.where(attribute_models.Attribute.type == type)
-
-    query = query.where(attribute_models.Attribute.object_id == object_id)
-
-    page_results = paginate(db, query)
-
-    return enrich_attributes_page_with_correlations(page_results)
 
 
 def get_attributes_from_opensearch(
@@ -150,22 +125,14 @@ def get_attribute_from_opensearch(
 
 def get_attribute_by_id(
     db: Session, attribute_id: int
-) -> Union[attribute_models.Attribute, None]:
-    return (
-        db.query(attribute_models.Attribute)
-        .filter(attribute_models.Attribute.id == attribute_id)
-        .first()
-    )
+) -> Optional[attribute_schemas.Attribute]:
+    return get_attribute_from_opensearch(attribute_id)
 
 
 def get_attribute_by_uuid(
     db: Session, attribute_uuid: UUID
-) -> Union[attribute_models.Attribute, None]:
-    return (
-        db.query(attribute_models.Attribute)
-        .filter(attribute_models.Attribute.uuid == attribute_uuid)
-        .first()
-    )
+) -> Optional[attribute_schemas.Attribute]:
+    return get_attribute_from_opensearch(attribute_uuid)
 
 
 def create_attribute(
@@ -215,11 +182,18 @@ def create_attribute_from_pulled_attribute(
     pulled_attribute: MISPAttribute,
     event_uuid: str,
     user: user_models.User,
-) -> attribute_models.Attribute:
+) -> attribute_schemas.Attribute:
     # TODO: process sharing group // captureSG
     # TODO: enforce warninglist
 
-    local_attribute = attribute_models.Attribute(
+    dist = pulled_attribute.distribution
+    dist_val = (
+        event_schemas.DistributionLevel(dist)
+        if dist is not None
+        else event_schemas.DistributionLevel.INHERIT_EVENT
+    )
+
+    attr_create = attribute_schemas.AttributeCreate(
         category=pulled_attribute.category,
         type=pulled_attribute.type,
         value=(
@@ -230,11 +204,7 @@ def create_attribute_from_pulled_attribute(
         to_ids=pulled_attribute.to_ids,
         uuid=pulled_attribute.uuid,
         timestamp=pulled_attribute.timestamp.timestamp(),
-        distribution=event_schemas.DistributionLevel(
-            event_schemas.DistributionLevel(pulled_attribute.distribution)
-            if pulled_attribute.distribution is not None
-            else event_schemas.DistributionLevel.INHERIT_EVENT
-        ),
+        distribution=dist_val,
         comment=pulled_attribute.comment,
         sharing_group_id=None,
         deleted=pulled_attribute.deleted,
@@ -242,41 +212,39 @@ def create_attribute_from_pulled_attribute(
         object_relation=getattr(pulled_attribute, "object_relation", None),
         first_seen=(
             pulled_attribute.first_seen.timestamp()
-            if hasattr(pulled_attribute, "first_seen")
+            if hasattr(pulled_attribute, "first_seen") and pulled_attribute.first_seen
             else None
         ),
         last_seen=(
             pulled_attribute.last_seen.timestamp()
-            if hasattr(pulled_attribute, "last_seen")
+            if hasattr(pulled_attribute, "last_seen") and pulled_attribute.last_seen
             else None
         ),
+        event_uuid=event_uuid,
     )
 
+    local_attribute = create_attribute(db, attr_create)
+
     if pulled_attribute.data is not None:
-        # store file
         attachments_repository.store_attachment(
             str(pulled_attribute.uuid), pulled_attribute.data.getvalue()
         )
 
-    # TODO: process sigthings
+    # TODO: process sightings
     # TODO: process galaxies
 
-    capture_attribute_tags(
-        db, local_attribute, pulled_attribute.tags, event_uuid, user
-    )
+    capture_attribute_tags(db, pulled_attribute.tags, event_uuid, user)
 
     return local_attribute
 
 
 def update_attribute_from_pulled_attribute(
     db: Session,
-    local_attribute: attribute_models.Attribute,
+    local_attribute: attribute_schemas.Attribute,
     pulled_attribute: MISPAttribute,
     event_uuid: str,
     user: user_models.User,
-) -> attribute_models.Attribute:
-
-    pulled_attribute.id = local_attribute.id
+) -> attribute_schemas.Attribute:
 
     if local_attribute.timestamp < pulled_attribute.timestamp.timestamp():
         attribute_patch = attribute_schemas.AttributeUpdate(
@@ -301,35 +269,34 @@ def update_attribute_from_pulled_attribute(
             ),
             first_seen=(
                 pulled_attribute.first_seen.timestamp()
-                if hasattr(pulled_attribute, "first_seen")
+                if hasattr(pulled_attribute, "first_seen") and pulled_attribute.first_seen
                 else local_attribute.first_seen
             ),
             last_seen=(
                 pulled_attribute.last_seen.timestamp()
-                if hasattr(pulled_attribute, "last_seen")
+                if hasattr(pulled_attribute, "last_seen") and pulled_attribute.last_seen
                 else local_attribute.last_seen
             ),
         )
-        update_attribute(db, local_attribute.id, attribute_patch)
+        update_attribute(db, local_attribute.uuid, attribute_patch)
 
     if pulled_attribute.data is not None:
-        # store file
         attachments_repository.store_attachment(
             str(pulled_attribute.uuid), pulled_attribute.data.getvalue()
         )
 
-    capture_attribute_tags(
-        db, local_attribute, pulled_attribute.tags, event_uuid, user
-    )
+    capture_attribute_tags(db, pulled_attribute.tags, event_uuid, user)
 
-    # TODO: process sigthings
+    # TODO: process sightings
     # TODO: process galaxies
 
     tasks.handle_updated_attribute.delay(
-        str(local_attribute.uuid), local_attribute.object_id, None
+        str(local_attribute.uuid),
+        local_attribute.object_id,
+        str(local_attribute.event_uuid) if local_attribute.event_uuid else None,
     )
 
-    return local_attribute
+    return get_attribute_from_opensearch(local_attribute.uuid)
 
 
 def update_attribute(
@@ -378,7 +345,6 @@ def delete_attribute(db: Session, attribute_id: Union[int, str, UUID]) -> None:
 
 def capture_attribute_tags(
     db: Session,
-    db_attribute: attribute_models.Attribute,
     tags: list[MISPTag],
     event_uuid: str,
     user: user_models.User,
@@ -421,7 +387,6 @@ def capture_attribute_tags(
         db_tag = tag_name_to_db_tag[tag.name]
 
         db_attribute_tag = tag_models.AttributeTag(
-            attribute=db_attribute,
             event_uuid=event_uuid,
             tag_id=db_tag.id,
             local=tag.local,

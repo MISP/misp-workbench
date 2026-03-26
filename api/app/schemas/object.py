@@ -30,6 +30,26 @@ class Object(ObjectBase):
     object_references: list[ObjectReference] = []
     model_config = ConfigDict(from_attributes=True)
 
+    def to_misp_format(self) -> dict:
+        return {
+            "id": None,
+            "name": self.name,
+            "meta-category": self.meta_category,
+            "description": self.description if self.description else self.name,
+            "template_uuid": self.template_uuid,
+            "template_version": self.template_version,
+            "uuid": str(self.uuid),
+            "timestamp": self.timestamp,
+            "distribution": self.distribution,
+            "sharing_group_id": self.sharing_group_id,
+            "comment": self.comment,
+            "deleted": self.deleted,
+            "first_seen": self.first_seen,
+            "last_seen": self.last_seen,
+            "Attribute": [attr.to_misp_format() for attr in self.attributes],
+            "ObjectReference": [ref.to_misp_format() for ref in self.object_references],
+        }
+
 
 class ObjectCreate(ObjectBase):
     event_uuid: Optional[UUID] = None

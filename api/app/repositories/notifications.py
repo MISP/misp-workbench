@@ -5,7 +5,6 @@ from app.models import hunt as hunt_models
 from app.models import notification as notification_models
 from app.models import organisation as organisation_models
 from app.models import object as object_models
-from app.models import attribute as attribute_models
 from app.repositories import user_settings as user_settings_repository
 from sqlalchemy import select, update, text
 from sqlalchemy.orm import Session

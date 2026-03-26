@@ -28,7 +28,6 @@ class Object(Base):
     deleted = Column(Boolean, nullable=False, default=False)
     first_seen = Column(Integer)
     last_seen = Column(Integer)
-    attributes = relationship("Attribute", lazy="subquery", cascade="all, delete-orphan")
     object_references = relationship("ObjectReference", lazy="subquery", cascade="all, delete-orphan")
 
     def to_misp_format(self):
@@ -48,6 +47,6 @@ class Object(Base):
             "deleted": self.deleted,
             "first_seen": self.first_seen,
             "last_seen": self.last_seen,
-            "Attribute": [attribute.to_misp_format() for attribute in self.attributes],
+            "Attribute": [],
             "ObjectReference": [ref.to_misp_format() for ref in self.object_references],
         }

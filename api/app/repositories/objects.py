@@ -4,23 +4,20 @@ import time
 from typing import Optional, Union
 from uuid import UUID, uuid4
 
-from app.models import attribute as attribute_models
 from app.models import feed as feed_models
-from app.models import object as object_models
 from app.models import user as user_models
-from app.models import object_reference as object_reference_models
 from app.repositories import attributes as attributes_repository
 from app.repositories import object_references as object_references_repository
 from app.repositories import events as events_repository
 from app.schemas import event as event_schemas
 from app.schemas import object as object_schemas
 from app.schemas import attribute as attribute_schemas
+from app.schemas import object_reference as object_reference_schemas
 from app.schemas import user as user_schemas
 from app.worker import tasks
 from app.services.opensearch import get_opensearch_client
 from fastapi import HTTPException, status
 from fastapi_pagination import Page, Params
-from fastapi_pagination.ext.sqlalchemy import paginate
 from pymisp import MISPObject
 from sqlalchemy.orm import Session
 from collections import defaultdict
@@ -63,42 +60,6 @@ def enrich_object_attributes_with_correlations(
 
     return attributes
 
-
-def get_objects(
-    db: Session,
-    event_uuid: str = None,
-    deleted: bool = False,
-    template_uuid: list[UUID] = None,
-) -> list[object_models.Object]:
-    query = db.query(object_models.Object)
-
-    if event_uuid is not None:
-        os_client = get_opensearch_client()
-        _resp = os_client.search(
-            index="misp-objects",
-            body={
-                "query": {"term": {"event_uuid.keyword": str(event_uuid)}},
-                "size": 10000,
-                "_source": ["uuid"],
-            },
-        )
-        object_uuids = [h["_source"]["uuid"] for h in _resp["hits"]["hits"]]
-        if not object_uuids:
-            from fastapi_pagination import Page as _Page
-            return _Page(items=[], total=0, page=1, size=50, pages=0)
-        query = query.filter(object_models.Object.uuid.in_(object_uuids))
-
-    if template_uuid is not None:
-        query = query.filter(object_models.Object.template_uuid.in_(template_uuid))
-
-    query = query.filter(object_models.Object.deleted.is_(bool(deleted)))
-
-    objects_page = paginate(db, query)
-
-    for obj in objects_page.items:
-        obj.attributes = enrich_object_attributes_with_correlations(obj.attributes)
-
-    return objects_page
 
 
 def get_objects_from_opensearch(
@@ -206,19 +167,11 @@ def get_object_from_opensearch(
 
 
 def get_object_by_id(db: Session, object_id: int):
-    return (
-        db.query(object_models.Object)
-        .filter(object_models.Object.id == object_id)
-        .first()
-    )
+    return get_object_from_opensearch(object_id)
 
 
 def get_object_by_uuid(db: Session, object_uuid: UUID):
-    return (
-        db.query(object_models.Object)
-        .filter(object_models.Object.uuid == object_uuid)
-        .first()
-    )
+    return get_object_from_opensearch(object_uuid)
 
 
 def create_object(
@@ -280,91 +233,103 @@ def create_object(
 
 def create_object_from_pulled_object(
     db: Session, pulled_object: MISPObject, event_uuid: str, user: user_models.User
-) -> object_models.Object:
-    # TODO: process sharing group // captureSG
-    # TODO: enforce warninglist
+) -> object_schemas.Object:
+    from datetime import datetime as _datetime
 
-    db_object = object_models.Object(
-        name=pulled_object.name,
-        meta_category=pulled_object["meta-category"],
-        description=pulled_object.description,
-        template_uuid=pulled_object.template_uuid,
-        template_version=pulled_object.template_version,
-        uuid=pulled_object.uuid,
-        timestamp=pulled_object.timestamp.timestamp(),
-        distribution=event_schemas.DistributionLevel(pulled_object.distribution),
-        sharing_group_id=None,
-        comment=pulled_object.comment,
-        deleted=pulled_object.deleted,
-        first_seen=(
-            pulled_object.first_seen.timestamp()
-            if hasattr(pulled_object, "first_seen")
+    client = get_opensearch_client()
+    object_uuid = str(pulled_object.uuid)
+
+    dist = pulled_object.distribution
+    dist_val = event_schemas.DistributionLevel(dist).value if dist is not None else 5
+    ts_raw = pulled_object.timestamp
+    ts = int(ts_raw.timestamp()) if hasattr(ts_raw, "timestamp") else int(ts_raw or 0)
+
+    obj_doc = {
+        "uuid": object_uuid,
+        "event_uuid": event_uuid,
+        "name": pulled_object.name,
+        "meta_category": pulled_object["meta-category"],
+        "description": pulled_object.description,
+        "template_uuid": str(pulled_object.template_uuid) if pulled_object.template_uuid else None,
+        "template_version": pulled_object.template_version,
+        "timestamp": ts,
+        "distribution": dist_val,
+        "sharing_group_id": None,
+        "comment": pulled_object.comment or "",
+        "deleted": pulled_object.deleted or False,
+        "first_seen": (
+            int(pulled_object.first_seen.timestamp())
+            if hasattr(pulled_object, "first_seen") and pulled_object.first_seen
             else None
         ),
-        last_seen=(
-            pulled_object.last_seen.timestamp()
-            if hasattr(pulled_object, "last_seen")
+        "last_seen": (
+            int(pulled_object.last_seen.timestamp())
+            if hasattr(pulled_object, "last_seen") and pulled_object.last_seen
             else None
         ),
-    )
+        "object_references": [],
+        "@timestamp": _datetime.fromtimestamp(ts).isoformat(),
+    }
+
+    client.index(index="misp-objects", id=object_uuid, body=obj_doc, refresh=True)
 
     for pulled_attribute in pulled_object.attributes:
-        local_object_attribute = (
-            attributes_repository.create_attribute_from_pulled_attribute(
-                db, pulled_attribute, event_uuid, user
-            )
+        local_attribute = attributes_repository.create_attribute_from_pulled_attribute(
+            db, pulled_attribute, event_uuid, user
         )
-        db_object.attributes.append(local_object_attribute)
+        if local_attribute:
+            client.update(
+                index="misp-attributes",
+                id=str(local_attribute.uuid),
+                body={"doc": {"object_uuid": object_uuid}},
+                refresh=True,
+            )
 
     for pulled_object_reference in pulled_object.ObjectReference:
-        local_object_reference = object_references_repository.create_object_reference_from_pulled_object_reference(
+        object_references_repository.create_object_reference_from_pulled_object_reference(
             db, pulled_object_reference, event_uuid
         )
-        db_object.object_references.append(local_object_reference)
 
-    db.add(db_object)
+    tasks.handle_created_object(object_uuid, event_uuid)
 
-    return db_object
+    return get_object_from_opensearch(UUID(object_uuid))
 
 
 def update_object_from_pulled_object(
     db: Session,
-    local_object: object_models.Object,
+    local_object: object_schemas.Object,
     pulled_object: MISPObject,
     event_uuid: str,
     user: user_models.User,
 ):
+    ts_raw = pulled_object.timestamp
+    pulled_ts = ts_raw.timestamp() if hasattr(ts_raw, "timestamp") else float(ts_raw or 0)
 
-    if local_object.timestamp < pulled_object.timestamp.timestamp():
-        # find object attributes to delete
-        local_object_attribute_uuids = [
-            attribute.uuid for attribute in local_object.attributes
-        ]
-        pulled_object_attribute_uuids = [
-            attribute.uuid for attribute in pulled_object.attributes
-        ]
-        delete_attributes = [
-            str(uuid)
-            for uuid in local_object_attribute_uuids
-            if uuid not in pulled_object_attribute_uuids
-        ]
+    if local_object.timestamp < pulled_ts:
+        client = get_opensearch_client()
+        local_attr_uuids = {str(a.uuid) for a in local_object.attributes}
+        pulled_attr_uuids = {str(a.uuid) for a in pulled_object.attributes}
 
-        for pulled_object_attribute in pulled_object.attributes:
-            pulled_object_attribute.object_id = local_object.id
-            local_attribute = attributes_repository.get_attribute_by_uuid(
-                db, pulled_object_attribute.uuid
-            )
+        for pulled_attr in pulled_object.attributes:
+            local_attribute = attributes_repository.get_attribute_by_uuid(db, pulled_attr.uuid)
             if local_attribute is None:
-                local_attribute = (
-                    attributes_repository.create_attribute_from_pulled_attribute(
-                        db, pulled_object_attribute, event_uuid, user
+                new_attr = attributes_repository.create_attribute_from_pulled_attribute(
+                    db, pulled_attr, event_uuid, user
+                )
+                if new_attr:
+                    client.update(
+                        index="misp-attributes",
+                        id=str(new_attr.uuid),
+                        body={"doc": {"object_uuid": str(local_object.uuid)}},
+                        refresh=True,
                     )
-                )
             else:
-                pulled_object_attribute.id = local_attribute.id
                 attributes_repository.update_attribute_from_pulled_attribute(
-                    db, local_attribute, pulled_object_attribute, event_uuid, user
+                    db, local_attribute, pulled_attr, event_uuid, user
                 )
+
+        for uuid_to_delete in local_attr_uuids - pulled_attr_uuids:
+            attributes_repository.delete_attribute(db, uuid_to_delete)
 
         object_patch = object_schemas.ObjectUpdate(
             name=pulled_object.name,
@@ -372,50 +337,37 @@ def update_object_from_pulled_object(
             description=pulled_object.description,
             template_uuid=pulled_object.template_uuid,
             template_version=pulled_object.template_version,
-            timestamp=pulled_object.timestamp.timestamp(),
+            timestamp=int(pulled_ts),
             distribution=event_schemas.DistributionLevel(pulled_object.distribution),
             sharing_group_id=None,
             comment=pulled_object.comment,
             deleted=pulled_object.deleted,
             first_seen=(
-                pulled_object.first_seen.timestamp()
-                if hasattr(pulled_object, "first_seen")
+                int(pulled_object.first_seen.timestamp())
+                if hasattr(pulled_object, "first_seen") and pulled_object.first_seen
                 else local_object.first_seen
             ),
             last_seen=(
-                pulled_object.last_seen.timestamp()
-                if hasattr(pulled_object, "last_seen")
+                int(pulled_object.last_seen.timestamp())
+                if hasattr(pulled_object, "last_seen") and pulled_object.last_seen
                 else local_object.last_seen
             ),
-            delete_attributes=delete_attributes,
         )
 
-        for pulled_object_reference in pulled_object.ObjectReference:
-            local_object_reference = (
-                object_references_repository.get_object_reference_by_uuid(
-                    db, pulled_object_reference.uuid
-                )
+        for pulled_ref in pulled_object.ObjectReference:
+            local_ref = object_references_repository.get_object_reference_by_uuid(
+                db, pulled_ref.uuid
             )
-
-            if local_object_reference is None:
-                local_object_reference = object_references_repository.create_object_reference_from_pulled_object_reference(
-                    db, pulled_object_reference, event_uuid
+            if local_ref is None:
+                object_references_repository.create_object_reference_from_pulled_object_reference(
+                    db, pulled_ref, event_uuid
                 )
-                local_object.object_references.append(local_object_reference)
-            else:
-                if (
-                    local_object_reference.timestamp
-                    < pulled_object.timestamp.timestamp()
-                ):
-                    pulled_object_reference.id = local_object_reference.id
-                    local_object_reference = object_references_repository.update_object_reference_from_pulled_object_reference(
-                        db,
-                        local_object_reference,
-                        pulled_object_reference,
-                        event_uuid,
-                    )
+            elif local_ref.timestamp < int(pulled_ts):
+                object_references_repository.update_object_reference_from_pulled_object_reference(
+                    db, local_ref, pulled_ref, event_uuid
+                )
 
-        update_object(db, local_object.id, object_patch)
+        update_object(db, local_object.uuid, object_patch)
 
 
 def update_object(
@@ -497,131 +449,68 @@ def update_objects_from_fetched_event(
     feed: feed_models.Feed,
     user: user_schemas.User,
 ) -> event_schemas.Event:
-    from app.services.opensearch import get_opensearch_client as _get_os_client
-    _os = _get_os_client()
-    _resp = _os.search(
+    client = get_opensearch_client()
+    resp = client.search(
         index="misp-objects",
-        body={"query": {"term": {"event_uuid.keyword": str(local_event.uuid)}}, "size": 10000},
+        body={
+            "query": {"term": {"event_uuid.keyword": str(local_event.uuid)}},
+            "size": 10000,
+        },
     )
-    local_event_objects = [
-        (h["_source"]["uuid"], h["_source"].get("timestamp", 0))
-        for h in _resp["hits"]["hits"]
-    ]
-    local_event_dict = {str(uuid): timestamp for uuid, timestamp in local_event_objects}
+    local_event_dict = {
+        h["_source"]["uuid"]: h["_source"].get("timestamp", 0)
+        for h in resp["hits"]["hits"]
+    }
 
-    new_objects = [
-        object for object in event.objects if object.uuid not in local_event_dict.keys()
-    ]
-
+    new_objects = [obj for obj in event.objects if str(obj.uuid) not in local_event_dict]
     updated_objects = [
-        object
-        for object in event.objects
-        if object.uuid in local_event_dict
-        and object.timestamp.timestamp() > local_event_dict[object.uuid]
+        obj
+        for obj in event.objects
+        if str(obj.uuid) in local_event_dict
+        and obj.timestamp.timestamp() > local_event_dict[str(obj.uuid)]
     ]
 
-    # add new objects
-    local_event = create_objects_from_fetched_event(
-        db, local_event, new_objects, feed, user
-    )
+    create_objects_from_fetched_event(db, local_event, new_objects, feed, user)
 
-    # update existing attributes
-    batch_size = 100  # TODO: set the batch size via configuration
-    updated_uuids = [object.uuid for object in updated_objects]
-
-    for batch_start in range(0, len(updated_uuids), batch_size):
-        batch_uuids = updated_uuids[batch_start : batch_start + batch_size]
-
-        db_objects = (
-            db.query(object_models.Object)
-            .filter(object_models.Object.uuid.in_(batch_uuids))
-            .enable_eagerloads(False)
-            .yield_per(batch_size)
-        )
-
-        updated_objects_dict = {object.uuid: object for object in updated_objects}
-
-        for db_object in db_objects:
-            updated_object = updated_objects_dict[str(db_object.uuid)]
-            db_object.name = updated_object.name
-            db_object.meta_category = updated_object["meta-category"]
-            db_object.description = updated_object.description
-            db_object.template_uuid = updated_object.template_uuid
-            db_object.template_version = updated_object.template_version
-            db_object.timestamp = (updated_object.timestamp.timestamp(),)
-            db_object.comment = (updated_object.comment,)
-            db_object.deleted = updated_object.deleted
-            db_object.first_seen = (
-                (
-                    updated_object.first_seen.timestamp()
-                    if hasattr(updated_object, "first_seen")
-                    else None
-                ),
-            )
-            db_object.last_seen = (
-                (
-                    updated_object.last_seen.timestamp()
-                    if hasattr(updated_object, "last_seen")
-                    else None
-                ),
+    for updated_object in updated_objects:
+        local_obj = get_object_from_opensearch(updated_object.uuid)
+        if local_obj is not None:
+            update_object_from_pulled_object(
+                db, local_obj, updated_object, str(local_event.uuid), user
             )
 
-            for attribute in updated_object.attributes:
-                attribute.object_id = db_object.id
-
-            # process attributes
-            local_event = attributes_repository.update_attributes_from_fetched_event(
-                db, local_event, updated_object.attributes, feed, user
-            )
-
-            # TODO: process galaxies
-            # TODO: process attribute sightings
-            # TODO: process analyst notes
-
-        # process object references
-        for updated_object in updated_objects:
-            for reference in updated_object.references:
-                referenced = (
-                    db.query(object_models.Object)
-                    .filter_by(uuid=reference.referenced_uuid)
-                    .first()
+        for reference in updated_object.references:
+            referenced_type = None
+            referenced = get_object_from_opensearch(reference.referenced_uuid)
+            if referenced is None:
+                os_attr = attributes_repository.get_attribute_from_opensearch(
+                    reference.referenced_uuid
                 )
-                if referenced is None:
-                    referenced = (
-                        db.query(attribute_models.Attribute)
-                        .filter_by(uuid=reference.referenced_uuid)
-                        .first()
-                    )
-                if referenced is None:
-                    logger.error(
-                        f"Referenced entity not found, skipping object reference uuid: {reference.uuid}"
-                    )
-                    break
+                if os_attr is not None:
+                    referenced = os_attr
+                    referenced_type = object_reference_schemas.ReferencedType.ATTRIBUTE
+            if referenced is None:
+                logger.error(
+                    f"Referenced entity not found, skipping object reference uuid: {reference.uuid}"
+                )
+                continue
+            if referenced_type is None:
+                referenced_type = object_reference_schemas.ReferencedType.OBJECT
 
-                db_object_reference = object_reference_models.ObjectReference(
+            object_references_repository.create_object_reference(
+                db,
+                object_reference_schemas.ObjectReferenceCreate(
                     uuid=reference.uuid,
-                    event_uuid=str(local_event.uuid),
-                    object_id=db_object.id,
-                    referenced_uuid=referenced.uuid,
-                    referenced_id=referenced.id if referenced else None,
+                    event_uuid=UUID(str(local_event.uuid)),
+                    source_uuid=getattr(reference, "object_uuid", None),
+                    referenced_uuid=reference.referenced_uuid,
+                    referenced_id=None,
                     relationship_type=reference.relationship_type,
-                    timestamp=int(reference.timestamp),
-                    referenced_type=(
-                        object_reference_models.ReferencedType.ATTRIBUTE
-                        if referenced.__class__.__name__ == "Attribute"
-                        else object_reference_models.ReferencedType.OBJECT
-                    ),
-                    comment=reference.comment,
+                    timestamp=int(reference.timestamp) if reference.timestamp else 0,
+                    referenced_type=referenced_type,
+                    comment=reference.comment or "",
                     deleted=referenced.deleted,
-                )
-                db.add(db_object_reference)
-
-        db.commit()
-
-    db.commit()
-
-    # # TODO: process shadow_attributes
-
-    # db.commit()
+                ),
+            )
 
     return local_event

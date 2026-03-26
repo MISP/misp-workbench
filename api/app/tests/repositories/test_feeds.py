@@ -2,14 +2,13 @@ from unittest.mock import MagicMock, patch
 
 from uuid import UUID
 
-from app.models import attribute as attribute_models
 from app.models import feed as feed_models
-from app.models import object as object_models
-from app.models import object_reference as object_reference_models
 from app.models import tag as tag_models
 from app.models import user as user_models
+from app.repositories import attributes as attributes_repository
 from app.repositories import events as events_repository
 from app.repositories import feeds as feeds_repository
+from app.repositories import objects as objects_repository
 from app.tests.api_tester import ApiTester
 from app.tests.scenarios import feed_fetch_scenarios
 from sqlalchemy.orm import Session
@@ -51,40 +50,27 @@ class TestFeedsRepository(ApiTester):
             assert os_event is not None
 
             # check that the attributes were created
-            attributes = (
-                db.query(attribute_models.Attribute)
-                .filter(
-                    attribute_models.Attribute.uuid.in_(
-                        [
-                            "317e63e6-b95d-4dd1-b4fd-de2f64f33fd8",
-                            "8be7a04d-c10b-4ef6-854f-2072e67f6cd5",
-                        ]
-                    )
-                )
-                .all()
-            )
-            assert len(attributes) == 2
+            attributes = [
+                attributes_repository.get_attribute_from_opensearch(UUID(u))
+                for u in [
+                    "317e63e6-b95d-4dd1-b4fd-de2f64f33fd8",
+                    "8be7a04d-c10b-4ef6-854f-2072e67f6cd5",
+                ]
+            ]
+            assert len([a for a in attributes if a is not None]) == 2
 
             # check the objects were created
-            objects = (
-                db.query(object_models.Object)
-                .filter(
-                    object_models.Object.uuid == "df23d3be-1179-4824-ac03-471f0bc6d92d"
-                )
-                .all()
+            obj = objects_repository.get_object_from_opensearch(
+                UUID("df23d3be-1179-4824-ac03-471f0bc6d92d")
             )
-            assert len(objects) == 1
+            assert obj is not None
 
             # check the object references were created
-            object_references = (
-                db.query(object_reference_models.ObjectReference)
-                .filter(
-                    object_reference_models.ObjectReference.uuid
-                    == "d7e57f39-4dd5-4b87-b040-75561fa8289e"
-                )
-                .all()
+            from app.repositories import object_references as object_references_repository
+            object_reference = object_references_repository.get_object_reference_by_uuid(
+                db, UUID("d7e57f39-4dd5-4b87-b040-75561fa8289e")
             )
-            assert len(object_references) == 1
+            assert object_reference is not None
 
             # check the tags were created
             tags = db.query(tag_models.Tag).all()
@@ -117,9 +103,9 @@ class TestFeedsRepository(ApiTester):
         db: Session,
         feed_1: feed_models.Feed,
         event_1,
-        attribute_1: attribute_models.Attribute,
+        attribute_1,
         object_1: object_models.Object,
-        object_attribute_1: attribute_models.Attribute,
+        object_attribute_1,
         user_1: user_models.User,
     ):
         # mock remote Feed API calls
@@ -154,14 +140,10 @@ class TestFeedsRepository(ApiTester):
             assert os_event.timestamp == 1577836801
 
             # check that the attribute was updated
-            attribute = (
-                db.query(attribute_models.Attribute)
-                .filter(
-                    attribute_models.Attribute.uuid
-                    == "7f2fd15d-3c63-47ba-8a39-2c4b0b3314b0"
-                )
-                .first()
+            attribute = attributes_repository.get_attribute_from_opensearch(
+                UUID("7f2fd15d-3c63-47ba-8a39-2c4b0b3314b0")
             )
+            assert attribute is not None
             assert attribute.value == "7edc546f741eff3e13590a62ce2856bb39d8f71d"
             assert attribute.timestamp == 1577836801
 
@@ -177,14 +159,10 @@ class TestFeedsRepository(ApiTester):
             assert object.timestamp == 1577836801
 
             # check the object attribute was added
-            object_attribute = (
-                db.query(attribute_models.Attribute)
-                .filter(
-                    attribute_models.Attribute.uuid
-                    == "011aca4f-eaf0-4a06-8133-b69f3806cbe8"
-                )
-                .first()
+            object_attribute = attributes_repository.get_attribute_from_opensearch(
+                UUID("011aca4f-eaf0-4a06-8133-b69f3806cbe8")
             )
+            assert object_attribute is not None
             assert object_attribute.value == "Foobar12345"
             assert object_attribute.timestamp == 1577836801
 

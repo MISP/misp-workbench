@@ -1,6 +1,5 @@
 import pytest
 from app.auth import auth
-from app.models import object as object_models
 from app.tests.api_tester import ApiTester
 from fastapi import status
 from fastapi.testclient import TestClient
@@ -11,7 +10,7 @@ class TestObjectsResource(ApiTester):
     def test_get_objects(
         self,
         client: TestClient,
-        object_1: object_models.Object,
+        object_1,
         auth_token: auth.Token,
     ):
         response = client.get(
@@ -95,7 +94,7 @@ class TestObjectsResource(ApiTester):
     def test_update_object(
         self,
         client: TestClient,
-        object_1: object_models.Object,
+        object_1,
         auth_token: auth.Token,
     ):
         response = client.patch(
@@ -116,7 +115,7 @@ class TestObjectsResource(ApiTester):
     def test_delete_object(
         self,
         client: TestClient,
-        object_1: object_models.Object,
+        object_1,
         auth_token: auth.Token,
     ):
         response = client.delete(
