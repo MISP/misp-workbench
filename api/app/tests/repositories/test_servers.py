@@ -1,8 +1,9 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
+from uuid import UUID
+
 from app.models import attribute as attribute_models
-from app.models import event as event_models
 from app.models import object as object_models
 from app.models import object_reference as object_reference_models
 from app.models import organisation as organisations_models
@@ -10,6 +11,7 @@ from app.models import server as server_models
 from app.models import sharing_groups as sharing_groups_models
 from app.models import tag as tag_models
 from app.models import user as user_models
+from app.repositories import events as events_repository
 from app.repositories import servers as servers_repository
 from app.settings import Settings
 from app.tests.api_tester import ApiTester
@@ -69,16 +71,12 @@ class TestServersRepository(ApiTester):
             )
 
             # check that the events were created
-            events = (
-                db.query(event_models.Event)
-                .filter(
-                    event_models.Event.uuid.in_(
-                        scenario["expected_result"]["event_uuids"]
-                    )
-                )
-                .all()
-            )
-            assert len(events) == len(scenario["expected_result"]["event_uuids"])
+            os_events = [
+                events_repository.get_event_from_opensearch(UUID(uuid))
+                for uuid in scenario["expected_result"]["event_uuids"]
+            ]
+            os_events = [e for e in os_events if e is not None]
+            assert len(os_events) == len(scenario["expected_result"]["event_uuids"])
 
             # check that the attributes were created
             attributes = (

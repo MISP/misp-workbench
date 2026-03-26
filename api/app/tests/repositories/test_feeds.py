@@ -1,12 +1,14 @@
 from unittest.mock import MagicMock, patch
 
+from uuid import UUID
+
 from app.models import attribute as attribute_models
-from app.models import event as event_models
 from app.models import feed as feed_models
 from app.models import object as object_models
 from app.models import object_reference as object_reference_models
 from app.models import tag as tag_models
 from app.models import user as user_models
+from app.repositories import events as events_repository
 from app.repositories import feeds as feeds_repository
 from app.tests.api_tester import ApiTester
 from app.tests.scenarios import feed_fetch_scenarios
@@ -43,15 +45,10 @@ class TestFeedsRepository(ApiTester):
             )
 
             # check that the events were created
-            events = (
-                db.query(event_models.Event)
-                .filter(
-                    event_models.Event.uuid
-                    == feed_fetch_scenarios.feed_new_event["Event"]["uuid"]
-                )
-                .all()
+            os_event = events_repository.get_event_from_opensearch(
+                UUID(feed_fetch_scenarios.feed_new_event["Event"]["uuid"])
             )
-            assert len(events) == 1
+            assert os_event is not None
 
             # check that the attributes were created
             attributes = (
@@ -119,7 +116,7 @@ class TestFeedsRepository(ApiTester):
         self,
         db: Session,
         feed_1: feed_models.Feed,
-        event_1: event_models.Event,
+        event_1,
         attribute_1: attribute_models.Attribute,
         object_1: object_models.Object,
         object_attribute_1: attribute_models.Attribute,
@@ -149,16 +146,12 @@ class TestFeedsRepository(ApiTester):
             )
 
             # check that the events was updated
-            event = (
-                db.query(event_models.Event)
-                .filter(
-                    event_models.Event.uuid
-                    == feed_fetch_scenarios.feed_update_event["Event"]["uuid"]
-                )
-                .first()
+            os_event = events_repository.get_event_from_opensearch(
+                UUID(feed_fetch_scenarios.feed_update_event["Event"]["uuid"])
             )
-            assert event.info == "Updated by Feed fetch"
-            assert event.timestamp == 1577836801
+            assert os_event is not None
+            assert os_event.info == "Updated by Feed fetch"
+            assert os_event.timestamp == 1577836801
 
             # check that the attribute was updated
             attribute = (
