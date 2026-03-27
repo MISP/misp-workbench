@@ -699,7 +699,7 @@ def get_remote_event_objects(
     )
 
 
-def get_remote_event_reports(db: Session, server_id: int, event_id: int):
+def get_remote_event_reports(db: Session, server_id: int, event_uuid: str):
 
     db_server = get_server_by_id(db, server_id=server_id)
 
@@ -715,7 +715,7 @@ def get_remote_event_reports(db: Session, server_id: int, event_id: int):
             status_code=500, detail="Remote MISP instance not reachable: %s" % ex
         )
 
-    return remote_misp.get_event_reports(event_id)
+    return remote_misp.get_event_reports(event_uuid)
 
 
 def push_event_by_uuid(

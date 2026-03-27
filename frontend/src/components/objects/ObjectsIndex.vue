@@ -49,7 +49,7 @@ function openAddObjectModal() {
     <FontAwesomeIcon :icon="faSpinner" spin class="ms-2" />
   </span>
   <div class="table-responsive-sm">
-    <div class="mt-2" :key="object.id" v-for="object in objects.items">
+    <div class="mt-2" :key="object.uuid" v-for="object in objects.items">
       <div class="card" v-if="!object.deleted">
         <div class="card-header">
           {{ object.name }}

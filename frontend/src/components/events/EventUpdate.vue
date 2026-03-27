@@ -16,7 +16,7 @@ function onSubmit(values, { setErrors }) {
   return eventsStore
     .update(values.event)
     .then(() => {
-      router.push(`/events/${values.event.id}`);
+      router.push(`/events/${values.event.uuid}`);
     })
     .catch((error) => setErrors({ apiError: error }));
 }
@@ -49,19 +49,6 @@ function handleAnalysisLevelUpdated(analysisLevelId) {
         :validation-schema="EventSchema"
         v-slot="{ errors }"
       >
-        <div class="mb-3">
-          <label for="event.id">id</label>
-          <Field
-            class="form-control"
-            id="event.id"
-            name="event.id"
-            v-model="event.id"
-            :class="{ 'is-invalid': errors['event.id'] }"
-            disabled
-          >
-          </Field>
-          <div class="invalid-feedback">{{ errors["event.id"] }}</div>
-        </div>
         <div class="mb-3">
           <label for="event.uuid">uuid</label>
           <Field

@@ -66,10 +66,6 @@ div.row h3 {
               <table class="table table-striped">
                 <tbody>
                   <tr>
-                    <th>id</th>
-                    <td>{{ attribute.id }}</td>
-                  </tr>
-                  <tr>
                     <th>uuid</th>
                     <td>
                       <UUID :uuid="attribute.uuid" :copy="true" />

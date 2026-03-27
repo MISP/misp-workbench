@@ -75,10 +75,6 @@ div.row h3 {
                 <table class="table table-striped">
                   <tbody>
                     <tr>
-                      <th>id</th>
-                      <td>{{ object.id }}</td>
-                    </tr>
-                    <tr>
                       <th>uuid</th>
                       <td>
                         {{ object.uuid }}

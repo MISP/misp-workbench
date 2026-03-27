@@ -97,7 +97,7 @@ function handleAttributeEnriched(attribute_uuid) {
     </thead>
     <tbody>
       <tr
-        :key="attribute.id"
+        :key="attribute.uuid"
         v-for="attribute in attributes.filter((a) => !a.deleted)"
       >
         <td class="value">
