@@ -1,5 +1,6 @@
 from app.services.opensearch import get_opensearch_client
 from app.schemas import event as event_schemas
+from opensearchpy.exceptions import NotFoundError
 import logging
 import uuid
 import time
@@ -20,7 +21,10 @@ def get_event_reports_by_event_uuid(event_uuid: uuid.UUID):
         }
     }
 
-    response = OpenSearchClient.search(index="misp-event-reports", body=search_body)
+    try:
+        response = OpenSearchClient.search(index="misp-event-reports", body=search_body)
+    except NotFoundError:
+        return []
 
     return response["hits"]["hits"]
 
@@ -38,12 +42,10 @@ def create_event_report(event: event_schemas.Event, report: dict):
         "sharing_group_id": event.sharing_group_id,
         "name": report["name"],
         "content": report["content"],
-        "id": None,
-        "event_id": event.id,
+        "event_uuid": str(event.uuid),
         "timestamp": int(time.time()),
         "@timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
         "deleted": False,
-        "event_uuid": str(event.uuid),
     }
 
     response = OpenSearchClient.index(

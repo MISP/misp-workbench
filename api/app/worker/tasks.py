@@ -183,10 +183,10 @@ def handle_deleted_event(event_uuid: str):
 
 
 @celery_app.task
-def handle_created_attribute(attribute_uuid: str, object_id, event_uuid: str | None):
+def handle_created_attribute(attribute_uuid: str, object_uuid, event_uuid: str | None):
     logger.info("handling created attribute uuid=%s job started", attribute_uuid)
     with Session(engine) as db:
-        if object_id is None and event_uuid:
+        if object_uuid is None and event_uuid:
             events_repository.increment_attribute_count(db, event_uuid)
 
         os_attr = attributes_repository.get_attribute_from_opensearch(UUID(attribute_uuid))
@@ -197,7 +197,7 @@ def handle_created_attribute(attribute_uuid: str, object_id, event_uuid: str | N
 
 
 @celery_app.task
-def handle_updated_attribute(attribute_uuid: str, object_id, event_uuid: str | None):
+def handle_updated_attribute(attribute_uuid: str, object_uuid, event_uuid: str | None):
     logger.info("handling updated attribute uuid=%s job started", attribute_uuid)
     with Session(engine) as db:
         os_attr = attributes_repository.get_attribute_from_opensearch(UUID(attribute_uuid))
@@ -208,10 +208,10 @@ def handle_updated_attribute(attribute_uuid: str, object_id, event_uuid: str | N
 
 
 @celery_app.task
-def handle_deleted_attribute(attribute_uuid: str, object_id, event_uuid: str | None):
+def handle_deleted_attribute(attribute_uuid: str, object_uuid, event_uuid: str | None):
     logger.info("handling deleted attribute uuid=%s job started", attribute_uuid)
     with Session(engine) as db:
-        if object_id is None and event_uuid:
+        if object_uuid is None and event_uuid:
             events_repository.decrement_attribute_count(db, event_uuid)
 
         os_attr = attributes_repository.get_attribute_from_opensearch(UUID(attribute_uuid))
@@ -691,7 +691,7 @@ def delete_indexed_event(event_uuid: str):
 
     # delete indexed objects
     response = OpenSearchClient.delete_by_query(
-        index="misp-objects", body=query, refresh=True
+        index="misp-objects", body=query, refresh=True, ignore=[404]
     )
     logger.info(
         "deleted %s indexed objects for event uuid=%s",
@@ -710,13 +710,14 @@ def index_attribute(attribute_uuid: str):
 
     OpenSearchClient = get_opensearch_client()
 
-    # Preserve event_uuid and tags from existing indexed doc (event_id FK removed from SQL)
     existing_event_uuid = None
     existing_tags = []
+    existing_object_uuid = None
     try:
         existing_doc = OpenSearchClient.get(index="misp-attributes", id=attribute_uuid)
         existing_event_uuid = existing_doc["_source"].get("event_uuid")
         existing_tags = existing_doc["_source"].get("tags", [])
+        existing_object_uuid = existing_doc["_source"].get("object_uuid")
     except Exception:
         pass
 
@@ -726,14 +727,10 @@ def index_attribute(attribute_uuid: str):
             raise Exception("Attribute with uuid=%s not found", attribute_uuid)
 
         attribute = event_schemas.Attribute.model_validate(db_attribute)
-        object_uuid = None
-        if db_attribute.object_id:
-            db_object = objects_repository.get_object_by_id(db, db_attribute.object_id)
-            object_uuid = db_object.uuid if db_object else None
 
     attribute_raw = attribute.model_dump()
     attribute_raw["event_uuid"] = existing_event_uuid
-    attribute_raw["object_uuid"] = str(object_uuid) if object_uuid else None
+    attribute_raw["object_uuid"] = existing_object_uuid
     attribute_raw["tags"] = existing_tags
 
     # convert timestamp to datetime so it can be indexed
@@ -835,7 +832,6 @@ def index_object(object_uuid: str):
 
     OpenSearchClient = get_opensearch_client()
 
-    # Preserve event_uuid from existing indexed doc (event_id FK was removed from SQL)
     existing_event_uuid = None
     try:
         existing_doc = OpenSearchClient.get(index="misp-objects", id=object_uuid)

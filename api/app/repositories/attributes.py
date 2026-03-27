@@ -1,12 +1,13 @@
 import math
 import time
 from datetime import datetime
-from typing import Iterable, Optional, Union
+from typing import Iterable, Optional
 from uuid import UUID, uuid4
 from app.models.event import DistributionLevel
 from app.services.opensearch import get_opensearch_client
 from app.models import tag as tag_models
 from app.models import user as user_models
+from app.schemas import tag as tag_schemas
 from app.repositories import attachments as attachments_repository
 from app.schemas import attribute as attribute_schemas
 from app.schemas import event as event_schemas
@@ -58,7 +59,7 @@ def get_attributes_from_opensearch(
     params: Params,
     event_uuid: str = None,
     deleted: bool = None,
-    object_id: int = None,
+    object_uuid: UUID = None,
     type: str = None,
 ) -> Page[attribute_schemas.Attribute]:
     client = get_opensearch_client()
@@ -71,13 +72,13 @@ def get_attributes_from_opensearch(
     if type is not None:
         must_clauses.append({"term": {"type.keyword": type}})
 
-    # Mirror SQL behaviour: always filter by object_id (None → standalone attributes only)
-    if object_id is None:
+    # None → standalone attributes only (no parent object)
+    if object_uuid is None:
         must_clauses.append(
-            {"bool": {"must_not": [{"exists": {"field": "object_id"}}]}}
+            {"bool": {"must_not": [{"exists": {"field": "object_uuid"}}]}}
         )
     else:
-        must_clauses.append({"term": {"object_id": object_id}})
+        must_clauses.append({"term": {"object_uuid": str(object_uuid)}})
 
     query_body = {
         "query": {"bool": {"must": must_clauses}},
@@ -100,33 +101,17 @@ def get_attributes_from_opensearch(
 
 
 def get_attribute_from_opensearch(
-    attribute_id: Union[int, UUID],
+    attribute_uuid: UUID,
 ) -> Optional[attribute_schemas.Attribute]:
     client = get_opensearch_client()
 
-    if isinstance(attribute_id, int):
-        response = client.search(
-            index="misp-attributes",
-            body={"query": {"term": {"id": attribute_id}}, "size": 1},
-        )
-        hits = response["hits"]["hits"]
-        if not hits:
-            return None
-        source = hits[0]["_source"]
-    else:
-        try:
-            doc = client.get(index="misp-attributes", id=str(attribute_id))
-            source = doc["_source"]
-        except NotFoundError:
-            return None
+    try:
+        doc = client.get(index="misp-attributes", id=str(attribute_uuid))
+        source = doc["_source"]
+    except NotFoundError:
+        return None
 
     return attribute_schemas.Attribute.model_validate(source)
-
-
-def get_attribute_by_id(
-    db: Session, attribute_id: int
-) -> Optional[attribute_schemas.Attribute]:
-    return get_attribute_from_opensearch(attribute_id)
 
 
 def get_attribute_by_uuid(
@@ -150,8 +135,7 @@ def create_attribute(
     attr_doc = {
         "uuid": attribute_uuid,
         "event_uuid": event_uuid,
-        "object_id": attribute.object_id if attribute.object_id and attribute.object_id > 0 else None,
-        "object_uuid": None,
+        "object_uuid": str(attribute.object_uuid) if attribute.object_uuid else None,
         "object_relation": attribute.object_relation,
         "category": attribute.category,
         "type": attribute.type,
@@ -172,7 +156,7 @@ def create_attribute(
 
     client.index(index="misp-attributes", id=attribute_uuid, body=attr_doc, refresh=True)
 
-    tasks.handle_created_attribute(attribute_uuid, attr_doc["object_id"], event_uuid)
+    tasks.handle_created_attribute(attribute_uuid, attr_doc["object_uuid"], event_uuid)
 
     return attribute_schemas.Attribute.model_validate(attr_doc)
 
@@ -233,7 +217,7 @@ def create_attribute_from_pulled_attribute(
     # TODO: process sightings
     # TODO: process galaxies
 
-    capture_attribute_tags(db, pulled_attribute.tags, event_uuid, user)
+    capture_attribute_tags(db, pulled_attribute.tags, user, str(local_attribute.uuid))
 
     return local_attribute
 
@@ -242,7 +226,6 @@ def update_attribute_from_pulled_attribute(
     db: Session,
     local_attribute: attribute_schemas.Attribute,
     pulled_attribute: MISPAttribute,
-    event_uuid: str,
     user: user_models.User,
 ) -> attribute_schemas.Attribute:
 
@@ -285,14 +268,14 @@ def update_attribute_from_pulled_attribute(
             str(pulled_attribute.uuid), pulled_attribute.data.getvalue()
         )
 
-    capture_attribute_tags(db, pulled_attribute.tags, event_uuid, user)
+    capture_attribute_tags(db, pulled_attribute.tags, user, str(local_attribute.uuid))
 
     # TODO: process sightings
     # TODO: process galaxies
 
     tasks.handle_updated_attribute.delay(
         str(local_attribute.uuid),
-        local_attribute.object_id,
+        local_attribute.object_uuid,
         str(local_attribute.event_uuid) if local_attribute.event_uuid else None,
     )
 
@@ -300,10 +283,10 @@ def update_attribute_from_pulled_attribute(
 
 
 def update_attribute(
-    db: Session, attribute_id: Union[int, UUID], attribute: attribute_schemas.AttributeUpdate
+    db: Session, attribute_uuid: UUID, attribute: attribute_schemas.AttributeUpdate
 ) -> attribute_schemas.Attribute:
     client = get_opensearch_client()
-    os_attr = get_attribute_from_opensearch(attribute_id)
+    os_attr = get_attribute_from_opensearch(attribute_uuid)
     if os_attr is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Attribute not found")
 
@@ -314,21 +297,15 @@ def update_attribute(
 
     client.update(index="misp-attributes", id=str(os_attr.uuid), body={"doc": patch}, refresh=True)
 
-    tasks.handle_updated_attribute(str(os_attr.uuid), os_attr.object_id, str(os_attr.event_uuid) if os_attr.event_uuid else None)
+    tasks.handle_updated_attribute(str(os_attr.uuid), os_attr.object_uuid, str(os_attr.event_uuid) if os_attr.event_uuid else None)
 
     return get_attribute_from_opensearch(os_attr.uuid)
 
 
-def delete_attribute(db: Session, attribute_id: Union[int, str, UUID]) -> None:
+def delete_attribute(db: Session, attribute_uuid: UUID) -> None:
     client = get_opensearch_client()
 
-    if isinstance(attribute_id, str):
-        try:
-            os_attr = get_attribute_from_opensearch(UUID(attribute_id))
-        except ValueError:
-            os_attr = None
-    else:
-        os_attr = get_attribute_from_opensearch(attribute_id)
+    os_attr = get_attribute_from_opensearch(attribute_uuid)
 
     if os_attr is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Attribute not found")
@@ -340,14 +317,14 @@ def delete_attribute(db: Session, attribute_id: Union[int, str, UUID]) -> None:
         refresh=True,
     )
 
-    tasks.handle_deleted_attribute(str(os_attr.uuid), os_attr.object_id, str(os_attr.event_uuid) if os_attr.event_uuid else None)
+    tasks.handle_deleted_attribute(str(os_attr.uuid), os_attr.object_uuid, str(os_attr.event_uuid) if os_attr.event_uuid else None)
 
 
 def capture_attribute_tags(
     db: Session,
     tags: list[MISPTag],
-    event_uuid: str,
     user: user_models.User,
+    attribute_uuid: str = None,
 ):
     tag_name_to_db_tag = {}
 
@@ -380,20 +357,18 @@ def capture_attribute_tags(
         db.add_all(new_tags)
         db.commit()
 
-    for tag in tags:
-        if tag.local:
-            continue
-
-        db_tag = tag_name_to_db_tag[tag.name]
-
-        db_attribute_tag = tag_models.AttributeTag(
-            event_uuid=event_uuid,
-            tag_id=db_tag.id,
-            local=tag.local,
+    if attribute_uuid and tag_name_to_db_tag:
+        client = get_opensearch_client()
+        tag_dicts = [
+            tag_schemas.Tag.model_validate(db_tag).model_dump()
+            for db_tag in tag_name_to_db_tag.values()
+        ]
+        client.update(
+            index="misp-attributes",
+            id=attribute_uuid,
+            body={"doc": {"tags": tag_dicts}},
+            refresh=True,
         )
-        db.add(db_attribute_tag)
-
-    db.commit()
 
 
 def get_vulnerability_attributes(

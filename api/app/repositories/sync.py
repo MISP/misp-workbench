@@ -6,7 +6,6 @@ from datetime import datetime
 from app.models import tag as tag_models
 from app.schemas import event as event_schemas
 from app.models import user as user_models
-from app.models import object as object_models
 from app.repositories import attributes as attributes_repository
 from app.repositories import objects as objects_repository
 from app.repositories import tags as tags_repository
@@ -114,7 +113,7 @@ def create_pulled_event_attributes(
 def create_pulled_event_objects(
     db: Session,
     event_uuid: str,
-    objects: list[object_models.Object],
+    objects: list[MISPObject],
     user: user_models.User,
 ):
     for object in objects:
@@ -161,5 +160,5 @@ def update_pulled_event_attributes(
             )
         else:
             attributes_repository.update_attribute_from_pulled_attribute(
-                db, local_attribute, pulled_attribute, event_uuid, user
+                db, local_attribute, pulled_attribute, user
             )

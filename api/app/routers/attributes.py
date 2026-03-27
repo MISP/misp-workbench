@@ -19,13 +19,13 @@ router = APIRouter()
 async def get_attributes_parameters(
     event_uuid: Optional[str] = None,
     deleted: Optional[bool] = None,
-    object_id: Optional[int] = None,
+    object_uuid: Optional[UUID] = None,
     type: Optional[str] = None,
 ):
     return {
         "event_uuid": event_uuid,
         "deleted": deleted,
-        "object_id": object_id,
+        "object_uuid": object_uuid,
         "type": type,
     }
 
@@ -42,7 +42,7 @@ def get_attributes(
         page_params,
         params["event_uuid"],
         params["deleted"],
-        params["object_id"],
+        params["object_uuid"],
         params["type"],
     )
 
@@ -105,16 +105,13 @@ def create_attribute(
         get_current_active_user, scopes=["attributes:create"]
     ),
 ) -> attribute_schemas.Attribute:
-    if attribute.event_uuid is None and attribute.event_id is None:
+    if attribute.event_uuid is None:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Event ID or UUID must be provided",
+            detail="Event UUID must be provided",
         )
 
-    if attribute.event_uuid is None:
-        event = events_repository.get_event_from_opensearch(attribute.event_id)
-    else:
-        event = events_repository.get_event_from_opensearch(attribute.event_uuid)
+    event = events_repository.get_event_from_opensearch(attribute.event_uuid)
 
     if event is None:
         raise HTTPException(
@@ -135,7 +132,7 @@ def update_attribute(
     ),
 ) -> attribute_schemas.Attribute:
     return attributes_repository.update_attribute(
-        db=db, attribute_id=attribute_uuid, attribute=attribute
+        db=db, attribute_uuid=attribute_uuid, attribute=attribute
     )
 
 
@@ -147,7 +144,7 @@ def delete_attribute(
         get_current_active_user, scopes=["attributes:delete"]
     ),
 ):
-    attributes_repository.delete_attribute(db=db, attribute_id=attribute_uuid)
+    attributes_repository.delete_attribute(db=db, attribute_uuid=attribute_uuid)
 
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 

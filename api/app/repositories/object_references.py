@@ -17,7 +17,7 @@ def create_object_reference(
 
     ref_doc = {
         "uuid": ref_uuid,
-        "object_id": object_reference.object_id,
+        "object_uuid": str(object_reference.object_uuid) if object_reference.object_uuid else None,
         "event_uuid": str(object_reference.event_uuid) if object_reference.event_uuid else None,
         "source_uuid": str(object_reference.source_uuid) if object_reference.source_uuid else None,
         "referenced_uuid": str(object_reference.referenced_uuid) if object_reference.referenced_uuid else None,

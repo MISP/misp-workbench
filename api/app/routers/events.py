@@ -89,6 +89,37 @@ async def export_events(
     )
 
 
+@router.post("/events/force-index", status_code=status.HTTP_202_ACCEPTED)
+def force_index(
+    uuid: Optional[UUID] = Query(None),
+    db: Session = Depends(get_db),
+    user: user_schemas.User = Security(
+        get_current_active_user, scopes=["events:update"]
+    ),
+):
+    from app.worker import tasks as _tasks
+
+    if uuid is not None:
+        os_event = events_repository.get_event_from_opensearch(uuid)
+        if os_event is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Event not found"
+            )
+        _tasks.handle_updated_event(str(os_event.uuid))
+        return JSONResponse(
+            content={"message": f"Event {uuid} has been re-indexed."},
+            status_code=status.HTTP_202_ACCEPTED,
+        )
+
+    uuids = events_repository.get_event_uuids_from_opensearch()
+    for event_uuid in uuids:
+        _tasks.handle_updated_event(str(event_uuid))
+    return JSONResponse(
+        content={"message": "Indexing job dispatched for all events."},
+        status_code=status.HTTP_202_ACCEPTED,
+    )
+
+
 @router.get("/events/{event_uuid}", response_model=event_schemas.Event)
 def get_event_by_uuid(
     event_uuid: UUID,
@@ -133,7 +164,7 @@ def update_event(
         get_current_active_user, scopes=["events:update"]
     ),
 ) -> event_schemas.Event:
-    return events_repository.update_event(db=db, event_id=event_uuid, event=event)
+    return events_repository.update_event(db=db, event_uuid=event_uuid, event=event)
 
 
 @router.delete("/events/{event_uuid}", status_code=status.HTTP_204_NO_CONTENT)
@@ -145,7 +176,7 @@ def delete_event(
         get_current_active_user, scopes=["events:delete"]
     ),
 ):
-    return events_repository.delete_event(db=db, event_id=event_uuid, force=force)
+    return events_repository.delete_event(db=db, event_uuid=event_uuid, force=force)
 
 
 @router.post(

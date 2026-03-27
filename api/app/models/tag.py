@@ -1,7 +1,5 @@
 from app.database import Base
 from sqlalchemy import Boolean, Column, ForeignKey, Integer, String
-from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import relationship
 
 
 class Tag(Base):
@@ -34,24 +32,3 @@ class Tag(Base):
             "is_custom_galaxy": self.is_custom_galaxy,
             "local_only": self.local_only,
         }
-
-
-class EventTag(Base):
-    __tablename__ = "event_tags"
-
-    id = Column(Integer, primary_key=True, index=True)
-    event_uuid = Column(UUID(as_uuid=True), nullable=True)
-    tag_id = Column(Integer, ForeignKey("tags.id"), nullable=False)
-    tag = relationship("Tag", lazy="subquery", overlaps="tags")
-    local = Column(Boolean, nullable=False, default=False)
-
-
-class AttributeTag(Base):
-    __tablename__ = "attribute_tags"
-
-    id = Column(Integer, primary_key=True, index=True)
-    attribute_id = Column(Integer, nullable=True)
-    event_uuid = Column(UUID(as_uuid=True), nullable=True)
-    tag_id = Column(Integer, ForeignKey("tags.id"), nullable=False)
-    tag = relationship("Tag", lazy="subquery", overlaps="tags")
-    local = Column(Boolean, nullable=False, default=False)

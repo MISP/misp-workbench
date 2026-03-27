@@ -1,7 +1,7 @@
 import logging
 import math
 import time
-from typing import Optional, Union
+from typing import Optional
 from uuid import UUID, uuid4
 
 from app.models import feed as feed_models
@@ -85,7 +85,11 @@ def get_objects_from_opensearch(
         "sort": [{"timestamp": {"order": "desc"}}],
     }
 
-    response = client.search(index="misp-objects", body=query_body)
+    try:
+        response = client.search(index="misp-objects", body=query_body)
+    except NotFoundError:
+        return Page(items=[], total=0, page=params.page, size=params.size, pages=0)
+
     total = response["hits"]["total"]["value"]
     hits = response["hits"]["hits"]
 
@@ -128,25 +132,15 @@ def get_objects_from_opensearch(
 
 
 def get_object_from_opensearch(
-    object_id: Union[int, UUID],
+    object_uuid: UUID,
 ) -> Optional[object_schemas.Object]:
     client = get_opensearch_client()
 
-    if isinstance(object_id, int):
-        response = client.search(
-            index="misp-objects",
-            body={"query": {"term": {"id": object_id}}, "size": 1},
-        )
-        hits = response["hits"]["hits"]
-        if not hits:
-            return None
-        source = hits[0]["_source"]
-    else:
-        try:
-            doc = client.get(index="misp-objects", id=str(object_id))
-            source = doc["_source"]
-        except NotFoundError:
-            return None
+    try:
+        doc = client.get(index="misp-objects", id=str(object_uuid))
+        source = doc["_source"]
+    except NotFoundError:
+        return None
 
     obj_uuid = str(source.get("uuid", ""))
     attr_response = client.search(
@@ -166,12 +160,23 @@ def get_object_from_opensearch(
     return object_schemas.Object.model_validate(source)
 
 
-def get_object_by_id(db: Session, object_id: int):
-    return get_object_from_opensearch(object_id)
-
-
 def get_object_by_uuid(db: Session, object_uuid: UUID):
     return get_object_from_opensearch(object_uuid)
+
+
+def get_objects(
+    db: Session,
+    event_uuid=None,
+    deleted: bool = False,
+    template_uuid: list = None,
+) -> Page[object_schemas.Object]:
+    params = Params(page=1, size=100)
+    return get_objects_from_opensearch(
+        params,
+        event_uuid=str(event_uuid) if event_uuid else None,
+        deleted=deleted,
+        template_uuid=template_uuid,
+    )
 
 
 def create_object(
@@ -210,7 +215,6 @@ def create_object(
 
     built_attrs = []
     for attr in (object.attributes or []):
-        attr.object_id = None
         attr.event_uuid = event_uuid
         attr_schema = attributes_repository.create_attribute(db, attr)
         client.update(
@@ -325,7 +329,7 @@ def update_object_from_pulled_object(
                     )
             else:
                 attributes_repository.update_attribute_from_pulled_attribute(
-                    db, local_attribute, pulled_attr, event_uuid, user
+                    db, local_attribute, pulled_attr, user
                 )
 
         for uuid_to_delete in local_attr_uuids - pulled_attr_uuids:
@@ -371,10 +375,10 @@ def update_object_from_pulled_object(
 
 
 def update_object(
-    db: Session, object_id: Union[int, UUID], object: object_schemas.ObjectUpdate
+    db: Session, object_uuid: UUID, object: object_schemas.ObjectUpdate
 ) -> object_schemas.Object:
     client = get_opensearch_client()
-    os_obj = get_object_from_opensearch(object_id)
+    os_obj = get_object_from_opensearch(object_uuid)
     if os_obj is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Object not found")
 
@@ -390,7 +394,6 @@ def update_object(
         client.update(index="misp-objects", id=str(os_obj.uuid), body={"doc": patch}, refresh=True)
 
     for attr in (object.new_attributes or []):
-        attr.object_id = None
         attr.event_uuid = os_obj.event_uuid
         attr_schema = attributes_repository.create_attribute(db, attr)
         client.update(
@@ -411,9 +414,9 @@ def update_object(
     return get_object_from_opensearch(os_obj.uuid)
 
 
-def delete_object(db: Session, object_id: Union[int, UUID]) -> None:
+def delete_object(db: Session, object_uuid: UUID) -> None:
     client = get_opensearch_client()
-    os_obj = get_object_from_opensearch(object_id)
+    os_obj = get_object_from_opensearch(object_uuid)
     if os_obj is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Object not found")
 

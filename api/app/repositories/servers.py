@@ -137,7 +137,7 @@ def pull_server_by_id_full(
     user: user_models.User,
 ):
 
-    # get a list of the event_ids on the server
+    # get a list of the event_uuids on the server
     event_uuids = get_event_uuids_from_server(server, remote_misp)
 
     # TODO apply MISP.enableEventBlocklisting / removeBlockedEvents
@@ -164,9 +164,9 @@ def get_event_uuids_from_server(server: server_schemas.Server, remote_misp: PyMI
     timestamp = server.pull_rules.get("timestamp", None)
 
     events = remote_misp.search_index(minimal=True, published=True, timestamp=timestamp)
-    event_ids = [event["uuid"] for event in events]
+    event_uuids = [event["uuid"] for event in events]
 
-    return event_ids
+    return event_uuids
 
 
 def pull_event_by_uuid(
@@ -384,7 +384,7 @@ def create_or_update_pulled_event(
         else:
             event.sharing_group_id = None
 
-        created = events_repository.create_event_from_pulled_event(db, event)
+        created = events_repository.create_event_from_pulled_event(event)
         if created:
             sync_repository.create_pulled_event_tags(db, created, event.tags, user)
 

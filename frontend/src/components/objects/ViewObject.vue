@@ -138,7 +138,7 @@ div.row h3 {
         <div class="card-body d-flex flex-column">
           <ObjectAttributesList
             :attributes="object.attributes"
-            :object_id="object.id"
+            :object_uuid="object.uuid"
           />
         </div>
       </div>

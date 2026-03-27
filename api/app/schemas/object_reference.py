@@ -12,7 +12,7 @@ class ReferencedType(enum.Enum):
 
 class ObjectReferenceBase(BaseModel):
     uuid: UUID
-    object_id: Optional[int] = None
+    object_uuid: Optional[UUID] = None
     event_uuid: Optional[UUID] = None
     source_uuid: Optional[UUID] = None
     referenced_uuid: Optional[UUID] = None
@@ -44,7 +44,7 @@ class ObjectReference(ObjectReferenceBase):
             "id": None,
             "uuid": str(self.uuid),
             "timestamp": self.timestamp,
-            "object_id": self.object_id,
+            "object_uuid": str(self.object_uuid) if self.object_uuid else None,
             "event_uuid": str(self.event_uuid) if self.event_uuid else None,
             "source_uuid": str(self.source_uuid) if self.source_uuid else None,
             "referenced_uuid": str(self.referenced_uuid) if self.referenced_uuid else None,
@@ -62,7 +62,7 @@ class ObjectReferenceCreate(ObjectReferenceBase):
 
 
 class ObjectReferenceUpdate(ObjectReferenceBase):
-    object_id: Optional[int] = None
+    object_uuid: Optional[UUID] = None
     source_uuid: Optional[UUID] = None
     referenced_uuid: Optional[UUID] = None
     timestamp: Optional[int] = None

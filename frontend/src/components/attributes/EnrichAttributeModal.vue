@@ -85,7 +85,7 @@ function enrichAttribute() {
     object.object_references = object.ObjectReference;
     delete object.ObjectReference;
     for (const reference of object.object_references) {
-      reference.object_id = object.id;
+      reference.object_uuid = object.uuid;
       reference.referenced_id = props.attribute.id;
       reference.event_id = props.attribute.event_id;
       reference.distribution = props.attribute.distribution;

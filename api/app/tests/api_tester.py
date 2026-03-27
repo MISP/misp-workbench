@@ -66,8 +66,6 @@ class ApiTester:
         db.query(galaxy_models.GalaxyCluster).delete(synchronize_session=False)
         db.query(galaxy_models.Galaxy).delete(synchronize_session=False)
         db.query(feed_models.Feed).delete(synchronize_session=False)
-        db.query(tag_models.AttributeTag).delete(synchronize_session=False)
-        db.query(tag_models.EventTag).delete(synchronize_session=False)
         db.query(tag_models.Tag).delete(synchronize_session=False)
         db.query(sharing_groups_models.SharingGroupOrganisation).delete(synchronize_session=False)
         db.query(sharing_groups_models.SharingGroupServer).delete(synchronize_session=False)

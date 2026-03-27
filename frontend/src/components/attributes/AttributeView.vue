@@ -166,7 +166,7 @@ div.row h3 {
     </div>
     <DeleteAttributeModal
       @attribute-deleted="handleAttributeDeleted"
-      :attribute_id="attribute.id"
+      :attribute_uuid="attribute.uuid"
     />
   </div>
 </template>

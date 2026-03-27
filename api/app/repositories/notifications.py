@@ -4,7 +4,6 @@ from app.models import user as user_models
 from app.models import hunt as hunt_models
 from app.models import notification as notification_models
 from app.models import organisation as organisation_models
-from app.models import object as object_models
 from app.repositories import user_settings as user_settings_repository
 from sqlalchemy import select, update, text
 from sqlalchemy.orm import Session
@@ -313,23 +312,6 @@ def create_attribute_notifications(
         )
         for follower in attr_followers
     ]
-
-    # If the attribute is linked to an object, we can also notify followers of that object
-    if attribute.object_id:
-        object = (
-            db.query(object_models.Object)
-            .filter(object_models.Object.id == attribute.object_id)
-            .first()
-        )
-        if object:
-            notifications = build_attribute_notification(
-                db,
-                f"object.attribute.{type}",
-                attribute=attribute,
-                event=event,
-                object=object,
-            )
-            return notifications
 
     # Followers of the event
     event_followers = get_followers_for(db, "events", event.uuid)

@@ -3,7 +3,7 @@ import math
 import time
 from datetime import datetime
 from uuid import UUID, uuid4
-from typing import Optional, Union, Iterable
+from typing import Optional, Iterable
 from app.worker import tasks
 from app.services.opensearch import get_opensearch_client
 from app.services.vulnerability_lookup import lookup as vulnerability_lookup
@@ -65,24 +65,14 @@ def get_events_from_opensearch(
     return Page(items=items, total=total, page=params.page, size=params.size, pages=pages)
 
 
-def get_event_from_opensearch(event_id: Union[int, UUID]) -> Optional[event_schemas.Event]:
+def get_event_from_opensearch(event_uuid: UUID) -> Optional[event_schemas.Event]:
     client = get_opensearch_client()
 
-    if isinstance(event_id, int):
-        response = client.search(
-            index="misp-events",
-            body={"query": {"term": {"id": event_id}}, "size": 1},
-        )
-        hits = response["hits"]["hits"]
-        if not hits:
-            return None
-        source = hits[0]["_source"]
-    else:
-        try:
-            doc = client.get(index="misp-events", id=str(event_id))
-            source = doc["_source"]
-        except NotFoundError:
-            return None
+    try:
+        doc = client.get(index="misp-events", id=str(event_uuid))
+        source = doc["_source"]
+    except NotFoundError:
+        return None
 
     source.setdefault("attributes", [])
     source.setdefault("objects", [])
@@ -173,6 +163,16 @@ def get_event_by_info(info: str) -> Optional[event_schemas.Event]:
     source.setdefault("attributes", [])
     source.setdefault("objects", [])
     return event_schemas.Event.model_validate(source)
+
+
+def get_event_by_uuid(db, event_uuid) -> Optional[event_schemas.Event]:
+    """Alias for get_event_from_opensearch used by feeds/servers/mcp."""
+    return get_event_from_opensearch(UUID(str(event_uuid)))
+
+
+def get_events_by_uuids(db, uuids) -> list[event_schemas.Event]:
+    """Alias for get_events_by_uuids_from_opensearch used by feeds."""
+    return get_events_by_uuids_from_opensearch(uuids)
 
 
 def get_event_uuids_from_opensearch() -> list[str]:
@@ -269,14 +269,14 @@ def create_event_from_pulled_event(pulled_event: MISPEvent) -> event_schemas.Eve
         "timestamp": ts,
         "distribution": int(pulled_event.distribution) if pulled_event.distribution is not None else 0,
         "sharing_group_id": int(pulled_event.sharing_group_id) if pulled_event.sharing_group_id and int(pulled_event.sharing_group_id) > 0 else None,
-        "proposal_email_lock": pulled_event.proposal_email_lock or False,
-        "locked": pulled_event.locked or False,
+        "proposal_email_lock": getattr(pulled_event, "proposal_email_lock", False) or False,
+        "locked": getattr(pulled_event, "locked", False) or False,
         "threat_level": int(pulled_event.threat_level_id) if pulled_event.threat_level_id else 4,
         "publish_timestamp": int(pulled_event.publish_timestamp.timestamp()),
-        "disable_correlation": pulled_event.disable_correlation or False,
+        "disable_correlation": getattr(pulled_event, "disable_correlation", False) or False,
         "extends_uuid": str(pulled_event.extends_uuid) if pulled_event.extends_uuid else None,
         "protected": getattr(pulled_event, "protected", False) or False,
-        "deleted": pulled_event.deleted or False,
+        "deleted": getattr(pulled_event, "deleted", False) or False,
         "tags": [],
         "attributes": [],
         "objects": [],
@@ -446,9 +446,9 @@ def update_event_from_fetched_event(
     return get_event_from_opensearch(UUID(event_uuid))
 
 
-def update_event(db: Session, event_id: Union[int, UUID], event: event_schemas.EventUpdate) -> event_schemas.Event:
+def update_event(db: Session, event_uuid: UUID, event: event_schemas.EventUpdate) -> event_schemas.Event:
     client = get_opensearch_client()
-    os_event = get_event_from_opensearch(event_id)
+    os_event = get_event_from_opensearch(event_uuid)
     if os_event is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Event not found")
 
@@ -463,9 +463,9 @@ def update_event(db: Session, event_id: Union[int, UUID], event: event_schemas.E
     return get_event_from_opensearch(os_event.uuid)
 
 
-def delete_event(db: Session, event_id: Union[int, UUID], force: bool = False) -> None:
+def delete_event(db: Session, event_uuid: UUID, force: bool = False) -> None:
     client = get_opensearch_client()
-    os_event = get_event_from_opensearch(event_id)
+    os_event = get_event_from_opensearch(event_uuid)
     if os_event is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Event not found")
 

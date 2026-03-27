@@ -82,7 +82,7 @@ Click **query** on an enabled module to send a test query directly from the sett
 6. Use the checkboxes to select which results to keep, or click **Select All Enrichments**.
 7. Click **Add** to create the selected attributes and objects in the event.
 
-New attributes inherit the source attribute's `event_id`, `distribution`, and `sharing_group_id`.
+New attributes inherit the source attribute's `event_uuid`, `distribution`, and `sharing_group_id`.
 
 ## API reference
 

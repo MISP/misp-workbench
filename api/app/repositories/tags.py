@@ -141,12 +141,12 @@ def untag_attribute(
     try:
         doc = client.get(index="misp-attributes", id=attr_uuid)
     except NotFoundError:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="AttributeTag not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Attribute not found")
 
     current_tags = doc["_source"].get("tags", [])
     new_tags = [t for t in current_tags if t.get("name") != tag.name]
     if len(new_tags) == len(current_tags):
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="AttributeTag not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tag not found")
 
     client.update(
         index="misp-attributes",
@@ -194,12 +194,12 @@ def untag_event(
     try:
         doc = client.get(index="misp-events", id=event_uuid)
     except NotFoundError:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="EventTag not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Event not found")
 
     current_tags = doc["_source"].get("tags", [])
     new_tags = [t for t in current_tags if t.get("name") != tag.name]
     if len(new_tags) == len(current_tags):
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="EventTag not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tag not found")
 
     client.update(
         index="misp-events",

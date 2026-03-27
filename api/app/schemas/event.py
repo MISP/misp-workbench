@@ -42,7 +42,7 @@ class Event(EventBase):
     objects: list[Object] = []
     sharing_group: Optional[SharingGroup] = None
     tags: list[Tag] = []
-    organisation: Organisation
+    organisation: Optional[Organisation] = None
     model_config = ConfigDict(from_attributes=True)
 
 

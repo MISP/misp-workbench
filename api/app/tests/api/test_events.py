@@ -627,38 +627,6 @@ class TestEventsResource(ApiTester):
         assert str(event_1.uuid) in data["message"]
 
     @pytest.mark.parametrize("scopes", [["events:update"]])
-    def test_force_index_by_id(
-        self,
-        client: TestClient,
-        event_1: object,
-        auth_token: auth.Token,
-    ):
-        response = client.post(
-            "/events/force-index",
-            params={"id": event_1.id},
-            headers={"Authorization": "Bearer " + auth_token},
-        )
-        data = response.json()
-
-        assert response.status_code == status.HTTP_202_ACCEPTED
-        assert str(event_1.uuid) in data["message"]
-
-    @pytest.mark.parametrize("scopes", [["events:update"]])
-    def test_force_index_by_id_not_found(
-        self,
-        client: TestClient,
-        auth_token: auth.Token,
-    ):
-        response = client.post(
-            "/events/force-index",
-            params={"id": 999999},
-            headers={"Authorization": "Bearer " + auth_token},
-        )
-
-        assert response.status_code == status.HTTP_404_NOT_FOUND
-        assert response.json()["detail"] == "Event not found"
-
-    @pytest.mark.parametrize("scopes", [["events:update"]])
     def test_force_index_all_events(
         self,
         client: TestClient,

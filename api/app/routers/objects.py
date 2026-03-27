@@ -1,5 +1,5 @@
 from uuid import UUID
-from typing import Optional, Union
+from typing import Optional
 
 from app.auth.security import get_current_active_user
 from app.db.session import get_db
@@ -39,14 +39,14 @@ def get_objects(
     )
 
 
-@router.get("/objects/{object_id}", response_model=object_schemas.Object)
+@router.get("/objects/{object_uuid}", response_model=object_schemas.Object)
 def get_object_by_id(
-    object_id: Union[int, UUID],
+    object_uuid: UUID,
     user: user_schemas.User = Security(
         get_current_active_user, scopes=["objects:read"]
     ),
 ):
-    os_object = objects_repository.get_object_from_opensearch(object_id)
+    os_object = objects_repository.get_object_from_opensearch(object_uuid)
     if os_object is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Object not found"
@@ -82,26 +82,26 @@ def create_object(
     return objects_repository.create_object(db=db, object=object)
 
 
-@router.patch("/objects/{object_id}", response_model=object_schemas.Object)
+@router.patch("/objects/{object_uuid}", response_model=object_schemas.Object)
 def update_object(
-    object_id: Union[int, UUID],
+    object_uuid: UUID,
     object: object_schemas.ObjectUpdate,
     db: Session = Depends(get_db),
     user: user_schemas.User = Security(
         get_current_active_user, scopes=["objects:update"]
     ),
 ):
-    return objects_repository.update_object(db=db, object_id=object_id, object=object)
+    return objects_repository.update_object(db=db, object_uuid=object_uuid, object=object)
 
 
-@router.delete("/objects/{object_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/objects/{object_uuid}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_object(
-    object_id: Union[int, UUID],
+    object_uuid: UUID,
     db: Session = Depends(get_db),
     user: user_schemas.User = Security(
         get_current_active_user, scopes=["objects:delete"]
     ),
 ):
-    objects_repository.delete_object(db=db, object_id=object_id)
+    objects_repository.delete_object(db=db, object_uuid=object_uuid)
 
     return Response(status_code=status.HTTP_204_NO_CONTENT)

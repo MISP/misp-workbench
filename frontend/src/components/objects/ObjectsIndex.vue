@@ -61,7 +61,7 @@ function openAddObjectModal() {
         <div class="card-body">
           <ObjectAttributesList
             :attributes="object.attributes"
-            :object_id="object.id"
+            :object_uuid="object.uuid"
             @attribute-enriched="handleObjectsUpdated"
           />
         </div>

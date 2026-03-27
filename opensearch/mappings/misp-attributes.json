@@ -31,8 +31,8 @@
             "distribution": {
                 "type": "long"
             },
-            "event_id": {
-                "type": "long"
+            "event_uuid": {
+                "type": "keyword"
             },
             "event_uuid": {
                 "type": "text",
@@ -117,8 +117,8 @@
             "id": {
                 "type": "long"
             },
-            "object_id": {
-                "type": "long"
+            "object_uuid": {
+                "type": "keyword"
             },
             "object_relation": {
                 "type": "text",

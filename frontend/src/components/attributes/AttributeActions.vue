@@ -279,11 +279,11 @@ function followAttribute() {
   </div>
 
   <DeleteAttributeModal
-    :key="attribute.id"
-    :id="`deleteAttributeModal_${attribute.id}`"
+    :key="attribute.uuid"
+    :id="`deleteAttributeModal_${attribute.uuid}`"
     @attribute-deleted="handleAttributeDeleted"
     :modal="deleteAttributeModal"
-    :attribute_id="attribute.id"
+    :attribute_uuid="attribute.uuid"
   />
 
   <EnrichAttributeModal

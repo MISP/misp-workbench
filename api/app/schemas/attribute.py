@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 
 class AttributeBase(BaseModel):
-    object_id: Optional[int] = None
+    object_uuid: Optional[UUID] = None
     event_uuid: Optional[UUID] = None
     object_relation: Optional[str] = None
     category: str
@@ -42,7 +42,7 @@ class Attribute(AttributeBase):
 
         attr_json = {
             "id": None,
-            "object_id": self.object_id,
+            "object_uuid": str(self.object_uuid) if self.object_uuid else None,
             "object_relation": self.object_relation,
             "category": self.category,
             "type": self.type,
@@ -74,7 +74,7 @@ class AttributeCreate(AttributeBase):
 
 
 class AttributeUpdate(BaseModel):
-    object_id: Optional[int] = None
+    object_uuid: Optional[UUID] = None
     object_relation: Optional[str] = None
     category: Optional[str] = None
     type: Optional[str] = None
