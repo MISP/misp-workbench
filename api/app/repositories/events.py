@@ -178,11 +178,26 @@ def get_events_by_uuids(db, uuids) -> list[event_schemas.Event]:
 def get_event_uuids_from_opensearch() -> list[str]:
     """Return all event UUIDs from OpenSearch (used for server push)."""
     client = get_opensearch_client()
-    response = client.search(
-        index="misp-events",
-        body={"query": {"match_all": {}}, "size": 10000, "_source": ["uuid"]},
-    )
-    return [hit["_source"]["uuid"] for hit in response["hits"]["hits"]]
+    uuids = []
+    search_after = None
+    while True:
+        body = {
+            "query": {"match_all": {}},
+            "_source": ["uuid"],
+            "size": 500,
+            "sort": [{"uuid.keyword": "asc"}],
+        }
+        if search_after:
+            body["search_after"] = search_after
+        response = client.search(index="misp-events", body=body)
+        hits = response["hits"]["hits"]
+        if not hits:
+            break
+        uuids.extend(hit["_source"]["uuid"] for hit in hits)
+        if len(hits) < 500:
+            break
+        search_after = hits[-1]["sort"]
+    return uuids
 
 
 def get_events_by_uuids_from_opensearch(uuids) -> list[event_schemas.Event]:
