@@ -25,7 +25,7 @@ class Feed(Base):
     source_format = Column(String, nullable=False)
     fixed_event = Column(Boolean, nullable=False, default=False)
     delta_merge = Column(Boolean, nullable=False, default=False)
-    event_uuid = Column(String, nullable=True)
+    event_uuid = Column(PG_UUID(as_uuid=True), nullable=True)
     publish = Column(Boolean, nullable=False, default=False)
     override_ids = Column(Boolean, nullable=False, default=False)
     settings = Column(JSON, nullable=False, default={})
