@@ -795,7 +795,8 @@ def load_galaxies(user_id: int):
         if user_id is not None:
             user = users_repository.get_user_by_id(db, user_id)
         if user is None:
-            user = users_repository.get_first_user(db)
+            first = users_repository.get_users(db, skip=0, limit=1)
+            user = first[0] if first else None
 
         if user is None:
             logger.error("No user found to run load_galaxies; aborting")
