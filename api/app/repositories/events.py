@@ -245,7 +245,7 @@ def create_event(db: Session, event: event_schemas.EventCreate) -> event_schemas
     }
 
     client.index(index="misp-events", id=event_uuid, body=event_doc, refresh=True)
-    tasks.handle_created_event(event_uuid)
+    tasks.handle_created_event.delay(event_uuid)
 
     return event_schemas.Event.model_validate(event_doc)
 
