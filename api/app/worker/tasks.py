@@ -577,7 +577,7 @@ def handle_created_sighting(
         "value": value,
         "type": sighting_type,
         "observer": {"organisation": organisation},
-        "timestamp": timestamp or datetime.datetime.now().timestamp(),
+        "timestamp": timestamp or datetime.now().timestamp(),
     }
 
     with Session(engine) as db:
