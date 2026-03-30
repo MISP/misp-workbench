@@ -170,13 +170,70 @@ def get_objects(
     deleted: bool = False,
     template_uuid: list = None,
 ) -> Page[object_schemas.Object]:
-    params = Params(page=1, size=100)
-    return get_objects_from_opensearch(
-        params,
-        event_uuid=str(event_uuid) if event_uuid else None,
-        deleted=deleted,
-        template_uuid=template_uuid,
-    )
+    """Return all matching objects using search_after pagination (no size cap)."""
+    client = get_opensearch_client()
+
+    must_clauses = [{"term": {"deleted": bool(deleted)}}]
+    if event_uuid is not None:
+        must_clauses.append({"term": {"event_uuid.keyword": str(event_uuid)}})
+    if template_uuid is not None:
+        must_clauses.append(
+            {"terms": {"template_uuid.keyword": [str(u) for u in template_uuid]}}
+        )
+
+    all_hits = []
+    search_after = None
+    while True:
+        body = {
+            "query": {"bool": {"must": must_clauses}},
+            "size": 500,
+            "sort": [{"timestamp": {"order": "desc"}}, {"uuid.keyword": "asc"}],
+        }
+        if search_after:
+            body["search_after"] = search_after
+        try:
+            response = client.search(index="misp-objects", body=body)
+        except NotFoundError:
+            break
+        hits = response["hits"]["hits"]
+        if not hits:
+            break
+        all_hits.extend(hits)
+        if len(hits) < 500:
+            break
+        search_after = hits[-1]["sort"]
+
+    if not all_hits:
+        return Page(items=[], total=0, page=1, size=1, pages=0)
+
+    object_uuids = [hit["_source"]["uuid"] for hit in all_hits]
+    try:
+        attr_response = client.search(
+            index="misp-attributes",
+            body={"query": {"terms": {"object_uuid": object_uuids}}, "size": 10000},
+        )
+        raw_by_uuid: dict = {}
+        for attr_hit in attr_response["hits"]["hits"]:
+            src = attr_hit["_source"]
+            key = src.get("object_uuid")
+            if key:
+                raw_by_uuid.setdefault(key, []).append(src)
+    except NotFoundError:
+        raw_by_uuid = {}
+
+    attrs_by_uuid: dict = {}
+    for obj_uuid, raw_attrs in raw_by_uuid.items():
+        built = [attribute_schemas.Attribute.model_validate(s) for s in raw_attrs]
+        attrs_by_uuid[obj_uuid] = enrich_object_attributes_with_correlations(built)
+
+    items = []
+    for hit in all_hits:
+        source = hit["_source"]
+        source["attributes"] = attrs_by_uuid.get(source["uuid"], [])
+        items.append(object_schemas.Object.model_validate(source))
+
+    total = len(items)
+    return Page(items=items, total=total, page=1, size=total or 1, pages=1)
 
 
 def create_object(
