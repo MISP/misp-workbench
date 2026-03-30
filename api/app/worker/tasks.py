@@ -703,61 +703,6 @@ def delete_indexed_event(event_uuid: str):
 
 
 @celery_app.task
-def index_attribute(attribute_uuid: str):
-    logger.info("indexing attribute uuid=%s job started", attribute_uuid)
-
-    OpenSearchClient = get_opensearch_client()
-
-    existing_event_uuid = None
-    existing_tags = []
-    existing_object_uuid = None
-    try:
-        existing_doc = OpenSearchClient.get(index="misp-attributes", id=attribute_uuid)
-        existing_event_uuid = existing_doc["_source"].get("event_uuid")
-        existing_tags = existing_doc["_source"].get("tags", [])
-        existing_object_uuid = existing_doc["_source"].get("object_uuid")
-    except Exception:
-        pass
-
-    with Session(engine) as db:
-        db_attribute = attributes_repository.get_attribute_by_uuid(db, attribute_uuid)
-        if db_attribute is None:
-            raise Exception("Attribute with uuid=%s not found", attribute_uuid)
-
-        attribute = event_schemas.Attribute.model_validate(db_attribute)
-
-    attribute_raw = attribute.model_dump()
-    attribute_raw["event_uuid"] = existing_event_uuid
-    attribute_raw["object_uuid"] = existing_object_uuid
-    attribute_raw["tags"] = existing_tags
-
-    # convert timestamp to datetime so it can be indexed
-    attribute_raw["@timestamp"] = datetime.fromtimestamp(
-        attribute_raw["timestamp"]
-    ).isoformat()
-    attribute_raw["data"] = ""  # do not index file contents
-
-    response = OpenSearchClient.index(
-        index="misp-attributes",
-        id=attribute.uuid,
-        body=attribute_raw,
-        refresh=True,
-    )
-
-    if response["result"] not in ["created", "updated"]:
-        logger.error(
-            "Failed to index attribute uuid=%s. Response: %s",
-            attribute_uuid,
-            response,
-        )
-        raise Exception("Failed to index attribute.")
-
-    logger.info("indexed attribute uuid=%s job finished", attribute_uuid)
-
-    return True
-
-
-@celery_app.task
 def delete_indexed_attribute(attribute_uuid: str):
     logger.info("deleting indexed attribute uuid=%s job started", attribute_uuid)
 
