@@ -677,11 +677,11 @@ def delete_indexed_event(event_uuid: str):
     query = {"query": {"bool": {"must": [{"term": {"event_uuid": str(event_uuid)}}]}}}
 
     response = OpenSearchClient.delete_by_query(
-        index="misp-attributes", body=query, refresh=True
+        index="misp-attributes", body=query, refresh=True, ignore=[404]
     )
     logger.info(
         "deleted %s indexed attributes for event uuid=%s",
-        response["deleted"],
+        response.get("deleted", 0),
         event_uuid,
     )
 
@@ -691,7 +691,7 @@ def delete_indexed_event(event_uuid: str):
     )
     logger.info(
         "deleted %s indexed objects for event uuid=%s",
-        response["deleted"],
+        response.get("deleted", 0),
         event_uuid,
     )
 
