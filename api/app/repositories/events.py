@@ -487,7 +487,7 @@ def delete_event(db: Session, event_uuid: UUID, force: bool = False) -> None:
     event_uuid = str(os_event.uuid)
 
     if force:
-        tasks.delete_indexed_event.delay(event_uuid)
+        tasks.delete_indexed_event(event_uuid)
         return
 
     # Soft delete: mark deleted=True in OS but keep the document so it remains searchable
