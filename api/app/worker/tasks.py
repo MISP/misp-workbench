@@ -260,8 +260,6 @@ def handle_deleted_object(object_uuid: str, event_uuid: str | None):
         if os_obj is not None:
             notifications_repository.create_object_notifications(db, "deleted", object=os_obj)
 
-        delete_indexed_object(object_uuid)
-
     return True
 
 
