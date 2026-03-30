@@ -791,8 +791,11 @@ def load_galaxies(user_id: int):
     logger.info("load_galaxies job started")
 
     with Session(engine) as db:
+        user = None
         if user_id is not None:
             user = users_repository.get_user_by_id(db, user_id)
+        if user is None:
+            user = users_repository.get_first_user(db)
 
         if user is None:
             logger.error("No user found to run load_galaxies; aborting")
