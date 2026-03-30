@@ -458,7 +458,7 @@ def update_event(db: Session, event_uuid: UUID, event: event_schemas.EventUpdate
             patch[k] = v.value
 
     client.update(index="misp-events", id=str(os_event.uuid), body={"doc": patch}, refresh=True)
-    tasks.handle_updated_event(str(os_event.uuid))
+    tasks.handle_updated_event.delay(str(os_event.uuid))
 
     return get_event_from_opensearch(os_event.uuid)
 
@@ -472,7 +472,7 @@ def delete_event(db: Session, event_uuid: UUID, force: bool = False) -> None:
     event_uuid = str(os_event.uuid)
 
     if force:
-        tasks.delete_indexed_event(event_uuid)
+        tasks.delete_indexed_event.delay(event_uuid)
         return
 
     # Soft delete: mark deleted=True in OS but keep the document so it remains searchable
@@ -535,7 +535,7 @@ def publish_event(event: event_schemas.Event) -> event_schemas.Event:
     patch = {"published": True, "publish_timestamp": int(time.time())}
     client.update(index="misp-events", id=str(event.uuid), body={"doc": patch}, refresh=True)
 
-    tasks.handle_published_event(str(event.uuid))
+    tasks.handle_published_event.delay(str(event.uuid))
 
     return get_event_from_opensearch(event.uuid)
 
@@ -547,7 +547,7 @@ def unpublish_event(event: event_schemas.Event) -> event_schemas.Event:
 
     client.update(index="misp-events", id=str(event.uuid), body={"doc": {"published": False}}, refresh=True)
 
-    tasks.handle_unpublished_event(str(event.uuid))
+    tasks.handle_unpublished_event.delay(str(event.uuid))
 
     return get_event_from_opensearch(event.uuid)
 
@@ -563,7 +563,7 @@ def toggle_event_correlation(event: event_schemas.Event) -> event_schemas.Event:
         refresh=True,
     )
 
-    tasks.handle_toggled_event_correlation(str(event.uuid), new_val)
+    tasks.handle_toggled_event_correlation.delay(str(event.uuid), new_val)
 
     return get_event_from_opensearch(event.uuid)
 

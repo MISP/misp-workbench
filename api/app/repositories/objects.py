@@ -229,7 +229,7 @@ def create_object(
         object_reference.event_uuid = event_uuid
         object_references_repository.create_object_reference(db, object_reference)
 
-    tasks.handle_created_object(object_uuid, event_uuid)
+    tasks.handle_created_object.delay(object_uuid, event_uuid)
 
     obj_doc["attributes"] = built_attrs
     return object_schemas.Object.model_validate(obj_doc)
@@ -294,7 +294,7 @@ def create_object_from_pulled_object(
             db, pulled_object_reference, event_uuid
         )
 
-    tasks.handle_created_object(object_uuid, event_uuid)
+    tasks.handle_created_object.delay(object_uuid, event_uuid)
 
     return get_object_from_opensearch(UUID(object_uuid))
 
@@ -409,7 +409,7 @@ def update_object(
     for attr_id in (object.delete_attributes or []):
         attributes_repository.delete_attribute(db, attr_id)
 
-    tasks.handle_updated_object(str(os_obj.uuid), str(os_obj.event_uuid) if os_obj.event_uuid else None)
+    tasks.handle_updated_object.delay(str(os_obj.uuid), str(os_obj.event_uuid) if os_obj.event_uuid else None)
 
     return get_object_from_opensearch(os_obj.uuid)
 
@@ -430,7 +430,7 @@ def delete_object(db: Session, object_uuid: UUID) -> None:
             refresh=True,
         )
 
-    tasks.handle_deleted_object(str(os_obj.uuid), str(os_obj.event_uuid) if os_obj.event_uuid else None)
+    tasks.handle_deleted_object.delay(str(os_obj.uuid), str(os_obj.event_uuid) if os_obj.event_uuid else None)
 
 
 def create_objects_from_fetched_event(

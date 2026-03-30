@@ -156,7 +156,7 @@ def create_attribute(
 
     client.index(index="misp-attributes", id=attribute_uuid, body=attr_doc, refresh=True)
 
-    tasks.handle_created_attribute(attribute_uuid, attr_doc["object_uuid"], event_uuid)
+    tasks.handle_created_attribute.delay(attribute_uuid, attr_doc["object_uuid"], event_uuid)
 
     return attribute_schemas.Attribute.model_validate(attr_doc)
 
@@ -291,7 +291,7 @@ def update_attribute(
 
     client.update(index="misp-attributes", id=str(os_attr.uuid), body={"doc": patch}, refresh=True)
 
-    tasks.handle_updated_attribute(str(os_attr.uuid), os_attr.object_uuid, str(os_attr.event_uuid) if os_attr.event_uuid else None)
+    tasks.handle_updated_attribute.delay(str(os_attr.uuid), os_attr.object_uuid, str(os_attr.event_uuid) if os_attr.event_uuid else None)
 
     return get_attribute_from_opensearch(os_attr.uuid)
 
@@ -311,7 +311,7 @@ def delete_attribute(db: Session, attribute_uuid: UUID) -> None:
         refresh=True,
     )
 
-    tasks.handle_deleted_attribute(str(os_attr.uuid), os_attr.object_uuid, str(os_attr.event_uuid) if os_attr.event_uuid else None)
+    tasks.handle_deleted_attribute.delay(str(os_attr.uuid), os_attr.object_uuid, str(os_attr.event_uuid) if os_attr.event_uuid else None)
 
 
 def capture_attribute_tags(
