@@ -22,12 +22,10 @@ from app.repositories import notifications as notifications_repository
 from app.repositories import galaxies as galaxies_repository
 from app.repositories import hunts as hunts_repository
 from app.repositories import taxonomies as taxonomies_repository
-from app.schemas import event as event_schemas
 from app.schemas import attribute as attribute_schemas
 from celery import Celery
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
-from opensearchpy import helpers as opensearch_helpers
 
 # Celery configuration
 celery_app = Celery("misp-workbench")
