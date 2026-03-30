@@ -238,6 +238,9 @@ def capture_tag(db: Session, tag: MISPTag, user: user_models.User) -> tag_models
             ),
         )
 
+    if db_tag is None:
+        return None
+
     db.add(db_tag)
     db.commit()
     db.refresh(db_tag)

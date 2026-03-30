@@ -273,12 +273,6 @@ def update_attribute_from_pulled_attribute(
     # TODO: process sightings
     # TODO: process galaxies
 
-    tasks.handle_updated_attribute.delay(
-        str(local_attribute.uuid),
-        local_attribute.object_uuid,
-        str(local_attribute.event_uuid) if local_attribute.event_uuid else None,
-    )
-
     return get_attribute_from_opensearch(local_attribute.uuid)
 
 
