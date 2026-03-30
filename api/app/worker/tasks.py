@@ -43,6 +43,8 @@ celery_app.conf.update(
     task_soft_time_limit=None,
     beat_scheduler="redbeat.RedBeatScheduler",
     redbeat_redis_url=os.environ.get("CELERY_BROKER_URL"),
+    # Run tasks synchronously when no broker is configured (e.g. test environment)
+    task_always_eager=not bool(os.environ.get("CELERY_BROKER_URL")),
 )
 
 logger = logging.getLogger(__name__)
