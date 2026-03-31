@@ -191,7 +191,7 @@ def create_attribute_from_pulled_attribute(
         ),
         to_ids=pulled_attribute.to_ids,
         uuid=pulled_attribute.uuid,
-        timestamp=pulled_attribute.timestamp.timestamp(),
+        timestamp=int(pulled_attribute.timestamp.timestamp()),
         distribution=dist_val,
         comment=pulled_attribute.comment,
         sharing_group_id=None,
@@ -199,12 +199,12 @@ def create_attribute_from_pulled_attribute(
         disable_correlation=pulled_attribute.disable_correlation,
         object_relation=getattr(pulled_attribute, "object_relation", None),
         first_seen=(
-            pulled_attribute.first_seen.timestamp()
+            int(pulled_attribute.first_seen.timestamp())
             if hasattr(pulled_attribute, "first_seen") and pulled_attribute.first_seen
             else None
         ),
         last_seen=(
-            pulled_attribute.last_seen.timestamp()
+            int(pulled_attribute.last_seen.timestamp())
             if hasattr(pulled_attribute, "last_seen") and pulled_attribute.last_seen
             else None
         ),
