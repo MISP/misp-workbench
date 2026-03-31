@@ -423,6 +423,32 @@ def search_attributes(
         "results": response["hits"]["hits"],
     }
 
+def search_attributes_histogram(query: str = None, interval: str = "1d"):
+    OpenSearchClient = get_opensearch_client()
+
+    search_body = {
+        "size": 0,
+        "query": {
+            "bool": {
+                "must": {"query_string": {"query": query or "*", "default_field": "value"}},
+                "filter": {"term": {"deleted": False}},
+            }
+        },
+        "aggs": {
+            "attributes_over_time": {
+                "date_histogram": {
+                    "field": "@timestamp",
+                    "calendar_interval": interval,
+                    "min_doc_count": 0,
+                }
+            }
+        },
+    }
+
+    response = OpenSearchClient.search(index="misp-attributes", body=search_body)
+    return {"buckets": response["aggregations"]["attributes_over_time"]["buckets"]}
+
+
 def export_attributes(
     query: str = None,
     format: str = "json",

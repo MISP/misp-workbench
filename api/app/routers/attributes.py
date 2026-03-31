@@ -63,6 +63,17 @@ async def search_attributes(
 
     return attributes_repository.search_attributes(query, page, from_value, size, sort_by, sort_order)
 
+@router.get("/attributes/histogram")
+async def get_attributes_histogram(
+    query: str = Query(..., min_length=0),
+    interval: Optional[str] = Query("1d", pattern="^(1d|1w|1M)$"),
+    user: user_schemas.User = Security(
+        get_current_active_user, scopes=["attributes:read"]
+    ),
+):
+    return attributes_repository.search_attributes_histogram(query, interval)
+
+
 @router.get("/attributes/export")
 async def export_attributes(
     query: str = Query(..., min_length=0),

@@ -73,6 +73,15 @@ async def search_events(
     return events_repository.search_events(query, page, from_value, size, sort_by, sort_order)
 
 
+@router.get("/events/histogram")
+async def get_events_histogram(
+    query: str = Query(..., min_length=0),
+    interval: Optional[str] = Query("1d", pattern="^(1d|1w|1M)$"),
+    user: user_schemas.User = Security(get_current_active_user, scopes=["events:read"]),
+):
+    return events_repository.search_events_histogram(query, interval)
+
+
 @router.get("/events/export")
 async def export_events(
     query: str = Query(..., min_length=0),
