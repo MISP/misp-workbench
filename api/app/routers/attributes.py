@@ -1,4 +1,4 @@
-from typing import Optional, Union
+from typing import Optional
 from uuid import UUID
 from app.auth.security import get_current_active_user
 from app.db.session import get_db
