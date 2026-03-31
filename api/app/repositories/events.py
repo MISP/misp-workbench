@@ -92,7 +92,12 @@ def search_events(
 
     index = "misp-attributes" if searchAttributes else "misp-events"
     search_body = {
-        "query": {"query_string": {"query": query, "default_field": "info"}},
+        "query": {
+            "bool": {
+                "must": {"query_string": {"query": query, "default_field": "info"}},
+                "filter": {"term": {"deleted": False}},
+            }
+        },
         "from": from_value,
         "size": size,
         "sort": [{sort_by: {"order": sort_order}}],
