@@ -38,24 +38,3 @@ class TagUpdate(TagBase):
     local_only: Optional[bool] = None
 
 
-class AttributeTagBase(BaseModel):
-    attribute_id: int
-    event_id: int
-    tag_id: int
-    local: bool
-
-
-class AttributeTag(AttributeTagBase):
-    id: int
-    model_config = ConfigDict(from_attributes=True)
-
-
-class EventTagBase(BaseModel):
-    event_id: int
-    tag_id: int
-    local: bool
-
-
-class EventTag(EventTagBase):
-    id: int
-    model_config = ConfigDict(from_attributes=True)

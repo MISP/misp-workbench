@@ -5,14 +5,11 @@ import pytest
 from app.auth import auth
 from app.db.session import get_db
 from app.main import app
-from app.models import attribute as attribute_models
 from app.models import event as event_models
 from app.models import feed as feed_models
 from app.models import galaxy as galaxy_models
 from app.models import hunt as hunt_models
 from app.models import module as module_models
-from app.models import object as object_models
-from app.models import object_reference as object_reference_models
 from app.models import organisation as organisation_models
 from app.models import server as server_models
 from app.models import sharing_groups as sharing_groups_models
@@ -24,6 +21,7 @@ from app.settings import get_settings
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, declarative_base, sessionmaker
+import sys
 
 
 class ApiTester:
@@ -69,13 +67,7 @@ class ApiTester:
         db.query(galaxy_models.GalaxyCluster).delete(synchronize_session=False)
         db.query(galaxy_models.Galaxy).delete(synchronize_session=False)
         db.query(feed_models.Feed).delete(synchronize_session=False)
-        db.query(tag_models.AttributeTag).delete(synchronize_session=False)
-        db.query(tag_models.EventTag).delete(synchronize_session=False)
         db.query(tag_models.Tag).delete(synchronize_session=False)
-        db.query(attribute_models.Attribute).delete(synchronize_session=False)
-        db.query(object_reference_models.ObjectReference).delete(synchronize_session=False)
-        db.query(object_models.Object).delete(synchronize_session=False)
-        db.query(event_models.Event).delete(synchronize_session=False)
         db.query(sharing_groups_models.SharingGroupOrganisation).delete(synchronize_session=False)
         db.query(sharing_groups_models.SharingGroupServer).delete(synchronize_session=False)
         db.query(sharing_groups_models.SharingGroup).delete(synchronize_session=False)
@@ -96,7 +88,29 @@ class ApiTester:
         try:
             pass
         finally:
-            # teardown
+            # clean OpenSearch docs left over from previous test classes
+            try:
+                from app.services.opensearch import get_opensearch_client
+
+                os_client = get_opensearch_client()
+                for index in ("misp-events", "misp-attributes", "misp-objects"):
+                    try:
+                        os_client.delete_by_query(
+                            index=index,
+                            body={"query": {"match_all": {}}},
+                            refresh=True,
+                            ignore=[404],
+                        )
+                    except Exception as exc:
+                        print(
+                            f"Warning: failed to delete OpenSearch documents for index '{index}': {exc}",
+                            file=sys.stderr,
+                        )
+            except Exception as exc:
+                print(
+                    f"Warning: OpenSearch cleanup skipped due to error: {exc}",
+                    file=sys.stderr,
+                )
             self.teardown_db(db)
 
     # MISP data model fixtures
@@ -157,69 +171,100 @@ class ApiTester:
         organisation_1: organisation_models.Organisation,
         user_1: user_models.User,
     ):
-        event_1 = event_models.Event(
+        from datetime import datetime
+        from uuid import UUID
+        from app.repositories import events as events_repository
+        from app.schemas import event as event_schemas
+
+        event_create = event_schemas.EventCreate(
             info="test event",
             user_id=user_1.id,
             orgc_id=1,
             org_id=organisation_1.id,
-            date="2020-01-01",
-            uuid="ba4b11b6-dcce-4315-8fd0-67b69160ea76",
+            date=datetime(2020, 1, 1),
+            uuid=UUID("ba4b11b6-dcce-4315-8fd0-67b69160ea76"),
             timestamp=1577836800,
         )
-        db.add(event_1)
-        db.commit()
-        db.refresh(event_1)
+        event_1 = events_repository.create_event(db=db, event=event_create)
 
         yield event_1
 
     @pytest.fixture(scope="class")
-    def attribute_1(self, db: Session, event_1: event_models.Event):
-        attribute_1 = attribute_models.Attribute(
-            event_id=event_1.id,
+    def attribute_1(self, db: Session, event_1):
+        from uuid import UUID
+        from app.repositories import attributes as attributes_repository
+        from app.schemas import attribute as attribute_schemas
+
+        attr_create = attribute_schemas.AttributeCreate(
             category="Network activity",
             type="ip-src",
             value="127.0.0.1",
-            uuid="7f2fd15d-3c63-47ba-8a39-2c4b0b3314b0",
+            uuid=UUID("7f2fd15d-3c63-47ba-8a39-2c4b0b3314b0"),
             timestamp=157783680,
+            event_uuid=event_1.uuid,
+            deleted=False,
+            to_ids=False,
+            disable_correlation=False,
         )
-        db.add(attribute_1)
-        db.commit()
-        db.refresh(attribute_1)
-
-        yield attribute_1
+        yield attributes_repository.create_attribute(db, attr_create)
 
     @pytest.fixture(scope="class")
-    def object_1(self, db: Session, event_1: event_models.Event):
-        object_1 = object_models.Object(
-            event_id=event_1.id,
-            uuid="90e06ef6-26f8-40dd-9fb7-75897445e2a0",
-            name="test object",
-            template_version=0,
-            timestamp=1577836800,
-            deleted=False,
-        )
-        db.add(object_1)
-        db.commit()
-        db.refresh(object_1)
+    def object_1(self, db: Session, event_1):
+        from datetime import datetime
+        from uuid import UUID as _UUID
+        from app.services.opensearch import get_opensearch_client
 
-        yield object_1
+        obj_uuid = "90e06ef6-26f8-40dd-9fb7-75897445e2a0"
+        obj_doc = {
+            "uuid": obj_uuid,
+            "event_uuid": str(event_1.uuid),
+            "name": "test object",
+            "meta_category": None,
+            "template_uuid": None,
+            "template_version": 0,
+            "timestamp": 1577836800,
+            "@timestamp": datetime.fromtimestamp(1577836800).isoformat(),
+            "deleted": False,
+            "distribution": 0,
+            "sharing_group_id": None,
+            "first_seen": None,
+            "last_seen": None,
+            "comment": "",
+            "object_references": [],
+        }
+
+        client = get_opensearch_client()
+        client.index(index="misp-objects", id=obj_uuid, body=obj_doc, refresh=True)
+
+        from app.schemas import object as object_schemas
+        yield object_schemas.Object.model_validate(obj_doc)
 
     @pytest.fixture(scope="class")
     def object_attribute_1(
-        self, db: Session, event_1: event_models.Event, object_1: object_models.Object
+        self, db: Session, event_1, object_1
     ):
-        object_attribute_1 = attribute_models.Attribute(
-            event_id=event_1.id,
-            object_id=object_1.id,
+        from uuid import UUID
+        from app.repositories import attributes as attributes_repository
+        from app.schemas import attribute as attribute_schemas
+        from app.services.opensearch import get_opensearch_client
+
+        attr_create = attribute_schemas.AttributeCreate(
             category="Network activity",
             type="ip-src",
             value="127.0.0.2",
-            uuid="1355e435-aa0f-4f06-acd3-b44498131e82",
+            uuid=UUID("1355e435-aa0f-4f06-acd3-b44498131e82"),
             timestamp=1577836800,
+            event_uuid=event_1.uuid,
+            deleted=False,
         )
-        db.add(object_attribute_1)
-        db.commit()
-        db.refresh(object_attribute_1)
+        object_attribute_1 = attributes_repository.create_attribute(db, attr_create)
+
+        get_opensearch_client().update(
+            index="misp-attributes",
+            id=str(object_attribute_1.uuid),
+            body={"doc": {"object_uuid": str(object_1.uuid)}},
+            refresh=True,
+        )
 
         yield object_attribute_1
 
@@ -365,7 +410,7 @@ class ApiTester:
             source_format="misp",
             fixed_event=False,
             delta_merge=False,
-            event_id=None,
+            event_uuid=None,
             publish=False,
             override_ids=False,
             settings=None,

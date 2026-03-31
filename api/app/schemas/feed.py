@@ -17,7 +17,7 @@ class FeedBase(BaseModel):
     source_format: str
     fixed_event: Optional[bool] = False
     delta_merge: Optional[bool] = False
-    event_id: Optional[int] = None
+    event_uuid: Optional[str] = None
     publish: Optional[bool] = False
     override_ids: Optional[bool] = False
     settings: Optional[dict] = None
@@ -55,7 +55,7 @@ class FeedUpdate(FeedBase):
     source_format: Optional[str] = None
     fixed_event: Optional[bool] = None
     delta_merge: Optional[bool] = None
-    event_id: Optional[int] = None
+    event_uuid: Optional[str] = None
     publish: Optional[bool] = None
     override_ids: Optional[bool] = None
     settings: Optional[dict] = None

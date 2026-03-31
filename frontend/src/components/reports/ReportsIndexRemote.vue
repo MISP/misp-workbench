@@ -9,7 +9,7 @@ import DOMPurify from "dompurify";
 const props = defineProps({
   // Server mode: fetch from API
   server_id: { type: [String, Number], default: null },
-  event_id: { type: [String, Number], default: null },
+  event_uuid: { type: String, default: null },
   // Feed mode: render inline data directly
   reports: { type: Array, default: null },
 });
@@ -22,7 +22,7 @@ const { remote_event_reports, status } = storeToRefs(remoteMISPReportsStore);
 if (isRemote.value) {
   remoteMISPReportsStore.get_remote_server_event_reports(
     props.server_id,
-    props.event_id,
+    props.event_uuid,
   );
 }
 

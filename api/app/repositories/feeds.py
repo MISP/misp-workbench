@@ -46,7 +46,7 @@ def create_feed(db: Session, feed: feed_schemas.FeedCreate):
         source_format=feed.source_format,
         fixed_event=feed.fixed_event,
         delta_merge=feed.delta_merge,
-        event_id=feed.event_id,
+        event_uuid=feed.event_uuid,
         publish=feed.publish,
         override_ids=feed.override_ids,
         settings=feed.settings,
@@ -158,12 +158,12 @@ def process_feed_event(
 
         # process objects
         sync_repository.create_pulled_event_objects(
-            db, local_event.id, event.objects, user
+            db, str(local_event.uuid), event.objects, user
         )
 
         # process attributes
         sync_repository.create_pulled_event_attributes(
-            db, local_event.id, event.attributes, user
+            db, str(local_event.uuid), event.attributes, user
         )
     else:
 
@@ -179,21 +179,15 @@ def process_feed_event(
 
         # process objects
         sync_repository.update_pulled_event_objects(
-            db, local_event.id, event.objects, user
+            db, str(local_event.uuid), event.objects, user
         )
 
         # process attributes
         sync_repository.update_pulled_event_attributes(
-            db, local_event.id, event.attributes, user
+            db, str(local_event.uuid), event.attributes, user
         )
 
-    local_event.attribute_count = len(local_event.attributes)
-    local_event.object_count = len(local_event.objects)
-    db.add(local_event)
-
     db.commit()
-
-    tasks.index_event.delay(str(local_event.uuid), full_reindex=True)
 
     return {"result": "success", "message": "Event processed"}
 
@@ -736,21 +730,21 @@ def get_or_create_feed_event(
 ):
     label = _feed_import_label(db_feed)
     if db_feed.fixed_event:
-        if db_feed.event_id is None:
-            db_event = _create_feed_event(db, db_feed, user, label)
-            db_feed.event_id = db_event.id
+        if db_feed.event_uuid is None:
+            os_event = _create_feed_event(db, db_feed, user, label)
+            db_feed.event_uuid = str(os_event.uuid)
             db.commit()
             db.refresh(db_feed)
         else:
-            db_event = events_repository.get_event_by_id(db, db_feed.event_id)
+            os_event = events_repository.get_event_from_opensearch(db_feed.event_uuid)
 
-            if db_event is None or db_event.deleted:
-                db_event = _create_feed_event(db, db_feed, user, label)
-                db_feed.event_id = db_event.id
+            if os_event is None or os_event.deleted:
+                os_event = _create_feed_event(db, db_feed, user, label)
+                db_feed.event_uuid = str(os_event.uuid)
                 db.commit()
                 db.refresh(db_feed)
     else:
-        db_event = events_repository.create_event(
+        os_event = events_repository.create_event(
             db,
             event_schemas.EventCreate(
                 info="%s: %s - %s" % (label, db_feed.name, datetime.now().isoformat()),
@@ -762,7 +756,7 @@ def get_or_create_feed_event(
             ),
         )
 
-    return db_event
+    return os_event
 
 
 def _create_feed_event(db, db_feed, user, label: str):

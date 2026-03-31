@@ -75,10 +75,6 @@ div.row h3 {
                 <table class="table table-striped">
                   <tbody>
                     <tr>
-                      <th>id</th>
-                      <td>{{ object.id }}</td>
-                    </tr>
-                    <tr>
                       <th>uuid</th>
                       <td>
                         {{ object.uuid }}
@@ -138,7 +134,7 @@ div.row h3 {
         <div class="card-body d-flex flex-column">
           <ObjectAttributesList
             :attributes="object.attributes"
-            :object_id="object.id"
+            :object_uuid="object.uuid"
           />
         </div>
       </div>

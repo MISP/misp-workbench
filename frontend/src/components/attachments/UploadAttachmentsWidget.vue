@@ -86,8 +86,8 @@ function handleAttachmentDeleted(attachment_id) {
   );
 }
 
-function handleObjectDeleted(object_id) {
-  emit("object-deleted", object_id);
+function handleObjectDeleted(object_uuid) {
+  emit("object-deleted", object_uuid);
 }
 </script>
 

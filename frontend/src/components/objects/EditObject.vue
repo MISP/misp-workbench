@@ -103,19 +103,6 @@ function updateObject() {
         <div class="card-body d-flex flex-column">
           <Form :validation-schema="ObjectSchema" v-slot="{ errors }">
             <div class="mb-3">
-              <label for="object.id">id</label>
-              <Field
-                class="form-control"
-                id="object.id"
-                name="object.id"
-                v-model="object.id"
-                :class="{ 'is-invalid': errors['object.id'] }"
-                disabled
-              >
-              </Field>
-              <div class="invalid-feedback">{{ errors["object.id"] }}</div>
-            </div>
-            <div class="mb-3">
               <label for="object.uuid">uuid</label>
               <Field
                 class="form-control"

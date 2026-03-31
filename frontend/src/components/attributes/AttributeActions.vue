@@ -65,13 +65,13 @@ const { modulesResponses } = storeToRefs(modulesStore);
 
 onMounted(() => {
   deleteAttributeModal.value = new Modal(
-    document.getElementById(`deleteAttributeModal_${props.attribute.id}`),
+    document.getElementById(`deleteAttributeModal_${props.attribute.uuid}`),
   );
   enrichAttributeModal.value = new Modal(
-    document.getElementById(`enrichAttributeModal_${props.attribute.id}`),
+    document.getElementById(`enrichAttributeModal_${props.attribute.uuid}`),
   );
   correlatedAttributesModal.value = new Modal(
-    document.getElementById(`correlatedAttributesModal${props.attribute.id}`),
+    document.getElementById(`correlatedAttributesModal${props.attribute.uuid}`),
   );
   followed.value = isFollowingEntity("attributes", props.attribute.uuid);
 });
@@ -90,11 +90,11 @@ function openCorrelationsModal() {
 }
 
 function handleAttributeDeleted() {
-  emit("attribute-deleted", props.attribute.id);
+  emit("attribute-deleted", props.attribute.uuid);
 }
 
 function handleAttributeEnriched() {
-  emit("attribute-enriched", props.attribute.id);
+  emit("attribute-enriched", props.attribute.uuid);
 }
 
 function handleObjectCreated(object) {
@@ -190,7 +190,7 @@ function followAttribute() {
 
       <RouterLink
         v-if="actions.update"
-        :to="`/attributes/update/${attribute.id}`"
+        :to="`/attributes/update/${attribute.uuid}`"
         class="btn btn-outline-primary btn-sm"
         title="Update Attribute"
       >
@@ -228,7 +228,7 @@ function followAttribute() {
       </li>
 
       <li v-if="actions.view">
-        <RouterLink class="dropdown-item" :to="`/attributes/${attribute.id}`">
+        <RouterLink class="dropdown-item" :to="`/attributes/${attribute.uuid}`">
           <FontAwesomeIcon :icon="faEye" class="me-2" />
           View
         </RouterLink>
@@ -237,7 +237,7 @@ function followAttribute() {
       <li v-if="actions.update">
         <RouterLink
           class="dropdown-item"
-          :to="`/attributes/update/${attribute.id}`"
+          :to="`/attributes/update/${attribute.uuid}`"
         >
           <FontAwesomeIcon :icon="faPen" class="me-2" />
           Update
@@ -279,16 +279,16 @@ function followAttribute() {
   </div>
 
   <DeleteAttributeModal
-    :key="attribute.id"
-    :id="`deleteAttributeModal_${attribute.id}`"
+    :key="attribute.uuid"
+    :id="`deleteAttributeModal_${attribute.uuid}`"
     @attribute-deleted="handleAttributeDeleted"
     :modal="deleteAttributeModal"
-    :attribute_id="attribute.id"
+    :attribute_uuid="attribute.uuid"
   />
 
   <EnrichAttributeModal
-    :key="attribute.id"
-    :id="`enrichAttributeModal_${attribute.id}`"
+    :key="attribute.uuid"
+    :id="`enrichAttributeModal_${attribute.uuid}`"
     @attribute-enriched="handleAttributeEnriched"
     @object-created="handleObjectCreated"
     :modal="enrichAttributeModal"
@@ -296,8 +296,8 @@ function followAttribute() {
   />
 
   <CorrelatedAttributesModal
-    :key="attribute.id"
-    :id="`correlatedAttributesModal${attribute.id}`"
+    :key="attribute.uuid"
+    :id="`correlatedAttributesModal${attribute.uuid}`"
     :modal="correlatedAttributesModal"
     :attribute="attribute"
   />

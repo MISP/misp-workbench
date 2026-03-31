@@ -379,7 +379,6 @@ def search_attributes(query: str, page: int = 1, size: int = 10) -> dict:
       - category (str): e.g. "Network activity", "Payload delivery",
         "External analysis", "Persistence"
       - event_uuid (str): UUID of parent event
-      - event_id (int): ID of parent event
       - to_ids (bool): whether this is an IDS-exportable indicator
       - comment (str): analyst comment
       - tags.name (str): associated tag names
@@ -1094,9 +1093,13 @@ def search_event_reports(
         "sort": [{"@timestamp": {"order": "desc"}}],
     }
 
-    response = client.search(index="misp-event-reports", body=query_body)
-    hits = response["hits"]["hits"]
-    total = response["hits"]["total"]["value"]
+    from opensearchpy.exceptions import NotFoundError as _NotFoundError
+    try:
+        response = client.search(index="misp-event-reports", body=query_body)
+        hits = response["hits"]["hits"]
+        total = response["hits"]["total"]["value"]
+    except _NotFoundError:
+        hits, total = [], 0
     results = [h["_source"] for h in hits]
     logger.debug(
         f"Event reports search returned {total} total, {len(results)} in page {page}"
@@ -1478,7 +1481,7 @@ def query_syntax() -> str:
         "- attribute_count, object_count, tags.name\n\n"
         "## Attribute fields\n"
         "- value (default), type, category, uuid\n"
-        "- event_uuid, event_id, to_ids (bool)\n"
+        "- event_uuid, to_ids (bool)\n"
         "- comment, tags.name, deleted, disable_correlation\n"
         "- expanded.ip2geo.country_iso_code (GeoIP enrichment)\n"
     )

@@ -32,6 +32,7 @@ services:
       retries: 5
   
   api:
+    mem_limit: 4g
     build:
       context: ./api
       dockerfile: Dockerfile

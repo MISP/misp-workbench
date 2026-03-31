@@ -87,7 +87,7 @@ function handleObjectCreated(object) {
         </tr>
       </thead>
       <tbody>
-        <tr :key="attribute.id" v-for="attribute in attributes.items">
+        <tr :key="attribute.uuid" v-for="attribute in attributes.items">
           <td class="value">
             <CopyToClipboard :value="attribute.value" />
             {{ attribute.value }}

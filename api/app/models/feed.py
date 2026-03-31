@@ -1,6 +1,7 @@
 from app.database import Base
 from app.models.event import DistributionLevel
 from sqlalchemy import JSON, Boolean, Column, Enum, Float, ForeignKey, Integer, String
+from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 
@@ -24,7 +25,7 @@ class Feed(Base):
     source_format = Column(String, nullable=False)
     fixed_event = Column(Boolean, nullable=False, default=False)
     delta_merge = Column(Boolean, nullable=False, default=False)
-    event_id = Column(Integer, ForeignKey("events.id"), nullable=True)
+    event_uuid = Column(PG_UUID(as_uuid=True), nullable=True)
     publish = Column(Boolean, nullable=False, default=False)
     override_ids = Column(Boolean, nullable=False, default=False)
     settings = Column(JSON, nullable=False, default={})

@@ -274,7 +274,7 @@ div.row h3 {
             <ReportsIndexRemote
               v-if="isServer"
               :server_id="server_id"
-              :event_id="event.id"
+              :event_uuid="event.uuid"
             />
             <ReportsIndexRemote v-else :reports="event.reports" />
           </div>

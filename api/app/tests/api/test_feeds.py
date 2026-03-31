@@ -40,7 +40,7 @@ class TestFeedsResource(ApiTester):
         assert data[0]["default"] == feed_1.default
         assert data[0]["fixed_event"] == feed_1.fixed_event
         assert data[0]["delta_merge"] == feed_1.delta_merge
-        assert data[0]["event_id"] == feed_1.event_id
+        assert data[0]["event_uuid"] == feed_1.event_uuid
         assert data[0]["publish"] == feed_1.publish
         assert data[0]["override_ids"] == feed_1.override_ids
         assert data[0]["settings"] == feed_1.settings
