@@ -11,6 +11,7 @@ import {
   faSun,
   faRightFromBracket,
 } from "@fortawesome/free-solid-svg-icons";
+import AddEventButton from "@/components/events/AddEventButton.vue";
 
 const authStore = useAuthStore();
 const router = useRouter();
@@ -233,6 +234,7 @@ function navAndClose(path) {
       </div>
 
       <div class="d-flex align-items-center gap-2">
+        <AddEventButton />
         <button class="btn btn-outline btn-sm" @click="switchTheme">
           <FontAwesomeIcon :icon="theme === 'light' ? faMoon : faSun" />
         </button>
@@ -461,6 +463,10 @@ function navAndClose(path) {
       </ul>
 
       <hr />
+
+      <div class="px-3 mb-3">
+        <AddEventButton />
+      </div>
 
       <div class="d-flex justify-content-between align-items-center px-3">
         <button class="btn btn-outline" @click="switchTheme">
