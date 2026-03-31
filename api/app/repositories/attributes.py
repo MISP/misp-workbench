@@ -87,7 +87,11 @@ def get_attributes_from_opensearch(
         "sort": [{"timestamp": {"order": "desc"}}],
     }
 
-    response = client.search(index="misp-attributes", body=query_body)
+    try:
+        response = client.search(index="misp-attributes", body=query_body)
+    except NotFoundError:
+        return Page(items=[], total=0, page=params.page, size=params.size, pages=0)
+
     total = response["hits"]["total"]["value"]
     hits = response["hits"]["hits"]
 
@@ -373,10 +377,13 @@ def get_vulnerability_attributes(
     if event_uuid is not None:
         must_clauses.append({"term": {"event_uuid.keyword": event_uuid}})
 
-    response = client.search(
-        index="misp-attributes",
-        body={"query": {"bool": {"must": must_clauses}}, "size": 10000},
-    )
+    try:
+        response = client.search(
+            index="misp-attributes",
+            body={"query": {"bool": {"must": must_clauses}}, "size": 10000},
+        )
+    except NotFoundError:
+        return []
     return [
         attribute_schemas.Attribute.model_validate(h["_source"])
         for h in response["hits"]["hits"]
