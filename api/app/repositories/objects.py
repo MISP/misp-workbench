@@ -101,7 +101,7 @@ def get_objects_from_opensearch(
     attr_response = client.search(
         index="misp-attributes",
         body={
-            "query": {"terms": {"object_uuid": object_uuids}},
+            "query": {"terms": {"object_uuid.keyword": object_uuids}},
             "size": 10000,
         },
     )
@@ -210,7 +210,7 @@ def get_objects(
     try:
         attr_response = client.search(
             index="misp-attributes",
-            body={"query": {"terms": {"object_uuid": object_uuids}}, "size": 10000},
+            body={"query": {"terms": {"object_uuid.keyword": object_uuids}}, "size": 10000},
         )
         raw_by_uuid: dict = {}
         for attr_hit in attr_response["hits"]["hits"]:
