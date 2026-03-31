@@ -37,7 +37,7 @@ fastmcp = "^2.0"
 [tool.poetry.dev-dependencies]
 pytest = "^8.4.1"
 pytest-cov = "^6.2.1"
-requests = "^2.32.4"
+requests = "^2.33.0"
 debugpy = "^1.8.14"
 pyupgrade = "^3.20.0"
 autoflake = "^2.3.1"
