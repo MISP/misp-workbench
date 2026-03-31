@@ -1,3 +1,5 @@
+from unittest.mock import MagicMock, patch
+
 import pytest
 from app.auth import auth
 from app.models import organisation as organisation_models
@@ -7,6 +9,26 @@ from app.tests.api_tester import ApiTester
 from fastapi import status
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
+
+
+OPENSEARCH_PATCH = "app.repositories.events.get_opensearch_client"
+
+MOCK_HISTOGRAM_RESPONSE = {
+    "aggregations": {
+        "events_over_time": {
+            "buckets": [
+                {"key_as_string": "2024-01-01T00:00:00.000Z", "key": 1704067200000, "doc_count": 5},
+                {"key_as_string": "2024-01-02T00:00:00.000Z", "key": 1704153600000, "doc_count": 2},
+            ]
+        }
+    }
+}
+
+
+def make_opensearch_mock(search_return=None):
+    mock = MagicMock()
+    mock.search.return_value = search_return or MOCK_HISTOGRAM_RESPONSE
+    return mock
 
 
 class TestEventsResource(ApiTester):
@@ -672,3 +694,61 @@ class TestEventsResource(ApiTester):
 
         assert response.status_code == status.HTTP_404_NOT_FOUND
         assert response.json()["detail"] == "Event not found"
+
+    # ---- GET /events/histogram ----
+
+    @pytest.mark.parametrize("scopes", [["events:read"]])
+    def test_get_events_histogram(self, client: TestClient, auth_token: auth.Token):
+        mock_os = make_opensearch_mock(MOCK_HISTOGRAM_RESPONSE)
+        with patch(OPENSEARCH_PATCH, return_value=mock_os):
+            response = client.get(
+                "/events/histogram",
+                params={"query": ""},
+                headers={"Authorization": "Bearer " + auth_token},
+            )
+        data = response.json()
+
+        assert response.status_code == status.HTTP_200_OK
+        assert "buckets" in data
+        assert len(data["buckets"]) == 2
+        assert data["buckets"][0]["doc_count"] == 5
+        assert data["buckets"][1]["doc_count"] == 2
+
+    @pytest.mark.parametrize("scopes", [["events:read"]])
+    def test_get_events_histogram_with_query(
+        self, client: TestClient, auth_token: auth.Token
+    ):
+        mock_os = make_opensearch_mock(MOCK_HISTOGRAM_RESPONSE)
+        with patch(OPENSEARCH_PATCH, return_value=mock_os):
+            response = client.get(
+                "/events/histogram",
+                params={"query": "malware", "interval": "1d"},
+                headers={"Authorization": "Bearer " + auth_token},
+            )
+
+        assert response.status_code == status.HTTP_200_OK
+        call_body = mock_os.search.call_args.kwargs["body"]
+        assert call_body["aggs"]["events_over_time"]["date_histogram"]["calendar_interval"] == "1d"
+        assert call_body["query"]["bool"]["must"]["query_string"]["query"] == "malware"
+
+    @pytest.mark.parametrize("scopes", [["events:read"]])
+    def test_get_events_histogram_invalid_interval(
+        self, client: TestClient, auth_token: auth.Token
+    ):
+        response = client.get(
+            "/events/histogram",
+            params={"query": "", "interval": "invalid"},
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+
+    @pytest.mark.parametrize("scopes", [[]])
+    def test_get_events_histogram_unauthorized(
+        self, client: TestClient, auth_token: auth.Token
+    ):
+        response = client.get(
+            "/events/histogram",
+            params={"query": ""},
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
