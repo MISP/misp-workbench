@@ -401,7 +401,12 @@ def search_attributes(
     OpenSearchClient = get_opensearch_client()
 
     search_body = {
-        "query": {"query_string": {"query": query, "default_field": "value"}},
+        "query": {
+            "bool": {
+                "must": {"query_string": {"query": query, "default_field": "value"}},
+                "filter": {"term": {"deleted": False}},
+            }
+        },
         "from": from_value,
         "size": size,
         "sort": [{sort_by: {"order": sort_order}}],
