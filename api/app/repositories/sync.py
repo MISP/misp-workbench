@@ -3,11 +3,9 @@ from hashlib import sha1
 from uuid import UUID
 
 from datetime import datetime
-from app.models import event as event_models
 from app.models import tag as tag_models
+from app.schemas import event as event_schemas
 from app.models import user as user_models
-from app.models import attribute as attribute_models
-from app.models import object as object_models
 from app.repositories import attributes as attributes_repository
 from app.repositories import objects as objects_repository
 from app.repositories import tags as tags_repository
@@ -26,7 +24,7 @@ logger = logging.getLogger(__name__)
 
 def create_pulled_tags(
     db: Session,
-    event: event_models.Event,
+    event: event_schemas.Event,
     pulled_tags: list[MISPTag],
     user: user_models.User,
 ) -> list[tag_models.Tag]:
@@ -42,7 +40,7 @@ def create_pulled_tags(
 
 def create_pulled_event_tags(
     db: Session,
-    event: event_models.Event,
+    event: event_schemas.Event,
     pulled_tags: list[MISPTag],
     user: user_models.User,
 ) -> None:
@@ -94,8 +92,8 @@ def create_pulled_event_reports(
 
 def create_pulled_event_attributes(
     db: Session,
-    local_event_id: int,
-    attributes: list[attribute_models.Attribute],
+    event_uuid: str,
+    attributes: list[MISPAttribute],
     user: user_models.User,
 ):
     hashes_dict = {}
@@ -104,26 +102,23 @@ def create_pulled_event_attributes(
             (str(attribute.value) + attribute.type + attribute.category).encode("utf-8")
         ).hexdigest()
         if hash not in hashes_dict:
-            local_attribute = (
-                attributes_repository.create_attribute_from_pulled_attribute(
-                    db, attribute, local_event_id, user
-                )
+            attributes_repository.create_attribute_from_pulled_attribute(
+                db, attribute, event_uuid, user
             )
             hashes_dict[hash] = True
-            db.add(local_attribute)
 
     db.commit()
 
 
 def create_pulled_event_objects(
     db: Session,
-    local_event_id: int,
-    objects: list[object_models.Object],
+    event_uuid: str,
+    objects: list[MISPObject],
     user: user_models.User,
 ):
     for object in objects:
         objects_repository.create_object_from_pulled_object(
-            db, object, local_event_id, user
+            db, object, event_uuid, user
         )
 
     db.commit()
@@ -131,7 +126,7 @@ def create_pulled_event_objects(
 
 def update_pulled_event_objects(
     db: Session,
-    local_event_id: int,
+    event_uuid: str,
     objects: list[MISPObject],
     user: user_models.User,
 ) -> None:
@@ -140,17 +135,17 @@ def update_pulled_event_objects(
 
         if local_object is None:
             objects_repository.create_object_from_pulled_object(
-                db, object, local_event_id, user
+                db, object, event_uuid, user
             )
         else:
             objects_repository.update_object_from_pulled_object(
-                db, local_object, object, local_event_id, user
+                db, local_object, object, event_uuid, user
             )
 
 
 def update_pulled_event_attributes(
     db: Session,
-    local_event_id: int,
+    event_uuid: str,
     attributes: list[MISPAttribute],
     user: user_models.User,
 ) -> None:
@@ -160,13 +155,10 @@ def update_pulled_event_attributes(
         )
 
         if local_attribute is None:
-            local_attribute = (
-                attributes_repository.create_attribute_from_pulled_attribute(
-                    db, pulled_attribute, local_event_id, user
-                )
+            attributes_repository.create_attribute_from_pulled_attribute(
+                db, pulled_attribute, event_uuid, user
             )
-            db.add(local_attribute)
         else:
             attributes_repository.update_attribute_from_pulled_attribute(
-                db, local_attribute, pulled_attribute, local_event_id, user
+                db, local_attribute, pulled_attribute, user
             )

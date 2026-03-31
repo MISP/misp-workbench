@@ -1,13 +1,15 @@
 from unittest.mock import MagicMock, patch
 
-from app.models import attribute as attribute_models
-from app.models import event as event_models
+from uuid import UUID
+
 from app.models import feed as feed_models
-from app.models import object as object_models
-from app.models import object_reference as object_reference_models
 from app.models import tag as tag_models
 from app.models import user as user_models
+from app.repositories import attributes as attributes_repository
+from app.repositories import events as events_repository
 from app.repositories import feeds as feeds_repository
+from app.repositories import object_references as object_references_repository
+from app.repositories import objects as objects_repository
 from app.tests.api_tester import ApiTester
 from app.tests.scenarios import feed_fetch_scenarios
 from sqlalchemy.orm import Session
@@ -43,86 +45,64 @@ class TestFeedsRepository(ApiTester):
             )
 
             # check that the events were created
-            events = (
-                db.query(event_models.Event)
-                .filter(
-                    event_models.Event.uuid
-                    == feed_fetch_scenarios.feed_new_event["Event"]["uuid"]
-                )
-                .all()
+            os_event = events_repository.get_event_from_opensearch(
+                UUID(feed_fetch_scenarios.feed_new_event["Event"]["uuid"])
             )
-            assert len(events) == 1
+            assert os_event is not None
 
             # check that the attributes were created
-            attributes = (
-                db.query(attribute_models.Attribute)
-                .filter(
-                    attribute_models.Attribute.uuid.in_(
-                        [
-                            "317e63e6-b95d-4dd1-b4fd-de2f64f33fd8",
-                            "8be7a04d-c10b-4ef6-854f-2072e67f6cd5",
-                        ]
-                    )
-                )
-                .all()
-            )
-            assert len(attributes) == 2
+            attributes = [
+                attributes_repository.get_attribute_from_opensearch(UUID(u))
+                for u in [
+                    "317e63e6-b95d-4dd1-b4fd-de2f64f33fd8",
+                    "8be7a04d-c10b-4ef6-854f-2072e67f6cd5",
+                ]
+            ]
+            assert len([a for a in attributes if a is not None]) == 2
 
             # check the objects were created
-            objects = (
-                db.query(object_models.Object)
-                .filter(
-                    object_models.Object.uuid == "df23d3be-1179-4824-ac03-471f0bc6d92d"
-                )
-                .all()
+            obj = objects_repository.get_object_from_opensearch(
+                UUID("df23d3be-1179-4824-ac03-471f0bc6d92d")
             )
-            assert len(objects) == 1
+            assert obj is not None
 
             # check the object references were created
-            object_references = (
-                db.query(object_reference_models.ObjectReference)
-                .filter(
-                    object_reference_models.ObjectReference.uuid
-                    == "d7e57f39-4dd5-4b87-b040-75561fa8289e"
-                )
-                .all()
+            object_reference = object_references_repository.get_object_reference_by_uuid(
+                db, UUID("d7e57f39-4dd5-4b87-b040-75561fa8289e")
             )
-            assert len(object_references) == 1
+            assert object_reference is not None
 
             # check the tags were created
             tags = db.query(tag_models.Tag).all()
             assert len(tags) == 4
 
             # check the event tags were created
-            event_tags = (
-                db.query(tag_models.Tag)
-                .join(tag_models.EventTag)
-                .filter(
-                    tag_models.Tag.name.in_(["type:OSINT", "tlp:clear", "tlp:white"]),
-                )
-                .all()
+            os_event = events_repository.get_event_from_opensearch(
+                UUID(feed_fetch_scenarios.feed_new_event["Event"]["uuid"])
             )
-            assert len(event_tags) == 3
+            event_tag_names = {t.name for t in (os_event.tags or [])}
+            assert {"type:OSINT", "tlp:clear", "tlp:white"}.issubset(event_tag_names)
 
             # check the attribute tags were created
-            attribute_tags = (
-                db.query(tag_models.Tag)
-                .join(tag_models.AttributeTag)
-                .filter(
-                    tag_models.Tag.name.in_(["tlp:red"]),
-                )
-                .all()
-            )
-            assert len(attribute_tags) == 1
+            all_attribute_tag_names = set()
+            for uuid in [
+                "317e63e6-b95d-4dd1-b4fd-de2f64f33fd8",
+                "8be7a04d-c10b-4ef6-854f-2072e67f6cd5",
+            ]:
+                attr = attributes_repository.get_attribute_from_opensearch(UUID(uuid))
+                if attr:
+                    for t in (attr.tags or []):
+                        all_attribute_tag_names.add(t.name)
+            assert "tlp:red" in all_attribute_tag_names
 
     def test_fetch_feed_by_id_existing_event(
         self,
         db: Session,
         feed_1: feed_models.Feed,
-        event_1: event_models.Event,
-        attribute_1: attribute_models.Attribute,
-        object_1: object_models.Object,
-        object_attribute_1: attribute_models.Attribute,
+        event_1,
+        attribute_1,
+        object_1,
+        object_attribute_1,
         user_1: user_models.User,
     ):
         # mock remote Feed API calls
@@ -149,60 +129,39 @@ class TestFeedsRepository(ApiTester):
             )
 
             # check that the events was updated
-            event = (
-                db.query(event_models.Event)
-                .filter(
-                    event_models.Event.uuid
-                    == feed_fetch_scenarios.feed_update_event["Event"]["uuid"]
-                )
-                .first()
+            os_event = events_repository.get_event_from_opensearch(
+                UUID(feed_fetch_scenarios.feed_update_event["Event"]["uuid"])
             )
-            assert event.info == "Updated by Feed fetch"
-            assert event.timestamp == 1577836801
+            assert os_event is not None
+            assert os_event.info == "Updated by Feed fetch"
+            assert os_event.timestamp == 1577836801
 
             # check that the attribute was updated
-            attribute = (
-                db.query(attribute_models.Attribute)
-                .filter(
-                    attribute_models.Attribute.uuid
-                    == "7f2fd15d-3c63-47ba-8a39-2c4b0b3314b0"
-                )
-                .first()
+            attribute = attributes_repository.get_attribute_from_opensearch(
+                UUID("7f2fd15d-3c63-47ba-8a39-2c4b0b3314b0")
             )
+            assert attribute is not None
             assert attribute.value == "7edc546f741eff3e13590a62ce2856bb39d8f71d"
             assert attribute.timestamp == 1577836801
 
             # check the object was updated
-            object = (
-                db.query(object_models.Object)
-                .filter(
-                    object_models.Object.uuid == "90e06ef6-26f8-40dd-9fb7-75897445e2a0"
-                )
-                .first()
+            object = objects_repository.get_object_from_opensearch(
+                UUID("90e06ef6-26f8-40dd-9fb7-75897445e2a0")
             )
             assert object.comment == "Object comment updated by Feed fetch"
             assert object.timestamp == 1577836801
 
             # check the object attribute was added
-            object_attribute = (
-                db.query(attribute_models.Attribute)
-                .filter(
-                    attribute_models.Attribute.uuid
-                    == "011aca4f-eaf0-4a06-8133-b69f3806cbe8"
-                )
-                .first()
+            object_attribute = attributes_repository.get_attribute_from_opensearch(
+                UUID("011aca4f-eaf0-4a06-8133-b69f3806cbe8")
             )
+            assert object_attribute is not None
             assert object_attribute.value == "Foobar12345"
             assert object_attribute.timestamp == 1577836801
 
             # check the object references were created
-            object_reference = (
-                db.query(object_reference_models.ObjectReference)
-                .filter(
-                    object_reference_models.ObjectReference.uuid
-                    == "4d4c12b9-e514-496e-a8a6-06d5c6815b97"
-                )
-                .first()
+            object_reference = object_references_repository.get_object_reference_by_uuid(
+                db, UUID("4d4c12b9-e514-496e-a8a6-06d5c6815b97")
             )
             assert (
                 str(object_reference.referenced_uuid)
@@ -210,28 +169,21 @@ class TestFeedsRepository(ApiTester):
             )
 
             # check the event tags were created
-            event_tags = (
-                db.query(tag_models.Tag)
-                .join(tag_models.EventTag)
-                .filter(
-                    tag_models.Tag.name.in_(["EVENT_FEED_ADDED_TAG"]),
-                )
-                .all()
+            os_event = events_repository.get_event_from_opensearch(
+                UUID(feed_fetch_scenarios.feed_update_event["Event"]["uuid"])
             )
-            assert len(event_tags) == 1
+            event_tag_names = {t.name for t in (os_event.tags or [])}
+            assert "EVENT_FEED_ADDED_TAG" in event_tag_names
 
             # check the attribute tags were created
-            attribute_tags = (
-                db.query(tag_models.Tag)
-                .join(tag_models.AttributeTag)
-                .filter(
-                    tag_models.Tag.name.in_(
-                        [
-                            "ATTRIBUTE_EVENT_FEED_ADDED_TAG",
-                            "OBJECT_ATTRIBUTE_EVENT_FEED_ADDED_TAG",
-                        ]
-                    ),
-                )
-                .all()
-            )
-            assert len(attribute_tags) == 2
+            all_attribute_tag_names = set()
+            for uuid in [
+                "7f2fd15d-3c63-47ba-8a39-2c4b0b3314b0",
+                "011aca4f-eaf0-4a06-8133-b69f3806cbe8",
+            ]:
+                attr = attributes_repository.get_attribute_from_opensearch(UUID(uuid))
+                if attr:
+                    for t in (attr.tags or []):
+                        all_attribute_tag_names.add(t.name)
+            assert "ATTRIBUTE_EVENT_FEED_ADDED_TAG" in all_attribute_tag_names
+            assert "OBJECT_ATTRIBUTE_EVENT_FEED_ADDED_TAG" in all_attribute_tag_names

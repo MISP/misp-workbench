@@ -227,6 +227,6 @@ function followObject() {
     :id="`deleteObjectModal_${object.uuid}`"
     @object-deleted="handleObjectDeleted"
     :modal="deleteObjectModal"
-    :object_id="object.uuid"
+    :object_uuid="object.uuid"
   />
 </template>

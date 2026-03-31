@@ -1,10 +1,10 @@
-from app.models import attribute as attribute_models
-from app.models import event as event_models
 from app.models import tag as tag_models
 from app.models import user as user_models
 from app.schemas import tag as tag_schemas
+from app.services.opensearch import get_opensearch_client
 from fastapi import HTTPException, Query, status
 from fastapi_pagination.ext.sqlalchemy import paginate
+from opensearchpy.exceptions import NotFoundError
 from pymisp import MISPTag
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -87,111 +87,124 @@ def delete_tag(db: Session, tag_id: int) -> None:
     db.commit()
 
 
+def _tag_dict(tag: tag_models.Tag) -> dict:
+    return {
+        "id": tag.id,
+        "name": tag.name,
+        "colour": tag.colour,
+        "exportable": tag.exportable,
+        "hide_tag": tag.hide_tag,
+        "numerical_value": tag.numerical_value,
+        "is_galaxy": tag.is_galaxy,
+        "is_custom_galaxy": tag.is_custom_galaxy,
+        "local_only": tag.local_only,
+    }
+
+
 def tag_attribute(
     db: Session,
-    attribute: attribute_models.Attribute,
+    attribute,
     tag: tag_models.Tag,
 ):
+    client = get_opensearch_client()
+    attr_uuid = str(getattr(attribute, "uuid", None))
 
-    db_attribute_tag = (
-        db.query(tag_models.AttributeTag)
-        .filter(
-            tag_models.AttributeTag.attribute_id == attribute.id,
-            tag_models.AttributeTag.tag_id == tag.id,
-        )
-        .first()
+    try:
+        doc = client.get(index="misp-attributes", id=attr_uuid)
+    except NotFoundError:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Attribute not found")
+
+    current_tags = doc["_source"].get("tags", [])
+    if any(t.get("name") == tag.name for t in current_tags):
+        return current_tags
+
+    current_tags.append(_tag_dict(tag))
+    client.update(
+        index="misp-attributes",
+        id=attr_uuid,
+        body={"doc": {"tags": current_tags}},
+        refresh=True,
     )
-
-    if db_attribute_tag is not None:
-        return db_attribute_tag
-
-    db_attribute_tag = tag_models.AttributeTag(
-        event_id=attribute.event_id,
-        attribute_id=attribute.id,
-        tag_id=tag.id,
-    )
-
-    db.add(db_attribute_tag)
-    db.commit()
-    db.refresh(db_attribute_tag)
-
-    return db_attribute_tag
+    return current_tags
 
 
 def untag_attribute(
     db: Session,
-    attribute: attribute_models.Attribute,
+    attribute,
     tag: tag_models.Tag,
 ):
-    db_attribute_tag = (
-        db.query(tag_models.AttributeTag)
-        .filter(
-            tag_models.AttributeTag.attribute_id == attribute.id,
-            tag_models.AttributeTag.tag_id == tag.id,
-        )
-        .first()
+    client = get_opensearch_client()
+    attr_uuid = str(getattr(attribute, "uuid", None))
+
+    try:
+        doc = client.get(index="misp-attributes", id=attr_uuid)
+    except NotFoundError:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Attribute not found")
+
+    current_tags = doc["_source"].get("tags", [])
+    new_tags = [t for t in current_tags if t.get("name") != tag.name]
+    if len(new_tags) == len(current_tags):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tag not found")
+
+    client.update(
+        index="misp-attributes",
+        id=attr_uuid,
+        body={"doc": {"tags": new_tags}},
+        refresh=True,
     )
-
-    if db_attribute_tag is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="AttributeTag not found"
-        )
-
-    db.delete(db_attribute_tag)
-    db.commit()
 
 
 def tag_event(
     db: Session,
-    event: event_models.Event,
+    event,
     tag: tag_models.Tag,
 ):
+    client = get_opensearch_client()
+    event_uuid = str(getattr(event, "uuid", None))
 
-    db_event_tag = (
-        db.query(tag_models.EventTag)
-        .filter(
-            tag_models.EventTag.event_id == event.id,
-            tag_models.EventTag.tag_id == tag.id,
-        )
-        .first()
+    try:
+        doc = client.get(index="misp-events", id=event_uuid)
+    except NotFoundError:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Event not found")
+
+    current_tags = doc["_source"].get("tags", [])
+    if any(t.get("name") == tag.name for t in current_tags):
+        return current_tags
+
+    current_tags.append(_tag_dict(tag))
+    client.update(
+        index="misp-events",
+        id=event_uuid,
+        body={"doc": {"tags": current_tags}},
+        refresh=True,
     )
-
-    if db_event_tag is not None:
-        return db_event_tag
-
-    db_event_tag = tag_models.EventTag(
-        event_id=event.id,
-        tag_id=tag.id,
-    )
-
-    db.add(db_event_tag)
-    db.commit()
-    db.refresh(db_event_tag)
-
-    return db_event_tag
+    return current_tags
 
 
 def untag_event(
     db: Session,
-    event: event_models.Event,
+    event,
     tag: tag_models.Tag,
 ):
-    db_event_tag = (
-        db.query(tag_models.EventTag)
-        .filter(
-            tag_models.EventTag.event_id == event.id,
-            tag_models.EventTag.tag_id == tag.id,
-        )
-        .first()
+    client = get_opensearch_client()
+    event_uuid = str(getattr(event, "uuid", None))
+
+    try:
+        doc = client.get(index="misp-events", id=event_uuid)
+    except NotFoundError:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Event not found")
+
+    current_tags = doc["_source"].get("tags", [])
+    new_tags = [t for t in current_tags if t.get("name") != tag.name]
+    if len(new_tags) == len(current_tags):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tag not found")
+
+    client.update(
+        index="misp-events",
+        id=event_uuid,
+        body={"doc": {"tags": new_tags}},
+        refresh=True,
     )
-
-    if db_event_tag is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="EventTag not found"
-        )
-
-    db.delete(db_event_tag)
-    db.commit()
 
 
 def capture_tag(db: Session, tag: MISPTag, user: user_models.User) -> tag_models.Tag:
@@ -222,6 +235,9 @@ def capture_tag(db: Session, tag: MISPTag, user: user_models.User) -> tag_models
                 local_only=tag.local_only,
             ),
         )
+
+    if db_tag is None:
+        return None
 
     db.add(db_tag)
     db.commit()

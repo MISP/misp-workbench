@@ -124,132 +124,134 @@ function onTypesChanged(types) {
 </script>
 
 <template>
-  <div
-    class="result-section mb-3 col-12 col-md-10 mx-auto"
-    v-if="docs?.results || status.error"
-  >
-    <div class="d-flex justify-content-end gap-2">
-      <div class="btn-group mt-2 mb-2">
-        <slot name="header-extra" />
-        <button
-          v-if="docs?.total > 0"
-          type="button"
-          class="btn btn-sm btn-outline-info dropdown-toggle"
-          data-bs-toggle="dropdown"
-          :disabled="status.exporting"
-        >
-          <span v-if="status.exporting">
-            <FontAwesomeIcon :icon="faSpinner" spin />
-          </span>
-          <span v-else>
-            <FontAwesomeIcon :icon="faFileDownload" /> Download
-          </span>
-        </button>
-        <ul class="dropdown-menu dropdown-menu-end">
-          <li>
-            <button class="dropdown-item" @click="emit('download', 'json')">
-              All results (JSON)
-            </button>
-          </li>
-        </ul>
-      </div>
-
-      <div class="btn-group mt-2 mb-2">
-        <button
-          type="button"
-          class="btn btn-sm btn-outline-info"
-          @click="toggleSortOrder"
-        >
-          <FontAwesomeIcon
-            :icon="sortOrder === 'asc' ? faSortUp : faSortDown"
-          />
-        </button>
-        <button
-          type="button"
-          class="btn btn-sm btn-outline-info dropdown-toggle"
-          data-bs-toggle="dropdown"
-        >
-          {{ SORT_FIELDS.find((f) => f.value === sortBy)?.label }}
-        </button>
-        <ul class="dropdown-menu">
-          <li v-for="field in SORT_FIELDS" :key="field.value">
-            <button
-              class="dropdown-item"
-              :class="{ active: sortBy === field.value }"
-              @click="setSortBy(field.value)"
-            >
-              {{ field.label }}
-            </button>
-          </li>
-        </ul>
-      </div>
-      <div class="btn-group mt-2 mb-2">
-        <button
-          ref="filterButtonEl"
-          type="button"
-          class="btn btn-sm btn-outline-info dropdown-toggle position-relative"
-          :class="{ active: totalFilterCount > 0 }"
-          data-bs-toggle="dropdown"
-          data-bs-auto-close="outside"
-        >
-          <FontAwesomeIcon :icon="faFilter" />
-          <span
-            v-if="totalFilterCount > 0"
-            class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-primary"
-            style="font-size: 0.6em"
-            :title="`${totalFilterCount} filter${totalFilterCount > 1 ? 's' : ''} active`"
+  <div class="ms-4 me-4">
+    <div
+      class="result-section mb-3 col-12 mx-auto"
+      v-if="docs?.results || status.error"
+    >
+      <div class="d-flex justify-content-end gap-2">
+        <div class="btn-group mt-2 mb-2">
+          <slot name="header-extra" />
+          <button
+            v-if="docs?.total > 0"
+            type="button"
+            class="btn btn-sm btn-outline-info dropdown-toggle"
+            data-bs-toggle="dropdown"
+            :disabled="status.exporting"
           >
-            {{ totalFilterCount }}
-          </span>
-        </button>
-        <div class="dropdown-menu p-2" style="min-width: 280px" @click.stop>
-          <template v-if="hasBeenVisible">
-            <div v-for="key in filterFields" :key="key" class="mb-2">
-              <label class="form-label small fw-semibold mb-1">
-                {{ FILTER_LABELS[key] }}
-              </label>
-              <OrganisationMultiSelect
-                v-if="key === 'organisation'"
-                :selected="selectedOrgNames"
-                @update:selected="onOrgsChanged"
-              />
-              <TagsSelect
-                v-else-if="key === 'tags'"
-                model-class="event"
-                :selected-tags="[]"
-                :persist="false"
-                @update:selected-tags="onTagsChanged"
-              />
-              <AttributeTypeMultiSelect
-                v-else-if="key === 'type'"
-                :selected="selectedTypeNames"
-                @update:selected="onTypesChanged"
-              />
-            </div>
-          </template>
+            <span v-if="status.exporting">
+              <FontAwesomeIcon :icon="faSpinner" spin />
+            </span>
+            <span v-else>
+              <FontAwesomeIcon :icon="faFileDownload" /> Download
+            </span>
+          </button>
+          <ul class="dropdown-menu dropdown-menu-end">
+            <li>
+              <button class="dropdown-item" @click="emit('download', 'json')">
+                All results (JSON)
+              </button>
+            </li>
+          </ul>
         </div>
-      </div>
-    </div>
 
-    <slot />
-    <div class="d-flex justify-content-center">
-      <div v-if="status?.error" class="alert alert-danger mt-3">
-        <ApiError :errors="status.error" />
-      </div>
-      <div
-        v-if="docs && docs.total === 0"
-        class="text-center text-muted fst-italic mt-3"
-      >
-        No {{ title.toLowerCase() }} found.
-        <div v-if="docs.timed_out" class="alert alert-danger mt-3">
-          Request timed out.
+        <div class="btn-group mt-2 mb-2">
+          <button
+            type="button"
+            class="btn btn-sm btn-outline-info"
+            @click="toggleSortOrder"
+          >
+            <FontAwesomeIcon
+              :icon="sortOrder === 'asc' ? faSortUp : faSortDown"
+            />
+          </button>
+          <button
+            type="button"
+            class="btn btn-sm btn-outline-info dropdown-toggle"
+            data-bs-toggle="dropdown"
+          >
+            {{ SORT_FIELDS.find((f) => f.value === sortBy)?.label }}
+          </button>
+          <ul class="dropdown-menu">
+            <li v-for="field in SORT_FIELDS" :key="field.value">
+              <button
+                class="dropdown-item"
+                :class="{ active: sortBy === field.value }"
+                @click="setSortBy(field.value)"
+              >
+                {{ field.label }}
+              </button>
+            </li>
+          </ul>
+        </div>
+        <div class="btn-group mt-2 mb-2">
+          <button
+            ref="filterButtonEl"
+            type="button"
+            class="btn btn-sm btn-outline-info dropdown-toggle position-relative"
+            :class="{ active: totalFilterCount > 0 }"
+            data-bs-toggle="dropdown"
+            data-bs-auto-close="outside"
+          >
+            <FontAwesomeIcon :icon="faFilter" />
+            <span
+              v-if="totalFilterCount > 0"
+              class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-primary"
+              style="font-size: 0.6em"
+              :title="`${totalFilterCount} filter${totalFilterCount > 1 ? 's' : ''} active`"
+            >
+              {{ totalFilterCount }}
+            </span>
+          </button>
+          <div class="dropdown-menu p-2" style="min-width: 280px" @click.stop>
+            <template v-if="hasBeenVisible">
+              <div v-for="key in filterFields" :key="key" class="mb-2">
+                <label class="form-label small fw-semibold mb-1">
+                  {{ FILTER_LABELS[key] }}
+                </label>
+                <OrganisationMultiSelect
+                  v-if="key === 'organisation'"
+                  :selected="selectedOrgNames"
+                  @update:selected="onOrgsChanged"
+                />
+                <TagsSelect
+                  v-else-if="key === 'tags'"
+                  model-class="event"
+                  :selected-tags="[]"
+                  :persist="false"
+                  @update:selected-tags="onTagsChanged"
+                />
+                <AttributeTypeMultiSelect
+                  v-else-if="key === 'type'"
+                  :selected="selectedTypeNames"
+                  @update:selected="onTypesChanged"
+                />
+              </div>
+            </template>
+          </div>
         </div>
       </div>
+
+      <slot />
+      <div class="d-flex justify-content-center">
+        <div v-if="status?.error" class="alert alert-danger mt-3">
+          <ApiError :errors="status.error" />
+        </div>
+        <div
+          v-if="docs && docs.total === 0"
+          class="text-center text-muted fst-italic mt-3"
+        >
+          No {{ title.toLowerCase() }} found.
+          <div v-if="docs.timed_out" class="alert alert-danger mt-3">
+            Request timed out.
+          </div>
+        </div>
+      </div>
+      <Paginate
+        v-if="pageCount > 1"
+        :page-count="pageCount"
+        :click-handler="(page) => emit('page-change', page)"
+      />
     </div>
-    <Paginate
-      v-if="pageCount > 1"
-      :page-count="pageCount"
-      :click-handler="(page) => emit('page-change', page)"
-    />
   </div>
 </template>

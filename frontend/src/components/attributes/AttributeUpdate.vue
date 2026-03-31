@@ -15,7 +15,7 @@ function onSubmit(values, { setErrors }) {
   return attributesStore
     .update(values.attribute)
     .then(() => {
-      router.push(`/attributes/${values.attribute.id}`);
+      router.push(`/attributes/${values.attribute.uuid}`);
     })
     .catch((error) => setErrors({ apiError: error }));
 }
@@ -48,19 +48,6 @@ function handleDistributionLevelUpdated(distributionLevelId) {
         :validation-schema="AttributeSchema"
         v-slot="{ errors }"
       >
-        <div class="mb-3">
-          <label for="attribute.id">id</label>
-          <Field
-            class="form-control"
-            id="attribute.id"
-            name="attribute.id"
-            v-model="attribute.id"
-            :class="{ 'is-invalid': errors['attribute.id'] }"
-            disabled
-          >
-          </Field>
-          <div class="invalid-feedback">{{ errors["attribute.id"] }}</div>
-        </div>
         <div class="mb-3">
           <label for="attribute.uuid">uuid</label>
           <Field

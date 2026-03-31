@@ -5,14 +5,14 @@ import { storeToRefs } from "pinia";
 const attributesStore = useAttributesStore();
 const { status } = storeToRefs(attributesStore);
 
-const props = defineProps(["attribute_id", "modal"]);
+const props = defineProps(["attribute_uuid", "modal"]);
 const emit = defineEmits(["attribute-deleted"]);
 
 function deleteAttribute() {
   return attributesStore
-    .delete(props.attribute_id)
+    .delete(props.attribute_uuid)
     .then(() => {
-      emit("attribute-deleted", { attribute_id: props.attribute_id });
+      emit("attribute-deleted", { attribute_uuid: props.attribute_uuid });
       props.modal.hide();
     })
     .catch((error) => (status.error = error));
@@ -20,11 +20,11 @@ function deleteAttribute() {
 </script>
 
 <template>
-  <div :id="`deleteAttributeModal_${attribute_id}`" class="modal">
+  <div :id="`deleteAttributeModal_${attribute_uuid}`" class="modal">
     <div class="modal-dialog modal-lg">
       <div class="modal-content">
         <div class="modal-header">
-          <h5 class="modal-title">Delete Attribute #{{ attribute_id }}</h5>
+          <h5 class="modal-title">Delete Attribute #{{ attribute_uuid }}</h5>
           <button
             type="button"
             class="btn-close"

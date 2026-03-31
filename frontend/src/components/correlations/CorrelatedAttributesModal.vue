@@ -15,12 +15,12 @@ function goToEvent(id) {
 </script>
 
 <template>
-  <div :id="`correlatedAttributesModal${attribute.id}`" class="modal">
+  <div :id="`correlatedAttributesModal${attribute.uuid}`" class="modal">
     <div class="modal-dialog modal-lg">
       <div class="modal-content">
         <div class="modal-header">
           <h5 class="modal-title">
-            Attribute #{{ attribute.id }} Correlations
+            Attribute {{ attribute.uuid }} Correlations
           </h5>
           <button
             type="button"

@@ -1,22 +1,21 @@
+import math
 import time
-from typing import Iterable, Union
-from uuid import UUID
+from datetime import datetime
+from typing import Iterable, Optional
+from uuid import UUID, uuid4
 from app.models.event import DistributionLevel
 from app.services.opensearch import get_opensearch_client
-from app.models import attribute as attribute_models
 from app.models import tag as tag_models
 from app.models import user as user_models
+from app.schemas import tag as tag_schemas
 from app.repositories import attachments as attachments_repository
-from app.repositories import events as events_repository
 from app.schemas import attribute as attribute_schemas
 from app.schemas import event as event_schemas
 from app.worker import tasks
 from fastapi import HTTPException, status
-from fastapi_pagination.ext.sqlalchemy import paginate
+from fastapi_pagination import Page, Params
 from pymisp import MISPAttribute, MISPTag
 from sqlalchemy.orm import Session
-from sqlalchemy.sql import select
-from fastapi_pagination import Page
 from collections import defaultdict
 from opensearchpy.exceptions import NotFoundError
 
@@ -56,108 +55,133 @@ def enrich_attributes_page_with_correlations(
     return attributes_page
 
 
-def get_attributes(
-    db: Session,
+def get_attributes_from_opensearch(
+    params: Params,
     event_uuid: str = None,
     deleted: bool = None,
-    object_id: int = None,
+    object_uuid: UUID = None,
     type: str = None,
 ) -> Page[attribute_schemas.Attribute]:
-    query = select(attribute_models.Attribute)
+    client = get_opensearch_client()
 
+    must_clauses = []
     if event_uuid is not None:
-        db_event = events_repository.get_event_by_uuid(event_uuid=event_uuid, db=db)
-        if db_event is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="Event not found"
-            )
-        query = query.where(attribute_models.Attribute.event_id == db_event.id)
-
+        must_clauses.append({"term": {"event_uuid.keyword": event_uuid}})
     if deleted is not None:
-        query = query.where(attribute_models.Attribute.deleted == deleted)
-
+        must_clauses.append({"term": {"deleted": deleted}})
     if type is not None:
-        query = query.where(attribute_models.Attribute.type == type)
+        must_clauses.append({"term": {"type.keyword": type}})
 
-    query = query.where(attribute_models.Attribute.object_id == object_id)
+    # None → standalone attributes only (no parent object)
+    if object_uuid is None:
+        must_clauses.append(
+            {"bool": {"must_not": [{"exists": {"field": "object_uuid"}}]}}
+        )
+    else:
+        must_clauses.append({"term": {"object_uuid": str(object_uuid)}})
 
-    page_results = paginate(db, query)
+    query_body = {
+        "query": {"bool": {"must": must_clauses}},
+        "from": (params.page - 1) * params.size,
+        "size": params.size,
+        "sort": [{"timestamp": {"order": "desc"}}],
+    }
 
-    return enrich_attributes_page_with_correlations(page_results)
+    try:
+        response = client.search(index="misp-attributes", body=query_body)
+    except NotFoundError:
+        return Page(items=[], total=0, page=params.page, size=params.size, pages=0)
 
+    total = response["hits"]["total"]["value"]
+    hits = response["hits"]["hits"]
 
-def get_attribute_by_id(
-    db: Session, attribute_id: int
-) -> Union[attribute_models.Attribute, None]:
-    return (
-        db.query(attribute_models.Attribute)
-        .filter(attribute_models.Attribute.id == attribute_id)
-        .first()
+    items = [attribute_schemas.Attribute.model_validate(hit["_source"]) for hit in hits]
+
+    pages = math.ceil(total / params.size) if params.size > 0 else 0
+    attributes_page = Page(
+        items=items, total=total, page=params.page, size=params.size, pages=pages
     )
+    return enrich_attributes_page_with_correlations(attributes_page)
+
+
+def get_attribute_from_opensearch(
+    attribute_uuid: UUID,
+) -> Optional[attribute_schemas.Attribute]:
+    client = get_opensearch_client()
+
+    try:
+        doc = client.get(index="misp-attributes", id=str(attribute_uuid))
+        source = doc["_source"]
+    except NotFoundError:
+        return None
+
+    return attribute_schemas.Attribute.model_validate(source)
 
 
 def get_attribute_by_uuid(
     db: Session, attribute_uuid: UUID
-) -> Union[attribute_models.Attribute, None]:
-    return (
-        db.query(attribute_models.Attribute)
-        .filter(attribute_models.Attribute.uuid == attribute_uuid)
-        .first()
-    )
+) -> Optional[attribute_schemas.Attribute]:
+    return get_attribute_from_opensearch(attribute_uuid)
 
 
 def create_attribute(
     db: Session, attribute: attribute_schemas.AttributeCreate
-) -> attribute_models.Attribute:
-    db_attribute = attribute_models.Attribute(
-        event_id=attribute.event_id,
-        object_id=(
-            attribute.object_id
-            if attribute.object_id is not None and attribute.object_id > 0
-            else None
-        ),
-        object_relation=attribute.object_relation,
-        category=attribute.category,
-        type=attribute.type,
-        value=attribute.value,
-        to_ids=attribute.to_ids,
-        uuid=attribute.uuid,
-        timestamp=attribute.timestamp or time.time(),
-        distribution=(
-            event_schemas.DistributionLevel(attribute.distribution)
-            if attribute.distribution is not None
-            else event_schemas.DistributionLevel.INHERIT_EVENT
-        ),
-        sharing_group_id=attribute.sharing_group_id,
-        comment=attribute.comment,
-        deleted=attribute.deleted,
-        disable_correlation=attribute.disable_correlation,
-        first_seen=attribute.first_seen,
-        last_seen=attribute.last_seen,
-    )
-    db.add(db_attribute)
-    db.commit()
-    db.refresh(db_attribute)
+) -> attribute_schemas.Attribute:
+    client = get_opensearch_client()
+    attribute_uuid = str(attribute.uuid or uuid4())
+    now = int(time.time())
 
-    if db_attribute is not None:
-        tasks.handle_created_attribute.delay(
-            db_attribute.id, db_attribute.object_id, db_attribute.event_id
-        )
+    event_uuid = str(attribute.event_uuid) if attribute.event_uuid else None
 
-    return db_attribute
+    dist = attribute.distribution
+    dist_val = dist.value if hasattr(dist, "value") else (dist if dist is not None else 5)
+
+    attr_doc = {
+        "uuid": attribute_uuid,
+        "event_uuid": event_uuid,
+        "object_uuid": str(attribute.object_uuid) if attribute.object_uuid else None,
+        "object_relation": attribute.object_relation,
+        "category": attribute.category,
+        "type": attribute.type,
+        "value": attribute.value,
+        "to_ids": attribute.to_ids if attribute.to_ids is not None else True,
+        "timestamp": attribute.timestamp or now,
+        "distribution": dist_val,
+        "sharing_group_id": attribute.sharing_group_id,
+        "comment": attribute.comment or "",
+        "deleted": attribute.deleted or False,
+        "disable_correlation": attribute.disable_correlation or False,
+        "first_seen": attribute.first_seen,
+        "last_seen": attribute.last_seen,
+        "data": "",
+        "tags": [],
+        "@timestamp": datetime.fromtimestamp(attribute.timestamp or now).isoformat(),
+    }
+
+    client.index(index="misp-attributes", id=attribute_uuid, body=attr_doc, refresh=True)
+
+    tasks.handle_created_attribute.delay(attribute_uuid, attr_doc["object_uuid"], event_uuid)
+
+    return attribute_schemas.Attribute.model_validate(attr_doc)
 
 
 def create_attribute_from_pulled_attribute(
     db: Session,
     pulled_attribute: MISPAttribute,
-    local_event_id: int,
+    event_uuid: str,
     user: user_models.User,
-) -> attribute_models.Attribute:
+) -> attribute_schemas.Attribute:
     # TODO: process sharing group // captureSG
     # TODO: enforce warninglist
 
-    local_attribute = attribute_models.Attribute(
-        event_id=local_event_id,
+    dist = pulled_attribute.distribution
+    dist_val = (
+        event_schemas.DistributionLevel(dist)
+        if dist is not None
+        else event_schemas.DistributionLevel.INHERIT_EVENT
+    )
+
+    attr_create = attribute_schemas.AttributeCreate(
         category=pulled_attribute.category,
         type=pulled_attribute.type,
         value=(
@@ -167,59 +191,50 @@ def create_attribute_from_pulled_attribute(
         ),
         to_ids=pulled_attribute.to_ids,
         uuid=pulled_attribute.uuid,
-        timestamp=pulled_attribute.timestamp.timestamp(),
-        distribution=event_schemas.DistributionLevel(
-            event_schemas.DistributionLevel(pulled_attribute.distribution)
-            if pulled_attribute.distribution is not None
-            else event_schemas.DistributionLevel.INHERIT_EVENT
-        ),
+        timestamp=int(pulled_attribute.timestamp.timestamp()),
+        distribution=dist_val,
         comment=pulled_attribute.comment,
         sharing_group_id=None,
         deleted=pulled_attribute.deleted,
         disable_correlation=pulled_attribute.disable_correlation,
         object_relation=getattr(pulled_attribute, "object_relation", None),
         first_seen=(
-            pulled_attribute.first_seen.timestamp()
-            if hasattr(pulled_attribute, "first_seen")
+            int(pulled_attribute.first_seen.timestamp())
+            if hasattr(pulled_attribute, "first_seen") and pulled_attribute.first_seen
             else None
         ),
         last_seen=(
-            pulled_attribute.last_seen.timestamp()
-            if hasattr(pulled_attribute, "last_seen")
+            int(pulled_attribute.last_seen.timestamp())
+            if hasattr(pulled_attribute, "last_seen") and pulled_attribute.last_seen
             else None
         ),
+        event_uuid=event_uuid,
     )
 
+    local_attribute = create_attribute(db, attr_create)
+
     if pulled_attribute.data is not None:
-        # store file
         attachments_repository.store_attachment(
             str(pulled_attribute.uuid), pulled_attribute.data.getvalue()
         )
 
-    # TODO: process sigthings
+    # TODO: process sightings
     # TODO: process galaxies
 
-    capture_attribute_tags(
-        db, local_attribute, pulled_attribute.tags, local_event_id, user
-    )
+    capture_attribute_tags(db, pulled_attribute.tags, user, str(local_attribute.uuid))
 
     return local_attribute
 
 
 def update_attribute_from_pulled_attribute(
     db: Session,
-    local_attribute: attribute_models.Attribute,
+    local_attribute: attribute_schemas.Attribute,
     pulled_attribute: MISPAttribute,
-    local_event_id: int,
     user: user_models.User,
-) -> attribute_models.Attribute:
-
-    pulled_attribute.id = local_attribute.id
-    pulled_attribute.event_id = local_event_id
+) -> attribute_schemas.Attribute:
 
     if local_attribute.timestamp < pulled_attribute.timestamp.timestamp():
         attribute_patch = attribute_schemas.AttributeUpdate(
-            event_id=local_event_id,
             category=pulled_attribute.category,
             type=pulled_attribute.type,
             value=(
@@ -241,92 +256,73 @@ def update_attribute_from_pulled_attribute(
             ),
             first_seen=(
                 pulled_attribute.first_seen.timestamp()
-                if hasattr(pulled_attribute, "first_seen")
+                if hasattr(pulled_attribute, "first_seen") and pulled_attribute.first_seen
                 else local_attribute.first_seen
             ),
             last_seen=(
                 pulled_attribute.last_seen.timestamp()
-                if hasattr(pulled_attribute, "last_seen")
+                if hasattr(pulled_attribute, "last_seen") and pulled_attribute.last_seen
                 else local_attribute.last_seen
             ),
         )
-        update_attribute(db, local_attribute.id, attribute_patch)
+        update_attribute(db, local_attribute.uuid, attribute_patch)
 
     if pulled_attribute.data is not None:
-        # store file
         attachments_repository.store_attachment(
             str(pulled_attribute.uuid), pulled_attribute.data.getvalue()
         )
 
-    capture_attribute_tags(
-        db, local_attribute, pulled_attribute.tags, local_event_id, user
-    )
+    capture_attribute_tags(db, pulled_attribute.tags, user, str(local_attribute.uuid))
 
-    # TODO: process sigthings
+    # TODO: process sightings
     # TODO: process galaxies
 
-    tasks.handle_updated_attribute.delay(
-        local_attribute.id, local_attribute.object_id, local_attribute.event_id
-    )
-
-    return local_attribute
+    return get_attribute_from_opensearch(local_attribute.uuid)
 
 
 def update_attribute(
-    db: Session, attribute_id: int, attribute: attribute_schemas.AttributeUpdate
-) -> attribute_models.Attribute:
-    # TODO: Attribute::beforeValidate() && Attribute::$validate
-    db_attribute = get_attribute_by_id(db, attribute_id=attribute_id)
+    db: Session, attribute_uuid: UUID, attribute: attribute_schemas.AttributeUpdate
+) -> attribute_schemas.Attribute:
+    client = get_opensearch_client()
+    os_attr = get_attribute_from_opensearch(attribute_uuid)
+    if os_attr is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Attribute not found")
 
-    if db_attribute is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Attribute not found"
-        )
+    patch = attribute.model_dump(exclude_unset=True)
+    for k, v in list(patch.items()):
+        if hasattr(v, "value"):
+            patch[k] = v.value
 
-    attribute_patch = attribute.model_dump(exclude_unset=True)
-    for key, value in attribute_patch.items():
-        setattr(db_attribute, key, value)
+    client.update(index="misp-attributes", id=str(os_attr.uuid), body={"doc": patch}, refresh=True)
 
-    db.add(db_attribute)
-    db.commit()
-    db.refresh(db_attribute)
+    tasks.handle_updated_attribute.delay(str(os_attr.uuid), os_attr.object_uuid, str(os_attr.event_uuid) if os_attr.event_uuid else None)
 
-    tasks.handle_updated_attribute.delay(
-        db_attribute.id, db_attribute.object_id, db_attribute.event_id
+    return get_attribute_from_opensearch(os_attr.uuid)
+
+
+def delete_attribute(db: Session, attribute_uuid: UUID) -> None:
+    client = get_opensearch_client()
+
+    os_attr = get_attribute_from_opensearch(attribute_uuid)
+
+    if os_attr is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Attribute not found")
+
+    client.update(
+        index="misp-attributes",
+        id=str(os_attr.uuid),
+        body={"doc": {"deleted": True}},
+        refresh=True,
     )
 
-    return db_attribute
-
-
-def delete_attribute(db: Session, attribute_id: int | str) -> None:
-
-    if isinstance(attribute_id, str):
-        db_attribute = get_attribute_by_uuid(db, attribute_uuid=UUID(attribute_id))
-    else:
-        db_attribute = get_attribute_by_id(db, attribute_id=attribute_id)
-
-    if db_attribute is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Attribute not found"
-        )
-
-    db_attribute.deleted = True
-
-    db.add(db_attribute)
-    db.commit()
-    db.refresh(db_attribute)
-
-    tasks.handle_deleted_attribute.delay(
-        db_attribute.id, db_attribute.object_id, db_attribute.event_id
-    )
+    tasks.handle_deleted_attribute.delay(str(os_attr.uuid), os_attr.object_uuid, str(os_attr.event_uuid) if os_attr.event_uuid else None)
 
 
 def capture_attribute_tags(
     db: Session,
-    db_attribute: attribute_models.Attribute,
     tags: list[MISPTag],
-    local_event_id: int,
     user: user_models.User,
+    attribute_uuid: str = None,
 ):
     tag_name_to_db_tag = {}
 
@@ -359,41 +355,39 @@ def capture_attribute_tags(
         db.add_all(new_tags)
         db.commit()
 
-    for tag in tags:
-        if tag.local:
-            continue
-
-        db_tag = tag_name_to_db_tag[tag.name]
-
-        db_attribute_tag = tag_models.AttributeTag(
-            attribute=db_attribute,
-            event_id=local_event_id,
-            tag_id=db_tag.id,
-            local=tag.local,
+    if attribute_uuid and tag_name_to_db_tag:
+        client = get_opensearch_client()
+        tag_dicts = [
+            tag_schemas.Tag.model_validate(db_tag).model_dump()
+            for db_tag in tag_name_to_db_tag.values()
+        ]
+        client.update(
+            index="misp-attributes",
+            id=attribute_uuid,
+            body={"doc": {"tags": tag_dicts}},
+            refresh=True,
         )
-        db.add(db_attribute_tag)
-
-    db.commit()
 
 
 def get_vulnerability_attributes(
     db: Session, event_uuid: str = None
 ) -> list[attribute_schemas.Attribute]:
-    query = select(attribute_models.Attribute).where(
-        attribute_models.Attribute.type == "vulnerability"
-    )
-
+    client = get_opensearch_client()
+    must_clauses = [{"term": {"type.keyword": "vulnerability"}}]
     if event_uuid is not None:
-        db_event = events_repository.get_event_by_uuid(event_uuid=event_uuid, db=db)
-        if db_event is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="Event not found"
-            )
-        query = query.where(attribute_models.Attribute.event_id == db_event.id)
+        must_clauses.append({"term": {"event_uuid.keyword": event_uuid}})
 
-    results = db.execute(query).scalars().unique().all()
-
-    return results
+    try:
+        response = client.search(
+            index="misp-attributes",
+            body={"query": {"bool": {"must": must_clauses}}, "size": 10000},
+        )
+    except NotFoundError:
+        return []
+    return [
+        attribute_schemas.Attribute.model_validate(h["_source"])
+        for h in response["hits"]["hits"]
+    ]
 
 
 def search_attributes(
@@ -407,7 +401,12 @@ def search_attributes(
     OpenSearchClient = get_opensearch_client()
 
     search_body = {
-        "query": {"query_string": {"query": query, "default_field": "value"}},
+        "query": {
+            "bool": {
+                "must": {"query_string": {"query": query, "default_field": "value"}},
+                "filter": {"term": {"deleted": False}},
+            }
+        },
         "from": from_value,
         "size": size,
         "sort": [{sort_by: {"order": sort_order}}],

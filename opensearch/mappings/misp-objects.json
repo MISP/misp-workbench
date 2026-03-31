@@ -28,8 +28,8 @@
             "distribution": {
                 "type": "long"
             },
-            "event_id": {
-                "type": "long"
+            "event_uuid": {
+                "type": "keyword"
             },
             "event_uuid": {
                 "type": "text",
@@ -67,10 +67,22 @@
                     }
                 }
             },
+            "sharing_group_id": {
+                "type": "long"
+            },
             "object_references": {
                 "properties": {
                     "@timestamp": {
                         "type": "date"
+                    },
+                    "source_uuid": {
+                        "type": "text",
+                        "fields": {
+                            "keyword": {
+                                "type": "keyword",
+                                "ignore_above": 256
+                            }
+                        }
                     },
                     "comment": {
                         "type": "text",
@@ -90,8 +102,8 @@
                     "id": {
                         "type": "long"
                     },
-                    "object_id": {
-                        "type": "long"
+                    "object_uuid": {
+                        "type": "keyword"
                     },
                     "referenced_id": {
                         "type": "long"

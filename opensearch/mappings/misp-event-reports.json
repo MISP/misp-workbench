@@ -25,14 +25,8 @@
                     }
                 }
             },
-            "event_id": {
-                "type": "text",
-                "fields": {
-                    "keyword": {
-                        "type": "keyword",
-                        "ignore_above": 256
-                    }
-                }
+            "event_uuid": {
+                "type": "keyword"
             },
             "event_uuid": {
                 "type": "text",

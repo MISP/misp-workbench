@@ -7,7 +7,7 @@ const sample = {
   uuid: "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
   event_id: 7,
   event_uuid: "3f5b1c7e-4a2d-4e8f-b6c1-9d0e2a3f5b1c",
-  object_id: null,
+  object_uuid: null,
   object_relation: null,
   category: "Network activity",
   type: "ip-dst",
@@ -168,10 +168,13 @@ pre {
                   </td>
                 </tr>
                 <tr>
-                  <td><code>object_id</code> / <code>object_relation</code></td>
-                  <td class="text-muted">integer / keyword</td>
                   <td>
-                    Parent object ID and relation key (null if not in an object)
+                    <code>object_uuid</code> / <code>object_relation</code>
+                  </td>
+                  <td class="text-muted">uuid / keyword</td>
+                  <td>
+                    Parent object UUID and relation key (null if not in an
+                    object)
                   </td>
                 </tr>
               </tbody>

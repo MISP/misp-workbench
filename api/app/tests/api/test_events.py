@@ -1,7 +1,5 @@
 import pytest
 from app.auth import auth
-from app.models import attribute as attribute_models
-from app.models import event as event_models
 from app.models import organisation as organisation_models
 from app.models import tag as tag_models
 from app.models import user as user_models
@@ -17,28 +15,21 @@ class TestEventsResource(ApiTester):
         self,
         client: TestClient,
         user_1: user_models.User,
-        event_1: event_models.Event,
-        attribute_1: attribute_models.Attribute,
+        event_1: object,
         auth_token: auth.Token,
     ):
         response = client.get(
-            "/events/", headers={"Authorization": "Bearer " + auth_token},
-            params={"include_attributes": True}
+            "/events/", headers={"Authorization": "Bearer " + auth_token}
         )
         data = response.json()["items"]
 
         assert response.status_code == status.HTTP_200_OK
 
         assert len(data) == 1
-        assert data[0]["id"] == event_1.id
         assert data[0]["info"] == event_1.info
         assert data[0]["org_id"] == event_1.org_id
         assert data[0]["orgc_id"] == event_1.orgc_id
         assert data[0]["user_id"] == user_1.id
-        assert data[0]["attributes"][0]["event_id"] == attribute_1.event_id
-        assert data[0]["attributes"][0]["value"] == attribute_1.value
-        assert data[0]["attributes"][0]["category"] == attribute_1.category
-        assert data[0]["attributes"][0]["type"] == attribute_1.type
 
     @pytest.mark.parametrize("scopes", [[]])
     def test_get_events_unauthorized(
@@ -71,7 +62,7 @@ class TestEventsResource(ApiTester):
         data = response.json()
 
         assert response.status_code == status.HTTP_201_CREATED
-        assert data["id"] is not None
+        assert data["uuid"] is not None
         assert data["info"] == "test create event"
         assert data["user_id"] == api_tester_user.id
         assert data["org_id"] == api_tester_user.org_id
@@ -109,7 +100,7 @@ class TestEventsResource(ApiTester):
 
     @pytest.mark.parametrize("scopes", [["events:create"]])
     def test_create_event_invalid_exists(
-        self, client: TestClient, event_1: event_models.Event, auth_token: auth.Token
+        self, client: TestClient, event_1: object, auth_token: auth.Token
     ):
         # event with duplicated info
         response = client.post(
@@ -132,11 +123,11 @@ class TestEventsResource(ApiTester):
     def test_update_event(
         self,
         client: TestClient,
-        event_1: event_models.Event,
+        event_1: object,
         auth_token: auth.Token,
     ):
         response = client.patch(
-            f"/events/{event_1.id}",
+            f"/events/{event_1.uuid}",
             json={
                 "info": "updated via API",
                 "published": False,
@@ -153,11 +144,11 @@ class TestEventsResource(ApiTester):
     def test_delete_event(
         self,
         client: TestClient,
-        event_1: event_models.Event,
+        event_1: object,
         auth_token: auth.Token,
     ):
         response = client.delete(
-            f"/events/{event_1.id}",
+            f"/events/{event_1.uuid}",
             headers={"Authorization": "Bearer " + auth_token},
         )
 
@@ -167,53 +158,45 @@ class TestEventsResource(ApiTester):
     def test_tag_event(
         self,
         client: TestClient,
-        event_1: event_models.Event,
+        event_1: object,
         tlp_white_tag: tag_models.Tag,
         auth_token: auth.Token,
         db: Session,
     ):
         response = client.post(
-            f"/events/{event_1.id}/tag/{tlp_white_tag.name}",
+            f"/events/{event_1.uuid}/tag/{tlp_white_tag.name}",
             headers={"Authorization": "Bearer " + auth_token},
         )
 
         assert response.status_code == status.HTTP_201_CREATED
 
-        event_tag = (
-            db.query(tag_models.EventTag)
-            .filter(
-                tag_models.EventTag.event_id == event_1.id,
-                tag_models.EventTag.tag_id == tlp_white_tag.id,
-            )
-            .first()
-        )
-        assert event_tag is not None
+        from app.services.opensearch import get_opensearch_client
+        os_client = get_opensearch_client()
+        os_event = os_client.get(index="misp-events", id=str(event_1.uuid))
+        tag_names = [t.get("name") for t in os_event["_source"].get("tags", [])]
+        assert tlp_white_tag.name in tag_names
 
     @pytest.mark.parametrize("scopes", [["events:update"]])
     def test_untag_event(
         self,
         client: TestClient,
-        event_1: event_models.Event,
+        event_1: object,
         tlp_white_tag: tag_models.Tag,
         auth_token: auth.Token,
         db: Session,
     ):
         response = client.delete(
-            f"/events/{event_1.id}/tag/{tlp_white_tag.name}",
+            f"/events/{event_1.uuid}/tag/{tlp_white_tag.name}",
             headers={"Authorization": "Bearer " + auth_token},
         )
 
         assert response.status_code == status.HTTP_204_NO_CONTENT
 
-        event_tag = (
-            db.query(tag_models.EventTag)
-            .filter(
-                tag_models.EventTag.event_id == event_1.id,
-                tag_models.EventTag.tag_id == tlp_white_tag.id,
-            )
-            .first()
-        )
-        assert event_tag is None
+        from app.services.opensearch import get_opensearch_client
+        os_client = get_opensearch_client()
+        os_event = os_client.get(index="misp-events", id=str(event_1.uuid))
+        tag_names = [t.get("name") for t in os_event["_source"].get("tags", [])]
+        assert tlp_white_tag.name not in tag_names
 
     @pytest.fixture(scope="class")
     def event_2(
@@ -223,19 +206,21 @@ class TestEventsResource(ApiTester):
         user_1: user_models.User,
     ):
         """A second event used for force-delete and other destructive tests."""
-        event_2 = event_models.Event(
+        from datetime import datetime
+        from uuid import UUID
+        from app.repositories import events as events_repository
+        from app.schemas import event as event_schemas
+
+        event_create = event_schemas.EventCreate(
             info="test event 2 for force delete",
             user_id=user_1.id,
             orgc_id=1,
             org_id=organisation_1.id,
-            date="2020-01-01",
-            uuid="d8a2b0c1-aaaa-bbbb-cccc-ef1234567890",
+            date=datetime(2020, 1, 1),
+            uuid=UUID("d8a2b0c1-aaaa-bbbb-cccc-ef1234567890"),
             timestamp=1577836800,
         )
-        db.add(event_2)
-        db.commit()
-        db.refresh(event_2)
-        yield event_2
+        yield events_repository.create_event(db=db, event=event_create)
 
     @pytest.fixture(scope="class")
     def event_for_filter(
@@ -245,43 +230,29 @@ class TestEventsResource(ApiTester):
         user_1: user_models.User,
     ):
         """A stable event used for filter/search tests that won't be mutated."""
-        ev = event_models.Event(
+        from datetime import datetime
+        from uuid import UUID
+        from app.repositories import events as events_repository
+        from app.schemas import event as event_schemas
+
+        event_create = event_schemas.EventCreate(
             info="stable filter test event",
             user_id=user_1.id,
             orgc_id=1,
             org_id=organisation_1.id,
-            date="2020-01-01",
-            uuid="f1f7e2a3-0000-0000-0000-000000000001",
+            date=datetime(2020, 1, 1),
+            uuid=UUID("f1f7e2a3-0000-0000-0000-000000000001"),
             timestamp=1577836800,
         )
-        db.add(ev)
-        db.commit()
-        db.refresh(ev)
-        yield ev
+        yield events_repository.create_event(db=db, event=event_create)
 
-    # ---- GET /events/{event_id} ----
-
-    @pytest.mark.parametrize("scopes", [["events:read"]])
-    def test_get_event_by_id(
-        self,
-        client: TestClient,
-        event_1: event_models.Event,
-        auth_token: auth.Token,
-    ):
-        response = client.get(
-            f"/events/{event_1.id}",
-            headers={"Authorization": "Bearer " + auth_token},
-        )
-        data = response.json()
-
-        assert response.status_code == status.HTTP_200_OK
-        assert data["id"] == event_1.id
+    # ---- GET /events/{event_uuid} ----
 
     @pytest.mark.parametrize("scopes", [["events:read"]])
     def test_get_event_by_uuid(
         self,
         client: TestClient,
-        event_1: event_models.Event,
+        event_1: object,
         auth_token: auth.Token,
     ):
         response = client.get(
@@ -291,7 +262,7 @@ class TestEventsResource(ApiTester):
         data = response.json()
 
         assert response.status_code == status.HTTP_200_OK
-        assert data["id"] == event_1.id
+        assert data["uuid"] == str(event_1.uuid)
 
     @pytest.mark.parametrize("scopes", [["events:read"]])
     def test_get_event_not_found(
@@ -300,7 +271,7 @@ class TestEventsResource(ApiTester):
         auth_token: auth.Token,
     ):
         response = client.get(
-            "/events/999999",
+            "/events/00000000-0000-0000-0000-000000000000",
             headers={"Authorization": "Bearer " + auth_token},
         )
 
@@ -313,7 +284,7 @@ class TestEventsResource(ApiTester):
     def test_get_events_filter_by_info(
         self,
         client: TestClient,
-        event_for_filter: event_models.Event,
+        event_for_filter: object,
         auth_token: auth.Token,
     ):
         response = client.get(
@@ -325,7 +296,7 @@ class TestEventsResource(ApiTester):
 
         assert response.status_code == status.HTTP_200_OK
         assert len(data) == 1
-        assert data[0]["id"] == event_for_filter.id
+        assert data[0]["uuid"] == str(event_for_filter.uuid)
 
     @pytest.mark.parametrize("scopes", [["events:read"]])
     def test_get_events_filter_by_info_no_results(
@@ -347,7 +318,7 @@ class TestEventsResource(ApiTester):
     def test_get_events_filter_by_uuid(
         self,
         client: TestClient,
-        event_for_filter: event_models.Event,
+        event_for_filter: object,
         auth_token: auth.Token,
     ):
         response = client.get(
@@ -359,13 +330,13 @@ class TestEventsResource(ApiTester):
 
         assert response.status_code == status.HTTP_200_OK
         assert len(data) == 1
-        assert data[0]["id"] == event_for_filter.id
+        assert data[0]["uuid"] == str(event_for_filter.uuid)
 
     @pytest.mark.parametrize("scopes", [["events:read"]])
     def test_get_events_filter_by_deleted_true(
         self,
         client: TestClient,
-        event_1: event_models.Event,
+        event_1: object,
         auth_token: auth.Token,
     ):
         # event_1 was soft-deleted by test_delete_event
@@ -377,14 +348,14 @@ class TestEventsResource(ApiTester):
         data = response.json()["items"]
 
         assert response.status_code == status.HTTP_200_OK
-        assert any(item["id"] == event_1.id for item in data)
+        assert any(item["uuid"] == str(event_1.uuid) for item in data)
 
     @pytest.mark.parametrize("scopes", [["events:read"]])
     def test_get_events_filter_by_deleted_false(
         self,
         client: TestClient,
-        event_1: event_models.Event,
-        event_for_filter: event_models.Event,
+        event_1: object,
+        event_for_filter: object,
         auth_token: auth.Token,
     ):
         # event_1 was soft-deleted; event_for_filter was not
@@ -396,9 +367,9 @@ class TestEventsResource(ApiTester):
         data = response.json()["items"]
 
         assert response.status_code == status.HTTP_200_OK
-        ids = [item["id"] for item in data]
-        assert event_1.id not in ids
-        assert event_for_filter.id in ids
+        uuids = [item["uuid"] for item in data]
+        assert str(event_1.uuid) not in uuids
+        assert str(event_for_filter.uuid) in uuids
 
     # ---- DELETE /events/{event_id} force ----
 
@@ -406,25 +377,25 @@ class TestEventsResource(ApiTester):
     def test_delete_event_force(
         self,
         client: TestClient,
-        event_2: event_models.Event,
+        event_2: object,
         db: Session,
         auth_token: auth.Token,
     ):
         response = client.delete(
-            f"/events/{event_2.id}",
+            f"/events/{event_2.uuid}",
             params={"force": True},
             headers={"Authorization": "Bearer " + auth_token},
         )
 
         assert response.status_code == status.HTTP_204_NO_CONTENT
 
-        db.expire_all()
-        deleted = (
-            db.query(event_models.Event)
-            .filter(event_models.Event.id == event_2.id)
-            .first()
+        from app.services.opensearch import get_opensearch_client
+        os_client = get_opensearch_client()
+        response_os = os_client.search(
+            index="misp-events",
+            body={"query": {"term": {"uuid.keyword": str(event_2.uuid)}}},
         )
-        assert deleted is None
+        assert response_os["hits"]["total"]["value"] == 0
 
     # ---- Tag/untag 404 cases ----
 
@@ -436,7 +407,7 @@ class TestEventsResource(ApiTester):
         auth_token: auth.Token,
     ):
         response = client.post(
-            f"/events/999999/tag/{tlp_white_tag.name}",
+            f"/events/00000000-0000-0000-0000-000000000000/tag/{tlp_white_tag.name}",
             headers={"Authorization": "Bearer " + auth_token},
         )
 
@@ -447,11 +418,11 @@ class TestEventsResource(ApiTester):
     def test_tag_event_tag_not_found(
         self,
         client: TestClient,
-        event_1: event_models.Event,
+        event_1: object,
         auth_token: auth.Token,
     ):
         response = client.post(
-            f"/events/{event_1.id}/tag/nonexistent:tag",
+            f"/events/{event_1.uuid}/tag/nonexistent:tag",
             headers={"Authorization": "Bearer " + auth_token},
         )
 
@@ -466,7 +437,7 @@ class TestEventsResource(ApiTester):
         auth_token: auth.Token,
     ):
         response = client.delete(
-            f"/events/999999/tag/{tlp_white_tag.name}",
+            f"/events/00000000-0000-0000-0000-000000000000/tag/{tlp_white_tag.name}",
             headers={"Authorization": "Bearer " + auth_token},
         )
 
@@ -477,11 +448,11 @@ class TestEventsResource(ApiTester):
     def test_untag_event_tag_not_found(
         self,
         client: TestClient,
-        event_1: event_models.Event,
+        event_1: object,
         auth_token: auth.Token,
     ):
         response = client.delete(
-            f"/events/{event_1.id}/tag/nonexistent:tag",
+            f"/events/{event_1.uuid}/tag/nonexistent:tag",
             headers={"Authorization": "Bearer " + auth_token},
         )
 
@@ -494,7 +465,7 @@ class TestEventsResource(ApiTester):
     def test_publish_event(
         self,
         client: TestClient,
-        event_1: event_models.Event,
+        event_1: object,
         auth_token: auth.Token,
     ):
         # event_1 has published=False after test_update_event
@@ -527,7 +498,7 @@ class TestEventsResource(ApiTester):
     def test_unpublish_event(
         self,
         client: TestClient,
-        event_1: event_models.Event,
+        event_1: object,
         auth_token: auth.Token,
     ):
         # event_1 was published by test_publish_event
@@ -560,7 +531,7 @@ class TestEventsResource(ApiTester):
     def test_toggle_correlation(
         self,
         client: TestClient,
-        event_1: event_models.Event,
+        event_1: object,
         auth_token: auth.Token,
     ):
         response = client.post(
@@ -592,7 +563,7 @@ class TestEventsResource(ApiTester):
     def test_import_data(
         self,
         client: TestClient,
-        event_1: event_models.Event,
+        event_1: object,
         auth_token: auth.Token,
     ):
         response = client.post(
@@ -642,7 +613,7 @@ class TestEventsResource(ApiTester):
     def test_force_index_by_uuid(
         self,
         client: TestClient,
-        event_1: event_models.Event,
+        event_1: object,
         auth_token: auth.Token,
     ):
         response = client.post(
@@ -656,42 +627,10 @@ class TestEventsResource(ApiTester):
         assert str(event_1.uuid) in data["message"]
 
     @pytest.mark.parametrize("scopes", [["events:update"]])
-    def test_force_index_by_id(
-        self,
-        client: TestClient,
-        event_1: event_models.Event,
-        auth_token: auth.Token,
-    ):
-        response = client.post(
-            "/events/force-index",
-            params={"id": event_1.id},
-            headers={"Authorization": "Bearer " + auth_token},
-        )
-        data = response.json()
-
-        assert response.status_code == status.HTTP_202_ACCEPTED
-        assert str(event_1.uuid) in data["message"]
-
-    @pytest.mark.parametrize("scopes", [["events:update"]])
-    def test_force_index_by_id_not_found(
-        self,
-        client: TestClient,
-        auth_token: auth.Token,
-    ):
-        response = client.post(
-            "/events/force-index",
-            params={"id": 999999},
-            headers={"Authorization": "Bearer " + auth_token},
-        )
-
-        assert response.status_code == status.HTTP_404_NOT_FOUND
-        assert response.json()["detail"] == "Event not found"
-
-    @pytest.mark.parametrize("scopes", [["events:update"]])
     def test_force_index_all_events(
         self,
         client: TestClient,
-        event_1: event_models.Event,
+        event_1: object,
         auth_token: auth.Token,
     ):
         response = client.post(
@@ -709,7 +648,7 @@ class TestEventsResource(ApiTester):
     def test_get_event_attachments(
         self,
         client: TestClient,
-        event_1: event_models.Event,
+        event_1: object,
         auth_token: auth.Token,
     ):
         response = client.get(

@@ -5,8 +5,8 @@ from typing import Union
 
 from app.models import server as server_models
 from app.models import user as user_models
-from app.models import event as event_models
 from app.models.event import DistributionLevel
+from app.schemas import event as event_schemas
 from app.repositories import sync as sync_repository
 from app.repositories import events as events_repository
 from app.repositories import sharing_groups as sharing_groups_repository
@@ -137,7 +137,7 @@ def pull_server_by_id_full(
     user: user_models.User,
 ):
 
-    # get a list of the event_ids on the server
+    # get a list of the event_uuids on the server
     event_uuids = get_event_uuids_from_server(server, remote_misp)
 
     # TODO apply MISP.enableEventBlocklisting / removeBlockedEvents
@@ -164,9 +164,9 @@ def get_event_uuids_from_server(server: server_schemas.Server, remote_misp: PyMI
     timestamp = server.pull_rules.get("timestamp", None)
 
     events = remote_misp.search_index(minimal=True, published=True, timestamp=timestamp)
-    event_ids = [event["uuid"] for event in events]
+    event_uuids = [event["uuid"] for event in events]
 
-    return event_ids
+    return event_uuids
 
 
 def pull_event_by_uuid(
@@ -175,7 +175,7 @@ def pull_event_by_uuid(
     server: server_schemas.Server,
     user: user_models.User,
     settings: Settings,
-) -> Union[event_models.Event, bool]:
+) -> Union[event_schemas.Event, bool]:
     """
     see: app/Model/Server.php::__pullEvent()
     """
@@ -235,8 +235,6 @@ def pull_event_by_uuid(
     # TODO: process sightings, see app/Model/Event.php::_add()
 
     # TODO: process tag collection, see app/Model/Event.php::_add()
-
-    tasks.index_event.delay(str(db_event.uuid), full_reindex=True) # TODO: optimize to index only changes
 
     return db_event
 
@@ -386,7 +384,7 @@ def create_or_update_pulled_event(
         else:
             event.sharing_group_id = None
 
-        created = events_repository.create_event_from_pulled_event(db, event)
+        created = events_repository.create_event_from_pulled_event(event)
         if created:
             sync_repository.create_pulled_event_tags(db, created, event.tags, user)
 
@@ -394,10 +392,10 @@ def create_or_update_pulled_event(
                 db, created.uuid, event.event_reports, user
             )
             sync_repository.create_pulled_event_objects(
-                db, created.id, event.objects, user
+                db, str(created.uuid), event.objects, user
             )
             sync_repository.create_pulled_event_attributes(
-                db, created.id, event.attributes, user
+                db, str(created.uuid), event.attributes, user
             )
 
             logger.info(f"Event {event.uuid} created")
@@ -441,10 +439,10 @@ def create_or_update_pulled_event(
                 db, updated.uuid, event.event_reports, user
             )
             sync_repository.update_pulled_event_objects(
-                db, updated.id, event.objects, user
+                db, str(updated.uuid), event.objects, user
             )
             sync_repository.update_pulled_event_attributes(
-                db, updated.id, event.attributes, user
+                db, str(updated.uuid), event.attributes, user
             )
 
             # TODO: publish event update to ZMQ
@@ -701,7 +699,7 @@ def get_remote_event_objects(
     )
 
 
-def get_remote_event_reports(db: Session, server_id: int, event_id: int):
+def get_remote_event_reports(db: Session, server_id: int, event_uuid: str):
 
     db_server = get_server_by_id(db, server_id=server_id)
 
@@ -717,7 +715,7 @@ def get_remote_event_reports(db: Session, server_id: int, event_id: int):
             status_code=500, detail="Remote MISP instance not reachable: %s" % ex
         )
 
-    return remote_misp.get_event_reports(event_id)
+    return remote_misp.get_event_reports(event_uuid)
 
 
 def push_event_by_uuid(
@@ -853,13 +851,28 @@ def push_server_by_id_full(
     user: user_models.User,
 ):
 
-    # get a list of the event_ids eligible to be pushed to the server
-    event_uuids = db.query(event_models.Event.uuid).filter(
-        event_models.Event.published == True,
-        event_models.Event.distribution == DistributionLevel.CONNECTED_COMMUNITIES
-        or event_models.Event.distribution == DistributionLevel.ALL_COMMUNITIES,
-    ).all()
-    event_uuids = [event_uuid for (event_uuid,) in event_uuids]
+    # get a list of the event UUIDs eligible to be pushed to the server
+    from app.services.opensearch import get_opensearch_client as _get_os_client
+    _os = _get_os_client()
+    _resp = _os.search(
+        index="misp-events",
+        body={
+            "query": {
+                "bool": {
+                    "must": [
+                        {"term": {"published": True}},
+                        {"terms": {"distribution": [
+                            DistributionLevel.CONNECTED_COMMUNITIES.value,
+                            DistributionLevel.ALL_COMMUNITIES.value,
+                        ]}},
+                    ]
+                }
+            },
+            "_source": ["uuid"],
+            "size": 10000,
+        },
+    )
+    event_uuids = [h["_source"]["uuid"] for h in _resp["hits"]["hits"]]
 
     # push each of the events in different tasks
     for event_uuid in event_uuids:
