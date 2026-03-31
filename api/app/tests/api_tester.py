@@ -21,6 +21,7 @@ from app.settings import get_settings
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, declarative_base, sessionmaker
+import sys
 
 
 class ApiTester:
@@ -100,10 +101,16 @@ class ApiTester:
                             refresh=True,
                             ignore=[404],
                         )
-                    except Exception:
-                        pass
-            except Exception:
-                pass
+                    except Exception as exc:
+                        print(
+                            f"Warning: failed to delete OpenSearch documents for index '{index}': {exc}",
+                            file=sys.stderr,
+                        )
+            except Exception as exc:
+                print(
+                    f"Warning: OpenSearch cleanup skipped due to error: {exc}",
+                    file=sys.stderr,
+                )
             self.teardown_db(db)
 
     # MISP data model fixtures
