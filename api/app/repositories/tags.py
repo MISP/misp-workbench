@@ -1,5 +1,3 @@
-from uuid import UUID
-
 from app.models import tag as tag_models
 from app.models import user as user_models
 from app.schemas import tag as tag_schemas
