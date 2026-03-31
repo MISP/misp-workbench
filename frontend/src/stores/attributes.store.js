@@ -93,5 +93,10 @@ export const useAttributesStore = defineStore({
         .catch((error) => (this.status = { error }))
         .finally(() => (this.status = { exporting: false }));
     },
+    async histogram(params = { query: "", interval: "1d" }) {
+      return await fetchWrapper
+        .get(baseUrl + "/histogram?" + new URLSearchParams(params).toString())
+        .catch((error) => (this.status = { error }));
+    },
   },
 });

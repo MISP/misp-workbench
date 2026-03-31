@@ -10,6 +10,10 @@ import {
   faXmark,
 } from "@fortawesome/free-solid-svg-icons";
 
+const props = defineProps({
+  modelValue: { type: Object, default: null },
+});
+
 const emit = defineEmits(["change"]);
 
 const isOpen = ref(false);
@@ -53,6 +57,13 @@ const unitOptions = [
 const DEFAULT_RANGE = { label: "Last 30 days", from: "now-30d", to: "now" };
 
 const currentRange = ref({ mode: "relative", ...DEFAULT_RANGE });
+
+watch(
+  () => props.modelValue,
+  (val) => {
+    if (val) currentRange.value = val;
+  },
+);
 
 const displayLabel = computed(() => {
   if (!currentRange.value) return "Time range";

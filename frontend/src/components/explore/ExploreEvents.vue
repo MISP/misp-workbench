@@ -17,6 +17,7 @@ import ExploreTimeRangeFilter from "./ExploreTimeRangeFilter.vue";
 import AddHuntModal from "@/components/hunts/AddHuntModal.vue";
 import EventsPropertiesModal from "@/components/misc/EventsPropertiesModal.vue";
 import AttributesPropertiesModal from "@/components/misc/AttributesPropertiesModal.vue";
+import ExploreTimelineChart from "./ExploreTimelineChart.vue";
 
 const props = defineProps({
   page_size: {
@@ -42,6 +43,10 @@ const attributesSortOrder = useLocalStorageRef(
 
 const eventsFilters = ref([]);
 const attributesFilters = ref([]);
+
+const timelineEventBuckets = ref([]);
+const timelineAttributeBuckets = ref([]);
+const timelineLoading = ref(false);
 
 function applyFilters(baseQuery, filters) {
   const parts = [
@@ -86,6 +91,26 @@ function buildQuery() {
   return parts.join(" AND ");
 }
 
+function onTimelineFilterDay(date) {
+  activeTimeRange.value = {
+    mode: "absolute",
+    from: `${date}T00:00:00`,
+    to: `${date}T23:59:59`,
+  };
+  search();
+}
+
+async function searchTimeline(query) {
+  timelineLoading.value = true;
+  const [eventsHist, attributesHist] = await Promise.all([
+    eventsStore.histogram({ query, interval: "1d" }),
+    attributesStore.histogram({ query, interval: "1d" }),
+  ]);
+  timelineEventBuckets.value = eventsHist?.buckets ?? [];
+  timelineAttributeBuckets.value = attributesHist?.buckets ?? [];
+  timelineLoading.value = false;
+}
+
 function search() {
   const base = buildQuery();
   eventsStore.search({
@@ -102,6 +127,7 @@ function search() {
     sort_by: attributesSortBy.value,
     sort_order: attributesSortOrder.value,
   });
+  searchTimeline(base);
 
   if (
     searchQuery.value &&
@@ -296,12 +322,29 @@ body {
     </div>
     <div class="col-12 col-md-auto order-2 order-md-3 mt-2 mt-md-0">
       <ExploreTimeRangeFilter
+        :model-value="activeTimeRange"
         @change="
           (r) => {
             activeTimeRange = r;
             search();
           }
         "
+      />
+    </div>
+
+    <div
+      v-if="
+        timelineLoading ||
+        timelineEventBuckets.length > 0 ||
+        timelineAttributeBuckets.length > 0
+      "
+      class="col-12 mt-3 order-3"
+    >
+      <ExploreTimelineChart
+        :event-buckets="timelineEventBuckets"
+        :attribute-buckets="timelineAttributeBuckets"
+        :loading="timelineLoading"
+        @filter-day="onTimelineFilterDay"
       />
     </div>
 

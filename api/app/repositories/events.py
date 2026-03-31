@@ -115,6 +115,32 @@ def search_events(
     }
 
 
+def search_events_histogram(query: str = None, interval: str = "1d"):
+    OpenSearchClient = get_opensearch_client()
+
+    search_body = {
+        "size": 0,
+        "query": {
+            "bool": {
+                "must": {"query_string": {"query": query or "*", "default_field": "info"}},
+                "filter": {"term": {"deleted": False}},
+            }
+        },
+        "aggs": {
+            "events_over_time": {
+                "date_histogram": {
+                    "field": "@timestamp",
+                    "calendar_interval": interval,
+                    "min_doc_count": 0,
+                }
+            }
+        },
+    }
+
+    response = OpenSearchClient.search(index="misp-events", body=search_body)
+    return {"buckets": response["aggregations"]["events_over_time"]["buckets"]}
+
+
 def export_events(
     query: str = None,
     format: str = "json",
