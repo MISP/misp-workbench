@@ -3,6 +3,7 @@ import os
 import smtplib
 from email.message import EmailMessage
 from datetime import datetime
+from uuid import UUID
 
 from app.database import SQLALCHEMY_DATABASE_URL
 from app.services.opensearch import get_opensearch_client
@@ -21,13 +22,10 @@ from app.repositories import notifications as notifications_repository
 from app.repositories import galaxies as galaxies_repository
 from app.repositories import hunts as hunts_repository
 from app.repositories import taxonomies as taxonomies_repository
-from app.schemas import event as event_schemas
 from app.schemas import attribute as attribute_schemas
-from app.models import event as event_models
 from celery import Celery
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
-from opensearchpy import helpers as opensearch_helpers
 
 # Celery configuration
 celery_app = Celery("misp-workbench")
@@ -142,14 +140,10 @@ def push_event_by_uuid(event_uuid: str, server_id: int, user_id: int):
 def handle_created_event(event_uuid: str):
     logger.info("handling created event uuid=%s job started", event_uuid)
 
-    with Session(engine) as db:
-        db_event = events_repository.get_event_by_uuid(db, event_uuid)
-        if db_event is None:
-            raise Exception("Event with uuid=%s not found", event_uuid)
-
-        notifications_repository.create_event_notifications(
-            db, "created", event=db_event
-        )
+    os_event = events_repository.get_event_from_opensearch(UUID(event_uuid))
+    if os_event is not None:
+        with Session(engine) as db:
+            notifications_repository.create_event_notifications(db, "created", event=os_event)
 
     return True
 
@@ -158,21 +152,16 @@ def handle_created_event(event_uuid: str):
 def handle_updated_event(event_uuid: str):
     logger.info("handling updated event uuid=%s job started", event_uuid)
 
-    with Session(engine) as db:
-        db_event = events_repository.get_event_by_uuid(db, event_uuid)
-
-        if db_event is None:
-            raise Exception("Event with uuid=%s not found", event_uuid)
-
-        db_event.timestamp = datetime.now().timestamp()
-        db.commit()
-        db.refresh(db_event)
-
-        notifications_repository.create_event_notifications(
-            db, "updated", event=db_event
+    os_event = events_repository.get_event_from_opensearch(UUID(event_uuid))
+    if os_event is not None:
+        get_opensearch_client().update(
+            index="misp-events",
+            id=event_uuid,
+            body={"doc": {"timestamp": int(datetime.now().timestamp())}},
+            refresh=True,
         )
-
-        index_event.delay(str(db_event.uuid), full_reindex=False)
+        with Session(engine) as db:
+            notifications_repository.create_event_notifications(db, "updated", event=os_event)
 
     return True
 
@@ -181,113 +170,93 @@ def handle_updated_event(event_uuid: str):
 def handle_deleted_event(event_uuid: str):
     logger.info("handling deleted event uuid=%s job started", event_uuid)
 
-    with Session(engine) as db:
-        db_event = events_repository.get_event_by_uuid(db, event_uuid)
-        if db_event is None:
-            raise Exception("Event with uuid=%s not found", event_uuid)
+    os_event = events_repository.get_event_from_opensearch(UUID(event_uuid))
+    if os_event is not None:
+        with Session(engine) as db:
+            notifications_repository.create_event_notifications(db, "deleted", event=os_event)
 
-        notifications_repository.create_event_notifications(
-            db, "deleted", event=db_event
-        )
-
-        delete_indexed_event.delay(str(event_uuid))
+    delete_indexed_event(event_uuid)
 
     return True
 
 
 @celery_app.task
-def handle_created_attribute(attribute_id: int, object_id: int | None, event_id: int):
-    logger.info("handling created attribute id=%s job started", attribute_id)
+def handle_created_attribute(attribute_uuid: str, object_uuid, event_uuid: str | None):
+    logger.info("handling created attribute uuid=%s job started", attribute_uuid)
     with Session(engine) as db:
-        if object_id is None:
-            events_repository.increment_attribute_count(db, event_id)
+        if object_uuid is None and event_uuid:
+            events_repository.increment_attribute_count(db, event_uuid)
 
-        db_attribute = attributes_repository.get_attribute_by_id(db, attribute_id)
-        notifications_repository.create_attribute_notifications(
-            db, "created", attribute=db_attribute
-        )
-
-        index_attribute.delay(str(db_attribute.uuid))
+        os_attr = attributes_repository.get_attribute_from_opensearch(UUID(attribute_uuid))
+        if os_attr is not None:
+            notifications_repository.create_attribute_notifications(db, "created", attribute=os_attr)
 
     return True
 
 
 @celery_app.task
-def handle_updated_attribute(attribute_id: int, object_id: int | None, event_id: int):
-    logger.info("handling updated attribute id=%s job started", attribute_id)
+def handle_updated_attribute(attribute_uuid: str, object_uuid, event_uuid: str | None):
+    logger.info("handling updated attribute uuid=%s job started", attribute_uuid)
     with Session(engine) as db:
-        db_attribute = attributes_repository.get_attribute_by_id(db, attribute_id)
-        notifications_repository.create_attribute_notifications(
-            db, "updated", attribute=db_attribute
-        )
-
-        index_attribute.delay(str(db_attribute.uuid))
+        os_attr = attributes_repository.get_attribute_from_opensearch(UUID(attribute_uuid))
+        if os_attr is not None:
+            notifications_repository.create_attribute_notifications(db, "updated", attribute=os_attr)
 
     return True
 
 
 @celery_app.task
-def handle_deleted_attribute(attribute_id: int, object_id: int | None, event_id: int):
-    logger.info("handling deleted attribute id=%s job started", attribute_id)
+def handle_deleted_attribute(attribute_uuid: str, object_uuid, event_uuid: str | None):
+    logger.info("handling deleted attribute uuid=%s job started", attribute_uuid)
     with Session(engine) as db:
-        db_attribute = attributes_repository.get_attribute_by_id(db, attribute_id)
-        if object_id is None:
-            events_repository.decrement_attribute_count(db, event_id)
+        if object_uuid is None and event_uuid:
+            events_repository.decrement_attribute_count(db, event_uuid)
 
-        notifications_repository.create_attribute_notifications(
-            db, "deleted", attribute=db_attribute
-        )
-
-        delete_indexed_attribute.delay(str(db_attribute.uuid))
+        os_attr = attributes_repository.get_attribute_from_opensearch(UUID(attribute_uuid))
+        if os_attr is not None:
+            notifications_repository.create_attribute_notifications(db, "deleted", attribute=os_attr)
 
     return True
 
 
 @celery_app.task
-def handle_created_object(object_id: int, event_id: int):
-    logger.info("handling created object id=%s job started", object_id)
+def handle_created_object(object_uuid: str, event_uuid: str | None):
+    logger.info("handling created object uuid=%s job started", object_uuid)
 
     with Session(engine) as db:
-        events_repository.increment_object_count(db, event_id)
+        if event_uuid:
+            events_repository.increment_object_count(db, event_uuid)
 
-        db_object = objects_repository.get_object_by_id(db, object_id)
-        notifications_repository.create_object_notifications(
-            db, "created", object=db_object
-        )
-
-        index_object.delay(str(db_object.uuid))
+        os_obj = objects_repository.get_object_from_opensearch(UUID(object_uuid))
+        if os_obj is not None:
+            notifications_repository.create_object_notifications(db, "created", object=os_obj)
 
     return True
 
 
 @celery_app.task
-def handle_updated_object(object_id: int, event_id: int):
-    logger.info("handling updated object id=%s job started", object_id)
+def handle_updated_object(object_uuid: str, event_uuid: str | None):
+    logger.info("handling updated object uuid=%s job started", object_uuid)
 
     with Session(engine) as db:
-        db_object = objects_repository.get_object_by_id(db, object_id)
-        notifications_repository.create_object_notifications(
-            db, "updated", object=db_object
-        )
-
-        index_object.delay(str(db_object.uuid))
+        os_obj = objects_repository.get_object_from_opensearch(UUID(object_uuid))
+        if os_obj is not None:
+            notifications_repository.create_object_notifications(db, "updated", object=os_obj)
 
     return True
 
 
 @celery_app.task
-def handle_deleted_object(object_id: int, event_id: int):
-    logger.info("handling deleted object id=%s job started", object_id)
+def handle_deleted_object(object_uuid: str, event_uuid: str | None):
+    logger.info("handling deleted object uuid=%s job started", object_uuid)
 
     with Session(engine) as db:
-        events_repository.decrement_object_count(db, event_id)
+        if event_uuid:
+            events_repository.decrement_object_count(db, event_uuid)
 
-        db_object = objects_repository.get_object_by_id(db, object_id)
-        notifications_repository.create_object_notifications(
-            db, "deleted", object=db_object
-        )
-
-        delete_indexed_object.delay(str(db_object.uuid))
+        os_obj = objects_repository.get_object_from_opensearch(UUID(object_uuid))
+        if os_obj is not None:
+            notifications_repository.create_object_notifications(db, "deleted", object=os_obj)
 
     return True
 
@@ -321,163 +290,6 @@ def send_email(email: dict):
 
     return True
 
-
-@celery_app.task
-def index_event(event_uuid: str, full_reindex: bool = False):
-    logger.info("index event uuid=%s job started", event_uuid)
-
-    with Session(engine) as db:
-        db_event = events_repository.get_event_by_uuid(db, event_uuid)
-        if db_event is None:
-            raise Exception("Event with uuid=%s not found", event_uuid)
-
-    event = event_schemas.Event.model_validate(db_event)
-
-    OpenSearchClient = get_opensearch_client()
-
-    event_raw = event.model_dump()
-    attributes = event_raw.pop("attributes")
-    objects = event_raw.pop("objects")
-
-    # convert timestamp to datetime so it can be indexed
-    event_raw["@timestamp"] = datetime.fromtimestamp(event_raw["timestamp"]).isoformat()
-
-    if event_raw["publish_timestamp"]:
-        event_raw["@publish_timestamp"] = datetime.fromtimestamp(
-            event_raw["publish_timestamp"]
-        ).isoformat()
-
-    response = OpenSearchClient.index(
-        index="misp-events", id=event.uuid, body=event_raw, refresh=True
-    )
-
-    if response["result"] not in ["created", "updated"]:
-        logger.error(
-            "Failed to index event uuid=%s. Response: %s", event_uuid, response
-        )
-        raise Exception("Failed to index event.")
-
-    logger.info("indexed event uuid=%s", event_uuid)
-
-    if not full_reindex:
-        return True
-
-    # delete existing indexed attributes and objects
-    query = {"query": {"bool": {"must": [{"term": {"event_uuid": str(event.uuid)}}]}}}
-
-    response = OpenSearchClient.delete_by_query(
-        index="misp-attributes", body=query, refresh=True
-    )
-    logger.info(
-        "deleted %s previously indexed attributes for event uuid=%s",
-        response["deleted"],
-        event_uuid,
-    )
-
-    response = OpenSearchClient.delete_by_query(
-        index="misp-objects", body=query, refresh=True
-    )
-    logger.info(
-        "deleted %s previously indexed objects for event uuid=%s",
-        response["deleted"],
-        event_uuid,
-    )
-
-    # index attributes
-    attributes_docs = []
-    for attribute in attributes:
-        attribute["@timestamp"] = datetime.fromtimestamp(
-            attribute["timestamp"]
-        ).isoformat()
-        attribute["event_uuid"] = event.uuid
-        attribute["data"] = ""  # do not index file contents
-
-        attributes_docs.append(
-            {
-                "_id": attribute["uuid"],
-                "_index": "misp-attributes",
-                "_source": attribute,
-            }
-        )
-
-    success, failed = opensearch_helpers.bulk(
-        OpenSearchClient, attributes_docs, refresh=True
-    )
-    if failed:
-        logger.error("Failed to index attributes. Failed: %s", failed)
-        raise Exception("Failed to index attributes.")
-    logger.info(
-        "indexed attributes of event uuid=%s, indexed %s attributes",
-        event_uuid,
-        len(attributes_docs),
-    )
-
-    # index objects
-    objects_docs = []
-    for object in objects:
-        object["@timestamp"] = datetime.fromtimestamp(object["timestamp"]).isoformat()
-
-        object_attributes = object.pop("attributes")
-
-        object_attributes_docs = []
-        for attribute in object_attributes:
-            attribute["@timestamp"] = datetime.fromtimestamp(
-                attribute["timestamp"]
-            ).isoformat()
-            attribute["event_uuid"] = event.uuid
-            attribute["object_uuid"] = object["uuid"]
-            attribute["data"] = ""  # do not index file contents
-            object_attributes_docs.append(
-                {
-                    "_id": attribute["uuid"],
-                    "_index": "misp-attributes",
-                    "_source": attribute,
-                }
-            )
-
-        success, failed = opensearch_helpers.bulk(
-            OpenSearchClient, object_attributes_docs, refresh=True
-        )
-        if failed:
-            logger.error("Failed to index object attributes. Failed: %s", failed)
-            raise Exception("Failed to index object attributes.")
-        logger.info(
-            "indexed attributes of event uuid=%s, object uuid=%s, indexed %s attributes",
-            event_uuid,
-            object["uuid"],
-            len(object_attributes_docs),
-        )
-
-        for reference in object["object_references"]:
-            reference["@timestamp"] = datetime.fromtimestamp(
-                reference["timestamp"]
-            ).isoformat()
-
-        object["event_uuid"] = event.uuid
-
-        objects_docs.append(
-            {
-                "_id": object["uuid"],
-                "_index": "misp-objects",
-                "_source": object,
-            }
-        )
-
-    success, failed = opensearch_helpers.bulk(
-        OpenSearchClient, objects_docs, refresh=True
-    )
-    if failed:
-        logger.error("Failed to index objects. Failed: %s", failed)
-        raise Exception("Failed to index objects.")
-    logger.info(
-        "indexed objects of event uuid=%s, indexed %s objects",
-        event_uuid,
-        len(objects_docs),
-    )
-
-    logger.info("index event uuid=%s job finished", event_uuid)
-
-    return True
 
 @celery_app.task
 def fetch_feed(feed_id: int, user_id: int):
@@ -537,7 +349,7 @@ def fetch_csv_feed(feed_id: int, user_id: int):
                 attribute = feeds_repository.process_csv_feed_row(row, db_feed.settings)
 
                 db_attribute = attribute_schemas.AttributeCreate(
-                    event_id=db_event.id,
+                    event_uuid=db_event.uuid,
                     type=attribute["type"],
                     value=attribute["value"],
                     category=attribute.get("category", "External analysis"),
@@ -560,8 +372,6 @@ def fetch_csv_feed(feed_id: int, user_id: int):
                 logger.error("Error processing CSV feed row: %s", e)
 
             index += 1
-
-    index_event.delay(str(db_event.uuid), full_reindex=True)
 
     logger.info("fetch csv feed id=%s job finished", feed_id)
 
@@ -608,7 +418,7 @@ def fetch_freetext_feed(feed_id: int, user_id: int):
                     attr_type = freetext_repository.detect_type(value)
 
                 db_attribute = attribute_schemas.AttributeCreate(
-                    event_id=db_event.id,
+                    event_uuid=db_event.uuid,
                     type=attr_type,
                     value=value,
                     category="External analysis",
@@ -619,8 +429,6 @@ def fetch_freetext_feed(feed_id: int, user_id: int):
             except Exception as e:
                 failed_rows += 1
                 logger.error("Error processing freetext feed line: %s", e)
-
-    index_event.delay(str(db_event.uuid), full_reindex=True)
 
     logger.info("fetch freetext feed id=%s job finished", feed_id)
 
@@ -663,7 +471,7 @@ def fetch_json_feed(feed_id: int, user_id: int):
                     continue
 
                 db_attribute = attribute_schemas.AttributeCreate(
-                    event_id=db_event.id,
+                    event_uuid=db_event.uuid,
                     type=attribute["type"],
                     value=attribute["value"],
                     category=attribute.get("category", "External analysis"),
@@ -681,8 +489,6 @@ def fetch_json_feed(feed_id: int, user_id: int):
             except Exception as e:
                 failed_items += 1
                 logger.error("Error processing JSON feed item: %s", e)
-
-    index_event.delay(str(db_event.uuid), full_reindex=True)
 
     logger.info("fetch json feed id=%s job finished", feed_id)
 
@@ -767,7 +573,7 @@ def handle_created_sighting(
         "value": value,
         "type": sighting_type,
         "observer": {"organisation": organisation},
-        "timestamp": timestamp or datetime.datetime.now().timestamp(),
+        "timestamp": timestamp or datetime.now().timestamp(),
     }
 
     with Session(engine) as db:
@@ -809,17 +615,12 @@ def handle_created_correlation(
 def handle_published_event(event_uuid: str):
     logger.info("handling published event uuid=%s job started", event_uuid)
 
-    with Session(engine) as db:
-        db_event = events_repository.get_event_by_uuid(db, event_uuid)
-        if db_event is None:
-            raise Exception("Event with uuid=%s not found", event_uuid)
+    os_event = events_repository.get_event_from_opensearch(UUID(event_uuid))
+    if os_event is not None:
+        with Session(engine) as db:
+            notifications_repository.create_event_notifications(db, "published", event=os_event)
 
-        notifications_repository.create_event_notifications(
-            db, "published", event=db_event
-        )
-
-        logger.info("handling published event uuid=%s job finished", event_uuid)
-
+    logger.info("handling published event uuid=%s job finished", event_uuid)
     return True
 
 
@@ -827,17 +628,12 @@ def handle_published_event(event_uuid: str):
 def handle_unpublished_event(event_uuid: str):
     logger.info("handling unpublished event uuid=%s job started", event_uuid)
 
-    with Session(engine) as db:
-        db_event = events_repository.get_event_by_uuid(db, event_uuid)
-        if db_event is None:
-            raise Exception("Event with uuid=%s not found", event_uuid)
+    os_event = events_repository.get_event_from_opensearch(UUID(event_uuid))
+    if os_event is not None:
+        with Session(engine) as db:
+            notifications_repository.create_event_notifications(db, "unpublished", event=os_event)
 
-        notifications_repository.create_event_notifications(
-            db, "unpublished", event=db_event
-        )
-
-        logger.info("handling unpublished event uuid=%s job finished", event_uuid)
-
+    logger.info("handling unpublished event uuid=%s job finished", event_uuid)
     return True
 
 
@@ -845,27 +641,20 @@ def handle_unpublished_event(event_uuid: str):
 def handle_toggled_event_correlation(event_uuid: str, disable_correlation: bool):
     logger.info("handling toggled event correlation uuid=%s job started", event_uuid)
 
-    with Session(engine) as db:
-        db_event = events_repository.get_event_by_uuid(db, event_uuid)
-        if db_event is None:
-            raise Exception("Event with uuid=%s not found", event_uuid)
+    os_event = events_repository.get_event_from_opensearch(UUID(event_uuid))
+    if os_event is None:
+        logger.warning("handle_toggled_event_correlation: event %s not found", event_uuid)
+        return True
 
-        if disable_correlation:
-            correlations_repository.delete_event_correlations(event_uuid)
-        else:
-            with Session(engine) as db:
-                runtimeSettings = get_runtime_settings(db)
+    if disable_correlation:
+        correlations_repository.delete_event_correlations(event_uuid)
+    else:
+        with Session(engine) as db:
+            runtimeSettings = get_runtime_settings(db)
+        correlations_repository.correlate_event(runtimeSettings, str(event_uuid))
+        run_correlation_hunts.delay()
 
-                correlations_repository.correlate_event(
-                    runtimeSettings, str(event_uuid)
-                )
-
-            run_correlation_hunts.delay()
-
-        logger.info(
-            "handling toggled event correlation uuid=%s job finished", event_uuid
-        )
-
+    logger.info("handling toggled event correlation uuid=%s job finished", event_uuid)
     return True
 
 
@@ -888,74 +677,25 @@ def delete_indexed_event(event_uuid: str):
     query = {"query": {"bool": {"must": [{"term": {"event_uuid": str(event_uuid)}}]}}}
 
     response = OpenSearchClient.delete_by_query(
-        index="misp-attributes", body=query, refresh=True
+        index="misp-attributes", body=query, refresh=True, ignore=[404]
     )
     logger.info(
         "deleted %s indexed attributes for event uuid=%s",
-        response["deleted"],
+        response.get("deleted", 0),
         event_uuid,
     )
 
     # delete indexed objects
     response = OpenSearchClient.delete_by_query(
-        index="misp-objects", body=query, refresh=True
+        index="misp-objects", body=query, refresh=True, ignore=[404]
     )
     logger.info(
         "deleted %s indexed objects for event uuid=%s",
-        response["deleted"],
+        response.get("deleted", 0),
         event_uuid,
     )
 
     logger.info("deleting indexed event uuid=%s job finished", event_uuid)
-
-    return True
-
-
-@celery_app.task
-def index_attribute(attribute_uuid: str):
-    logger.info("indexing attribute uuid=%s job started", attribute_uuid)
-
-    with Session(engine) as db:
-        db_attribute = attributes_repository.get_attribute_by_uuid(db, attribute_uuid)
-        if db_attribute is None:
-            raise Exception("Attribute with uuid=%s not found", attribute_uuid)
-
-        if db_attribute.event and db_attribute.event.deleted:
-            logger.info(
-                "skipping indexing attribute uuid=%s, event is deleted", attribute_uuid
-            )
-            return True
-
-        attribute = event_schemas.Attribute.model_validate(db_attribute)
-        event_uuid = db_attribute.event.uuid if db_attribute.event else None
-
-    OpenSearchClient = get_opensearch_client()
-
-    attribute_raw = attribute.model_dump()
-    attribute_raw["event_uuid"] = str(event_uuid) if event_uuid else None
-
-    # convert timestamp to datetime so it can be indexed
-    attribute_raw["@timestamp"] = datetime.fromtimestamp(
-        attribute_raw["timestamp"]
-    ).isoformat()
-    attribute_raw["data"] = ""  # do not index file contents
-
-    response = OpenSearchClient.index(
-        index="misp-attributes",
-        id=attribute.uuid,
-        body=attribute_raw,
-        refresh=True,
-    )
-
-    if response["result"] not in ["created", "updated"]:
-        logger.error(
-            "Failed to index attribute uuid=%s. Response: %s",
-            attribute_uuid,
-            response,
-        )
-        raise Exception("Failed to index attribute.")
-
-    logger.info("indexed attribute uuid=%s job finished", attribute_uuid)
 
     return True
 
@@ -992,8 +732,12 @@ def load_galaxies(user_id: int):
     logger.info("load_galaxies job started")
 
     with Session(engine) as db:
+        user = None
         if user_id is not None:
             user = users_repository.get_user_by_id(db, user_id)
+        if user is None:
+            first = users_repository.get_users(db, skip=0, limit=1)
+            user = first[0] if first else None
 
         if user is None:
             logger.error("No user found to run load_galaxies; aborting")
@@ -1025,45 +769,6 @@ def load_taxonomies():
         except Exception as e:
             logger.exception("Error loading taxonomies: %s", e)
             return False
-
-
-@celery_app.task
-def index_object(object_uuid: str):
-    logger.info("indexing object uuid=%s job started", object_uuid)
-
-    with Session(engine) as db:
-        db_object = objects_repository.get_object_by_uuid(db, object_uuid)
-        if db_object is None:
-            raise Exception("Object with uuid=%s not found", object_uuid)
-
-    object = event_schemas.Object.model_validate(db_object)
-
-    OpenSearchClient = get_opensearch_client()
-
-    object_raw = object.model_dump()
-
-    # convert timestamp to datetime so it can be indexed
-    object_raw["@timestamp"] = datetime.fromtimestamp(
-        object_raw["timestamp"]
-    ).isoformat()
-    object_raw["event_uuid"] = str(db_object.event.uuid)
-
-    response = OpenSearchClient.index(
-        index="misp-objects",
-        id=object.uuid,
-        body=object_raw,
-        refresh=True,
-    )
-
-    if response["result"] not in ["created", "updated"]:
-        logger.error(
-            "Failed to index object uuid=%s. Response: %s", object_uuid, response
-        )
-        raise Exception("Failed to index object.")
-
-    logger.info("indexed object uuid=%s job finished", object_uuid)
-
-    return True
 
 
 @celery_app.task

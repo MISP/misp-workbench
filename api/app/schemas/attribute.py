@@ -1,3 +1,4 @@
+import logging
 from enum import Enum
 from typing import Optional
 from uuid import UUID
@@ -6,10 +7,11 @@ from app.models.event import DistributionLevel
 from app.schemas.tag import Tag
 from pydantic import BaseModel, ConfigDict
 
+logger = logging.getLogger(__name__)
+
 
 class AttributeBase(BaseModel):
-    event_id: Optional[int] = None
-    object_id: Optional[int] = None
+    object_uuid: Optional[UUID] = None
     event_uuid: Optional[UUID] = None
     object_relation: Optional[str] = None
     category: str
@@ -29,10 +31,42 @@ class AttributeBase(BaseModel):
 
 
 class Attribute(AttributeBase):
-    id: int
     tags: list[Tag] = []
-    correlations: list[dict] = None
+    correlations: Optional[list[dict]] = None
+    expanded: Optional[dict] = None
     model_config = ConfigDict(from_attributes=True)
+
+    def to_misp_format(self) -> dict:
+        from app.services.attachments import get_b64_attachment
+        from app.settings import get_settings
+
+        attr_json = {
+            "id": None,
+            "object_uuid": str(self.object_uuid) if self.object_uuid else None,
+            "object_relation": self.object_relation,
+            "category": self.category,
+            "type": self.type,
+            "value": self.value,
+            "to_ids": self.to_ids,
+            "uuid": str(self.uuid),
+            "timestamp": self.timestamp,
+            "distribution": self.distribution,
+            "sharing_group_id": self.sharing_group_id,
+            "comment": self.comment,
+            "deleted": self.deleted,
+            "disable_correlation": self.disable_correlation,
+            "first_seen": self.first_seen,
+            "last_seen": self.last_seen,
+            "Tag": [tag.model_dump() for tag in self.tags],
+        }
+
+        if self.type in ["malware-sample", "attachment"]:
+            try:
+                attr_json["data"] = get_b64_attachment(str(self.uuid), get_settings())
+            except Exception as e:
+                logger.error(f"Error fetching attachment: {e}")
+
+        return attr_json
 
 
 class AttributeCreate(AttributeBase):
@@ -40,7 +74,7 @@ class AttributeCreate(AttributeBase):
 
 
 class AttributeUpdate(BaseModel):
-    object_id: Optional[int] = None
+    object_uuid: Optional[UUID] = None
     object_relation: Optional[str] = None
     category: Optional[str] = None
     type: Optional[str] = None

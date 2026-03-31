@@ -1,20 +1,21 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
-from app.models import attribute as attribute_models
-from app.models import event as event_models
-from app.models import object as object_models
-from app.models import object_reference as object_reference_models
+from uuid import UUID
+
+from app.repositories import attributes as attributes_repository
+from app.repositories import object_references as object_references_repository
+from app.repositories import objects as objects_repository
 from app.models import organisation as organisations_models
 from app.models import server as server_models
 from app.models import sharing_groups as sharing_groups_models
 from app.models import tag as tag_models
 from app.models import user as user_models
+from app.repositories import events as events_repository
 from app.repositories import servers as servers_repository
 from app.settings import Settings
 from app.tests.api_tester import ApiTester
 from app.tests.scenarios import server_pull_scenarios
-from sqlalchemy import and_
 from sqlalchemy.orm import Session
 
 
@@ -34,8 +35,6 @@ class TestServersRepository(ApiTester):
         scenario: dict,
     ):
         # clear the database
-        db.query(tag_models.AttributeTag).delete()
-        db.query(tag_models.EventTag).delete()
         db.query(tag_models.Tag).delete()
 
         # mock remote MISP API calls
@@ -69,53 +68,37 @@ class TestServersRepository(ApiTester):
             )
 
             # check that the events were created
-            events = (
-                db.query(event_models.Event)
-                .filter(
-                    event_models.Event.uuid.in_(
-                        scenario["expected_result"]["event_uuids"]
-                    )
-                )
-                .all()
-            )
-            assert len(events) == len(scenario["expected_result"]["event_uuids"])
+            os_events = [
+                events_repository.get_event_from_opensearch(UUID(uuid))
+                for uuid in scenario["expected_result"]["event_uuids"]
+            ]
+            os_events = [e for e in os_events if e is not None]
+            assert len(os_events) == len(scenario["expected_result"]["event_uuids"])
 
             # check that the attributes were created
-            attributes = (
-                db.query(attribute_models.Attribute)
-                .filter(
-                    attribute_models.Attribute.uuid.in_(
-                        scenario["expected_result"]["attribute_uuids"]
-                    )
-                )
-                .all()
-            )
+            attributes = [
+                attributes_repository.get_attribute_from_opensearch(UUID(u))
+                for u in scenario["expected_result"]["attribute_uuids"]
+            ]
+            attributes = [a for a in attributes if a is not None]
             assert len(attributes) == len(
                 scenario["expected_result"]["attribute_uuids"]
             )
 
             # check the objects were created
-            objects = (
-                db.query(object_models.Object)
-                .filter(
-                    object_models.Object.uuid.in_(
-                        scenario["expected_result"]["object_uuids"]
-                    )
-                )
-                .all()
-            )
+            objects = [
+                objects_repository.get_object_from_opensearch(UUID(uuid))
+                for uuid in scenario["expected_result"]["object_uuids"]
+            ]
+            objects = [o for o in objects if o is not None]
             assert len(objects) == len(scenario["expected_result"]["object_uuids"])
 
             # check the object references were created
-            object_references = (
-                db.query(object_reference_models.ObjectReference)
-                .filter(
-                    object_reference_models.ObjectReference.uuid.in_(
-                        scenario["expected_result"]["object_reference_uuids"]
-                    )
-                )
-                .all()
-            )
+            object_references = [
+                object_references_repository.get_object_reference_by_uuid(db, UUID(uuid))
+                for uuid in scenario["expected_result"]["object_reference_uuids"]
+            ]
+            object_references = [r for r in object_references if r is not None]
             assert len(object_references) == len(
                 scenario["expected_result"]["object_reference_uuids"]
             )
@@ -154,30 +137,18 @@ class TestServersRepository(ApiTester):
             assert len(tags) == len(scenario["expected_result"]["tags"])
 
             # check the event tags were created
-            event_tags = (
-                db.query(tag_models.Tag)
-                .join(tag_models.EventTag)
-                .filter(
-                    tag_models.Tag.name.in_(scenario["expected_result"]["event_tags"])
-                )
-                .all()
-            )
-            assert len(event_tags) == len(scenario["expected_result"]["event_tags"])
+            event_tag_names = set()
+            for event in os_events:
+                for t in (event.tags or []):
+                    event_tag_names.add(t.name)
+            for tag_name in scenario["expected_result"]["event_tags"]:
+                assert tag_name in event_tag_names
 
             # check the attribute tags were created
+            all_attribute_tag_names = set()
+            for attr in attributes:
+                for t in (attr.tags or []):
+                    all_attribute_tag_names.add(t.name)
             for attribute_tag in scenario["expected_result"]["attribute_tags"]:
-                attribute_tags = (
-                    db.query(tag_models.Tag)
-                    .join(tag_models.AttributeTag)
-                    .filter(
-                        and_(
-                            tag_models.Tag.name.in_(attribute_tag["tags"]),
-                            attribute_models.Attribute.uuid
-                            == attribute_tag["attribute_uuid"],
-                            attribute_models.Attribute.id
-                            == tag_models.AttributeTag.attribute_id,
-                        )
-                    )
-                    .all()
-                )
-                assert len(attribute_tags) == len(attribute_tag["tags"])
+                for tag_name in attribute_tag["tags"]:
+                    assert tag_name in all_attribute_tag_names

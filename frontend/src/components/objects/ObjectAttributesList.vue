@@ -13,7 +13,7 @@ const authStore = useAuthStore();
 const { scopes } = storeToRefs(authStore);
 
 const props = defineProps({
-  object_id: Number,
+  object_uuid: String,
   attributes: Array,
   default_actions: {
     type: Object,
@@ -48,15 +48,15 @@ const emit = defineEmits([
 
 const attributes = ref(props.attributes);
 
-function handleAttributeDeleted(attribute_id) {
-  attributes.value = attributes.value.filter((a) => a.id !== attribute_id);
+function handleAttributeDeleted(attribute_uuid) {
+  attributes.value = attributes.value.filter((a) => a.uuid !== attribute_uuid);
 }
 function handleAttributeCreated(attribute) {
   attributes.value.push(attribute);
 }
 
-function handleAttributeEnriched(attribute_id) {
-  emit("attribute-enriched", { "attribute.id": attribute_id });
+function handleAttributeEnriched(attribute_uuid) {
+  emit("attribute-enriched", { "attribute.uuid": attribute_uuid });
 }
 </script>
 
@@ -97,7 +97,7 @@ function handleAttributeEnriched(attribute_id) {
     </thead>
     <tbody>
       <tr
-        :key="attribute.id"
+        :key="attribute.uuid"
         v-for="attribute in attributes.filter((a) => !a.deleted)"
       >
         <td class="value">

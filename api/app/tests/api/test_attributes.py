@@ -1,7 +1,5 @@
 import pytest
 from app.auth import auth
-from app.models import attribute as attribute_models
-from app.models import event as event_models
 from app.models import tag as tag_models
 from app.tests.api_tester import ApiTester
 from fastapi import status
@@ -14,7 +12,7 @@ class TestAttributesResource(ApiTester):
     def test_get_attributes(
         self,
         client: TestClient,
-        attribute_1: attribute_models.Attribute,
+        attribute_1,
         auth_token: auth.Token,
     ):
         response = client.get(
@@ -25,7 +23,7 @@ class TestAttributesResource(ApiTester):
         assert response.status_code == status.HTTP_200_OK
 
         assert len(data) == 1
-        assert data[0]["id"] == attribute_1.id
+        assert data[0]["uuid"] == str(attribute_1.uuid)
         assert data[0]["category"] == attribute_1.category
         assert data[0]["type"] == attribute_1.type
         assert data[0]["value"] == attribute_1.value
@@ -42,12 +40,12 @@ class TestAttributesResource(ApiTester):
 
     @pytest.mark.parametrize("scopes", [["attributes:create"]])
     def test_create_attribute(
-        self, client: TestClient, event_1: event_models.Event, auth_token: auth.Token
+        self, client: TestClient, event_1: object, auth_token: auth.Token
     ):
         response = client.post(
             "/attributes/",
             json={
-                "event_id": event_1.id,
+                "event_uuid": str(event_1.uuid),
                 "category": "Network activity",
                 "type": "ip-dst",
                 "value": "127.0.0.1",
@@ -57,20 +55,20 @@ class TestAttributesResource(ApiTester):
         data = response.json()
 
         assert response.status_code == status.HTTP_201_CREATED
-        assert data["id"] is not None
-        assert data["event_id"] == event_1.id
+        assert data["uuid"] is not None
+        assert data["event_uuid"] == str(event_1.uuid)
         assert data["category"] == "Network activity"
         assert data["type"] == "ip-dst"
         assert data["value"] == "127.0.0.1"
 
     @pytest.mark.parametrize("scopes", [["attributes:read"]])
     def test_create_attribute_unauthorized(
-        self, client: TestClient, event_1: event_models.Event, auth_token: auth.Token
+        self, client: TestClient, event_1: object, auth_token: auth.Token
     ):
         response = client.post(
             "/attributes/",
             json={
-                "event_id": event_1.id,
+                "event_uuid": str(event_1.uuid),
                 "category": "Network activity",
                 "type": "ip-dst",
                 "value": "127.0.0.1",
@@ -81,13 +79,13 @@ class TestAttributesResource(ApiTester):
 
     @pytest.mark.parametrize("scopes", [["attributes:create"]])
     def test_create_attribute_incomplete(
-        self, client: TestClient, event_1: event_models.Event, auth_token: auth.Token
+        self, client: TestClient, event_1: object, auth_token: auth.Token
     ):
         # missing value
         response = client.post(
             "/attributes/",
             json={
-                "event_id": event_1.id,
+                "event_uuid": str(event_1.uuid),
                 "category": "Network activity",
                 "type": "ip-dst",
             },
@@ -99,11 +97,11 @@ class TestAttributesResource(ApiTester):
     def test_update_attribute(
         self,
         client: TestClient,
-        attribute_1: attribute_models.Attribute,
+        attribute_1,
         auth_token: auth.Token,
     ):
         response = client.patch(
-            f"/attributes/{attribute_1.id}",
+            f"/attributes/{attribute_1.uuid}",
             json={
                 "type": "ip-src",
                 "value": "8.8.8.8",
@@ -120,11 +118,11 @@ class TestAttributesResource(ApiTester):
     def test_delete_attribute(
         self,
         client: TestClient,
-        attribute_1: attribute_models.Attribute,
+        attribute_1,
         auth_token: auth.Token,
     ):
         response = client.delete(
-            f"/attributes/{attribute_1.id}",
+            f"/attributes/{attribute_1.uuid}",
             headers={"Authorization": "Bearer " + auth_token},
         )
 
@@ -134,54 +132,44 @@ class TestAttributesResource(ApiTester):
     def test_tag_attribute(
         self,
         client: TestClient,
-        event_1: event_models.Event,
-        attribute_1: attribute_models.Attribute,
+        event_1: object,
+        attribute_1,
         tlp_white_tag: tag_models.Tag,
         auth_token: auth.Token,
         db: Session,
     ):
         response = client.post(
-            f"/attributes/{attribute_1.id}/tag/{tlp_white_tag.name}",
+            f"/attributes/{attribute_1.uuid}/tag/{tlp_white_tag.name}",
             headers={"Authorization": "Bearer " + auth_token},
         )
 
         assert response.status_code == status.HTTP_201_CREATED
 
-        attribute_tag = (
-            db.query(tag_models.AttributeTag)
-            .filter(
-                tag_models.AttributeTag.attribute_id == attribute_1.id,
-                tag_models.AttributeTag.tag_id == tlp_white_tag.id,
-            )
-            .first()
-        )
-
-        assert attribute_tag is not None
+        from app.services.opensearch import get_opensearch_client
+        os_client = get_opensearch_client()
+        os_attr = os_client.get(index="misp-attributes", id=str(attribute_1.uuid))
+        tag_names = [t.get("name") for t in os_attr["_source"].get("tags", [])]
+        assert tlp_white_tag.name in tag_names
 
     @pytest.mark.parametrize("scopes", [["attributes:update"]])
     def test_untag_event(
         self,
         client: TestClient,
-        event_1: event_models.Event,
-        attribute_1: attribute_models.Attribute,
+        event_1: object,
+        attribute_1,
         tlp_white_tag: tag_models.Tag,
         auth_token: auth.Token,
         db: Session,
     ):
         response = client.delete(
-            f"/attributes/{attribute_1.id}/tag/{tlp_white_tag.name}",
+            f"/attributes/{attribute_1.uuid}/tag/{tlp_white_tag.name}",
             headers={"Authorization": "Bearer " + auth_token},
         )
 
         assert response.status_code == status.HTTP_204_NO_CONTENT
 
-        attribute_tag = (
-            db.query(tag_models.AttributeTag)
-            .filter(
-                tag_models.AttributeTag.attribute_id == attribute_1.id,
-                tag_models.AttributeTag.tag_id == tlp_white_tag.id,
-            )
-            .first()
-        )
-
-        assert attribute_tag is None
+        from app.services.opensearch import get_opensearch_client
+        os_client = get_opensearch_client()
+        os_attr = os_client.get(index="misp-attributes", id=str(attribute_1.uuid))
+        tag_names = [t.get("name") for t in os_attr["_source"].get("tags", [])]
+        assert tlp_white_tag.name not in tag_names

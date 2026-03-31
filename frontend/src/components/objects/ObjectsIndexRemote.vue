@@ -101,7 +101,7 @@ function handlePrevPage() {
         <div class="card-body">
           <ObjectAttributesList
             :attributes="object.Object.Attribute"
-            :object_id="object.id"
+            :object_uuid="object.Object.uuid"
             :default_actions="{
               view: false,
               enrich: false,

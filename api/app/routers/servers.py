@@ -204,10 +204,10 @@ def get_remote_event_objects(
     )
 
 
-@router.get("/servers/{server_id}/events/{event_id}/reports")
+@router.get("/servers/{server_id}/events/{event_uuid}/reports")
 def get_remote_event_reports(
     server_id: int,
-    event_id: int,
+    event_uuid: str,
     limit: int = 10,
     page: int = 0,
     db: Session = Depends(get_db),
@@ -218,7 +218,7 @@ def get_remote_event_reports(
     return servers_repository.get_remote_event_reports(
         db=db,
         server_id=server_id,
-        event_id=event_id,
+        event_uuid=event_uuid,
     )
 
 

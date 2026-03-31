@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { reactive, watch, computed, ref } from "vue";
 import { debounce } from "lodash-es";
+import { Modal } from "bootstrap";
 import { useEventsStore, useToastsStore } from "@/stores";
 import { storeToRefs } from "pinia";
 import { ATTRIBUTE_CATEGORIES, ATTRIBUTE_TYPES } from "@/helpers/constants";
@@ -199,7 +200,7 @@ function onSubmit() {
       toastsStore.push(response["message"]);
       emit("event-updated", { event_uuid: props.event_uuid });
       resetBatchState();
-      modalEl.value?.hide();
+      Modal.getInstance(modalEl.value)?.hide();
     })
     .catch((error) => {
       status.error = error.message || "An error occurred during import.";

@@ -244,10 +244,6 @@ div.row h3 {
                   </tr>
                   <template v-if="showMore">
                     <tr>
-                      <th>local id</th>
-                      <td>{{ event.id }}</td>
-                    </tr>
-                    <tr>
                       <th>creator user</th>
                       <td>{{ event.user_id }}</td>
                     </tr>

@@ -85,8 +85,8 @@ function enrichAttribute() {
     object.object_references = object.ObjectReference;
     delete object.ObjectReference;
     for (const reference of object.object_references) {
-      reference.object_id = object.id;
-      reference.referenced_id = props.attribute.id;
+      reference.object_uuid = object.uuid;
+      reference.referenced_uuid = props.attribute.uuid;
       reference.event_id = props.attribute.event_id;
       reference.distribution = props.attribute.distribution;
       reference.sharing_group_id = props.attribute.sharing_group_id;
@@ -115,7 +115,7 @@ function enrichAttribute() {
 
   Promise.all(promises)
     .then(() => {
-      emit("attribute-enriched", { "attribute.id": props.attribute });
+      emit("attribute-enriched", { "attribute.uuid": props.attribute });
       props.modal.hide();
     })
     .catch((error) => (enrichErrors.value = error))
@@ -130,12 +130,12 @@ function toggleAllModules() {
 </script>
 
 <template>
-  <div :id="`enrichAttributeModal_${attribute.id}`" class="modal">
+  <div :id="`enrichAttributeModal_${attribute.uuid}`" class="modal">
     <div class="modal-dialog modal-xl">
       <div class="modal-content">
         <div class="container">
           <div class="modal-header">
-            <h5 class="modal-title">Enrich Attribute #{{ attribute.id }}</h5>
+            <h5 class="modal-title">Enrich Attribute {{ attribute.uuid }}</h5>
             <button
               type="button"
               class="btn-close"

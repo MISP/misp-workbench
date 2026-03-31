@@ -1,5 +1,6 @@
 <script setup>
 import { ref } from "vue";
+import { Modal } from "bootstrap";
 import { useEventsStore } from "@/stores";
 import { storeToRefs } from "pinia";
 
@@ -20,7 +21,7 @@ function onSubmit() {
     .delete(props.event_uuid)
     .then(() => {
       emit("event-deleted", { event_uuid: props.event_uuid });
-      modalEl.value?.hide();
+      Modal.getInstance(modalEl.value)?.hide();
     })
     .catch((error) => (status.error = error));
 }

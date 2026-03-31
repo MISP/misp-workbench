@@ -115,6 +115,23 @@
                         "ignore_above": 256
                     }
                 }
+            },
+            "sighting_timestamp": {
+                "type": "long"
+            },
+            "extends_uuid": {
+                "type": "keyword"
+            },
+            "sharing_group_id": {
+                "type": "long"
+            },
+            "organisation": {
+                "type": "object",
+                "dynamic": true
+            },
+            "sharing_group": {
+                "type": "object",
+                "dynamic": true
             }
         }
     }

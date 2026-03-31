@@ -206,7 +206,7 @@ async function downloadAttachment() {
             :id="`deleteObjectModal_${attachment.id}`"
             @object-deleted="handleObjectDeleted"
             :modal="deleteObjectModal"
-            :object_id="attachment.id"
+            :object_uuid="attachment.uuid"
           />
         </div>
       </div>

@@ -1,5 +1,5 @@
 from uuid import UUID
-from typing import Optional, Union
+from typing import Optional
 
 from app.auth.security import get_current_active_user
 from app.db.session import get_db
@@ -10,7 +10,7 @@ from app.schemas import user as user_schemas
 from app.worker import tasks
 from fastapi import APIRouter, Depends, HTTPException, Security, status, Response
 from sqlalchemy.orm import Session
-from fastapi_pagination import Page
+from fastapi_pagination import Page, Params
 
 router = APIRouter()
 
@@ -26,39 +26,32 @@ async def get_objects_parameters(
 @router.get("/objects/", response_model=Page[object_schemas.Object])
 def get_objects(
     params: dict = Depends(get_objects_parameters),
-    db: Session = Depends(get_db),
+    page_params: Params = Depends(),
     user: user_schemas.User = Security(
         get_current_active_user, scopes=["objects:read"]
     ),
 ) -> Page[object_schemas.Object]:
-    return objects_repository.get_objects(
-        db, params["event_uuid"], params["deleted"], params["template_uuid"]
+    return objects_repository.get_objects_from_opensearch(
+        page_params,
+        params["event_uuid"],
+        params["deleted"],
+        params["template_uuid"],
     )
 
 
-@router.get("/objects/{object_id}", response_model=object_schemas.Object)
+@router.get("/objects/{object_uuid}", response_model=object_schemas.Object)
 def get_object_by_id(
-    object_id: Union[int, UUID],
-    db: Session = Depends(get_db),
+    object_uuid: UUID,
     user: user_schemas.User = Security(
         get_current_active_user, scopes=["objects:read"]
     ),
 ):
-    
-    if isinstance(object_id, int):
-        db_object = objects_repository.get_object_by_id(db, object_id=object_id)
-    else:
-        db_object = objects_repository.get_object_by_uuid(db, object_uuid=object_id)
-    
-    if db_object is None:
+    os_object = objects_repository.get_object_from_opensearch(object_uuid)
+    if os_object is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Object not found"
         )
-    
-    object = object_schemas.Object.from_orm(db_object)
-    object.event_uuid = str(db_object.event.uuid)
-
-    return object
+    return os_object
 
 @router.post(
     "/objects/",
@@ -73,10 +66,8 @@ def create_object(
     ),
 ):
     
-    if object.event_id:
-        event = events_repository.get_event_by_id(db, event_id=object.event_id)
-    elif object.event_uuid:
-        event = events_repository.get_event_by_uuid(db, event_uuid=object.event_uuid)
+    if object.event_uuid:
+        event = events_repository.get_event_from_opensearch(object.event_uuid)
     else:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Event UUID is required"
@@ -87,32 +78,30 @@ def create_object(
             status_code=status.HTTP_404_NOT_FOUND, detail="Event not found"
         )
 
-    object.event_id = event.id
-    object_db = objects_repository.create_object(db=db, object=object)
-
-    return object_db
+    object.event_uuid = event.uuid
+    return objects_repository.create_object(db=db, object=object)
 
 
-@router.patch("/objects/{object_id}", response_model=object_schemas.Object)
+@router.patch("/objects/{object_uuid}", response_model=object_schemas.Object)
 def update_object(
-    object_id: int,
+    object_uuid: UUID,
     object: object_schemas.ObjectUpdate,
     db: Session = Depends(get_db),
     user: user_schemas.User = Security(
         get_current_active_user, scopes=["objects:update"]
     ),
 ):
-    return objects_repository.update_object(db=db, object_id=object_id, object=object)
+    return objects_repository.update_object(db=db, object_uuid=object_uuid, object=object)
 
 
-@router.delete("/objects/{object_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/objects/{object_uuid}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_object(
-    object_id: Union[int, UUID],
+    object_uuid: UUID,
     db: Session = Depends(get_db),
     user: user_schemas.User = Security(
         get_current_active_user, scopes=["objects:delete"]
     ),
 ):
-    objects_repository.delete_object(db=db, object_id=object_id)
+    objects_repository.delete_object(db=db, object_uuid=object_uuid)
 
     return Response(status_code=status.HTTP_204_NO_CONTENT)
