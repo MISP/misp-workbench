@@ -402,3 +402,55 @@ class TestHuntsResource(ApiTester):
             .first()
         )
         assert deleted is None
+
+    # ── DELETE /hunts/{id}/history ───────────────────────────────────────────
+
+    @pytest.mark.parametrize("scopes", [["hunts:delete"]])
+    def test_delete_hunt_history(
+        self,
+        client: TestClient,
+        hunt_1: hunt_models.Hunt,
+        hunt_run_history_1: hunt_models.HuntRunHistory,
+        auth_token: auth.Token,
+        db: Session,
+    ):
+        with patch("app.repositories.hunts.get_redis_client") as mock_redis:
+            response = client.delete(
+                f"/hunts/{hunt_1.id}/history",
+                headers={"Authorization": "Bearer " + auth_token},
+            )
+
+        assert response.status_code == status.HTTP_204_NO_CONTENT
+
+        remaining = (
+            db.query(hunt_models.HuntRunHistory)
+            .filter(hunt_models.HuntRunHistory.hunt_id == hunt_1.id)
+            .all()
+        )
+        assert remaining == []
+
+        mock_redis.return_value.delete.assert_any_call(f"hunt:history:{hunt_1.id}")
+        mock_redis.return_value.delete.assert_any_call(f"hunt:results:{hunt_1.id}")
+
+    @pytest.mark.parametrize("scopes", [["hunts:delete"]])
+    def test_delete_hunt_history_not_found(
+        self, client: TestClient, auth_token: auth.Token
+    ):
+        response = client.delete(
+            "/hunts/999999/history",
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    @pytest.mark.parametrize("scopes", [[]])
+    def test_delete_hunt_history_unauthorized(
+        self,
+        client: TestClient,
+        hunt_1: hunt_models.Hunt,
+        auth_token: auth.Token,
+    ):
+        response = client.delete(
+            f"/hunts/{hunt_1.id}/history",
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
