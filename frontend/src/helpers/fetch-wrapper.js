@@ -62,7 +62,7 @@ function authenticate() {
       headers: {
         "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
       },
-      body: `username=${user}&password=${password}`,
+      body: new URLSearchParams({ username: user, password }),
     }).then(handleResponse);
   };
 }
