@@ -355,54 +355,6 @@ class TestHuntsResource(ApiTester):
         )
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
-    # ── DELETE /hunts/{id} ───────────────────────────────────────────────────
-
-    @pytest.mark.parametrize("scopes", [[]])
-    def test_delete_hunt_unauthorized(
-        self,
-        client: TestClient,
-        hunt_1: hunt_models.Hunt,
-        auth_token: auth.Token,
-    ):
-        response = client.delete(
-            f"/hunts/{hunt_1.id}",
-            headers={"Authorization": "Bearer " + auth_token},
-        )
-        assert response.status_code == status.HTTP_401_UNAUTHORIZED
-
-    @pytest.mark.parametrize("scopes", [["hunts:delete"]])
-    def test_delete_hunt_not_found(
-        self, client: TestClient, auth_token: auth.Token
-    ):
-        response = client.delete(
-            "/hunts/999999",
-            headers={"Authorization": "Bearer " + auth_token},
-        )
-        assert response.status_code == status.HTTP_404_NOT_FOUND
-
-    @pytest.mark.parametrize("scopes", [["hunts:delete"]])
-    def test_delete_hunt(
-        self,
-        client: TestClient,
-        hunt_1: hunt_models.Hunt,
-        auth_token: auth.Token,
-        db: Session,
-    ):
-        with patch("app.repositories.tasks.delete_scheduled_tasks_for_hunt"):
-            response = client.delete(
-                f"/hunts/{hunt_1.id}",
-                headers={"Authorization": "Bearer " + auth_token},
-            )
-
-        assert response.status_code == status.HTTP_204_NO_CONTENT
-
-        deleted = (
-            db.query(hunt_models.Hunt)
-            .filter(hunt_models.Hunt.id == hunt_1.id)
-            .first()
-        )
-        assert deleted is None
-
     # ── DELETE /hunts/{id}/history ───────────────────────────────────────────
 
     @pytest.mark.parametrize("scopes", [["hunts:delete"]])
@@ -454,3 +406,51 @@ class TestHuntsResource(ApiTester):
             headers={"Authorization": "Bearer " + auth_token},
         )
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+    # ── DELETE /hunts/{id} ───────────────────────────────────────────────────
+
+    @pytest.mark.parametrize("scopes", [[]])
+    def test_delete_hunt_unauthorized(
+        self,
+        client: TestClient,
+        hunt_1: hunt_models.Hunt,
+        auth_token: auth.Token,
+    ):
+        response = client.delete(
+            f"/hunts/{hunt_1.id}",
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+    @pytest.mark.parametrize("scopes", [["hunts:delete"]])
+    def test_delete_hunt_not_found(
+        self, client: TestClient, auth_token: auth.Token
+    ):
+        response = client.delete(
+            "/hunts/999999",
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    @pytest.mark.parametrize("scopes", [["hunts:delete"]])
+    def test_delete_hunt(
+        self,
+        client: TestClient,
+        hunt_1: hunt_models.Hunt,
+        auth_token: auth.Token,
+        db: Session,
+    ):
+        with patch("app.repositories.tasks.delete_scheduled_tasks_for_hunt"):
+            response = client.delete(
+                f"/hunts/{hunt_1.id}",
+                headers={"Authorization": "Bearer " + auth_token},
+            )
+
+        assert response.status_code == status.HTTP_204_NO_CONTENT
+
+        deleted = (
+            db.query(hunt_models.Hunt)
+            .filter(hunt_models.Hunt.id == hunt_1.id)
+            .first()
+        )
+        assert deleted is None
