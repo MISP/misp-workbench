@@ -65,5 +65,8 @@ export const useHuntsStore = defineStore({
     async getHistory(id) {
       return await fetchWrapper.get(`${baseUrl}/${id}/history`);
     },
+    async deleteHistory(id) {
+      return await fetchWrapper.delete(`${baseUrl}/${id}/history`);
+    },
   },
 });

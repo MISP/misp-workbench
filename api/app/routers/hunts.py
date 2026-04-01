@@ -129,6 +129,22 @@ async def get_hunt_history(
     return hunts_repository.get_hunt_history(db, hunt_id)
 
 
+@router.delete("/hunts/{hunt_id}/history", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_hunt_history(
+    hunt_id: int,
+    db: Session = Depends(get_db),
+    user: user_schemas.User = Security(
+        get_current_active_user, scopes=["hunts:delete"]
+    ),
+):
+    db_hunt = hunts_repository.get_hunt_by_id(db, hunt_id=hunt_id, user_id=user.id)
+    if not db_hunt:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Hunt not found"
+        )
+    hunts_repository.delete_hunt_history(db, hunt_id)
+
+
 @router.post("/hunts/{hunt_id}/run", response_model=hunt_schemas.HuntRunResult)
 async def run_hunt(
     hunt_id: int,

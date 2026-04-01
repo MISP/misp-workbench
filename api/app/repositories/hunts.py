@@ -6,6 +6,7 @@ from app.models import hunt as hunt_models
 from app.schemas import hunt as hunt_schemas
 from app.services.opensearch import get_opensearch_client
 from app.services import rulezet
+from app.services import vulnerability_lookup
 from app.repositories import notifications as notifications_repository
 from app.services.redis import get_redis_client
 from fastapi import HTTPException, status
@@ -98,6 +99,16 @@ def get_hunt_history(db: Session, hunt_id: int) -> list[dict]:
         redis.rpush(history_key, *[json.dumps(e) for e in entries])
         redis.ltrim(history_key, -90, -1)
     return entries
+
+
+def delete_hunt_history(db: Session, hunt_id: int):
+    db.query(hunt_models.HuntRunHistory).filter(
+        hunt_models.HuntRunHistory.hunt_id == hunt_id
+    ).delete()
+    db.commit()
+    redis = get_redis_client()
+    redis.delete(f"hunt:history:{hunt_id}")
+    redis.delete(f"hunt:results:{hunt_id}")
 
 
 def delete_hunt(db: Session, hunt_id: int, user_id: int):
@@ -194,9 +205,30 @@ def _run_rulezet_hunt(db: Session, db_hunt: hunt_models.Hunt):
     }
 
 
+def _run_cpe_hunt(db: Session, db_hunt: hunt_models.Hunt):
+    try:
+        cves = vulnerability_lookup.lookup_by_cpe(db_hunt.query)
+        if not isinstance(cves, list):
+            cves = []
+    except Exception as e:
+        logger.error("CPE hunt %s failed: %s", db_hunt.id, e)
+        cves = []
+
+    total = len(cves)
+    _persist_hunt_run(db, db_hunt, total, cves, db_hunt.last_match_count)
+
+    return {
+        "hunt": hunt_schemas.Hunt.model_validate(db_hunt),
+        "total": total,
+        "hits": cves,
+    }
+
+
 def _run_hunt(db: Session, db_hunt: hunt_models.Hunt):
     if db_hunt.hunt_type == "rulezet":
         return _run_rulezet_hunt(db, db_hunt)
+    if db_hunt.hunt_type == "cpe":
+        return _run_cpe_hunt(db, db_hunt)
     return _run_opensearch_hunt(db, db_hunt)
 
 

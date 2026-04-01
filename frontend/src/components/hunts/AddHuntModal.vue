@@ -117,6 +117,18 @@ function close() {
                   >Rulezet Vuln check</label
                 >
               </div>
+              <div class="form-check">
+                <input
+                  class="form-check-input"
+                  type="radio"
+                  id="modal-type-cpe"
+                  value="cpe"
+                  v-model="hunt.hunt_type"
+                />
+                <label class="form-check-label" for="modal-type-cpe"
+                  >CPE Vuln lookup</label
+                >
+              </div>
             </div>
           </div>
 
@@ -129,7 +141,11 @@ function close() {
               :placeholder="
                 hunt.hunt_type === 'opensearch'
                   ? 'e.g. Suspicious IPs'
-                  : 'e.g. SharePoint RCE CVEs'
+                  : hunt.hunt_type === 'rulezet'
+                    ? 'e.g. SharePoint RCE CVEs'
+                    : hunt.hunt_type === 'cpe'
+                      ? 'e.g. GitLab Vulns'
+                      : 'Hunt Name'
               "
               autofocus
             />
@@ -198,7 +214,7 @@ function close() {
             </div>
           </template>
 
-          <div v-else class="mb-3">
+          <div v-else-if="hunt.hunt_type === 'rulezet'" class="mb-3">
             <label class="form-label" for="modal-hunt-cve">Vuln ID</label>
             <input
               id="modal-hunt-cve"
@@ -206,6 +222,20 @@ function close() {
               v-model="hunt.query"
               placeholder="e.g. CVE-2024-1234"
             />
+          </div>
+
+          <div v-else-if="hunt.hunt_type === 'cpe'" class="mb-3">
+            <label class="form-label" for="modal-hunt-cpe">CPE string</label>
+            <input
+              id="modal-hunt-cpe"
+              class="form-control font-monospace"
+              v-model="hunt.query"
+              placeholder="cpe:/a:gitlab:gitlab"
+            />
+            <div class="form-text">
+              Queries vulnerability.circl.lu for CVEs affecting this CPE.
+              Notifies you when the result set changes.
+            </div>
           </div>
 
           <div class="mb-2">
