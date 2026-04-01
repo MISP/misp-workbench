@@ -8,6 +8,7 @@ export const useRolesStore = defineStore({
   state: () => ({
     roles: {},
     role: {},
+    availableScopes: {},
     status: {
       loading: false,
       error: false,
@@ -27,7 +28,28 @@ export const useRolesStore = defineStore({
       fetchWrapper
         .get(`${baseUrl}/${id}`)
         .then((role) => (this.role = role))
-        .catch((error) => (this.role = { error }))
+        .catch((error) => (this.status = { error }))
+        .finally(() => (this.status = { loading: false }));
+    },
+    async getAvailableScopes() {
+      return fetchWrapper
+        .get(`${baseUrl}/scopes`)
+        .then((scopes) => (this.availableScopes = scopes))
+        .catch((error) => (this.status = { error }));
+    },
+    async update(id, data) {
+      this.status = { updating: true };
+      return fetchWrapper
+        .patch(`${baseUrl}/${id}`, data)
+        .then((role) => (this.role = role))
+        .catch((error) => Promise.reject(error))
+        .finally(() => (this.status = { updating: false }));
+    },
+    async delete(id) {
+      this.status = { loading: true };
+      return fetchWrapper
+        .delete(`${baseUrl}/${id}`)
+        .catch((error) => Promise.reject(error))
         .finally(() => (this.status = { loading: false }));
     },
   },

@@ -2,11 +2,16 @@
 import { storeToRefs } from "pinia";
 import { useRolesStore } from "@/stores";
 import Spinner from "@/components/misc/Spinner.vue";
+import RolesActions from "@/components/roles/RolesActions.vue";
 
 const rolesStore = useRolesStore();
 const { roles, status } = storeToRefs(rolesStore);
 
 rolesStore.getAll();
+
+function handleRoleDeleted() {
+  rolesStore.getAll();
+}
 </script>
 
 <template>
@@ -22,6 +27,7 @@ rolesStore.getAll();
           <th scope="col">name</th>
           <th scope="col">scopes</th>
           <th scope="col" class="text-center">default</th>
+          <th scope="col" class="text-end">actions</th>
         </tr>
       </thead>
       <tbody>
@@ -47,6 +53,13 @@ rolesStore.getAll();
           </td>
           <td class="text-center">
             <span v-if="role.default_role" class="badge bg-success">yes</span>
+          </td>
+          <td class="text-end">
+            <RolesActions
+              :role_id="role.id"
+              :role_name="role.name"
+              @role-deleted="handleRoleDeleted"
+            />
           </td>
         </tr>
       </tbody>

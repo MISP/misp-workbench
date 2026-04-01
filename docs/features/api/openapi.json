@@ -667,6 +667,38 @@
         }
       }
     },
+    "/roles/scopes": {
+      "get": {
+        "tags": [
+          "Roles"
+        ],
+        "summary": "Get Available Scopes",
+        "operationId": "get_available_scopes_roles_scopes_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "type": "object",
+                  "title": "Response Get Available Scopes Roles Scopes Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "roles:read"
+            ]
+          }
+        ]
+      }
+    },
     "/roles/": {
       "get": {
         "tags": [
@@ -717,6 +749,152 @@
                 }
               }
             }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/roles/{role_id}": {
+      "get": {
+        "tags": [
+          "Roles"
+        ],
+        "summary": "Get Role",
+        "operationId": "get_role_roles__role_id__get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "roles:read"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "role_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Role Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Role"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Roles"
+        ],
+        "summary": "Update Role",
+        "operationId": "update_role_roles__role_id__patch",
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "roles:update"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "role_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Role Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RoleUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Role"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Roles"
+        ],
+        "summary": "Delete Role",
+        "operationId": "delete_role_roles__role_id__delete",
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "roles:delete"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "role_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Role Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
           },
           "422": {
             "description": "Validation Error",
@@ -13669,6 +13847,48 @@
           "id"
         ],
         "title": "Role"
+      },
+      "RoleUpdate": {
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "scopes": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scopes"
+          },
+          "default_role": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Default Role"
+          }
+        },
+        "type": "object",
+        "title": "RoleUpdate"
       },
       "ScheduleTaskRequest": {
         "properties": {

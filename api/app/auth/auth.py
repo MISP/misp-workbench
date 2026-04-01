@@ -27,11 +27,8 @@ class TokenData(BaseModel):
     scopes: list[str] = []
 
 
-oauth2_scheme = OAuth2PasswordBearer(
-    tokenUrl="auth/token",
-    scopes={
+AVAILABLE_SCOPES: dict[str, str] = {
         "users:me": "Read information about the current user.",
-        "items": "Read items.",
         "users:create": "Create users.",
         "users:read": "Read users.",
         "users:update": "Update users.",
@@ -144,7 +141,11 @@ oauth2_scheme = OAuth2PasswordBearer(
         "mcp:create_event_report": "Create event reports via MCP.",
         "mcp:get_notifications": "Get user notifications via MCP.",
         "mcp:list_modules": "List enrichment modules via MCP.",
-    },
+}
+
+oauth2_scheme = OAuth2PasswordBearer(
+    tokenUrl="auth/token",
+    scopes=AVAILABLE_SCOPES,
 )
 
 
