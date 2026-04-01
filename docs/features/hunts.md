@@ -1,12 +1,24 @@
 # Hunts
 
-Hunts are saved searches that run against the OpenSearch index. Each hunt stores a Lucene query, an index target, and a run history so you can track how match counts evolve over time.
+Hunts are saved searches that can run against the OpenSearch index, an external vulnerability database, or a detection rule registry. Each hunt stores a query, an index target, and a run history so you can track how match counts evolve over time.
 
 ## Hunt types
 
 ### OpenSearch (`opensearch`)
 
 Executes a Lucene query against one of the three OpenSearch indices (`attributes`, `events`, or `correlations`). Returns up to 100 matching documents per run.
+
+### CPE (`cpe`)
+
+Looks up CVEs affecting a product by its [CPE 2.3](https://nvd.nist.gov/products/cpe) string using [vulnerability.circl.lu](https://vulnerability.circl.lu). The `query` field must be a valid CPE string (e.g. `cpe:2.3:a:apache:log4j:2.14.1:*:*:*:*:*:*:*`). All matching CVEs are fetched across pages — there is no cap on result count. The `index_target` field is ignored for CPE hunts.
+
+Each hit in the result contains:
+
+| Field | Description |
+|---|---|
+| `cve_id` | CVE identifier (e.g. `CVE-2021-44228`) |
+| `severity` | CVSS base severity (`CRITICAL`, `HIGH`, `MEDIUM`, `LOW`, or absent if not scored) |
+| `description` | English description of the vulnerability |
 
 ### Rulezet (`rulezet`)
 
@@ -16,9 +28,9 @@ Looks up detection rules from [rulezet.org](https://rulezet.org) by Vuln ID. The
 
 | Term | Description |
 |---|---|
-| **Query** | Lucene query (opensearch) or Vuln ID (rulezet) |
+| **Query** | Lucene query (opensearch), CPE string (cpe), or Vuln ID (rulezet) |
 | **Index target** | Which index to search: `attributes`, `events`, or `correlations` (opensearch only) |
-| **Hunt type** | `opensearch` for Lucene queries, `rulezet` for Vuln-ID-based rule lookup |
+| **Hunt type** | `opensearch`, `cpe`, or `rulezet` |
 | **Status** | `active` or `paused` — paused hunts are skipped during scheduled runs |
 | **Run history** | Each execution stores a timestamp and match count |
 
@@ -32,6 +44,10 @@ Looks up detection rules from [rulezet.org](https://rulezet.org) by Vuln ID. The
     - _Rulezet_ hunt:
     
     <img src="../../screenshots/hunts/misp-workbench-2_hunts_new-rulezet-hunt.png" style="height: 500px;">
+
+    - _CPE_ hunt:
+    
+    <img src="../../screenshots/hunts/misp-workbench-2_hunts_new-cpe-hunt.png" style="height: 500px;">
 
 2. Click the eye icon on the newly created hunt to view its details. To run the hunt immediately, click the ***Run Now*** button.
     <img src="../../screenshots/hunts/misp-workbench-3_hunts_view-opensearch-hunt.png" style="max-width: 100%; height: auto;">
@@ -58,7 +74,7 @@ Looks up detection rules from [rulezet.org](https://rulezet.org) by Vuln ID. The
 
 ## Creating a _Hunt_ using the API
 
-A hunt requires a name and a Lucene query. All other fields are optional.
+### OpenSearch hunt
 
 ```json
 POST /hunts/
@@ -71,6 +87,20 @@ POST /hunts/
   "status": "active"
 }
 ```
+
+### CPE hunt
+
+```json
+POST /hunts/
+{
+  "name": "Apache Log4j 2.14.1 CVEs",
+  "query": "cpe:2.3:a:apache:log4j:2.14.1:*:*:*:*:*:*:*",
+  "hunt_type": "cpe",
+  "status": "active"
+}
+```
+
+The `index_target` field is not required for CPE hunts.
 
 Required scopes: `hunts:create`
 
@@ -111,6 +141,16 @@ Returns a list of past run timestamps and match counts, useful for spotting spik
 
 Required scopes: `hunts:read`
 
+## Clearing history and results
+
+```
+DELETE /hunts/{hunt_id}/history
+```
+
+Deletes all run history entries and the cached result set for the hunt. The hunt itself is not deleted and can be run again. Useful for resetting a hunt after changing its query.
+
+Required scopes: `hunts:delete`
+
 ## API reference
 
 | Method | Path | Description | Scopes |
@@ -123,6 +163,7 @@ Required scopes: `hunts:read`
 | `POST` | `/hunts/{id}/run` | Run a hunt and cache results | `hunts:run` |
 | `GET` | `/hunts/{id}/results` | Get cached results | `hunts:read` |
 | `GET` | `/hunts/{id}/history` | Get run history | `hunts:read` |
+| `DELETE` | `/hunts/{id}/history` | Clear run history and cached results | `hunts:delete` |
 
 ## Index targets (opensearch hunts only)
 
@@ -149,6 +190,27 @@ Searches the `correlations` index to find attribute values that appear across mu
 ```
 value:evil.example.com
 ```
+
+## CPE hunt results
+
+When a CPE hunt runs, each hit represents a CVE affecting the specified product. All CVEs are returned — unlike OpenSearch hunts there is no 100-document cap.
+
+```json
+{
+  "hunt": { "id": 7, "name": "Apache Log4j 2.14.1 CVEs", ... },
+  "total": 12,
+  "hits": [
+    {
+      "cve_id": "CVE-2021-44228",
+      "severity": "CRITICAL",
+      "description": "Apache Log4j2 2.0-beta9 through 2.15.0 ..."
+    },
+    ...
+  ]
+}
+```
+
+CVE IDs in the UI link directly to the corresponding record on [vulnerability.circl.lu](https://vulnerability.circl.lu).
 
 ## Rulezet hunt results
 
