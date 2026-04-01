@@ -1009,6 +1009,72 @@
         }
       }
     },
+    "/events/histogram": {
+      "get": {
+        "tags": [
+          "Events"
+        ],
+        "summary": "Get Events Histogram",
+        "operationId": "get_events_histogram_events_histogram_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "events:read"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "query",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 0,
+              "title": "Query"
+            }
+          },
+          {
+            "name": "interval",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^(1d|1w|1M)$"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": "1d",
+              "title": "Interval"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/events/export": {
       "get": {
         "tags": [
@@ -1074,13 +1140,68 @@
         }
       }
     },
-    "/events/{event_id}": {
+    "/events/force-index": {
+      "post": {
+        "tags": [
+          "Events"
+        ],
+        "summary": "Force Index",
+        "operationId": "force_index_events_force_index_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "events:update"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "uuid",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Uuid"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/events/{event_uuid}": {
       "get": {
         "tags": [
           "Events"
         ],
-        "summary": "Get Event By Id",
-        "operationId": "get_event_by_id_events__event_id__get",
+        "summary": "Get Event By Uuid",
+        "operationId": "get_event_by_uuid_events__event_uuid__get",
         "security": [
           {
             "OAuth2PasswordBearer": [
@@ -1090,20 +1211,13 @@
         ],
         "parameters": [
           {
-            "name": "event_id",
+            "name": "event_uuid",
             "in": "path",
             "required": true,
             "schema": {
-              "anyOf": [
-                {
-                  "type": "integer"
-                },
-                {
-                  "type": "string",
-                  "format": "uuid"
-                }
-              ],
-              "title": "Event Id"
+              "type": "string",
+              "format": "uuid",
+              "title": "Event Uuid"
             }
           }
         ],
@@ -1135,7 +1249,7 @@
           "Events"
         ],
         "summary": "Update Event",
-        "operationId": "update_event_events__event_id__patch",
+        "operationId": "update_event_events__event_uuid__patch",
         "security": [
           {
             "OAuth2PasswordBearer": [
@@ -1145,12 +1259,13 @@
         ],
         "parameters": [
           {
-            "name": "event_id",
+            "name": "event_uuid",
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "title": "Event Id"
+              "type": "string",
+              "format": "uuid",
+              "title": "Event Uuid"
             }
           }
         ],
@@ -1192,7 +1307,7 @@
           "Events"
         ],
         "summary": "Delete Event",
-        "operationId": "delete_event_events__event_id__delete",
+        "operationId": "delete_event_events__event_uuid__delete",
         "security": [
           {
             "OAuth2PasswordBearer": [
@@ -1202,20 +1317,13 @@
         ],
         "parameters": [
           {
-            "name": "event_id",
+            "name": "event_uuid",
             "in": "path",
             "required": true,
             "schema": {
-              "anyOf": [
-                {
-                  "type": "integer"
-                },
-                {
-                  "type": "string",
-                  "format": "uuid"
-                }
-              ],
-              "title": "Event Id"
+              "type": "string",
+              "format": "uuid",
+              "title": "Event Uuid"
             }
           },
           {
@@ -1253,13 +1361,13 @@
         }
       }
     },
-    "/events/{event_id}/tag/{tag}": {
+    "/events/{event_uuid}/tag/{tag}": {
       "post": {
         "tags": [
           "Events"
         ],
         "summary": "Tag Event",
-        "operationId": "tag_event_events__event_id__tag__tag__post",
+        "operationId": "tag_event_events__event_uuid__tag__tag__post",
         "security": [
           {
             "OAuth2PasswordBearer": [
@@ -1269,12 +1377,13 @@
         ],
         "parameters": [
           {
-            "name": "event_id",
+            "name": "event_uuid",
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "title": "Event Id"
+              "type": "string",
+              "format": "uuid",
+              "title": "Event Uuid"
             }
           },
           {
@@ -1313,7 +1422,7 @@
           "Events"
         ],
         "summary": "Untag Event",
-        "operationId": "untag_event_events__event_id__tag__tag__delete",
+        "operationId": "untag_event_events__event_uuid__tag__tag__delete",
         "security": [
           {
             "OAuth2PasswordBearer": [
@@ -1323,12 +1432,13 @@
         ],
         "parameters": [
           {
-            "name": "event_id",
+            "name": "event_uuid",
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "title": "Event Id"
+              "type": "string",
+              "format": "uuid",
+              "title": "Event Uuid"
             }
           },
           {
@@ -1358,13 +1468,13 @@
         }
       }
     },
-    "/events/{event_id}/upload_attachments/": {
+    "/events/{event_uuid}/upload_attachments/": {
       "post": {
         "tags": [
           "Events"
         ],
         "summary": "Upload Attachments",
-        "operationId": "upload_attachments_events__event_id__upload_attachments__post",
+        "operationId": "upload_attachments_events__event_uuid__upload_attachments__post",
         "security": [
           {
             "OAuth2PasswordBearer": [
@@ -1374,20 +1484,13 @@
         ],
         "parameters": [
           {
-            "name": "event_id",
+            "name": "event_uuid",
             "in": "path",
             "required": true,
             "schema": {
-              "anyOf": [
-                {
-                  "type": "integer"
-                },
-                {
-                  "type": "string",
-                  "format": "uuid"
-                }
-              ],
-              "title": "Event Id"
+              "type": "string",
+              "format": "uuid",
+              "title": "Event Uuid"
             }
           }
         ],
@@ -1396,7 +1499,7 @@
           "content": {
             "multipart/form-data": {
               "schema": {
-                "$ref": "#/components/schemas/Body_upload_attachments_events__event_id__upload_attachments__post"
+                "$ref": "#/components/schemas/Body_upload_attachments_events__event_uuid__upload_attachments__post"
               }
             }
           }
@@ -1411,7 +1514,7 @@
                   "items": {
                     "$ref": "#/components/schemas/Object"
                   },
-                  "title": "Response Upload Attachments Events  Event Id  Upload Attachments  Post"
+                  "title": "Response Upload Attachments Events  Event Uuid  Upload Attachments  Post"
                 }
               }
             }
@@ -1489,77 +1592,6 @@
                 "schema": {
                   "$ref": "#/components/schemas/Page_Object_"
                 }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/events/force-index": {
-      "post": {
-        "tags": [
-          "Events"
-        ],
-        "summary": "Force Index",
-        "operationId": "force_index_events_force_index_post",
-        "security": [
-          {
-            "OAuth2PasswordBearer": [
-              "events:update"
-            ]
-          }
-        ],
-        "parameters": [
-          {
-            "name": "uuid",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string",
-                  "format": "uuid"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Uuid"
-            }
-          },
-          {
-            "name": "id",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "integer"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Id"
-            }
-          }
-        ],
-        "responses": {
-          "201": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
               }
             }
           },
@@ -1881,19 +1913,20 @@
             }
           },
           {
-            "name": "object_id",
+            "name": "object_uuid",
             "in": "query",
             "required": false,
             "schema": {
               "anyOf": [
                 {
-                  "type": "integer"
+                  "type": "string",
+                  "format": "uuid"
                 },
                 {
                   "type": "null"
                 }
               ],
-              "title": "Object Id"
+              "title": "Object Uuid"
             }
           },
           {
@@ -2117,6 +2150,72 @@
         }
       }
     },
+    "/attributes/histogram": {
+      "get": {
+        "tags": [
+          "Attributes"
+        ],
+        "summary": "Get Attributes Histogram",
+        "operationId": "get_attributes_histogram_attributes_histogram_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "attributes:read"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "query",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 0,
+              "title": "Query"
+            }
+          },
+          {
+            "name": "interval",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^(1d|1w|1M)$"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": "1d",
+              "title": "Interval"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/attributes/export": {
       "get": {
         "tags": [
@@ -2182,13 +2281,13 @@
         }
       }
     },
-    "/attributes/{attribute_id}": {
+    "/attributes/{attribute_uuid}": {
       "get": {
         "tags": [
           "Attributes"
         ],
-        "summary": "Get Attribute By Id",
-        "operationId": "get_attribute_by_id_attributes__attribute_id__get",
+        "summary": "Get Attribute By Uuid",
+        "operationId": "get_attribute_by_uuid_attributes__attribute_uuid__get",
         "security": [
           {
             "OAuth2PasswordBearer": [
@@ -2198,20 +2297,13 @@
         ],
         "parameters": [
           {
-            "name": "attribute_id",
+            "name": "attribute_uuid",
             "in": "path",
             "required": true,
             "schema": {
-              "anyOf": [
-                {
-                  "type": "integer"
-                },
-                {
-                  "type": "string",
-                  "format": "uuid"
-                }
-              ],
-              "title": "Attribute Id"
+              "type": "string",
+              "format": "uuid",
+              "title": "Attribute Uuid"
             }
           }
         ],
@@ -2243,7 +2335,7 @@
           "Attributes"
         ],
         "summary": "Update Attribute",
-        "operationId": "update_attribute_attributes__attribute_id__patch",
+        "operationId": "update_attribute_attributes__attribute_uuid__patch",
         "security": [
           {
             "OAuth2PasswordBearer": [
@@ -2253,12 +2345,13 @@
         ],
         "parameters": [
           {
-            "name": "attribute_id",
+            "name": "attribute_uuid",
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "title": "Attribute Id"
+              "type": "string",
+              "format": "uuid",
+              "title": "Attribute Uuid"
             }
           }
         ],
@@ -2300,7 +2393,7 @@
           "Attributes"
         ],
         "summary": "Delete Attribute",
-        "operationId": "delete_attribute_attributes__attribute_id__delete",
+        "operationId": "delete_attribute_attributes__attribute_uuid__delete",
         "security": [
           {
             "OAuth2PasswordBearer": [
@@ -2310,12 +2403,13 @@
         ],
         "parameters": [
           {
-            "name": "attribute_id",
+            "name": "attribute_uuid",
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "title": "Attribute Id"
+              "type": "string",
+              "format": "uuid",
+              "title": "Attribute Uuid"
             }
           }
         ],
@@ -2336,13 +2430,13 @@
         }
       }
     },
-    "/attributes/{attribute_id}/tag/{tag}": {
+    "/attributes/{attribute_uuid}/tag/{tag}": {
       "post": {
         "tags": [
           "Attributes"
         ],
         "summary": "Tag Attribute",
-        "operationId": "tag_attribute_attributes__attribute_id__tag__tag__post",
+        "operationId": "tag_attribute_attributes__attribute_uuid__tag__tag__post",
         "security": [
           {
             "OAuth2PasswordBearer": [
@@ -2352,12 +2446,13 @@
         ],
         "parameters": [
           {
-            "name": "attribute_id",
+            "name": "attribute_uuid",
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "title": "Attribute Id"
+              "type": "string",
+              "format": "uuid",
+              "title": "Attribute Uuid"
             }
           },
           {
@@ -2396,7 +2491,7 @@
           "Attributes"
         ],
         "summary": "Untag Attribute",
-        "operationId": "untag_attribute_attributes__attribute_id__tag__tag__delete",
+        "operationId": "untag_attribute_attributes__attribute_uuid__tag__tag__delete",
         "security": [
           {
             "OAuth2PasswordBearer": [
@@ -2406,12 +2501,13 @@
         ],
         "parameters": [
           {
-            "name": "attribute_id",
+            "name": "attribute_uuid",
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "title": "Attribute Id"
+              "type": "string",
+              "format": "uuid",
+              "title": "Attribute Uuid"
             }
           },
           {
@@ -2587,13 +2683,13 @@
         }
       }
     },
-    "/objects/{object_id}": {
+    "/objects/{object_uuid}": {
       "get": {
         "tags": [
           "Objects"
         ],
         "summary": "Get Object By Id",
-        "operationId": "get_object_by_id_objects__object_id__get",
+        "operationId": "get_object_by_id_objects__object_uuid__get",
         "security": [
           {
             "OAuth2PasswordBearer": [
@@ -2603,20 +2699,13 @@
         ],
         "parameters": [
           {
-            "name": "object_id",
+            "name": "object_uuid",
             "in": "path",
             "required": true,
             "schema": {
-              "anyOf": [
-                {
-                  "type": "integer"
-                },
-                {
-                  "type": "string",
-                  "format": "uuid"
-                }
-              ],
-              "title": "Object Id"
+              "type": "string",
+              "format": "uuid",
+              "title": "Object Uuid"
             }
           }
         ],
@@ -2648,7 +2737,7 @@
           "Objects"
         ],
         "summary": "Update Object",
-        "operationId": "update_object_objects__object_id__patch",
+        "operationId": "update_object_objects__object_uuid__patch",
         "security": [
           {
             "OAuth2PasswordBearer": [
@@ -2658,12 +2747,13 @@
         ],
         "parameters": [
           {
-            "name": "object_id",
+            "name": "object_uuid",
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "title": "Object Id"
+              "type": "string",
+              "format": "uuid",
+              "title": "Object Uuid"
             }
           }
         ],
@@ -2705,7 +2795,7 @@
           "Objects"
         ],
         "summary": "Delete Object",
-        "operationId": "delete_object_objects__object_id__delete",
+        "operationId": "delete_object_objects__object_uuid__delete",
         "security": [
           {
             "OAuth2PasswordBearer": [
@@ -2715,20 +2805,13 @@
         ],
         "parameters": [
           {
-            "name": "object_id",
+            "name": "object_uuid",
             "in": "path",
             "required": true,
             "schema": {
-              "anyOf": [
-                {
-                  "type": "integer"
-                },
-                {
-                  "type": "string",
-                  "format": "uuid"
-                }
-              ],
-              "title": "Object Id"
+              "type": "string",
+              "format": "uuid",
+              "title": "Object Uuid"
             }
           }
         ],
@@ -3483,13 +3566,13 @@
         }
       }
     },
-    "/servers/{server_id}/events/{event_id}/reports": {
+    "/servers/{server_id}/events/{event_uuid}/reports": {
       "get": {
         "tags": [
           "Servers"
         ],
         "summary": "Get Remote Event Reports",
-        "operationId": "get_remote_event_reports_servers__server_id__events__event_id__reports_get",
+        "operationId": "get_remote_event_reports_servers__server_id__events__event_uuid__reports_get",
         "security": [
           {
             "OAuth2PasswordBearer": [
@@ -3508,12 +3591,12 @@
             }
           },
           {
-            "name": "event_id",
+            "name": "event_uuid",
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "title": "Event Id"
+              "type": "string",
+              "title": "Event Uuid"
             }
           },
           {
@@ -7814,6 +7897,46 @@
             }
           }
         }
+      },
+      "delete": {
+        "tags": [
+          "Hunts"
+        ],
+        "summary": "Delete Hunt History",
+        "operationId": "delete_hunt_history_hunts__hunt_id__history_delete",
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "hunts:delete"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "hunt_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Hunt Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/hunts/{hunt_id}/run": {
@@ -8204,27 +8327,17 @@
       },
       "Attribute": {
         "properties": {
-          "event_id": {
+          "object_uuid": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string",
+                "format": "uuid"
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Event Id"
-          },
-          "object_id": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Object Id"
+            "title": "Object Uuid"
           },
           "event_uuid": {
             "anyOf": [
@@ -8371,10 +8484,6 @@
             ],
             "title": "Last Seen"
           },
-          "id": {
-            "type": "integer",
-            "title": "Id"
-          },
           "tags": {
             "items": {
               "$ref": "#/components/schemas/Tag"
@@ -8384,46 +8493,54 @@
             "default": []
           },
           "correlations": {
-            "items": {
-              "additionalProperties": true,
-              "type": "object"
-            },
-            "type": "array",
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Correlations"
+          },
+          "expanded": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expanded"
           }
         },
         "type": "object",
         "required": [
           "category",
           "type",
-          "value",
-          "id"
+          "value"
         ],
         "title": "Attribute"
       },
       "AttributeCreate": {
         "properties": {
-          "event_id": {
+          "object_uuid": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string",
+                "format": "uuid"
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Event Id"
-          },
-          "object_id": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Object Id"
+            "title": "Object Uuid"
           },
           "event_uuid": {
             "anyOf": [
@@ -8581,16 +8698,17 @@
       },
       "AttributeUpdate": {
         "properties": {
-          "object_id": {
+          "object_uuid": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string",
+                "format": "uuid"
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Object Id"
+            "title": "Object Uuid"
           },
           "object_relation": {
             "anyOf": [
@@ -8797,7 +8915,7 @@
         ],
         "title": "Body_login_for_access_token_auth_token_post"
       },
-      "Body_upload_attachments_events__event_id__upload_attachments__post": {
+      "Body_upload_attachments_events__event_uuid__upload_attachments__post": {
         "properties": {
           "attachments": {
             "items": {
@@ -8817,7 +8935,7 @@
           "attachments",
           "attachments_meta"
         ],
-        "title": "Body_upload_attachments_events__event_id__upload_attachments__post"
+        "title": "Body_upload_attachments_events__event_uuid__upload_attachments__post"
       },
       "CorrelationDeleteResponse": {
         "properties": {
@@ -9184,10 +9302,6 @@
             ],
             "title": "Deleted"
           },
-          "id": {
-            "type": "integer",
-            "title": "Id"
-          },
           "attributes": {
             "items": {
               "$ref": "#/components/schemas/Attribute"
@@ -9223,14 +9337,19 @@
             "default": []
           },
           "organisation": {
-            "$ref": "#/components/schemas/Organisation"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Organisation"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "type": "object",
         "required": [
-          "info",
-          "id",
-          "organisation"
+          "info"
         ],
         "title": "Event"
       },
@@ -9758,16 +9877,16 @@
             "title": "Delta Merge",
             "default": false
           },
-          "event_id": {
+          "event_uuid": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Event Id"
+            "title": "Event Uuid"
           },
           "publish": {
             "anyOf": [
@@ -10039,16 +10158,16 @@
             "title": "Delta Merge",
             "default": false
           },
-          "event_id": {
+          "event_uuid": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Event Id"
+            "title": "Event Uuid"
           },
           "publish": {
             "anyOf": [
@@ -10339,16 +10458,16 @@
             ],
             "title": "Delta Merge"
           },
-          "event_id": {
+          "event_uuid": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Event Id"
+            "title": "Event Uuid"
           },
           "publish": {
             "anyOf": [
@@ -10984,7 +11103,8 @@
             "type": "string",
             "enum": [
               "opensearch",
-              "rulezet"
+              "rulezet",
+              "cpe"
             ],
             "title": "Hunt Type",
             "default": "opensearch"
@@ -11099,7 +11219,8 @@
             "type": "string",
             "enum": [
               "opensearch",
-              "rulezet"
+              "rulezet",
+              "cpe"
             ],
             "title": "Hunt Type",
             "default": "opensearch"
@@ -11246,7 +11367,8 @@
                 "type": "string",
                 "enum": [
                   "opensearch",
-                  "rulezet"
+                  "rulezet",
+                  "cpe"
                 ]
               },
               {
@@ -11562,7 +11684,7 @@
             "type": "string",
             "format": "date-time",
             "title": "Created At",
-            "default": "2026-03-24T15:54:35.820795"
+            "default": "2026-04-01T09:59:54.089793"
           },
           "updated_at": {
             "anyOf": [
@@ -11632,17 +11754,6 @@
           "template_version": {
             "type": "integer",
             "title": "Template Version"
-          },
-          "event_id": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Event Id"
           },
           "event_uuid": {
             "anyOf": [
@@ -11738,10 +11849,6 @@
             ],
             "title": "Last Seen"
           },
-          "id": {
-            "type": "integer",
-            "title": "Id"
-          },
           "attributes": {
             "items": {
               "$ref": "#/components/schemas/Attribute"
@@ -11763,8 +11870,7 @@
         "required": [
           "name",
           "template_version",
-          "timestamp",
-          "id"
+          "timestamp"
         ],
         "title": "Object"
       },
@@ -11810,17 +11916,6 @@
           "template_version": {
             "type": "integer",
             "title": "Template Version"
-          },
-          "event_id": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Event Id"
           },
           "event_uuid": {
             "anyOf": [
@@ -11955,13 +12050,29 @@
             "format": "uuid",
             "title": "Uuid"
           },
-          "object_id": {
-            "type": "integer",
-            "title": "Object Id"
+          "object_uuid": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Object Uuid"
           },
-          "event_id": {
-            "type": "integer",
-            "title": "Event Id"
+          "event_uuid": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Event Uuid"
           },
           "source_uuid": {
             "anyOf": [
@@ -11988,7 +12099,14 @@
             "title": "Referenced Uuid"
           },
           "timestamp": {
-            "type": "integer",
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Timestamp"
           },
           "referenced_id": {
@@ -12036,21 +12154,13 @@
           },
           "deleted": {
             "type": "boolean",
-            "title": "Deleted"
-          },
-          "id": {
-            "type": "integer",
-            "title": "Id"
+            "title": "Deleted",
+            "default": false
           }
         },
         "type": "object",
         "required": [
-          "uuid",
-          "object_id",
-          "event_id",
-          "timestamp",
-          "deleted",
-          "id"
+          "uuid"
         ],
         "title": "ObjectReference"
       },
@@ -12061,20 +12171,29 @@
             "format": "uuid",
             "title": "Uuid"
           },
-          "object_id": {
+          "object_uuid": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string",
+                "format": "uuid"
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Object Id"
+            "title": "Object Uuid"
           },
-          "event_id": {
-            "type": "integer",
-            "title": "Event Id"
+          "event_uuid": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Event Uuid"
           },
           "source_uuid": {
             "anyOf": [
@@ -12101,7 +12220,14 @@
             "title": "Referenced Uuid"
           },
           "timestamp": {
-            "type": "integer",
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Timestamp"
           },
           "referenced_id": {
@@ -12150,15 +12276,13 @@
           },
           "deleted": {
             "type": "boolean",
-            "title": "Deleted"
+            "title": "Deleted",
+            "default": false
           }
         },
         "type": "object",
         "required": [
-          "uuid",
-          "event_id",
-          "timestamp",
-          "deleted"
+          "uuid"
         ],
         "title": "ObjectReferenceCreate"
       },
@@ -13490,8 +13614,7 @@
           0,
           1
         ],
-        "title": "ReferencedType",
-        "description": "Enum for the Referenced Entity Type"
+        "title": "ReferencedType"
       },
       "Role": {
         "properties": {
