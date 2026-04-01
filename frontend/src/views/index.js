@@ -43,3 +43,4 @@ export { default as IndexHunts } from "./hunts/IndexHunts.vue";
 export { default as AddHunt } from "./hunts/AddHunt.vue";
 export { default as EditHunt } from "./hunts/EditHunt.vue";
 export { default as ViewHunt } from "./hunts/ViewHunt.vue";
+export { default as IndexRoles } from "./roles/IndexRoles.vue";

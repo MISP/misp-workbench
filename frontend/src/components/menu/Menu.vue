@@ -182,6 +182,11 @@ function navAndClose(path) {
                 >organisations</RouterLink
               >
             </li>
+            <li>
+              <RouterLink to="/roles" class="dropdown-item fw-light"
+                >roles</RouterLink
+              >
+            </li>
             <li><hr class="dropdown-divider" /></li>
             <li>
               <RouterLink to="/settings/modules" class="dropdown-item fw-light"
@@ -384,6 +389,15 @@ function navAndClose(path) {
                 @click.prevent="navAndClose('/organisations')"
               >
                 organisations
+              </RouterLink>
+            </li>
+            <li>
+              <RouterLink
+                to="/roles"
+                class="list-group-item list-group-item-action ps-4"
+                @click.prevent="navAndClose('/roles')"
+              >
+                roles
               </RouterLink>
             </li>
             <li>
