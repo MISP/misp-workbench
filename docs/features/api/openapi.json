@@ -11683,8 +11683,7 @@
           "created_at": {
             "type": "string",
             "format": "date-time",
-            "title": "Created At",
-            "default": "2026-04-01T09:59:54.089793"
+            "title": "Created At"
           },
           "updated_at": {
             "anyOf": [

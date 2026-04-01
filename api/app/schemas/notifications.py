@@ -2,7 +2,7 @@ from typing import Optional
 from uuid import UUID
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class NotificationBase(BaseModel):
@@ -12,7 +12,7 @@ class NotificationBase(BaseModel):
     entity_uuid: Optional[UUID] = None
     read: bool = False
     payload: Optional[dict] = {}
-    created_at: datetime = datetime.now()
+    created_at: datetime = Field(default_factory=datetime.now)
     updated_at: Optional[datetime] = None
 
 
