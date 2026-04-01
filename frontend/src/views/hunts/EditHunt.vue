@@ -114,13 +114,23 @@ function cancel() {
         </div>
       </template>
 
-      <div v-else class="mb-3">
-        <label class="form-label" for="hunt-cve">CVE ID</label>
+      <div v-else-if="form.hunt_type === 'rulezet'" class="mb-3">
+        <label class="form-label" for="hunt-cve">Vuln ID</label>
         <input
           id="hunt-cve"
           class="form-control font-monospace"
           v-model="form.query"
           placeholder="CVE-2024-1234"
+        />
+      </div>
+
+      <div v-else-if="form.hunt_type === 'cpe'" class="mb-3">
+        <label class="form-label" for="hunt-cpe">CPE string</label>
+        <input
+          id="hunt-cpe"
+          class="form-control font-monospace"
+          v-model="form.query"
+          placeholder="cpe:/a:gitlab:gitlab"
         />
       </div>
 

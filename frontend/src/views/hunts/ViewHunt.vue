@@ -111,6 +111,13 @@ async function saveSchedule() {
     .finally(() => (scheduling.value = false));
 }
 
+async function clearHistory() {
+  await huntsStore.deleteHistory(props.id);
+  history.value = [];
+  cachedResult.value = null;
+  runResult.value = null;
+}
+
 async function runHunt() {
   runResult.value = null;
   runError.value = null;
@@ -190,7 +197,13 @@ async function runHunt() {
 
         <div class="mt-3">
           <div class="text-muted small mb-1">
-            {{ hunt.hunt_type === "rulezet" ? "CVE ID" : "Query" }}
+            {{
+              hunt.hunt_type === "rulezet"
+                ? "Vuln ID"
+                : hunt.hunt_type === "cpe"
+                  ? "CPE string"
+                  : "Query"
+            }}
           </div>
           <code class="d-block p-2 bg-body-secondary rounded">{{
             hunt.query
@@ -198,8 +211,13 @@ async function runHunt() {
         </div>
 
         <div v-if="history.length > 1" class="mt-3">
-          <div class="text-muted small mb-1">
-            Match history ({{ history.length }} runs)
+          <div class="d-flex justify-content-between align-items-center mb-1">
+            <div class="text-muted small">
+              Match history ({{ history.length }} runs)
+            </div>
+            <button class="btn btn-outline-danger btn-sm" @click="clearHistory">
+              Clear history
+            </button>
           </div>
           <div>
             <Line
@@ -303,11 +321,15 @@ async function runHunt() {
                   {{
                     hunt.hunt_type === "rulezet"
                       ? "rules found"
-                      : "total matches"
+                      : hunt.hunt_type === "cpe"
+                        ? "Vulnerabilities found"
+                        : "total matches"
                   }}
                 </div>
               </div>
-              <div v-if="hunt.hunt_type !== 'rulezet'">
+              <div
+                v-if="hunt.hunt_type !== 'rulezet' && hunt.hunt_type !== 'cpe'"
+              >
                 <span class="fs-3 fw-bold text-primary">{{
                   displayResult.hits.length
                 }}</span>
@@ -322,7 +344,7 @@ async function runHunt() {
           <!-- Attribute results -->
           <div
             v-if="
-              hunt.hunt_type !== 'rulezet' &&
+              hunt.hunt_type === 'opensearch' &&
               hunt.index_target === 'attributes' &&
               displayResult.hits.length
             "
@@ -458,6 +480,58 @@ async function runHunt() {
                       {{ rule.source }}
                     </a>
                     <span v-else class="text-muted">—</span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- CPE / vulnerability results -->
+          <div
+            v-else-if="hunt.hunt_type === 'cpe' && displayResult.hits.length"
+            class="table-responsive"
+          >
+            <table class="table table-sm table-striped align-middle">
+              <thead>
+                <tr>
+                  <th>CVE ID</th>
+                  <th>severity</th>
+                  <th>description</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="(hit, i) in displayResult.hits" :key="i">
+                  <td class="text-nowrap">
+                    <a
+                      :href="`https://vulnerability.circl.lu/vuln/${hit.cve_id}`"
+                      target="_blank"
+                      rel="noopener"
+                      class="text-decoration-none font-monospace"
+                    >
+                      {{ hit.cve_id }}
+                    </a>
+                  </td>
+                  <td>
+                    <span
+                      v-if="hit.severity"
+                      class="badge"
+                      :class="{
+                        'bg-danger': ['CRITICAL', 'HIGH'].includes(
+                          hit.severity?.toUpperCase(),
+                        ),
+                        'bg-warning text-dark':
+                          hit.severity?.toUpperCase() === 'MEDIUM',
+                        'bg-secondary': ['LOW', 'NONE'].includes(
+                          hit.severity?.toUpperCase(),
+                        ),
+                      }"
+                    >
+                      {{ hit.severity }}
+                    </span>
+                    <span v-else class="text-muted">—</span>
+                  </td>
+                  <td class="text-truncate" style="max-width: 400px">
+                    {{ hit.description || "—" }}
                   </td>
                 </tr>
               </tbody>
