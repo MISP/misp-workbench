@@ -47,6 +47,13 @@ export const useUsersStore = defineStore({
         .catch((error) => (this.error = error))
         .finally(() => (this.status = { updating: false }));
     },
+    async resetPassword(id, password) {
+      this.status = { loading: true };
+      return await fetchWrapper
+        .post(`${baseUrl}/${id}/reset-password`, { password })
+        .catch((error) => (this.status = { error }))
+        .finally(() => (this.status = { loading: false }));
+    },
     async delete(id) {
       this.status = { loading: true };
       return await fetchWrapper

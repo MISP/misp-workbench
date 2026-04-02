@@ -74,6 +74,20 @@ def update_user(
     return users_repository.update_user(db=db, user_id=user_id, user=user)
 
 
+@router.post("/users/{user_id}/reset-password", response_model=user_schemas.User)
+def reset_user_password(
+    user_id: int,
+    reset_request: user_schemas.UserResetPassword,
+    db: Session = Depends(get_db),
+    current_user: user_schemas.User = Security(
+        get_current_active_user, scopes=["users:update"]
+    ),
+):
+    return users_repository.reset_user_password(
+        db=db, user_id=user_id, password=reset_request.password
+    )
+
+
 @router.delete("/users/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_user(
     user_id: int,
