@@ -118,6 +118,8 @@ AVAILABLE_SCOPES: dict[str, str] = {
         "hunts:run": "Run hunts.",
         "notifications:read": "Read notifications.",
         "notifications:update": "Update notifications.",
+        "user_settings:read": "Read user settings.",
+        "user_settings:update": "Update user settings.",
         "mcp:list_tools": "List MCP tools.",
         "mcp:list_resources": "List MCP resources.",
         "mcp:list_prompts": "List MCP prompts.",
@@ -218,8 +220,13 @@ def authenticate_user(db: Session, username: str, password: str):
     return user
 
 
+DEFAULT_SCOPES = ["user_settings:read", "user_settings:update"]
+
+
 def get_scopes_for_user(user: user_schemas.User) -> list[str]:
-    return list(user.role.scopes)
+    scopes = set(user.role.scopes)
+    scopes.update(DEFAULT_SCOPES)
+    return list(scopes)
 
 
 def get_random_password():
