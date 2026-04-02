@@ -1,34 +1,16 @@
 <script setup>
-import DeleteFeedModal from "@/components/feeds/DeleteFeedModal.vue";
+import FeedActions from "@/components/feeds/FeedActions.vue";
 import ViewFeedMISP from "@/components/feeds/misp/ViewFeedMISP.vue";
 import { DISTRIBUTION_LEVEL } from "@/helpers/constants";
-import { Modal } from "bootstrap";
-import { ref, computed, onMounted } from "vue";
+import { computed } from "vue";
 import { router } from "@/router";
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
-import {
-  faLink,
-  faPen,
-  faTrash,
-  faMagnifyingGlass,
-} from "@fortawesome/free-solid-svg-icons";
+import { faLink } from "@fortawesome/free-solid-svg-icons";
 
 const props = defineProps(["feed"]);
 
-const deleteFeedModal = ref(null);
-
-onMounted(() => {
-  deleteFeedModal.value = new Modal(
-    document.getElementById(`deleteFeedModal_${props.feed.id}`),
-  );
-});
-
 function handleFeedDeleted() {
   router.push(`/feeds`);
-}
-
-function openDeleteFeedModal() {
-  deleteFeedModal.value.show();
 }
 
 const distributionLabel = computed(() => {
@@ -57,40 +39,11 @@ const sourceFormatLabel = computed(() => {
           <h3 class="mb-0">{{ feed.name }}</h3>
         </div>
         <div class="col-auto">
-          <div class="btn-toolbar" role="toolbar">
-            <div
-              :class="{
-                'btn-group-vertical': $isMobile,
-                'btn-group me-2': !$isMobile,
-              }"
-              role="group"
-              aria-label="Feed Actions"
-            >
-              <RouterLink
-                v-if="feed.source_format === 'misp'"
-                :to="`/feeds/explore/${feed.id}`"
-                class="btn btn-outline-primary"
-                title="Explore feed events"
-              >
-                <FontAwesomeIcon :icon="faMagnifyingGlass" />
-              </RouterLink>
-              <RouterLink
-                :to="`/feeds/update/${feed.id}`"
-                class="btn btn-outline-primary"
-              >
-                <FontAwesomeIcon :icon="faPen" />
-              </RouterLink>
-            </div>
-            <div class="btn-group me-2" role="group">
-              <button
-                type="button"
-                class="btn btn-danger"
-                @click="openDeleteFeedModal"
-              >
-                <FontAwesomeIcon :icon="faTrash" />
-              </button>
-            </div>
-          </div>
+          <FeedActions
+            :feed="feed"
+            :default_actions="{ read: false }"
+            @feed-deleted="handleFeedDeleted"
+          />
         </div>
       </div>
     </div>
@@ -217,9 +170,4 @@ const sourceFormatLabel = computed(() => {
       </div>
     </div>
   </div>
-  <DeleteFeedModal
-    @feed-deleted="handleFeedDeleted"
-    :feed_id="feed.id"
-    :modal="deleteFeedModal"
-  />
 </template>
