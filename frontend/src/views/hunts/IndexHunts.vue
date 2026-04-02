@@ -1,8 +1,8 @@
 <script setup>
-import { ref } from "vue";
+import { ref, computed } from "vue";
 import { storeToRefs } from "pinia";
 import { RouterLink } from "vue-router";
-import { useHuntsStore, useTasksStore } from "@/stores";
+import { useHuntsStore, useTasksStore, useAuthStore } from "@/stores";
 import Spinner from "@/components/misc/Spinner.vue";
 import AddHuntModal from "@/components/hunts/AddHuntModal.vue";
 import HuntActions from "@/components/hunts/HuntActions.vue";
@@ -10,14 +10,20 @@ import HuntSparkline from "@/components/hunts/HuntSparkline.vue";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
 import utc from "dayjs/plugin/utc";
-import { formatSchedule } from "@/helpers";
+import { formatSchedule, authHelper } from "@/helpers";
 
 dayjs.extend(relativeTime);
 dayjs.extend(utc);
 
 const huntsStore = useHuntsStore();
 const tasksStore = useTasksStore();
+const authStore = useAuthStore();
 const { hunts, status } = storeToRefs(huntsStore);
+const { scopes } = storeToRefs(authStore);
+
+const canCreate = computed(() =>
+  authHelper.hasScope(scopes.value, "hunts:create"),
+);
 const { scheduledTasks } = storeToRefs(tasksStore);
 
 huntsStore.getAll();
@@ -37,7 +43,11 @@ function onHuntCreated() {
 
 <template>
   <div class="d-flex justify-content-between align-items-center mb-3">
-    <button class="btn btn-primary btn-sm" @click="addModalOpen = true">
+    <button
+      v-if="canCreate"
+      class="btn btn-primary btn-sm"
+      @click="addModalOpen = true"
+    >
       + New Hunt
     </button>
   </div>
@@ -48,7 +58,9 @@ function onHuntCreated() {
     v-else-if="hunts && hunts.items && hunts.items.length === 0"
     class="text-muted"
   >
-    No hunts yet. Create one to get started.
+    No hunts yet.<template v-if="canCreate">
+      Create one to get started.</template
+    >
   </div>
 
   <div v-else-if="hunts && hunts.items" class="table-responsive">
