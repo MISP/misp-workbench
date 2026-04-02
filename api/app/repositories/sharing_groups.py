@@ -4,6 +4,7 @@ from datetime import datetime
 from functools import lru_cache
 from typing import Union
 
+from app.auth.utils import role_has_scope
 from app.models import sharing_groups as sharing_groups_models
 from app.models import user as user_models
 from app.repositories import organisations as organisations_repository
@@ -177,7 +178,7 @@ def is_authorised(
         db, sharing_group_uuid=sharing_group_uuid
     )
 
-    if user.role.perm_site_admin:
+    if role_has_scope(user.role.scopes, "*"):
         return True
 
     if user.org_id == db_sharing_group.org_id:
@@ -205,10 +206,10 @@ def is_authorised_to_extend(
     db: Session, user: user_models.User, sharing_group_id: int
 ) -> bool:
     # see: app/Model/SharingGroup.php::checkIfAuthorisedExtend
-    if user.role.perm_site_admin:
+    if role_has_scope(user.role.scopes, "*"):
         return True
 
-    if not user.role.perm_sharing_group:
+    if not role_has_scope(user.role.scopes, "sharing_groups:create"):
         return False
 
     if is_owner(db=db, user=user, sharing_group_id=sharing_group_id):
@@ -219,7 +220,7 @@ def is_authorised_to_extend(
     if db_sharing_group is None:
         return False
 
-    if user.role.perm_sync and db_sharing_group.sync_user_id == user.id:
+    if role_has_scope(user.role.scopes, "servers:pull") and db_sharing_group.sync_user_id == user.id:
         return True
 
     return (
@@ -241,10 +242,10 @@ def is_authorised_to_save(
     # see: app/Model/SharingGroup.php::checkIfAuthorisedToSave
 
     settings = get_settings()
-    if user.role.perm_site_admin:
+    if role_has_scope(user.role.scopes, "*"):
         return True
 
-    if not user.role.perm_sharing_group:
+    if not role_has_scope(user.role.scopes, "sharing_groups:create"):
         return False
 
     db_sharing_group = get_sharing_group_by_uuid(
@@ -259,7 +260,7 @@ def is_authorised_to_save(
                 db_sharing_group.sharing_group_organisations.uuid
                 == user.organisation.uuid
             ):
-                if user.role.perm_sync or sharing_group_org.extend:
+                if role_has_scope(user.role.scopes, "servers:pull") or sharing_group_org.extend:
                     organisation_check = True
                     break
 
@@ -269,7 +270,7 @@ def is_authorised_to_save(
                 or sharing_group_server.server.url == settings.MISP.external_baseurl
             ):
                 server_check = True
-                if user.role.perm_sync and sharing_group_server.all_orgs:
+                if role_has_scope(user.role.scopes, "servers:pull") and sharing_group_server.all_orgs:
                     organisation_check = True
 
         if db_sharing_group.sharing_group_servers is None:
@@ -297,7 +298,7 @@ def capture_sharing_group_new(
         not is_authorised_to_save(
             db=db, user=user, sharing_group_uuid=sharing_group.uuid
         )
-        and not user.role.perm_site_admin
+        and not role_has_scope(user.role.scopes, "*")
     ):
         return False
 
@@ -335,9 +336,10 @@ def capture_sharing_group_existing(
 ) -> Union[int, bool]:
     # see: app/Model/SharingGroup.php::captureSGExisting
 
+    has_sync = role_has_scope(user.role.scopes, "servers:pull")
     if (
         not is_authorised(db, user, existing_sharing_group.uuid)
-        and not user.role.perm_sync
+        and not has_sync
     ):
         return False
 
@@ -345,12 +347,12 @@ def capture_sharing_group_existing(
     if sharing_group.modified <= existing_sharing_group.modified:
         return existing_sharing_group.id
 
-    is_updatable_by_sync = user.role.perm_sync and not existing_sharing_group.local
+    is_updatable_by_sync = has_sync and not existing_sharing_group.local
     is_sharing_group_owner = (
-        not user.role.perm_sync and existing_sharing_group.org_id == user.org_id
+        not has_sync and existing_sharing_group.org_id == user.org_id
     )
 
-    if is_updatable_by_sync or is_sharing_group_owner or user.role.perm_site_admin:
+    if is_updatable_by_sync or is_sharing_group_owner or role_has_scope(user.role.scopes, "*"):
         update_sharing_group(
             db,
             existing_sharing_group.id,
@@ -420,7 +422,7 @@ def capture_sharing_group(
     existing_sharing_group = get_sharing_group_by_uuid(db, sharing_group.uuid)
     if existing_sharing_group is None:
         # see app/Model/SharingGroup.php::captureSGNew()
-        if not user.role.perm_sharing_group:
+        if not role_has_scope(user.role.scopes, "sharing_groups:create"):
             return False
         sharing_group_id = capture_sharing_group_new(
             db, user, sharing_group, sync_local
