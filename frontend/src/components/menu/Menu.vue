@@ -1,8 +1,9 @@
 <script setup>
-import { ref, watchEffect } from "vue";
+import { ref, watchEffect, computed } from "vue";
 import { useRouter } from "vue-router";
 import { storeToRefs } from "pinia";
 import { useAuthStore, useNotificationsStore } from "@/stores";
+import { authHelper } from "@/helpers";
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
 import {
   faBars,
@@ -15,6 +16,35 @@ import AddEventButton from "@/components/events/AddEventButton.vue";
 
 const authStore = useAuthStore();
 const router = useRouter();
+const { scopes } = storeToRefs(authStore);
+
+const canReadUsers = computed(() =>
+  authHelper.hasScope(scopes.value, "users:read"),
+);
+const canReadOrganisations = computed(() =>
+  authHelper.hasScope(scopes.value, "organisations:read"),
+);
+const canReadTaxonomies = computed(() =>
+  authHelper.hasScope(scopes.value, "taxonomies:read"),
+);
+const canReadGalaxies = computed(() =>
+  authHelper.hasScope(scopes.value, "galaxies:read"),
+);
+const canReadCorrelations = computed(() =>
+  authHelper.hasScope(scopes.value, "correlations:read"),
+);
+const canReadTasks = computed(() =>
+  authHelper.hasScope(scopes.value, "tasks:read"),
+);
+const canReadDiagnostics = computed(() =>
+  authHelper.hasScope(scopes.value, "diagnostics:read"),
+);
+const canReadSettings = computed(() =>
+  authHelper.hasScope(scopes.value, "settings:read"),
+);
+const canReadUserSettings = computed(() =>
+  authHelper.hasScope(scopes.value, "user_settings:read"),
+);
 
 // notifications
 const notificationsStore = useNotificationsStore();
@@ -172,12 +202,12 @@ function navAndClose(path) {
             internals
           </a>
           <ul class="dropdown-menu" aria-labelledby="internalsDropdown">
-            <li>
+            <li v-if="canReadUsers">
               <RouterLink to="/users" class="dropdown-item fw-light"
                 >users</RouterLink
               >
             </li>
-            <li>
+            <li v-if="canReadOrganisations">
               <RouterLink to="/organisations" class="dropdown-item fw-light"
                 >organisations</RouterLink
               >
@@ -194,42 +224,42 @@ function navAndClose(path) {
               >
             </li>
             <li><hr class="dropdown-divider" /></li>
-            <li>
+            <li v-if="canReadTaxonomies">
               <RouterLink
                 to="/settings/taxonomies"
                 class="dropdown-item fw-light"
                 >taxonomies</RouterLink
               >
             </li>
-            <li>
+            <li v-if="canReadGalaxies">
               <RouterLink to="/settings/galaxies" class="dropdown-item fw-light"
                 >galaxies</RouterLink
               >
             </li>
             <li><hr class="dropdown-divider" /></li>
-            <li>
+            <li v-if="canReadCorrelations">
               <RouterLink to="/correlations" class="dropdown-item fw-light"
                 >correlations</RouterLink
               >
             </li>
             <li><hr class="dropdown-divider" /></li>
-            <li>
+            <li v-if="canReadTasks">
               <RouterLink to="/tasks" class="dropdown-item fw-light"
                 >tasks</RouterLink
               >
             </li>
-            <li>
+            <li v-if="canReadDiagnostics">
               <RouterLink to="/diagnostics" class="dropdown-item fw-light"
                 >diagnostics</RouterLink
               >
             </li>
             <li><hr class="dropdown-divider" /></li>
-            <li>
+            <li v-if="canReadSettings">
               <RouterLink to="/settings/runtime" class="dropdown-item fw-light"
                 >runtime settings</RouterLink
               >
             </li>
-            <li>
+            <li v-if="canReadUserSettings">
               <RouterLink to="/settings/user" class="dropdown-item fw-light"
                 >user settings</RouterLink
               >
@@ -373,7 +403,7 @@ function navAndClose(path) {
         <li class="list-group-item">
           <strong>internals</strong>
           <ul class="list-group mt-2">
-            <li>
+            <li v-if="canReadUsers">
               <RouterLink
                 to="/users"
                 class="list-group-item list-group-item-action ps-4"
@@ -382,7 +412,7 @@ function navAndClose(path) {
                 users
               </RouterLink>
             </li>
-            <li>
+            <li v-if="canReadOrganisations">
               <RouterLink
                 to="/organisations"
                 class="list-group-item list-group-item-action ps-4"
@@ -409,7 +439,7 @@ function navAndClose(path) {
                 modules
               </RouterLink>
             </li>
-            <li>
+            <li v-if="canReadTaxonomies">
               <RouterLink
                 to="/settings/taxonomies"
                 class="list-group-item list-group-item-action ps-4"
@@ -418,7 +448,7 @@ function navAndClose(path) {
                 taxonomies
               </RouterLink>
             </li>
-            <li>
+            <li v-if="canReadGalaxies">
               <RouterLink
                 to="/settings/galaxies"
                 class="list-group-item list-group-item-action ps-4"
@@ -427,7 +457,7 @@ function navAndClose(path) {
                 galaxies
               </RouterLink>
             </li>
-            <li>
+            <li v-if="canReadCorrelations">
               <RouterLink
                 to="/correlations"
                 class="list-group-item list-group-item-action ps-4"
@@ -436,7 +466,7 @@ function navAndClose(path) {
                 correlations
               </RouterLink>
             </li>
-            <li>
+            <li v-if="canReadTasks">
               <RouterLink
                 to="/tasks"
                 class="list-group-item list-group-item-action ps-4"
@@ -445,7 +475,7 @@ function navAndClose(path) {
                 tasks
               </RouterLink>
             </li>
-            <li>
+            <li v-if="canReadDiagnostics">
               <RouterLink
                 to="/diagnostics"
                 class="list-group-item list-group-item-action ps-4"
@@ -454,7 +484,7 @@ function navAndClose(path) {
                 diagnostics
               </RouterLink>
             </li>
-            <li>
+            <li v-if="canReadSettings">
               <RouterLink
                 to="/settings/runtime"
                 class="list-group-item list-group-item-action ps-4"
@@ -463,7 +493,7 @@ function navAndClose(path) {
                 runtime settings
               </RouterLink>
             </li>
-            <li>
+            <li v-if="canReadUserSettings">
               <RouterLink
                 to="/settings/user"
                 class="list-group-item list-group-item-action ps-4"
