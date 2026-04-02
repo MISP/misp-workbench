@@ -220,13 +220,8 @@ def authenticate_user(db: Session, username: str, password: str):
     return user
 
 
-DEFAULT_SCOPES = ["user_settings:read", "user_settings:update"]
-
-
 def get_scopes_for_user(user: user_schemas.User) -> list[str]:
-    scopes = set(user.role.scopes)
-    scopes.update(DEFAULT_SCOPES)
-    return list(scopes)
+    return list(user.role.scopes)
 
 
 def get_random_password():

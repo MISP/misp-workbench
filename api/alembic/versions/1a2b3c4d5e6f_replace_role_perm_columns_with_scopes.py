@@ -94,6 +94,8 @@ _USER_SCOPES = [
     "roles:read",
     "organisations:read",
     "users:me",
+    "user_settings:read",
+    "user_settings:update"
 ]
 
 _DEFAULT_ROLE_SCOPES = {
@@ -158,6 +160,8 @@ _DEFAULT_ROLE_SCOPES = {
         "roles:read",
         "organisations:read",
         "users:me",
+        "user_settings:read",
+        "user_settings:update"
     ],
 }
 
