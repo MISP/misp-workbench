@@ -27,11 +27,8 @@ class TokenData(BaseModel):
     scopes: list[str] = []
 
 
-oauth2_scheme = OAuth2PasswordBearer(
-    tokenUrl="auth/token",
-    scopes={
+AVAILABLE_SCOPES: dict[str, str] = {
         "users:me": "Read information about the current user.",
-        "items": "Read items.",
         "users:create": "Create users.",
         "users:read": "Read users.",
         "users:update": "Update users.",
@@ -121,6 +118,8 @@ oauth2_scheme = OAuth2PasswordBearer(
         "hunts:run": "Run hunts.",
         "notifications:read": "Read notifications.",
         "notifications:update": "Update notifications.",
+        "user_settings:read": "Read user settings.",
+        "user_settings:update": "Update user settings.",
         "mcp:list_tools": "List MCP tools.",
         "mcp:list_resources": "List MCP resources.",
         "mcp:list_prompts": "List MCP prompts.",
@@ -144,7 +143,11 @@ oauth2_scheme = OAuth2PasswordBearer(
         "mcp:create_event_report": "Create event reports via MCP.",
         "mcp:get_notifications": "Get user notifications via MCP.",
         "mcp:list_modules": "List enrichment modules via MCP.",
-    },
+}
+
+oauth2_scheme = OAuth2PasswordBearer(
+    tokenUrl="auth/token",
+    scopes=AVAILABLE_SCOPES,
 )
 
 
@@ -217,116 +220,8 @@ def authenticate_user(db: Session, username: str, password: str):
     return user
 
 
-def get_scopes_for_user(user: user_schemas.User):
-    scopes = set()
-
-    # TODO: review and move these mappings to a config file or database
-    # TODO: remove redudant scopes, e.g. ["users:read", "users:*"] -> ["users:*"]
-
-    if user.role.perm_full:
-        return ["*"]
-
-    if user.role.perm_admin:
-        scopes.add("users:*")
-        scopes.add("events:*")
-        scopes.add("attributes:*")
-        scopes.add("objects:*")
-        scopes.add("servers:*")
-        scopes.add("feeds:*")
-        scopes.add("roles:*")
-        scopes.add("sharing_groups:*")
-        scopes.add("tags:*")
-        scopes.add("modules:*")
-        scopes.add("taxonomies:*")
-        scopes.add("galaxies:*")
-        scopes.add("attachments:*")
-        scopes.add("tasks:*")
-        scopes.add("workers:*")
-        scopes.add("correlations:*")
-        scopes.add("settings:*")
-        scopes.add("hunts:*")
-        scopes.add("notifications:*")
-        scopes.add("mcp:*")
-
-    if user.role.perm_auth:
-        scopes.add("auth:login")
-
-    if user.role.perm_add:
-        scopes.add("events:create")
-        scopes.add("attributes:create")
-        scopes.add("objects:create")
-        scopes.add("tags:create")
-
-    if user.role.perm_modify:
-        scopes.add("events:update")
-        scopes.add("attributes:update")
-        scopes.add("objects:update")
-        scopes.add("tags:update")
-
-    if user.role.perm_modify_org:
-        pass
-
-    if user.role.perm_publish:
-        pass
-
-    if user.role.perm_delegate:
-        pass
-
-    if user.role.perm_sync:
-        pass
-
-    if user.role.perm_admin:
-        pass
-
-    if user.role.perm_audit:
-        pass
-
-    if user.role.perm_full:
-        pass
-
-    if user.role.perm_auth:
-        pass
-
-    if user.role.perm_site_admin:
-        pass
-
-    if user.role.perm_regexp_access:
-        pass
-
-    if user.role.perm_tagger:
-        pass
-
-    if user.role.perm_template:
-        pass
-
-    if user.role.perm_sharing_group:
-        pass
-
-    if user.role.perm_tag_editor:
-        pass
-
-    if user.role.perm_sighting:
-        pass
-
-    if user.role.perm_object_template:
-        pass
-
-    if user.role.perm_galaxy_editor:
-        pass
-
-    if user.role.perm_warninglist:
-        pass
-
-    if user.role.perm_publish_zmq:
-        pass
-
-    if user.role.perm_publish_kafka:
-        pass
-
-    if user.role.perm_decaying:
-        pass
-
-    return list(scopes)
+def get_scopes_for_user(user: user_schemas.User) -> list[str]:
+    return list(user.role.scopes)
 
 
 def get_random_password():

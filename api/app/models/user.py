@@ -1,3 +1,4 @@
+from app.auth.utils import role_has_scope
 from app.database import Base
 from pymisp import MISPEvent
 from sqlalchemy import Boolean, Column, ForeignKey, Integer, String
@@ -24,26 +25,23 @@ class User(Base):
         """
         see: app/Model/Event.php::_add()
         """
+        has_sync = role_has_scope(self.role.scopes, "servers:pull")
+        has_admin = role_has_scope(self.role.scopes, "users:*")
 
         if (
             event.orgc_id is not None
             and event.orgc_id == self.org_id
-            and (self.role.perm_sync or self.role.perm_admin)
+            and (has_sync or has_admin)
         ):
             return True
 
-        if event.orgc.uuid == self.organisation.uuid and (
-            self.roleperm_sync or self.role.perm_admin
-        ):
+        if event.orgc.uuid == self.organisation.uuid and (has_sync or has_admin):
             return True
 
         return False
 
     def can_publish_event(self) -> bool:
-        if self.role.perm_publish:
-            return True
-
-        return False
+        return role_has_scope(self.role.scopes, "events:publish")
 
 
 from app.models.user_setting import UserSetting

@@ -1,7 +1,8 @@
 <script setup>
-import { ref, watch } from "vue";
+import { ref, watch, computed } from "vue";
 import { storeToRefs } from "pinia";
-import { useTaxonomiesStore, useToastsStore } from "@/stores";
+import { useTaxonomiesStore, useToastsStore, useAuthStore } from "@/stores";
+import { authHelper } from "@/helpers";
 import Spinner from "@/components/misc/Spinner.vue";
 import Paginate from "vuejs-paginate-next";
 import TaxonomyActions from "@/components/taxonomies/TaxonomyActions.vue";
@@ -10,7 +11,13 @@ const props = defineProps(["page_size"]);
 
 const toastsStore = useToastsStore();
 const taxonomiesStore = useTaxonomiesStore();
+const authStore = useAuthStore();
 const { page_count, taxonomies, status } = storeToRefs(taxonomiesStore);
+const { scopes } = storeToRefs(authStore);
+
+const canUpdate = computed(() =>
+  authHelper.hasScope(scopes.value, "taxonomies:update"),
+);
 const searchTerm = ref("");
 
 function onPageChange(page) {
@@ -50,7 +57,10 @@ function updateTaxonomies() {
 <template>
   <nav class="navbar position-relative pt-0">
     <div class="container-fluid">
-      <div class="position-absolute top-50 start-50 translate-middle">
+      <div
+        v-if="canUpdate"
+        class="position-absolute top-50 start-50 translate-middle"
+      >
         <button
           type="button"
           class="btn btn-outline-primary"
@@ -120,6 +130,7 @@ function updateTaxonomies() {
                   'btn-outline-success': taxonomy.enabled,
                   'btn-outline-danger': !taxonomy.enabled,
                 }"
+                :disabled="!canUpdate"
                 data-toggle="tooltip"
                 data-placement="top"
                 title="Toggle taxonomy"
@@ -145,6 +156,7 @@ function updateTaxonomies() {
                   'btn-outline-success': taxonomy.exclusive,
                   'btn-outline-danger': !taxonomy.exclusive,
                 }"
+                :disabled="!canUpdate"
                 data-toggle="tooltip"
                 data-placement="top"
                 title="Toggle taxonomy"
@@ -170,6 +182,7 @@ function updateTaxonomies() {
                   'btn-outline-success': taxonomy.required,
                   'btn-outline-danger': !taxonomy.required,
                 }"
+                :disabled="!canUpdate"
                 data-toggle="tooltip"
                 data-placement="top"
                 title="Toggle taxonomy"
@@ -195,6 +208,7 @@ function updateTaxonomies() {
                   'btn-outline-success': taxonomy.highlighted,
                   'btn-outline-danger': !taxonomy.highlighted,
                 }"
+                :disabled="!canUpdate"
                 data-toggle="tooltip"
                 data-placement="top"
                 title="Toggle taxonomy"

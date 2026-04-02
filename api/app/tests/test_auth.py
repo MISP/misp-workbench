@@ -12,6 +12,7 @@ from app.auth.auth import (
     is_token_revoked,
     verify_password,
 )
+from app.auth.utils import role_has_scope
 
 
 class TestVerifyPassword:
@@ -95,85 +96,42 @@ class TestAuthenticateUser:
         assert result == mock_user
 
 
-class TestGetScopesForUser:
-    def _make_user(self, **role_kwargs):
-        role = MagicMock()
-        role.perm_full = False
-        role.perm_admin = False
-        role.perm_auth = False
-        role.perm_add = False
-        role.perm_modify = False
-        role.perm_modify_org = False
-        role.perm_publish = False
-        role.perm_delegate = False
-        role.perm_sync = False
-        role.perm_audit = False
-        role.perm_site_admin = False
-        role.perm_regexp_access = False
-        role.perm_tagger = False
-        role.perm_template = False
-        role.perm_sharing_group = False
-        role.perm_tag_editor = False
-        role.perm_sighting = False
-        role.perm_object_template = False
-        role.perm_galaxy_editor = False
-        role.perm_warninglist = False
-        role.perm_publish_zmq = False
-        role.perm_publish_kafka = False
-        role.perm_decaying = False
-        for key, value in role_kwargs.items():
-            setattr(role, key, value)
-        user = MagicMock()
-        user.role = role
-        return user
+class TestRoleHasScope:
+    def test_wildcard_grants_everything(self):
+        assert role_has_scope(["*"], "events:create") is True
+        assert role_has_scope(["*"], "anything:here") is True
 
-    def test_perm_full_returns_wildcard(self):
-        user = self._make_user(perm_full=True)
+    def test_resource_wildcard_grants_resource_scopes(self):
+        assert role_has_scope(["events:*"], "events:create") is True
+        assert role_has_scope(["events:*"], "events:delete") is True
+        assert role_has_scope(["events:*"], "attributes:create") is False
+
+    def test_exact_scope_match(self):
+        assert role_has_scope(["events:create"], "events:create") is True
+        assert role_has_scope(["events:create"], "events:delete") is False
+
+    def test_empty_scopes_returns_false(self):
+        assert role_has_scope([], "events:create") is False
+
+
+class TestGetScopesForUser:
+    def test_returns_role_scopes(self):
+        user = MagicMock()
+        user.role.scopes = ["events:read", "events:create"]
+        scopes = get_scopes_for_user(user)
+        assert scopes == ["events:read", "events:create"]
+
+    def test_returns_wildcard_for_admin(self):
+        user = MagicMock()
+        user.role.scopes = ["*"]
         scopes = get_scopes_for_user(user)
         assert scopes == ["*"]
 
-    def test_perm_admin_grants_admin_scopes(self):
-        user = self._make_user(perm_admin=True)
-        scopes = get_scopes_for_user(user)
-        assert "users:*" in scopes
-        assert "events:*" in scopes
-        assert "attributes:*" in scopes
-        assert "galaxies:*" in scopes
-        assert "feeds:*" in scopes
-        assert "correlations:*" in scopes
-
-    def test_perm_auth_grants_auth_login(self):
-        user = self._make_user(perm_auth=True)
-        scopes = get_scopes_for_user(user)
-        assert "auth:login" in scopes
-
-    def test_perm_add_grants_create_scopes(self):
-        user = self._make_user(perm_add=True)
-        scopes = get_scopes_for_user(user)
-        assert "events:create" in scopes
-        assert "attributes:create" in scopes
-        assert "objects:create" in scopes
-        assert "tags:create" in scopes
-
-    def test_perm_modify_grants_update_scopes(self):
-        user = self._make_user(perm_modify=True)
-        scopes = get_scopes_for_user(user)
-        assert "events:update" in scopes
-        assert "attributes:update" in scopes
-        assert "objects:update" in scopes
-        assert "tags:update" in scopes
-
-    def test_no_perms_returns_empty_list(self):
-        user = self._make_user()
+    def test_returns_empty_for_no_scopes(self):
+        user = MagicMock()
+        user.role.scopes = []
         scopes = get_scopes_for_user(user)
         assert scopes == []
-
-    def test_multiple_perms_combined(self):
-        user = self._make_user(perm_add=True, perm_modify=True, perm_auth=True)
-        scopes = get_scopes_for_user(user)
-        assert "events:create" in scopes
-        assert "events:update" in scopes
-        assert "auth:login" in scopes
 
 
 class TestGetRandomPassword:

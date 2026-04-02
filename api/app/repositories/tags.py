@@ -1,3 +1,4 @@
+from app.auth.utils import role_has_scope
 from app.models import tag as tag_models
 from app.models import user as user_models
 from app.schemas import tag as tag_schemas
@@ -210,7 +211,7 @@ def untag_event(
 def capture_tag(db: Session, tag: MISPTag, user: user_models.User) -> tag_models.Tag:
     # see: app/Model/Tag.php::captureTag
 
-    if not user.role.perm_site_admin and (
+    if not role_has_scope(user.role.scopes, "*") and (
         tag.org_id != user.org_id or tag.user_id != user.id
     ):
         return False
@@ -219,7 +220,7 @@ def capture_tag(db: Session, tag: MISPTag, user: user_models.User) -> tag_models
 
     # TODO: handle setting MISP.incoming_tags_disabled_by_default
 
-    if db_tag is None and user.role.perm_tag_editor:
+    if db_tag is None and role_has_scope(user.role.scopes, "tags:create"):
         db_tag = create_tag(
             db,
             tag=tag_schemas.TagCreate(

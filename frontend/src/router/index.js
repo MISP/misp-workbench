@@ -47,6 +47,9 @@ import {
   AddHunt,
   EditHunt,
   ViewHunt,
+  IndexRoles,
+  ViewRole,
+  EditRole,
 } from "@/views";
 
 export const router = createRouter({
@@ -110,6 +113,9 @@ export const router = createRouter({
     { path: "/hunts/add", component: AddHunt },
     { path: "/hunts/update/:id", component: EditHunt, props: true },
     { path: "/hunts/:id", component: ViewHunt, props: true },
+    { path: "/roles", component: IndexRoles },
+    { path: "/roles/:id", component: ViewRole, props: true },
+    { path: "/roles/update/:id", component: EditRole, props: true },
   ],
 });
 

@@ -667,6 +667,38 @@
         }
       }
     },
+    "/roles/scopes": {
+      "get": {
+        "tags": [
+          "Roles"
+        ],
+        "summary": "Get Available Scopes",
+        "operationId": "get_available_scopes_roles_scopes_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "type": "object",
+                  "title": "Response Get Available Scopes Roles Scopes Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "roles:read"
+            ]
+          }
+        ]
+      }
+    },
     "/roles/": {
       "get": {
         "tags": [
@@ -717,6 +749,152 @@
                 }
               }
             }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/roles/{role_id}": {
+      "get": {
+        "tags": [
+          "Roles"
+        ],
+        "summary": "Get Role",
+        "operationId": "get_role_roles__role_id__get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "roles:read"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "role_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Role Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Role"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Roles"
+        ],
+        "summary": "Update Role",
+        "operationId": "update_role_roles__role_id__patch",
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "roles:update"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "role_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Role Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RoleUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Role"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Roles"
+        ],
+        "summary": "Delete Role",
+        "operationId": "delete_role_roles__role_id__delete",
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "roles:delete"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "role_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Role Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
           },
           "422": {
             "description": "Validation Error",
@@ -13645,121 +13823,17 @@
             ],
             "title": "Modified"
           },
-          "perm_add": {
-            "type": "boolean",
-            "title": "Perm Add"
-          },
-          "perm_modify": {
-            "type": "boolean",
-            "title": "Perm Modify"
-          },
-          "perm_modify_org": {
-            "type": "boolean",
-            "title": "Perm Modify Org"
-          },
-          "perm_publish": {
-            "type": "boolean",
-            "title": "Perm Publish"
-          },
-          "perm_delegate": {
-            "type": "boolean",
-            "title": "Perm Delegate"
-          },
-          "perm_sync": {
-            "type": "boolean",
-            "title": "Perm Sync"
-          },
-          "perm_admin": {
-            "type": "boolean",
-            "title": "Perm Admin"
-          },
-          "perm_audit": {
-            "type": "boolean",
-            "title": "Perm Audit"
-          },
-          "perm_full": {
-            "type": "boolean",
-            "title": "Perm Full"
-          },
-          "perm_auth": {
-            "type": "boolean",
-            "title": "Perm Auth"
-          },
-          "perm_site_admin": {
-            "type": "boolean",
-            "title": "Perm Site Admin"
-          },
-          "perm_regexp_access": {
-            "type": "boolean",
-            "title": "Perm Regexp Access"
-          },
-          "perm_tagger": {
-            "type": "boolean",
-            "title": "Perm Tagger"
-          },
-          "perm_template": {
-            "type": "boolean",
-            "title": "Perm Template"
-          },
-          "perm_sharing_group": {
-            "type": "boolean",
-            "title": "Perm Sharing Group"
-          },
-          "perm_tag_editor": {
-            "type": "boolean",
-            "title": "Perm Tag Editor"
-          },
-          "perm_sighting": {
-            "type": "boolean",
-            "title": "Perm Sighting"
-          },
-          "perm_object_template": {
-            "type": "boolean",
-            "title": "Perm Object Template"
-          },
-          "perm_galaxy_editor": {
-            "type": "boolean",
-            "title": "Perm Galaxy Editor"
-          },
-          "perm_warninglist": {
-            "type": "boolean",
-            "title": "Perm Warninglist"
-          },
-          "perm_publish_zmq": {
-            "type": "boolean",
-            "title": "Perm Publish Zmq"
-          },
-          "perm_publish_kafka": {
-            "type": "boolean",
-            "title": "Perm Publish Kafka"
-          },
-          "perm_decaying": {
-            "type": "boolean",
-            "title": "Perm Decaying"
+          "scopes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Scopes"
           },
           "default_role": {
             "type": "boolean",
-            "title": "Default Role"
-          },
-          "restricted_to_site_admin": {
-            "type": "boolean",
-            "title": "Restricted To Site Admin"
-          },
-          "enforce_rate_limit": {
-            "type": "boolean",
-            "title": "Enforce Rate Limit"
-          },
-          "rate_limit_count": {
-            "type": "integer",
-            "title": "Rate Limit Count"
-          },
-          "memory_limit": {
-            "type": "string",
-            "title": "Memory Limit"
-          },
-          "max_execution_time": {
-            "type": "string",
-            "title": "Max Execution Time"
+            "title": "Default Role",
+            "default": false
           },
           "id": {
             "type": "integer",
@@ -13769,38 +13843,52 @@
         "type": "object",
         "required": [
           "name",
-          "perm_add",
-          "perm_modify",
-          "perm_modify_org",
-          "perm_publish",
-          "perm_delegate",
-          "perm_sync",
-          "perm_admin",
-          "perm_audit",
-          "perm_full",
-          "perm_auth",
-          "perm_site_admin",
-          "perm_regexp_access",
-          "perm_tagger",
-          "perm_template",
-          "perm_sharing_group",
-          "perm_tag_editor",
-          "perm_sighting",
-          "perm_object_template",
-          "perm_galaxy_editor",
-          "perm_warninglist",
-          "perm_publish_zmq",
-          "perm_publish_kafka",
-          "perm_decaying",
-          "default_role",
-          "restricted_to_site_admin",
-          "enforce_rate_limit",
-          "rate_limit_count",
-          "memory_limit",
-          "max_execution_time",
+          "scopes",
           "id"
         ],
         "title": "Role"
+      },
+      "RoleUpdate": {
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "scopes": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scopes"
+          },
+          "default_role": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Default Role"
+          }
+        },
+        "type": "object",
+        "title": "RoleUpdate"
       },
       "ScheduleTaskRequest": {
         "properties": {

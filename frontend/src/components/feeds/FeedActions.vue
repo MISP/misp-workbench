@@ -1,12 +1,34 @@
 <script setup>
-import { ref, onMounted } from "vue";
+import { authHelper } from "@/helpers";
+import { ref, computed, onMounted, onBeforeUnmount } from "vue";
 import { Modal } from "bootstrap";
-import { useFeedsStore } from "@/stores";
-import { useToastsStore } from "@/stores";
+import { storeToRefs } from "pinia";
+import { useFeedsStore, useToastsStore, useAuthStore } from "@/stores";
 import DeleteFeedModal from "@/components/feeds/DeleteFeedModal.vue";
 
-const props = defineProps(["feed"]);
+const authStore = useAuthStore();
+const { scopes } = storeToRefs(authStore);
+
+const props = defineProps({
+  feed: { type: Object, required: true },
+  default_actions: { type: Object, default: () => ({}) },
+});
 const emit = defineEmits(["feed-deleted"]);
+
+const actions = computed(() => ({
+  read:
+    props.default_actions.read ??
+    authHelper.hasScope(scopes.value, "feeds:read"),
+  update:
+    props.default_actions.update ??
+    authHelper.hasScope(scopes.value, "feeds:update"),
+  delete:
+    props.default_actions.delete ??
+    authHelper.hasScope(scopes.value, "feeds:delete"),
+  fetch:
+    props.default_actions.fetch ??
+    authHelper.hasScope(scopes.value, "feeds:fetch"),
+}));
 
 const deleteFeedModal = ref(null);
 const feedsStore = useFeedsStore();
@@ -18,8 +40,12 @@ onMounted(() => {
   );
 });
 
+onBeforeUnmount(() => {
+  deleteFeedModal.value?.dispose();
+});
+
 function openDeleteFeedModal() {
-  deleteFeedModal.value.show();
+  deleteFeedModal.value?.show();
 }
 
 function handleFeedDeleted() {
@@ -47,7 +73,11 @@ function fetchFeed(feed) {
 <template>
   <div>
     <div class="btn-toolbar float-end" role="toolbar">
-      <div class="flex-wrap btn-group me-2" aria-label="Sync Actions">
+      <div
+        v-if="actions.fetch"
+        class="flex-wrap btn-group me-2"
+        aria-label="Sync Actions"
+      >
         <button
           type="button"
           class="btn btn-outline-primary btn-sm"
@@ -85,19 +115,21 @@ function fetchFeed(feed) {
         aria-label="Feed Actions"
       >
         <RouterLink
+          v-if="actions.read"
           :to="`/feeds/${feed.id}`"
           class="btn btn-outline-primary btn-sm"
         >
           <font-awesome-icon icon="fa-solid fa-eye" />
         </RouterLink>
         <RouterLink
+          v-if="actions.update"
           :to="`/feeds/update/${feed.id}`"
           class="btn btn-outline-primary btn-sm"
         >
           <font-awesome-icon icon="fa-solid fa-pen" />
         </RouterLink>
       </div>
-      <div class="btn-group me-2" role="group">
+      <div v-if="actions.delete" class="btn-group me-2" role="group">
         <button
           type="button"
           class="btn btn-danger btn-sm"

@@ -1,7 +1,8 @@
 <script setup>
-import { ref, watch } from "vue";
+import { ref, watch, computed } from "vue";
 import { storeToRefs } from "pinia";
-import { useGalaxiesStore, useToastsStore } from "@/stores";
+import { useGalaxiesStore, useToastsStore, useAuthStore } from "@/stores";
+import { authHelper } from "@/helpers";
 import Spinner from "@/components/misc/Spinner.vue";
 import Paginate from "vuejs-paginate-next";
 import GalaxyActions from "@/components/galaxies/GalaxyActions.vue";
@@ -10,7 +11,13 @@ const props = defineProps(["page_size"]);
 
 const toastsStore = useToastsStore();
 const galaxiesStore = useGalaxiesStore();
+const authStore = useAuthStore();
 const { page_count, galaxies, status } = storeToRefs(galaxiesStore);
+const { scopes } = storeToRefs(authStore);
+
+const canUpdate = computed(() =>
+  authHelper.hasScope(scopes.value, "galaxies:update"),
+);
 const searchTerm = ref("");
 
 function onPageChange(page) {
@@ -50,7 +57,10 @@ function toggle(property, galaxy) {
 <template>
   <nav class="navbar position-relative pt-0">
     <div class="container-fluid">
-      <div class="position-absolute top-50 start-50 translate-middle">
+      <div
+        v-if="canUpdate"
+        class="position-absolute top-50 start-50 translate-middle"
+      >
         <button
           type="button"
           class="btn btn-outline-primary"
@@ -117,6 +127,7 @@ function toggle(property, galaxy) {
                   'btn-outline-success': galaxy.enabled,
                   'btn-outline-danger': !galaxy.enabled,
                 }"
+                :disabled="!canUpdate"
                 data-toggle="tooltip"
                 data-placement="top"
                 title="Toggle galaxy"
@@ -142,6 +153,7 @@ function toggle(property, galaxy) {
                   'btn-outline-success': galaxy.exclusive,
                   'btn-outline-danger': !galaxy.local_only,
                 }"
+                :disabled="!canUpdate"
                 data-toggle="tooltip"
                 data-placement="top"
                 title="Toggle galaxy"
@@ -167,6 +179,7 @@ function toggle(property, galaxy) {
                   'btn-outline-success': galaxy.required,
                   'btn-outline-danger': !galaxy.default,
                 }"
+                :disabled="!canUpdate"
                 data-toggle="tooltip"
                 data-placement="top"
                 title="Toggle galaxy"
