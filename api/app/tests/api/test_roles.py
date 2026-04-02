@@ -8,18 +8,6 @@ from fastapi.testclient import TestClient
 
 class TestRolesResource(ApiTester):
 
-    @pytest.fixture(scope="class")
-    def role_for_delete(self, db):
-        role = role_models.Role(
-            name="test role for delete",
-            scopes=[],
-            default_role=False,
-        )
-        db.add(role)
-        db.commit()
-        db.refresh(role)
-        yield role
-
     # GET /roles/scopes
 
     @pytest.mark.parametrize("scopes", [["roles:read"]])

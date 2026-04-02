@@ -129,6 +129,18 @@ class ApiTester:
         yield role
 
     @pytest.fixture(scope="class")
+    def role_for_delete(self, db):
+        role = role_models.Role(
+            name="test role for delete",
+            scopes=[],
+            default_role=False,
+        )
+        db.add(role)
+        db.commit()
+        db.refresh(role)
+        yield role
+
+    @pytest.fixture(scope="class")
     def api_tester_user(
         self, db: Session, organisation_1: organisation_models.Organisation
     ):
