@@ -1,10 +1,21 @@
 <script setup>
-import { ref, onMounted } from "vue";
+import { authHelper } from "@/helpers";
+import { ref, computed, onMounted, onBeforeUnmount } from "vue";
 import { Modal } from "bootstrap";
+import { storeToRefs } from "pinia";
+import { useAuthStore } from "@/stores";
 import DeleteTaxonomyModal from "@/components/taxonomies/DeleteTaxonomyModal.vue";
+
+const authStore = useAuthStore();
+const { scopes } = storeToRefs(authStore);
 
 const props = defineProps(["taxonomy"]);
 const emit = defineEmits(["taxonomy-deleted"]);
+
+const actions = computed(() => ({
+  view: authHelper.hasScope(scopes.value, "taxonomies:read"),
+  delete: authHelper.hasScope(scopes.value, "taxonomies:delete"),
+}));
 
 const deleteTaxonomyModal = ref(null);
 
@@ -14,8 +25,12 @@ onMounted(() => {
   );
 });
 
+onBeforeUnmount(() => {
+  deleteTaxonomyModal.value?.dispose();
+});
+
 function openDeleteTaxonomyModal() {
-  deleteTaxonomyModal.value.show();
+  deleteTaxonomyModal.value?.show();
 }
 
 function handleTaxonomyDeleted() {
@@ -37,13 +52,14 @@ function handleTaxonomyDeleted() {
       aria-label="Taxonomy Actions"
     >
       <RouterLink
+        v-if="actions.view"
         :to="`/taxonomies/${taxonomy.id}`"
         class="btn btn-outline-primary btn-sm"
       >
         <font-awesome-icon icon="fa-solid fa-eye" />
       </RouterLink>
     </div>
-    <div class="btn-group me-2" role="group">
+    <div v-if="actions.delete" class="btn-group me-2" role="group">
       <button
         type="button"
         class="btn btn-danger btn-sm"
