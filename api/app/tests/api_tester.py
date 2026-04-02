@@ -17,6 +17,7 @@ from app.models import tag as tag_models
 from app.models import notification as notification_models
 from app.models import taxonomy as taxonomy_models
 from app.models import user as user_models
+from app.models import role as role_models
 from app.settings import get_settings
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
@@ -114,6 +115,18 @@ class ApiTester:
             self.teardown_db(db)
 
     # MISP data model fixtures
+    @pytest.fixture(scope="class")
+    def role_10(self, db):
+        role = role_models.Role(
+            id=10,
+            name="test role",
+            scopes=["events:read", "attributes:read"],
+            default_role=False,
+        )
+        db.add(role)
+        db.commit()
+        db.refresh(role)
+        yield role
 
     @pytest.fixture(scope="class")
     def api_tester_user(

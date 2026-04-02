@@ -1,26 +1,12 @@
 import pytest
 from app.auth import auth
 from app.models import role as role_models
-from app.models import organisation as organisation_models
-from app.models import user as user_models
 from app.tests.api_tester import ApiTester
 from fastapi import status
 from fastapi.testclient import TestClient
 
 
 class TestRolesResource(ApiTester):
-    @pytest.fixture(scope="class")
-    def role_10(self, db):
-        role = role_models.Role(
-            id=10,
-            name="test role",
-            scopes=["events:read", "attributes:read"],
-            default_role=False,
-        )
-        db.add(role)
-        db.commit()
-        db.refresh(role)
-        yield role
 
     @pytest.fixture(scope="class")
     def role_for_delete(self, db):
