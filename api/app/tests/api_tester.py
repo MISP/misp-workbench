@@ -131,6 +131,7 @@ class ApiTester:
     @pytest.fixture(scope="class")
     def role_for_delete(self, db):
         role = role_models.Role(
+            id=11,
             name="test role for delete",
             scopes=[],
             default_role=False,
