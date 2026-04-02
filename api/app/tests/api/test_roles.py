@@ -9,16 +9,10 @@ from fastapi.testclient import TestClient
 
 
 class TestRolesResource(ApiTester):
-    def teardown_db(self, db):
-        super().teardown_db(db)
-        db.query(role_models.Role).filter(
-            role_models.Role.name.like("test%")
-        ).delete(synchronize_session=False)
-        db.commit()
-
     @pytest.fixture(scope="class")
-    def role_1(self, db):
+    def role_10(self, db):
         role = role_models.Role(
+            id=10,
             name="test role",
             scopes=["events:read", "attributes:read"],
             default_role=False,
@@ -66,7 +60,7 @@ class TestRolesResource(ApiTester):
     def test_get_roles(
         self,
         client: TestClient,
-        role_1: role_models.Role,
+        role_10: role_models.Role,
         auth_token: auth.Token,
     ):
         response = client.get(
@@ -76,7 +70,7 @@ class TestRolesResource(ApiTester):
 
         assert response.status_code == status.HTTP_200_OK
         assert isinstance(data, list)
-        assert any(r["id"] == role_1.id for r in data)
+        assert any(r["id"] == role_10.id for r in data)
 
     @pytest.mark.parametrize("scopes", [[]])
     def test_get_roles_unauthorized(self, client: TestClient, auth_token: auth.Token):
@@ -91,28 +85,28 @@ class TestRolesResource(ApiTester):
     def test_get_role(
         self,
         client: TestClient,
-        role_1: role_models.Role,
+        role_10: role_models.Role,
         auth_token: auth.Token,
     ):
         response = client.get(
-            f"/roles/{role_1.id}", headers={"Authorization": "Bearer " + auth_token}
+            f"/roles/{role_10.id}", headers={"Authorization": "Bearer " + auth_token}
         )
         data = response.json()
 
         assert response.status_code == status.HTTP_200_OK
-        assert data["id"] == role_1.id
-        assert data["name"] == role_1.name
-        assert data["scopes"] == role_1.scopes
+        assert data["id"] == role_10.id
+        assert data["name"] == role_10.name
+        assert data["scopes"] == role_10.scopes
 
     @pytest.mark.parametrize("scopes", [[]])
     def test_get_role_unauthorized(
         self,
         client: TestClient,
-        role_1: role_models.Role,
+        role_10: role_models.Role,
         auth_token: auth.Token,
     ):
         response = client.get(
-            f"/roles/{role_1.id}", headers={"Authorization": "Bearer " + auth_token}
+            f"/roles/{role_10.id}", headers={"Authorization": "Bearer " + auth_token}
         )
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
@@ -129,29 +123,29 @@ class TestRolesResource(ApiTester):
     def test_update_role(
         self,
         client: TestClient,
-        role_1: role_models.Role,
+        role_10: role_models.Role,
         auth_token: auth.Token,
     ):
         response = client.patch(
-            f"/roles/{role_1.id}",
+            f"/roles/{role_10.id}",
             json={"scopes": ["events:read", "attributes:read", "feeds:read"]},
             headers={"Authorization": "Bearer " + auth_token},
         )
         data = response.json()
 
         assert response.status_code == status.HTTP_200_OK
-        assert data["id"] == role_1.id
+        assert data["id"] == role_10.id
         assert "feeds:read" in data["scopes"]
 
     @pytest.mark.parametrize("scopes", [["roles:update"]])
     def test_update_role_name(
         self,
         client: TestClient,
-        role_1: role_models.Role,
+        role_10: role_models.Role,
         auth_token: auth.Token,
     ):
         response = client.patch(
-            f"/roles/{role_1.id}",
+            f"/roles/{role_10.id}",
             json={"name": "test role updated"},
             headers={"Authorization": "Bearer " + auth_token},
         )
@@ -164,11 +158,11 @@ class TestRolesResource(ApiTester):
     def test_update_role_unauthorized(
         self,
         client: TestClient,
-        role_1: role_models.Role,
+        role_10: role_models.Role,
         auth_token: auth.Token,
     ):
         response = client.patch(
-            f"/roles/{role_1.id}",
+            f"/roles/{role_10.id}",
             json={"scopes": []},
             headers={"Authorization": "Bearer " + auth_token},
         )
@@ -202,11 +196,11 @@ class TestRolesResource(ApiTester):
     def test_delete_role_unauthorized(
         self,
         client: TestClient,
-        role_1: role_models.Role,
+        role_10: role_models.Role,
         auth_token: auth.Token,
     ):
         response = client.delete(
-            f"/roles/{role_1.id}",
+            f"/roles/{role_10.id}",
             headers={"Authorization": "Bearer " + auth_token},
         )
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
