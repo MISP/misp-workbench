@@ -527,24 +527,22 @@ def delete_event(db: Session, event_uuid: UUID, force: bool = False) -> None:
 
 def increment_attribute_count(db: Session, event_uuid: str, attributes_count: int = 1) -> None:
     client = get_opensearch_client()
-    client.update_by_query(
+    client.update(
         index="misp-events",
-        body={
-            "script": {"source": f"ctx._source.attribute_count += {attributes_count}", "lang": "painless"},
-            "query": {"term": {"uuid.keyword": event_uuid}},
-        },
+        id=event_uuid,
+        body={"script": {"source": "ctx._source.attribute_count += params.count", "lang": "painless", "params": {"count": attributes_count}}},
+        retry_on_conflict=5,
         refresh=True,
     )
 
 
 def decrement_attribute_count(db: Session, event_uuid: str, attributes_count: int = 1) -> None:
     client = get_opensearch_client()
-    client.update_by_query(
+    client.update(
         index="misp-events",
-        body={
-            "script": {"source": f"if (ctx._source.attribute_count > 0) {{ ctx._source.attribute_count -= {attributes_count}; }}", "lang": "painless"},
-            "query": {"term": {"uuid.keyword": event_uuid}},
-        },
+        id=event_uuid,
+        body={"script": {"source": "if (ctx._source.attribute_count > 0) { ctx._source.attribute_count -= params.count; }", "lang": "painless", "params": {"count": attributes_count}}},
+        retry_on_conflict=5,
         refresh=True,
     )
 
