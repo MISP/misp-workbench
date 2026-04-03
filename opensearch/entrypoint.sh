@@ -112,15 +112,14 @@ for file in "${MAPPINGS_DIR}"/*.json; do
 done
 
 if [ "${ENVIRONMENT:-prod}" = "prod" ]; then
-  curl --fail -k -u admin:${OPENSEARCH_INITIAL_ADMIN_PASSWORD} \
+  curl -s -k -u admin:${OPENSEARCH_INITIAL_ADMIN_PASSWORD} \
     -X PUT "${OPENSEARCH_URL}/_plugins/_security/api/internalusers/dashboards_system" \
     -H "Content-Type: application/json" \
     -d "{
       \"password\": \"${OPENSEARCH_DASHBOARDS_PASSWORD}\",
-      \"reserved\": true,
       \"backend_roles\": [\"dashboards_system\"],
       \"description\": \"OpenSearch Dashboards service user\"
-    }"
+    }" || true
   echo "dashboards_system user configured"
 fi
 

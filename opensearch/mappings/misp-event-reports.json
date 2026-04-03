@@ -28,15 +28,6 @@
             "event_uuid": {
                 "type": "keyword"
             },
-            "event_uuid": {
-                "type": "text",
-                "fields": {
-                    "keyword": {
-                        "type": "keyword",
-                        "ignore_above": 256
-                    }
-                }
-            },
             "id": {
                 "type": "text",
                 "fields": {

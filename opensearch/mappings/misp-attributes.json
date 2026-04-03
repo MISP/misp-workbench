@@ -34,15 +34,6 @@
             "event_uuid": {
                 "type": "keyword"
             },
-            "event_uuid": {
-                "type": "text",
-                "fields": {
-                    "keyword": {
-                        "type": "keyword",
-                        "ignore_above": 256
-                    }
-                }
-            },
             "expanded": {
                 "properties": {
                     "ip2geo": {
@@ -116,9 +107,6 @@
             },
             "id": {
                 "type": "long"
-            },
-            "object_uuid": {
-                "type": "keyword"
             },
             "object_relation": {
                 "type": "text",

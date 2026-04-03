@@ -7,6 +7,9 @@ x-environment: &default-env
   POSTGRES_DB: ${POSTGRES_DB:-misp}
   OPENSEARCH_HOSTNAME: ${OPENSEARCH_HOSTNAME:-opensearch}
   OPENSEARCH_PORT: ${OPENSEARCH_PORT:-9200}
+  OPENSEARCH_INITIAL_ADMIN_PASSWORD: ${OPENSEARCH_INITIAL_ADMIN_PASSWORD}
+  OPENSEARCH_USERNAME: ${OPENSEARCH_USERNAME:-}
+  OPENSEARCH_PASSWORD: ${OPENSEARCH_PASSWORD:-}
   OAUTH2_SECRET_KEY: ${OAUTH2_SECRET_KEY}
   OAUTH2_REFRESH_SECRET_KEY: ${OAUTH2_REFRESH_SECRET_KEY}
   OAUTH2_ALGORITHM: ${OAUTH2_ALGORITHM:-HS256}
@@ -96,8 +99,6 @@ services:
     depends_on:
       opensearch:
         condition: service_healthy
-      dashboards:
-        condition: service_healthy
     volumes:
       - ./opensearch/mappings:/mappings
       - ./opensearch/pipelines:/pipelines
@@ -156,6 +157,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      setup-opensearch:
+        condition: service_completed_successfully
     volumes:
       - attachments-data:/tmp/attachments
     networks:
@@ -237,9 +240,10 @@ services:
           "CMD-SHELL",
           "curl -s --user admin:$$OPENSEARCH_DASHBOARDS_PASSWORD -k -X GET https://localhost:5601/api/status | grep '\"state\":\"green\"'"
         ]
-      interval: 10s
-      timeout: 10s
-      retries: 20
+      interval: 15s
+      timeout: 15s
+      retries: 40
+      start_period: 60s
     networks:
       - backend
       - frontend

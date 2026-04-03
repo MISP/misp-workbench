@@ -3,7 +3,7 @@ from functools import lru_cache
 from typing import Optional
 
 from pydantic import BaseModel
-from pydantic_settings import BaseSettings
+from app.services.base_settings import BaseSettings
 
 
 class MISPSettings(BaseModel):
@@ -70,6 +70,9 @@ class RedisSettings(BaseModel):
     cache_db: int = int(os.environ["REDIS_CACHE_DB"]) or 5
 
 class Settings(BaseSettings):
+    def __init__(self):
+        pass
+
     MISP: MISPSettings = MISPSettings()
     OAuth2: OAuth2Settings = OAuth2Settings()
     Mail: MailSettings = MailSettings()
