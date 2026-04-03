@@ -135,10 +135,10 @@ class TestGetScopesForUser:
 
 
 class TestGetRandomPassword:
-    def test_returns_string_of_length_12(self):
+    def test_returns_string_of_length_16(self):
         pwd = get_random_password()
         assert isinstance(pwd, str)
-        assert len(pwd) == 12
+        assert len(pwd) == 16
 
     def test_passwords_differ_across_calls(self):
         passwords = {get_random_password() for _ in range(10)}
