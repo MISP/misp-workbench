@@ -2,7 +2,7 @@
 import { storeToRefs } from "pinia";
 import { RouterLink } from "vue-router";
 import Spinner from "@/components/misc/Spinner.vue";
-import DeleteUserModal from "@/components/users/DeleteUserModal.vue";
+import UsersActions from "@/components/users/UsersActions.vue";
 import { useUsersStore } from "@/stores";
 const usersStore = useUsersStore();
 const { users, status } = storeToRefs(usersStore);
@@ -42,44 +42,8 @@ function handleUserDeleted() {
           </td>
           <td>{{ !!user.disabled }}</td>
           <td class="text-end">
-            <div class="btn-toolbar float-end" role="toolbar">
-              <div
-                class="flex-wrap"
-                :class="{
-                  'btn-group-vertical': $isMobile,
-                  'btn-group me-2': !$isMobile,
-                }"
-                aria-label="User Actions"
-              >
-                <RouterLink
-                  :to="`/users/${user.id}`"
-                  class="btn btn-outline-primary btn-sm"
-                >
-                  <font-awesome-icon icon="fa-solid fa-eye" />
-                </RouterLink>
-                <RouterLink
-                  :to="`/users/update/${user.id}`"
-                  class="btn btn-outline-primary btn-sm"
-                >
-                  <font-awesome-icon icon="fa-solid fa-pen" />
-                </RouterLink>
-              </div>
-              <div class="btn-group me-2" role="group">
-                <button
-                  type="button"
-                  class="btn btn-danger btn-sm"
-                  data-bs-toggle="modal"
-                  :data-bs-target="'#deleteUserModal-' + user.id"
-                >
-                  <font-awesome-icon icon="fa-solid fa-trash" />
-                </button>
-              </div>
-            </div>
+            <UsersActions :user="user" @user-deleted="handleUserDeleted" />
           </td>
-          <DeleteUserModal
-            @user-deleted="handleUserDeleted"
-            :user_id="user.id"
-          />
         </tr>
       </tbody>
     </table>

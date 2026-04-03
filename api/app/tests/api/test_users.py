@@ -126,6 +126,59 @@ class TestUsersResource(ApiTester):
         assert response.status_code == status.HTTP_200_OK
         assert data["email"] == "updated_via_api@foo.local"
 
+    @pytest.mark.parametrize("scopes", [["users:update"]])
+    def test_reset_password(
+        self,
+        client: TestClient,
+        db,
+        user_1: user_models.User,
+        auth_token: auth.Token,
+    ):
+        response = client.post(
+            f"/users/{user_1.id}/reset-password",
+            json={"password": "newpassword123"},
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        db.refresh(user_1)
+        assert auth.verify_password("newpassword123", user_1.hashed_password)
+
+    @pytest.mark.parametrize("scopes", [["users:update"]])
+    def test_reset_password_random(
+        self,
+        client: TestClient,
+        db,
+        user_1: user_models.User,
+        auth_token: auth.Token,
+    ):
+        old_hash = user_1.hashed_password
+
+        response = client.post(
+            f"/users/{user_1.id}/reset-password",
+            json={},
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        db.refresh(user_1)
+        assert user_1.hashed_password != old_hash
+
+    @pytest.mark.parametrize("scopes", [[]])
+    def test_reset_password_unauthorized(
+        self,
+        client: TestClient,
+        user_1: user_models.User,
+        auth_token: auth.Token,
+    ):
+        response = client.post(
+            f"/users/{user_1.id}/reset-password",
+            json={"password": "newpassword123"},
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
     @pytest.mark.parametrize("scopes", [["users:delete"]])
     def test_delete_user(
         self,

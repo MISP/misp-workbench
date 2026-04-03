@@ -28,3 +28,7 @@ class UserUpdate(BaseModel):
     email: Optional[str] = None
     org_id: Optional[int] = None
     role_id: Optional[int] = None
+
+
+class UserResetPassword(BaseModel):
+    password: Optional[str] = None

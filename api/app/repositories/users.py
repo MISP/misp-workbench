@@ -74,6 +74,35 @@ def update_user(
     return db_user
 
 
+def reset_user_password(
+    db: Session, user_id: int, password: str | None
+) -> user_models.User:
+    db_user = get_user_by_id(db, user_id=user_id)
+
+    if db_user is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+        )
+
+    if password is None:
+        password = auth.get_random_password()
+        tasks.send_email(
+            {
+                "subject": "misp-workbench password reset",
+                "body": f"your new password is: {password}",
+                "to": db_user.email,
+                "from": "info@misp-workbench.local",
+            }
+        )
+
+    db_user.hashed_password = auth.get_password_hash(password)
+    db.add(db_user)
+    db.commit()
+    db.refresh(db_user)
+
+    return db_user
+
+
 def delete_user(db: Session, user_id: int) -> None:
     db_user = get_user_by_id(db, user_id=user_id)
 

@@ -1,6 +1,8 @@
 <script setup>
-import DeleteUserModal from "@/components/users/DeleteUserModal.vue";
+import { useRouter } from "vue-router";
+import UsersActions from "@/components/users/UsersActions.vue";
 defineProps(["user_id", "user"]);
+const router = useRouter();
 function handleUserDeleted() {
   router.push(`/users`);
 }
@@ -14,29 +16,11 @@ function handleUserDeleted() {
           <h3>{{ user.email }}</h3>
         </div>
         <div class="col-2 text-end">
-          <div
-            class="flex-wrap"
-            :class="{
-              'btn-group-vertical': $isMobile,
-              'btn-group': !$isMobile,
-            }"
-            aria-label="User Actions"
-          >
-            <button
-              type="button"
-              class="btn btn-outline-danger"
-              data-bs-toggle="modal"
-              :data-bs-target="'#deleteUserModal-' + user.id"
-            >
-              <font-awesome-icon icon="fa-solid fa-trash" />
-            </button>
-            <RouterLink
-              :to="`/users/update/${user.id}`"
-              class="btn btn-outline-primary"
-            >
-              <font-awesome-icon icon="fa-solid fa-pen" />
-            </RouterLink>
-          </div>
+          <UsersActions
+            :user="user"
+            :default_actions="{ view: false }"
+            @user-deleted="handleUserDeleted"
+          />
         </div>
       </div>
     </div>
@@ -62,7 +46,6 @@ function handleUserDeleted() {
             </tr>
           </tbody>
         </table>
-        <DeleteUserModal @user-deleted="handleUserDeleted" :user_id="user_id" />
       </div>
     </div>
   </div>
