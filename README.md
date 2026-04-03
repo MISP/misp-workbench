@@ -43,7 +43,7 @@ Then start the stack:
 
 ```bash
 cp .env.dist .env
-# edit .env: set OAUTH2_SECRET_KEY, OAUTH2_REFRESH_SECRET_KEY, GARAGE_ADMIN_TOKEN, S3_ACCESS_KEY, S3_SECRET_KEY, etc.
+# edit .env: set CORS_ORIGINS, OAUTH2_SECRET_KEY, OAUTH2_REFRESH_SECRET_KEY, GARAGE_ADMIN_TOKEN, S3_ACCESS_KEY, S3_SECRET_KEY, etc.
 docker compose --env-file=".env" up --build
 ...
 ...

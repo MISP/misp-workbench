@@ -38,6 +38,7 @@ x-environment: &default-env
   MAIL_PORT: ${MAIL_PORT}
   MAIL_SERVER: ${MAIL_SERVER}
   LOG_LEVEL: ${LOG_LEVEL:-INFO}
+  CORS_ORIGINS: ${CORS_ORIGINS:-}
 
 services:
   postgres:
