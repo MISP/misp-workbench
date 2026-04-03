@@ -149,6 +149,7 @@ jobs:
         run: |
           poetry run pytest --cov=app --cov-report=xml
         env:
+          ENVIRONMENT: test
           POSTGRES_HOSTNAME: localhost
           POSTGRES_PORT: 5432
           POSTGRES_PASSWORD: postgres
@@ -183,6 +184,7 @@ jobs:
           git diff --exit-code ../docs/features/api/openapi.json || \
             (echo "::error::openapi.json is out of date. Regenerate it with: docker compose exec api poetry run python -c \"from app.main import app; import json; print(json.dumps(app.openapi(), indent=2))\" > docs/features/api/openapi.json" && exit 1)
         env:
+          ENVIRONMENT: test
           POSTGRES_HOSTNAME: localhost
           POSTGRES_PORT: 5432
           POSTGRES_PASSWORD: postgres
