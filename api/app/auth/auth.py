@@ -227,10 +227,7 @@ def get_scopes_for_user(user: user_schemas.User) -> list[str]:
 def get_random_password():
     return "".join(
         random.choice(
-            string.ascii_lowercase
-            + string.ascii_uppercase
-            + string.digits
-            + string.punctuation
+            string.ascii_lowercase + string.ascii_uppercase + string.digits
         )
-        for _ in range(12)
+        for _ in range(16)
     )

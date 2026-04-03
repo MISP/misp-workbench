@@ -10,7 +10,7 @@ if [ "$STORAGE_ENGINE" = "s3" ]; then
 fi
 
 # create admin org and user (skipped if they already exist)
-ADMIN_PASSWORD=$(openssl rand -base64 18 | tr -dc 'a-zA-Z0-9' | head -c 24)
+ADMIN_PASSWORD=$(openssl rand -hex 16)
 poetry run python -m app.cli create-organisation ADMIN
 CREATE_USER_OUTPUT=$(poetry run python -m app.cli create-user admin@admin.local "$ADMIN_PASSWORD" 1 1)
 echo "$CREATE_USER_OUTPUT"
