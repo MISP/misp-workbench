@@ -36,7 +36,7 @@ Before starting the production stack, create the Garage config file from the tem
 
 ```bash
 cp garage.toml.dist garage.toml
-# edit garage.toml: set rpc_secret (64 hex chars) and admin_token
+# edit garage.toml: set rpc_secret (64 hex chars) admin_token and metrics_token
 ```
 
 Then start the stack:
@@ -45,13 +45,26 @@ Then start the stack:
 cp .env.dist .env
 # edit .env: set OAUTH2_SECRET_KEY, OAUTH2_REFRESH_SECRET_KEY, GARAGE_ADMIN_TOKEN, S3_ACCESS_KEY, S3_SECRET_KEY, etc.
 docker compose --env-file=".env" up --build
+...
+...
+...
+  ███╗   ███╗██╗███████╗██████╗     ██╗    ██╗ ██████╗ ██████╗ ██╗  ██╗██████╗ ███████╗███╗   ██╗ ██████╗██╗  ██╗
+  ████╗ ████║██║██╔════╝██╔══██╗    ██║    ██║██╔═══██╗██╔══██╗██║ ██╔╝██╔══██╗██╔════╝████╗  ██║██╔════╝██║  ██║
+  ██╔████╔██║██║███████╗██████╔╝    ██║ █╗ ██║██║   ██║██████╔╝█████╔╝ ██████╔╝█████╗  ██╔██╗ ██║██║     ███████║
+  ██║╚██╔╝██║██║╚════██║██╔═══╝     ██║███╗██║██║   ██║██╔══██╗██╔═██╗ ██╔══██╗██╔══╝  ██║╚██╗██║██║     ██╔══██║
+  ██║ ╚═╝ ██║██║███████║██║         ╚███╔███╔╝╚██████╔╝██║  ██║██║  ██╗██████╔╝███████╗██║ ╚████║╚██████╗██║  ██║
+  ╚═╝     ╚═╝╚═╝╚══════╝╚═╝          ╚══╝╚══╝  ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝╚═════╝ ╚══════╝╚═╝  ╚═══╝ ╚═════╝╚═╝  ╚═╝
+
+  Server is ready!
+  Admin credentials:  admin@admin.local / random_generated_password
 ```
 
-> **default credentials:** `admin@admin.test:admin`
+> **default admin user:** `admin@admin.local`
+>
+> The password is shown in the `api` container output.
 
 Go to http://localhost:3000/login and login.
 
-The dev compose file configures the API, frontend, OpenSearch, Redis, and other services needed to run the project locally.
 
 ####  Local development (alternative)
 
@@ -65,6 +78,19 @@ The dev compose file configures the API, frontend, OpenSearch, Redis, and other 
 
 - **Backend**
     - see `api/README.md` for dependency installation and local server commands. The Python project is defined in `api/pyproject.toml` (poetry or pip can be used to install dependencies).
+
+
+```bash
+cp .env.dist .env
+# edit .env: set OAUTH2_SECRET_KEY, OAUTH2_REFRESH_SECRET_KEY, GARAGE_ADMIN_TOKEN, S3_ACCESS_KEY, S3_SECRET_KEY, etc.
+docker compose -f docker-compose.yml -f docker-compose.dev.yml --env-file=".env.dev" up --build
+```
+
+> **default credentials:** `admin@admin.test:admin`
+
+Go to http://localhost:3001/login and login.
+
+The dev compose file configures the API, frontend, OpenSearch, Redis, and other services needed to run the project locally.
 
 #### Celery / background workers
 
