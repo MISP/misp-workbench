@@ -1,5 +1,6 @@
 from app.services.opensearch import get_opensearch_client
 from app.schemas import event as event_schemas
+from app.models.event import DistributionLevel
 from opensearchpy.exceptions import NotFoundError
 import logging
 import uuid
@@ -15,7 +16,7 @@ def get_event_reports_by_event_uuid(event_uuid: uuid.UUID):
     search_body = {
         "query": {
             "bool": {
-                "must": [{"term": {"event_uuid.keyword": str(event_uuid)}}],
+                "must": [{"term": {"event_uuid": str(event_uuid)}}],
                 "filter": [{"term": {"deleted": False}}],
             }
         }
@@ -38,7 +39,7 @@ def create_event_report(event: event_schemas.Event, report: dict):
 
     document = {
         "uuid": report_uuid,
-        "distribution": event.distribution.value,
+        "distribution": event.distribution.value if isinstance(event.distribution, DistributionLevel) else event.distribution,
         "sharing_group_id": event.sharing_group_id,
         "name": report["name"],
         "content": report["content"],
@@ -49,7 +50,7 @@ def create_event_report(event: event_schemas.Event, report: dict):
     }
 
     response = OpenSearchClient.index(
-        index="misp-event-reports", body=document, id=report_uuid
+        index="misp-event-reports", body=document, id=report_uuid, refresh=True
     )
 
     if response["result"] == "created":

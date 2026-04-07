@@ -2,6 +2,7 @@ from app.services.opensearch import get_opensearch_client
 from app.schemas import correlation as correlation_schemas
 from fastapi import HTTPException, status
 from opensearchpy import helpers as opensearch_helpers
+from opensearchpy.exceptions import NotFoundError
 from app.services.runtime_settings import RuntimeSettings
 from app.worker import tasks
 import datetime
@@ -83,7 +84,7 @@ def get_attributes(filters: dict = {}):
 
     if filters.get("event_uuid"):
         query["query"]["bool"]["must"].append(
-            {"term": {"event_uuid.keyword": filters["event_uuid"]}}
+            {"term": {"event_uuid": filters["event_uuid"]}}
         )
 
     scroll = opensearch_helpers.scan(
@@ -112,7 +113,7 @@ def build_query(uuid, event_uuid, value, match_type, runtimeSettings: RuntimeSet
                 "must": [],
                 "must_not": [
                     {"term": {"uuid.keyword": uuid}},
-                    {"term": {"event_uuid.keyword": event_uuid}},
+                    {"term": {"event_uuid": event_uuid}},
                 ],
             }
         }
@@ -173,7 +174,7 @@ def build_cidr_query(uuid, event_uuid, doc):
                 "must": [{"term": {"expanded.ip": cidr}}],
                 "must_not": [
                     {"term": {"uuid.keyword": uuid}},
-                    {"term": {"event_uuid.keyword": event_uuid}},
+                    {"term": {"event_uuid": event_uuid}},
                 ],
             }
         }
@@ -399,12 +400,18 @@ def get_total_correlations():
 
 
 def get_correlations_stats():
-
-    return {
-        "top_correlated_events": get_top_correlating_events(),
-        "top_correlated_attributes": get_top_correlating_attributes(),
-        "total_correlations": get_total_correlations(),
-    }
+    try:
+        return {
+            "top_correlated_events": get_top_correlating_events(),
+            "top_correlated_attributes": get_top_correlating_attributes(),
+            "total_correlations": get_total_correlations(),
+        }
+    except NotFoundError:
+        return {
+            "top_correlated_events": [],
+            "top_correlated_attributes": [],
+            "total_correlations": 0,
+        }
 
 
 def delete_correlations():

@@ -1,9 +1,34 @@
+import json
 import os
 from functools import lru_cache
 from typing import Optional
 
 from pydantic import BaseModel
 from app.services.base_settings import BaseSettings
+
+_S3_CREDS_FILE = os.environ.get("S3_CREDS_FILE", "/var/lib/misp-workbench/secrets/s3.json")
+
+
+def _s3_access_key() -> str:
+    if os.environ.get("STORAGE_ENGINE") != "s3":
+        return ""
+    if os.environ.get("S3_ACCESS_KEY"):
+        return os.environ["S3_ACCESS_KEY"]
+    if os.path.exists(_S3_CREDS_FILE):
+        with open(_S3_CREDS_FILE) as f:
+            return json.load(f).get("access_key_id", "")
+    return ""
+
+
+def _s3_secret_key() -> str:
+    if os.environ.get("STORAGE_ENGINE") != "s3":
+        return ""
+    if os.environ.get("S3_SECRET_KEY"):
+        return os.environ["S3_SECRET_KEY"]
+    if os.path.exists(_S3_CREDS_FILE):
+        with open(_S3_CREDS_FILE) as f:
+            return json.load(f).get("secret_key", "")
+    return ""
 
 
 class MISPSettings(BaseModel):
@@ -42,14 +67,8 @@ class S3Settings(BaseModel):
     endpoint: str = (
         os.environ["S3_ENDPOINT"] if os.environ["STORAGE_ENGINE"] == "s3" else ""
     )
-    access_key: str = (
-        os.environ["S3_ACCESS_KEY"] if os.environ["STORAGE_ENGINE"] == "s3" else ""
-    )
-    secret_key: str = (
-        os.environ["S3_SECRET_KEY"]
-        if os.environ["STORAGE_ENGINE"] == "s3"
-        else ""
-    )
+    access_key: str = _s3_access_key()
+    secret_key: str = _s3_secret_key()
     bucket: str = (
         os.environ["S3_BUCKET"] if os.environ["STORAGE_ENGINE"] == "s3" else ""
     )
