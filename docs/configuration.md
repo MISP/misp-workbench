@@ -58,6 +58,17 @@ These must be set before first run.
 | `S3_BUCKET` | `attachments` | S3 bucket name |
 | `S3_SECURE` | `false` | Use TLS for S3 connection |
 
+When `S3_ACCESS_KEY` / `S3_SECRET_KEY` are not set, `s3setup.py` calls the Garage `CreateKey` API to generate credentials and writes them to `S3_CREDS_FILE`:
+
+```json
+{
+  "access_key_id": "GKxxxxxxxxxxxxxxxxxxxx",
+  "secret_key": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+}
+```
+
+The file is written with mode `0600`. It is read at startup by the API, worker, and beat containers via the shared `garage-creds` Docker volume mounted at the same path.
+
 ## Garage (S3-compatible storage)
 
 | Variable | Default | Description |
