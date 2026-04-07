@@ -15,7 +15,7 @@ def get_event_reports_by_event_uuid(event_uuid: uuid.UUID):
     search_body = {
         "query": {
             "bool": {
-                "must": [{"term": {"event_uuid.keyword": str(event_uuid)}}],
+                "must": [{"term": {"event_uuid": str(event_uuid)}}],
                 "filter": [{"term": {"deleted": False}}],
             }
         }

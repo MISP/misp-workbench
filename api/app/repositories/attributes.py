@@ -66,7 +66,7 @@ def get_attributes_from_opensearch(
 
     must_clauses = []
     if event_uuid is not None:
-        must_clauses.append({"term": {"event_uuid.keyword": event_uuid}})
+        must_clauses.append({"term": {"event_uuid": event_uuid}})
     if deleted is not None:
         must_clauses.append({"term": {"deleted": deleted}})
     if type is not None:
@@ -375,7 +375,7 @@ def get_vulnerability_attributes(
     client = get_opensearch_client()
     must_clauses = [{"term": {"type.keyword": "vulnerability"}}]
     if event_uuid is not None:
-        must_clauses.append({"term": {"event_uuid.keyword": event_uuid}})
+        must_clauses.append({"term": {"event_uuid": event_uuid}})
 
     try:
         response = client.search(

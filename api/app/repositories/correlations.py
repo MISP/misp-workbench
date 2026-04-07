@@ -43,7 +43,7 @@ def get_correlations(params: correlation_schemas.CorrelationQueryParams, page: i
         )
     if params.source_event_uuid:
         query["query"]["bool"]["must"].append(
-            {"term": {"source_event_uuid.keyword": params.source_event_uuid}}
+            {"term": {"source_event_uuid": params.source_event_uuid}}
         )
     if params.target_attribute_uuid:
         query["query"]["bool"]["must"].append(
@@ -51,7 +51,7 @@ def get_correlations(params: correlation_schemas.CorrelationQueryParams, page: i
         )
     if params.target_event_uuid:
         query["query"]["bool"]["must"].append(
-            {"term": {"target_event_uuid.keyword": params.target_event_uuid}}
+            {"term": {"target_event_uuid": params.target_event_uuid}}
         )
     if params.match_type:
         query["query"]["bool"]["must"].append(
@@ -83,7 +83,7 @@ def get_attributes(filters: dict = {}):
 
     if filters.get("event_uuid"):
         query["query"]["bool"]["must"].append(
-            {"term": {"event_uuid.keyword": filters["event_uuid"]}}
+            {"term": {"event_uuid": filters["event_uuid"]}}
         )
 
     scroll = opensearch_helpers.scan(
@@ -112,7 +112,7 @@ def build_query(uuid, event_uuid, value, match_type, runtimeSettings: RuntimeSet
                 "must": [],
                 "must_not": [
                     {"term": {"uuid.keyword": uuid}},
-                    {"term": {"event_uuid.keyword": event_uuid}},
+                    {"term": {"event_uuid": event_uuid}},
                 ],
             }
         }
@@ -173,7 +173,7 @@ def build_cidr_query(uuid, event_uuid, doc):
                 "must": [{"term": {"expanded.ip": cidr}}],
                 "must_not": [
                     {"term": {"uuid.keyword": uuid}},
-                    {"term": {"event_uuid.keyword": event_uuid}},
+                    {"term": {"event_uuid": event_uuid}},
                 ],
             }
         }
@@ -300,10 +300,10 @@ def get_top_correlated_events(source_event_uuid: str):
 
     query = {
         "size": 0,
-        "query": {"term": {"source_event_uuid.keyword": source_event_uuid}},
+        "query": {"term": {"source_event_uuid": source_event_uuid}},
         "aggs": {
             "by_target_event": {
-                "terms": {"field": "target_event_uuid.keyword", "size": 10}
+                "terms": {"field": "target_event_uuid", "size": 10}
             }
         },
     }
@@ -335,7 +335,7 @@ def get_top_correlating_events():
         "size": 0,
         "aggs": {
             "by_source_event": {
-                "terms": {"field": "source_event_uuid.keyword", "size": 10}
+                "terms": {"field": "source_event_uuid", "size": 10}
             }
         },
     }
@@ -439,8 +439,8 @@ def delete_event_correlations(event_uuid: str):
         "query": {
             "bool": {
                 "should": [
-                    {"term": {"source_event_uuid.keyword": str(event_uuid)}},
-                    {"term": {"target_event_uuid.keyword": str(event_uuid)}},
+                    {"term": {"source_event_uuid": str(event_uuid)}},
+                    {"term": {"target_event_uuid": str(event_uuid)}},
                 ]
             }
         }

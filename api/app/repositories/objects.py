@@ -72,7 +72,7 @@ def get_objects_from_opensearch(
 
     must_clauses = [{"term": {"deleted": bool(deleted)}}]
     if event_uuid is not None:
-        must_clauses.append({"term": {"event_uuid.keyword": event_uuid}})
+        must_clauses.append({"term": {"event_uuid": event_uuid}})
     if template_uuid is not None:
         must_clauses.append(
             {"terms": {"template_uuid.keyword": [str(u) for u in template_uuid]}}
@@ -101,7 +101,7 @@ def get_objects_from_opensearch(
     attr_response = client.search(
         index="misp-attributes",
         body={
-            "query": {"terms": {"object_uuid.keyword": object_uuids}},
+            "query": {"terms": {"object_uuid": object_uuids}},
             "size": 10000,
         },
     )
@@ -175,7 +175,7 @@ def get_objects(
 
     must_clauses = [{"term": {"deleted": bool(deleted)}}]
     if event_uuid is not None:
-        must_clauses.append({"term": {"event_uuid.keyword": str(event_uuid)}})
+        must_clauses.append({"term": {"event_uuid": str(event_uuid)}})
     if template_uuid is not None:
         must_clauses.append(
             {"terms": {"template_uuid.keyword": [str(u) for u in template_uuid]}}
@@ -210,7 +210,7 @@ def get_objects(
     try:
         attr_response = client.search(
             index="misp-attributes",
-            body={"query": {"terms": {"object_uuid.keyword": object_uuids}}, "size": 10000},
+            body={"query": {"terms": {"object_uuid": object_uuids}}, "size": 10000},
         )
         raw_by_uuid: dict = {}
         for attr_hit in attr_response["hits"]["hits"]:
@@ -513,7 +513,7 @@ def update_objects_from_fetched_event(
     resp = client.search(
         index="misp-objects",
         body={
-            "query": {"term": {"event_uuid.keyword": str(local_event.uuid)}},
+            "query": {"term": {"event_uuid": str(local_event.uuid)}},
             "size": 10000,
         },
     )
