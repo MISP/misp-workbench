@@ -2,6 +2,7 @@ from app.services.opensearch import get_opensearch_client
 from app.schemas import correlation as correlation_schemas
 from fastapi import HTTPException, status
 from opensearchpy import helpers as opensearch_helpers
+from opensearchpy.exceptions import NotFoundError
 from app.services.runtime_settings import RuntimeSettings
 from app.worker import tasks
 import datetime
@@ -43,7 +44,7 @@ def get_correlations(params: correlation_schemas.CorrelationQueryParams, page: i
         )
     if params.source_event_uuid:
         query["query"]["bool"]["must"].append(
-            {"term": {"source_event_uuid": params.source_event_uuid}}
+            {"term": {"source_event_uuid.keyword": params.source_event_uuid}}
         )
     if params.target_attribute_uuid:
         query["query"]["bool"]["must"].append(
@@ -51,7 +52,7 @@ def get_correlations(params: correlation_schemas.CorrelationQueryParams, page: i
         )
     if params.target_event_uuid:
         query["query"]["bool"]["must"].append(
-            {"term": {"target_event_uuid": params.target_event_uuid}}
+            {"term": {"target_event_uuid.keyword": params.target_event_uuid}}
         )
     if params.match_type:
         query["query"]["bool"]["must"].append(
@@ -300,10 +301,10 @@ def get_top_correlated_events(source_event_uuid: str):
 
     query = {
         "size": 0,
-        "query": {"term": {"source_event_uuid": source_event_uuid}},
+        "query": {"term": {"source_event_uuid.keyword": source_event_uuid}},
         "aggs": {
             "by_target_event": {
-                "terms": {"field": "target_event_uuid", "size": 10}
+                "terms": {"field": "target_event_uuid.keyword", "size": 10}
             }
         },
     }
@@ -335,7 +336,7 @@ def get_top_correlating_events():
         "size": 0,
         "aggs": {
             "by_source_event": {
-                "terms": {"field": "source_event_uuid", "size": 10}
+                "terms": {"field": "source_event_uuid.keyword", "size": 10}
             }
         },
     }
@@ -399,12 +400,18 @@ def get_total_correlations():
 
 
 def get_correlations_stats():
-
-    return {
-        "top_correlated_events": get_top_correlating_events(),
-        "top_correlated_attributes": get_top_correlating_attributes(),
-        "total_correlations": get_total_correlations(),
-    }
+    try:
+        return {
+            "top_correlated_events": get_top_correlating_events(),
+            "top_correlated_attributes": get_top_correlating_attributes(),
+            "total_correlations": get_total_correlations(),
+        }
+    except NotFoundError:
+        return {
+            "top_correlated_events": [],
+            "top_correlated_attributes": [],
+            "total_correlations": 0,
+        }
 
 
 def delete_correlations():
@@ -439,8 +446,8 @@ def delete_event_correlations(event_uuid: str):
         "query": {
             "bool": {
                 "should": [
-                    {"term": {"source_event_uuid": str(event_uuid)}},
-                    {"term": {"target_event_uuid": str(event_uuid)}},
+                    {"term": {"source_event_uuid.keyword": str(event_uuid)}},
+                    {"term": {"target_event_uuid.keyword": str(event_uuid)}},
                 ]
             }
         }

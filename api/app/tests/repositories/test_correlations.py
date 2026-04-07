@@ -35,7 +35,7 @@ class TestBuildQuery:
             {"term": {"value.keyword": "1.2.3.4"}}
         ]
         assert {"term": {"uuid.keyword": "uuid-1"}} in query["query"]["bool"]["must_not"]
-        assert {"term": {"event_uuid.keyword": "event-1"}} in query["query"]["bool"]["must_not"]
+        assert {"term": {"event_uuid": "event-1"}} in query["query"]["bool"]["must_not"]
 
     def test_prefix_match(self):
         query = build_query("uuid-1", "event-1", "evil.example.com", "prefix", self._settings(prefix_length=5))
@@ -110,7 +110,7 @@ class TestBuildCidrQuery:
         query = build_cidr_query("uuid-1", "event-1", doc)
 
         assert {"term": {"uuid.keyword": "uuid-1"}} in query["query"]["bool"]["must_not"]
-        assert {"term": {"event_uuid.keyword": "event-1"}} in query["query"]["bool"]["must_not"]
+        assert {"term": {"event_uuid": "event-1"}} in query["query"]["bool"]["must_not"]
 
 
 # ── get_correlations ──────────────────────────────────────────────────────────
