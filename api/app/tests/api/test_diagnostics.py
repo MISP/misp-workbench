@@ -127,13 +127,13 @@ def _all_ok_patches():
     mock_engine.connect.return_value.__enter__ = lambda s: MagicMock()
     mock_engine.connect.return_value.__exit__ = MagicMock(return_value=False)
 
-    mock_inspect = MagicMock()
-    mock_inspect.return_value.active.return_value = {"worker@host": []}
+    mock_celery_app = MagicMock()
+    mock_celery_app.control.inspect.return_value.active.return_value = {"worker@host": []}
 
     return {
         PATCH_ENGINE: mock_engine,
         PATCH_ISDIR: MagicMock(return_value=True),
-        PATCH_CELERY: mock_inspect,
+        PATCH_CELERY: mock_celery_app,
     }
 
 
@@ -226,8 +226,8 @@ class TestHealth(ApiTester):
     def test_full_check_no_workers_is_degraded(self, client):
         """inspect().active() returning None means no workers → error."""
         patches = _all_ok_patches()
-        mock_inspect = MagicMock()
-        mock_inspect.return_value.active.return_value = None
+        mock_celery_app = MagicMock()
+        mock_celery_app.control.inspect.return_value.active.return_value = None
 
         with (
             patch(PATCH_ENGINE, patches[PATCH_ENGINE]),
@@ -235,7 +235,7 @@ class TestHealth(ApiTester):
             patch(PATCH_REDIS),
             patch(PATCH_URLOPEN),
             patch(PATCH_ISDIR, patches[PATCH_ISDIR]),
-            patch(PATCH_CELERY, mock_inspect),
+            patch(PATCH_CELERY, mock_celery_app),
         ):
             response = client.get("/health?full=true")
 
