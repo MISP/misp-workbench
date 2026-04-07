@@ -162,6 +162,7 @@ services:
         condition: service_completed_successfully
     volumes:
       - attachments-data:/tmp/attachments
+      - garage-creds:/var/lib/misp-workbench/secrets
     networks:
       - backend
       - frontend
@@ -179,6 +180,7 @@ services:
       - postgres
     volumes:
       - attachments-data:/tmp/attachments
+      - garage-creds:/var/lib/misp-workbench/secrets
     networks:
       - backend
 
@@ -195,6 +197,7 @@ services:
       - postgres
     volumes:
       - attachments-data:/tmp/attachments
+      - garage-creds:/var/lib/misp-workbench/secrets
     networks:
       - backend
 
@@ -265,6 +268,7 @@ volumes:
   garage-data:
   garage-meta:
   attachments-data:
+  garage-creds:
   os_data:
   os_logs:
 

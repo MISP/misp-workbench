@@ -1,6 +1,12 @@
 """
-Garage bootstrap: apply cluster layout, import S3 key, create bucket.
+Garage bootstrap: apply cluster layout, create or import S3 key, create bucket.
 Run once at startup when STORAGE_ENGINE=s3.
+
+Key provisioning:
+- If S3_ACCESS_KEY and S3_SECRET_KEY are set, they are imported via ImportKey
+  (useful for dev with fixed credentials or migrating from an existing setup).
+- Otherwise a key is auto-generated via CreateKey and persisted to S3_CREDS_FILE
+  so the app and subsequent container restarts can use it without re-running setup.
 """
 import json
 import os
@@ -14,9 +20,11 @@ ADMIN_TOKEN = os.environ.get("GARAGE_ADMIN_TOKEN")
 if not ADMIN_TOKEN:
     print("ERROR: GARAGE_ADMIN_TOKEN environment variable must be set for Garage admin operations.", file=sys.stderr)
     sys.exit(1)
-ACCESS_KEY = os.environ["S3_ACCESS_KEY"]
-SECRET_KEY = os.environ["S3_SECRET_KEY"]
+
+ACCESS_KEY = os.environ.get("S3_ACCESS_KEY")
+SECRET_KEY = os.environ.get("S3_SECRET_KEY")
 BUCKET = os.environ["S3_BUCKET"]
+CREDS_FILE = os.environ.get("S3_CREDS_FILE", "/var/lib/misp-workbench/secrets/s3.json")
 
 
 def _admin(method, path, data=None):
@@ -82,23 +90,55 @@ def apply_layout():
         print("Cluster layout applied.", flush=True)
 
 
-def import_key():
-    print(f"Importing S3 key {ACCESS_KEY}...", flush=True)
-    response, code = _admin("POST", "/v2/ImportKey", {
-        "name": "api",
-        "accessKeyId": ACCESS_KEY,
-        "secretAccessKey": SECRET_KEY,
-    })
-    if code in (200, 204):
-        print("S3 key imported.", flush=True)
-    elif code == 409:
-        print("S3 key already exists.", flush=True)
-    else:
-        print(f"ERROR: key import failed HTTP {code}: {response}", file=sys.stderr)
+def setup_key():
+    """Import user-provided key or auto-generate one, returning (access_key_id, secret_key)."""
+    if ACCESS_KEY and SECRET_KEY:
+        # User-provided credentials: import them directly.
+        print(f"Importing S3 key {ACCESS_KEY}...", flush=True)
+        response, code = _admin("POST", "/v2/ImportKey", {
+            "name": "api",
+            "accessKeyId": ACCESS_KEY,
+            "secretAccessKey": SECRET_KEY,
+        })
+        if code in (200, 204):
+            print("S3 key imported.", flush=True)
+        elif code == 409:
+            print("S3 key already exists.", flush=True)
+        else:
+            print(f"ERROR: key import failed HTTP {code}: {response}", file=sys.stderr)
+            sys.exit(1)
+        return ACCESS_KEY, SECRET_KEY
+
+    # Auto-generate path: check if we already have credentials from a prior run.
+    if os.path.exists(CREDS_FILE):
+        with open(CREDS_FILE) as f:
+            creds = json.load(f)
+        key_id = creds.get("access_key_id", "")
+        _, code = _admin("GET", f"/v2/GetKeyInfo?id={key_id}")
+        if code == 200:
+            print(f"Using existing S3 key {key_id[:12]}...", flush=True)
+            return key_id, creds["secret_key"]
+        print(f"Saved S3 key {key_id[:12]}... no longer exists in Garage, creating a new one...", flush=True)
+
+    print("Creating a new S3 key...", flush=True)
+    response, code = _admin("POST", "/v2/CreateKey", {"name": "api"})
+    if code not in (200, 201):
+        print(f"ERROR: key creation failed HTTP {code}: {response}", file=sys.stderr)
         sys.exit(1)
 
+    key_id = response["accessKeyId"]
+    secret = response["secretAccessKey"]
+    print(f"S3 key {key_id[:12]}... created.", flush=True)
 
-def ensure_bucket():
+    os.makedirs(os.path.dirname(CREDS_FILE), exist_ok=True)
+    with open(CREDS_FILE, "w") as f:
+        json.dump({"access_key_id": key_id, "secret_key": secret}, f)
+    os.chmod(CREDS_FILE, 0o600)
+
+    return key_id, secret
+
+
+def ensure_bucket(key_id):
     # Check if bucket already exists
     _, code = _admin("GET", f"/v2/GetBucketInfo?globalAlias={BUCKET}")
     if code == 200:
@@ -118,7 +158,7 @@ def ensure_bucket():
         sys.exit(1)
     _, code = _admin("POST", "/v2/AllowBucketKey", {
         "bucketId": bucket_id,
-        "accessKeyId": ACCESS_KEY,
+        "accessKeyId": key_id,
         "permissions": {"read": True, "write": True, "owner": True},
     })
     if code not in (200, 204):
@@ -130,6 +170,6 @@ def ensure_bucket():
 if __name__ == "__main__":
     wait_for_garage()
     apply_layout()
-    import_key()
-    ensure_bucket()
+    key_id, _ = setup_key()
+    ensure_bucket(key_id)
     print("Garage S3 setup complete.", flush=True)
