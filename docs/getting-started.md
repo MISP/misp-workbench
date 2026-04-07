@@ -66,6 +66,10 @@ Open http://localhost:3000/login and log in with your credentials.
 ```bash
 cp .env.dist .env
 # Edit .env and set all required secrets (see Configuration reference)
+
+cp frontend/.env.dist frontend/.env
+# Edit frontend/.env and set VITE_API_URL to the API public URL
+# e.g. VITE_API_URL=https://api.your-domain.com
 ```
 
 ### 2. Configure storage (Garage/S3)
