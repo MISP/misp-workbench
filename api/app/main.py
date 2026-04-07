@@ -55,6 +55,9 @@ origins = [
     "http://localhost:3001",
     "http://localhost:6274",
 ]
+extra_origins = os.environ.get("CORS_ORIGINS", "")
+if extra_origins:
+    origins += [o.strip() for o in extra_origins.split(",") if o.strip()]
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,

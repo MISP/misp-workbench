@@ -53,10 +53,12 @@ See [Vite Configuration Reference](https://vitejs.dev/config/).
 
 ## Project Setup
 
-Copy .env file:
+Copy .env file and configure the API URL:
 ```sh
 cp .env.dist .env
 ```
+
+Edit `.env` and set `VITE_API_URL` to the API base URL (e.g. `https://api.your-domain.com` for production, `http://localhost:8080` for development).
 
 ```sh
 npm install

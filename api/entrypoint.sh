@@ -18,9 +18,10 @@ if [ "$STORAGE_ENGINE" = "s3" ]; then
 fi
 
 # create admin org and user (skipped if they already exist)
-ADMIN_PASSWORD=$(openssl rand -base64 18 | tr -dc 'a-zA-Z0-9' | head -c 24)
+ADMIN_PASSWORD=$(openssl rand -hex 16)
 poetry run python -m app.cli create-organisation ADMIN
-poetry run python -m app.cli create-user admin@admin.local "$ADMIN_PASSWORD" 1 1
+CREATE_USER_OUTPUT=$(poetry run python -m app.cli create-user admin@admin.local "$ADMIN_PASSWORD" 1 1)
+echo "$CREATE_USER_OUTPUT"
 
 cat <<'EOF'
 
@@ -33,8 +34,11 @@ cat <<'EOF'
 
   Server is ready!
 EOF
-echo "  Admin credentials:  admin@admin.local / $ADMIN_PASSWORD"
-echo
+if echo "$CREATE_USER_OUTPUT" | grep -q "Created user"; then
+  echo "  Admin credentials:  admin@admin.local / $ADMIN_PASSWORD"
+  echo "  Save this password — it will not be shown again."
+  echo
+fi
 
 # OpenSearch credentials (prod security plugin is enabled)
 export OPENSEARCH_USERNAME="${OPENSEARCH_USERNAME:-admin}"
