@@ -38,6 +38,7 @@ x-environment: &default-env
   MAIL_PORT: ${MAIL_PORT}
   MAIL_SERVER: ${MAIL_SERVER}
   LOG_LEVEL: ${LOG_LEVEL:-INFO}
+  CORS_ORIGINS: ${CORS_ORIGINS:-}
 
 services:
   postgres:
@@ -161,6 +162,7 @@ services:
         condition: service_completed_successfully
     volumes:
       - attachments-data:/tmp/attachments
+      - garage-creds:/var/lib/misp-workbench/secrets
     networks:
       - backend
       - frontend
@@ -178,6 +180,7 @@ services:
       - postgres
     volumes:
       - attachments-data:/tmp/attachments
+      - garage-creds:/var/lib/misp-workbench/secrets
     networks:
       - backend
 
@@ -194,6 +197,7 @@ services:
       - postgres
     volumes:
       - attachments-data:/tmp/attachments
+      - garage-creds:/var/lib/misp-workbench/secrets
     networks:
       - backend
 
@@ -264,6 +268,7 @@ volumes:
   garage-data:
   garage-meta:
   attachments-data:
+  garage-creds:
   os_data:
   os_logs:
 

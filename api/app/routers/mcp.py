@@ -1084,7 +1084,7 @@ def search_event_reports(
     if name:
         must_clauses.append({"match": {"name": name}})
     if event_uuid:
-        must_clauses.append({"term": {"event_uuid.keyword": event_uuid}})
+        must_clauses.append({"term": {"event_uuid": event_uuid}})
 
     query_body = {
         "from": from_value,

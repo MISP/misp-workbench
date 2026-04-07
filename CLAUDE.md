@@ -54,6 +54,13 @@ cd api && poetry run pre-commit run --all-files
 
 ### Frontend
 
+Copy `frontend/.env.dist` to `frontend/.env` and set `VITE_API_URL` to the API base URL before building:
+
+```bash
+cp frontend/.env.dist frontend/.env
+# Edit frontend/.env and set VITE_API_URL=https://api.your-domain.com
+```
+
 ```bash
 cd frontend
 npm install

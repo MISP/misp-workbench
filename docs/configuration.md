@@ -52,10 +52,22 @@ These must be set before first run.
 |---|---|---|
 | `STORAGE_ENGINE` | `local` | `local` or `s3` |
 | `S3_ENDPOINT` | `garage:3900` | S3 / Garage endpoint |
-| `S3_ACCESS_KEY` | — | S3 access key |
-| `S3_SECRET_KEY` | — | S3 secret key |
+| `S3_ACCESS_KEY` | _(auto)_ | S3 access key — leave unset to let Garage generate one automatically |
+| `S3_SECRET_KEY` | _(auto)_ | S3 secret key — leave unset to let Garage generate one automatically |
+| `S3_CREDS_FILE` | `/var/lib/misp-workbench/secrets/s3.json` | Path where auto-generated credentials are persisted |
 | `S3_BUCKET` | `attachments` | S3 bucket name |
 | `S3_SECURE` | `false` | Use TLS for S3 connection |
+
+When `S3_ACCESS_KEY` / `S3_SECRET_KEY` are not set, `s3setup.py` calls the Garage `CreateKey` API to generate credentials and writes them to `S3_CREDS_FILE`:
+
+```json
+{
+  "access_key_id": "GKxxxxxxxxxxxxxxxxxxxx",
+  "secret_key": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+}
+```
+
+The file is written with mode `0600`. It is read at startup by the API, worker, and beat containers via the shared `garage-creds` Docker volume mounted at the same path.
 
 ## Garage (S3-compatible storage)
 
