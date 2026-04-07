@@ -7629,6 +7629,49 @@
         }
       }
     },
+    "/health": {
+      "get": {
+        "tags": [
+          "Diagnostics",
+          "Health"
+        ],
+        "summary": "Health",
+        "description": "Unauthenticated liveness/readiness probe.\n\nWithout `?full=true` returns immediately with `{\"status\": \"ok\"}` \u2014 suitable\nfor fast liveness checks (load balancer, container restart policy).\n\nWith `?full=true` probes every dependent service and returns per-service\nstatus. Returns HTTP 503 if any service is unreachable.",
+        "operationId": "health_health_get",
+        "parameters": [
+          {
+            "name": "full",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Full"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/diagnostics/opensearch": {
       "get": {
         "tags": [

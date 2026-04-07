@@ -1,4 +1,5 @@
-from unittest.mock import patch
+from contextlib import contextmanager
+from unittest.mock import MagicMock, patch
 
 import pytest
 from app.auth import auth
@@ -109,3 +110,167 @@ class TestDiagnosticsModules(ApiTester):
         )
 
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+
+# ── /health ───────────────────────────────────────────────────────────────────
+
+PATCH_ENGINE = "app.routers.diagnostics.engine"
+PATCH_OS = "app.routers.diagnostics.OpenSearchClient"
+PATCH_REDIS = "app.routers.diagnostics.RedisClient"
+PATCH_URLOPEN = "app.routers.diagnostics.urllib.request.urlopen"
+PATCH_ISDIR = "app.routers.diagnostics.os.path.isdir"
+PATCH_CELERY = "app.worker.tasks.celery_app"
+
+
+def _all_ok_patches():
+    """Return a dict of patch kwargs that make every service appear healthy."""
+    mock_engine = MagicMock()
+    mock_engine.connect.return_value.__enter__ = lambda s: MagicMock()
+    mock_engine.connect.return_value.__exit__ = MagicMock(return_value=False)
+
+    mock_inspect = MagicMock()
+    mock_inspect.return_value.active.return_value = {"worker@host": []}
+
+    return {
+        PATCH_ENGINE: mock_engine,
+        PATCH_ISDIR: MagicMock(return_value=True),
+        PATCH_CELERY: mock_inspect,
+    }
+
+
+class TestHealth(ApiTester):
+    def test_liveness_returns_ok_without_auth(self, client):
+        """Basic probe returns instantly with no service calls and no auth."""
+        response = client.get("/health")
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.json() == {"status": "ok"}
+
+    def test_liveness_does_not_require_auth(self, client):
+        """Endpoint must be accessible without an Authorization header."""
+        response = client.get("/health")
+
+        assert response.status_code != status.HTTP_401_UNAUTHORIZED
+        assert response.status_code != status.HTTP_403_FORBIDDEN
+
+    def test_full_check_healthy(self, client):
+        """All services reachable → 200 + status healthy + all checks ok."""
+        patches = _all_ok_patches()
+        with (
+            patch(PATCH_ENGINE, patches[PATCH_ENGINE]),
+            patch(PATCH_OS),
+            patch(PATCH_REDIS),
+            patch(PATCH_URLOPEN),
+            patch(PATCH_ISDIR, patches[PATCH_ISDIR]),
+            patch(PATCH_CELERY, patches[PATCH_CELERY]),
+        ):
+            response = client.get("/health?full=true")
+
+        assert response.status_code == status.HTTP_200_OK
+        data = response.json()
+        assert data["status"] == "ok"
+        assert all(v == "ok" for v in data["checks"].values())
+
+    def test_full_check_includes_all_services(self, client):
+        """Response must contain a key for every monitored service."""
+        patches = _all_ok_patches()
+        with (
+            patch(PATCH_ENGINE, patches[PATCH_ENGINE]),
+            patch(PATCH_OS),
+            patch(PATCH_REDIS),
+            patch(PATCH_URLOPEN),
+            patch(PATCH_ISDIR, patches[PATCH_ISDIR]),
+            patch(PATCH_CELERY, patches[PATCH_CELERY]),
+        ):
+            response = client.get("/health?full=true")
+
+        assert set(response.json()["checks"].keys()) == {
+            "postgres", "opensearch", "redis", "modules", "storage", "workers",
+        }
+
+    def test_full_check_degraded_when_service_down(self, client):
+        """Any failing service → 503 + status degraded."""
+        patches = _all_ok_patches()
+        with (
+            patch(PATCH_ENGINE, patches[PATCH_ENGINE]),
+            patch(PATCH_OS),
+            patch(PATCH_REDIS + ".ping", side_effect=Exception("connection refused")),
+            patch(PATCH_URLOPEN),
+            patch(PATCH_ISDIR, patches[PATCH_ISDIR]),
+            patch(PATCH_CELERY, patches[PATCH_CELERY]),
+        ):
+            response = client.get("/health?full=true")
+
+        assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
+        data = response.json()
+        assert data["status"] == "degraded"
+        assert data["checks"]["redis"] == "error"
+
+    def test_full_check_still_runs_all_checks_on_partial_failure(self, client):
+        """A failure in one service must not short-circuit the remaining checks."""
+        patches = _all_ok_patches()
+        with (
+            patch(PATCH_ENGINE, patches[PATCH_ENGINE]),
+            patch(PATCH_OS + ".cluster.health", side_effect=Exception("opensearch down")),
+            patch(PATCH_REDIS),
+            patch(PATCH_URLOPEN),
+            patch(PATCH_ISDIR, patches[PATCH_ISDIR]),
+            patch(PATCH_CELERY, patches[PATCH_CELERY]),
+        ):
+            response = client.get("/health?full=true")
+
+        checks = response.json()["checks"]
+        assert checks["opensearch"] == "error"
+        # All other keys must still be present
+        assert {"postgres", "redis", "modules", "storage", "workers"}.issubset(checks.keys())
+
+    def test_full_check_no_workers_is_degraded(self, client):
+        """inspect().active() returning None means no workers → error."""
+        patches = _all_ok_patches()
+        mock_inspect = MagicMock()
+        mock_inspect.return_value.active.return_value = None
+
+        with (
+            patch(PATCH_ENGINE, patches[PATCH_ENGINE]),
+            patch(PATCH_OS),
+            patch(PATCH_REDIS),
+            patch(PATCH_URLOPEN),
+            patch(PATCH_ISDIR, patches[PATCH_ISDIR]),
+            patch(PATCH_CELERY, mock_inspect),
+        ):
+            response = client.get("/health?full=true")
+
+        assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
+        assert response.json()["checks"]["workers"] == "error"
+
+    def test_full_check_modules_unreachable_is_degraded(self, client):
+        """Modules service timing out → error."""
+        patches = _all_ok_patches()
+        with (
+            patch(PATCH_ENGINE, patches[PATCH_ENGINE]),
+            patch(PATCH_OS),
+            patch(PATCH_REDIS),
+            patch(PATCH_URLOPEN, side_effect=ConnectionRefusedError("refused")),
+            patch(PATCH_ISDIR, patches[PATCH_ISDIR]),
+            patch(PATCH_CELERY, patches[PATCH_CELERY]),
+        ):
+            response = client.get("/health?full=true")
+
+        assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
+        assert response.json()["checks"]["modules"] == "error"
+
+    def test_full_check_local_storage_missing_is_degraded(self, client):
+        """/tmp/attachments not found → storage error."""
+        patches = _all_ok_patches()
+        with (
+            patch(PATCH_ENGINE, patches[PATCH_ENGINE]),
+            patch(PATCH_OS),
+            patch(PATCH_REDIS),
+            patch(PATCH_URLOPEN),
+            patch(PATCH_ISDIR, MagicMock(return_value=False)),
+            patch(PATCH_CELERY, patches[PATCH_CELERY]),
+        ):
+            response = client.get("/health?full=true")
+
+        assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
+        assert response.json()["checks"]["storage"] == "error"
