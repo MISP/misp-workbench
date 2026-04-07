@@ -10,18 +10,21 @@ else
   SCHEME="http"
 fi
 
+# Check mandatory variables are defined
+: "${OPENSEARCH_INITIAL_ADMIN_PASSWORD:?Variable is mandatory}"
+
 # Variables
 OPENSEARCH_PORT="${OPENSEARCH_PORT:-9200}"
 OPENSEARCH_HOSTNAME="${OPENSEARCH_HOSTNAME:-opensearch}"
 OPENSEARCH_URL="${SCHEME}://${OPENSEARCH_HOSTNAME}:${OPENSEARCH_PORT}"
-DASHBOARDS_URL="${SCHEME}://dashboards:${OPENSEARCH_DASHBOARDS_PORT:-5601}"
-MAPPINGS_DIR="/mappings"
-PIPELINES_DIR="/pipelines"
-INDEX_TEMPLATES_DIR="/index-templates"
+DASHBOARDS_URL="${DASHBOARDS_SCHEME:-$SCHEME}://${DASHBOARD_HOSTNAME:-dashboards}:${OPENSEARCH_DASHBOARDS_PORT:-5601}"
+: ${MAPPINGS_DIR:="/mappings"}
+: ${PIPELINES_DIR:="/pipelines"}
+: ${INDEX_TEMPLATES_DIR:="/index-templates"}
 # locations for saved objects (mounted into the container)
-INDEX_PATTERNS_DIR="/index-patterns"
-VISUALIZATIONS_DIR="/visualizations"
-DASHBOARDS_DIR="/dashboards"
+: ${INDEX_PATTERNS_DIR:="/index-patterns"}
+: ${VISUALIZATIONS_DIR:="/visualizations"}
+: ${DASHBOARDS_DIR:="/dashboards"}
 
 echo "Waiting for OpenSearch to be ready at ${OPENSEARCH_URL}..."
 

@@ -1,6 +1,14 @@
 #!/bin/bash
 set -e
 
+# Check mandatory variables are defined
+: "${OPENSEARCH_INITIAL_ADMIN_PASSWORD:?Variable is mandatory}"
+: "${OAUTH2_SECRET_KEY:?Variable is mandatory}"
+: "${OAUTH2_REFRESH_SECRET_KEY:?Variable is mandatory}"
+: "${GARAGE_ADMIN_TOKEN:?Variable is mandatory}"
+: "${S3_ACCESS_KEY:?Variable is mandatory}"
+: "${S3_SECRET_KEY:?Variable is mandatory}"
+
 # run migrations
 poetry run alembic upgrade head
 
@@ -36,4 +44,4 @@ export OPENSEARCH_PASSWORD="${OPENSEARCH_PASSWORD:-${OPENSEARCH_INITIAL_ADMIN_PA
 poetry run python -m app.opensearch_setup
 
 # start API
-poetry run uvicorn app.main:app --host 0.0.0.0 --port 80
+poetry run uvicorn app.main:app --host ${API_LISTEN_HOST:-0.0.0.0} --port ${API_LISTEN_PORT:-80} --forwarded--allow-ips ${API_PROXY_IP:-127.0.0.1}
