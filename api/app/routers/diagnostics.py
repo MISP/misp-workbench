@@ -9,12 +9,88 @@ from app.opensearch import OpenSearchClient
 from app.rediscli import RedisClient
 from app.schemas import user as user_schemas
 from app.settings import get_settings
-from fastapi import APIRouter, Security
+from fastapi import APIRouter, Response, Security
 from sqlalchemy import text
 
 router = APIRouter()
 
 logger = logging.getLogger(__name__)
+
+
+@router.get("/health", tags=["Health"])
+def health(response: Response, full: bool = False):
+    """Unauthenticated liveness/readiness probe.
+
+    Without `?full=true` returns immediately with `{"status": "ok"}` — suitable
+    for fast liveness checks (load balancer, container restart policy).
+
+    With `?full=true` probes every dependent service and returns per-service
+    status. Returns HTTP 503 if any service is unreachable.
+    """
+    if not full:
+        return {"status": "ok"}
+
+    checks = {}
+
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+        checks["postgres"] = "ok"
+    except Exception as e:
+        logger.warning("Health check: postgres unavailable: %s", e)
+        checks["postgres"] = "error"
+
+    try:
+        OpenSearchClient.cluster.health(timeout=2)
+        checks["opensearch"] = "ok"
+    except Exception as e:
+        logger.warning("Health check: opensearch unavailable: %s", e)
+        checks["opensearch"] = "error"
+
+    try:
+        RedisClient.ping()
+        checks["redis"] = "ok"
+    except Exception as e:
+        logger.warning("Health check: redis unavailable: %s", e)
+        checks["redis"] = "error"
+
+    try:
+        settings = get_settings()
+        url = f"http://{settings.Modules.host}:{settings.Modules.port}/modules"
+        req = urllib.request.Request(url, headers={"Accept": "application/json"})
+        urllib.request.urlopen(req, timeout=3)
+        checks["modules"] = "ok"
+    except Exception as e:
+        logger.warning("Health check: modules unavailable: %s", e)
+        checks["modules"] = "error"
+
+    try:
+        settings = get_settings()
+        if settings.Storage.engine == "s3":
+            from app.s3cli import S3Client
+            S3Client.head_bucket(Bucket=settings.Storage.s3.bucket)
+        else:
+            if not os.path.isdir("/tmp/attachments"):
+                raise OSError("/tmp/attachments directory not found")
+        checks["storage"] = "ok"
+    except Exception as e:
+        logger.warning("Health check: storage unavailable: %s", e)
+        checks["storage"] = "error"
+
+    try:
+        from app.worker.tasks import celery_app
+        active = celery_app.control.inspect(timeout=3).active()
+        if not active:
+            raise RuntimeError("no active workers")
+        checks["workers"] = "ok"
+    except Exception as e:
+        logger.warning("Health check: workers unavailable: %s", e)
+        checks["workers"] = "error"
+
+    healthy = all(v == "ok" for v in checks.values())
+    if not healthy:
+        response.status_code = 503
+    return {"status": "ok" if healthy else "degraded", "checks": checks}
 
 
 def _format_bytes(b):
