@@ -21,6 +21,7 @@ import {
   useEventsStore,
   useModulesStore,
   useCorrelationsStore,
+  useReportsStore,
 } from "@/stores";
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
 import {
@@ -37,6 +38,7 @@ const reports_last_updated = ref(parseInt(Date.now() / 1000));
 
 const eventsStore = useEventsStore();
 const { event, status } = storeToRefs(eventsStore);
+const reportsStore = useReportsStore();
 const correlationsStore = useCorrelationsStore();
 const { correlated_events } = storeToRefs(correlationsStore);
 
@@ -100,19 +102,13 @@ function toggleDisableCorrelation() {
 }
 
 function handleReportCreated() {
-  setTimeout(() => {
-    reports_last_updated.value = parseInt(Date.now() / 1000);
-  }, 100);
+  reportsStore.getReportsByEventId(props.event_uuid);
 }
 function handleReportUpdated() {
-  setTimeout(() => {
-    reports_last_updated.value = parseInt(Date.now() / 1000);
-  }, 100);
+  reportsStore.getReportsByEventId(props.event_uuid);
 }
 function handleReportDeleted() {
-  setTimeout(() => {
-    reports_last_updated.value = parseInt(Date.now() / 1000);
-  }, 100);
+  reportsStore.getReportsByEventId(props.event_uuid);
 }
 </script>
 
