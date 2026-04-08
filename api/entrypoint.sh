@@ -48,4 +48,4 @@ export OPENSEARCH_PASSWORD="${OPENSEARCH_PASSWORD:-${OPENSEARCH_INITIAL_ADMIN_PA
 poetry run python -m app.opensearch_setup
 
 # start API
-poetry run uvicorn app.main:app --host ${API_LISTEN_HOST:-0.0.0.0} --port ${API_LISTEN_PORT:-80} --forwarded--allow-ips ${API_PROXY_IP:-127.0.0.1}
+poetry run uvicorn app.main:app --host ${API_LISTEN_HOST:-0.0.0.0} --port ${API_LISTEN_PORT:-80} --forwarded-allow-ips ${API_PROXY_IP:-127.0.0.1}
