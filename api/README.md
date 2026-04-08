@@ -85,7 +85,7 @@ json; print(json.dumps(app.openapi(), indent=2))" > docs/features/api/openapi.js
 
 ## Testing
 ```console
-$ git submodule update --remote --recursive
+$ git submodule update --init --remote --recursive
 $ docker compose -f docker-compose.yml -f docker-compose.test.yml --env-file=".env.test" up -d
 ...
 $ docker compose exec api poetry run pytest
