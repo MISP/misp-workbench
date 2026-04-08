@@ -96,7 +96,10 @@ watch(
 function previewCsvFeed() {
   loadingPreview.value = true;
   feedsStore
-    .previewCsvFeed(props.modelValue)
+    .previewCsvFeed({
+      ...props.modelValue,
+      settings: { csvConfig },
+    })
     .then((response) => {
       csvRows.value = response.rows || [];
     })

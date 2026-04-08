@@ -685,6 +685,11 @@ def fetch_csv_content_from_network(url: str, extra_headers: dict = None) -> list
 
 
 def preview_csv_feed(settings: dict = None, limit: int = 5):
+    if not settings or "csvConfig" not in (settings.get("settings") or {}):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Missing CSV configuration in preview request",
+        )
     if settings["input_source"] == "network":
         lines = fetch_csv_content_from_network(settings["url"])
         preview_lines = [line for line in lines[:limit]]
