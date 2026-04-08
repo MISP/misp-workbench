@@ -62,6 +62,9 @@ class ApiTester:
         yield get_settings()
 
     def teardown_db(self, db: Session):
+        # Roll back any aborted transaction from a previous failure so the
+        # deletes below can run cleanly.
+        db.rollback()
         db.query(galaxy_models.GalaxyElement).delete(synchronize_session=False)
         db.query(galaxy_models.GalaxyClusterRelationTag).delete(synchronize_session=False)
         db.query(galaxy_models.GalaxyClusterRelation).delete(synchronize_session=False)
@@ -82,37 +85,48 @@ class ApiTester:
         db.query(taxonomy_models.TaxonomyPredicate).delete(synchronize_session=False)
         db.query(taxonomy_models.Taxonomy).delete(synchronize_session=False)
         db.query(organisation_models.Organisation).delete(synchronize_session=False)
+        # Drop test-only roles (the first 6 rows are built-in defaults
+        # inserted by the roles migration and must be preserved).
+        db.query(role_models.Role).filter(role_models.Role.id > 6).delete(
+            synchronize_session=False
+        )
         db.commit()
+
+    def _cleanup_opensearch(self):
+        try:
+            from app.services.opensearch import get_opensearch_client
+
+            os_client = get_opensearch_client()
+            for index in ("misp-events", "misp-attributes", "misp-objects"):
+                try:
+                    os_client.delete_by_query(
+                        index=index,
+                        body={"query": {"match_all": {}}},
+                        refresh=True,
+                        ignore=[404],
+                    )
+                except Exception as exc:
+                    print(
+                        f"Warning: failed to delete OpenSearch documents for index '{index}': {exc}",
+                        file=sys.stderr,
+                    )
+        except Exception as exc:
+            print(
+                f"Warning: OpenSearch cleanup skipped due to error: {exc}",
+                file=sys.stderr,
+            )
 
     @pytest.fixture(scope="class", autouse=True)
     def cleanup(self, db: Session):
-        try:
-            pass
-        finally:
-            # clean OpenSearch docs left over from previous test classes
-            try:
-                from app.services.opensearch import get_opensearch_client
-
-                os_client = get_opensearch_client()
-                for index in ("misp-events", "misp-attributes", "misp-objects"):
-                    try:
-                        os_client.delete_by_query(
-                            index=index,
-                            body={"query": {"match_all": {}}},
-                            refresh=True,
-                            ignore=[404],
-                        )
-                    except Exception as exc:
-                        print(
-                            f"Warning: failed to delete OpenSearch documents for index '{index}': {exc}",
-                            file=sys.stderr,
-                        )
-            except Exception as exc:
-                print(
-                    f"Warning: OpenSearch cleanup skipped due to error: {exc}",
-                    file=sys.stderr,
-                )
-            self.teardown_db(db)
+        # Clean state left over from any previous test class (or previous
+        # pytest run) before this class's fixtures start creating data.
+        self._cleanup_opensearch()
+        self.teardown_db(db)
+        yield
+        # Clean up this class's own data so the next class — and any future
+        # test run — starts from a clean slate.
+        self._cleanup_opensearch()
+        self.teardown_db(db)
 
     # MISP data model fixtures
     @pytest.fixture(scope="class")
