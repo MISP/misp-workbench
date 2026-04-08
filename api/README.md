@@ -77,6 +77,12 @@ $ docker compose exec api poetry run python -m app.cli create-user [email] [pass
 Created user id=1
 ```
 
+Generate OpenAPI spec:
+```console
+docker compose exec api poetry run python -c "from app.main import app; import  
+json; print(json.dumps(app.openapi(), indent=2))" > docs/features/api/openapi.json
+```
+
 ## Testing
 ```console
 $ git submodule update --remote --recursive
