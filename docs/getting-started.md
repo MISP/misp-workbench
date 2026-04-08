@@ -12,7 +12,7 @@
 ```bash
 git clone https://github.com/MISP/misp-workbench.git
 cd misp-workbench
-git submodule update --remote --recursive
+git submodule update --init --remote --recursive
 
 cp .env.dev.dist .env.dev
 cp frontend/.env.dist frontend/.env
