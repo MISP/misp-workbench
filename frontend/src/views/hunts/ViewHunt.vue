@@ -47,6 +47,9 @@ const runError = ref(null);
 const cachedResult = ref(null);
 const displayResult = computed(() => runResult.value ?? cachedResult.value);
 const resultIsCached = computed(() => !runResult.value && !!cachedResult.value);
+const newCount = computed(
+  () => displayResult.value?.hits?.filter((h) => h.is_new).length ?? 0,
+);
 
 const history = ref([]);
 const sparklineData = computed(() => ({
@@ -336,9 +339,14 @@ async function runHunt() {
                 <div class="text-muted small">shown (max 100)</div>
               </div>
             </div>
-            <span v-if="resultIsCached" class="badge bg-secondary">
-              last run results
-            </span>
+            <div class="d-flex flex-column align-items-end gap-1">
+              <span v-if="resultIsCached" class="badge bg-secondary">
+                last run results
+              </span>
+              <span v-if="newCount > 0" class="badge bg-warning text-dark">
+                {{ newCount }} new since previous run
+              </span>
+            </div>
           </div>
 
           <!-- Attribute results -->
@@ -373,6 +381,11 @@ async function runHunt() {
                       {{ hit.value }}
                     </RouterLink>
                     <span v-else>{{ hit.value }}</span>
+                    <span
+                      v-if="hit.is_new"
+                      class="badge bg-warning text-dark ms-2"
+                      >new</span
+                    >
                   </td>
                   <td>
                     <RouterLink
@@ -418,6 +431,11 @@ async function runHunt() {
                   </td>
                   <td class="text-truncate" style="max-width: 280px">
                     {{ hit.info }}
+                    <span
+                      v-if="hit.is_new"
+                      class="badge bg-warning text-dark ms-2"
+                      >new</span
+                    >
                   </td>
                   <td class="text-muted small">{{ hit.orgc_id }}</td>
                   <td class="text-muted small">{{ hit.date }}</td>
@@ -461,6 +479,11 @@ async function runHunt() {
                       {{ rule.title ?? "—" }}
                     </a>
                     <span v-else>{{ rule.title ?? "—" }}</span>
+                    <span
+                      v-if="rule.is_new"
+                      class="badge bg-warning text-dark ms-2"
+                      >new</span
+                    >
                   </td>
                   <td class="text-muted small text-nowrap">
                     {{ rule.author ?? "—" }}
@@ -510,6 +533,11 @@ async function runHunt() {
                     >
                       {{ hit.cve_id }}
                     </a>
+                    <span
+                      v-if="hit.is_new"
+                      class="badge bg-warning text-dark ms-2"
+                      >new</span
+                    >
                   </td>
                   <td>
                     <span
@@ -566,6 +594,11 @@ async function runHunt() {
                       {{ hit.source_event_uuid }}
                     </RouterLink>
                     <span v-else class="text-muted small">—</span>
+                    <span
+                      v-if="hit.is_new"
+                      class="badge bg-warning text-dark ms-2"
+                      >new</span
+                    >
                   </td>
                   <td>
                     <RouterLink
