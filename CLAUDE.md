@@ -46,7 +46,7 @@ docker compose exec api poetry run alembic revision -m "description"
 # CLI admin tools
 docker compose exec api poetry run python -m app.cli --help
 docker compose exec api poetry run python -m app.cli create-organisation <name>
-docker compose exec api poetry run python -m app.cli create-user <email> <password> <org_id> <role_id>
+docker compose exec api poetry run python -m app.cli create-user <email> <password> --org-name <org_name> --role-id <role_id>
 
 # Pre-commit linting (black, flake8, isort, autoflake)
 cd api && poetry run pre-commit run --all-files

@@ -73,7 +73,7 @@ Created organisation id=1
 
 Create a user via CLI:
 ```console
-$ docker compose exec api poetry run python -m app.cli create-user [email] [password] [organisation_id] [role_id]
+$ docker compose exec api poetry run python -m app.cli create-user [email] [password] --org-name [org_name] --role-id [role_id]
 Created user id=1
 ```
 

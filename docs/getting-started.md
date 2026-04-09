@@ -47,8 +47,7 @@ Services started by the dev compose file:
 
 ```bash
 docker compose exec api poetry run python -m app.cli create-organisation "My Org"
-# note the organisation ID printed
-docker compose exec api poetry run python -m app.cli create-user admin@example.com password <org_id> 1
+docker compose exec api poetry run python -m app.cli create-user admin@example.com password --org-name "My Org" --role-id 1
 ```
 
 Alternatively, use the default credentials `admin@admin.test` / `admin` if they were seeded.
@@ -106,4 +105,4 @@ Available commands:
 | Command | Description |
 |---|---|
 | `create-organisation <name>` | Create a new organisation |
-| `create-user <email> <pass> <org_id> <role_id>` | Create a new user |
+| `create-user <email> <pass> --org-name <name> --role-id <id>` | Create a new user |
