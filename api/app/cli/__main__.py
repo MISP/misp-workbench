@@ -32,7 +32,19 @@ def create_organisation(name: str, created_by: int = 0, local: bool = True):
 
 
 @app.command()
-def create_user(email: str, password: str, organisation_id: int, role_id: int):
+def create_user(
+    email: str,
+    password: str,
+    org_id: Optional[int] = typer.Option(None, "--org-id", help="Organisation id"),
+    org_name: Optional[str] = typer.Option(
+        None, "--org-name", help="Organisation name (alternative to --org-id)"
+    ),
+    role_id: int = typer.Option(..., "--role-id", help="Role id"),
+):
+    if (org_id is None) == (org_name is None):
+        print("Error: pass exactly one of --org-id or --org-name.")
+        raise typer.Exit(code=1)
+
     db = SessionLocal()
 
     db_user = user_repository.get_user_by_email(db, email=email)
@@ -40,8 +52,17 @@ def create_user(email: str, password: str, organisation_id: int, role_id: int):
         print(f"User already exists with id={db_user.id}.")
         return
 
+    if org_name is not None:
+        db_org = organisations_repository.get_organisation_by_name(
+            db, organisation_name=org_name
+        )
+        if db_org is None:
+            print(f"Error: organisation '{org_name}' not found.")
+            raise typer.Exit(code=1)
+        org_id = db_org.id
+
     user = user_schemas.UserCreate(
-        email=email, password=password, org_id=organisation_id, role_id=role_id
+        email=email, password=password, org_id=org_id, role_id=role_id
     )
     user_db = user_repository.create_user(db, user=user)
     print(f"Created user id={user_db.id}")  # noqa: T201
