@@ -79,8 +79,7 @@ Created user id=1
 
 Generate OpenAPI spec:
 ```console
-docker compose exec api poetry run python -c "from app.main import app; import  
-json; print(json.dumps(app.openapi(), indent=2))" > docs/features/api/openapi.json
+docker compose exec api poetry run python -c "from app.main import app; import json; print(json.dumps(app.openapi(), indent=2))" > docs/features/api/openapi.json
 ```
 
 ## Testing
