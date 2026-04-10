@@ -50,6 +50,11 @@ const resultIsCached = computed(() => !runResult.value && !!cachedResult.value);
 const newCount = computed(
   () => displayResult.value?.hits?.filter((h) => h.is_new).length ?? 0,
 );
+const sortedHits = computed(() => {
+  const hits = displayResult.value?.hits;
+  if (!hits) return [];
+  return [...hits].sort((a, b) => (b.is_new ? 1 : 0) - (a.is_new ? 1 : 0));
+});
 
 const history = ref([]);
 const sparklineData = computed(() => ({
@@ -368,7 +373,7 @@ async function runHunt() {
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="(hit, i) in displayResult.hits" :key="i">
+                <tr v-for="(hit, i) in sortedHits" :key="i">
                   <td>
                     <code>{{ hit.type }}</code>
                   </td>
@@ -419,7 +424,7 @@ async function runHunt() {
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="(hit, i) in displayResult.hits" :key="i">
+                <tr v-for="(hit, i) in sortedHits" :key="i">
                   <td>
                     <RouterLink
                       v-if="hit.uuid"
@@ -462,7 +467,7 @@ async function runHunt() {
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="(rule, i) in displayResult.hits" :key="i">
+                <tr v-for="(rule, i) in sortedHits" :key="i">
                   <td>
                     <span class="badge bg-secondary font-monospace">{{
                       rule.format ?? "—"
@@ -523,7 +528,7 @@ async function runHunt() {
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="(hit, i) in displayResult.hits" :key="i">
+                <tr v-for="(hit, i) in sortedHits" :key="i">
                   <td class="text-nowrap">
                     <a
                       :href="`https://vulnerability.circl.lu/vuln/${hit.cve_id}`"
@@ -584,7 +589,7 @@ async function runHunt() {
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="(hit, i) in displayResult.hits" :key="i">
+                <tr v-for="(hit, i) in sortedHits" :key="i">
                   <td>
                     <RouterLink
                       v-if="hit.source_event_uuid"
