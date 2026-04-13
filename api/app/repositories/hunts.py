@@ -55,9 +55,7 @@ def create_hunt(db: Session, hunt: hunt_schemas.HuntCreate, user_id: int):
     return db_hunt
 
 
-def update_hunt(
-    db: Session, hunt_id: int, hunt: hunt_schemas.HuntUpdate, user_id: int
-):
+def update_hunt(db: Session, hunt_id: int, hunt: hunt_schemas.HuntUpdate, user_id: int):
     db_hunt = get_hunt_by_id(db, hunt_id, user_id)
     if not db_hunt:
         return None
@@ -121,8 +119,52 @@ def delete_hunt(db: Session, hunt_id: int, user_id: int):
     redis.delete(f"hunt:results:{hunt_id}")
     redis.delete(f"hunt:history:{hunt_id}")
     from app.repositories import tasks as tasks_repository
+
     tasks_repository.delete_scheduled_tasks_for_hunt(hunt_id)
     return {"status": "success"}
+
+
+def _hit_key(hit: dict, hunt_type: str, index_target: str | None) -> str | None:
+    """Return a stable identifier for a hit, used to compare results across runs."""
+    if hunt_type == "opensearch":
+        if index_target == "correlations":
+            src = hit.get("source_attribute_uuid")
+            tgt = hit.get("target_attribute_uuid")
+            if src is None and tgt is None:
+                return None
+            return f"{src or ''}|{tgt or ''}"
+        return hit.get("uuid")
+    if hunt_type == "cpe":
+        return hit.get("cve_id")
+    if hunt_type == "rulezet":
+        return hit.get("detail_url") or hit.get("title")
+    return None
+
+
+def _tag_new_hits(
+    hits: list[dict],
+    previous_hits: list[dict] | None,
+    hunt_type: str,
+    index_target: str | None,
+) -> None:
+    """Mutate hits in place to add an `is_new` flag relative to previous_hits.
+
+    On the first run (previous_hits is None) nothing is flagged as new — otherwise
+    every row would be highlighted, which defeats the purpose of the indicator.
+    """
+    if previous_hits is None:
+        for hit in hits:
+            hit["is_new"] = False
+        return
+
+    previous_keys = {
+        key
+        for key in (_hit_key(h, hunt_type, index_target) for h in previous_hits)
+        if key is not None
+    }
+    for hit in hits:
+        key = _hit_key(hit, hunt_type, index_target)
+        hit["is_new"] = key is not None and key not in previous_keys
 
 
 def _persist_hunt_run(
@@ -136,11 +178,25 @@ def _persist_hunt_run(
     db_hunt.last_run_at = now
     db_hunt.last_match_count = total
     db_hunt.updated_at = now
-    db.add(hunt_models.HuntRunHistory(hunt_id=db_hunt.id, run_at=now, match_count=total))
+    db.add(
+        hunt_models.HuntRunHistory(hunt_id=db_hunt.id, run_at=now, match_count=total)
+    )
     db.commit()
     db.refresh(db_hunt)
 
     redis = get_redis_client()
+
+    # Diff against the previous run's stored results before overwriting them, so
+    # the persisted payload carries an `is_new` flag for each hit.
+    previous_raw = redis.get(f"hunt:results:{db_hunt.id}")
+    previous_hits: list[dict] | None = None
+    if previous_raw is not None:
+        try:
+            previous_hits = json.loads(previous_raw).get("hits", [])
+        except (ValueError, TypeError):
+            previous_hits = None
+    _tag_new_hits(hits, previous_hits, db_hunt.hunt_type, db_hunt.index_target)
+
     redis.set(
         f"hunt:results:{db_hunt.id}",
         json.dumps({"total": total, "hits": hits}),

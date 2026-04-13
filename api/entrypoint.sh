@@ -20,7 +20,7 @@ fi
 # create admin org and user (skipped if they already exist)
 ADMIN_PASSWORD=$(openssl rand -hex 16)
 poetry run python -m app.cli create-organisation ADMIN
-CREATE_USER_OUTPUT=$(poetry run python -m app.cli create-user admin@admin.local "$ADMIN_PASSWORD" 1 1)
+CREATE_USER_OUTPUT=$(poetry run python -m app.cli create-user admin@admin.local "$ADMIN_PASSWORD" --org-name ADMIN --role-id 1)
 echo "$CREATE_USER_OUTPUT"
 
 cat <<'EOF'

@@ -11,7 +11,7 @@ fi
 
 # create admin org and user
 poetry run python -m app.cli create-organisation ADMIN
-poetry run python -m app.cli create-user admin@admin.test admin 1 1
+poetry run python -m app.cli create-user admin@admin.test admin --org-name ADMIN --role-id 1
 
 cat <<'EOF'
 
