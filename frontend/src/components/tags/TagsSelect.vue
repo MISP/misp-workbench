@@ -41,7 +41,7 @@ function formatTag(tag) {
   return {
     id: tag.id,
     name: tag.name,
-    value: tagHelper.getTagValue(tag.name),
+    value: tag.name,
     color: tagHelper.getContrastColor(tag.colour),
     backgroundColor: tag.colour,
   };
@@ -162,6 +162,26 @@ watch(
 [data-bs-theme="dark"] .ts-control input {
   color: #fff !important;
   background-color: transparent !important;
+}
+
+.ts-wrapper.multi .ts-control {
+  max-height: 8.5rem;
+  overflow-y: auto;
+}
+
+.ts-wrapper.multi .ts-control > .item {
+  max-width: 100%;
+}
+
+.ts-wrapper.multi .ts-control .tag {
+  max-width: 100%;
+  overflow-x: auto;
+  white-space: nowrap;
+}
+
+.ts-wrapper.multi .ts-control .tag-label {
+  display: inline-block;
+  white-space: nowrap;
 }
 </style>
 
