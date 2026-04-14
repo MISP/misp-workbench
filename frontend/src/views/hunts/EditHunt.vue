@@ -134,6 +134,40 @@ function cancel() {
         />
       </div>
 
+      <template v-else-if="form.hunt_type === 'mitre-attack-pattern'">
+        <div class="mb-3">
+          <label class="form-label" for="hunt-mitre-target">Search index</label>
+          <select
+            id="hunt-mitre-target"
+            class="form-select"
+            v-model="form.index_target"
+          >
+            <option value="attributes_and_events">
+              Attributes &amp; Events
+            </option>
+            <option value="events">Events</option>
+            <option value="attributes">Attributes</option>
+          </select>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label" for="hunt-mitre"
+            >MITRE ATT&amp;CK technique</label
+          >
+          <textarea
+            id="hunt-mitre"
+            class="form-control font-monospace"
+            rows="3"
+            v-model="form.query"
+            placeholder="T1391, T1078.004"
+          />
+          <div class="form-text">
+            MITRE ATT&amp;CK technique codes (e.g. <code>T1391</code>,
+            <code>T1078.004</code>), comma or newline separated.
+          </div>
+        </div>
+      </template>
+
       <div class="mb-4">
         <div class="form-check form-switch">
           <input

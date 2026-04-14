@@ -178,7 +178,13 @@ async function runHunt() {
             <div class="text-muted small mb-1">Type</div>
             <span class="badge bg-primary">{{ hunt.hunt_type }}</span>
           </div>
-          <div v-if="hunt.hunt_type === 'opensearch'" class="col-md-4">
+          <div
+            v-if="
+              hunt.hunt_type === 'opensearch' ||
+              hunt.hunt_type === 'mitre-attack-pattern'
+            "
+            class="col-md-4"
+          >
             <div class="text-muted small mb-1">Search index</div>
             <span class="badge bg-secondary">{{ hunt.index_target }}</span>
           </div>
@@ -210,7 +216,9 @@ async function runHunt() {
                 ? "Vuln ID"
                 : hunt.hunt_type === "cpe"
                   ? "CPE string"
-                  : "Query"
+                  : hunt.hunt_type === "mitre-attack-pattern"
+                    ? "MITRE ATT&CK pattern"
+                    : "Query"
             }}
           </div>
           <code class="d-block p-2 bg-body-secondary rounded">{{
@@ -354,10 +362,89 @@ async function runHunt() {
             </div>
           </div>
 
-          <!-- Attribute results -->
+          <!-- Combined attributes + events (MITRE) -->
           <div
             v-if="
-              hunt.hunt_type === 'opensearch' &&
+              hunt.hunt_type === 'mitre-attack-pattern' &&
+              hunt.index_target === 'attributes_and_events' &&
+              displayResult.hits.length
+            "
+            class="table-responsive"
+          >
+            <table class="table table-sm table-striped">
+              <thead>
+                <tr>
+                  <th>kind</th>
+                  <th>summary</th>
+                  <th>event</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="(hit, i) in sortedHits" :key="i">
+                  <td>
+                    <span
+                      class="badge"
+                      :class="
+                        hit._doc_kind === 'event'
+                          ? 'bg-primary'
+                          : 'bg-secondary'
+                      "
+                    >
+                      {{ hit._doc_kind || "?" }}
+                    </span>
+                  </td>
+                  <td class="text-truncate" style="max-width: 380px">
+                    <template v-if="hit._doc_kind === 'event'">
+                      <RouterLink
+                        v-if="hit.uuid"
+                        :to="`/events/${hit.uuid}`"
+                        class="text-decoration-none"
+                      >
+                        {{ hit.info }}
+                      </RouterLink>
+                      <span v-else>{{ hit.info }}</span>
+                    </template>
+                    <template v-else>
+                      <code class="me-2">{{ hit.type }}</code>
+                      <RouterLink
+                        v-if="hit.uuid"
+                        :to="`/attributes/${hit.uuid}`"
+                        class="text-decoration-none"
+                      >
+                        {{ hit.value }}
+                      </RouterLink>
+                      <span v-else>{{ hit.value }}</span>
+                    </template>
+                    <span
+                      v-if="hit.is_new"
+                      class="badge bg-warning text-dark ms-2"
+                      >new</span
+                    >
+                  </td>
+                  <td>
+                    <RouterLink
+                      v-if="hit._doc_kind === 'attribute' && hit.event_uuid"
+                      :to="`/events/${hit.event_uuid}`"
+                      class="text-decoration-none small font-monospace"
+                    >
+                      {{ hit.event_uuid }}
+                    </RouterLink>
+                    <span
+                      v-else-if="hit._doc_kind === 'event'"
+                      class="text-muted small"
+                      >{{ hit.date }}</span
+                    >
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Attribute results -->
+          <div
+            v-else-if="
+              (hunt.hunt_type === 'opensearch' ||
+                hunt.hunt_type === 'mitre-attack-pattern') &&
               hunt.index_target === 'attributes' &&
               displayResult.hits.length
             "

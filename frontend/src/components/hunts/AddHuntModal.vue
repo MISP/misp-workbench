@@ -39,6 +39,22 @@ function reset() {
   apiError.value = null;
 }
 
+function onHuntTypeChange() {
+  if (hunt.hunt_type === "mitre-attack-pattern") {
+    if (
+      !["attributes", "events", "attributes_and_events"].includes(
+        hunt.index_target,
+      )
+    ) {
+      hunt.index_target = "attributes_and_events";
+    }
+  } else if (hunt.hunt_type === "opensearch") {
+    if (hunt.index_target === "attributes_and_events") {
+      hunt.index_target = "attributes";
+    }
+  }
+}
+
 async function submit() {
   apiError.value = null;
   await huntsStore
@@ -100,6 +116,7 @@ function close() {
                   id="modal-type-opensearch"
                   value="opensearch"
                   v-model="hunt.hunt_type"
+                  @change="onHuntTypeChange"
                 />
                 <label class="form-check-label" for="modal-type-opensearch"
                   >OpenSearch query</label
@@ -112,6 +129,7 @@ function close() {
                   id="modal-type-rulezet"
                   value="rulezet"
                   v-model="hunt.hunt_type"
+                  @change="onHuntTypeChange"
                 />
                 <label class="form-check-label" for="modal-type-rulezet"
                   >Rulezet Vuln check</label
@@ -124,9 +142,23 @@ function close() {
                   id="modal-type-cpe"
                   value="cpe"
                   v-model="hunt.hunt_type"
+                  @change="onHuntTypeChange"
                 />
                 <label class="form-check-label" for="modal-type-cpe"
                   >CPE Vuln lookup</label
+                >
+              </div>
+              <div class="form-check">
+                <input
+                  class="form-check-input"
+                  type="radio"
+                  id="modal-type-mitre"
+                  value="mitre-attack-pattern"
+                  v-model="hunt.hunt_type"
+                  @change="onHuntTypeChange"
+                />
+                <label class="form-check-label" for="modal-type-mitre"
+                  >MITRE ATT&amp;CK pattern</label
                 >
               </div>
             </div>
@@ -237,6 +269,42 @@ function close() {
               Notifies you when the result set changes.
             </div>
           </div>
+
+          <template v-else-if="hunt.hunt_type === 'mitre-attack-pattern'">
+            <div class="mb-3">
+              <label class="form-label" for="modal-hunt-mitre-target"
+                >Search index</label
+              >
+              <select
+                id="modal-hunt-mitre-target"
+                class="form-select"
+                v-model="hunt.index_target"
+              >
+                <option value="attributes_and_events">
+                  Attributes &amp; Events
+                </option>
+                <option value="events">Events</option>
+                <option value="attributes">Attributes</option>
+              </select>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label" for="modal-hunt-mitre"
+                >MITRE ATT&amp;CK technique</label
+              >
+              <textarea
+                id="modal-hunt-mitre"
+                class="form-control font-monospace"
+                rows="3"
+                v-model="hunt.query"
+                placeholder="T1391, T1078.004"
+              />
+              <div class="form-text">
+                MITRE ATT&amp;CK technique codes (e.g. <code>T1391</code>,
+                <code>T1078.004</code>), comma or newline separated.
+              </div>
+            </div>
+          </template>
 
           <div class="mb-2">
             <div class="form-check form-switch">
