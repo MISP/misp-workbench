@@ -35,7 +35,7 @@ celery-redbeat = "^2.3.3"
 fastmcp = "^2.0"
 
 [tool.poetry.dev-dependencies]
-pytest = "^8.4.1"
+pytest = "^9.0.3"
 pytest-cov = "^6.2.1"
 requests = "^2.33.0"
 debugpy = "^1.8.14"
