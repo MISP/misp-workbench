@@ -309,7 +309,7 @@ def _resolve_mitre_external_id(db: Session, external_id: str) -> str | None:
         )
         .first()
     )
-    return str(cluster.uuid) if cluster else None
+    return str(cluster.value) if cluster else None
 
 
 def _normalize_mitre_attack_query(
@@ -337,11 +337,11 @@ def _normalize_mitre_attack_query(
         elif UUID_RE.match(token):
             tag = f"{MITRE_ATTACK_PATTERN_TAG_PREFIX}{token}"
         elif MITRE_EXTERNAL_ID_RE.match(token):
-            cluster_uuid = _resolve_mitre_external_id(db, token)
-            if cluster_uuid is None:
+            cluster_value = _resolve_mitre_external_id(db, token)
+            if cluster_value is None:
                 unresolved.append(token)
                 continue
-            tag = f"{MITRE_ATTACK_PATTERN_TAG_PREFIX}{cluster_uuid}"
+            tag = f"{MITRE_ATTACK_PATTERN_TAG_PREFIX}{cluster_value}"
         else:
             unresolved.append(token)
             continue
