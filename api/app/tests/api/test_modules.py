@@ -1,3 +1,5 @@
+from unittest.mock import MagicMock, patch
+
 import pytest
 from app.auth import auth
 from app.models import module as module_models
@@ -70,14 +72,48 @@ class TestModulesResource(ApiTester):
         module_1_settings: module_models.ModuleSettings,
         auth_token: auth.Token,
     ):
-        response = client.post(
-            "/modules/query",
-            headers={"Authorization": "Bearer " + auth_token},
-            json={
-                "module": module_1_settings.module_name,
-                "attribute": {"type": "ip-dst", "uuid": "", "value": "8.8.8.8"},
-            },
-        )
+        mmdb_lookup_response = {
+            "results": {
+                "Attribute": [
+                    {"type": "ip-dst", "value": "8.8.8.8"},
+                ],
+                "Object": [
+                    {
+                        "name": "geolocation",
+                        "Attribute": [
+                            {"type": "country-code", "value": "US"},
+                        ],
+                    },
+                    {
+                        "name": "geolocation",
+                        "Attribute": [
+                            {"type": "country-code", "value": "US"},
+                        ],
+                    },
+                    {
+                        "name": "asn",
+                        "Attribute": [
+                            {"type": "AS", "value": "AS15169"},
+                        ],
+                    },
+                ],
+            }
+        }
+
+        with patch("app.repositories.modules.requests.post") as mock_post:
+            mock_post.return_value = MagicMock(
+                json=MagicMock(return_value=mmdb_lookup_response),
+                status_code=200,
+            )
+
+            response = client.post(
+                "/modules/query",
+                headers={"Authorization": "Bearer " + auth_token},
+                json={
+                    "module": module_1_settings.module_name,
+                    "attribute": {"type": "ip-dst", "uuid": "", "value": "8.8.8.8"},
+                },
+            )
         data = response.json()
 
         assert response.status_code == status.HTTP_200_OK
