@@ -11387,7 +11387,8 @@
             "enum": [
               "opensearch",
               "rulezet",
-              "cpe"
+              "cpe",
+              "mitre-attack-pattern"
             ],
             "title": "Hunt Type",
             "default": "opensearch"
@@ -11399,7 +11400,8 @@
                 "enum": [
                   "attributes",
                   "events",
-                  "correlations"
+                  "correlations",
+                  "attributes_and_events"
                 ]
               },
               {
@@ -11503,7 +11505,8 @@
             "enum": [
               "opensearch",
               "rulezet",
-              "cpe"
+              "cpe",
+              "mitre-attack-pattern"
             ],
             "title": "Hunt Type",
             "default": "opensearch"
@@ -11515,7 +11518,8 @@
                 "enum": [
                   "attributes",
                   "events",
-                  "correlations"
+                  "correlations",
+                  "attributes_and_events"
                 ]
               },
               {
@@ -11651,7 +11655,8 @@
                 "enum": [
                   "opensearch",
                   "rulezet",
-                  "cpe"
+                  "cpe",
+                  "mitre-attack-pattern"
                 ]
               },
               {
@@ -11667,7 +11672,8 @@
                 "enum": [
                   "attributes",
                   "events",
-                  "correlations"
+                  "correlations",
+                  "attributes_and_events"
                 ]
               },
               {
