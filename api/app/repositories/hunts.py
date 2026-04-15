@@ -293,23 +293,27 @@ UUID_RE = re.compile(
 )
 
 
-def _resolve_mitre_external_id(db: Session, external_id: str) -> str | None:
-    """Look up a MITRE ATT&CK cluster UUID by its technique code (e.g. T1391)."""
-    cluster = (
-        db.query(galaxy_models.GalaxyCluster)
-        .join(
-            galaxy_models.GalaxyElement,
-            galaxy_models.GalaxyElement.galaxy_cluster_id
-            == galaxy_models.GalaxyCluster.id,
-        )
-        .filter(
-            galaxy_models.GalaxyCluster.type == "mitre-attack-pattern",
-            galaxy_models.GalaxyElement.key == "external_id",
-            galaxy_models.GalaxyElement.value == external_id.upper(),
-        )
-        .first()
+def _resolve_mitre_cluster_value(db: Session, token: str) -> str | None:
+    """Return the human-readable MITRE ATT&CK cluster value for a T-code or UUID."""
+    query = db.query(galaxy_models.GalaxyCluster.value).filter(
+        galaxy_models.GalaxyCluster.type == "mitre-attack-pattern",
     )
-    return str(cluster.value) if cluster else None
+    if UUID_RE.match(token):
+        row = query.filter(galaxy_models.GalaxyCluster.uuid == token).first()
+    else:
+        row = (
+            query.join(
+                galaxy_models.GalaxyElement,
+                galaxy_models.GalaxyElement.galaxy_cluster_id
+                == galaxy_models.GalaxyCluster.id,
+            )
+            .filter(
+                galaxy_models.GalaxyElement.key == "external_id",
+                galaxy_models.GalaxyElement.value == token.upper(),
+            )
+            .first()
+        )
+    return row.value if row else None
 
 
 def _normalize_mitre_attack_query(
@@ -319,6 +323,8 @@ def _normalize_mitre_attack_query(
 
     Accepts MITRE technique codes (T1391, T1391.001), cluster UUIDs, or full tag
     names — comma or newline separated. Returns (tag_names, unresolved_tokens).
+    Resolved tokens are rendered as ``misp-galaxy:mitre-attack-pattern="<value>"``
+    to match the tag form produced by ``enable_galaxy_tags``.
     """
     if not query:
         return [], []
@@ -334,14 +340,12 @@ def _normalize_mitre_attack_query(
         tag: str | None
         if token.startswith(MITRE_ATTACK_PATTERN_TAG_PREFIX):
             tag = token
-        elif UUID_RE.match(token):
-            tag = f"{MITRE_ATTACK_PATTERN_TAG_PREFIX}{token}"
-        elif MITRE_EXTERNAL_ID_RE.match(token):
-            cluster_value = _resolve_mitre_external_id(db, token)
+        elif UUID_RE.match(token) or MITRE_EXTERNAL_ID_RE.match(token):
+            cluster_value = _resolve_mitre_cluster_value(db, token)
             if cluster_value is None:
                 unresolved.append(token)
                 continue
-            tag = f"{MITRE_ATTACK_PATTERN_TAG_PREFIX}{cluster_value}"
+            tag = f'{MITRE_ATTACK_PATTERN_TAG_PREFIX}"{cluster_value}"'
         else:
             unresolved.append(token)
             continue

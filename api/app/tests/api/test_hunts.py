@@ -471,8 +471,8 @@ class TestHuntsResource(ApiTester):
         )
         assert unresolved == []
         assert tags == [
-            f"{hunts_repository.MITRE_ATTACK_PATTERN_TAG_PREFIX}"
-            f"{mitre_attack_cluster_t1391.uuid}"
+            f'{hunts_repository.MITRE_ATTACK_PATTERN_TAG_PREFIX}'
+            f'"{mitre_attack_cluster_t1391.value}"'
         ]
 
     def test_normalize_mitre_query_case_insensitive(
@@ -485,7 +485,7 @@ class TestHuntsResource(ApiTester):
         )
         assert unresolved == []
         assert len(tags) == 1
-        assert str(mitre_attack_cluster_t1391.uuid) in tags[0]
+        assert mitre_attack_cluster_t1391.value in tags[0]
 
     def test_normalize_mitre_query_unknown_code(self, db: Session):
         tags, unresolved = hunts_repository._normalize_mitre_attack_query(
@@ -505,7 +505,7 @@ class TestHuntsResource(ApiTester):
         assert unresolved == ["T9999"]
         assert len(tags) == 1
 
-    def test_normalize_mitre_query_uuid_passthrough(
+    def test_normalize_mitre_query_uuid_resolves_to_value(
         self,
         db: Session,
         mitre_attack_cluster_t1391: galaxy_models.GalaxyCluster,
@@ -516,8 +516,16 @@ class TestHuntsResource(ApiTester):
         )
         assert unresolved == []
         assert tags == [
-            f"{hunts_repository.MITRE_ATTACK_PATTERN_TAG_PREFIX}{uuid_str}"
+            f'{hunts_repository.MITRE_ATTACK_PATTERN_TAG_PREFIX}'
+            f'"{mitre_attack_cluster_t1391.value}"'
         ]
+
+    def test_normalize_mitre_query_unknown_uuid(self, db: Session):
+        tags, unresolved = hunts_repository._normalize_mitre_attack_query(
+            db, "00000000-0000-0000-0000-000000000000"
+        )
+        assert tags == []
+        assert unresolved == ["00000000-0000-0000-0000-000000000000"]
 
     def test_normalize_mitre_query_full_tag_passthrough(self, db: Session):
         tag = (
@@ -617,8 +625,8 @@ class TestHuntsResource(ApiTester):
         }
 
         expected_tag = (
-            f"{hunts_repository.MITRE_ATTACK_PATTERN_TAG_PREFIX}"
-            f"{mitre_attack_cluster_t1391.uuid}"
+            f'{hunts_repository.MITRE_ATTACK_PATTERN_TAG_PREFIX}'
+            f'"{mitre_attack_cluster_t1391.value}"'
         )
 
         try:
