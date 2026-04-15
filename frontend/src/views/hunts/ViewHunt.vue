@@ -1,5 +1,12 @@
 <script setup>
-import { ref, computed } from "vue";
+import {
+  ref,
+  computed,
+  onMounted,
+  onBeforeUnmount,
+  watch,
+  nextTick,
+} from "vue";
 import { storeToRefs } from "pinia";
 import { RouterLink } from "vue-router";
 import { useHuntsStore, useTasksStore, useToastsStore } from "@/stores";
@@ -21,6 +28,9 @@ import {
   Filler,
   Tooltip,
 } from "chart.js";
+import CalHeatmap from "cal-heatmap";
+import CalHeatmapTooltip from "cal-heatmap/plugins/Tooltip";
+import "cal-heatmap/cal-heatmap.css";
 
 ChartJS.register(
   LineElement,
@@ -81,6 +91,90 @@ const sparklineOptions = ref({
     tooltip: { mode: "index", intersect: false },
   },
   scales: { x: { display: false }, y: { display: false, beginAtZero: true } },
+});
+
+const heatmapEl = ref(null);
+let heatmap = null;
+let themeObserver = null;
+
+const heatmapData = computed(() => {
+  const buckets = new Map();
+  for (const entry of history.value) {
+    const day = dayjs.utc(entry.run_at).local().format("YYYY-MM-DD");
+    buckets.set(day, (buckets.get(day) || 0) + (entry.match_count ?? 0));
+  }
+  return Array.from(buckets, ([date, value]) => ({ date, value }));
+});
+
+function isDarkTheme() {
+  return document.documentElement.getAttribute("data-bs-theme") === "dark";
+}
+
+function renderHeatmap() {
+  if (!heatmapEl.value) return;
+  if (heatmap) {
+    heatmap.destroy();
+    heatmap = null;
+  }
+  heatmap = new CalHeatmap();
+  const max = Math.max(1, ...heatmapData.value.map((d) => d.value));
+  const start = dayjs().subtract(89, "day").startOf("day").toDate();
+  const dark = isDarkTheme();
+  const colorRange = dark ? ["#161b22", "#39d353"] : ["#ebedf0", "#216e39"];
+  heatmap.paint(
+    {
+      itemSelector: heatmapEl.value,
+      data: { source: heatmapData.value, x: "date", y: "value" },
+      date: { start },
+      range: 4,
+      domain: { type: "month", gutter: 4, label: { text: "MMM" } },
+      subDomain: { type: "ghDay", radius: 2, width: 30, height: 20 },
+      theme: dark ? "dark" : "light",
+      scale: {
+        color: {
+          type: "linear",
+          range: colorRange,
+          domain: [0, max],
+        },
+      },
+    },
+    [
+      [
+        CalHeatmapTooltip,
+        {
+          text: (date, value) =>
+            `${dayjs(date).format("MMM D, YYYY")}: ${value ?? 0} ${
+              value === 1 ? "match" : "matches"
+            }`,
+        },
+      ],
+    ],
+  );
+}
+
+watch(
+  () => history.value,
+  () => nextTick(renderHeatmap),
+  { deep: true },
+);
+
+onMounted(() => {
+  themeObserver = new MutationObserver((mutations) => {
+    if (mutations.some((m) => m.attributeName === "data-bs-theme")) {
+      nextTick(renderHeatmap);
+    }
+  });
+  themeObserver.observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ["data-bs-theme"],
+  });
+});
+
+onBeforeUnmount(() => {
+  themeObserver?.disconnect();
+  themeObserver = null;
+  heatmap?.destroy();
+  heatmap = null;
 });
 
 const scheduleInterval = ref("86400");
@@ -174,56 +268,71 @@ async function runHunt() {
     <div class="card mb-3">
       <div class="card-body">
         <div class="row g-3">
-          <div class="col-md-4">
-            <div class="text-muted small mb-1">Type</div>
-            <span class="badge bg-primary">{{ hunt.hunt_type }}</span>
-          </div>
-          <div
-            v-if="
-              hunt.hunt_type === 'opensearch' ||
-              hunt.hunt_type === 'mitre-attack-pattern'
-            "
-            class="col-md-4"
-          >
-            <div class="text-muted small mb-1">Search index</div>
-            <span class="badge bg-secondary">{{ hunt.index_target }}</span>
-          </div>
-          <div class="col-md-4">
-            <div class="text-muted small mb-1">Status</div>
-            <span
-              class="badge"
-              :class="hunt.status === 'active' ? 'bg-success' : 'bg-secondary'"
-            >
-              {{ hunt.status }}
-            </span>
-          </div>
-          <div class="col-md-4">
-            <div class="text-muted small mb-1">Last run</div>
-            <span>
-              {{
-                hunt.last_run_at
-                  ? dayjs.utc(hunt.last_run_at).local().fromNow()
-                  : "never"
-              }}</span
-            >
-          </div>
-        </div>
+          <div class="col-lg-7">
+            <div class="row g-3">
+              <div class="col-md-4">
+                <div class="text-muted small mb-1">Type</div>
+                <span class="badge bg-primary">{{ hunt.hunt_type }}</span>
+              </div>
+              <div
+                v-if="
+                  hunt.hunt_type === 'opensearch' ||
+                  hunt.hunt_type === 'mitre-attack-pattern'
+                "
+                class="col-md-4"
+              >
+                <div class="text-muted small mb-1">Search index</div>
+                <span class="badge bg-secondary">{{ hunt.index_target }}</span>
+              </div>
+              <div class="col-md-4">
+                <div class="text-muted small mb-1">Status</div>
+                <span
+                  class="badge"
+                  :class="
+                    hunt.status === 'active' ? 'bg-success' : 'bg-secondary'
+                  "
+                >
+                  {{ hunt.status }}
+                </span>
+              </div>
+              <div class="col-md-4">
+                <div class="text-muted small mb-1">Last run</div>
+                <span>
+                  {{
+                    hunt.last_run_at
+                      ? dayjs.utc(hunt.last_run_at).local().fromNow()
+                      : "never"
+                  }}</span
+                >
+              </div>
+            </div>
 
-        <div class="mt-3">
-          <div class="text-muted small mb-1">
-            {{
-              hunt.hunt_type === "rulezet"
-                ? "Vuln ID"
-                : hunt.hunt_type === "cpe"
-                  ? "CPE string"
-                  : hunt.hunt_type === "mitre-attack-pattern"
-                    ? "MITRE ATT&CK pattern"
-                    : "Query"
-            }}
+            <div class="mt-3">
+              <div class="text-muted small mb-1">
+                {{
+                  hunt.hunt_type === "rulezet"
+                    ? "Vuln ID"
+                    : hunt.hunt_type === "cpe"
+                      ? "CPE string"
+                      : hunt.hunt_type === "mitre-attack-pattern"
+                        ? "MITRE ATT&CK pattern"
+                        : "Query"
+                }}
+              </div>
+              <code class="d-block p-2 bg-body-secondary rounded">{{
+                hunt.query
+              }}</code>
+            </div>
           </div>
-          <code class="d-block p-2 bg-body-secondary rounded">{{
-            hunt.query
-          }}</code>
+
+          <div v-if="history.length" class="col-lg-5">
+            <div class="text-muted small mb-1 d-flex justify-content-center">
+              Matches per day (last 90 days)
+            </div>
+            <div class="d-flex justify-content-center">
+              <div ref="heatmapEl" class="hunt-heatmap"></div>
+            </div>
+          </div>
         </div>
 
         <div v-if="history.length > 1" class="mt-3">
