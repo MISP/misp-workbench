@@ -545,7 +545,7 @@ def _enqueue_notification_emails(
     from app.services.runtime_settings_provider import get_runtime_settings  # noqa: PLC0415
 
     app_settings = get_settings()
-    from_addr = app_settings.Mail.username
+    from_addr = app_settings.Mail.from_address
 
     runtime = get_runtime_settings(db)
     email_max_per_hour = runtime.get_value("notifications.email_max_per_hour", default=10)
