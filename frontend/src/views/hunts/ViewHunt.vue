@@ -128,7 +128,7 @@ function renderHeatmap() {
       date: { start },
       range: 4,
       domain: { type: "month", gutter: 4, label: { text: "MMM" } },
-      subDomain: { type: "ghDay", radius: 2, width: 30, height: 20 },
+      subDomain: { type: "ghDay", radius: 2, width: 25, height: 20 },
       theme: dark ? "dark" : "light",
       scale: {
         color: {
