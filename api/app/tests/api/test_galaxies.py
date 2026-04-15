@@ -128,3 +128,91 @@ class TestTaxonomiesResource(ApiTester):
     ):
         # TODO: implement test without importing all the misp-galaxies (takes too long)
         pass
+
+    # ── GET /galaxies/mitre-attack-patterns ─────────────────────────────────
+
+    @pytest.mark.parametrize("scopes", [["galaxies:read"]])
+    def test_get_mitre_attack_patterns(
+        self,
+        client: TestClient,
+        mitre_attack_cluster_t1391: galaxies_models.GalaxyCluster,
+        auth_token: auth.Token,
+    ):
+        response = client.get(
+            "/galaxies/mitre-attack-patterns",
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+        data = response.json()
+
+        assert response.status_code == status.HTTP_200_OK
+        assert isinstance(data, list)
+        codes = [item["external_id"] for item in data]
+        assert "T1391" in codes
+
+        entry = next(item for item in data if item["external_id"] == "T1391")
+        assert entry["uuid"] == str(mitre_attack_cluster_t1391.uuid)
+        assert entry["value"] == mitre_attack_cluster_t1391.value
+        assert entry["description"] == mitre_attack_cluster_t1391.description
+
+    @pytest.mark.parametrize("scopes", [["galaxies:read"]])
+    def test_get_mitre_attack_patterns_filter_by_code(
+        self,
+        client: TestClient,
+        mitre_attack_cluster_t1391: galaxies_models.GalaxyCluster,
+        auth_token: auth.Token,
+    ):
+        response = client.get(
+            "/galaxies/mitre-attack-patterns",
+            params={"filter": "T1391"},
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+        data = response.json()
+
+        assert response.status_code == status.HTTP_200_OK
+        assert len(data) == 1
+        assert data[0]["external_id"] == "T1391"
+
+    @pytest.mark.parametrize("scopes", [["galaxies:read"]])
+    def test_get_mitre_attack_patterns_filter_by_value(
+        self,
+        client: TestClient,
+        mitre_attack_cluster_t1391: galaxies_models.GalaxyCluster,
+        auth_token: auth.Token,
+    ):
+        response = client.get(
+            "/galaxies/mitre-attack-patterns",
+            params={"filter": "pre-compromised"},
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+        data = response.json()
+
+        assert response.status_code == status.HTTP_200_OK
+        assert len(data) == 1
+        assert data[0]["external_id"] == "T1391"
+
+    @pytest.mark.parametrize("scopes", [["galaxies:read"]])
+    def test_get_mitre_attack_patterns_filter_no_match(
+        self,
+        client: TestClient,
+        mitre_attack_cluster_t1391: galaxies_models.GalaxyCluster,
+        auth_token: auth.Token,
+    ):
+        response = client.get(
+            "/galaxies/mitre-attack-patterns",
+            params={"filter": "T9999-nonexistent"},
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+        data = response.json()
+
+        assert response.status_code == status.HTTP_200_OK
+        assert data == []
+
+    @pytest.mark.parametrize("scopes", [[]])
+    def test_get_mitre_attack_patterns_unauthorized(
+        self, client: TestClient, auth_token: auth.Token
+    ):
+        response = client.get(
+            "/galaxies/mitre-attack-patterns",
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED

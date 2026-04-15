@@ -2,7 +2,9 @@ from unittest.mock import patch
 
 import pytest
 from app.auth import auth
+from app.models import galaxy as galaxy_models
 from app.models import hunt as hunt_models
+from app.repositories import hunts as hunts_repository
 from app.schemas import hunt as hunt_schemas
 from app.tests.api_tester import ApiTester
 from fastapi import status
@@ -431,6 +433,227 @@ class TestHuntsResource(ApiTester):
             headers={"Authorization": "Bearer " + auth_token},
         )
         assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    # ── MITRE ATT&CK hunt type ───────────────────────────────────────────────
+
+    @pytest.mark.parametrize("scopes", [["hunts:create"]])
+    def test_create_mitre_attack_hunt(
+        self,
+        client: TestClient,
+        auth_token: auth.Token,
+    ):
+        response = client.post(
+            "/hunts/",
+            json={
+                "name": "MITRE hunt",
+                "description": "Watch for T1391",
+                "query": "T1391",
+                "hunt_type": "mitre-attack-pattern",
+                "index_target": "attributes_and_events",
+                "status": "active",
+            },
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+        data = response.json()
+
+        assert response.status_code == status.HTTP_201_CREATED
+        assert data["hunt_type"] == "mitre-attack-pattern"
+        assert data["index_target"] == "attributes_and_events"
+        assert data["query"] == "T1391"
+
+    def test_normalize_mitre_query_resolves_t_code(
+        self,
+        db: Session,
+        mitre_attack_cluster_t1391: galaxy_models.GalaxyCluster,
+    ):
+        tags, unresolved = hunts_repository._normalize_mitre_attack_query(
+            db, "T1391"
+        )
+        assert unresolved == []
+        assert tags == [
+            f"{hunts_repository.MITRE_ATTACK_PATTERN_TAG_PREFIX}"
+            f"{mitre_attack_cluster_t1391.uuid}"
+        ]
+
+    def test_normalize_mitre_query_case_insensitive(
+        self,
+        db: Session,
+        mitre_attack_cluster_t1391: galaxy_models.GalaxyCluster,
+    ):
+        tags, unresolved = hunts_repository._normalize_mitre_attack_query(
+            db, "t1391"
+        )
+        assert unresolved == []
+        assert len(tags) == 1
+        assert str(mitre_attack_cluster_t1391.uuid) in tags[0]
+
+    def test_normalize_mitre_query_unknown_code(self, db: Session):
+        tags, unresolved = hunts_repository._normalize_mitre_attack_query(
+            db, "T9999"
+        )
+        assert tags == []
+        assert unresolved == ["T9999"]
+
+    def test_normalize_mitre_query_multiple_separators(
+        self,
+        db: Session,
+        mitre_attack_cluster_t1391: galaxy_models.GalaxyCluster,
+    ):
+        tags, unresolved = hunts_repository._normalize_mitre_attack_query(
+            db, "T1391,\nT9999"
+        )
+        assert unresolved == ["T9999"]
+        assert len(tags) == 1
+
+    def test_normalize_mitre_query_uuid_passthrough(
+        self,
+        db: Session,
+        mitre_attack_cluster_t1391: galaxy_models.GalaxyCluster,
+    ):
+        uuid_str = str(mitre_attack_cluster_t1391.uuid)
+        tags, unresolved = hunts_repository._normalize_mitre_attack_query(
+            db, uuid_str
+        )
+        assert unresolved == []
+        assert tags == [
+            f"{hunts_repository.MITRE_ATTACK_PATTERN_TAG_PREFIX}{uuid_str}"
+        ]
+
+    def test_normalize_mitre_query_full_tag_passthrough(self, db: Session):
+        tag = (
+            f"{hunts_repository.MITRE_ATTACK_PATTERN_TAG_PREFIX}"
+            "7a265bf0-6acc-4f43-8b22-2e58b443e62e"
+        )
+        tags, unresolved = hunts_repository._normalize_mitre_attack_query(
+            db, tag
+        )
+        assert unresolved == []
+        assert tags == [tag]
+
+    def test_normalize_mitre_query_deduplicates(
+        self,
+        db: Session,
+        mitre_attack_cluster_t1391: galaxy_models.GalaxyCluster,
+    ):
+        tags, unresolved = hunts_repository._normalize_mitre_attack_query(
+            db, "T1391, T1391"
+        )
+        assert unresolved == []
+        assert len(tags) == 1
+
+    @pytest.mark.parametrize("scopes", [["hunts:run"]])
+    def test_run_mitre_attack_hunt_unknown_code(
+        self,
+        client: TestClient,
+        db: Session,
+        api_tester_user,
+        auth_token: auth.Token,
+    ):
+        from datetime import datetime, timezone
+
+        hunt = hunt_models.Hunt(
+            user_id=api_tester_user.id,
+            name="MITRE unknown",
+            description="",
+            query="T9999",
+            hunt_type="mitre-attack-pattern",
+            index_target="events",
+            status="active",
+            created_at=datetime(2024, 1, 1, tzinfo=timezone.utc),
+        )
+        db.add(hunt)
+        db.commit()
+        db.refresh(hunt)
+
+        try:
+            response = client.post(
+                f"/hunts/{hunt.id}/run",
+                headers={"Authorization": "Bearer " + auth_token},
+            )
+            assert response.status_code == status.HTTP_400_BAD_REQUEST
+            assert "T9999" in response.json()["detail"]
+        finally:
+            db.delete(hunt)
+            db.commit()
+
+    @pytest.mark.parametrize("scopes", [["hunts:run"]])
+    def test_run_mitre_attack_hunt_resolves_and_queries(
+        self,
+        client: TestClient,
+        db: Session,
+        api_tester_user,
+        mitre_attack_cluster_t1391: galaxy_models.GalaxyCluster,
+        auth_token: auth.Token,
+    ):
+        from datetime import datetime, timezone
+
+        hunt = hunt_models.Hunt(
+            user_id=api_tester_user.id,
+            name="MITRE T1391",
+            description="",
+            query="T1391",
+            hunt_type="mitre-attack-pattern",
+            index_target="attributes_and_events",
+            status="active",
+            created_at=datetime(2024, 1, 1, tzinfo=timezone.utc),
+        )
+        db.add(hunt)
+        db.commit()
+        db.refresh(hunt)
+
+        fake_response = {
+            "hits": {
+                "total": {"value": 1},
+                "hits": [
+                    {
+                        "_index": "misp-events",
+                        "_source": {
+                            "uuid": "ba4b11b6-dcce-4315-8fd0-67b69160ea76",
+                            "info": "tagged event",
+                        },
+                    }
+                ],
+            }
+        }
+
+        expected_tag = (
+            f"{hunts_repository.MITRE_ATTACK_PATTERN_TAG_PREFIX}"
+            f"{mitre_attack_cluster_t1391.uuid}"
+        )
+
+        try:
+            with patch(
+                "app.repositories.hunts.get_opensearch_client"
+            ) as mock_os, patch(
+                "app.repositories.hunts.get_redis_client"
+            ) as mock_redis, patch(
+                "app.repositories.notifications.create_hunt_notification"
+            ):
+                mock_os.return_value.search.return_value = fake_response
+                mock_redis.return_value.get.return_value = None
+                response = client.post(
+                    f"/hunts/{hunt.id}/run",
+                    headers={"Authorization": "Bearer " + auth_token},
+                )
+
+                assert response.status_code == status.HTTP_200_OK
+                data = response.json()
+                assert data["total"] == 1
+                assert data["hits"][0]["_doc_kind"] == "event"
+
+                call_kwargs = mock_os.return_value.search.call_args.kwargs
+                assert call_kwargs["index"] == (
+                    "misp-attributes,misp-events"
+                )
+                body = call_kwargs["body"]
+                shoulds = body["query"]["bool"]["should"]
+                assert {"match_phrase": {"tags.name": expected_tag}} in shoulds
+        finally:
+            db.query(hunt_models.HuntRunHistory).filter(
+                hunt_models.HuntRunHistory.hunt_id == hunt.id
+            ).delete()
+            db.delete(hunt)
+            db.commit()
 
     @pytest.mark.parametrize("scopes", [["hunts:delete"]])
     def test_delete_hunt(

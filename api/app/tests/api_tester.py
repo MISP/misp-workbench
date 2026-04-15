@@ -583,6 +583,67 @@ class ApiTester:
         yield threat_actor_galaxy_cluster_apt29
 
     @pytest.fixture(scope="class")
+    def mitre_attack_galaxy(
+        self,
+        db: Session,
+        organisation_1: organisation_models.Organisation,
+    ):
+        galaxy = galaxy_models.Galaxy(
+            name="Attack Pattern",
+            type="mitre-attack-pattern",
+            description="MITRE ATT&CK techniques.",
+            version=1,
+            namespace="mitre-attack",
+            icon="shield",
+            enabled=True,
+            local_only=False,
+            default=False,
+            org_id=organisation_1.id,
+            orgc_id=organisation_1.id,
+            created="2020-01-01 01:01:01",
+            modified="2020-01-01 01:01:01",
+        )
+        db.add(galaxy)
+        db.commit()
+        db.refresh(galaxy)
+        yield galaxy
+
+    @pytest.fixture(scope="class")
+    def mitre_attack_cluster_t1391(
+        self,
+        db: Session,
+        organisation_1: organisation_models.Organisation,
+        mitre_attack_galaxy: galaxy_models.Galaxy,
+    ):
+        cluster = galaxy_models.GalaxyCluster(
+            type="mitre-attack-pattern",
+            value="Choose pre-compromised mobile app developer account credentials or signing keys - T1391",
+            tag_name="misp-galaxy:mitre-attack-pattern=7a265bf0-6acc-4f43-8b22-2e58b443e62e",
+            description="Sample technique description.",
+            galaxy_id=mitre_attack_galaxy.id,
+            source="MITRE",
+            version=1,
+            uuid="7a265bf0-6acc-4f43-8b22-2e58b443e62e",
+            distribution=event_models.DistributionLevel.ALL_COMMUNITIES,
+            org_id=organisation_1.id,
+            orgc_id=organisation_1.id,
+            published=True,
+        )
+        db.add(cluster)
+        db.commit()
+        db.refresh(cluster)
+
+        element = galaxy_models.GalaxyElement(
+            key="external_id",
+            value="T1391",
+            galaxy_cluster_id=cluster.id,
+        )
+        db.add(element)
+        db.commit()
+
+        yield cluster
+
+    @pytest.fixture(scope="class")
     def notification_1(self, db: Session, api_tester_user: user_models.User):
         from datetime import datetime
 
