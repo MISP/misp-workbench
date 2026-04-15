@@ -120,7 +120,6 @@ function renderHeatmap() {
   const max = Math.max(1, ...heatmapData.value.map((d) => d.value));
   const start = dayjs().subtract(89, "day").startOf("day").toDate();
   const dark = isDarkTheme();
-  const colorRange = dark ? ["#161b22", "#39d353"] : ["#ebedf0", "#216e39"];
   heatmap.paint(
     {
       itemSelector: heatmapEl.value,
@@ -133,8 +132,8 @@ function renderHeatmap() {
       scale: {
         color: {
           type: "linear",
-          range: colorRange,
           domain: [0, max],
+          scheme: "puor",
         },
       },
     },
