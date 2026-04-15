@@ -5,6 +5,8 @@ import LuceneQuerySyntaxHint from "@/components/misc/LuceneQuerySyntaxHint.vue";
 import EventsPropertiesModal from "@/components/misc/EventsPropertiesModal.vue";
 import AttributesPropertiesModal from "@/components/misc/AttributesPropertiesModal.vue";
 import CorrelationPropertiesModal from "@/components/misc/CorrelationPropertiesModal.vue";
+import MitreAttackSelect from "@/components/hunts/MitreAttackSelect.vue";
+import HuntTypeSelector from "@/components/hunts/HuntTypeSelector.vue";
 
 const props = defineProps({
   initialQuery: { type: String, default: "" },
@@ -79,13 +81,26 @@ function close() {
   inset: 0;
   background: rgba(0, 0, 0, 0.45);
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
+  overflow-y: auto;
+  padding: 2rem 1rem;
   z-index: 1050;
 }
 .modal-card {
-  width: 600px;
+  width: 860px;
   max-width: calc(100% - 2rem);
+  max-height: calc(100vh - 4rem);
+  display: flex;
+  flex-direction: column;
+}
+.modal-card > .card {
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+.modal-card .card-body {
+  overflow-y: auto;
 }
 </style>
 
@@ -108,60 +123,10 @@ function close() {
 
           <div class="mb-3">
             <label class="form-label">Hunt Type</label>
-            <div class="d-flex gap-3">
-              <div class="form-check">
-                <input
-                  class="form-check-input"
-                  type="radio"
-                  id="modal-type-opensearch"
-                  value="opensearch"
-                  v-model="hunt.hunt_type"
-                  @change="onHuntTypeChange"
-                />
-                <label class="form-check-label" for="modal-type-opensearch"
-                  >OpenSearch query</label
-                >
-              </div>
-              <div class="form-check">
-                <input
-                  class="form-check-input"
-                  type="radio"
-                  id="modal-type-rulezet"
-                  value="rulezet"
-                  v-model="hunt.hunt_type"
-                  @change="onHuntTypeChange"
-                />
-                <label class="form-check-label" for="modal-type-rulezet"
-                  >Rulezet Vuln check</label
-                >
-              </div>
-              <div class="form-check">
-                <input
-                  class="form-check-input"
-                  type="radio"
-                  id="modal-type-cpe"
-                  value="cpe"
-                  v-model="hunt.hunt_type"
-                  @change="onHuntTypeChange"
-                />
-                <label class="form-check-label" for="modal-type-cpe"
-                  >CPE Vuln lookup</label
-                >
-              </div>
-              <div class="form-check">
-                <input
-                  class="form-check-input"
-                  type="radio"
-                  id="modal-type-mitre"
-                  value="mitre-attack-pattern"
-                  v-model="hunt.hunt_type"
-                  @change="onHuntTypeChange"
-                />
-                <label class="form-check-label" for="modal-type-mitre"
-                  >MITRE ATT&amp;CK pattern</label
-                >
-              </div>
-            </div>
+            <HuntTypeSelector
+              v-model="hunt.hunt_type"
+              @update:modelValue="onHuntTypeChange"
+            />
           </div>
 
           <div class="mb-3">
@@ -292,16 +257,9 @@ function close() {
               <label class="form-label" for="modal-hunt-mitre"
                 >MITRE ATT&amp;CK technique</label
               >
-              <textarea
-                id="modal-hunt-mitre"
-                class="form-control font-monospace"
-                rows="3"
-                v-model="hunt.query"
-                placeholder="T1391, T1078.004"
-              />
+              <MitreAttackSelect v-model="hunt.query" />
               <div class="form-text">
-                MITRE ATT&amp;CK technique codes (e.g. <code>T1391</code>,
-                <code>T1078.004</code>), comma or newline separated.
+                Select one or more MITRE ATT&amp;CK techniques.
               </div>
             </div>
           </template>

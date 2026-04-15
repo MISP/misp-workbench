@@ -40,6 +40,17 @@ def get_galaxies(
     )
 
 
+@router.get("/galaxies/mitre-attack-patterns")
+def get_mitre_attack_patterns(
+    db: Session = Depends(get_db),
+    user: user_schemas.User = Security(
+        get_current_active_user, scopes=["galaxies:read"]
+    ),
+    filter: str = Query(None),
+):
+    return galaxies_repository.get_mitre_attack_patterns(db, filter=filter)
+
+
 @router.get("/galaxies/{galaxy_id}", response_model=galaxies_schemas.Galaxy)
 def get_galaxy_by_id(
     galaxy_id: Union[int, UUID],

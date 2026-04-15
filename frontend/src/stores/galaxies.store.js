@@ -58,5 +58,11 @@ export const useGalaxiesStore = defineStore({
         .catch((error) => (this.status = { error }))
         .finally(() => (this.status.updating = false));
     },
+    async getMitreAttackPatterns(filter = "") {
+      const params = filter ? `?filter=${encodeURIComponent(filter)}` : "";
+      return await fetchWrapper.get(
+        `${baseUrl}/mitre-attack-patterns${params}`,
+      );
+    },
   },
 });

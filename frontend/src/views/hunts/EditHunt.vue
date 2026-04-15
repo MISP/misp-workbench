@@ -5,6 +5,7 @@ import { useHuntsStore, useToastsStore } from "@/stores";
 import { storeToRefs } from "pinia";
 import Spinner from "@/components/misc/Spinner.vue";
 import LuceneQuerySyntaxHint from "@/components/misc/LuceneQuerySyntaxHint.vue";
+import MitreAttackSelect from "@/components/hunts/MitreAttackSelect.vue";
 
 const props = defineProps({ id: { type: String, required: true } });
 
@@ -154,16 +155,9 @@ function cancel() {
           <label class="form-label" for="hunt-mitre"
             >MITRE ATT&amp;CK technique</label
           >
-          <textarea
-            id="hunt-mitre"
-            class="form-control font-monospace"
-            rows="3"
-            v-model="form.query"
-            placeholder="T1391, T1078.004"
-          />
+          <MitreAttackSelect v-model="form.query" />
           <div class="form-text">
-            MITRE ATT&amp;CK technique codes (e.g. <code>T1391</code>,
-            <code>T1078.004</code>), comma or newline separated.
+            Select one or more MITRE ATT&amp;CK techniques.
           </div>
         </div>
       </template>
