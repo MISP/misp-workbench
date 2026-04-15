@@ -5864,6 +5864,53 @@
         }
       }
     },
+    "/galaxies/mitre-attack-patterns": {
+      "get": {
+        "tags": [
+          "Galaxies"
+        ],
+        "summary": "Get Mitre Attack Patterns",
+        "operationId": "get_mitre_attack_patterns_galaxies_mitre_attack_patterns_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "galaxies:read"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "filter",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "title": "Filter"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/galaxies/{galaxy_id}": {
       "get": {
         "tags": [
