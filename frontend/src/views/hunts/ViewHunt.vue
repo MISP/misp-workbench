@@ -151,11 +151,7 @@ function renderHeatmap() {
   );
 }
 
-watch(
-  () => history.value,
-  () => nextTick(renderHeatmap),
-  { deep: true },
-);
+watch([heatmapEl], () => nextTick(renderHeatmap));
 
 onMounted(() => {
   themeObserver = new MutationObserver((mutations) => {
