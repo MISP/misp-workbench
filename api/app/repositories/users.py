@@ -3,6 +3,7 @@ import logging
 from app.auth import auth
 from app.models import user as user_models
 from app.schemas import user as user_schemas
+from app.settings import get_settings
 from app.worker import tasks
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
@@ -43,7 +44,7 @@ def create_user(db: Session, user: user_schemas.UserCreate):
             "subject": "misp-workbench password",
             "body": f"your password is: {user.password}",
             "to": user.email,
-            "from": "info@misp-workbench.local",
+            "from": get_settings().Mail.from_address,
         }
     )
 
@@ -91,7 +92,7 @@ def reset_user_password(
                 "subject": "misp-workbench password reset",
                 "body": f"your new password is: {password}",
                 "to": db_user.email,
-                "from": "info@misp-workbench.local",
+                "from": get_settings().Mail.from_address,
             }
         )
 

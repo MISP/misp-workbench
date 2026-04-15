@@ -85,6 +85,7 @@ The file is written with mode `0600`. It is read at startup by the API, worker, 
 | `MAIL_PORT` | `1025` | SMTP port |
 | `MAIL_USERNAME` | — | SMTP username |
 | `MAIL_PASSWORD` | — | SMTP password |
+| `MAIL_FROM` | `info@misp-workbench.local` | From address used for platform emails |
 
 ## Task monitoring (Flower)
 

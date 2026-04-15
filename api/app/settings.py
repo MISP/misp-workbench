@@ -56,6 +56,7 @@ class MailSettings(BaseModel):
     port: int = int(os.environ["MAIL_PORT"])
     username: str = os.environ["MAIL_USERNAME"]
     password: str = os.environ["MAIL_PASSWORD"]
+    from_address: str = os.environ.get("MAIL_FROM") or "info@misp-workbench.local"
 
 
 class ModuleSettings(BaseModel):
