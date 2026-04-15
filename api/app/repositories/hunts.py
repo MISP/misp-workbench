@@ -2,7 +2,10 @@ import logging
 
 import json
 
+import re
+
 from app.models import hunt as hunt_models
+from app.models import galaxy as galaxy_models
 from app.schemas import hunt as hunt_schemas
 from app.services.opensearch import get_opensearch_client
 from app.services import rulezet
@@ -133,6 +136,8 @@ def _hit_key(hit: dict, hunt_type: str, index_target: str | None) -> str | None:
             if src is None and tgt is None:
                 return None
             return f"{src or ''}|{tgt or ''}"
+        return hit.get("uuid")
+    if hunt_type == "mitre-attack-pattern":
         return hit.get("uuid")
     if hunt_type == "cpe":
         return hit.get("cve_id")
@@ -280,11 +285,162 @@ def _run_cpe_hunt(db: Session, db_hunt: hunt_models.Hunt):
     }
 
 
+MITRE_ATTACK_PATTERN_TAG_PREFIX = "misp-galaxy:mitre-attack-pattern="
+MITRE_EXTERNAL_ID_RE = re.compile(r"^T\d{4}(?:\.\d{3})?$", re.IGNORECASE)
+UUID_RE = re.compile(
+    r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+    re.IGNORECASE,
+)
+
+
+def _resolve_mitre_cluster_value(db: Session, token: str) -> str | None:
+    """Return the human-readable MITRE ATT&CK cluster value for a T-code or UUID."""
+    query = db.query(galaxy_models.GalaxyCluster.value).filter(
+        galaxy_models.GalaxyCluster.type == "mitre-attack-pattern",
+    )
+    if UUID_RE.match(token):
+        row = query.filter(galaxy_models.GalaxyCluster.uuid == token).first()
+    else:
+        row = (
+            query.join(
+                galaxy_models.GalaxyElement,
+                galaxy_models.GalaxyElement.galaxy_cluster_id
+                == galaxy_models.GalaxyCluster.id,
+            )
+            .filter(
+                galaxy_models.GalaxyElement.key == "external_id",
+                galaxy_models.GalaxyElement.value == token.upper(),
+            )
+            .first()
+        )
+    return row.value if row else None
+
+
+def _normalize_mitre_attack_query(
+    db: Session, query: str
+) -> tuple[list[str], list[str]]:
+    """Parse user input into a list of MITRE ATT&CK pattern tag names.
+
+    Accepts MITRE technique codes (T1391, T1391.001), cluster UUIDs, or full tag
+    names — comma or newline separated. Returns (tag_names, unresolved_tokens).
+    Resolved tokens are rendered as ``misp-galaxy:mitre-attack-pattern="<value>"``
+    to match the tag form produced by ``enable_galaxy_tags``.
+    """
+    if not query:
+        return [], []
+    tokens = [
+        token.strip()
+        for token in query.replace("\n", ",").split(",")
+        if token.strip()
+    ]
+    tag_names: list[str] = []
+    unresolved: list[str] = []
+    seen: set[str] = set()
+    for token in tokens:
+        tag: str | None
+        if token.startswith(MITRE_ATTACK_PATTERN_TAG_PREFIX):
+            tag = token
+        elif UUID_RE.match(token) or MITRE_EXTERNAL_ID_RE.match(token):
+            cluster_value = _resolve_mitre_cluster_value(db, token)
+            if cluster_value is None:
+                unresolved.append(token)
+                continue
+            tag = f'{MITRE_ATTACK_PATTERN_TAG_PREFIX}"{cluster_value}"'
+        else:
+            unresolved.append(token)
+            continue
+        if tag not in seen:
+            seen.add(tag)
+            tag_names.append(tag)
+    return tag_names, unresolved
+
+
+MITRE_ALLOWED_INDEX_TARGETS = ("events", "attributes", "attributes_and_events")
+
+INDEX_TO_DOC_KIND = {
+    "misp-attributes": "attribute",
+    "misp-events": "event",
+}
+
+
+def _run_mitre_attack_hunt(db: Session, db_hunt: hunt_models.Hunt):
+    tag_names, unresolved = _normalize_mitre_attack_query(db, db_hunt.query)
+    if unresolved:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                "Unknown MITRE ATT&CK technique(s): "
+                f"{', '.join(unresolved)}. Use a technique code "
+                "(e.g. T1391) matching an enabled mitre-attack-pattern "
+                "galaxy cluster."
+            ),
+        )
+    index_target = (
+        db_hunt.index_target
+        if db_hunt.index_target in MITRE_ALLOWED_INDEX_TARGETS
+        else "events"
+    )
+    if index_target == "attributes_and_events":
+        index = f"{INDEX_MAP['attributes']},{INDEX_MAP['events']}"
+    else:
+        index = INDEX_MAP[index_target]
+
+    if not tag_names:
+        _persist_hunt_run(db, db_hunt, 0, [], db_hunt.last_match_count)
+        return {
+            "hunt": hunt_schemas.Hunt.model_validate(db_hunt),
+            "total": 0,
+            "hits": [],
+        }
+
+    OpenSearchClient = get_opensearch_client()
+    body = {
+        "size": 100,
+        "query": {
+            "bool": {
+                "should": [
+                    {"match_phrase": {"tags.name": tag}} for tag in tag_names
+                ],
+                "minimum_should_match": 1,
+            }
+        },
+    }
+
+    try:
+        response = OpenSearchClient.search(index=index, body=body)
+    except Exception as e:
+        logger.error("MITRE hunt %s execution failed: %s", db_hunt.id, e)
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Search engine error: {e}",
+        )
+
+    hits = response["hits"]["hits"]
+    total = response["hits"]["total"]["value"]
+    hit_sources = []
+    for h in hits:
+        source = dict(h["_source"])
+        kind = INDEX_TO_DOC_KIND.get(h.get("_index"))
+        if kind:
+            source["_doc_kind"] = kind
+        hit_sources.append(source)
+
+    _persist_hunt_run(db, db_hunt, total, hit_sources, db_hunt.last_match_count)
+
+    return {
+        "hunt": hunt_schemas.Hunt.model_validate(db_hunt),
+        "total": total,
+        "hits": hit_sources,
+    }
+
+
 def _run_hunt(db: Session, db_hunt: hunt_models.Hunt):
     if db_hunt.hunt_type == "rulezet":
         return _run_rulezet_hunt(db, db_hunt)
     if db_hunt.hunt_type == "cpe":
         return _run_cpe_hunt(db, db_hunt)
+    if db_hunt.hunt_type == "mitre-attack-pattern":
+        return _run_mitre_attack_hunt(db, db_hunt)
     return _run_opensearch_hunt(db, db_hunt)
 
 

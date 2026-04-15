@@ -3,6 +3,8 @@ import { ref, reactive, computed } from "vue";
 import { router } from "@/router";
 import { useHuntsStore, useToastsStore } from "@/stores";
 import LuceneQuerySyntaxHint from "@/components/misc/LuceneQuerySyntaxHint.vue";
+import MitreAttackSelect from "@/components/hunts/MitreAttackSelect.vue";
+import HuntTypeSelector from "@/components/hunts/HuntTypeSelector.vue";
 
 const huntsStore = useHuntsStore();
 const toastsStore = useToastsStore();
@@ -15,6 +17,22 @@ const hunt = reactive({
   index_target: "attributes",
   status: "active",
 });
+
+function onHuntTypeChange() {
+  if (hunt.hunt_type === "mitre-attack-pattern") {
+    if (
+      !["attributes", "events", "attributes_and_events"].includes(
+        hunt.index_target,
+      )
+    ) {
+      hunt.index_target = "attributes_and_events";
+    }
+  } else if (hunt.hunt_type === "opensearch") {
+    if (hunt.index_target === "attributes_and_events") {
+      hunt.index_target = "attributes";
+    }
+  }
+}
 
 const apiError = ref(null);
 
@@ -49,44 +67,10 @@ function cancel() {
 
       <div class="mb-3">
         <label class="form-label">Hunt Type</label>
-        <div class="d-flex gap-3">
-          <div class="form-check">
-            <input
-              class="form-check-input"
-              type="radio"
-              id="type-opensearch"
-              value="opensearch"
-              v-model="hunt.hunt_type"
-            />
-            <label class="form-check-label" for="type-opensearch"
-              >OpenSearch query</label
-            >
-          </div>
-          <div class="form-check">
-            <input
-              class="form-check-input"
-              type="radio"
-              id="type-rulezet"
-              value="rulezet"
-              v-model="hunt.hunt_type"
-            />
-            <label class="form-check-label" for="type-rulezet"
-              >Rulezet Vuln check</label
-            >
-          </div>
-          <div class="form-check">
-            <input
-              class="form-check-input"
-              type="radio"
-              id="type-cpe"
-              value="cpe"
-              v-model="hunt.hunt_type"
-            />
-            <label class="form-check-label" for="type-cpe"
-              >CPE Vuln lookup</label
-            >
-          </div>
-        </div>
+        <HuntTypeSelector
+          v-model="hunt.hunt_type"
+          @update:modelValue="onHuntTypeChange"
+        />
       </div>
 
       <div class="mb-3">
@@ -180,6 +164,41 @@ function cancel() {
           you when the result set changes.
         </div>
       </div>
+
+      <template v-else-if="hunt.hunt_type === 'mitre-attack-pattern'">
+        <div class="mb-3">
+          <label class="form-label" for="hunt-mitre-target">Search index</label>
+          <select
+            id="hunt-mitre-target"
+            class="form-select"
+            v-model="hunt.index_target"
+          >
+            <option value="attributes_and_events">
+              Attributes &amp; Events
+            </option>
+            <option value="events">Events</option>
+            <option value="attributes">Attributes</option>
+          </select>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label" for="hunt-mitre"
+            >MITRE ATT&amp;CK technique</label
+          >
+          <MitreAttackSelect v-model="hunt.query" />
+          <div class="form-text">
+            Select one or more MITRE ATT&amp;CK techniques. Matches
+            {{
+              hunt.index_target === "attributes"
+                ? "attributes"
+                : hunt.index_target === "events"
+                  ? "events"
+                  : "attributes and events"
+            }}
+            tagged with any of these techniques.
+          </div>
+        </div>
+      </template>
 
       <div class="mb-4">
         <div class="form-check form-switch">

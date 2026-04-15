@@ -39,6 +39,45 @@ def get_galaxies(
     )
 
 
+def get_mitre_attack_patterns(
+    db: Session, filter: str | None = None, limit: int = 1000
+) -> list[dict]:
+    """Return mitre-attack-pattern clusters with their external_id for selectors."""
+    query = (
+        db.query(
+            galaxies_models.GalaxyCluster.uuid,
+            galaxies_models.GalaxyCluster.value,
+            galaxies_models.GalaxyCluster.description,
+            galaxies_models.GalaxyElement.value.label("external_id"),
+        )
+        .join(
+            galaxies_models.GalaxyElement,
+            galaxies_models.GalaxyElement.galaxy_cluster_id
+            == galaxies_models.GalaxyCluster.id,
+        )
+        .filter(
+            galaxies_models.GalaxyCluster.type == "mitre-attack-pattern",
+            galaxies_models.GalaxyElement.key == "external_id",
+        )
+    )
+    if filter:
+        pattern = f"%{filter}%"
+        query = query.filter(
+            (galaxies_models.GalaxyCluster.value.ilike(pattern))
+            | (galaxies_models.GalaxyElement.value.ilike(pattern))
+        )
+    query = query.order_by(galaxies_models.GalaxyElement.value.asc()).limit(limit)
+    return [
+        {
+            "uuid": str(row.uuid),
+            "value": row.value,
+            "description": row.description,
+            "external_id": row.external_id,
+        }
+        for row in query.all()
+    ]
+
+
 def get_galaxy_by_id(db: Session, galaxy_id: int) -> galaxies_models.Galaxy:
     return (
         db.query(galaxies_models.Galaxy)

@@ -24,13 +24,25 @@ Each hit in the result contains:
 
 Looks up detection rules from [rulezet.org](https://rulezet.org) by Vuln ID. The `query` field must be a vulnerability identifier (e.g. `CVE-2021-44228`, `ghsa-q4qf-26fw-9qw6`). Results contain the detection rules published for that vulnerability. The `index_target` field is ignored for rulezet hunts.
 
+### MITRE ATT&CK (`mitre-attack-pattern`)
+
+Matches events and/or attributes tagged with one or more MITRE ATT&CK techniques. The `query` field is a comma- or newline-separated list of MITRE technique codes (e.g. `T1391`, `T1078.004`), cluster UUIDs, or full galaxy tag names. Technique codes and UUIDs are resolved against the `mitre-attack-pattern` galaxy clusters at run time — if a code cannot be resolved the hunt execution returns a `400 Bad Request`, so the `mitre-attack-pattern` galaxy must be imported and enabled first.
+
+The `index_target` field selects where to look:
+
+| Value | Meaning |
+|---|---|
+| `events` | Search the `misp-events` index only |
+| `attributes` | Search the `misp-attributes` index only |
+| `attributes_and_events` | Search both indices — each hit is annotated with a `_doc_kind` field (`event` or `attribute`) |
+
 ## Concepts
 
 | Term | Description |
 |---|---|
-| **Query** | Lucene query (opensearch), CPE string (cpe), or Vuln ID (rulezet) |
-| **Index target** | Which index to search: `attributes`, `events`, or `correlations` (opensearch only) |
-| **Hunt type** | `opensearch`, `cpe`, or `rulezet` |
+| **Query** | Lucene query (opensearch), CPE string (cpe), Vuln ID (rulezet), or MITRE technique codes (mitre-attack-pattern) |
+| **Index target** | Which index to search: `attributes`, `events`, or `correlations` (opensearch); `attributes`, `events`, or `attributes_and_events` (mitre-attack-pattern) |
+| **Hunt type** | `opensearch`, `cpe`, `rulezet`, or `mitre-attack-pattern` |
 | **Status** | `active` or `paused` — paused hunts are skipped during scheduled runs |
 | **Run history** | Each execution stores a timestamp and match count |
 
@@ -48,6 +60,10 @@ Looks up detection rules from [rulezet.org](https://rulezet.org) by Vuln ID. The
     - _CPE_ hunt:
     
     <img src="../../screenshots/hunts/misp-workbench-2_hunts_new-cpe-hunt.png" style="height: 500px;">
+
+    - _MITRE ATT&CK_ hunt:
+    
+    <img src="../../screenshots/hunts/misp-workbench-2_hunts_new-mitre-attack-hunt.png" style="height: 500px;">
 
 2. Click the eye icon on the newly created hunt to view its details. To run the hunt immediately, click the ***Run Now*** button.
     <img src="../../screenshots/hunts/misp-workbench-3_hunts_view-opensearch-hunt.png" style="max-width: 100%; height: auto;">
@@ -101,6 +117,20 @@ POST /hunts/
 ```
 
 The `index_target` field is not required for CPE hunts.
+
+### MITRE ATT&CK hunt
+
+```json
+POST /hunts/
+{
+  "name": "Initial Access - Valid Accounts",
+  "description": "Surface events tagged with T1078 or its sub-techniques",
+  "query": "T1078, T1078.004",
+  "hunt_type": "mitre-attack-pattern",
+  "index_target": "attributes_and_events",
+  "status": "active"
+}
+```
 
 Required scopes: `hunts:create`
 
@@ -211,6 +241,38 @@ When a CPE hunt runs, each hit represents a CVE affecting the specified product.
 ```
 
 CVE IDs in the UI link directly to the corresponding record on [vulnerability.circl.lu](https://vulnerability.circl.lu).
+
+## MITRE ATT&CK hunt results
+
+When a MITRE ATT&CK hunt runs, each hit is an event or attribute carrying at least one of the requested technique tags. When `index_target` is `attributes_and_events`, each hit is annotated with a `_doc_kind` field so the UI can render the two kinds distinctly.
+
+```json
+{
+  "hunt": { "id": 9, "name": "Initial Access - Valid Accounts", ... },
+  "total": 2,
+  "hits": [
+    {
+      "_doc_kind": "event",
+      "uuid": "ba4b11b6-dcce-4315-8fd0-67b69160ea76",
+      "info": "Phishing campaign targeting HR",
+      "tags": [
+        { "name": "misp-galaxy:mitre-attack-pattern=\"Valid Accounts - T1078\"" }
+      ]
+    },
+    {
+      "_doc_kind": "attribute",
+      "uuid": "7f2fd15d-3c63-47ba-8a39-2c4b0b3314b0",
+      "type": "email-src",
+      "value": "attacker@example.com",
+      "tags": [
+        { "name": "misp-galaxy:mitre-attack-pattern=\"Cloud Accounts - T1078.004\"" }
+      ]
+    }
+  ]
+}
+```
+
+The `mitre-attack-pattern` galaxy must be imported and enabled (via `POST /galaxies/update` and `PATCH /galaxies/{id}`) before MITRE ATT&CK hunts can resolve technique codes.
 
 ## Rulezet hunt results
 

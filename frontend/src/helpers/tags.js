@@ -2,7 +2,29 @@ export const tagHelper = {
   getContrastColor,
   getBackgroundColor,
   getTag,
+  getTagValue,
 };
+
+function getTagValue(name) {
+  if (!name) return "";
+  const eqIdx = name.indexOf("=");
+  if (eqIdx !== -1) {
+    let value = name.slice(eqIdx + 1);
+    if (
+      value.length >= 2 &&
+      ((value.startsWith('"') && value.endsWith('"')) ||
+        (value.startsWith("'") && value.endsWith("'")))
+    ) {
+      value = value.slice(1, -1);
+    }
+    return value || name;
+  }
+  const colonIdx = name.indexOf(":");
+  if (colonIdx !== -1) {
+    return name.slice(colonIdx + 1) || name;
+  }
+  return name;
+}
 
 function getTag(namspace, tag) {
   if (!tag) return "";

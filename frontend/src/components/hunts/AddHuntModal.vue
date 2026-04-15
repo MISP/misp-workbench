@@ -5,6 +5,8 @@ import LuceneQuerySyntaxHint from "@/components/misc/LuceneQuerySyntaxHint.vue";
 import EventsPropertiesModal from "@/components/misc/EventsPropertiesModal.vue";
 import AttributesPropertiesModal from "@/components/misc/AttributesPropertiesModal.vue";
 import CorrelationPropertiesModal from "@/components/misc/CorrelationPropertiesModal.vue";
+import MitreAttackSelect from "@/components/hunts/MitreAttackSelect.vue";
+import HuntTypeSelector from "@/components/hunts/HuntTypeSelector.vue";
 
 const props = defineProps({
   initialQuery: { type: String, default: "" },
@@ -39,6 +41,22 @@ function reset() {
   apiError.value = null;
 }
 
+function onHuntTypeChange() {
+  if (hunt.hunt_type === "mitre-attack-pattern") {
+    if (
+      !["attributes", "events", "attributes_and_events"].includes(
+        hunt.index_target,
+      )
+    ) {
+      hunt.index_target = "attributes_and_events";
+    }
+  } else if (hunt.hunt_type === "opensearch") {
+    if (hunt.index_target === "attributes_and_events") {
+      hunt.index_target = "attributes";
+    }
+  }
+}
+
 async function submit() {
   apiError.value = null;
   await huntsStore
@@ -63,13 +81,26 @@ function close() {
   inset: 0;
   background: rgba(0, 0, 0, 0.45);
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
+  overflow-y: auto;
+  padding: 2rem 1rem;
   z-index: 1050;
 }
 .modal-card {
-  width: 600px;
+  width: 860px;
   max-width: calc(100% - 2rem);
+  max-height: calc(100vh - 4rem);
+  display: flex;
+  flex-direction: column;
+}
+.modal-card > .card {
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+.modal-card .card-body {
+  overflow-y: auto;
 }
 </style>
 
@@ -92,44 +123,10 @@ function close() {
 
           <div class="mb-3">
             <label class="form-label">Hunt Type</label>
-            <div class="d-flex gap-3">
-              <div class="form-check">
-                <input
-                  class="form-check-input"
-                  type="radio"
-                  id="modal-type-opensearch"
-                  value="opensearch"
-                  v-model="hunt.hunt_type"
-                />
-                <label class="form-check-label" for="modal-type-opensearch"
-                  >OpenSearch query</label
-                >
-              </div>
-              <div class="form-check">
-                <input
-                  class="form-check-input"
-                  type="radio"
-                  id="modal-type-rulezet"
-                  value="rulezet"
-                  v-model="hunt.hunt_type"
-                />
-                <label class="form-check-label" for="modal-type-rulezet"
-                  >Rulezet Vuln check</label
-                >
-              </div>
-              <div class="form-check">
-                <input
-                  class="form-check-input"
-                  type="radio"
-                  id="modal-type-cpe"
-                  value="cpe"
-                  v-model="hunt.hunt_type"
-                />
-                <label class="form-check-label" for="modal-type-cpe"
-                  >CPE Vuln lookup</label
-                >
-              </div>
-            </div>
+            <HuntTypeSelector
+              v-model="hunt.hunt_type"
+              @update:modelValue="onHuntTypeChange"
+            />
           </div>
 
           <div class="mb-3">
@@ -237,6 +234,35 @@ function close() {
               Notifies you when the result set changes.
             </div>
           </div>
+
+          <template v-else-if="hunt.hunt_type === 'mitre-attack-pattern'">
+            <div class="mb-3">
+              <label class="form-label" for="modal-hunt-mitre-target"
+                >Search index</label
+              >
+              <select
+                id="modal-hunt-mitre-target"
+                class="form-select"
+                v-model="hunt.index_target"
+              >
+                <option value="attributes_and_events">
+                  Attributes &amp; Events
+                </option>
+                <option value="events">Events</option>
+                <option value="attributes">Attributes</option>
+              </select>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label" for="modal-hunt-mitre"
+                >MITRE ATT&amp;CK technique</label
+              >
+              <MitreAttackSelect v-model="hunt.query" />
+              <div class="form-text">
+                Select one or more MITRE ATT&amp;CK techniques.
+              </div>
+            </div>
+          </template>
 
           <div class="mb-2">
             <div class="form-check form-switch">

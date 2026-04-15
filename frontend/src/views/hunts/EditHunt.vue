@@ -5,6 +5,7 @@ import { useHuntsStore, useToastsStore } from "@/stores";
 import { storeToRefs } from "pinia";
 import Spinner from "@/components/misc/Spinner.vue";
 import LuceneQuerySyntaxHint from "@/components/misc/LuceneQuerySyntaxHint.vue";
+import MitreAttackSelect from "@/components/hunts/MitreAttackSelect.vue";
 
 const props = defineProps({ id: { type: String, required: true } });
 
@@ -133,6 +134,33 @@ function cancel() {
           placeholder="cpe:/a:gitlab:gitlab"
         />
       </div>
+
+      <template v-else-if="form.hunt_type === 'mitre-attack-pattern'">
+        <div class="mb-3">
+          <label class="form-label" for="hunt-mitre-target">Search index</label>
+          <select
+            id="hunt-mitre-target"
+            class="form-select"
+            v-model="form.index_target"
+          >
+            <option value="attributes_and_events">
+              Attributes &amp; Events
+            </option>
+            <option value="events">Events</option>
+            <option value="attributes">Attributes</option>
+          </select>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label" for="hunt-mitre"
+            >MITRE ATT&amp;CK technique</label
+          >
+          <MitreAttackSelect v-model="form.query" />
+          <div class="form-text">
+            Select one or more MITRE ATT&amp;CK techniques.
+          </div>
+        </div>
+      </template>
 
       <div class="mb-4">
         <div class="form-check form-switch">

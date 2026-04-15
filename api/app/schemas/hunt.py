@@ -11,8 +11,8 @@ class HuntBase(BaseModel):
     name: str
     description: Optional[str] = None
     query: str
-    hunt_type: Literal["opensearch", "rulezet", "cpe"] = "opensearch"
-    index_target: Optional[Literal["attributes", "events", "correlations"]] = "attributes"
+    hunt_type: Literal["opensearch", "rulezet", "cpe", "mitre-attack-pattern"] = "opensearch"
+    index_target: Optional[Literal["attributes", "events", "correlations", "attributes_and_events"]] = "attributes"
     status: Literal["active", "paused"] = "active"
 
 
@@ -24,8 +24,8 @@ class HuntUpdate(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
     query: Optional[str] = None
-    hunt_type: Optional[Literal["opensearch", "rulezet", "cpe"]] = None
-    index_target: Optional[Literal["attributes", "events", "correlations"]] = None
+    hunt_type: Optional[Literal["opensearch", "rulezet", "cpe", "mitre-attack-pattern"]] = None
+    index_target: Optional[Literal["attributes", "events", "correlations", "attributes_and_events"]] = None
     status: Optional[Literal["active", "paused"]] = None
 
 

@@ -41,6 +41,7 @@ function formatTag(tag) {
   return {
     id: tag.id,
     name: tag.name,
+    value: tag.name,
     color: tagHelper.getContrastColor(tag.colour),
     backgroundColor: tag.colour,
   };
@@ -83,7 +84,7 @@ function initTomSelect() {
           <span class="badge mx-1 tag"
                 style="color:${escape(data.color)}; background-color:${escape(data.backgroundColor)}"
                 title="${escape(data.name)}">
-            ${escape(data.name)}
+            ${escape(data.value)}
           </span>`;
       },
       item(data, escape) {
@@ -91,7 +92,7 @@ function initTomSelect() {
           <span class="badge mx-1 tag"
                 style="display:block; color:${escape(data.color)}; background-color:${escape(data.backgroundColor)}"
                 title="${escape(data.name)}">
-            <span class="tag-label">${escape(data.name)}<span/>
+            <span class="tag-label">${escape(data.value)}<span/>
           </span>`;
       },
     },
@@ -99,10 +100,11 @@ function initTomSelect() {
     onItemRemove(tag) {
       if (!props.persist) return;
 
+      const modelId = props.model?.uuid ?? props.model?.id;
       if (props.modelClass === "event") {
-        eventsStore.untag(props.model.id, tag);
+        eventsStore.untag(modelId, tag);
       } else if (props.modelClass === "attribute") {
-        attributesStore.untag(props.model.id, tag);
+        attributesStore.untag(modelId, tag);
       }
       // notify parent of change
       if (!_updatingFromProp) emitSelected();
@@ -111,10 +113,11 @@ function initTomSelect() {
     onItemAdd(tag) {
       if (!props.persist) return;
 
+      const modelId = props.model?.uuid ?? props.model?.id;
       if (props.modelClass === "event") {
-        eventsStore.tag(props.model.id, tag);
+        eventsStore.tag(modelId, tag);
       } else if (props.modelClass === "attribute") {
-        attributesStore.tag(props.model.id, tag);
+        attributesStore.tag(modelId, tag);
       }
       // notify parent of change
       if (!_updatingFromProp) emitSelected();
@@ -159,6 +162,26 @@ watch(
 [data-bs-theme="dark"] .ts-control input {
   color: #fff !important;
   background-color: transparent !important;
+}
+
+.ts-wrapper.multi .ts-control {
+  max-height: 8.5rem;
+  overflow-y: auto;
+}
+
+.ts-wrapper.multi .ts-control > .item {
+  max-width: 100%;
+}
+
+.ts-wrapper.multi .ts-control .tag {
+  max-width: 100%;
+  overflow-x: auto;
+  white-space: nowrap;
+}
+
+.ts-wrapper.multi .ts-control .tag-label {
+  display: inline-block;
+  white-space: nowrap;
 }
 </style>
 
