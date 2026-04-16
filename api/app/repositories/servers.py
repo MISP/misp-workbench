@@ -733,14 +733,16 @@ def push_event_by_uuid(
                 event_uuid, server.id
             )
         )
-        return False
+        return {
+            "status": 404,
+            "message": "Event not found on local instance.",
+        }
 
     if not db_event.published:
         logger.info("Event {} is not published, skipping.".format(event_uuid))
         return {
-            "status": 200,
+            "status": 400,
             "message": "Event is not published, skipping.",
-            "response": None,
         }
 
     remote_misp = get_remote_misp_connection(server)
