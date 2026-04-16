@@ -380,7 +380,7 @@ def create_event_from_pulled_event(pulled_event: MISPEvent) -> event_schemas.Eve
         "threat_level": int(pulled_event.threat_level_id) if pulled_event.threat_level_id else 4,
         "publish_timestamp": int(pulled_event.publish_timestamp.timestamp()),
         "disable_correlation": getattr(pulled_event, "disable_correlation", False) or False,
-        "extends_uuid": str(pulled_event.extends_uuid) if pulled_event.extends_uuid else None,
+        "extends_uuid": str(pulled_event.extends_uuid) if getattr(pulled_event, "extends_uuid", None) else None,
         "protected": getattr(pulled_event, "protected", False) or False,
         "deleted": getattr(pulled_event, "deleted", False) or False,
         "tags": [],
@@ -416,7 +416,7 @@ def update_event_from_pulled_event(
         "sharing_group_id": int(pulled_event.sharing_group_id) if pulled_event.sharing_group_id and int(pulled_event.sharing_group_id) > 0 else None,
         "threat_level": int(pulled_event.threat_level_id) if pulled_event.threat_level_id else 4,
         "disable_correlation": pulled_event.disable_correlation or False,
-        "extends_uuid": str(pulled_event.extends_uuid) if pulled_event.extends_uuid else None,
+        "extends_uuid": str(pulled_event.extends_uuid) if getattr(pulled_event, "extends_uuid", None) else None,
         "@timestamp": datetime.fromtimestamp(ts).isoformat(),
     }
 
