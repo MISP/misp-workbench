@@ -1,11 +1,11 @@
 <script setup>
-import { ref, reactive } from "vue";
+import { ref } from "vue";
 import { storeToRefs } from "pinia";
 import { useFeedsStore, useToastsStore } from "@/stores";
 import { router } from "@/router";
 import FeedBaseForm from "@/components/feeds/FeedBaseForm.vue";
 import AddFeedMISP from "@/components/feeds/misp/AddFeedMISP.vue";
-import TestMISPFeedConnectionModal from "@/components/feeds/misp/TestMISPFeedConnectionModal.vue";
+import PreviewFeedModal from "@/components/feeds/misp/PreviewFeedModal.vue";
 
 const feedsStore = useFeedsStore();
 const toastsStore = useToastsStore();
@@ -25,13 +25,10 @@ const config = ref({
   rules: feed.value.rules ?? {},
 });
 
-// test modal state
-const testResultOpen = ref(false);
-const testResult = reactive({
-  success: false,
-  message: "",
-  total_events: 0,
-});
+// preview modal state
+const previewOpen = ref(false);
+const previewResult = ref(null);
+const previewError = ref(null);
 
 function submit() {
   const payload = {
@@ -78,29 +75,20 @@ function test() {
     rules: config.value.rules ?? {},
   };
 
+  previewResult.value = null;
+  previewError.value = null;
+
   return feedsStore
     .testMISPFeedConnection(payload)
     .then((response) => {
-      if (response.result === "success") {
-        testResult.success = true;
-        testResult.message = "Connection successful!";
-        testResult.total_events = response.total_events;
-        testResult.total_filtered_events = response.total_filtered_events;
-      } else {
-        testResult.success = false;
-        testResult.message = `Connection failed: ${response.message}`;
-      }
-      testResultOpen.value = true;
+      previewResult.value = response;
+      previewOpen.value = true;
     })
     .catch((error) => {
-      testResult.success = false;
-      testResult.message = error?.message || String(error);
-      testResultOpen.value = true;
+      previewError.value =
+        typeof error === "string" ? error : "Failed to connect to feed.";
+      previewOpen.value = true;
     });
-}
-
-function closeTestResult() {
-  testResultOpen.value = false;
 }
 </script>
 
@@ -153,9 +141,10 @@ function closeTestResult() {
       </div>
     </div>
   </div>
-  <TestMISPFeedConnectionModal
-    v-if="testResultOpen"
-    :testResult="testResult"
-    @closeModal="closeTestResult"
+  <PreviewFeedModal
+    v-if="previewOpen"
+    :result="previewResult"
+    :error="previewError"
+    @close="previewOpen = false"
   />
 </template>

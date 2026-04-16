@@ -50,7 +50,7 @@ export const useServersStore = defineStore({
     },
     async update(server) {
       this.status = { updating: true };
-      fetchWrapper
+      return fetchWrapper
         .patch(`${baseUrl}/${server.id}`, server)
         .then((response) => (this.server = response))
         .catch((error) => (this.error = error))
@@ -83,6 +83,11 @@ export const useServersStore = defineStore({
       return await fetchWrapper
         .post(`${baseUrl}/${id}/push`)
         .catch((error) => (this.status = { error }));
+    },
+    async pushEvent(serverId, eventUuid) {
+      return await fetchWrapper.post(
+        `${baseUrl}/${serverId}/events/${eventUuid}/push`,
+      );
     },
   },
 });

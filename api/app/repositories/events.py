@@ -17,6 +17,7 @@ from app.schemas import event as event_schemas
 from app.schemas import user as user_schemas
 from app.schemas import organisations as org_schemas
 import app.schemas.attribute as attribute_schemas
+import app.schemas.object as object_schemas
 import app.schemas.vulnerability as vulnerability_schemas
 from fastapi import HTTPException, status, Query
 from fastapi_pagination import Page, Params
@@ -65,7 +66,9 @@ def get_events_from_opensearch(
     return Page(items=items, total=total, page=params.page, size=params.size, pages=pages)
 
 
-def get_event_from_opensearch(event_uuid: UUID) -> Optional[event_schemas.Event]:
+def get_event_from_opensearch(
+    event_uuid: UUID, full: bool = False
+) -> Optional[event_schemas.Event]:
     client = get_opensearch_client()
 
     try:
@@ -74,8 +77,66 @@ def get_event_from_opensearch(event_uuid: UUID) -> Optional[event_schemas.Event]
     except NotFoundError:
         return None
 
-    source.setdefault("attributes", [])
-    source.setdefault("objects", [])
+    if full:
+        uuid_str = str(event_uuid)
+
+        # Fetch standalone attributes (no parent object)
+        attr_resp = client.search(
+            index="misp-attributes",
+            body={
+                "query": {
+                    "bool": {
+                        "must": [{"term": {"event_uuid": uuid_str}}],
+                        "must_not": [{"exists": {"field": "object_uuid"}}],
+                    }
+                },
+                "size": 10000,
+            },
+        )
+        source["attributes"] = [
+            h["_source"] for h in attr_resp["hits"]["hits"]
+        ]
+
+        # Fetch objects
+        obj_resp = client.search(
+            index="misp-objects",
+            body={
+                "query": {"term": {"event_uuid": uuid_str}},
+                "size": 10000,
+            },
+        )
+        obj_hits = obj_resp["hits"]["hits"]
+
+        if obj_hits:
+            # Batch-fetch attributes belonging to these objects
+            object_uuids = [str(h["_source"]["uuid"]) for h in obj_hits]
+            obj_attr_resp = client.search(
+                index="misp-attributes",
+                body={
+                    "query": {"terms": {"object_uuid": object_uuids}},
+                    "size": 10000,
+                },
+            )
+            attrs_by_obj = {}
+            for h in obj_attr_resp["hits"]["hits"]:
+                src = h["_source"]
+                key = src.get("object_uuid")
+                if key:
+                    attrs_by_obj.setdefault(key, []).append(src)
+
+            for hit in obj_hits:
+                obj_src = hit["_source"]
+                obj_uuid = str(obj_src.get("uuid", ""))
+                obj_src["attributes"] = attrs_by_obj.get(obj_uuid, [])
+                obj_src.setdefault("object_references", [])
+
+            source["objects"] = [h["_source"] for h in obj_hits]
+        else:
+            source["objects"] = []
+    else:
+        source.setdefault("attributes", [])
+        source.setdefault("objects", [])
+
     return event_schemas.Event.model_validate(source)
 
 
@@ -196,9 +257,9 @@ def get_event_by_info(info: str) -> Optional[event_schemas.Event]:
     return event_schemas.Event.model_validate(source)
 
 
-def get_event_by_uuid(db, event_uuid) -> Optional[event_schemas.Event]:
+def get_event_by_uuid(db, event_uuid, full: bool = False) -> Optional[event_schemas.Event]:
     """Alias for get_event_from_opensearch used by feeds/servers/mcp."""
-    return get_event_from_opensearch(UUID(str(event_uuid)))
+    return get_event_from_opensearch(UUID(str(event_uuid)), full=full)
 
 
 def get_events_by_uuids(db, uuids) -> list[event_schemas.Event]:

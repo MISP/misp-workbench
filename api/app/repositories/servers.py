@@ -726,7 +726,7 @@ def push_event_by_uuid(
     settings: Settings,
 ) -> dict:
 
-    db_event = events_repository.get_event_by_uuid(db, event_uuid=event_uuid)
+    db_event = events_repository.get_event_by_uuid(db, event_uuid=event_uuid, full=True)
     if db_event is None:
         logger.error(
             "Event {} not found on local instance, cannot push to remote server {}".format(
@@ -804,6 +804,16 @@ def push_event_by_uuid(
     try:
         event_json = db_event.to_misp_format()
 
+        if (
+            db_event.published
+            and not db_event.attributes
+            and not db_event.objects
+        ):
+            return {
+                "status": 400,
+                "message": "Cannot push a published event with no attributes or objects.",
+            }
+
         if remote_event is None:
             response = remote_misp._prepare_request(
                 "POST", f"events/add/{event_uuid}", data=event_json
@@ -817,31 +827,35 @@ def push_event_by_uuid(
             return {
                 "status": response.status_code,
                 "message": "Event pushed successfully.",
-                "response": response.json(),
             }
         else:
+            remote_response = response.json()
+            remote_errors = remote_response.get("errors", {})
+            remote_message = (
+                remote_errors.get("Event")
+                or remote_response.get("message")
+                or "Failed pushing the event."
+            )
             logger.error(
-                "Failed pushing the event {} to remote server {}, status code: {}".format(
-                    event_uuid, server.id, response.status_code
+                "Failed pushing the event {} to remote server {}, status code: {}: {}".format(
+                    event_uuid, server.id, response.status_code, remote_message
                 )
             )
             return {
                 "status": response.status_code,
-                "message": "Failed pushing the event.",
-                "response": response.json(),
+                "message": remote_message,
             }
 
     except Exception as ex:
         logger.exception(
-            "Failed downloading the event {} from remote server {}".format(
+            "Failed pushing the event {} to remote server {}".format(
                 event_uuid, server.id
             )
         )
 
         return {
-            "status": response.status_code if "response" in locals() else 500,
+            "status": 500,
             "message": "Failed pushing the event due to an internal error.",
-            "response": None,
         }
 
 

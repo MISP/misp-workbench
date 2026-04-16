@@ -3,7 +3,12 @@ import { authHelper } from "@/helpers";
 import { ref, computed, onMounted, onBeforeUnmount, nextTick } from "vue";
 import { Modal } from "bootstrap";
 import { storeToRefs } from "pinia";
-import { useAuthStore, useEventsStore } from "@/stores";
+import {
+  useAuthStore,
+  useEventsStore,
+  useServersStore,
+  useToastsStore,
+} from "@/stores";
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
 import {
   faTrash,
@@ -13,6 +18,7 @@ import {
   faFileArrowUp,
   faSync,
   faStar,
+  faUpload,
   // faArrowsRotate,
   faFileImport,
 } from "@fortawesome/free-solid-svg-icons";
@@ -25,6 +31,73 @@ const { scopes } = storeToRefs(authStore);
 
 const eventsStore = useEventsStore();
 const { status } = storeToRefs(eventsStore);
+
+const serversStore = useServersStore();
+const toastsStore = useToastsStore();
+
+const pushServers = computed(() => {
+  const all = serversStore.servers;
+  if (!all || !Array.isArray(all)) return [];
+  return all.filter((s) => s.push);
+});
+
+const pushing = ref(false);
+
+function pushEventToServer(serverId) {
+  pushing.value = true;
+  serversStore
+    .pushEvent(serverId, props.event_uuid)
+    .then((response) => {
+      if (response?.status === 200) {
+        toastsStore.push(
+          response.message || "Event pushed successfully.",
+          "success",
+        );
+      } else {
+        toastsStore.push(
+          response?.message || "Failed pushing the event.",
+          "error",
+        );
+      }
+    })
+    .catch((error) => {
+      toastsStore.push(
+        "Push failed: " +
+          (typeof error === "string"
+            ? error
+            : error?.message || "Unknown error"),
+        "error",
+      );
+    })
+    .finally(() => {
+      pushing.value = false;
+    });
+}
+
+function pushEventToAll() {
+  pushing.value = true;
+  const promises = pushServers.value.map((s) =>
+    serversStore.pushEvent(s.id, props.event_uuid),
+  );
+  Promise.allSettled(promises)
+    .then((results) => {
+      const failed = results.filter((r) => r.status === "rejected").length;
+      if (failed === 0) {
+        toastsStore.push(
+          `Event pushed to ${results.length} server(s).`,
+          "success",
+        );
+      } else {
+        toastsStore.push(
+          `Pushed with ${failed} failure(s) out of ${results.length}.`,
+          "error",
+        );
+      }
+    })
+    .finally(() => {
+      pushing.value = false;
+    });
+}
 
 const followed = ref(false);
 
@@ -56,6 +129,13 @@ const actions = computed(() => ({
 
 onMounted(() => {
   followed.value = isFollowingEntity("events", props.event_uuid);
+  if (
+    !serversStore.servers ||
+    !Array.isArray(serversStore.servers) ||
+    serversStore.servers.length === 0
+  ) {
+    serversStore.getAll();
+  }
 });
 
 const deleteModal = ref(null);
@@ -157,21 +237,37 @@ function followEvent() {
       >
         <FontAwesomeIcon :icon="faFileImport" fixed-width />
       </button>
-      <!-- <button
-        v-if="actions.index"
-        type="button"
-        class="btn btn-outline-primary btn-sm"
-        :disabled="status.indexing"
-        title="Re-Index Event"
-        @click="indexEventDocument"
-      >
-        <FontAwesomeIcon
-          v-if="!status.indexing"
-          :icon="faArrowsRotate"
-          fixed-width
-        />
-        <FontAwesomeIcon v-else :icon="faSync" fixed-width spin />
-      </button> -->
+      <div v-if="pushServers.length" class="btn-group" role="group">
+        <button
+          type="button"
+          class="btn btn-outline-primary btn-sm dropdown-toggle"
+          data-bs-toggle="dropdown"
+          aria-expanded="false"
+          title="Push to server"
+          :disabled="pushing"
+        >
+          <span
+            v-if="pushing"
+            class="spinner-border spinner-border-sm"
+            role="status"
+            aria-hidden="true"
+          ></span>
+          <FontAwesomeIcon v-else :icon="faUpload" fixed-width />
+        </button>
+        <ul class="dropdown-menu dropdown-menu-end">
+          <li>
+            <button class="dropdown-item" @click="pushEventToAll">
+              Push to all servers
+            </button>
+          </li>
+          <li><hr class="dropdown-divider" /></li>
+          <li v-for="server in pushServers" :key="server.id">
+            <button class="dropdown-item" @click="pushEventToServer(server.id)">
+              {{ server.name }}
+            </button>
+          </li>
+        </ul>
+      </div>
       <button
         type="button"
         class="btn btn-outline-primary btn-sm"
@@ -269,6 +365,30 @@ function followEvent() {
           {{ followed ? "Unfollow" : "Follow" }}
         </button>
       </li>
+
+      <template v-if="pushServers.length">
+        <li><hr class="dropdown-divider" /></li>
+        <li>
+          <button
+            class="dropdown-item"
+            :disabled="pushing"
+            @click="pushEventToAll"
+          >
+            <FontAwesomeIcon :icon="faUpload" fixed-width class="me-2" />
+            Push to all servers
+          </button>
+        </li>
+        <li v-for="server in pushServers" :key="server.id">
+          <button
+            class="dropdown-item"
+            :disabled="pushing"
+            @click="pushEventToServer(server.id)"
+          >
+            <FontAwesomeIcon :icon="faUpload" fixed-width class="me-2" />
+            {{ server.name }}
+          </button>
+        </li>
+      </template>
 
       <li>
         <hr class="dropdown-divider" />

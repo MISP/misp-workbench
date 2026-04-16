@@ -98,6 +98,7 @@ function pushServer(server) {
       <FontAwesomeIcon :icon="faCheck" />
     </button>
     <button
+      v-if="server.push"
       type="button"
       class="btn btn-outline-primary btn-sm"
       data-placement="top"
@@ -107,6 +108,7 @@ function pushServer(server) {
       <FontAwesomeIcon :icon="faUpload" />
     </button>
     <button
+      v-if="server.pull"
       type="button"
       class="btn btn-outline-primary btn-sm"
       data-placement="top"
