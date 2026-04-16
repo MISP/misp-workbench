@@ -10,8 +10,9 @@ x-environment: &default-env
   OPENSEARCH_INITIAL_ADMIN_PASSWORD: ${OPENSEARCH_INITIAL_ADMIN_PASSWORD}
   OPENSEARCH_USERNAME: ${OPENSEARCH_USERNAME:-}
   OPENSEARCH_PASSWORD: ${OPENSEARCH_PASSWORD:-}
-  OAUTH2_SECRET_KEY: ${OAUTH2_SECRET_KEY}
-  OAUTH2_REFRESH_SECRET_KEY: ${OAUTH2_REFRESH_SECRET_KEY}
+  OAUTH2_SECRET_KEY: ${OAUTH2_SECRET_KEY:-}
+  OAUTH2_REFRESH_SECRET_KEY: ${OAUTH2_REFRESH_SECRET_KEY:-}
+  OAUTH2_CREDS_FILE: ${OAUTH2_CREDS_FILE:-/var/lib/misp-workbench/oauth-creds/oauth2.json}
   OAUTH2_ALGORITHM: ${OAUTH2_ALGORITHM:-HS256}
   OAUTH2_ACCESS_TOKEN_EXPIRE_MINUTES: ${OAUTH2_ACCESS_TOKEN_EXPIRE_MINUTES:-30}
   OAUTH2_REFRESH_TOKEN_EXPIRE_DAYS: ${OAUTH2_REFRESH_TOKEN_EXPIRE_DAYS:-7}
@@ -164,6 +165,7 @@ services:
     volumes:
       - attachments-data:/tmp/attachments
       - garage-creds:/var/lib/misp-workbench/secrets
+      - oauth-creds:/var/lib/misp-workbench/oauth-creds
     networks:
       - backend
       - frontend
@@ -182,6 +184,7 @@ services:
     volumes:
       - attachments-data:/tmp/attachments
       - garage-creds:/var/lib/misp-workbench/secrets
+      - oauth-creds:/var/lib/misp-workbench/oauth-creds
     networks:
       - backend
 
@@ -199,6 +202,7 @@ services:
     volumes:
       - attachments-data:/tmp/attachments
       - garage-creds:/var/lib/misp-workbench/secrets
+      - oauth-creds:/var/lib/misp-workbench/oauth-creds
     networks:
       - backend
 
@@ -212,6 +216,8 @@ services:
       <<: *default-env
     depends_on:
       - worker
+    volumes:
+      - oauth-creds:/var/lib/misp-workbench/oauth-creds
     networks:
       - backend
       - frontend
@@ -270,6 +276,7 @@ volumes:
   garage-meta:
   attachments-data:
   garage-creds:
+  oauth-creds:
   os_data:
   os_logs:
 

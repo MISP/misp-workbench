@@ -2,14 +2,28 @@
 
 All configuration is supplied through environment variables. Copy `.env.dev.dist` (development) or `.env.dist` (production) and fill in your values.
 
-## Required secrets
+## Auto-generated secrets
 
-These must be set before first run.
+The following secrets are **automatically generated** on first boot if left unset. They are persisted to a shared Docker volume so they survive container restarts.
 
-| Variable | Description |
-|---|---|
-| `OAUTH2_SECRET_KEY` | Secret key for signing access tokens (64-char hex recommended) |
-| `OAUTH2_REFRESH_SECRET_KEY` | Secret key for signing refresh tokens |
+| Variable | Default | Description |
+|---|---|---|
+| `OAUTH2_SECRET_KEY` | _(auto)_ | Secret key for signing access tokens — leave unset to auto-generate |
+| `OAUTH2_REFRESH_SECRET_KEY` | _(auto)_ | Secret key for signing refresh tokens — leave unset to auto-generate |
+| `OAUTH2_CREDS_FILE` | `/var/lib/misp-workbench/oauth-creds/oauth2.json` | Path where auto-generated OAuth2 secrets are persisted |
+
+When `OAUTH2_SECRET_KEY` / `OAUTH2_REFRESH_SECRET_KEY` are not set, the entrypoint generates random 256-bit hex keys and writes them to `OAUTH2_CREDS_FILE`:
+
+```json
+{
+  "secret_key": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "refresh_secret_key": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+}
+```
+
+The file is written with mode `0600`. It is read at startup by the API, worker, beat, and flower containers via the shared `oauth-creds` Docker volume.
+
+Set both variables explicitly if you need fixed credentials (e.g. existing tokens must remain valid across redeployments).
 
 ## Database
 

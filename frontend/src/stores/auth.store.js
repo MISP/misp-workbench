@@ -44,19 +44,32 @@ export const useAuthStore = defineStore({
         this.decoded_access_token.exp > Date.now() / 1000
       );
     },
-    async revokeToken() {
-      if (this.access_token) {
-        await fetchWrapper.post(`${import.meta.env.VITE_API_URL}/auth/logout`, {
-          token: this.access_token,
+    async revokeToken(token) {
+      if (!token) return;
+      try {
+        await fetch(`${import.meta.env.VITE_API_URL}/auth/logout`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ token }),
         });
+      } catch {
+        // Best-effort; don't block logout if the server is unreachable.
       }
     },
     async logout() {
-      await this.revokeToken();
+      const token = this.access_token;
+
+      // Clear local state first to break any refresh/retry loops.
       localStorage.removeItem("access_token");
       localStorage.removeItem("refresh_token");
       this.$reset();
       router.push("/login");
+
+      // Best-effort server-side revocation using a raw fetch (no interceptor).
+      this.revokeToken(token);
     },
     async refreshAccessToken() {
       if (this.isRefreshing) {
@@ -84,6 +97,9 @@ export const useAuthStore = defineStore({
         );
 
         if (!response.ok) {
+          localStorage.removeItem("access_token");
+          localStorage.removeItem("refresh_token");
+          this.$reset();
           router.push("/login");
           throw new Error("Failed to refresh token");
         }

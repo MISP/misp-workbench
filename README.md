@@ -43,7 +43,7 @@ Then start the stack:
 
 ```bash
 cp .env.dist .env
-# edit .env: set CORS_ORIGINS, OAUTH2_SECRET_KEY, OAUTH2_REFRESH_SECRET_KEY, GARAGE_ADMIN_TOKEN, S3_ACCESS_KEY, S3_SECRET_KEY, etc.
+# edit .env: set CORS_ORIGINS, GARAGE_ADMIN_TOKEN, etc. (OAUTH2 secrets and S3 keys are auto-generated if unset)
 docker compose --env-file=".env" up --build
 ...
 ...
@@ -82,7 +82,7 @@ Go to http://localhost:3000/login and login.
 
 ```bash
 cp .env.dist .env
-# edit .env: set OAUTH2_SECRET_KEY, OAUTH2_REFRESH_SECRET_KEY, GARAGE_ADMIN_TOKEN, S3_ACCESS_KEY, S3_SECRET_KEY, etc.
+# edit .env: set GARAGE_ADMIN_TOKEN, etc. (OAUTH2 secrets and S3 keys are auto-generated if unset)
 docker compose -f docker-compose.yml -f docker-compose.dev.yml --env-file=".env.dev" up --build
 ```
 

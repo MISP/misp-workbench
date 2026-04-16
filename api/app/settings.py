@@ -7,6 +7,7 @@ from pydantic import BaseModel
 from app.services.base_settings import BaseSettings
 
 _S3_CREDS_FILE = os.environ.get("S3_CREDS_FILE", "/var/lib/misp-workbench/secrets/s3.json")
+_OAUTH2_CREDS_FILE = os.environ.get("OAUTH2_CREDS_FILE", "/var/lib/misp-workbench/oauth-creds/oauth2.json")
 
 
 def _s3_access_key() -> str:
@@ -31,6 +32,25 @@ def _s3_secret_key() -> str:
     return ""
 
 
+def _oauth2_secret_key() -> str:
+    if os.environ.get("OAUTH2_SECRET_KEY"):
+        return os.environ["OAUTH2_SECRET_KEY"]
+    if os.path.exists(_OAUTH2_CREDS_FILE):
+        with open(_OAUTH2_CREDS_FILE) as f:
+            return json.load(f).get("secret_key", "")
+    raise RuntimeError("OAUTH2_SECRET_KEY is not set and no credentials file found")
+
+
+def _oauth2_refresh_secret_key() -> str:
+    if os.environ.get("OAUTH2_REFRESH_SECRET_KEY"):
+        return os.environ["OAUTH2_REFRESH_SECRET_KEY"]
+    if os.path.exists(_OAUTH2_CREDS_FILE):
+        with open(_OAUTH2_CREDS_FILE) as f:
+            return json.load(f).get("refresh_secret_key", "")
+    # Fall back to deriving from the main secret key
+    return _oauth2_secret_key() + "_refresh"
+
+
 class MISPSettings(BaseModel):
     host_org_id: Optional[int] = 1
     baseurl: Optional[str] = "https://localhost"
@@ -38,10 +58,8 @@ class MISPSettings(BaseModel):
 
 
 class OAuth2Settings(BaseModel):
-    secret_key: str = os.environ["OAUTH2_SECRET_KEY"]
-    refresh_secret_key: str = os.environ.get("OAUTH2_REFRESH_SECRET_KEY") or (
-        os.environ["OAUTH2_SECRET_KEY"] + "_refresh"
-    )
+    secret_key: str = _oauth2_secret_key()
+    refresh_secret_key: str = _oauth2_refresh_secret_key()
     algorithm: str = os.environ["OAUTH2_ALGORITHM"] or "HS256"
     access_token_expire_minutes: int = (
         int(os.environ["OAUTH2_ACCESS_TOKEN_EXPIRE_MINUTES"]) or 30

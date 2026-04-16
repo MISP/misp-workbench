@@ -119,9 +119,9 @@ async function handleResponse(response, originalRequest) {
         });
 
         return handleResponse(retryResponse); // recursive retry
-      } catch (err) {
-        await authStore.logout();
-        return Promise.reject("Session expired", err);
+      } catch {
+        // refreshAccessToken already cleared state and redirected to /login
+        return Promise.reject("Session expired");
       }
     }
 
