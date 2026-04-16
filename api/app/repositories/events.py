@@ -17,7 +17,6 @@ from app.schemas import event as event_schemas
 from app.schemas import user as user_schemas
 from app.schemas import organisations as org_schemas
 import app.schemas.attribute as attribute_schemas
-import app.schemas.object as object_schemas
 import app.schemas.vulnerability as vulnerability_schemas
 from fastapi import HTTPException, status, Query
 from fastapi_pagination import Page, Params
