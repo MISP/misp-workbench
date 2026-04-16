@@ -20,9 +20,9 @@ cp frontend/.env.dist frontend/.env
 
 Edit `.env.dev` and set at minimum:
 
-- `OAUTH2_SECRET_KEY` — any random 64-character hex string
-- `OAUTH2_REFRESH_SECRET_KEY` — another random 64-character hex string
 - `OPENSEARCH_INITIAL_ADMIN_PASSWORD` — a strong password for OpenSearch
+
+`OAUTH2_SECRET_KEY` and `OAUTH2_REFRESH_SECRET_KEY` are auto-generated on first boot if left unset. Set them explicitly if you need deterministic credentials.
 
 ### 2. Start the stack
 
