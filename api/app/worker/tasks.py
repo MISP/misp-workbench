@@ -84,9 +84,10 @@ def pull_event_by_uuid(event_uuid: str, server_id: int, user_id: int):
             db, event_uuid, server, user, get_settings()
         )
 
-        notifications_repository.create_event_notifications(
-            db, "created", event=db_event
-        )
+        if db_event:
+            notifications_repository.create_event_notifications(
+                db, "created", event=db_event
+            )
 
         logger.info(
             "pull event uuid=%s from server id=%s, job finished", event_uuid, server_id
