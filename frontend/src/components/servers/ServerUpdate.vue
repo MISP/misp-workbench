@@ -20,9 +20,9 @@ const pullRules = computed({
 
 function onSubmit(values, { setErrors }) {
   return serversStore
-    .update(values.server)
+    .update(server.value)
     .then(() => {
-      router.push(`/servers/${values.server.id}`);
+      router.push(`/servers/${server.value.id}`);
     })
     .catch((error) => setErrors({ apiError: error }));
 }

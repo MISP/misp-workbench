@@ -45,6 +45,31 @@ class Event(EventBase):
     organisation: Optional[Organisation] = None
     model_config = ConfigDict(from_attributes=True)
 
+    def to_misp_format(self) -> dict:
+        event_json = {
+            "uuid": str(self.uuid) if self.uuid else None,
+            "info": self.info,
+            "published": self.published,
+            "analysis": self.analysis,
+            "distribution": self.distribution,
+            "sharing_group_id": self.sharing_group_id,
+            "timestamp": self.timestamp,
+            "date": self.date.strftime("%Y-%m-%d") if self.date else None,
+            "threat_level_id": self.threat_level,
+            "publish_timestamp": self.publish_timestamp,
+            "sighting_timestamp": self.sighting_timestamp,
+            "disable_correlation": self.disable_correlation,
+            "extends_uuid": str(self.extends_uuid) if self.extends_uuid else None,
+            "Attribute": [attr.to_misp_format() for attr in self.attributes],
+            "Object": [obj.to_misp_format() for obj in self.objects],
+            "Tag": [tag.model_dump() for tag in self.tags],
+        }
+
+        if self.organisation:
+            event_json["Orgc"] = self.organisation.model_dump()
+
+        return {"Event": event_json}
+
 
 class EventCreate(EventBase):
     pass

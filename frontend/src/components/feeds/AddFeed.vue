@@ -8,7 +8,7 @@ import FeedBaseForm from "@/components/feeds/FeedBaseForm.vue";
 import AddFeedMISP from "@/components/feeds/misp/AddFeedMISP.vue";
 import AddFeedCsv from "@/components/feeds/csv/AddFeedCsv.vue";
 import TestCSVFeedModal from "@/components/feeds/csv/TestCSVFeedModal.vue";
-import TestMISPFeedConnectionModal from "@/components/feeds/misp/TestMISPFeedConnectionModal.vue";
+import PreviewFeedModal from "@/components/feeds/misp/PreviewFeedModal.vue";
 import AddFeedJson from "@/components/feeds/json/AddFeedJson.vue";
 import AddFeedFreetext from "@/components/feeds/freetext/AddFeedFreetext.vue";
 import DefaultFeedPicker from "@/components/feeds/DefaultFeedPicker.vue";
@@ -51,12 +51,9 @@ const typeComponent = computed(() => {
 });
 
 // test modal state
-const testMISPFeedResultOpen = ref(false);
-const testMISPFeedResult = reactive({
-  success: false,
-  message: "",
-  total_events: 0,
-});
+const previewMISPOpen = ref(false);
+const previewMISPResult = ref(null);
+const previewMISPError = ref(null);
 const testCSVFeedResultOpen = ref(false);
 const testCSVFeedResult = reactive({});
 
@@ -186,25 +183,19 @@ function testMISPFeed() {
     rules: config.value.rules,
   };
 
+  previewMISPResult.value = null;
+  previewMISPError.value = null;
+
   return feedsStore
     .testMISPFeedConnection(mispFeed)
     .then((response) => {
-      if (response.result === "success") {
-        testMISPFeedResult.success = true;
-        testMISPFeedResult.message = `Connection successful!`;
-        testMISPFeedResult.total_events = response.total_events;
-        testMISPFeedResult.total_filtered_events =
-          response.total_filtered_events;
-      } else {
-        testMISPFeedResult.success = false;
-        testMISPFeedResult.message = `Connection failed: ${response.message}`;
-      }
-      testMISPFeedResultOpen.value = true;
+      previewMISPResult.value = response;
+      previewMISPOpen.value = true;
     })
     .catch((error) => {
-      testMISPFeedResult.success = false;
-      testMISPFeedResult.message = error?.message || String(error);
-      testMISPFeedResultOpen.value = true;
+      previewMISPError.value =
+        typeof error === "string" ? error : "Failed to connect to feed.";
+      previewMISPOpen.value = true;
     });
 }
 
@@ -227,8 +218,8 @@ function testCSVFeed() {
     });
 }
 
-function closeMISPFeedTestResult() {
-  testMISPFeedResultOpen.value = false;
+function closePreviewMISP() {
+  previewMISPOpen.value = false;
 }
 function closeCSVFeedTestResult() {
   testCSVFeedResultOpen.value = false;
@@ -328,10 +319,11 @@ function closeCSVFeedTestResult() {
       </div>
     </div>
   </div>
-  <TestMISPFeedConnectionModal
-    v-if="testMISPFeedResultOpen"
-    :testResult="testMISPFeedResult"
-    @closeModal="closeMISPFeedTestResult"
+  <PreviewFeedModal
+    v-if="previewMISPOpen"
+    :result="previewMISPResult"
+    :error="previewMISPError"
+    @close="closePreviewMISP"
   />
   <TestCSVFeedModal
     v-if="testCSVFeedResultOpen"

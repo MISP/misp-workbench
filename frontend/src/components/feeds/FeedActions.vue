@@ -5,6 +5,7 @@ import { Modal } from "bootstrap";
 import { storeToRefs } from "pinia";
 import { useFeedsStore, useToastsStore, useAuthStore } from "@/stores";
 import DeleteFeedModal from "@/components/feeds/DeleteFeedModal.vue";
+import PreviewFeedModal from "@/components/feeds/misp/PreviewFeedModal.vue";
 
 const authStore = useAuthStore();
 const { scopes } = storeToRefs(authStore);
@@ -14,6 +15,11 @@ const props = defineProps({
   default_actions: { type: Object, default: () => ({}) },
 });
 const emit = defineEmits(["feed-deleted"]);
+
+const previewOpen = ref(false);
+const previewResult = ref(null);
+const previewError = ref(null);
+const previewing = ref(false);
 
 const actions = computed(() => ({
   read:
@@ -62,6 +68,26 @@ function fetchFeed(feed) {
       toastsStore.push("Error fetching feed: " + error, "error");
     });
 }
+
+function previewFeed(feed) {
+  previewResult.value = null;
+  previewError.value = null;
+  previewing.value = true;
+  feedsStore
+    .testMISPFeedConnection(feed)
+    .then((response) => {
+      previewResult.value = response;
+      previewOpen.value = true;
+    })
+    .catch((error) => {
+      previewError.value =
+        typeof error === "string" ? error : "Failed to connect to feed.";
+      previewOpen.value = true;
+    })
+    .finally(() => {
+      previewing.value = false;
+    });
+}
 </script>
 
 <style scoped>
@@ -88,14 +114,22 @@ function fetchFeed(feed) {
         >
           <font-awesome-icon icon="fa-solid fa-download" />
         </button>
-        <RouterLink
+        <button
           v-if="feed.source_format === 'misp'"
-          :to="`/feeds/explore/${feed.id}`"
+          type="button"
           class="btn btn-outline-primary btn-sm"
           title="Preview feed events"
+          :disabled="previewing"
+          @click="previewFeed(feed)"
         >
-          <font-awesome-icon icon="fa-solid fa-magnifying-glass" />
-        </RouterLink>
+          <span
+            v-if="previewing"
+            class="spinner-border spinner-border-sm"
+            role="status"
+            aria-hidden="true"
+          ></span>
+          <font-awesome-icon v-else icon="fa-solid fa-magnifying-glass" />
+        </button>
         <button
           v-else
           type="button"
@@ -145,6 +179,12 @@ function fetchFeed(feed) {
       @feed-deleted="handleFeedDeleted"
       :modal="deleteFeedModal"
       :feed_id="feed.id"
+    />
+    <PreviewFeedModal
+      v-if="previewOpen"
+      :result="previewResult"
+      :error="previewError"
+      @close="previewOpen = false"
     />
   </div>
 </template>
