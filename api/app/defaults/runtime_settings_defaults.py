@@ -19,4 +19,10 @@ DEFAULT_SETTINGS = {
         # Set to 0 to disable the limit.
         "email_max_per_hour": 10,
     },
+    "retention": {
+        "enabled": False,
+        "period_days": 365,
+        "warning_days": 30,
+        "exempt_tags": ["retention:exempt"],
+    },
 }

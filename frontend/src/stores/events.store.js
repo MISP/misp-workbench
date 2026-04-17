@@ -140,6 +140,14 @@ export const useEventsStore = defineStore({
         .catch((error) => (this.error = error))
         .finally(() => (this.status = { updating: false }));
     },
+    async retentionPreview(periodDays) {
+      return await fetchWrapper.get(
+        `${baseUrl}/retention/preview?period_days=${periodDays}`,
+      );
+    },
+    async retentionStatus() {
+      return await fetchWrapper.get(`${baseUrl}/retention/status`);
+    },
     async import(uuid, data) {
       this.status = { importing: true };
       return await fetchWrapper

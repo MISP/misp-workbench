@@ -15,6 +15,7 @@ import EventActions from "@/components/events/EventActions.vue";
 import UploadAttachmentsWidget from "@/components/attachments/UploadAttachmentsWidget.vue";
 import CorrelatedEvents from "@/components/correlations/CorrelatedEvents.vue";
 import RelatedVulnerabilities from "@/components/vulnerabilities/RelatedVulnerabilities.vue";
+import RetentionBadge from "@/components/events/RetentionBadge.vue";
 import { router } from "@/router";
 import { Modal } from "bootstrap";
 import {
@@ -41,6 +42,11 @@ const { event, status } = storeToRefs(eventsStore);
 const reportsStore = useReportsStore();
 const correlationsStore = useCorrelationsStore();
 const { correlated_events } = storeToRefs(correlationsStore);
+
+const retentionConfig = ref(null);
+eventsStore.retentionStatus().then((config) => {
+  retentionConfig.value = config;
+});
 
 eventsStore.getById(props.event_uuid);
 correlationsStore.getTopCorrelatingEvents(props.event_uuid);
@@ -161,6 +167,13 @@ div.row h3 {
       <div>
         <div class="alert alert-info h5 mt-2" role="alert">
           {{ event.info }}
+          <RetentionBadge
+            v-if="retentionConfig && event.timestamp"
+            :event-timestamp="event.timestamp"
+            :retention-config="retentionConfig"
+            :tags="event.tags || []"
+            class="ms-2"
+          />
         </div>
       </div>
       <div class="col-sm-4">
@@ -175,20 +188,6 @@ div.row h3 {
                       <UUID :uuid="event.uuid" />
                     </td>
                   </tr>
-                  <!-- TODO handle protected events -->
-                  <!-- <tr>
-                    <th>protected</th>
-                    <td>
-                      <div class="form-check form-switch">
-                        <input
-                          class="form-check-input"
-                          type="checkbox"
-                          :checked="event.protected"
-                          disabled
-                        />
-                      </div>
-                    </td>
-                  </tr> -->
                   <tr>
                     <th>distribution</th>
                     <td>

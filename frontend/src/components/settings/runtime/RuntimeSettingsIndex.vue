@@ -1,8 +1,14 @@
 <script setup>
 import { ref, reactive, onMounted } from "vue";
 import { storeToRefs } from "pinia";
+import { Modal } from "bootstrap";
 import Spinner from "@/components/misc/Spinner.vue";
-import { useRuntimeSettingsStore, useToastsStore } from "@/stores";
+import RetentionConfirmModal from "./RetentionConfirmModal.vue";
+import {
+  useRuntimeSettingsStore,
+  useToastsStore,
+  useEventsStore,
+} from "@/stores";
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
 import {
   faSync,
@@ -14,12 +20,16 @@ import AttributeTypeSelect from "@/components/enums/AttributeTypeSelect.vue";
 
 const toastsStore = useToastsStore();
 const runtimeSettingsStore = useRuntimeSettingsStore();
+const eventsStore = useEventsStore();
 const { runtimeSettings, status } = storeToRefs(runtimeSettingsStore);
 
 const errors = ref({});
 const editableSettings = reactive({});
 const jsonMode = reactive({});
 const formValues = reactive({});
+
+const retentionConfirmModalRef = ref(null);
+let retentionConfirmModal = null;
 
 onMounted(() => {
   runtimeSettingsStore.getAll().then(() => {
@@ -29,6 +39,7 @@ onMounted(() => {
       jsonMode[namespace] = false;
     });
   });
+  retentionConfirmModal = new Modal(retentionConfirmModalRef.value.$el);
 });
 
 function validateJson(namespace, jsonString) {
@@ -101,7 +112,39 @@ function removeCidrType(type) {
 }
 
 const MATCH_TYPE_OPTIONS = ["term", "cidr"];
-const KNOWN_NAMESPACES = ["correlations", "notifications"];
+const KNOWN_NAMESPACES = ["correlations", "notifications", "retention"];
+
+// Retention: exempt tag helpers
+const newExemptTag = ref("");
+function addExemptTag() {
+  const tag = newExemptTag.value.trim();
+  if (!tag) return;
+  const tags = formValues.retention?.exempt_tags || [];
+  if (!tags.includes(tag)) {
+    formValues.retention.exempt_tags = [...tags, tag];
+  }
+  newExemptTag.value = "";
+}
+function removeExemptTag(tag) {
+  formValues.retention.exempt_tags = (
+    formValues.retention.exempt_tags || []
+  ).filter((t) => t !== tag);
+}
+
+const retentionPreviewCount = ref(0);
+
+async function saveRetention() {
+  const count = await eventsStore.retentionPreview(
+    formValues.retention.period_days,
+  );
+  retentionPreviewCount.value = count.count;
+  retentionConfirmModal.show();
+}
+
+function confirmRetention() {
+  saveFormNamespace("retention");
+  retentionConfirmModal.hide();
+}
 </script>
 
 <template>
@@ -380,6 +423,126 @@ const KNOWN_NAMESPACES = ["correlations", "notifications"];
                     </div>
                   </template>
 
+                  <!-- ── retention form ── -->
+                  <template
+                    v-else-if="
+                      namespace === 'retention' &&
+                      !jsonMode[namespace] &&
+                      formValues.retention
+                    "
+                  >
+                    <div class="row g-3">
+                      <div class="col-md-4">
+                        <div class="form-check form-switch">
+                          <input
+                            class="form-check-input"
+                            type="checkbox"
+                            id="retentionEnabled"
+                            v-model="formValues.retention.enabled"
+                          />
+                          <label
+                            class="form-check-label fw-semibold"
+                            for="retentionEnabled"
+                          >
+                            Enabled
+                          </label>
+                        </div>
+                        <div class="form-text">
+                          When enabled, events older than the retention period
+                          will be eligible for soft-deletion.
+                        </div>
+                      </div>
+
+                      <div class="col-md-4">
+                        <label
+                          class="form-label fw-semibold"
+                          for="retentionPeriodDays"
+                        >
+                          Retention Period (days)
+                        </label>
+                        <input
+                          id="retentionPeriodDays"
+                          type="number"
+                          class="form-control"
+                          min="1"
+                          v-model.number="formValues.retention.period_days"
+                        />
+                      </div>
+
+                      <div class="col-md-4">
+                        <label
+                          class="form-label fw-semibold"
+                          for="retentionWarningDays"
+                        >
+                          Warning Days
+                        </label>
+                        <input
+                          id="retentionWarningDays"
+                          type="number"
+                          class="form-control"
+                          min="0"
+                          v-model.number="formValues.retention.warning_days"
+                        />
+                        <div class="form-text">
+                          Show a warning badge on events within this many days
+                          of expiry.
+                        </div>
+                      </div>
+
+                      <div class="col-12">
+                        <label class="form-label fw-semibold"
+                          >Exempt Tags</label
+                        >
+                        <div class="form-text mb-2">
+                          Events with any of these tags are excluded from
+                          retention.
+                        </div>
+                        <ul class="list-group mb-2">
+                          <li
+                            v-for="tag in formValues.retention.exempt_tags"
+                            :key="tag"
+                            class="list-group-item d-flex justify-content-between align-items-center"
+                          >
+                            <code class="small">{{ tag }}</code>
+                            <button
+                              type="button"
+                              class="btn btn-outline-danger btn-sm"
+                              title="Remove"
+                              @click="removeExemptTag(tag)"
+                            >
+                              <FontAwesomeIcon :icon="faTrash" />
+                            </button>
+                          </li>
+                        </ul>
+                        <div class="input-group">
+                          <input
+                            type="text"
+                            class="form-control"
+                            placeholder="Tag name (e.g. retention:exempt)"
+                            v-model="newExemptTag"
+                            @keyup.enter="addExemptTag"
+                          />
+                          <button
+                            class="btn btn-outline-secondary"
+                            type="button"
+                            @click="addExemptTag"
+                          >
+                            Add
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="d-flex justify-content-end mt-3">
+                      <button
+                        class="btn btn-primary btn-sm"
+                        @click="saveRetention"
+                      >
+                        Save
+                      </button>
+                    </div>
+                  </template>
+
                   <!-- ── raw JSON (JSON mode or unknown namespaces) ── -->
                   <template v-else>
                     <textarea
@@ -418,6 +581,13 @@ const KNOWN_NAMESPACES = ["correlations", "notifications"];
       </div>
     </div>
   </div>
+
+  <RetentionConfirmModal
+    ref="retentionConfirmModalRef"
+    :period-days="formValues.retention?.period_days"
+    :affected-count="retentionPreviewCount"
+    @confirmed="confirmRetention"
+  />
 
   <Spinner v-if="status.loading" />
 </template>

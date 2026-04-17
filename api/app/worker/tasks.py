@@ -551,6 +551,70 @@ def generate_correlations():
 
 
 @celery_app.task
+def enforce_retention():
+    logger.info("enforce_retention job started")
+    with Session(engine) as db:
+        runtime_settings = get_runtime_settings(db)
+
+    retention = runtime_settings.get("retention") or {}
+    if not retention.get("enabled"):
+        logger.info("enforce_retention skipped: retention disabled")
+        return True
+
+    period_days = retention.get("period_days", 365)
+    exempt_tags = retention.get("exempt_tags", ["retention:exempt"])
+    cutoff = int(datetime.now().timestamp()) - period_days * 86400
+    client = get_opensearch_client()
+
+    must_not = (
+        [{"match_phrase": {"tags.name": tag}} for tag in exempt_tags]
+        if exempt_tags
+        else []
+    )
+
+    search_after = None
+    total_deleted = 0
+    while True:
+        body = {
+            "query": {
+                "bool": {
+                    "must": [
+                        {"range": {"timestamp": {"lt": cutoff}}},
+                        {"term": {"deleted": False}},
+                    ],
+                    "must_not": must_not,
+                }
+            },
+            "_source": ["uuid"],
+            "size": 500,
+            "sort": [{"uuid.keyword": "asc"}],
+        }
+        if search_after:
+            body["search_after"] = search_after
+        response = client.search(index="misp-events", body=body)
+        hits = response["hits"]["hits"]
+        if not hits:
+            break
+
+        for hit in hits:
+            event_uuid = hit["_source"]["uuid"]
+            client.update(
+                index="misp-events",
+                id=event_uuid,
+                body={"doc": {"deleted": True}},
+                refresh=False,
+            )
+            total_deleted += 1
+
+        if len(hits) < 500:
+            break
+        search_after = hits[-1]["sort"]
+
+    logger.info("enforce_retention finished: %s events soft-deleted", total_deleted)
+    return True
+
+
+@celery_app.task
 def handle_created_sighting(
     value: str, organisation: str, sighting_type: str, timestamp: float = None
 ):

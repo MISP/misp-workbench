@@ -26,6 +26,11 @@ const props = defineProps({
   },
 });
 
+const retentionConfig = ref(null);
+eventsStore.retentionStatus().then((config) => {
+  retentionConfig.value = config;
+});
+
 const searchQuery = ref("");
 const activeTimeRange = ref(null);
 const huntModalOpen = ref(false);
@@ -416,6 +421,7 @@ body {
                 v-for="result in event_docs.results"
                 :key="result._source.uuid"
                 :event="result"
+                :retention-config="retentionConfig"
                 class="mb-2"
               />
             </ExploreResultsSection>

@@ -291,6 +291,29 @@ def get_event_uuids_from_opensearch() -> list[str]:
     return uuids
 
 
+def count_events_for_retention(period_days: int, exempt_tags: list[str]) -> dict:
+    client = get_opensearch_client()
+    cutoff = int(time.time()) - period_days * 86400
+    must_not = (
+        [{"match_phrase": {"tags.name": tag}} for tag in exempt_tags]
+        if exempt_tags
+        else []
+    )
+    body = {
+        "query": {
+            "bool": {
+                "must": [
+                    {"range": {"timestamp": {"lt": cutoff}}},
+                    {"term": {"deleted": False}},
+                ],
+                "must_not": must_not,
+            }
+        }
+    }
+    response = client.count(index="misp-events", body=body)
+    return {"count": response["count"], "period_days": period_days}
+
+
 def get_events_by_uuids_from_opensearch(uuids) -> list[event_schemas.Event]:
     """Return events matching the given UUIDs from OpenSearch."""
     client = get_opensearch_client()
