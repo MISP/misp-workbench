@@ -5,10 +5,12 @@ import { Modal } from "bootstrap";
 import Spinner from "@/components/misc/Spinner.vue";
 import RetentionConfirmModal from "./RetentionConfirmModal.vue";
 import TagsSelect from "@/components/tags/TagsSelect.vue";
+import ScheduleEditor from "@/components/tasks/ScheduleEditor.vue";
 import {
   useRuntimeSettingsStore,
   useToastsStore,
   useEventsStore,
+  useTasksStore,
 } from "@/stores";
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
 import {
@@ -22,6 +24,7 @@ import AttributeTypeSelect from "@/components/enums/AttributeTypeSelect.vue";
 const toastsStore = useToastsStore();
 const runtimeSettingsStore = useRuntimeSettingsStore();
 const eventsStore = useEventsStore();
+const tasksStore = useTasksStore();
 const { runtimeSettings, status } = storeToRefs(runtimeSettingsStore);
 
 const errors = ref({});
@@ -41,6 +44,7 @@ onMounted(() => {
     });
   });
   retentionConfirmModal = new Modal(retentionConfirmModalRef.value.$el);
+  loadRetentionSchedule();
 });
 
 function validateJson(namespace, jsonString) {
@@ -141,6 +145,46 @@ async function saveRetention() {
 function confirmRetention() {
   saveFormNamespace("retention");
   retentionConfirmModal.hide();
+}
+
+// Retention: scheduled job
+const RETENTION_TASK_NAME = "app.worker.tasks.enforce_retention";
+const retentionSchedule = ref(null);
+const retentionScheduleEditor = null;
+const retentionScheduleValid = ref(false);
+const retentionScheduleSaving = ref(false);
+
+async function loadRetentionSchedule() {
+  await tasksStore.get_scheduled_tasks();
+  retentionSchedule.value =
+    tasksStore.scheduledTasks.find(
+      (t) => t.task_name === RETENTION_TASK_NAME,
+    ) || null;
+}
+
+async function createRetentionSchedule() {
+  retentionScheduleSaving.value = true;
+  const result = await tasksStore.create_scheduled_task({
+    task_name: RETENTION_TASK_NAME,
+    params: {},
+    schedule: retentionScheduleEditor.buildSchedule(),
+    enabled: true,
+  });
+  if (result) {
+    toastsStore.push("Retention job scheduled.", "success");
+    await loadRetentionSchedule();
+  }
+  retentionScheduleSaving.value = false;
+}
+
+async function deleteRetentionSchedule() {
+  if (!retentionSchedule.value) return;
+  retentionScheduleSaving.value = true;
+  await tasksStore.delete_scheduled_task(retentionSchedule.value.id);
+  retentionSchedule.value = null;
+  retentionScheduleEditor?.reset();
+  toastsStore.push("Retention schedule removed.", "success");
+  retentionScheduleSaving.value = false;
 }
 </script>
 
@@ -511,6 +555,67 @@ function confirmRetention() {
                         Save
                       </button>
                     </div>
+
+                    <hr />
+
+                    <h6 class="fw-semibold">Scheduled Job</h6>
+
+                    <div
+                      v-if="retentionSchedule"
+                      class="alert alert-info small mb-0"
+                    >
+                      Active schedule:
+                      <strong>{{ retentionSchedule.schedule }}</strong>
+                      <span v-if="retentionSchedule.last_run_at">
+                        &mdash; last run:
+                        {{ retentionSchedule.last_run_at }}
+                      </span>
+                      <div class="mt-2">
+                        <button
+                          class="btn btn-outline-danger btn-sm"
+                          :disabled="retentionScheduleSaving"
+                          @click="deleteRetentionSchedule"
+                        >
+                          Remove Schedule
+                        </button>
+                      </div>
+                    </div>
+
+                    <template v-else>
+                      <div class="form-text mb-3">
+                        Schedule the retention enforcement task to run
+                        automatically.
+                      </div>
+
+                      <ScheduleEditor
+                        :ref="
+                          (el) => {
+                            retentionScheduleEditor = el;
+                          }
+                        "
+                        :initial-schedule="{
+                          type: 'crontab',
+                          minute: '0',
+                          hour: '2',
+                          dayOfMonth: '*',
+                          month: '*',
+                          dayOfWeek: '*',
+                        }"
+                        @valid-change="retentionScheduleValid = $event"
+                      />
+
+                      <div class="d-flex justify-content-end mt-3">
+                        <button
+                          class="btn btn-primary btn-sm"
+                          :disabled="
+                            !retentionScheduleValid || retentionScheduleSaving
+                          "
+                          @click="createRetentionSchedule"
+                        >
+                          Create Schedule
+                        </button>
+                      </div>
+                    </template>
                   </template>
 
                   <!-- ── raw JSON (JSON mode or unknown namespaces) ── -->
