@@ -1,9 +1,10 @@
 <script setup>
-import { ref, reactive, onMounted } from "vue";
+import { ref, reactive, computed, onMounted } from "vue";
 import { storeToRefs } from "pinia";
 import { Modal } from "bootstrap";
 import Spinner from "@/components/misc/Spinner.vue";
 import RetentionConfirmModal from "./RetentionConfirmModal.vue";
+import TagsSelect from "@/components/tags/TagsSelect.vue";
 import {
   useRuntimeSettingsStore,
   useToastsStore,
@@ -114,21 +115,17 @@ function removeCidrType(type) {
 const MATCH_TYPE_OPTIONS = ["term", "cidr"];
 const KNOWN_NAMESPACES = ["correlations", "notifications", "retention"];
 
-// Retention: exempt tag helpers
-const newExemptTag = ref("");
-function addExemptTag() {
-  const tag = newExemptTag.value.trim();
-  if (!tag) return;
-  const tags = formValues.retention?.exempt_tags || [];
-  if (!tags.includes(tag)) {
-    formValues.retention.exempt_tags = [...tags, tag];
-  }
-  newExemptTag.value = "";
-}
-function removeExemptTag(tag) {
-  formValues.retention.exempt_tags = (
-    formValues.retention.exempt_tags || []
-  ).filter((t) => t !== tag);
+// Retention: bridge string[] ↔ tag objects for TagsSelect
+const exemptTagObjects = computed(() =>
+  (formValues.retention?.exempt_tags || []).map((name) => ({
+    id: null,
+    name,
+    colour: "#6c757d",
+  })),
+);
+
+function onExemptTagsChanged(tagNames) {
+  formValues.retention.exempt_tags = tagNames;
 }
 
 const retentionPreviewCount = ref(0);
@@ -497,39 +494,12 @@ function confirmRetention() {
                           Events with any of these tags are excluded from
                           retention.
                         </div>
-                        <ul class="list-group mb-2">
-                          <li
-                            v-for="tag in formValues.retention.exempt_tags"
-                            :key="tag"
-                            class="list-group-item d-flex justify-content-between align-items-center"
-                          >
-                            <code class="small">{{ tag }}</code>
-                            <button
-                              type="button"
-                              class="btn btn-outline-danger btn-sm"
-                              title="Remove"
-                              @click="removeExemptTag(tag)"
-                            >
-                              <FontAwesomeIcon :icon="faTrash" />
-                            </button>
-                          </li>
-                        </ul>
-                        <div class="input-group">
-                          <input
-                            type="text"
-                            class="form-control"
-                            placeholder="Tag name (e.g. retention:exempt)"
-                            v-model="newExemptTag"
-                            @keyup.enter="addExemptTag"
-                          />
-                          <button
-                            class="btn btn-outline-secondary"
-                            type="button"
-                            @click="addExemptTag"
-                          >
-                            Add
-                          </button>
-                        </div>
+                        <TagsSelect
+                          modelClass="event"
+                          :persist="false"
+                          :selectedTags="exemptTagObjects"
+                          @update:selectedTags="onExemptTagsChanged"
+                        />
                       </div>
                     </div>
 

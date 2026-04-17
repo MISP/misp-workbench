@@ -62,7 +62,6 @@ function applyFilters(baseQuery, filters) {
   return parts.join(" AND ");
 }
 
-const eventsStore = useEventsStore();
 const attributesStore = useAttributesStore();
 const userSettingsStore = useUserSettingsStore();
 const { userSettings } = storeToRefs(userSettingsStore);
