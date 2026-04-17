@@ -697,6 +697,77 @@ class TestEventsResource(ApiTester):
 
     # ---- GET /events/histogram ----
 
+    # ---- GET /events/retention/preview ----
+
+    @pytest.mark.parametrize("scopes", [["settings:read"]])
+    def test_retention_preview(
+        self,
+        client: TestClient,
+        auth_token: auth.Token,
+    ):
+        mock_os = MagicMock()
+        mock_os.count.return_value = {"count": 42}
+        with patch(OPENSEARCH_PATCH, return_value=mock_os):
+            response = client.get(
+                "/events/retention/preview",
+                params={"period_days": 1},
+                headers={"Authorization": "Bearer " + auth_token},
+            )
+        data = response.json()
+
+        assert response.status_code == status.HTTP_200_OK
+        assert data["count"] == 42
+        assert data["period_days"] == 1
+
+    @pytest.mark.parametrize("scopes", [[]])
+    def test_retention_preview_unauthorized(
+        self,
+        client: TestClient,
+        auth_token: auth.Token,
+    ):
+        response = client.get(
+            "/events/retention/preview",
+            params={"period_days": 1},
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+    # ---- GET /events/retention/status ----
+
+    @pytest.mark.parametrize("scopes", [["events:read"]])
+    def test_retention_status(
+        self,
+        client: TestClient,
+        auth_token: auth.Token,
+    ):
+        response = client.get(
+            "/events/retention/status",
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+        data = response.json()
+
+        assert response.status_code == status.HTTP_200_OK
+        assert data["enabled"] is False
+        assert data["period_days"] == 365
+        assert data["warning_days"] == 30
+        assert data["exempt_tags"] == ["retention:exempt"]
+
+    @pytest.mark.parametrize("scopes", [[]])
+    def test_retention_status_unauthorized(
+        self,
+        client: TestClient,
+        auth_token: auth.Token,
+    ):
+        response = client.get(
+            "/events/retention/status",
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+    # ---- GET /events/histogram ----
+
     @pytest.mark.parametrize("scopes", [["events:read"]])
     def test_get_events_histogram(self, client: TestClient, auth_token: auth.Token):
         mock_os = make_opensearch_mock(MOCK_HISTOGRAM_RESPONSE)

@@ -1432,6 +1432,80 @@
         }
       }
     },
+    "/events/retention/preview": {
+      "get": {
+        "tags": [
+          "Events"
+        ],
+        "summary": "Retention Preview",
+        "operationId": "retention_preview_events_retention_preview_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "settings:read"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "period_days",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "title": "Period Days"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/events/retention/status": {
+      "get": {
+        "tags": [
+          "Events"
+        ],
+        "summary": "Retention Status",
+        "operationId": "retention_status_events_retention_status_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "events:read"
+            ]
+          }
+        ]
+      }
+    },
     "/events/{event_uuid}": {
       "get": {
         "tags": [

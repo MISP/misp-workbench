@@ -3,8 +3,9 @@ import UUID from "@/components/misc/UUID.vue";
 import Timestamp from "@/components/misc/Timestamp.vue";
 import TagsIndex from "@/components/tags/TagsIndex.vue";
 import EventActions from "../events/EventActions.vue";
+import RetentionBadge from "../events/RetentionBadge.vue";
 
-defineProps(["event"]);
+defineProps(["event", "retentionConfig"]);
 
 const threatLevelMap = {
   1: { label: "high", cls: "bg-danger" },
@@ -33,6 +34,12 @@ const analysisMap = {
           title="Not published"
           >unpublished</span
         >
+        <RetentionBadge
+          v-if="retentionConfig"
+          :event-timestamp="event._source.timestamp"
+          :retention-config="retentionConfig"
+          :tags="event._source.tags || []"
+        />
       </div>
 
       <div class="position-absolute bottom-0 end-0 me-2 mb-1">

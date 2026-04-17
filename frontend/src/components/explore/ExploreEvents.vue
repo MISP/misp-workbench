@@ -26,6 +26,12 @@ const props = defineProps({
   },
 });
 
+const eventsStore = useEventsStore();
+const retentionConfig = ref(null);
+eventsStore.retentionStatus().then((config) => {
+  retentionConfig.value = config;
+});
+
 const searchQuery = ref("");
 const activeTimeRange = ref(null);
 const huntModalOpen = ref(false);
@@ -56,7 +62,6 @@ function applyFilters(baseQuery, filters) {
   return parts.join(" AND ");
 }
 
-const eventsStore = useEventsStore();
 const attributesStore = useAttributesStore();
 const userSettingsStore = useUserSettingsStore();
 const { userSettings } = storeToRefs(userSettingsStore);
@@ -416,6 +421,7 @@ body {
                 v-for="result in event_docs.results"
                 :key="result._source.uuid"
                 :event="result"
+                :retention-config="retentionConfig"
                 class="mb-2"
               />
             </ExploreResultsSection>

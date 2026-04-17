@@ -551,6 +551,96 @@ def generate_correlations():
 
 
 @celery_app.task
+def enforce_retention():
+    logger.info("enforce_retention job started")
+    with Session(engine) as db:
+        runtime_settings = get_runtime_settings(db)
+
+    retention = runtime_settings.get("retention") or {}
+    if not retention.get("enabled"):
+        logger.info("enforce_retention skipped: retention disabled")
+        return True
+
+    period_days = retention.get("period_days", 365)
+    exempt_tags = retention.get("exempt_tags", ["retention:exempt"])
+    cutoff = int(datetime.now().timestamp()) - period_days * 86400
+    client = get_opensearch_client()
+
+    must_not = (
+        [{"match_phrase": {"tags.name": tag}} for tag in exempt_tags]
+        if exempt_tags
+        else []
+    )
+
+    # Collect all event UUIDs eligible for retention
+    event_uuids = []
+    search_after = None
+    while True:
+        body = {
+            "query": {
+                "bool": {
+                    "must": [
+                        {"range": {"timestamp": {"lt": cutoff}}},
+                        {"term": {"deleted": False}},
+                    ],
+                    "must_not": must_not,
+                }
+            },
+            "_source": ["uuid"],
+            "size": 500,
+            "sort": [{"uuid.keyword": "asc"}],
+        }
+        if search_after:
+            body["search_after"] = search_after
+        response = client.search(index="misp-events", body=body)
+        hits = response["hits"]["hits"]
+        if not hits:
+            break
+        event_uuids.extend(hit["_source"]["uuid"] for hit in hits)
+        if len(hits) < 500:
+            break
+        search_after = hits[-1]["sort"]
+
+    if not event_uuids:
+        logger.info("enforce_retention finished: no events to purge")
+        return True
+
+    logger.info("enforce_retention: purging %s events", len(event_uuids))
+
+    for event_uuid in event_uuids:
+        logger.info("enforce_retention: purging event uuid=%s", event_uuid)
+
+        # Collect attribute UUIDs for sighting cleanup
+        attr_resp = client.search(
+            index="misp-attributes",
+            body={
+                "query": {"term": {"event_uuid": event_uuid}},
+                "_source": ["uuid"],
+                "size": 10000,
+            },
+        )
+        attr_uuids = [h["_source"]["uuid"] for h in attr_resp["hits"]["hits"]]
+
+        # Delete sightings for these attributes
+        if attr_uuids:
+            client.delete_by_query(
+                index="misp-sightings",
+                body={"query": {"terms": {"attribute_uuid.keyword": attr_uuids}}},
+                refresh=False,
+                ignore=[404],
+            )
+
+        # Delete correlations
+        correlations_repository.delete_event_correlations(event_uuid)
+
+        # Delete event, attributes, and objects
+        delete_indexed_event(event_uuid)
+
+    logger.info("enforce_retention finished: %s events purged", len(event_uuids))
+    return True
+
+
+@celery_app.task
 def handle_created_sighting(
     value: str, organisation: str, sighting_type: str, timestamp: float = None
 ):

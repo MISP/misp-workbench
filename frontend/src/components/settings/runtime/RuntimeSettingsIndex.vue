@@ -1,8 +1,17 @@
 <script setup>
-import { ref, reactive, onMounted } from "vue";
+import { ref, reactive, computed, onMounted } from "vue";
 import { storeToRefs } from "pinia";
+import { Modal } from "bootstrap";
 import Spinner from "@/components/misc/Spinner.vue";
-import { useRuntimeSettingsStore, useToastsStore } from "@/stores";
+import RetentionConfirmModal from "./RetentionConfirmModal.vue";
+import TagsSelect from "@/components/tags/TagsSelect.vue";
+import ScheduleEditor from "@/components/tasks/ScheduleEditor.vue";
+import {
+  useRuntimeSettingsStore,
+  useToastsStore,
+  useEventsStore,
+  useTasksStore,
+} from "@/stores";
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
 import {
   faSync,
@@ -14,12 +23,17 @@ import AttributeTypeSelect from "@/components/enums/AttributeTypeSelect.vue";
 
 const toastsStore = useToastsStore();
 const runtimeSettingsStore = useRuntimeSettingsStore();
+const eventsStore = useEventsStore();
+const tasksStore = useTasksStore();
 const { runtimeSettings, status } = storeToRefs(runtimeSettingsStore);
 
 const errors = ref({});
 const editableSettings = reactive({});
 const jsonMode = reactive({});
 const formValues = reactive({});
+
+const retentionConfirmModalRef = ref(null);
+let retentionConfirmModal = null;
 
 onMounted(() => {
   runtimeSettingsStore.getAll().then(() => {
@@ -29,6 +43,8 @@ onMounted(() => {
       jsonMode[namespace] = false;
     });
   });
+  retentionConfirmModal = new Modal(retentionConfirmModalRef.value.$el);
+  loadRetentionSchedule();
 });
 
 function validateJson(namespace, jsonString) {
@@ -101,7 +117,80 @@ function removeCidrType(type) {
 }
 
 const MATCH_TYPE_OPTIONS = ["term", "cidr"];
-const KNOWN_NAMESPACES = ["correlations", "notifications"];
+const KNOWN_NAMESPACES = ["correlations", "notifications", "retention"];
+
+// Retention: bridge string[] ↔ tag objects for TagsSelect
+const exemptTagObjects = computed(() =>
+  (formValues.retention?.exempt_tags || []).map((name) => ({
+    id: null,
+    name,
+    colour: "#6c757d",
+  })),
+);
+
+function onExemptTagsChanged(tagNames) {
+  formValues.retention.exempt_tags = tagNames;
+}
+
+const retentionPreviewCount = ref(0);
+
+async function saveRetention() {
+  const count = await eventsStore.retentionPreview(
+    formValues.retention.period_days,
+  );
+  retentionPreviewCount.value = count.count;
+  retentionConfirmModal.show();
+}
+
+function confirmRetention() {
+  saveFormNamespace("retention");
+  retentionConfirmModal.hide();
+}
+
+// Retention: scheduled job
+const RETENTION_TASK_NAME = "app.worker.tasks.enforce_retention";
+const retentionSchedule = ref(null);
+const retentionScheduleEditor = ref(null);
+const retentionScheduleValid = ref(false);
+const retentionScheduleSaving = ref(false);
+
+async function loadRetentionSchedule() {
+  await tasksStore.get_scheduled_tasks();
+  retentionSchedule.value =
+    tasksStore.scheduledTasks.find(
+      (t) => t.task_name === RETENTION_TASK_NAME,
+    ) || null;
+}
+
+async function createRetentionSchedule() {
+  retentionScheduleSaving.value = true;
+  const editor = retentionScheduleEditor.value;
+  if (!editor) {
+    retentionScheduleSaving.value = false;
+    return;
+  }
+  const result = await tasksStore.create_scheduled_task({
+    task_name: RETENTION_TASK_NAME,
+    params: {},
+    schedule: editor.buildSchedule(),
+    enabled: true,
+  });
+  if (result) {
+    toastsStore.push("Retention job scheduled.", "success");
+    await loadRetentionSchedule();
+  }
+  retentionScheduleSaving.value = false;
+}
+
+async function deleteRetentionSchedule() {
+  if (!retentionSchedule.value) return;
+  retentionScheduleSaving.value = true;
+  await tasksStore.delete_scheduled_task(retentionSchedule.value.id);
+  retentionSchedule.value = null;
+  retentionScheduleEditor.value?.reset();
+  toastsStore.push("Retention schedule removed.", "success");
+  retentionScheduleSaving.value = false;
+}
 </script>
 
 <template>
@@ -380,6 +469,160 @@ const KNOWN_NAMESPACES = ["correlations", "notifications"];
                     </div>
                   </template>
 
+                  <!-- ── retention form ── -->
+                  <template
+                    v-else-if="
+                      namespace === 'retention' &&
+                      !jsonMode[namespace] &&
+                      formValues.retention
+                    "
+                  >
+                    <div class="row g-3">
+                      <div class="col-md-4">
+                        <div class="form-check form-switch">
+                          <input
+                            class="form-check-input"
+                            type="checkbox"
+                            id="retentionEnabled"
+                            v-model="formValues.retention.enabled"
+                          />
+                          <label
+                            class="form-check-label fw-semibold"
+                            for="retentionEnabled"
+                          >
+                            Enabled
+                          </label>
+                        </div>
+                        <div class="form-text">
+                          When enabled, events older than the retention period
+                          will be eligible for soft-deletion.
+                        </div>
+                      </div>
+
+                      <div class="col-md-4">
+                        <label
+                          class="form-label fw-semibold"
+                          for="retentionPeriodDays"
+                        >
+                          Retention Period (days)
+                        </label>
+                        <input
+                          id="retentionPeriodDays"
+                          type="number"
+                          class="form-control"
+                          min="1"
+                          v-model.number="formValues.retention.period_days"
+                        />
+                      </div>
+
+                      <div class="col-md-4">
+                        <label
+                          class="form-label fw-semibold"
+                          for="retentionWarningDays"
+                        >
+                          Warning Days
+                        </label>
+                        <input
+                          id="retentionWarningDays"
+                          type="number"
+                          class="form-control"
+                          min="0"
+                          v-model.number="formValues.retention.warning_days"
+                        />
+                        <div class="form-text">
+                          Show a warning badge on events within this many days
+                          of expiry.
+                        </div>
+                      </div>
+
+                      <div class="col-12">
+                        <label class="form-label fw-semibold"
+                          >Exempt Tags</label
+                        >
+                        <div class="form-text mb-2">
+                          Events with any of these tags are excluded from
+                          retention.
+                        </div>
+                        <TagsSelect
+                          modelClass="event"
+                          :persist="false"
+                          :selectedTags="exemptTagObjects"
+                          @update:selectedTags="onExemptTagsChanged"
+                        />
+                      </div>
+                    </div>
+
+                    <div class="d-flex justify-content-end mt-3">
+                      <button
+                        class="btn btn-primary btn-sm"
+                        @click="saveRetention"
+                      >
+                        Save
+                      </button>
+                    </div>
+
+                    <hr />
+
+                    <h6 class="fw-semibold">Scheduled Job</h6>
+
+                    <div
+                      v-if="retentionSchedule"
+                      class="alert alert-info small mb-0"
+                    >
+                      Active schedule:
+                      <strong>{{ retentionSchedule.schedule }}</strong>
+                      <span v-if="retentionSchedule.last_run_at">
+                        &mdash; last run:
+                        {{ retentionSchedule.last_run_at }}
+                      </span>
+                      <div class="mt-2">
+                        <button
+                          class="btn btn-outline-danger btn-sm"
+                          :disabled="retentionScheduleSaving"
+                          @click="deleteRetentionSchedule"
+                        >
+                          Remove Schedule
+                        </button>
+                      </div>
+                    </div>
+
+                    <template v-else>
+                      <div class="form-text mb-3">
+                        Schedule the retention enforcement task to run
+                        automatically.
+                      </div>
+
+                      <ScheduleEditor
+                        :ref="
+                          (el) => {
+                            retentionScheduleEditor = el;
+                          }
+                        "
+                        :initial-schedule="{
+                          type: 'crontab',
+                          minute: '0',
+                          hour: '2',
+                          dayOfMonth: '*',
+                          month: '*',
+                          dayOfWeek: '*',
+                        }"
+                        @valid-change="retentionScheduleValid = $event"
+                      />
+
+                      <div class="d-flex justify-content-end mt-3">
+                        <button
+                          class="btn btn-primary btn-sm"
+                          :disabled="
+                            !retentionScheduleValid || retentionScheduleSaving
+                          "
+                          @click="createRetentionSchedule"
+                        >
+                          Create Schedule
+                        </button>
+                      </div>
+                    </template>
+                  </template>
+
                   <!-- ── raw JSON (JSON mode or unknown namespaces) ── -->
                   <template v-else>
                     <textarea
@@ -418,6 +661,13 @@ const KNOWN_NAMESPACES = ["correlations", "notifications"];
       </div>
     </div>
   </div>
+
+  <RetentionConfirmModal
+    ref="retentionConfirmModalRef"
+    :period-days="formValues.retention?.period_days"
+    :affected-count="retentionPreviewCount"
+    @confirmed="confirmRetention"
+  />
 
   <Spinner v-if="status.loading" />
 </template>

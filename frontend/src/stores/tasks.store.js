@@ -62,7 +62,7 @@ export const useTasksStore = defineStore({
     },
     async get_scheduled_tasks() {
       this.status = { loading: true };
-      fetchWrapper
+      return fetchWrapper
         .get(`${baseUrl}/scheduled`)
         .then((response) => (this.scheduledTasks = response))
         .catch((error) => (this.status = { error }))

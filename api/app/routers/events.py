@@ -26,6 +26,8 @@ from fastapi_pagination import Page, Params
 from sqlalchemy.orm import Session
 from starlette import status
 from fastapi.responses import JSONResponse
+from app.services.runtime_settings import RuntimeSettings
+from app.services.runtime_settings_provider import get_runtime_settings
 
 router = APIRouter()
 
@@ -127,6 +129,35 @@ def force_index(
         content={"message": "Indexing job dispatched for all events."},
         status_code=status.HTTP_202_ACCEPTED,
     )
+
+
+@router.get("/events/retention/preview")
+def retention_preview(
+    period_days: int = Query(..., ge=1),
+    runtime_settings: RuntimeSettings = Depends(get_runtime_settings),
+    user: user_schemas.User = Security(
+        get_current_active_user, scopes=["settings:read"]
+    ),
+):
+    retention = runtime_settings.get("retention") or {}
+    exempt_tags = retention.get("exempt_tags", ["retention:exempt"])
+    return events_repository.count_events_for_retention(period_days, exempt_tags)
+
+
+@router.get("/events/retention/status")
+def retention_status(
+    runtime_settings: RuntimeSettings = Depends(get_runtime_settings),
+    user: user_schemas.User = Security(
+        get_current_active_user, scopes=["events:read"]
+    ),
+):
+    retention = runtime_settings.get("retention") or {}
+    return {
+        "enabled": retention.get("enabled", False),
+        "period_days": retention.get("period_days", 365),
+        "warning_days": retention.get("warning_days", 30),
+        "exempt_tags": retention.get("exempt_tags", ["retention:exempt"]),
+    }
 
 
 @router.get("/events/{event_uuid}", response_model=event_schemas.Event)
