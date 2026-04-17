@@ -572,8 +572,9 @@ def enforce_retention():
         else []
     )
 
+    # Collect all event UUIDs eligible for retention
+    event_uuids = []
     search_after = None
-    total_deleted = 0
     while True:
         body = {
             "query": {
@@ -595,22 +596,47 @@ def enforce_retention():
         hits = response["hits"]["hits"]
         if not hits:
             break
-
-        for hit in hits:
-            event_uuid = hit["_source"]["uuid"]
-            client.update(
-                index="misp-events",
-                id=event_uuid,
-                body={"doc": {"deleted": True}},
-                refresh=False,
-            )
-            total_deleted += 1
-
+        event_uuids.extend(hit["_source"]["uuid"] for hit in hits)
         if len(hits) < 500:
             break
         search_after = hits[-1]["sort"]
 
-    logger.info("enforce_retention finished: %s events soft-deleted", total_deleted)
+    if not event_uuids:
+        logger.info("enforce_retention finished: no events to purge")
+        return True
+
+    logger.info("enforce_retention: purging %s events", len(event_uuids))
+
+    for event_uuid in event_uuids:
+        logger.info("enforce_retention: purging event uuid=%s", event_uuid)
+
+        # Collect attribute UUIDs for sighting cleanup
+        attr_resp = client.search(
+            index="misp-attributes",
+            body={
+                "query": {"term": {"event_uuid": event_uuid}},
+                "_source": ["uuid"],
+                "size": 10000,
+            },
+        )
+        attr_uuids = [h["_source"]["uuid"] for h in attr_resp["hits"]["hits"]]
+
+        # Delete sightings for these attributes
+        if attr_uuids:
+            client.delete_by_query(
+                index="misp-sightings",
+                body={"query": {"terms": {"attribute_uuid.keyword": attr_uuids}}},
+                refresh=False,
+                ignore=[404],
+            )
+
+        # Delete correlations
+        correlations_repository.delete_event_correlations(event_uuid)
+
+        # Delete event, attributes, and objects
+        delete_indexed_event(event_uuid)
+
+    logger.info("enforce_retention finished: %s events purged", len(event_uuids))
     return True
 
 
