@@ -26,6 +26,7 @@ const props = defineProps({
   },
 });
 
+const eventsStore = useEventsStore();
 const retentionConfig = ref(null);
 eventsStore.retentionStatus().then((config) => {
   retentionConfig.value = config;
