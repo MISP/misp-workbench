@@ -150,7 +150,7 @@ function confirmRetention() {
 // Retention: scheduled job
 const RETENTION_TASK_NAME = "app.worker.tasks.enforce_retention";
 const retentionSchedule = ref(null);
-const retentionScheduleEditor = null;
+const retentionScheduleEditor = ref(null);
 const retentionScheduleValid = ref(false);
 const retentionScheduleSaving = ref(false);
 
@@ -164,10 +164,15 @@ async function loadRetentionSchedule() {
 
 async function createRetentionSchedule() {
   retentionScheduleSaving.value = true;
+  const editor = retentionScheduleEditor.value;
+  if (!editor) {
+    retentionScheduleSaving.value = false;
+    return;
+  }
   const result = await tasksStore.create_scheduled_task({
     task_name: RETENTION_TASK_NAME,
     params: {},
-    schedule: retentionScheduleEditor.buildSchedule(),
+    schedule: editor.buildSchedule(),
     enabled: true,
   });
   if (result) {
@@ -182,7 +187,7 @@ async function deleteRetentionSchedule() {
   retentionScheduleSaving.value = true;
   await tasksStore.delete_scheduled_task(retentionSchedule.value.id);
   retentionSchedule.value = null;
-  retentionScheduleEditor?.reset();
+  retentionScheduleEditor.value?.reset();
   toastsStore.push("Retention schedule removed.", "success");
   retentionScheduleSaving.value = false;
 }
