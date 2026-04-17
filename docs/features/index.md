@@ -10,6 +10,7 @@
 | [Hunt](hunts.md) | Hunts are saved searches that run periodically and trigger alerts. |
 | [Notifications](notifications.md) | Event-driven notifications processed by Celery workers. |
 | [Batch Import](batch-import.md) | Easily import a list of indicators and add them as attributes to an event in a single operation. |
+| [Retention](retention.md) | Configurable event retention period with automatic purge of expired events |
 | [OpenSearch](opensearch/index.md) | Full-text search, dashboards, and ingestion pipelines |
 | [REST API](api/index.md) | FastAPI backend with automatic OpenAPI documentation |
 | **Storage** | Garage (S3-compatible) or local filesystem for attachments |
