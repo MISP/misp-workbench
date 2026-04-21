@@ -38,6 +38,7 @@ export { default as DiagnosticsIndex } from "./diagnostics/DiagnosticsIndex.vue"
 export { default as IndexCorrelations } from "./correlations/IndexCorrelations.vue";
 export { default as IndexRuntimeSettings } from "./settings/runtime/IndexRuntimeSettings.vue";
 export { default as IndexUserSettings } from "./settings/user/IndexUserSettings.vue";
+export { default as IndexApiKeys } from "./settings/api-keys/IndexApiKeys.vue";
 export { default as IndexNotifications } from "./notifications/IndexNotifications.vue";
 export { default as IndexHunts } from "./hunts/IndexHunts.vue";
 export { default as AddHunt } from "./hunts/AddHunt.vue";

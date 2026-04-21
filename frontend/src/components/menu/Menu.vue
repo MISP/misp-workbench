@@ -45,6 +45,9 @@ const canReadSettings = computed(() =>
 const canReadUserSettings = computed(() =>
   authHelper.hasScope(scopes.value, "user_settings:read"),
 );
+const canReadApiKeys = computed(() =>
+  authHelper.hasScope(scopes.value, "api_keys:read"),
+);
 
 // notifications
 const notificationsStore = useNotificationsStore();
@@ -262,6 +265,11 @@ function navAndClose(path) {
             <li v-if="canReadUserSettings">
               <RouterLink to="/settings/user" class="dropdown-item fw-light"
                 >user settings</RouterLink
+              >
+            </li>
+            <li v-if="canReadApiKeys">
+              <RouterLink to="/settings/api-keys" class="dropdown-item fw-light"
+                >API keys</RouterLink
               >
             </li>
           </ul>
@@ -500,6 +508,15 @@ function navAndClose(path) {
                 @click.prevent="navAndClose('/settings/user')"
               >
                 user settings
+              </RouterLink>
+            </li>
+            <li v-if="canReadApiKeys">
+              <RouterLink
+                to="/settings/api-keys"
+                class="list-group-item list-group-item-action ps-4"
+                @click.prevent="navAndClose('/settings/api-keys')"
+              >
+                API keys
               </RouterLink>
             </li>
           </ul>
