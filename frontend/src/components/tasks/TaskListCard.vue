@@ -15,11 +15,17 @@ const props = defineProps({
     type: Number,
     default: 10,
   },
-  maxCount: {
-    type: Number,
-    default: 1000,
+  hasMore: {
+    type: Boolean,
+    default: false,
+  },
+  loadingMore: {
+    type: Boolean,
+    default: false,
   },
 });
+
+const emit = defineEmits(["load-more"]);
 
 const currentPage = ref(1);
 
@@ -75,7 +81,9 @@ function formatTime(ts) {
   <div class="card my-3 shadow">
     <div class="card-header d-flex align-items-center justify-content-start">
       <h5 class="mb-0">Completed Tasks</h5>
-      <small class="text-muted ms-2"> (showing latest {{ maxCount }}) </small>
+      <small class="text-muted ms-2">
+        ({{ taskTotalCount }} loaded{{ hasMore ? ", more available" : "" }})
+      </small>
       <div class="ms-2">
         <span
           class="badge me-2 bg-info"
@@ -206,10 +214,10 @@ function formatTime(ts) {
       </div>
     </div>
     <div
-      class="card-footer d-flex justify-content-center align-items-center gap-2"
+      class="card-footer d-flex justify-content-center align-items-center gap-3"
     >
       <nav>
-        <ul class="pagination justify-content-center">
+        <ul class="pagination justify-content-center mb-0">
           <li class="page-item">
             <a
               class="page-link"
@@ -233,6 +241,15 @@ function formatTime(ts) {
           </li>
         </ul>
       </nav>
+      <button
+        v-if="hasMore"
+        type="button"
+        class="btn btn-sm btn-outline-primary"
+        :disabled="loadingMore"
+        @click="emit('load-more')"
+      >
+        {{ loadingMore ? "Loading…" : "Load more" }}
+      </button>
     </div>
   </div>
 </template>

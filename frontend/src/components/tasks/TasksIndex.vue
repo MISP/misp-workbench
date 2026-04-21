@@ -9,7 +9,8 @@ import ScheduledTaskListCard from "@/components/tasks/ScheduledTaskListCard.vue"
 const ACTIVE_TASKS_POLL_MS = 5000;
 
 const tasksStore = useTasksStore();
-const { tasks, activeTasks, scheduledTasks } = storeToRefs(tasksStore);
+const { tasks, tasksHasMore, tasksLoadingMore, activeTasks, scheduledTasks } =
+  storeToRefs(tasksStore);
 
 tasksStore.get_tasks();
 tasksStore.get_scheduled_tasks();
@@ -31,6 +32,11 @@ onBeforeUnmount(() => {
   <div class="container mt-4">
     <ScheduledTaskListCard :scheduledTasks="scheduledTasks" />
     <ActiveTaskListCard :activeTasks="activeTasks" />
-    <TaskListCard :tasks="tasks" />
+    <TaskListCard
+      :tasks="tasks"
+      :hasMore="tasksHasMore"
+      :loadingMore="tasksLoadingMore"
+      @load-more="tasksStore.load_more_tasks()"
+    />
   </div>
 </template>

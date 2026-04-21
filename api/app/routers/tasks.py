@@ -11,10 +11,11 @@ router = APIRouter()
 
 @router.get("/tasks/")
 def get_tasks(
-    limit: int = Query(1000, ge=1, le=10000),
+    limit: int = Query(100, ge=1, le=1000),
+    offset: int = Query(0, ge=0),
     user: user_schemas.User = Security(get_current_active_user, scopes=["tasks:read"])
 ):
-    return tasks_repository.get_tasks(limit=limit)
+    return tasks_repository.get_tasks(limit=limit, offset=offset)
 
 
 @router.get("/tasks/active")

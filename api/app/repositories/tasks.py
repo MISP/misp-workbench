@@ -41,15 +41,24 @@ def get_workers():
     return response.json()
 
 
-def get_tasks(limit: int = 1000):
-    response = FlowerClient.get(f"{flower_url}/api/tasks", params={"limit": limit})
+def get_tasks(limit: int = 100, offset: int = 0):
+    response = FlowerClient.get(
+        f"{flower_url}/api/tasks",
+        params={"limit": limit, "offset": offset},
+    )
     if response.status_code != 200:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to retrieve tasks from Flower API.",
         )
 
-    return response.json()
+    items = response.json()
+    return {
+        "items": items,
+        "limit": limit,
+        "offset": offset,
+        "has_more": len(items) == limit,
+    }
 
 
 def get_active_tasks():
