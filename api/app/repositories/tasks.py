@@ -1,4 +1,5 @@
 import os
+import time
 from uuid import uuid4
 
 from app.rediscli import get_redis
@@ -40,8 +41,8 @@ def get_workers():
     return response.json()
 
 
-def get_tasks():
-    response = FlowerClient.get(f"{flower_url}/api/tasks")
+def get_tasks(limit: int = 1000):
+    response = FlowerClient.get(f"{flower_url}/api/tasks", params={"limit": limit})
     if response.status_code != 200:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -49,6 +50,59 @@ def get_tasks():
         )
 
     return response.json()
+
+
+def get_active_tasks():
+    inspector = celery_app.control.inspect(timeout=2)
+    active = inspector.active() or {}
+    reserved = inspector.reserved() or {}
+
+    # Celery reports `time_start` on the monotonic clock. On Linux hosts (and
+    # containers sharing a kernel) CLOCK_MONOTONIC is system-wide, so we can
+    # convert to a wall-clock timestamp by anchoring both clocks here.
+    monotonic_to_epoch = time.time() - time.monotonic()
+
+    tasks = {}
+
+    for worker, worker_tasks in active.items():
+        for task in worker_tasks or []:
+            uuid = task.get("id")
+            if not uuid:
+                continue
+            started_monotonic = task.get("time_start")
+            started = (
+                started_monotonic + monotonic_to_epoch
+                if started_monotonic is not None
+                else None
+            )
+            tasks[uuid] = {
+                "uuid": uuid,
+                "name": task.get("name"),
+                "worker": worker,
+                "args": task.get("args"),
+                "kwargs": task.get("kwargs"),
+                "received": started,
+                "started": started,
+                "state": "STARTED",
+            }
+
+    for worker, worker_tasks in reserved.items():
+        for task in worker_tasks or []:
+            uuid = task.get("id")
+            if not uuid or uuid in tasks:
+                continue
+            tasks[uuid] = {
+                "uuid": uuid,
+                "name": task.get("name"),
+                "worker": worker,
+                "args": task.get("args"),
+                "kwargs": task.get("kwargs"),
+                "received": None,
+                "started": None,
+                "state": "RESERVED",
+            }
+
+    return tasks
 
 
 def restart_worker(worker_id: str):

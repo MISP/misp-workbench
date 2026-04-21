@@ -15,6 +15,10 @@ const props = defineProps({
     type: Number,
     default: 10,
   },
+  maxCount: {
+    type: Number,
+    default: 1000,
+  },
 });
 
 const currentPage = ref(1);
@@ -71,6 +75,7 @@ function formatTime(ts) {
   <div class="card my-3 shadow">
     <div class="card-header d-flex align-items-center justify-content-start">
       <h5 class="mb-0">Completed Tasks</h5>
+      <small class="text-muted ms-2"> (showing latest {{ maxCount }}) </small>
       <div class="ms-2">
         <span
           class="badge me-2 bg-info"

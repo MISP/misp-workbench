@@ -7,6 +7,7 @@ export const useTasksStore = defineStore({
   id: "tasks",
   state: () => ({
     tasks: {},
+    activeTasks: {},
     scheduledTasks: [],
     workers: {},
     task: {},
@@ -23,6 +24,12 @@ export const useTasksStore = defineStore({
         .then((response) => (this.tasks = response))
         .catch((error) => (this.status = { error }))
         .finally(() => (this.status = { loading: false }));
+    },
+    async get_active_tasks() {
+      return fetchWrapper
+        .get(`${baseUrl}/active`)
+        .then((response) => (this.activeTasks = response))
+        .catch((error) => (this.status = { error }));
     },
     async get_workers() {
       this.status = { loading: true };
