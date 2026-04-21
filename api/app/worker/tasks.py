@@ -1,6 +1,7 @@
 import logging
 import os
 import smtplib
+import time
 from email.message import EmailMessage
 from datetime import datetime
 from uuid import UUID
@@ -904,3 +905,11 @@ def run_correlation_hunts():
             run_hunt.delay(hunt.id)
     logger.info("run_correlation_hunts job finished, %s hunts queued", len(hunts))
     return True
+
+
+@celery_app.task
+def dummy_sleep(duration: int = 600):
+    logger.info("dummy_sleep job started, sleeping for %s seconds", duration)
+    time.sleep(duration)
+    logger.info("dummy_sleep job finished")
+    return {"slept_for": duration}

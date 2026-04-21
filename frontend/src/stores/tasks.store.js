@@ -7,6 +7,11 @@ export const useTasksStore = defineStore({
   id: "tasks",
   state: () => ({
     tasks: {},
+    tasksPageSize: 100,
+    tasksOffset: 0,
+    tasksHasMore: false,
+    tasksLoadingMore: false,
+    activeTasks: {},
     scheduledTasks: [],
     workers: {},
     task: {},
@@ -16,13 +21,41 @@ export const useTasksStore = defineStore({
     },
   }),
   actions: {
-    async get_tasks() {
-      this.status = { loading: true };
-      fetchWrapper
-        .get(baseUrl)
-        .then((response) => (this.tasks = response))
+    async get_tasks({ append = false } = {}) {
+      if (!append) {
+        this.tasks = {};
+        this.tasksOffset = 0;
+        this.tasksHasMore = false;
+        this.status = { loading: true };
+      } else {
+        this.tasksLoadingMore = true;
+      }
+      return fetchWrapper
+        .get(
+          `${baseUrl}/?limit=${this.tasksPageSize}&offset=${this.tasksOffset}`,
+        )
+        .then((response) => {
+          this.tasks = append
+            ? { ...this.tasks, ...response.items }
+            : response.items;
+          this.tasksOffset += Object.keys(response.items || {}).length;
+          this.tasksHasMore = !!response.has_more;
+        })
         .catch((error) => (this.status = { error }))
-        .finally(() => (this.status = { loading: false }));
+        .finally(() => {
+          this.status = { loading: false };
+          this.tasksLoadingMore = false;
+        });
+    },
+    async load_more_tasks() {
+      if (!this.tasksHasMore || this.tasksLoadingMore) return;
+      return this.get_tasks({ append: true });
+    },
+    async get_active_tasks() {
+      return fetchWrapper
+        .get(`${baseUrl}/active`)
+        .then((response) => (this.activeTasks = response))
+        .catch((error) => (this.status = { error }));
     },
     async get_workers() {
       this.status = { loading: true };
