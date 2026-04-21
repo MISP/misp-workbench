@@ -160,10 +160,13 @@ function isExpired(d) {
       <code class="flex-grow-1 p-2 bg-white border rounded text-break">
         {{ newlyCreated.token }}
       </code>
-      <button class="btn btn-outline-secondary btn-sm" @click="copyToken">
+      <button class="btn btn-outline-primary btn-sm" @click="copyToken">
         <FontAwesomeIcon :icon="faCopy" /> copy
       </button>
-      <button class="btn btn-outline-dark btn-sm" @click="dismissNewlyCreated">
+      <button
+        class="btn btn-outline-secondary btn-sm"
+        @click="dismissNewlyCreated"
+      >
         dismiss
       </button>
     </div>
