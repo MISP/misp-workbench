@@ -267,6 +267,27 @@ class TestApiKeyAuthentication(ApiTester):
         response = client.get("/api-keys/")
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
+    def test_non_bearer_scheme_rejected(
+        self,
+        client: TestClient,
+        db: Session,
+        api_tester_user: user_models.User,
+    ):
+        # Even if the credential portion happens to be a valid raw token,
+        # a non-Bearer scheme must not be treated as an API key.
+        _db_key, raw = self._make_key(db, api_tester_user, ["api_keys:read"])
+        response = client.get(
+            "/api-keys/", headers={"Authorization": f"Basic {raw}"}
+        )
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+    def test_raw_token_with_invalid_format_rejected(self, client: TestClient):
+        # Not 40 hex chars — must not reach the hash lookup.
+        response = client.get(
+            "/api-keys/", headers={"Authorization": "not-a-real-token"}
+        )
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
     def test_disabled_key_rejected(
         self,
         client: TestClient,

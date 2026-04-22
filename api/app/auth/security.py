@@ -1,3 +1,4 @@
+import re
 from datetime import datetime, timedelta, timezone
 
 from app.auth import auth
@@ -19,6 +20,9 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/token", auto_error=False)
 
 _LAST_USED_DEBOUNCE = timedelta(minutes=1)
 
+# MISP-style raw API key: 40 lowercase hex chars (see TOKEN_BYTES in repositories/api_keys.py).
+_RAW_API_KEY_RE = re.compile(r"^[0-9a-f]{40}$")
+
 
 class TokenData(BaseModel):
     username: str = ""
@@ -31,8 +35,12 @@ def _extract_token(authorization: str | None) -> str | None:
     scheme, param = get_authorization_scheme_param(authorization)
     if scheme and scheme.lower() == "bearer":
         return param or None
-    # MISP-style: the raw token is sent as the whole Authorization value.
-    return param or scheme or None
+    # MISP-style: the raw token is sent as the whole Authorization value
+    # (no scheme, no whitespace). Only accept the recognized 40-hex format
+    # to avoid misinterpreting other schemes (e.g. Basic <creds>) as tokens.
+    if scheme and not param and _RAW_API_KEY_RE.match(scheme):
+        return scheme
+    return None
 
 
 def _looks_like_jwt(token: str) -> bool:
