@@ -174,6 +174,95 @@ class TestApiKeysResource(ApiTester):
         )
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
+    @pytest.mark.parametrize("scopes", [["api_keys:update"]])
+    def test_disable_own_key(
+        self,
+        client: TestClient,
+        db: Session,
+        api_tester_user: user_models.User,
+        auth_token: auth.Token,
+    ):
+        db_key, _raw = api_keys_repository.create_key(
+            db,
+            user_id=api_tester_user.id,
+            name="to disable",
+            scopes=["events:read"],
+        )
+        response = client.patch(
+            f"/api-keys/{db_key.id}",
+            headers={"Authorization": "Bearer " + auth_token},
+            json={"disabled": True},
+        )
+        assert response.status_code == status.HTTP_200_OK
+        assert response.json()["disabled"] is True
+
+        db.refresh(db_key)
+        assert db_key.disabled is True
+
+    @pytest.mark.parametrize("scopes", [["api_keys:update"]])
+    def test_reenable_own_key(
+        self,
+        client: TestClient,
+        db: Session,
+        api_tester_user: user_models.User,
+        auth_token: auth.Token,
+    ):
+        db_key, _raw = api_keys_repository.create_key(
+            db,
+            user_id=api_tester_user.id,
+            name="toggle",
+            scopes=["events:read"],
+        )
+        api_keys_repository.set_disabled(db, db_key, True)
+
+        response = client.patch(
+            f"/api-keys/{db_key.id}",
+            headers={"Authorization": "Bearer " + auth_token},
+            json={"disabled": False},
+        )
+        assert response.status_code == status.HTTP_200_OK
+        assert response.json()["disabled"] is False
+
+    @pytest.mark.parametrize("scopes", [["api_keys:update"]])
+    def test_update_nonexistent_key(
+        self, client: TestClient, auth_token: auth.Token
+    ):
+        response = client.patch(
+            "/api-keys/999999",
+            headers={"Authorization": "Bearer " + auth_token},
+            json={"disabled": True},
+        )
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    @pytest.mark.parametrize("scopes", [["api_keys:update"]])
+    def test_cannot_update_other_users_key(
+        self,
+        client: TestClient,
+        db: Session,
+        user_1: user_models.User,
+        auth_token: auth.Token,
+    ):
+        other_key, _raw = api_keys_repository.create_key(
+            db, user_id=user_1.id, name="not mine", scopes=["events:read"]
+        )
+        response = client.patch(
+            f"/api-keys/{other_key.id}",
+            headers={"Authorization": "Bearer " + auth_token},
+            json={"disabled": True},
+        )
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+        db.refresh(other_key)
+        assert other_key.disabled is False
+
+    @pytest.mark.parametrize("scopes", [[]])
+    def test_update_unauthorized(self, client: TestClient, auth_token: auth.Token):
+        response = client.patch(
+            "/api-keys/1",
+            headers={"Authorization": "Bearer " + auth_token},
+            json={"disabled": True},
+        )
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
     @pytest.mark.parametrize("scopes", [["api_keys:delete"]])
     def test_cannot_delete_other_users_key(
         self,

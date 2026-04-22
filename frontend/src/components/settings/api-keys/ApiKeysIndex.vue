@@ -9,6 +9,8 @@ import {
   faPlus,
   faCopy,
   faTriangleExclamation,
+  faBan,
+  faCheck,
 } from "@fortawesome/free-solid-svg-icons";
 
 const apiKeysStore = useApiKeysStore();
@@ -120,6 +122,27 @@ async function remove(key) {
   }
 }
 
+const canUpdateApiKeys = computed(() => scopeAllowed("api_keys:update"));
+
+async function toggleDisabled(key) {
+  const next = !key.disabled;
+  const verb = next ? "Disable" : "Enable";
+  if (
+    !confirm(
+      next
+        ? `Disable API key "${key.name}"? It will stop authenticating until re-enabled.`
+        : `Re-enable API key "${key.name}"?`,
+    )
+  )
+    return;
+  try {
+    await apiKeysStore.setDisabled(key.id, next);
+    toastsStore.push(`API key ${next ? "disabled" : "enabled"}.`, "success");
+  } catch (err) {
+    toastsStore.push(`${verb} failed: ${err?.message || err}`, "error");
+  }
+}
+
 function formatDate(d) {
   if (!d) return "-";
   try {
@@ -182,6 +205,7 @@ function isExpired(d) {
       <thead>
         <tr>
           <th>name</th>
+          <th>status</th>
           <th>scopes</th>
           <th>expires</th>
           <th>last used</th>
@@ -191,7 +215,7 @@ function isExpired(d) {
       </thead>
       <tbody>
         <tr v-if="!apiKeys.length">
-          <td colspan="6" class="text-center text-muted fst-italic">
+          <td colspan="7" class="text-center text-muted fst-italic">
             no API keys yet
           </td>
         </tr>
@@ -199,6 +223,12 @@ function isExpired(d) {
           <td>
             <div class="fw-semibold">{{ k.name }}</div>
             <div v-if="k.comment" class="small text-muted">{{ k.comment }}</div>
+          </td>
+          <td>
+            <span v-if="k.disabled" class="badge bg-warning text-dark">
+              disabled
+            </span>
+            <span v-else class="badge bg-success">active</span>
           </td>
           <td style="max-width: 30rem">
             <span
@@ -221,6 +251,14 @@ function isExpired(d) {
           <td>{{ formatDate(k.last_used_at) }}</td>
           <td>{{ formatDate(k.created_at) }}</td>
           <td class="text-end">
+            <button
+              v-if="canUpdateApiKeys"
+              class="btn btn-outline-warning btn-sm me-1"
+              @click="toggleDisabled(k)"
+              :title="k.disabled ? 'enable' : 'disable'"
+            >
+              <FontAwesomeIcon :icon="k.disabled ? faCheck : faBan" />
+            </button>
             <button
               class="btn btn-outline-danger btn-sm"
               @click="remove(k)"

@@ -71,6 +71,23 @@ def create_api_key(
     )
 
 
+@router.patch("/api-keys/{key_id}", response_model=api_key_schemas.ApiKey)
+def update_api_key(
+    key_id: int,
+    payload: api_key_schemas.ApiKeyUpdate,
+    db: Session = Depends(get_db),
+    user: user_schemas.User = Security(
+        get_current_active_user, scopes=["api_keys:update"]
+    ),
+):
+    db_key = api_keys_repository.get_key_by_id(db, key_id=key_id, user_id=user.id)
+    if db_key is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="API key not found"
+        )
+    return api_keys_repository.set_disabled(db, db_key, payload.disabled)
+
+
 @router.delete("/api-keys/{key_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_api_key(
     key_id: int,

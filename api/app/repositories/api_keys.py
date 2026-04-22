@@ -68,6 +68,16 @@ def create_key(
     return db_key, raw_token
 
 
+def set_disabled(
+    db: Session, db_key: api_key_models.ApiKey, disabled: bool
+) -> api_key_models.ApiKey:
+    db_key.disabled = disabled
+    db.add(db_key)
+    db.commit()
+    db.refresh(db_key)
+    return db_key
+
+
 def delete_key(db: Session, db_key: api_key_models.ApiKey) -> None:
     db.delete(db_key)
     db.commit()

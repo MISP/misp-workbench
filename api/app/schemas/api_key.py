@@ -15,6 +15,10 @@ class ApiKeyCreate(ApiKeyBase):
     pass
 
 
+class ApiKeyUpdate(BaseModel):
+    disabled: bool
+
+
 class ApiKey(BaseModel):
     id: int
     user_id: int

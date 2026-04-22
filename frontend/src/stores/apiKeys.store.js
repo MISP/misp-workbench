@@ -33,6 +33,16 @@ export const useApiKeysStore = defineStore({
         .catch((error) => Promise.reject(error))
         .finally(() => (this.status = { ...this.status, creating: false }));
     },
+    async setDisabled(id, disabled) {
+      return fetchWrapper
+        .patch(`${baseUrl}/${id}`, { disabled })
+        .then((updated) => {
+          const idx = this.apiKeys.findIndex((k) => k.id === id);
+          if (idx !== -1) this.apiKeys.splice(idx, 1, updated);
+          return updated;
+        })
+        .catch((error) => Promise.reject(error));
+    },
     async delete(id) {
       return fetchWrapper
         .delete(`${baseUrl}/${id}`)
