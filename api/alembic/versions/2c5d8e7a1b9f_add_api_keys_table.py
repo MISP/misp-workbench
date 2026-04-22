@@ -6,13 +6,9 @@ Create Date: 2026-04-21 00:00:00.000000
 
 """
 
-import json
-
 import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects.postgresql import JSONB
-
-_API_KEY_SCOPES = ["api_keys:read", "api_keys:create", "api_keys:delete"]
 
 # revision identifiers, used by Alembic.
 revision = "2c5d8e7a1b9f"
@@ -46,22 +42,6 @@ def upgrade():
     op.create_index("ix_api_keys_user_id", "api_keys", ["user_id"])
     op.create_index(
         "ix_api_keys_hashed_token", "api_keys", ["hashed_token"], unique=True
-    )
-
-    # Grant api_keys:* scopes to existing roles so any user can manage their own keys.
-    # Roles with "*" or "api_keys:*" already match, so they are left untouched.
-    conn = op.get_bind()
-    conn.execute(
-        sa.text(
-            """
-            UPDATE roles
-            SET scopes = scopes || CAST(:new_scopes AS jsonb)
-            WHERE NOT (scopes @> CAST(:new_scopes AS jsonb))
-              AND NOT (scopes @> '["*"]'::jsonb)
-              AND NOT (scopes @> '["api_keys:*"]'::jsonb)
-            """
-        ),
-        {"new_scopes": json.dumps(_API_KEY_SCOPES)},
     )
 
 
