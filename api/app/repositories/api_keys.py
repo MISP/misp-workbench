@@ -1,6 +1,6 @@
 import hashlib
 import secrets
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Optional
 
 from app.models import api_key as api_key_models
