@@ -1,6 +1,7 @@
 import logging.config
 
 from app.routers import (
+    api_keys,
     attachments,
     attributes,
     auth,
@@ -140,6 +141,9 @@ app.include_router(hunts.router, tags=["Hunts"])
 
 # Notifications resource
 app.include_router(notifications.router, tags=["Notifications"])
+
+# API Keys resource
+app.include_router(api_keys.router, tags=["API Keys"])
 
 # MCP config endpoint (must be registered before the /mcp mount)
 app.include_router(mcp.router, tags=["MCP"])

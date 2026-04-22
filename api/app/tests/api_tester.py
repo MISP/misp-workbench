@@ -18,6 +18,8 @@ from app.models import notification as notification_models
 from app.models import taxonomy as taxonomy_models
 from app.models import user as user_models
 from app.models import role as role_models
+from app.models import api_key as api_key_models
+from app.models import audit_log as audit_log_models
 from app.settings import get_settings
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
@@ -79,6 +81,8 @@ class ApiTester:
         db.query(hunt_models.HuntRunHistory).delete(synchronize_session=False)
         db.query(hunt_models.Hunt).delete(synchronize_session=False)
         db.query(notification_models.Notification).delete(synchronize_session=False)
+        db.query(api_key_models.ApiKey).delete(synchronize_session=False)
+        db.query(audit_log_models.AuditLog).delete(synchronize_session=False)
         db.query(user_models.User).delete(synchronize_session=False)
         db.query(module_models.ModuleSettings).delete(synchronize_session=False)
         db.query(taxonomy_models.TaxonomyEntry).delete(synchronize_session=False)

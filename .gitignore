@@ -152,5 +152,6 @@ yarn-error.log*
 *.njsproj
 *.sln
 *.sw*
+.claude/
 
 garage.toml
