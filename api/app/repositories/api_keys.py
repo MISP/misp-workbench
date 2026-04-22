@@ -81,9 +81,3 @@ def set_disabled(
 def delete_key(db: Session, db_key: api_key_models.ApiKey) -> None:
     db.delete(db_key)
     db.commit()
-
-
-def touch_last_used(db: Session, db_key: api_key_models.ApiKey) -> None:
-    db_key.last_used_at = datetime.now(timezone.utc)
-    db.add(db_key)
-    db.commit()

@@ -6,6 +6,7 @@ from app.auth.utils import role_has_scope
 from app.db.session import get_db
 from app.repositories import api_keys as api_keys_repository
 from app.repositories import users as users_repository
+from app.services import audit
 from app.settings import get_settings
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer, SecurityScopes
@@ -106,6 +107,7 @@ def _authenticate_api_key(
     security_scopes: SecurityScopes,
     authenticate_value: str,
     credentials_exception: HTTPException,
+    request: Request,
 ):
     db_key = api_keys_repository.get_key_by_token(db, token)
     if db_key is None or db_key.disabled:
@@ -123,10 +125,25 @@ def _authenticate_api_key(
     _check_scopes(role_scopes, security_scopes.scopes, authenticate_value)
     _check_scopes(list(db_key.scopes or []), security_scopes.scopes, authenticate_value)
 
+    # Audit + last_used bookkeeping share the same debounce so heavy clients
+    # produce one row per key per minute, not per request. Both writes commit
+    # together so an audit trail and last_used_at can't diverge.
     now = datetime.now(timezone.utc)
     if db_key.last_used_at is None or (now - db_key.last_used_at) > _LAST_USED_DEBOUNCE:
         try:
-            api_keys_repository.touch_last_used(db, db_key)
+            db_key.last_used_at = now
+            db.add(db_key)
+            audit.record(
+                db,
+                action="api_key.authenticated",
+                resource_type="api_key",
+                resource_id=db_key.id,
+                actor_user_id=user.id,
+                actor_type=audit.ACTOR_API_KEY,
+                actor_credential_id=db_key.id,
+                request=request,
+            )
+            db.commit()
         except Exception:
             db.rollback()
 
@@ -161,5 +178,5 @@ async def get_current_active_user(
         )
 
     return _authenticate_api_key(
-        token, db, security_scopes, authenticate_value, credentials_exception
+        token, db, security_scopes, authenticate_value, credentials_exception, request
     )

@@ -3,12 +3,26 @@ from datetime import datetime, timedelta, timezone
 import pytest
 from app.auth import auth
 from app.models import api_key as api_key_models
+from app.models import audit_log as audit_log_models
 from app.models import user as user_models
 from app.repositories import api_keys as api_keys_repository
 from app.tests.api_tester import ApiTester
 from fastapi import status
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
+
+
+def _audit_actions(db: Session, resource_id: int) -> list[str]:
+    rows = (
+        db.query(audit_log_models.AuditLog)
+        .filter(
+            audit_log_models.AuditLog.resource_type == "api_key",
+            audit_log_models.AuditLog.resource_id == resource_id,
+        )
+        .order_by(audit_log_models.AuditLog.id.asc())
+        .all()
+    )
+    return [r.action for r in rows]
 
 
 class TestApiKeysResource(ApiTester):
@@ -18,11 +32,13 @@ class TestApiKeysResource(ApiTester):
         db.query(api_key_models.ApiKey).filter(
             api_key_models.ApiKey.user_id == api_tester_user.id
         ).delete(synchronize_session=False)
+        db.query(audit_log_models.AuditLog).delete(synchronize_session=False)
         db.commit()
         yield
         db.query(api_key_models.ApiKey).filter(
             api_key_models.ApiKey.user_id == api_tester_user.id
         ).delete(synchronize_session=False)
+        db.query(audit_log_models.AuditLog).delete(synchronize_session=False)
         db.commit()
 
     @pytest.mark.parametrize("scopes", [["api_keys:read"]])
@@ -72,6 +88,17 @@ class TestApiKeysResource(ApiTester):
         db_key = db.query(api_key_models.ApiKey).filter_by(id=data["id"]).one()
         assert db_key.hashed_token != raw_token
         assert db_key.hashed_token == api_keys_repository.hash_token(raw_token)
+
+        # Audit entry recorded, and the raw token is NOT present in metadata.
+        log = (
+            db.query(audit_log_models.AuditLog)
+            .filter_by(action="api_key.created", resource_id=db_key.id)
+            .one()
+        )
+        assert log.actor_user_id == api_tester_user.id
+        assert log.metadata_ is not None
+        assert log.metadata_["name"] == "integration test"
+        assert raw_token not in str(log.metadata_)
 
     @pytest.mark.parametrize("scopes", [["api_keys:create"]])
     def test_create_rejects_empty_scopes(
@@ -157,12 +184,14 @@ class TestApiKeysResource(ApiTester):
             name="to delete",
             scopes=["events:read"],
         )
+        key_id = db_key.id
         response = client.delete(
             f"/api-keys/{db_key.id}",
             headers={"Authorization": "Bearer " + auth_token},
         )
         assert response.status_code == status.HTTP_204_NO_CONTENT
-        assert db.query(api_key_models.ApiKey).filter_by(id=db_key.id).first() is None
+        assert db.query(api_key_models.ApiKey).filter_by(id=key_id).first() is None
+        assert "api_key.deleted" in _audit_actions(db, key_id)
 
     @pytest.mark.parametrize("scopes", [["api_keys:delete"]])
     def test_delete_nonexistent_key(
@@ -198,6 +227,18 @@ class TestApiKeysResource(ApiTester):
 
         db.refresh(db_key)
         assert db_key.disabled is True
+        assert "api_key.disabled" in _audit_actions(db, db_key.id)
+
+        # Idempotent PATCH must NOT emit a duplicate audit entry.
+        response2 = client.patch(
+            f"/api-keys/{db_key.id}",
+            headers={"Authorization": "Bearer " + auth_token},
+            json={"disabled": True},
+        )
+        assert response2.status_code == status.HTTP_200_OK
+        assert (
+            _audit_actions(db, db_key.id).count("api_key.disabled") == 1
+        )
 
     @pytest.mark.parametrize("scopes", [["api_keys:update"]])
     def test_reenable_own_key(
@@ -444,3 +485,42 @@ class TestApiKeyAuthentication(ApiTester):
 
         db.refresh(db_key)
         assert db_key.last_used_at is not None
+
+    def test_authentication_emits_audit_entry(
+        self,
+        client: TestClient,
+        db: Session,
+        api_tester_user: user_models.User,
+    ):
+        db_key, raw = self._make_key(db, api_tester_user, ["api_keys:read"])
+        response = client.get("/api-keys/", headers={"Authorization": raw})
+        assert response.status_code == status.HTTP_200_OK
+
+        log = (
+            db.query(audit_log_models.AuditLog)
+            .filter_by(action="api_key.authenticated", resource_id=db_key.id)
+            .one()
+        )
+        assert log.actor_user_id == api_tester_user.id
+        assert log.actor_type == "api_key"
+        assert log.actor_credential_id == db_key.id
+
+    def test_authentication_audit_is_debounced(
+        self,
+        client: TestClient,
+        db: Session,
+        api_tester_user: user_models.User,
+    ):
+        # Two back-to-back requests within the 1-minute debounce window
+        # must produce exactly ONE audit row, matching last_used_at semantics.
+        db_key, raw = self._make_key(db, api_tester_user, ["api_keys:read"])
+        for _ in range(3):
+            r = client.get("/api-keys/", headers={"Authorization": raw})
+            assert r.status_code == status.HTTP_200_OK
+
+        count = (
+            db.query(audit_log_models.AuditLog)
+            .filter_by(action="api_key.authenticated", resource_id=db_key.id)
+            .count()
+        )
+        assert count == 1

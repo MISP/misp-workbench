@@ -5,7 +5,8 @@ from app.db.session import get_db
 from app.repositories import api_keys as api_keys_repository
 from app.schemas import api_key as api_key_schemas
 from app.schemas import user as user_schemas
-from fastapi import APIRouter, Depends, HTTPException, Security, status
+from app.services import audit
+from fastapi import APIRouter, Depends, HTTPException, Request, Security, status
 from sqlalchemy.orm import Session
 
 router = APIRouter()
@@ -50,6 +51,7 @@ def list_api_keys(
 )
 def create_api_key(
     key_request: api_key_schemas.ApiKeyCreate,
+    request: Request,
     db: Session = Depends(get_db),
     user: user_schemas.User = Security(
         get_current_active_user, scopes=["api_keys:create"]
@@ -65,6 +67,20 @@ def create_api_key(
         comment=key_request.comment,
         expires_at=key_request.expires_at,
     )
+    audit.record(
+        db,
+        action="api_key.created",
+        resource_type="api_key",
+        resource_id=db_key.id,
+        actor_user_id=user.id,
+        request=request,
+        metadata={
+            "name": db_key.name,
+            "scopes": list(db_key.scopes or []),
+            "expires_at": db_key.expires_at.isoformat() if db_key.expires_at else None,
+        },
+    )
+    db.commit()
     return api_key_schemas.ApiKeyCreated(
         **api_key_schemas.ApiKey.model_validate(db_key).model_dump(),
         token=raw_token,
@@ -75,6 +91,7 @@ def create_api_key(
 def update_api_key(
     key_id: int,
     payload: api_key_schemas.ApiKeyUpdate,
+    request: Request,
     db: Session = Depends(get_db),
     user: user_schemas.User = Security(
         get_current_active_user, scopes=["api_keys:update"]
@@ -85,12 +102,25 @@ def update_api_key(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="API key not found"
         )
-    return api_keys_repository.set_disabled(db, db_key, payload.disabled)
+    was_disabled = db_key.disabled
+    updated = api_keys_repository.set_disabled(db, db_key, payload.disabled)
+    if was_disabled != updated.disabled:
+        audit.record(
+            db,
+            action="api_key.disabled" if updated.disabled else "api_key.enabled",
+            resource_type="api_key",
+            resource_id=updated.id,
+            actor_user_id=user.id,
+            request=request,
+        )
+        db.commit()
+    return updated
 
 
 @router.delete("/api-keys/{key_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_api_key(
     key_id: int,
+    request: Request,
     db: Session = Depends(get_db),
     user: user_schemas.User = Security(
         get_current_active_user, scopes=["api_keys:delete"]
@@ -101,4 +131,15 @@ def delete_api_key(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="API key not found"
         )
+    key_snapshot = {"id": db_key.id, "name": db_key.name}
     api_keys_repository.delete_key(db, db_key)
+    audit.record(
+        db,
+        action="api_key.deleted",
+        resource_type="api_key",
+        resource_id=key_snapshot["id"],
+        actor_user_id=user.id,
+        request=request,
+        metadata={"name": key_snapshot["name"]},
+    )
+    db.commit()
