@@ -8826,6 +8826,63 @@
       }
     },
     "/api-keys/{key_id}": {
+      "patch": {
+        "tags": [
+          "API Keys"
+        ],
+        "summary": "Update Api Key",
+        "operationId": "update_api_key_api_keys__key_id__patch",
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "api_keys:update"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "key_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Key Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiKeyUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiKey"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
       "delete": {
         "tags": [
           "API Keys"
@@ -8836,6 +8893,165 @@
           {
             "OAuth2PasswordBearer": [
               "api_keys:delete"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "key_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Key Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/api-keys/": {
+      "get": {
+        "tags": [
+          "API Keys"
+        ],
+        "summary": "Admin List Api Keys",
+        "operationId": "admin_list_api_keys_admin_api_keys__get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "api_keys:admin"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "User Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ApiKey"
+                  },
+                  "title": "Response Admin List Api Keys Admin Api Keys  Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/api-keys/{key_id}": {
+      "patch": {
+        "tags": [
+          "API Keys"
+        ],
+        "summary": "Admin Update Api Key",
+        "operationId": "admin_update_api_key_admin_api_keys__key_id__patch",
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "api_keys:admin"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "key_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Key Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiKeyUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiKey"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "API Keys"
+        ],
+        "summary": "Admin Delete Api Key",
+        "operationId": "admin_delete_api_key_admin_api_keys__key_id__delete",
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "api_keys:admin"
             ]
           }
         ],
@@ -8967,6 +9183,10 @@
             "type": "boolean",
             "title": "Disabled"
           },
+          "admin_disabled": {
+            "type": "boolean",
+            "title": "Admin Disabled"
+          },
           "created_at": {
             "type": "string",
             "format": "date-time",
@@ -8980,6 +9200,7 @@
           "name",
           "scopes",
           "disabled",
+          "admin_disabled",
           "created_at"
         ],
         "title": "ApiKey"
@@ -9089,6 +9310,10 @@
             "type": "boolean",
             "title": "Disabled"
           },
+          "admin_disabled": {
+            "type": "boolean",
+            "title": "Admin Disabled"
+          },
           "created_at": {
             "type": "string",
             "format": "date-time",
@@ -9106,11 +9331,25 @@
           "name",
           "scopes",
           "disabled",
+          "admin_disabled",
           "created_at",
           "token"
         ],
         "title": "ApiKeyCreated",
         "description": "Response returned once on creation, includes the raw token."
+      },
+      "ApiKeyUpdate": {
+        "properties": {
+          "disabled": {
+            "type": "boolean",
+            "title": "Disabled"
+          }
+        },
+        "type": "object",
+        "required": [
+          "disabled"
+        ],
+        "title": "ApiKeyUpdate"
       },
       "Attribute": {
         "properties": {

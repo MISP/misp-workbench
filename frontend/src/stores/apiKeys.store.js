@@ -4,13 +4,20 @@ import { fetchWrapper } from "@/helpers";
 
 const baseUrl = `${import.meta.env.VITE_API_URL}/api-keys`;
 
+const adminUrl = `${import.meta.env.VITE_API_URL}/admin/api-keys`;
+
 export const useApiKeysStore = defineStore({
   id: "apiKeys",
   state: () => ({
     apiKeys: [],
+    adminApiKeys: [],
     status: {
       loading: false,
       creating: false,
+      error: null,
+    },
+    adminStatus: {
+      loading: false,
       error: null,
     },
   }),
@@ -46,6 +53,39 @@ export const useApiKeysStore = defineStore({
     async delete(id) {
       return fetchWrapper
         .delete(`${baseUrl}/${id}`)
+        .catch((error) => Promise.reject(error));
+    },
+    async adminGetAll(userId = null) {
+      this.adminStatus = { loading: true };
+      const url = userId ? `${adminUrl}/?user_id=${userId}` : `${adminUrl}/`;
+      return fetchWrapper
+        .get(url)
+        .then((keys) => (this.adminApiKeys = keys))
+        .catch((error) => {
+          this.adminStatus = { error };
+          return Promise.reject(error);
+        })
+        .finally(
+          () => (this.adminStatus = { ...this.adminStatus, loading: false }),
+        );
+    },
+    async adminSetDisabled(id, disabled) {
+      return fetchWrapper
+        .patch(`${adminUrl}/${id}`, { disabled })
+        .then((updated) => {
+          const idx = this.adminApiKeys.findIndex((k) => k.id === id);
+          if (idx !== -1) this.adminApiKeys.splice(idx, 1, updated);
+          return updated;
+        })
+        .catch((error) => Promise.reject(error));
+    },
+    async adminDelete(id) {
+      return fetchWrapper
+        .delete(`${adminUrl}/${id}`)
+        .then(() => {
+          const idx = this.adminApiKeys.findIndex((k) => k.id === id);
+          if (idx !== -1) this.adminApiKeys.splice(idx, 1);
+        })
         .catch((error) => Promise.reject(error));
     },
   },

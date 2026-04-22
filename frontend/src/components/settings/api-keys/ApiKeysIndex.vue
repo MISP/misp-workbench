@@ -112,6 +112,13 @@ function dismissNewlyCreated() {
 }
 
 async function remove(key) {
+  if (key.admin_disabled) {
+    toastsStore.push(
+      "This key is locked by an administrator and cannot be deleted. Contact an administrator.",
+      "error",
+    );
+    return;
+  }
   if (!confirm(`Delete API key "${key.name}"? This cannot be undone.`)) return;
   try {
     await apiKeysStore.delete(key.id);
@@ -225,7 +232,14 @@ function isExpired(d) {
             <div v-if="k.comment" class="small text-muted">{{ k.comment }}</div>
           </td>
           <td>
-            <span v-if="k.disabled" class="badge bg-warning text-dark">
+            <span
+              v-if="k.admin_disabled"
+              class="badge bg-danger"
+              title="This key has been locked by an administrator. Contact an administrator to unlock it."
+            >
+              locked by admin
+            </span>
+            <span v-else-if="k.disabled" class="badge bg-warning text-dark">
               disabled
             </span>
             <span v-else class="badge bg-success">active</span>
@@ -255,14 +269,24 @@ function isExpired(d) {
               v-if="canUpdateApiKeys"
               class="btn btn-outline-warning btn-sm me-1"
               @click="toggleDisabled(k)"
-              :title="k.disabled ? 'enable' : 'disable'"
+              :disabled="k.admin_disabled"
+              :title="
+                k.admin_disabled
+                  ? 'Locked by an administrator'
+                  : k.disabled
+                    ? 'enable'
+                    : 'disable'
+              "
             >
               <FontAwesomeIcon :icon="k.disabled ? faCheck : faBan" />
             </button>
             <button
               class="btn btn-outline-danger btn-sm"
               @click="remove(k)"
-              title="delete"
+              :disabled="k.admin_disabled"
+              :title="
+                k.admin_disabled ? 'Locked by an administrator' : 'delete'
+              "
             >
               <FontAwesomeIcon :icon="faTrash" />
             </button>

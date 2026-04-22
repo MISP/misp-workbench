@@ -304,6 +304,62 @@ class TestApiKeysResource(ApiTester):
         )
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
+    @pytest.mark.parametrize("scopes", [["api_keys:update"]])
+    def test_owner_patch_does_not_clear_admin_hold(
+        self,
+        client: TestClient,
+        db: Session,
+        api_tester_user: user_models.User,
+        auth_token: auth.Token,
+    ):
+        # Admin has locked the key (admin_disabled=true). The owner calling
+        # PATCH only manages their own `disabled` flag — the admin hold
+        # survives regardless of what they send.
+        db_key, _raw = api_keys_repository.create_key(
+            db,
+            user_id=api_tester_user.id,
+            name="locked",
+            scopes=["events:read"],
+        )
+        api_keys_repository.set_admin_disabled(db, db_key, True)
+
+        response = client.patch(
+            f"/api-keys/{db_key.id}",
+            headers={"Authorization": "Bearer " + auth_token},
+            json={"disabled": False},
+        )
+        assert response.status_code == status.HTTP_200_OK
+        db.refresh(db_key)
+        assert db_key.admin_disabled is True  # hold survives
+        assert db_key.disabled is False
+
+    @pytest.mark.parametrize("scopes", [["api_keys:delete"]])
+    def test_owner_cannot_delete_admin_locked_key(
+        self,
+        client: TestClient,
+        db: Session,
+        api_tester_user: user_models.User,
+        auth_token: auth.Token,
+    ):
+        db_key, _raw = api_keys_repository.create_key(
+            db,
+            user_id=api_tester_user.id,
+            name="forensics",
+            scopes=["events:read"],
+        )
+        api_keys_repository.set_admin_disabled(db, db_key, True)
+
+        response = client.delete(
+            f"/api-keys/{db_key.id}",
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+        assert response.status_code == status.HTTP_409_CONFLICT
+        # Key must still exist so admins can investigate.
+        assert (
+            db.query(api_key_models.ApiKey).filter_by(id=db_key.id).first()
+            is not None
+        )
+
     @pytest.mark.parametrize("scopes", [["api_keys:delete"]])
     def test_cannot_delete_other_users_key(
         self,
@@ -325,6 +381,209 @@ class TestApiKeysResource(ApiTester):
             db.query(api_key_models.ApiKey).filter_by(id=other_key.id).first()
             is not None
         )
+
+
+class TestApiKeysAdminResource(ApiTester):
+    """Admin endpoints for managing API keys of any user (incident response)."""
+
+    @pytest.fixture(scope="function", autouse=True)
+    def _cleanup_keys(
+        self,
+        db: Session,
+        api_tester_user: user_models.User,
+        user_1: user_models.User,
+    ):
+        db.query(api_key_models.ApiKey).filter(
+            api_key_models.ApiKey.user_id.in_([api_tester_user.id, user_1.id])
+        ).delete(synchronize_session=False)
+        db.query(audit_log_models.AuditLog).delete(synchronize_session=False)
+        db.commit()
+        yield
+        db.query(api_key_models.ApiKey).filter(
+            api_key_models.ApiKey.user_id.in_([api_tester_user.id, user_1.id])
+        ).delete(synchronize_session=False)
+        db.query(audit_log_models.AuditLog).delete(synchronize_session=False)
+        db.commit()
+
+    @pytest.mark.parametrize("scopes", [["api_keys:admin"]])
+    def test_admin_list_returns_keys_from_all_users(
+        self,
+        client: TestClient,
+        db: Session,
+        api_tester_user: user_models.User,
+        user_1: user_models.User,
+        auth_token: auth.Token,
+    ):
+        api_keys_repository.create_key(
+            db, user_id=api_tester_user.id, name="mine", scopes=["events:read"]
+        )
+        api_keys_repository.create_key(
+            db, user_id=user_1.id, name="theirs", scopes=["events:read"]
+        )
+        response = client.get(
+            "/admin/api-keys/",
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+        assert response.status_code == status.HTTP_200_OK
+        owners = {row["user_id"] for row in response.json()}
+        assert owners == {api_tester_user.id, user_1.id}
+
+    @pytest.mark.parametrize("scopes", [["api_keys:admin"]])
+    def test_admin_list_filters_by_user_id(
+        self,
+        client: TestClient,
+        db: Session,
+        api_tester_user: user_models.User,
+        user_1: user_models.User,
+        auth_token: auth.Token,
+    ):
+        api_keys_repository.create_key(
+            db, user_id=api_tester_user.id, name="mine", scopes=["events:read"]
+        )
+        api_keys_repository.create_key(
+            db, user_id=user_1.id, name="theirs", scopes=["events:read"]
+        )
+        response = client.get(
+            f"/admin/api-keys/?user_id={user_1.id}",
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+        assert response.status_code == status.HTTP_200_OK
+        data = response.json()
+        assert len(data) == 1
+        assert data[0]["user_id"] == user_1.id
+
+    @pytest.mark.parametrize("scopes", [["api_keys:admin"]])
+    def test_admin_can_disable_other_users_key(
+        self,
+        client: TestClient,
+        db: Session,
+        api_tester_user: user_models.User,
+        user_1: user_models.User,
+        auth_token: auth.Token,
+    ):
+        target_key, _raw = api_keys_repository.create_key(
+            db, user_id=user_1.id, name="compromised", scopes=["events:read"]
+        )
+        response = client.patch(
+            f"/admin/api-keys/{target_key.id}",
+            headers={"Authorization": "Bearer " + auth_token},
+            json={"disabled": True},
+        )
+        assert response.status_code == status.HTTP_200_OK
+        # Admin endpoint manages the admin hold; the owner's flag is untouched.
+        assert response.json()["admin_disabled"] is True
+        assert response.json()["disabled"] is False
+
+        db.refresh(target_key)
+        assert target_key.admin_disabled is True
+        assert target_key.disabled is False
+
+        log = (
+            db.query(audit_log_models.AuditLog)
+            .filter_by(
+                action="api_key.admin_locked", resource_id=target_key.id
+            )
+            .one()
+        )
+        # Actor is the admin, not the key's owner.
+        assert log.actor_user_id == api_tester_user.id
+        assert log.metadata_ == {"target_user_id": user_1.id}
+
+    @pytest.mark.parametrize("scopes", [["api_keys:admin"]])
+    def test_admin_can_delete_other_users_key(
+        self,
+        client: TestClient,
+        db: Session,
+        api_tester_user: user_models.User,
+        user_1: user_models.User,
+        auth_token: auth.Token,
+    ):
+        target_key, _raw = api_keys_repository.create_key(
+            db, user_id=user_1.id, name="revoke me", scopes=["events:read"]
+        )
+        target_id = target_key.id
+        response = client.delete(
+            f"/admin/api-keys/{target_id}",
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+        assert response.status_code == status.HTTP_204_NO_CONTENT
+        assert (
+            db.query(api_key_models.ApiKey).filter_by(id=target_id).first()
+            is None
+        )
+
+        log = (
+            db.query(audit_log_models.AuditLog)
+            .filter_by(action="api_key.admin_deleted", resource_id=target_id)
+            .one()
+        )
+        assert log.actor_user_id == api_tester_user.id
+        assert log.metadata_["target_user_id"] == user_1.id
+
+    @pytest.mark.parametrize("scopes", [["api_keys:admin"]])
+    def test_admin_update_nonexistent_key(
+        self, client: TestClient, auth_token: auth.Token
+    ):
+        response = client.patch(
+            "/admin/api-keys/999999",
+            headers={"Authorization": "Bearer " + auth_token},
+            json={"disabled": True},
+        )
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    @pytest.mark.parametrize("scopes", [["api_keys:admin"]])
+    def test_admin_patch_is_idempotent(
+        self,
+        client: TestClient,
+        db: Session,
+        user_1: user_models.User,
+        auth_token: auth.Token,
+    ):
+        target_key, _raw = api_keys_repository.create_key(
+            db, user_id=user_1.id, name="x", scopes=["events:read"]
+        )
+        for _ in range(2):
+            response = client.patch(
+                f"/admin/api-keys/{target_key.id}",
+                headers={"Authorization": "Bearer " + auth_token},
+                json={"disabled": True},
+            )
+            assert response.status_code == status.HTTP_200_OK
+
+        count = (
+            db.query(audit_log_models.AuditLog)
+            .filter_by(
+                action="api_key.admin_locked", resource_id=target_key.id
+            )
+            .count()
+        )
+        assert count == 1
+
+    @pytest.mark.parametrize("scopes", [["api_keys:update"]])
+    def test_non_admin_cannot_reach_admin_endpoints(
+        self,
+        client: TestClient,
+        db: Session,
+        user_1: user_models.User,
+        auth_token: auth.Token,
+    ):
+        # Owning api_keys:update alone must not unlock cross-user management.
+        target_key, _raw = api_keys_repository.create_key(
+            db, user_id=user_1.id, name="x", scopes=["events:read"]
+        )
+        for method, url in [
+            ("get", "/admin/api-keys/"),
+            ("patch", f"/admin/api-keys/{target_key.id}"),
+            ("delete", f"/admin/api-keys/{target_key.id}"),
+        ]:
+            kwargs = {"headers": {"Authorization": "Bearer " + auth_token}}
+            if method == "patch":
+                kwargs["json"] = {"disabled": True}
+            response = getattr(client, method)(url, **kwargs)
+            assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+        db.refresh(target_key)
+        assert target_key.disabled is False
 
 
 class TestApiKeyAuthentication(ApiTester):
@@ -427,6 +686,19 @@ class TestApiKeyAuthentication(ApiTester):
         _db_key, raw = self._make_key(
             db, api_tester_user, ["api_keys:read"], disabled=True
         )
+        response = client.get("/api-keys/", headers={"Authorization": raw})
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+    def test_admin_locked_key_rejected(
+        self,
+        client: TestClient,
+        db: Session,
+        api_tester_user: user_models.User,
+    ):
+        # Admin-locked key must not authenticate, independently of the
+        # owner's `disabled` flag.
+        db_key, raw = self._make_key(db, api_tester_user, ["api_keys:read"])
+        api_keys_repository.set_admin_disabled(db, db_key, True)
         response = client.get("/api-keys/", headers={"Authorization": raw})
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 

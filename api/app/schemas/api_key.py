@@ -28,6 +28,7 @@ class ApiKey(BaseModel):
     expires_at: Optional[datetime] = None
     last_used_at: Optional[datetime] = None
     disabled: bool
+    admin_disabled: bool
     created_at: datetime
     model_config = ConfigDict(from_attributes=True)
 

@@ -124,6 +124,7 @@ AVAILABLE_SCOPES: dict[str, str] = {
         "api_keys:create": "Create own API keys.",
         "api_keys:update": "Update own API keys.",
         "api_keys:delete": "Delete own API keys.",
+        "api_keys:admin": "Manage API keys of any user.",
         "mcp:list_tools": "List MCP tools.",
         "mcp:list_resources": "List MCP resources.",
         "mcp:list_prompts": "List MCP prompts.",

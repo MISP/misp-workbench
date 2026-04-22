@@ -110,7 +110,7 @@ def _authenticate_api_key(
     request: Request,
 ):
     db_key = api_keys_repository.get_key_by_token(db, token)
-    if db_key is None or db_key.disabled:
+    if db_key is None or db_key.disabled or db_key.admin_disabled:
         raise credentials_exception
 
     if db_key.expires_at is not None and db_key.expires_at < datetime.now(timezone.utc):

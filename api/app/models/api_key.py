@@ -18,6 +18,9 @@ class ApiKey(Base):
     expires_at = Column(DateTime(timezone=True), nullable=True)
     last_used_at = Column(DateTime(timezone=True), nullable=True)
     disabled = Column(Boolean, nullable=False, default=False, server_default="false")
+    admin_disabled = Column(
+        Boolean, nullable=False, default=False, server_default="false"
+    )
     created_at = Column(
         DateTime(timezone=True),
         nullable=False,

@@ -131,6 +131,14 @@ def delete_api_key(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="API key not found"
         )
+    if db_key.admin_disabled:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                "This API key has been locked by an administrator and cannot "
+                "be deleted. Contact an administrator to unlock or delete it."
+            ),
+        )
     key_snapshot = {"id": db_key.id, "name": db_key.name}
     api_keys_repository.delete_key(db, db_key)
     audit.record(
@@ -141,5 +149,89 @@ def delete_api_key(
         actor_user_id=user.id,
         request=request,
         metadata={"name": key_snapshot["name"]},
+    )
+    db.commit()
+
+
+@router.get("/admin/api-keys/", response_model=list[api_key_schemas.ApiKey])
+def admin_list_api_keys(
+    user_id: int | None = None,
+    db: Session = Depends(get_db),
+    _admin: user_schemas.User = Security(
+        get_current_active_user, scopes=["api_keys:admin"]
+    ),
+):
+    return api_keys_repository.list_keys_admin(db, user_id=user_id)
+
+
+@router.patch("/admin/api-keys/{key_id}", response_model=api_key_schemas.ApiKey)
+def admin_update_api_key(
+    key_id: int,
+    payload: api_key_schemas.ApiKeyUpdate,
+    request: Request,
+    db: Session = Depends(get_db),
+    admin: user_schemas.User = Security(
+        get_current_active_user, scopes=["api_keys:admin"]
+    ),
+):
+    db_key = api_keys_repository.get_key_by_id(db, key_id=key_id)
+    if db_key is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="API key not found"
+        )
+    # The `disabled` field in the request body controls the admin hold; the
+    # owner's own `disabled` flag is independent and not touched here.
+    was_admin_disabled = db_key.admin_disabled
+    target_user_id = db_key.user_id
+    updated = api_keys_repository.set_admin_disabled(db, db_key, payload.disabled)
+    if was_admin_disabled != updated.admin_disabled:
+        audit.record(
+            db,
+            action=(
+                "api_key.admin_locked"
+                if updated.admin_disabled
+                else "api_key.admin_unlocked"
+            ),
+            resource_type="api_key",
+            resource_id=updated.id,
+            actor_user_id=admin.id,
+            request=request,
+            metadata={"target_user_id": target_user_id},
+        )
+        db.commit()
+    return updated
+
+
+@router.delete("/admin/api-keys/{key_id}", status_code=status.HTTP_204_NO_CONTENT)
+def admin_delete_api_key(
+    key_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    admin: user_schemas.User = Security(
+        get_current_active_user, scopes=["api_keys:admin"]
+    ),
+):
+    db_key = api_keys_repository.get_key_by_id(db, key_id=key_id)
+    if db_key is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="API key not found"
+        )
+    snapshot = {
+        "id": db_key.id,
+        "name": db_key.name,
+        "target_user_id": db_key.user_id,
+    }
+    api_keys_repository.delete_key(db, db_key)
+    audit.record(
+        db,
+        action="api_key.admin_deleted",
+        resource_type="api_key",
+        resource_id=snapshot["id"],
+        actor_user_id=admin.id,
+        request=request,
+        metadata={
+            "name": snapshot["name"],
+            "target_user_id": snapshot["target_user_id"],
+        },
     )
     db.commit()

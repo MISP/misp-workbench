@@ -26,6 +26,15 @@ def list_keys_for_user(db: Session, user_id: int) -> list[api_key_models.ApiKey]
     )
 
 
+def list_keys_admin(
+    db: Session, user_id: Optional[int] = None
+) -> list[api_key_models.ApiKey]:
+    q = db.query(api_key_models.ApiKey)
+    if user_id is not None:
+        q = q.filter(api_key_models.ApiKey.user_id == user_id)
+    return q.order_by(api_key_models.ApiKey.created_at.desc()).all()
+
+
 def get_key_by_id(
     db: Session, key_id: int, user_id: Optional[int] = None
 ) -> Optional[api_key_models.ApiKey]:
@@ -72,6 +81,16 @@ def set_disabled(
     db: Session, db_key: api_key_models.ApiKey, disabled: bool
 ) -> api_key_models.ApiKey:
     db_key.disabled = disabled
+    db.add(db_key)
+    db.commit()
+    db.refresh(db_key)
+    return db_key
+
+
+def set_admin_disabled(
+    db: Session, db_key: api_key_models.ApiKey, admin_disabled: bool
+) -> api_key_models.ApiKey:
+    db_key.admin_disabled = admin_disabled
     db.add(db_key)
     db.commit()
     db.refresh(db_key)
