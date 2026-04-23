@@ -2,7 +2,7 @@
 
 The audit log is an append-only record of security-relevant actions: who did what, when, from where, and — for state changes — what changed. It is stored in a dedicated `audit_logs` table and is the primary forensic artefact for incident response.
 
-<img src="../../screenshots/audit-logs/misp-workbench-1_audit_logs.png">
+<img src="../../../screenshots/audit-logs/misp-workbench-1_audit_logs.png">
 
 
 ## What gets recorded
