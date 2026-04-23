@@ -11,6 +11,7 @@ The audit log is an append-only record of security-relevant actions: who did wha
 |---|---|
 | **Authentication** | `user.login`, `user.login_failed`, `user.logout` |
 | **API keys** | `api_key.created`, `api_key.authenticated` (debounced), `api_key.disabled`, `api_key.enabled`, `api_key.deleted`, `api_key.admin_locked`, `api_key.admin_unlocked`, `api_key.admin_deleted` |
+| **Users** | `user.updated` (with a diff of changed fields — `email`, `org_id`, `role_id`, `disabled`) |
 | **Runtime settings** | `runtime_setting.updated` (with a diff of what changed), `runtime_setting.deleted` (with the pre-deletion value) |
 
 New integrations record events via `app.services.audit.record(...)` in the caller's DB session, so the audit entry commits or rolls back with the business operation.
