@@ -17259,6 +17259,17 @@
               }
             ],
             "title": "Role Id"
+          },
+          "disabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Disabled"
           }
         },
         "type": "object",
