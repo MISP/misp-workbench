@@ -51,6 +51,9 @@ const canReadApiKeys = computed(() =>
 const canAdminApiKeys = computed(() =>
   authHelper.hasScope(scopes.value, "api_keys:admin"),
 );
+const canAdminAuditLogs = computed(() =>
+  authHelper.hasScope(scopes.value, "audit_logs:admin"),
+);
 
 // notifications
 const notificationsStore = useNotificationsStore();
@@ -278,6 +281,11 @@ function navAndClose(path) {
             <li v-if="canAdminApiKeys">
               <RouterLink to="/admin/api-keys" class="dropdown-item fw-light"
                 >API keys (admin)</RouterLink
+              >
+            </li>
+            <li v-if="canAdminAuditLogs">
+              <RouterLink to="/admin/audit-logs" class="dropdown-item fw-light"
+                >audit logs</RouterLink
               >
             </li>
           </ul>
@@ -534,6 +542,15 @@ function navAndClose(path) {
                 @click.prevent="navAndClose('/admin/api-keys')"
               >
                 API keys (admin)
+              </RouterLink>
+            </li>
+            <li v-if="canAdminAuditLogs">
+              <RouterLink
+                to="/admin/audit-logs"
+                class="list-group-item list-group-item-action ps-4"
+                @click.prevent="navAndClose('/admin/audit-logs')"
+              >
+                audit logs
               </RouterLink>
             </li>
           </ul>

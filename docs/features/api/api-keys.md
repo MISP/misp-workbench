@@ -147,6 +147,8 @@ Every security-relevant action on a key is recorded in the audit log:
 
 Each entry captures the actor (user id + `user`/`api_key`/`system`), IP address, user agent, and action-specific metadata. The raw token is **never** logged.
 
+See [Audit logs](./audit-logs.md) for how to browse and filter these entries.
+
 ## Administrative controls (incident response)
 
 Users with the `api_keys:admin` scope can manage any user's keys from ***internals*** → ***API keys (admin)***. This is intended for incident response when a key may be compromised.

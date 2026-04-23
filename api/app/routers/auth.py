@@ -2,8 +2,9 @@ from datetime import timedelta
 
 from app.auth import auth
 from app.db.session import get_db
+from app.services import audit
 from app.settings import Settings, get_settings
-from fastapi import APIRouter, Depends, HTTPException, status, Security
+from fastapi import APIRouter, Depends, HTTPException, Request, status, Security
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from app.schemas import user as user_schemas
@@ -14,12 +15,22 @@ router = APIRouter()
 
 @router.post("/auth/token", response_model=auth.Token)
 async def login_for_access_token(
+    request: Request,
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db),
     settings: Settings = Depends(get_settings),
 ):
     user = auth.authenticate_user(db, form_data.username, form_data.password)
     if not user:
+        audit.record(
+            db,
+            action="user.login_failed",
+            resource_type="user",
+            actor_type=audit.ACTOR_USER,
+            request=request,
+            metadata={"email": form_data.username},
+        )
+        db.commit()
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
@@ -41,6 +52,17 @@ async def login_for_access_token(
         data={"sub": user.email, "scopes": scopes},
         expires_delta=refresh_token_expires,
     )
+    audit.record(
+        db,
+        action="user.login",
+        resource_type="user",
+        resource_id=user.id,
+        actor_user_id=user.id,
+        actor_type=audit.ACTOR_USER,
+        request=request,
+        metadata={"email": user.email},
+    )
+    db.commit()
     return {
         "access_token": access_token,
         "refresh_token": refresh_token,
@@ -116,8 +138,10 @@ async def refresh_access_token(
 
 @router.post("/auth/logout", status_code=status.HTTP_204_NO_CONTENT)
 async def logout_current_user(
+    request: Request,
     user: user_schemas.User = Security(get_current_active_user),
     token: str = Depends(auth.oauth2_scheme),
+    db: Session = Depends(get_db),
     settings: Settings = Depends(get_settings),
 ):
     try:
@@ -133,3 +157,14 @@ async def logout_current_user(
             detail="Could not validate credentials",
             headers={"WWW-Authenticate": "Bearer"},
         )
+    audit.record(
+        db,
+        action="user.logout",
+        resource_type="user",
+        resource_id=user.id,
+        actor_user_id=user.id,
+        actor_type=audit.ACTOR_USER,
+        request=request,
+        metadata={"email": user.email},
+    )
+    db.commit()
