@@ -25,6 +25,7 @@ function handleUserDeleted() {
           <th scope="col">id</th>
           <th scope="col">email</th>
           <th scope="col">organisation</th>
+          <th scope="col">role</th>
           <th scope="col">disabled</th>
           <th scope="col" class="text-end">actions</th>
         </tr>
@@ -40,6 +41,7 @@ function handleUserDeleted() {
               {{ user.organisation.name }}
             </RouterLink>
           </td>
+          <td>{{ user.role?.name }}</td>
           <td>{{ !!user.disabled }}</td>
           <td class="text-end">
             <UsersActions :user="user" @user-deleted="handleUserDeleted" />
