@@ -61,6 +61,7 @@ nav:
   - API:
     - Reference: features/api/index.md
     - API keys: features/api/api-keys.md
+    - Audit logs: features/api/audit-logs.md
 
 plugins:
   - search
