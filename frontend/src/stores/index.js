@@ -28,3 +28,4 @@ export * from "./userSettings.store";
 export * from "./notifications.store";
 export * from "./hunts.store";
 export * from "./apiKeys.store";
+export * from "./auditLogs.store";
