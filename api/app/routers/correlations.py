@@ -46,6 +46,43 @@ def get_correlations(
 
 
 @router.get(
+    "/correlations/search",
+    response_model=correlation_schemas.CorrelationListResponse,
+)
+async def search_correlations(
+    query: str = Query(..., min_length=0),
+    page: int = Query(1, ge=1),
+    size: int = Query(10, ge=1, le=100),
+    sort_by: Optional[str] = Query("@timestamp", pattern="^(_score|@timestamp)$"),
+    sort_order: Optional[str] = Query("desc", pattern="^(asc|desc)$"),
+    user: user_schemas.User = Security(
+        get_current_active_user, scopes=["correlations:read"]
+    ),
+) -> correlation_schemas.CorrelationListResponse:
+    from_value = (page - 1) * size
+
+    return correlations_repository.search_correlations(
+        query=query,
+        page=page,
+        from_value=from_value,
+        size=size,
+        sort_by=sort_by,
+        sort_order=sort_order,
+    )
+
+
+@router.get("/correlations/histogram")
+async def get_correlations_histogram(
+    query: str = Query(..., min_length=0),
+    interval: Optional[str] = Query("1d", pattern="^(1d|1w|1M)$"),
+    user: user_schemas.User = Security(
+        get_current_active_user, scopes=["correlations:read"]
+    ),
+):
+    return correlations_repository.search_correlations_histogram(query, interval)
+
+
+@router.get(
     "/correlations/events/{source_event_uuid}/top",
     response_model=list[correlation_schemas.CorrelationEventBucket],
 )

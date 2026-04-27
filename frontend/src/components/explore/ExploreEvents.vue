@@ -1,15 +1,18 @@
 <script setup>
-import { ref, computed, watch } from "vue";
+import { ref, computed, watch, onMounted } from "vue";
+import { useRoute } from "vue-router";
 import { storeToRefs } from "pinia";
 import { useLocalStorageRef } from "@/helpers/local-storage";
 import {
   useEventsStore,
   useAttributesStore,
+  useCorrelationsStore,
   useUserSettingsStore,
 } from "@/stores";
 
 import AttributeResultCard from "./AttributeResultCard.vue";
 import EventResultCard from "./EventResultCard.vue";
+import CorrelationResultCard from "./CorrelationResultCard.vue";
 import ExploreSearchBar from "./ExploreSearchBar.vue";
 import ExploreSearchHistory from "./ExploreSearchHistory.vue";
 import ExploreResultsSection from "./ExploreResultsSection.vue";
@@ -46,12 +49,21 @@ const attributesSortOrder = useLocalStorageRef(
   "explore_attributes_sort_order",
   "desc",
 );
+const correlationsSortBy = useLocalStorageRef(
+  "explore_correlations_sort_by",
+  "@timestamp",
+);
+const correlationsSortOrder = useLocalStorageRef(
+  "explore_correlations_sort_order",
+  "desc",
+);
 
 const eventsFilters = ref([]);
 const attributesFilters = ref([]);
 
 const timelineEventBuckets = ref([]);
 const timelineAttributeBuckets = ref([]);
+const timelineCorrelationBuckets = ref([]);
 const timelineLoading = ref(false);
 
 function applyFilters(baseQuery, filters) {
@@ -63,6 +75,7 @@ function applyFilters(baseQuery, filters) {
 }
 
 const attributesStore = useAttributesStore();
+const correlationsStore = useCorrelationsStore();
 const userSettingsStore = useUserSettingsStore();
 const { userSettings } = storeToRefs(userSettingsStore);
 
@@ -76,6 +89,11 @@ const {
   status: attributesStatus,
   page_count: attributesPageCount,
 } = storeToRefs(attributesStore);
+const {
+  correlation_docs,
+  status: correlationsStatus,
+  page_count: correlationsPageCount,
+} = storeToRefs(correlationsStore);
 
 const userRecentSearches = useLocalStorageRef(
   "user_recent_explore_searches",
@@ -107,12 +125,14 @@ function onTimelineFilterDay(date) {
 
 async function searchTimeline(query) {
   timelineLoading.value = true;
-  const [eventsHist, attributesHist] = await Promise.all([
+  const [eventsHist, attributesHist, correlationsHist] = await Promise.all([
     eventsStore.histogram({ query, interval: "1d" }),
     attributesStore.histogram({ query, interval: "1d" }),
+    correlationsStore.histogram({ query, interval: "1d" }),
   ]);
   timelineEventBuckets.value = eventsHist?.buckets ?? [];
   timelineAttributeBuckets.value = attributesHist?.buckets ?? [];
+  timelineCorrelationBuckets.value = correlationsHist?.buckets ?? [];
   timelineLoading.value = false;
 }
 
@@ -131,6 +151,13 @@ function search() {
     query: applyFilters(base, attributesFilters.value),
     sort_by: attributesSortBy.value,
     sort_order: attributesSortOrder.value,
+  });
+  correlationsStore.search({
+    page: 1,
+    size: props.page_size,
+    query: base,
+    sort_by: correlationsSortBy.value,
+    sort_order: correlationsSortOrder.value,
   });
   searchTimeline(base);
 
@@ -210,6 +237,28 @@ function onAttributesSortChange({ sortBy, sortOrder }) {
   });
 }
 
+function onCorrelationsPageChange(page) {
+  correlationsStore.search({
+    page,
+    size: props.page_size,
+    query: buildQuery(),
+    sort_by: correlationsSortBy.value,
+    sort_order: correlationsSortOrder.value,
+  });
+}
+
+function onCorrelationsSortChange({ sortBy, sortOrder }) {
+  correlationsSortBy.value = sortBy;
+  correlationsSortOrder.value = sortOrder;
+  correlationsStore.search({
+    page: 1,
+    size: props.page_size,
+    query: buildQuery(),
+    sort_by: sortBy,
+    sort_order: sortOrder,
+  });
+}
+
 function onEventsFilterChange(filters) {
   eventsFilters.value = filters;
   eventsStore.search({
@@ -240,6 +289,8 @@ async function downloadAllResults(type, format = "json") {
       data = await attributesStore.export(params);
     } else if (type === "events") {
       data = await eventsStore.export(params);
+    } else if (type === "correlations") {
+      data = correlation_docs.value?.results ?? [];
     } else {
       throw new Error("Invalid type for export");
     }
@@ -285,6 +336,15 @@ function forgetRecentSearch(term) {
   const idx = userRecentSearches.value.findIndex((t) => t === term);
   if (idx !== -1) userRecentSearches.value.splice(idx, 1);
 }
+
+const route = useRoute();
+onMounted(() => {
+  const initialQuery = route.query.q;
+  if (typeof initialQuery === "string" && initialQuery.length > 0) {
+    searchQuery.value = initialQuery;
+    search();
+  }
+});
 </script>
 
 <style>
@@ -341,13 +401,15 @@ body {
       v-if="
         timelineLoading ||
         timelineEventBuckets.length > 0 ||
-        timelineAttributeBuckets.length > 0
+        timelineAttributeBuckets.length > 0 ||
+        timelineCorrelationBuckets.length > 0
       "
       class="col-12 mt-3 order-3"
     >
       <ExploreTimelineChart
         :event-buckets="timelineEventBuckets"
         :attribute-buckets="timelineAttributeBuckets"
+        :correlation-buckets="timelineCorrelationBuckets"
         :loading="timelineLoading"
         @filter-day="onTimelineFilterDay"
       />
@@ -393,6 +455,26 @@ body {
                 "
               >
                 {{ attribute_docs.total }}
+              </span>
+            </button>
+          </li>
+          <li class="nav-item">
+            <button
+              class="nav-link"
+              :class="{ active: activeTab === 'correlations' }"
+              @click="activeTab = 'correlations'"
+            >
+              Correlations
+              <span
+                v-if="correlation_docs?.total != null"
+                class="badge ms-1"
+                :class="
+                  activeTab === 'correlations'
+                    ? 'text-bg-warning'
+                    : 'text-bg-secondary'
+                "
+              >
+                {{ correlation_docs.total }}
               </span>
             </button>
           </li>
@@ -449,6 +531,29 @@ body {
                 v-for="result in attribute_docs.results"
                 :key="result._source.uuid"
                 :attribute="result"
+                class="mb-2"
+              />
+            </ExploreResultsSection>
+          </div>
+
+          <div v-show="activeTab === 'correlations'">
+            <ExploreResultsSection
+              title="Correlations"
+              :docs="correlation_docs"
+              :status="correlationsStatus"
+              :page-count="correlationsPageCount"
+              :sort-by="correlationsSortBy"
+              :sort-order="correlationsSortOrder"
+              :filter-fields="[]"
+              :visible="activeTab === 'correlations'"
+              @page-change="onCorrelationsPageChange"
+              @download="downloadAllResults('correlations', $event)"
+              @sort-change="onCorrelationsSortChange"
+            >
+              <CorrelationResultCard
+                v-for="result in correlation_docs?.results"
+                :key="result._id"
+                :correlation="result"
                 class="mb-2"
               />
             </ExploreResultsSection>

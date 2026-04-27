@@ -16,7 +16,11 @@ import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import relativeTime from "dayjs/plugin/relativeTime";
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
-import { faArrowLeft, faPen } from "@fortawesome/free-solid-svg-icons";
+import {
+  faArrowLeft,
+  faPen,
+  faUpRightFromSquare,
+} from "@fortawesome/free-solid-svg-icons";
 import { formatSchedule } from "@/helpers";
 import { Line } from "vue-chartjs";
 import {
@@ -188,6 +192,18 @@ huntsStore.getHistory(props.id).then((h) => {
 const huntSchedules = computed(() =>
   scheduledTasks.value.filter((t) => t.kwargs?.hunt_id === parseInt(props.id)),
 );
+
+const exploreLink = computed(() => {
+  if (
+    !hunt.value ||
+    hunt.value.hunt_type !== "opensearch" ||
+    hunt.value.index_target === "correlations" ||
+    !hunt.value.query
+  ) {
+    return null;
+  }
+  return { path: "/explore", query: { q: hunt.value.query } };
+});
 
 async function saveSchedule() {
   scheduleError.value = null;
@@ -457,6 +473,14 @@ async function runHunt() {
               </div>
             </div>
             <div class="d-flex flex-column align-items-end gap-1">
+              <RouterLink
+                v-if="exploreLink"
+                :to="exploreLink"
+                class="btn btn-outline-primary btn-sm"
+              >
+                <FontAwesomeIcon :icon="faUpRightFromSquare" class="me-1" />
+                Open in Explore
+              </RouterLink>
               <span v-if="resultIsCached" class="badge bg-secondary">
                 last run results
               </span>
