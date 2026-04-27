@@ -31,6 +31,10 @@ const props = defineProps({
     type: Array,
     default: () => [],
   },
+  correlationBuckets: {
+    type: Array,
+    default: () => [],
+  },
   loading: {
     type: Boolean,
     default: false,
@@ -46,6 +50,7 @@ const chartData = computed(() => {
   const allDates = new Set([
     ...props.eventBuckets.map((b) => formatDate(b.key_as_string)),
     ...props.attributeBuckets.map((b) => formatDate(b.key_as_string)),
+    ...props.correlationBuckets.map((b) => formatDate(b.key_as_string)),
   ]);
   const labels = Array.from(allDates).sort();
 
@@ -54,6 +59,12 @@ const chartData = computed(() => {
   );
   const attributeMap = Object.fromEntries(
     props.attributeBuckets.map((b) => [
+      formatDate(b.key_as_string),
+      b.doc_count,
+    ]),
+  );
+  const correlationMap = Object.fromEntries(
+    props.correlationBuckets.map((b) => [
       formatDate(b.key_as_string),
       b.doc_count,
     ]),
@@ -78,6 +89,18 @@ const chartData = computed(() => {
       data: labels.map((d) => attributeMap[d] ?? 0),
       backgroundColor: "rgba(25, 135, 84, 0.7)",
       borderColor: "rgba(25, 135, 84, 0.9)",
+      borderWidth: 1,
+      barPercentage: 0.9,
+      categoryPercentage: 1.0,
+      stack: "timeline",
+    });
+  }
+  if (showCorrelations.value) {
+    datasets.push({
+      label: "Correlations",
+      data: labels.map((d) => correlationMap[d] ?? 0),
+      backgroundColor: "rgba(255, 193, 7, 0.7)",
+      borderColor: "rgba(255, 193, 7, 0.9)",
       borderWidth: 1,
       barPercentage: 0.9,
       categoryPercentage: 1.0,
@@ -135,9 +158,13 @@ const chartOptions = {
 
 const showEvents = ref(true);
 const showAttributes = ref(true);
+const showCorrelations = ref(true);
 
 const hasData = computed(
-  () => props.eventBuckets.length > 0 || props.attributeBuckets.length > 0,
+  () =>
+    props.eventBuckets.length > 0 ||
+    props.attributeBuckets.length > 0 ||
+    props.correlationBuckets.length > 0,
 );
 </script>
 
@@ -170,6 +197,13 @@ const hasData = computed(
             @click="showAttributes = !showAttributes"
           >
             Attributes
+          </button>
+          <button
+            class="btn btn-outline-warning"
+            :class="{ active: showCorrelations }"
+            @click="showCorrelations = !showCorrelations"
+          >
+            Correlations
           </button>
         </div>
       </div>

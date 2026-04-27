@@ -296,6 +296,90 @@ def correlate_document(doc, runtimeSettings: RuntimeSettings):
         )
 
 
+def search_correlations(
+    query: str = None,
+    page: int = 0,
+    from_value: int = 0,
+    size: int = 10,
+    sort_by: str = "@timestamp",
+    sort_order: str = "desc",
+):
+    OpenSearchClient = get_opensearch_client()
+
+    search_body = {
+        "query": {
+            "query_string": {
+                "query": query or "*",
+                "default_field": "target_attribute_value",
+            }
+        },
+        "from": from_value,
+        "size": size,
+        "sort": [{sort_by: {"order": sort_order}}],
+    }
+
+    try:
+        response = OpenSearchClient.search(
+            index="misp-attribute-correlations",
+            body=search_body,
+        )
+    except NotFoundError:
+        return {
+            "page": page,
+            "size": size,
+            "total": 0,
+            "took": 0,
+            "timed_out": False,
+            "max_score": None,
+            "results": [],
+        }
+
+    return {
+        "page": page,
+        "size": size,
+        "total": response["hits"]["total"]["value"],
+        "took": response["took"],
+        "timed_out": response["timed_out"],
+        "max_score": response["hits"]["max_score"],
+        "results": response["hits"]["hits"],
+    }
+
+
+def search_correlations_histogram(query: str = None, interval: str = "1d"):
+    OpenSearchClient = get_opensearch_client()
+
+    search_body = {
+        "size": 0,
+        "query": {
+            "query_string": {
+                "query": query or "*",
+                "default_field": "target_attribute_value",
+            }
+        },
+        "aggs": {
+            "correlations_over_time": {
+                "date_histogram": {
+                    "field": "@timestamp",
+                    "calendar_interval": interval,
+                    "min_doc_count": 0,
+                }
+            }
+        },
+    }
+
+    try:
+        response = OpenSearchClient.search(
+            index="misp-attribute-correlations",
+            body=search_body,
+        )
+    except NotFoundError:
+        return {"buckets": []}
+
+    return {
+        "buckets": response["aggregations"]["correlations_over_time"]["buckets"]
+    }
+
+
 def get_top_correlated_events(source_event_uuid: str):
     OpenSearchClient = get_opensearch_client()
 
