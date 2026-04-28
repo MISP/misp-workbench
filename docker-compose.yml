@@ -209,7 +209,7 @@ services:
   flower:
     build:
       context: ./api
-    command: poetry run celery -A app.worker.tasks flower --loglevel=info --persistent=True --auto_refresh=True --state_save_interval=5
+    command: poetry run celery -A app.worker.tasks flower --loglevel=info --persistent=True --auto_refresh=True --state_save_interval=30000
     ports:
       - "5555:5555"
     environment:
