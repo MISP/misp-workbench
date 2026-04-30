@@ -6,7 +6,6 @@ from unittest.mock import patch
 
 import pytest
 from app.auth import auth
-from app.models import reactor as reactor_models
 from app.tests.api_tester import ApiTester
 from fastapi import status
 from fastapi.testclient import TestClient
