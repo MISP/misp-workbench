@@ -7,7 +7,6 @@ from unittest.mock import MagicMock, patch
 import pytest
 from app.models import reactor as reactor_models
 from app.repositories import reactor as reactor_repository
-from app.schemas import reactor as reactor_schemas
 
 
 @pytest.fixture(autouse=True)
