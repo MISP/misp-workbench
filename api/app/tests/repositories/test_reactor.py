@@ -93,7 +93,7 @@ class TestSourceStorage:
     def test_store_source_writes_local_file(self):
         uri, sha = reactor_repository._store_source("print('hi')\n")
         assert uri.startswith("reactor/scripts/")
-        full = os.path.join("/tmp/reactor", uri)
+        full = os.path.join("/tmp", uri)
         assert os.path.exists(full)
         with open(full) as f:
             assert f.read() == "print('hi')\n"
@@ -105,7 +105,7 @@ class TestSourceStorage:
 
     def test_delete_source_removes_local_file(self):
         uri, _ = reactor_repository._store_source("y = 2\n")
-        full = os.path.join("/tmp/reactor", uri)
+        full = os.path.join("/tmp", uri)
         assert os.path.exists(full)
         reactor_repository._delete_source(uri)
         assert not os.path.exists(full)

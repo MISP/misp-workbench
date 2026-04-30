@@ -112,7 +112,7 @@ def _read_source(source_uri: str) -> str:
     # Local fallback (dev / tests). Stored under /tmp/reactor.
     import os
 
-    base = "/tmp/reactor"
+    base = "/tmp"
     full = os.path.normpath(os.path.join(base, source_uri))
     if not full.startswith(base):
         raise RuntimeError("invalid source path")

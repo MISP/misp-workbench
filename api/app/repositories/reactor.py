@@ -242,11 +242,11 @@ def _store_source(source: str) -> tuple[str, str]:
         )
         return key, sha
 
-    base = "/tmp/reactor"
-    os.makedirs(os.path.join(base, "scripts"), exist_ok=True)
+    base = "/tmp"
     full = os.path.normpath(os.path.join(base, key))
     if not full.startswith(base):
         raise RuntimeError("invalid source path")
+    os.makedirs(os.path.dirname(full), exist_ok=True)
     with open(full, "w", encoding="utf-8") as f:
         f.write(source)
     return key, sha
@@ -259,7 +259,7 @@ def _read_source(source_uri: str) -> str:
         obj = client.get_object(Bucket=settings.Storage.s3.bucket, Key=source_uri)
         return obj["Body"].read().decode("utf-8")
 
-    base = "/tmp/reactor"
+    base = "/tmp"
     full = os.path.normpath(os.path.join(base, source_uri))
     if not full.startswith(base):
         raise RuntimeError("invalid source path")
@@ -276,7 +276,7 @@ def _delete_source(source_uri: str) -> None:
             client = get_s3_client()
             client.delete_object(Bucket=settings.Storage.s3.bucket, Key=source_uri)
             return
-        base = "/tmp/reactor"
+        base = "/tmp"
         full = os.path.normpath(os.path.join(base, source_uri))
         if full.startswith(base) and os.path.exists(full):
             os.remove(full)
