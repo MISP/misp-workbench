@@ -7,6 +7,7 @@ namespace for clarity, not security — never rely on it as a sandbox.
 
 import builtins
 import signal
+import threading
 from contextlib import contextmanager
 
 
@@ -36,8 +37,14 @@ def time_limit(seconds: int):
     """SIGALRM-based wall-clock limit. Only works on the main thread of a process.
 
     The reactor worker runs each task in a process (Celery prefork), so the
-    handler executes on the main thread of its own process.
+    handler executes on the main thread of its own process. Off the main thread
+    (e.g. inside FastAPI's TestClient threadpool) we skip the alarm — the timeout
+    is best-effort enforcement, not a security boundary.
     """
+
+    if threading.current_thread() is not threading.main_thread():
+        yield
+        return
 
     def _handle(_signum, _frame):
         raise ScriptTimeout(f"script exceeded {seconds}s")
