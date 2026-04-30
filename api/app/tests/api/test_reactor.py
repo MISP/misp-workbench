@@ -18,7 +18,9 @@ SAMPLE_SOURCE = "def handle(ctx, payload):\n    ctx.log('hello', payload)\n"
 @pytest.fixture(autouse=True)
 def _local_storage(monkeypatch):
     # Force the local-storage path so script bodies land in /tmp/reactor.
-    monkeypatch.setenv("STORAGE_ENGINE", "local")
+    from app.settings import get_settings
+
+    monkeypatch.setattr(get_settings().Storage, "engine", "local")
     base = "/tmp/reactor"
     yield
     if os.path.isdir(base):

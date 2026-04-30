@@ -11,7 +11,9 @@ from app.repositories import reactor as reactor_repository
 
 @pytest.fixture(autouse=True)
 def _local_storage(monkeypatch):
-    monkeypatch.setenv("STORAGE_ENGINE", "local")
+    from app.settings import get_settings
+
+    monkeypatch.setattr(get_settings().Storage, "engine", "local")
     base = "/tmp/reactor"
     yield
     if os.path.isdir(base):

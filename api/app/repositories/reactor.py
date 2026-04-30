@@ -2,16 +2,14 @@
 
 import hashlib
 import logging
-import os
 import uuid
 from datetime import datetime, timezone
 
 from app.models import reactor as reactor_models
 from app.schemas import reactor as reactor_schemas
-from app.services.s3 import get_s3_client
+from app.services.tech_lab.reactor import storage as reactor_storage
 from app.services.tech_lab.reactor import triggers as reactor_triggers
 from app.services.tech_lab.reactor.runner import read_log
-from app.settings import get_settings
 from fastapi_pagination.ext.sqlalchemy import paginate
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -232,53 +230,13 @@ def dispatch_triggered_scripts(
 def _store_source(source: str) -> tuple[str, str]:
     sha = hashlib.sha256(source.encode("utf-8")).hexdigest()
     key = f"reactor/scripts/{uuid.uuid4()}.py"
-    settings = get_settings()
-    if settings.Storage.engine == "s3":
-        client = get_s3_client()
-        client.put_object(
-            Bucket=settings.Storage.s3.bucket,
-            Key=key,
-            Body=source.encode("utf-8"),
-        )
-        return key, sha
-
-    base = "/tmp"
-    full = os.path.normpath(os.path.join(base, key))
-    if not full.startswith(base):
-        raise RuntimeError("invalid source path")
-    os.makedirs(os.path.dirname(full), exist_ok=True)
-    with open(full, "w", encoding="utf-8") as f:
-        f.write(source)
+    reactor_storage.write_object(key, source.encode("utf-8"))
     return key, sha
 
 
 def _read_source(source_uri: str) -> str:
-    settings = get_settings()
-    if settings.Storage.engine == "s3":
-        client = get_s3_client()
-        obj = client.get_object(Bucket=settings.Storage.s3.bucket, Key=source_uri)
-        return obj["Body"].read().decode("utf-8")
-
-    base = "/tmp"
-    full = os.path.normpath(os.path.join(base, source_uri))
-    if not full.startswith(base):
-        raise RuntimeError("invalid source path")
-    with open(full, "r", encoding="utf-8") as f:
-        return f.read()
+    return reactor_storage.read_object(source_uri).decode("utf-8")
 
 
 def _delete_source(source_uri: str) -> None:
-    if not source_uri:
-        return
-    settings = get_settings()
-    try:
-        if settings.Storage.engine == "s3":
-            client = get_s3_client()
-            client.delete_object(Bucket=settings.Storage.s3.bucket, Key=source_uri)
-            return
-        base = "/tmp"
-        full = os.path.normpath(os.path.join(base, source_uri))
-        if full.startswith(base) and os.path.exists(full):
-            os.remove(full)
-    except Exception:  # noqa: BLE001
-        logger.exception("failed to delete reactor source uri=%s", source_uri)
+    reactor_storage.delete_object(source_uri)

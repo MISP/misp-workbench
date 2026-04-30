@@ -1,10 +1,10 @@
 """Execute a reactor script for one queued run.
 
 Container-level isolation does the real work; this module is responsible for:
-- pulling source from S3
+- pulling source from storage (s3 or local fs)
 - compiling and running it with a tame globals dict
 - enforcing a wall-clock timeout
-- capturing stdout/stderr to S3
+- capturing stdout/stderr to storage
 - moving the run row through queued -> running -> success/failed/timed_out
 """
 
@@ -15,14 +15,13 @@ from contextlib import redirect_stderr, redirect_stdout
 from datetime import datetime, timezone
 
 from app.models import reactor as reactor_models
-from app.services.s3 import get_s3_client
+from app.services.tech_lab.reactor import storage as reactor_storage
 from app.services.tech_lab.reactor.context import ReactorContext
 from app.services.tech_lab.reactor.sandbox import (
     ScriptTimeout,
     restricted_builtins,
     time_limit,
 )
-from app.settings import get_settings
 from sqlalchemy.orm import Session
 
 logger = logging.getLogger(__name__)
@@ -104,20 +103,7 @@ def run_script(db: Session, run_id: int) -> None:
 
 
 def _read_source(source_uri: str) -> str:
-    settings = get_settings()
-    if settings.Storage.engine == "s3":
-        client = get_s3_client()
-        obj = client.get_object(Bucket=settings.Storage.s3.bucket, Key=source_uri)
-        return obj["Body"].read().decode("utf-8")
-    # Local fallback (dev / tests). Stored under /tmp/reactor.
-    import os
-
-    base = "/tmp"
-    full = os.path.normpath(os.path.join(base, source_uri))
-    if not full.startswith(base):
-        raise RuntimeError("invalid source path")
-    with open(full, "r", encoding="utf-8") as f:
-        return f.read()
+    return reactor_storage.read_object(source_uri).decode("utf-8")
 
 
 def _format_log(stdout: str, stderr: str, error: str | None) -> str:
@@ -133,49 +119,17 @@ def _format_log(stdout: str, stderr: str, error: str | None) -> str:
 
 def _write_log(run_id: int, content: str) -> str:
     key = f"reactor/runs/{run_id}.log"
-    settings = get_settings()
-    if settings.Storage.engine == "s3":
-        client = get_s3_client()
-        client.put_object(
-            Bucket=settings.Storage.s3.bucket,
-            Key=key,
-            Body=content.encode("utf-8"),
-        )
-        return key
-
-    import os
-
-    base = "/tmp/reactor"
-    os.makedirs(os.path.join(base, "runs"), exist_ok=True)
-    full = os.path.normpath(os.path.join(base, "runs", f"{run_id}.log"))
-    if not full.startswith(base):
-        raise RuntimeError("invalid log path")
-    with open(full, "w", encoding="utf-8") as f:
-        f.write(content)
+    reactor_storage.write_object(key, content.encode("utf-8"))
     return key
 
 
 def read_log(log_uri: str) -> str:
-    if not log_uri:
+    if not log_uri or not reactor_storage.object_exists(log_uri):
         return ""
-    settings = get_settings()
-    if settings.Storage.engine == "s3":
-        client = get_s3_client()
-        obj = client.get_object(Bucket=settings.Storage.s3.bucket, Key=log_uri)
-        return obj["Body"].read().decode("utf-8", errors="replace")
-
-    import os
-
-    base = "/tmp/reactor"
-    # log_uri is like reactor/runs/<id>.log -> map to /tmp/reactor/runs/<id>.log
-    rel = log_uri.removeprefix("reactor/")
-    full = os.path.normpath(os.path.join(base, rel))
-    if not full.startswith(base):
+    try:
+        return reactor_storage.read_object(log_uri).decode("utf-8", errors="replace")
+    except FileNotFoundError:
         return ""
-    if not os.path.exists(full):
-        return ""
-    with open(full, "r", encoding="utf-8") as f:
-        return f.read()
 
 
 # Hook used by tests that need to reset stdout/stderr if Celery's prefork
