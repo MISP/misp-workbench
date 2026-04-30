@@ -130,7 +130,11 @@ export const router = createRouter({
       component: EditReactorScript,
       props: true,
     },
-    { path: "/tech-lab/reactor/:id", component: ViewReactorScript, props: true },
+    {
+      path: "/tech-lab/reactor/:id",
+      component: ViewReactorScript,
+      props: true,
+    },
     { path: "/roles", component: IndexRoles },
     { path: "/roles/:id", component: ViewRole, props: true },
     { path: "/roles/update/:id", component: EditRole, props: true },

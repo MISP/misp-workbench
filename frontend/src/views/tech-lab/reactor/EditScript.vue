@@ -15,7 +15,13 @@ const RESOURCE_OPTIONS = [
   "correlation",
   "sighting",
 ];
-const ACTION_OPTIONS = ["created", "updated", "deleted", "published", "unpublished"];
+const ACTION_OPTIONS = [
+  "created",
+  "updated",
+  "deleted",
+  "published",
+  "unpublished",
+];
 
 const script = reactive({
   name: "",
@@ -188,7 +194,9 @@ function cancel() {
       <div v-if="apiError" class="alert alert-danger">{{ apiError }}</div>
 
       <div class="d-flex justify-content-end gap-2">
-        <button class="btn btn-outline-secondary" @click="cancel">Cancel</button>
+        <button class="btn btn-outline-secondary" @click="cancel">
+          Cancel
+        </button>
         <button
           class="btn btn-primary"
           :disabled="!canSubmit || reactorStore.status.updating"

@@ -13,7 +13,13 @@ const RESOURCE_OPTIONS = [
   "correlation",
   "sighting",
 ];
-const ACTION_OPTIONS = ["created", "updated", "deleted", "published", "unpublished"];
+const ACTION_OPTIONS = [
+  "created",
+  "updated",
+  "deleted",
+  "published",
+  "unpublished",
+];
 
 const DEFAULT_SOURCE = `def handle(ctx, payload):
     """Called for every matching trigger.
@@ -64,10 +70,7 @@ async function submit() {
   await reactorStore
     .create({ ...script, triggers: cleanTriggers })
     .then((response) => {
-      toastsStore.push(
-        `Reactor script "${response.name}" created.`,
-        "success",
-      );
+      toastsStore.push(`Reactor script "${response.name}" created.`, "success");
       router.push(`/tech-lab/reactor/${response.id}`);
     })
     .catch((err) => (apiError.value = err?.message || String(err)));
@@ -196,7 +199,9 @@ function cancel() {
             role="switch"
             id="r-active"
             :checked="script.status === 'active'"
-            @change="script.status = $event.target.checked ? 'active' : 'paused'"
+            @change="
+              script.status = $event.target.checked ? 'active' : 'paused'
+            "
           />
           <label class="form-check-label" for="r-active">Active</label>
         </div>
@@ -205,7 +210,9 @@ function cancel() {
       <div v-if="apiError" class="alert alert-danger">{{ apiError }}</div>
 
       <div class="d-flex justify-content-end gap-2">
-        <button class="btn btn-outline-secondary" @click="cancel">Cancel</button>
+        <button class="btn btn-outline-secondary" @click="cancel">
+          Cancel
+        </button>
         <button
           class="btn btn-primary"
           :disabled="!canSubmit || reactorStore.status.creating"

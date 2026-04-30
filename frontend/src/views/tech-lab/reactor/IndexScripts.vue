@@ -17,15 +17,15 @@ const authStore = useAuthStore();
 const { scripts, status } = storeToRefs(reactorStore);
 const { scopes } = storeToRefs(authStore);
 
-const canCreate = computed(() => authHelper.hasScope(scopes.value, "reactor:create"));
+const canCreate = computed(() =>
+  authHelper.hasScope(scopes.value, "reactor:create"),
+);
 
 reactorStore.getAll();
 
 function describeTriggers(triggers) {
   if (!triggers || triggers.length === 0) return "—";
-  return triggers
-    .map((t) => `${t.resource_type}.${t.action}`)
-    .join(", ");
+  return triggers.map((t) => `${t.resource_type}.${t.action}`).join(", ");
 }
 </script>
 
@@ -54,7 +54,8 @@ function describeTriggers(triggers) {
     class="text-muted"
   >
     No reactor scripts yet.<template v-if="canCreate">
-      Create one to react to MISP events.</template>
+      Create one to react to MISP events.</template
+    >
   </div>
 
   <div v-else-if="scripts && scripts.items" class="table-responsive">
@@ -92,9 +93,9 @@ function describeTriggers(triggers) {
                   script.last_run_status === 'success'
                     ? 'bg-success'
                     : script.last_run_status === 'failed' ||
-                      script.last_run_status === 'timed_out'
-                    ? 'bg-danger'
-                    : 'bg-secondary'
+                        script.last_run_status === 'timed_out'
+                      ? 'bg-danger'
+                      : 'bg-secondary'
                 "
                 >{{ script.last_run_status }}</span
               >
@@ -104,7 +105,9 @@ function describeTriggers(triggers) {
           <td class="text-end">
             <span
               class="badge"
-              :class="script.status === 'active' ? 'bg-success' : 'bg-secondary'"
+              :class="
+                script.status === 'active' ? 'bg-success' : 'bg-secondary'
+              "
               >{{ script.status }}</span
             >
           </td>

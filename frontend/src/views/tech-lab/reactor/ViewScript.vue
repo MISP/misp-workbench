@@ -21,12 +21,16 @@ const authStore = useAuthStore();
 const { script, runs, status } = storeToRefs(reactorStore);
 const { scopes } = storeToRefs(authStore);
 
-const canUpdate = computed(() => authHelper.hasScope(scopes.value, "reactor:update"));
-const canDelete = computed(() => authHelper.hasScope(scopes.value, "reactor:delete"));
+const canUpdate = computed(() =>
+  authHelper.hasScope(scopes.value, "reactor:update"),
+);
+const canDelete = computed(() =>
+  authHelper.hasScope(scopes.value, "reactor:delete"),
+);
 const canRun = computed(() => authHelper.hasScope(scopes.value, "reactor:run"));
 
 const source = ref("");
-const testPayload = ref('{}');
+const testPayload = ref("{}");
 const testResult = ref(null);
 const testLog = ref(null);
 const selectedRunId = ref(null);
@@ -112,7 +116,9 @@ async function deleteScript() {
           <dd class="col-sm-8">
             <span
               class="badge"
-              :class="script.status === 'active' ? 'bg-success' : 'bg-secondary'"
+              :class="
+                script.status === 'active' ? 'bg-success' : 'bg-secondary'
+              "
               >{{ script.status }}</span
             >
           </dd>
@@ -121,7 +127,8 @@ async function deleteScript() {
             <div v-for="(t, i) in script.triggers" :key="i">
               {{ t.resource_type }}.{{ t.action
               }}<span v-if="t.filters && Object.keys(t.filters).length">
-                ({{ JSON.stringify(t.filters) }})</span>
+                ({{ JSON.stringify(t.filters) }})</span
+              >
             </div>
           </dd>
           <dt class="col-sm-4">Entrypoint</dt>
@@ -187,21 +194,28 @@ async function deleteScript() {
     <div class="card mb-4">
       <div class="card-header">Source</div>
       <div class="card-body p-0">
-        <pre class="m-0 p-3 font-monospace small" style="white-space: pre-wrap">{{
-          source
-        }}</pre>
+        <pre
+          class="m-0 p-3 font-monospace small"
+          style="white-space: pre-wrap"
+          >{{ source }}</pre
+        >
       </div>
     </div>
 
     <div class="card">
-      <div class="card-header d-flex justify-content-between align-items-center">
+      <div
+        class="card-header d-flex justify-content-between align-items-center"
+      >
         <span>Run history</span>
         <button class="btn btn-outline-secondary btn-sm" @click="refreshRuns">
           refresh
         </button>
       </div>
       <div class="card-body p-0">
-        <table v-if="runs && runs.items && runs.items.length > 0" class="table table-sm mb-0">
+        <table
+          v-if="runs && runs.items && runs.items.length > 0"
+          class="table table-sm mb-0"
+        >
           <thead>
             <tr>
               <th>started</th>
@@ -216,7 +230,10 @@ async function deleteScript() {
               <td class="small text-muted">
                 {{
                   run.started_at
-                    ? dayjs.utc(run.started_at).local().format("YYYY-MM-DD HH:mm:ss")
+                    ? dayjs
+                        .utc(run.started_at)
+                        .local()
+                        .format("YYYY-MM-DD HH:mm:ss")
                     : "—"
                 }}
               </td>
@@ -227,15 +244,17 @@ async function deleteScript() {
                     run.status === 'success'
                       ? 'bg-success'
                       : run.status === 'failed' || run.status === 'timed_out'
-                      ? 'bg-danger'
-                      : 'bg-secondary'
+                        ? 'bg-danger'
+                        : 'bg-secondary'
                   "
                   >{{ run.status }}</span
                 >
               </td>
               <td class="small">{{ run.writes_count }}</td>
               <td class="small font-monospace">
-                {{ run.triggered_by?.resource_type }}.{{ run.triggered_by?.action }}
+                {{ run.triggered_by?.resource_type }}.{{
+                  run.triggered_by?.action
+                }}
               </td>
               <td class="text-end">
                 <button
@@ -258,7 +277,8 @@ async function deleteScript() {
         class="bg-light p-2 small"
         style="max-height: 300px; overflow: auto"
         v-if="selectedRunLog !== null"
-      >{{ selectedRunLog || "(empty)" }}</pre>
+        >{{ selectedRunLog || "(empty)" }}</pre
+      >
       <Spinner v-else />
     </div>
   </div>
