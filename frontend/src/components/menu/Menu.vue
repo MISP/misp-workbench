@@ -177,6 +177,25 @@ function navAndClose(path) {
           <a
             class="nav-link dropdown-toggle py-1"
             href="#"
+            id="techLabDropdown"
+            role="button"
+            data-bs-toggle="dropdown"
+            aria-expanded="false"
+          >
+            tech lab
+          </a>
+          <ul class="dropdown-menu" aria-labelledby="techLabDropdown">
+            <li>
+              <RouterLink to="/tech-lab/reactor" class="dropdown-item fw-light"
+                >reactor scripts</RouterLink
+              >
+            </li>
+          </ul>
+        </div>
+        <div class="nav-item dropdown">
+          <a
+            class="nav-link dropdown-toggle py-1"
+            href="#"
             id="syncDropdown"
             role="button"
             data-bs-toggle="dropdown"
@@ -397,6 +416,20 @@ function navAndClose(path) {
           >
             explore
           </RouterLink>
+        </li>
+        <li class="list-group-item">
+          <strong>tech lab</strong>
+          <ul class="list-group mt-2">
+            <li>
+              <RouterLink
+                to="/tech-lab/reactor"
+                class="list-group-item list-group-item-action ps-4"
+                @click.prevent="navAndClose('/tech-lab/reactor')"
+              >
+                reactor scripts
+              </RouterLink>
+            </li>
+          </ul>
         </li>
         <!-- Sources submenu -->
         <li class="list-group-item">

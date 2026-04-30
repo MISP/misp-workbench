@@ -188,6 +188,27 @@ services:
     networks:
       - backend
 
+  reactor-worker:
+    build:
+      context: ./api
+    # Dedicated, isolated worker for Tech Lab reactor scripts. The
+    # ``reactor_sandbox`` queue is the only thing this consumer subscribes to.
+    command: poetry run celery -A app.worker.tasks worker --loglevel=info --hostname reactor@%h --queues=reactor_sandbox --concurrency=2 -E
+    restart: unless-stopped
+    environment:
+      <<: *default-env
+    depends_on:
+      - api
+      - redis
+      - postgres
+    # Resource limits for untrusted user code.
+    mem_limit: 256m
+    pids_limit: 64
+    volumes:
+      - garage-creds:/var/lib/misp-workbench/secrets
+    networks:
+      - backend
+
   beat:
     build:
       context: ./api
