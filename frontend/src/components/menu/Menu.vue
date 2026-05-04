@@ -182,7 +182,7 @@ function navAndClose(path) {
             data-bs-toggle="dropdown"
             aria-expanded="false"
           >
-            tech lab
+            tech-lab
           </a>
           <ul class="dropdown-menu" aria-labelledby="techLabDropdown">
             <li>
@@ -418,7 +418,7 @@ function navAndClose(path) {
           </RouterLink>
         </li>
         <li class="list-group-item">
-          <strong>tech lab</strong>
+          <strong>tech-lab</strong>
           <ul class="list-group mt-2">
             <li>
               <RouterLink

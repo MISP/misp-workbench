@@ -180,7 +180,7 @@ async function deleteScript() {
                 >
               </div>
               <pre
-                class="bg-light p-2 mt-2 small"
+                class="p-2 mt-2 small"
                 v-if="testLog"
                 style="max-height: 200px; overflow: auto"
                 >{{ testLog }}</pre
@@ -274,7 +274,7 @@ async function deleteScript() {
     <div v-if="selectedRunId" class="mt-3">
       <h6 class="small text-muted">Run #{{ selectedRunId }} log</h6>
       <pre
-        class="bg-light p-2 small"
+        class="p-2 small"
         style="max-height: 300px; overflow: auto"
         v-if="selectedRunLog !== null"
         >{{ selectedRunLog || "(empty)" }}</pre

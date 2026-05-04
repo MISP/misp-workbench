@@ -24,8 +24,8 @@ const ACTION_OPTIONS = [
 const DEFAULT_SOURCE = `def handle(ctx, payload):
     """Called for every matching trigger.
 
-    ``ctx`` exposes get_event/get_attribute/add_attribute/tag_event/tag_attribute.
-    ``payload`` is the entity the trigger fired on (dict).
+    \`\`ctx\`\` exposes get_event/get_attribute/add_attribute/tag_event/tag_attribute.
+    \`\`payload\`\` is the entity the trigger fired on (dict).
     """
     ctx.log("triggered with payload", payload)
 `;
