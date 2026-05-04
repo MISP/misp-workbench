@@ -206,6 +206,7 @@ services:
     pids_limit: 64
     volumes:
       - garage-creds:/var/lib/misp-workbench/secrets
+      - oauth-creds:/var/lib/misp-workbench/oauth-creds
     networks:
       - backend
 
