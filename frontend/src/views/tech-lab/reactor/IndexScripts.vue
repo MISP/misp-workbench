@@ -4,6 +4,7 @@ import { storeToRefs } from "pinia";
 import { RouterLink } from "vue-router";
 import { useReactorStore, useAuthStore } from "@/stores";
 import Spinner from "@/components/misc/Spinner.vue";
+import ScriptActions from "@/components/reactor/ScriptActions.vue";
 import { authHelper } from "@/helpers";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
@@ -65,7 +66,8 @@ function describeTriggers(triggers) {
           <th>name</th>
           <th>triggers</th>
           <th>last run</th>
-          <th class="text-end">status</th>
+          <th>status</th>
+          <th class="text-end">actions</th>
         </tr>
       </thead>
       <tbody>
@@ -102,7 +104,7 @@ function describeTriggers(triggers) {
             </template>
             <template v-else>never</template>
           </td>
-          <td class="text-end">
+          <td>
             <span
               class="badge"
               :class="
@@ -110,6 +112,9 @@ function describeTriggers(triggers) {
               "
               >{{ script.status }}</span
             >
+          </td>
+          <td class="text-end">
+            <ScriptActions :script="script" @deleted="reactorStore.getAll()" />
           </td>
         </tr>
       </tbody>
