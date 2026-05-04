@@ -98,7 +98,7 @@ function initTomSelect() {
     },
 
     onItemRemove(tag) {
-      if (!props.persist) return;
+      if (!props.persist || _updatingFromProp) return;
 
       const modelId = props.model?.uuid ?? props.model?.id;
       if (props.modelClass === "event") {
@@ -106,12 +106,11 @@ function initTomSelect() {
       } else if (props.modelClass === "attribute") {
         attributesStore.untag(modelId, tag);
       }
-      // notify parent of change
-      if (!_updatingFromProp) emitSelected();
+      emitSelected();
     },
 
     onItemAdd(tag) {
-      if (!props.persist) return;
+      if (!props.persist || _updatingFromProp) return;
 
       const modelId = props.model?.uuid ?? props.model?.id;
       if (props.modelClass === "event") {
@@ -119,8 +118,7 @@ function initTomSelect() {
       } else if (props.modelClass === "attribute") {
         attributesStore.tag(modelId, tag);
       }
-      // notify parent of change
-      if (!_updatingFromProp) emitSelected();
+      emitSelected();
     },
     onChange() {
       if (_updatingFromProp) return;
