@@ -9,11 +9,14 @@ export const useReactorStore = defineStore({
     scripts: null,
     script: null,
     runs: null,
+    runsPage: 1,
+    runsSize: 100,
     status: {
       loading: false,
       creating: false,
       updating: false,
       testing: false,
+      loadingMoreRuns: false,
       error: false,
     },
   }),
@@ -58,14 +61,41 @@ export const useReactorStore = defineStore({
       return await fetchWrapper.delete(`${baseUrl}/scripts/${id}`);
     },
     async getRuns(id, params = {}) {
+      const size = params.size ?? this.runsSize;
+      const page = params.page ?? 1;
       const queryString = new URLSearchParams({
-        page: 1,
-        size: 25,
+        page,
+        size,
         ...params,
       }).toString();
       return fetchWrapper
         .get(`${baseUrl}/scripts/${id}/runs?${queryString}`)
-        .then((runs) => (this.runs = runs));
+        .then((runs) => {
+          this.runs = runs;
+          this.runsPage = page;
+          this.runsSize = size;
+          return runs;
+        });
+    },
+    async loadMoreRuns(id) {
+      if (!this.runs) return;
+      this.status.loadingMoreRuns = true;
+      const nextPage = this.runsPage + 1;
+      const queryString = new URLSearchParams({
+        page: nextPage,
+        size: this.runsSize,
+      }).toString();
+      return fetchWrapper
+        .get(`${baseUrl}/scripts/${id}/runs?${queryString}`)
+        .then((page) => {
+          this.runs = {
+            ...page,
+            items: [...(this.runs?.items ?? []), ...(page.items ?? [])],
+          };
+          this.runsPage = nextPage;
+          return page;
+        })
+        .finally(() => (this.status.loadingMoreRuns = false));
     },
     async getRunLog(runId) {
       return fetchWrapper.get(`${baseUrl}/runs/${runId}/log`);
