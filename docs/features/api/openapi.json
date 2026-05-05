@@ -16272,6 +16272,42 @@
             "additionalProperties": true,
             "type": "object",
             "title": "Payload"
+          },
+          "resource_type": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "event",
+                  "attribute",
+                  "object",
+                  "correlation",
+                  "sighting"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resource Type"
+          },
+          "action": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "created",
+                  "updated",
+                  "deleted",
+                  "published",
+                  "unpublished"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Action"
           }
         },
         "type": "object",
