@@ -23,8 +23,9 @@ jobs:
         env:
           BASE_REF: ${{ github.base_ref }}
         run: |
+          mkdir -p .oasdiff
           if git cat-file -e "origin/${BASE_REF}:docs/features/api/openapi.json" 2>/dev/null; then
-            git show "origin/${BASE_REF}:docs/features/api/openapi.json" > /tmp/base.json
+            git show "origin/${BASE_REF}:docs/features/api/openapi.json" > .oasdiff/base.json
             echo "exists=true" >> "$GITHUB_OUTPUT"
           else
             echo "exists=false" >> "$GITHUB_OUTPUT"
@@ -34,10 +35,10 @@ jobs:
         if: steps.base.outputs.exists == 'true'
         uses: oasdiff/oasdiff-action/diff@main
         with:
-          base: /tmp/base.json
+          base: .oasdiff/base.json
           revision: docs/features/api/openapi.json
           format: json
-          output-to-file: /tmp/diff.json
+          output-to-file: .oasdiff/diff.json
 
       - name: Build endpoint summary
         env:
@@ -58,7 +59,7 @@ jobs:
             echo
             if [ "$BASE_EXISTS" != "true" ]; then
               echo "_New OpenAPI spec introduced in this PR — no base to diff against._"
-            elif [ ! -s /tmp/diff.json ] || [ "$(jq -r 'if . == null or . == {} then "empty" else "ok" end' /tmp/diff.json)" = "empty" ]; then
+            elif [ ! -s .oasdiff/diff.json ] || [ "$(jq -r 'if . == null or . == {} then "empty" else "ok" end' .oasdiff/diff.json)" = "empty" ]; then
               echo "_No changes to the OpenAPI spec._"
             else
               # Added: paths added entirely (all methods) + operations added on modified paths
@@ -67,7 +68,7 @@ jobs:
                 ([(.paths.modified // {}) | to_entries[] as $e
                   | (($e.value.operations.added // {}) | keys[]) as $op
                   | ($op | ascii_upcase) + " " + $e.key])
-                | .[]' /tmp/diff.json > /tmp/added.txt
+                | .[]' .oasdiff/diff.json > .oasdiff/added.txt
 
               # Removed: paths deleted + operations deleted on modified paths
               jq -r '
@@ -75,26 +76,26 @@ jobs:
                 ([(.paths.modified // {}) | to_entries[] as $e
                   | (($e.value.operations.deleted // {}) | keys[]) as $op
                   | ($op | ascii_upcase) + " " + $e.key])
-                | .[]' /tmp/diff.json > /tmp/removed.txt
+                | .[]' .oasdiff/diff.json > .oasdiff/removed.txt
 
               # Modified: operations modified on modified paths
               jq -r '
                 (.paths.modified // {}) | to_entries[] as $e
                 | (($e.value.operations.modified // {}) | keys[]) as $op
-                | ($op | ascii_upcase) + " " + $e.key' /tmp/diff.json > /tmp/modified.txt
+                | ($op | ascii_upcase) + " " + $e.key' .oasdiff/diff.json > .oasdiff/modified.txt
 
-              render_section "Added endpoints" /tmp/added.txt
-              render_section "Removed endpoints" /tmp/removed.txt
-              render_section "Modified endpoints" /tmp/modified.txt
+              render_section "Added endpoints" .oasdiff/added.txt
+              render_section "Removed endpoints" .oasdiff/removed.txt
+              render_section "Modified endpoints" .oasdiff/modified.txt
 
-              if [ ! -s /tmp/added.txt ] && [ ! -s /tmp/removed.txt ] && [ ! -s /tmp/modified.txt ]; then
+              if [ ! -s .oasdiff/added.txt ] && [ ! -s .oasdiff/removed.txt ] && [ ! -s .oasdiff/modified.txt ]; then
                 echo "_Spec changed but no endpoint-level differences (e.g. components/schemas, descriptions)._"
               fi
             fi
-          } > /tmp/comment.md
+          } > .oasdiff/comment.md
 
       - name: Post sticky comment
         uses: marocchino/sticky-pull-request-comment@v2
         with:
           header: openapi-diff
-          path: /tmp/comment.md
+          path: .oasdiff/comment.md
