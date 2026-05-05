@@ -50,6 +50,8 @@ nav:
       - MCP Inspector: features/mcp/mcp-inspector.md
     - Batch Import: features/batch-import.md
     - Retention: features/retention.md
+    - Tech Lab:
+      - Reactor Scripts: features/tech-lab/reactor.md
     - OpenSearch:
       - Overview: features/opensearch/index.md
       - Dashboards: features/opensearch/dashboards.md
