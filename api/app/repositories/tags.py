@@ -30,6 +30,39 @@ def get_tag_by_id(db: Session, tag_id: int):
     return db.query(tag_models.Tag).filter(tag_models.Tag.id == tag_id).first()
 
 
+def get_or_create_tag_by_name(db: Session, tag_name: str) -> tag_models.Tag:
+    """Look up a tag by name, creating it with sensible defaults if absent.
+
+    Used by tagging endpoints so users can apply arbitrary new tags without a
+    separate "create tag" step. The created tag is non-galaxy, exportable,
+    visible, and gets a deterministic colour derived from its name.
+    """
+    db_tag = get_tag_by_name(db, tag_name=tag_name)
+    if db_tag is not None:
+        return db_tag
+
+    return create_tag(
+        db,
+        tag_schemas.TagCreate(
+            name=tag_name,
+            colour=_default_tag_colour(tag_name),
+            exportable=True,
+            hide_tag=False,
+            is_galaxy=False,
+            is_custom_galaxy=False,
+            local_only=False,
+        ),
+    )
+
+
+def _default_tag_colour(name: str) -> str:
+    """Deterministic pastel-ish hex colour from the tag name."""
+    import hashlib
+
+    digest = hashlib.md5(name.encode("utf-8")).hexdigest()
+    return f"#{digest[:6]}"
+
+
 def create_tag(db: Session, tag: tag_schemas.TagCreate):
     # TODO: app/Model/Tag.php::beforeValidate() && app/Model/Tag.php::$validate
     db_tag = tag_models.Tag(

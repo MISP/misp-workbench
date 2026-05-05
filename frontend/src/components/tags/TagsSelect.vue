@@ -47,6 +47,17 @@ function formatTag(tag) {
   };
 }
 
+function defaultColourFor(name) {
+  // Deterministic hex colour from the tag name so newly-created tags get a
+  // stable preview before the backend assigns the canonical one.
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = (hash * 31 + name.charCodeAt(i)) | 0;
+  }
+  const hex = ((hash >>> 0) & 0xffffff).toString(16).padStart(6, "0");
+  return `#${hex}`;
+}
+
 function initTomSelect() {
   if (!selectElement.value) return;
 
@@ -57,7 +68,21 @@ function initTomSelect() {
   }
 
   tomselect = new TomSelect(selectElement.value, {
-    create: false,
+    create: props.readonly
+      ? false
+      : (input) => {
+          const name = input.trim();
+          if (!name) return false;
+          const colour = defaultColourFor(name);
+          return {
+            id: null,
+            name,
+            value: name,
+            color: tagHelper.getContrastColor(colour),
+            backgroundColor: colour,
+          };
+        },
+    createFilter: (input) => input.trim().length > 0,
     placeholder: props.readonly ? "" : "Click to add a tag...",
     readOnly: props.readonly,
     valueField: "name",
