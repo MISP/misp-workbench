@@ -808,7 +808,7 @@ async function runTest() {
             </div>
             <textarea
               class="form-control font-monospace small mb-3"
-              rows="6"
+              rows="20"
               v-model="testPayloadText"
               spellcheck="false"
             />
@@ -842,7 +842,7 @@ async function runTest() {
 
             <label class="form-label small mb-1">Log</label>
             <pre
-              class="p-2 small mb-0 flex-grow-1 reactor-log"
+              class="p-2 small mb-0 reactor-log"
               :class="
                 monacoTheme === 'vs-dark'
                   ? 'reactor-log-dark'
@@ -1257,7 +1257,7 @@ async function runTest() {
 <style scoped>
 .reactor-log {
   overflow: auto;
-  min-height: 180px;
+  height: 320px;
   white-space: pre-wrap;
 }
 .reactor-log-dark {
