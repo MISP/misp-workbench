@@ -209,7 +209,11 @@ async def test_run(
     run = reactor_repository.create_run(
         db,
         db_script,
-        triggered_by={"resource_type": "test", "action": "manual", "payload": payload.payload},
+        triggered_by={
+            "resource_type": payload.resource_type or "test",
+            "action": payload.action or "manual",
+            "payload": payload.payload,
+        },
     )
     reactor_runner.run_script(db, run.id)
     db.refresh(run)

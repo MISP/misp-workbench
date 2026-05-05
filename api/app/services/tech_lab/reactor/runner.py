@@ -8,6 +8,7 @@ Container-level isolation does the real work; this module is responsible for:
 - moving the run row through queued -> running -> success/failed/timed_out
 """
 
+import inspect
 import io
 import logging
 import sys
@@ -54,7 +55,12 @@ def run_script(db: Session, run_id: int) -> None:
     db.commit()
 
     source = _read_source(script.source_uri)
-    payload = (run.triggered_by or {}).get("payload", run.triggered_by or {})
+    triggered_by = run.triggered_by or {}
+    payload = triggered_by.get("payload", triggered_by)
+    trigger = {
+        "resource_type": triggered_by.get("resource_type"),
+        "action": triggered_by.get("action"),
+    }
 
     stdout = io.StringIO()
     stderr = io.StringIO()
@@ -75,7 +81,7 @@ def run_script(db: Session, run_id: int) -> None:
                     raise RuntimeError(
                         f"entrypoint {script.entrypoint!r} not defined or not callable"
                     )
-                fn(ctx, payload)
+                _call_handler(fn, ctx, payload, trigger)
     except ScriptTimeout as e:
         status = "timed_out"
         error = str(e)
@@ -100,6 +106,36 @@ def run_script(db: Session, run_id: int) -> None:
     script.updated_at = run.finished_at
 
     db.commit()
+
+
+def _call_handler(fn, ctx, payload, trigger) -> None:
+    """Invoke the user handler.
+
+    Backward compat: 2-arg ``(ctx, payload)`` handlers are still accepted.
+    Newer scripts can declare ``(ctx, payload, trigger)`` to receive the
+    ``{"resource_type", "action"}`` info that fired the run.
+    """
+    try:
+        positional = [
+            p
+            for p in inspect.signature(fn).parameters.values()
+            if p.kind
+            in (
+                inspect.Parameter.POSITIONAL_ONLY,
+                inspect.Parameter.POSITIONAL_OR_KEYWORD,
+                inspect.Parameter.VAR_POSITIONAL,
+            )
+        ]
+        accepts_trigger = any(
+            p.kind == inspect.Parameter.VAR_POSITIONAL for p in positional
+        ) or len([p for p in positional if p.kind != inspect.Parameter.VAR_POSITIONAL]) >= 3
+    except (TypeError, ValueError):
+        accepts_trigger = True
+
+    if accepts_trigger:
+        fn(ctx, payload, trigger)
+    else:
+        fn(ctx, payload)
 
 
 def _read_source(source_uri: str) -> str:

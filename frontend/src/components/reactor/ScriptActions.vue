@@ -3,7 +3,13 @@ import { ref, computed } from "vue";
 import { storeToRefs } from "pinia";
 import { RouterLink } from "vue-router";
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
-import { faPen, faTrash, faEye } from "@fortawesome/free-solid-svg-icons";
+import {
+  faPen,
+  faTrash,
+  faEye,
+  faPlay,
+  faPause,
+} from "@fortawesome/free-solid-svg-icons";
 import { useReactorStore, useAuthStore, useToastsStore } from "@/stores";
 import { authHelper } from "@/helpers";
 
@@ -11,7 +17,7 @@ const props = defineProps({
   script: { type: Object, required: true },
 });
 
-const emit = defineEmits(["deleted"]);
+const emit = defineEmits(["deleted", "updated"]);
 
 const reactorStore = useReactorStore();
 const authStore = useAuthStore();
@@ -26,6 +32,33 @@ const canDelete = computed(() =>
 );
 
 const deleting = ref(false);
+const togglingStatus = ref(false);
+const localStatus = ref(props.script.status);
+
+const isActive = computed(
+  () => (localStatus.value ?? props.script.status) === "active",
+);
+
+async function toggleStatus() {
+  const nextStatus = isActive.value ? "paused" : "active";
+  togglingStatus.value = true;
+  await reactorStore
+    .update(props.script.id, { status: nextStatus })
+    .then((updated) => {
+      localStatus.value = updated?.status ?? nextStatus;
+      toastsStore.push(
+        `Reactor script "${props.script.name}" ${
+          nextStatus === "active" ? "enabled" : "paused"
+        }.`,
+        "success",
+      );
+      emit("updated", updated);
+    })
+    .catch((err) =>
+      toastsStore.push(err || "Failed to update reactor script.", "danger"),
+    )
+    .finally(() => (togglingStatus.value = false));
+}
 
 async function deleteScript() {
   if (!confirm(`Delete reactor script "${props.script.name}"?`)) return;
@@ -77,6 +110,17 @@ async function deleteScript() {
     class="btn-toolbar d-flex align-items-center flex-nowrap float-end"
     role="toolbar"
   >
+    <div v-if="canUpdate" class="btn-group btn-group-sm me-2" role="group">
+      <button
+        class="btn btn-sm me"
+        :class="isActive ? 'btn-outline-warning' : 'btn-outline-success'"
+        :title="isActive ? 'Pause' : 'Enable'"
+        :disabled="togglingStatus"
+        @click="toggleStatus"
+      >
+        <FontAwesomeIcon :icon="isActive ? faPause : faPlay" />
+      </button>
+    </div>
     <div class="btn-group btn-group-sm me-2" role="group">
       <RouterLink
         :to="`/tech-lab/reactor/${script.id}`"

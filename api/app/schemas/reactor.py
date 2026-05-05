@@ -80,6 +80,8 @@ class ReactorRunLog(BaseModel):
 
 class ReactorTestRequest(BaseModel):
     payload: dict[str, Any] = Field(default_factory=dict)
+    resource_type: Optional[ReactorResourceType] = None
+    action: Optional[ReactorAction] = None
 
 
 class ReactorQueryParams(BaseModel):

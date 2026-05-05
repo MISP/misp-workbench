@@ -114,7 +114,11 @@ function describeTriggers(triggers) {
             >
           </td>
           <td class="text-end">
-            <ScriptActions :script="script" @deleted="reactorStore.getAll()" />
+            <ScriptActions
+              :script="script"
+              @deleted="reactorStore.getAll()"
+              @updated="reactorStore.getAll()"
+            />
           </td>
         </tr>
       </tbody>
