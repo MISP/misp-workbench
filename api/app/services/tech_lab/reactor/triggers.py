@@ -37,11 +37,15 @@ def matches_filters(
 ) -> bool:
     """Apply optional filters from the matching trigger entry.
 
-    Filters supported in v1:
-      - ``tag``  — one of the resource's tags (case-sensitive name match)
-      - ``type`` — attribute type equality
-      - ``org``  — orgc.name on an event/attribute
-    Missing filter keys are treated as wildcards.
+    Filters supported:
+      - ``tag``  / ``tags``  — match if any of the resource's tags is in the set
+      - ``type`` / ``types`` — attribute type equality (only meaningful for
+        attribute triggers)
+      - ``org``  / ``orgs``  — orgc.name on an event/attribute
+      - ``template`` / ``templates`` — object template name (only meaningful
+        for object triggers; matched against ``payload['name']``)
+    Singular forms accept a single value, plural forms accept a list of
+    values (OR-match). Missing filter keys are treated as wildcards.
     """
     for t in triggers:
         if t.get("resource_type") != resource_type or t.get("action") != action:
@@ -55,20 +59,36 @@ def matches_filters(
 
 
 def _filters_pass(filters: dict[str, Any], payload: dict[str, Any]) -> bool:
-    tag_filter = filters.get("tag")
-    if tag_filter:
-        tag_names = [t.get("name") for t in payload.get("tags", []) if isinstance(t, dict)]
-        if tag_filter not in tag_names:
+    tag_set = _as_set(filters.get("tag"), filters.get("tags"))
+    if tag_set:
+        tag_names = {
+            t.get("name") for t in payload.get("tags", []) if isinstance(t, dict)
+        }
+        if tag_set.isdisjoint(tag_names):
             return False
 
-    type_filter = filters.get("type")
-    if type_filter and payload.get("type") != type_filter:
+    type_set = _as_set(filters.get("type"), filters.get("types"))
+    if type_set and payload.get("type") not in type_set:
         return False
 
-    org_filter = filters.get("org")
-    if org_filter:
+    org_set = _as_set(filters.get("org"), filters.get("orgs"))
+    if org_set:
         orgc = payload.get("orgc") or {}
-        if orgc.get("name") != org_filter:
+        if orgc.get("name") not in org_set:
             return False
 
+    template_set = _as_set(filters.get("template"), filters.get("templates"))
+    if template_set and payload.get("name") not in template_set:
+        return False
+
     return True
+
+
+def _as_set(singular: Any, plural: Any) -> set:
+    """Combine optional singular + plural filter values into a set."""
+    out: set = set()
+    if singular:
+        out.add(singular)
+    if isinstance(plural, (list, tuple, set)):
+        out.update(v for v in plural if v)
+    return out

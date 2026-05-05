@@ -106,5 +106,27 @@ export const useReactorStore = defineStore({
         .post(`${baseUrl}/scripts/${id}/test`, { payload })
         .finally(() => (this.status.testing = false));
     },
+    async saveAndTest({ scriptId, payload, scriptPayload, testPayload }) {
+      this.status.testing = true;
+      try {
+        let id = scriptId;
+        if (id) {
+          await fetchWrapper.patch(`${baseUrl}/scripts/${id}`, scriptPayload);
+        } else {
+          const created = await fetchWrapper.post(
+            `${baseUrl}/scripts/`,
+            scriptPayload,
+          );
+          id = created.id;
+        }
+        const run = await fetchWrapper.post(`${baseUrl}/scripts/${id}/test`, {
+          payload: testPayload ?? payload ?? {},
+        });
+        const log = await fetchWrapper.get(`${baseUrl}/runs/${run.id}/log`);
+        return { scriptId: id, run, log: log.log };
+      } finally {
+        this.status.testing = false;
+      }
+    },
   },
 });
