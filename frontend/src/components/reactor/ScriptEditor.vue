@@ -65,7 +65,7 @@ const script = reactive({
   entrypoint: "handle",
   status: "active",
   timeout_seconds: 60,
-  max_writes: 100,
+  max_writes: 10,
   source: props.mode === "edit" ? "" : DEFAULT_SOURCE,
 });
 

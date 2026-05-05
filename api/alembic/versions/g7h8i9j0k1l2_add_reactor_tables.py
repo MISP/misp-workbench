@@ -32,7 +32,7 @@ def upgrade():
         sa.Column("triggers", JSONB, nullable=False, server_default="[]"),
         sa.Column("status", sa.String(length=32), nullable=False, server_default="active"),
         sa.Column("timeout_seconds", sa.Integer(), nullable=False, server_default="60"),
-        sa.Column("max_writes", sa.Integer(), nullable=False, server_default="100"),
+        sa.Column("max_writes", sa.Integer(), nullable=False, server_default="10"),
         sa.Column("last_run_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("last_run_status", sa.String(length=32), nullable=True),
         sa.Column("last_run_id", sa.Integer(), nullable=True),

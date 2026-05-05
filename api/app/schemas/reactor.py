@@ -28,7 +28,7 @@ class ReactorScriptBase(BaseModel):
     triggers: list[ReactorTrigger] = Field(default_factory=list)
     status: ReactorScriptStatus = "active"
     timeout_seconds: int = 60
-    max_writes: int = 100
+    max_writes: int = 10
 
 
 class ReactorScriptCreate(ReactorScriptBase):

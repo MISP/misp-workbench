@@ -19,7 +19,7 @@ class ReactorScript(Base):
     triggers = Column(JSONB, nullable=False, default=list, server_default="[]")
     status = Column(String(32), nullable=False, default="active")
     timeout_seconds = Column(Integer, nullable=False, default=60)
-    max_writes = Column(Integer, nullable=False, default=100)
+    max_writes = Column(Integer, nullable=False, default=10)
     last_run_at = Column(DateTime(timezone=True), nullable=True)
     last_run_status = Column(String(32), nullable=True)
     last_run_id = Column(
