@@ -11,9 +11,11 @@ from uuid import UUID
 from app.models import reactor as reactor_models
 from app.repositories import attributes as attributes_repository
 from app.repositories import events as events_repository
+from app.repositories import modules as modules_repository
 from app.repositories import objects as objects_repository
 from app.repositories import tags as tags_repository
 from app.schemas import attribute as attribute_schemas
+from app.schemas import module as module_schemas
 from app.services import audit
 from sqlalchemy.orm import Session
 
@@ -132,6 +134,65 @@ class ReactorContext:
             resource_type="attribute",
             metadata={"attribute_uuid": attribute_uuid, "tag": tag_name},
         )
+
+    # ---- enrichment ----
+
+    def enrich(
+        self,
+        value: str,
+        type: str,
+        module: str,
+        config: Optional[dict] = None,
+    ) -> dict:
+        """Run a MISP expansion module on a single indicator and return its result.
+
+        Counts against ``max_writes`` because enrichments hit external services
+        with their own quotas. The module must be enabled in admin settings.
+        """
+        self._account_write()
+        query = module_schemas.ModuleQuery(
+            module=module,
+            attribute={"type": type, "value": value, "uuid": ""},
+            config=config,
+        )
+        try:
+            result = modules_repository.query_module(self._db, query)
+        except Exception as e:
+            self._audit(
+                "module.enrich.error",
+                resource_type="module",
+                metadata={"module": module, "type": type, "value": value, "error": str(e)},
+            )
+            raise
+        self._audit(
+            "module.enrich",
+            resource_type="module",
+            metadata={"module": module, "type": type, "value": value},
+        )
+        return result
+
+    def list_modules(self, enabled_only: bool = True) -> list[dict]:
+        """List available MISP enrichment modules.
+
+        Read-only; does not count against ``max_writes``.
+        """
+        modules = modules_repository.get_modules(
+            self._db, enabled=True if enabled_only else None
+        )
+        out: list[dict] = []
+        for m in modules:
+            data = m.model_dump(mode="json") if hasattr(m, "model_dump") else dict(m)
+            out.append(
+                {
+                    "name": data.get("name"),
+                    "type": data.get("type"),
+                    "enabled": data.get("enabled"),
+                    "input": (data.get("misp_attributes") or {}).get("input", []),
+                    "output": (data.get("misp_attributes") or {}).get("output", []),
+                    "description": (data.get("meta") or {}).get("description"),
+                }
+            )
+        return out
 
     def log(self, *args: Any) -> None:
         """Convenience: like print, but also goes to the worker log."""
