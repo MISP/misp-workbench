@@ -5,7 +5,7 @@ Reactor scripts are user-defined Python functions that run in response to platfo
 Each script declares one or more **triggers** (resource type + action, optionally filtered by tag, organisation, attribute type, or object template). When a matching event happens, the platform queues a run and executes the script's `handle(ctx, payload, trigger)` function inside an isolated sandbox worker.
 
 !!! info "Where to find it"
-    The Tech Lab → **Reactor** view in the UI lists your scripts, lets you create / edit / pause them, run them against sample payloads, and inspect run history with logs.
+    The **tech-lab** → **reactor scripts** view in the UI lists your scripts, lets you create / edit / pause them, run them against sample payloads, and inspect run history with logs.
 
 ## Concepts
 
