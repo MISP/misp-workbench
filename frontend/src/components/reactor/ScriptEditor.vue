@@ -381,8 +381,8 @@ const SAMPLE_PAYLOADS = {
     attribute_count: 2,
   },
   attribute: {
+    uuid: "9aa1b6f0-1a55-4e7f-b40f-2bf5b4c83c12",
     event_uuid: "5fbf7e2a-3a18-4f04-9e3a-1c1f0a9d3e10",
-    attribute_uuid: "9aa1b6f0-1a55-4e7f-b40f-2bf5b4c83c12",
     object_uuid: null,
     type: "ip-src",
     category: "Network activity",
@@ -394,8 +394,8 @@ const SAMPLE_PAYLOADS = {
     tags: [{ name: "tlp:amber", colour: "#ffc107" }],
   },
   object: {
+    uuid: "0b53a3a4-cf2a-4bb7-9210-29f0aebf8c10",
     event_uuid: "5fbf7e2a-3a18-4f04-9e3a-1c1f0a9d3e10",
-    object_uuid: "0b53a3a4-cf2a-4bb7-9210-29f0aebf8c10",
     name: "file",
     template_uuid: "688c46fb-5edb-40a3-8273-1af7923e2215",
     template_version: 24,
@@ -405,12 +405,12 @@ const SAMPLE_PAYLOADS = {
     timestamp: 1714579200,
     attributes: [
       {
-        attribute_uuid: "f3a91d29-3711-4d8b-83a5-6b4f9d1f2a02",
+        uuid: "f3a91d29-3711-4d8b-83a5-6b4f9d1f2a02",
         type: "filename",
         value: "invoice.exe",
       },
       {
-        attribute_uuid: "21cf6a5b-b6a0-4632-8db8-21a4c3a3d9e3",
+        uuid: "21cf6a5b-b6a0-4632-8db8-21a4c3a3d9e3",
         type: "sha256",
         value:
           "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
@@ -885,12 +885,12 @@ async function runTest() {
                         </li>
                         <li>
                           <code>attribute</code> — attribute document plus
-                          <code>attribute_uuid</code>, <code>object_uuid</code>,
+                          <code>uuid</code>, <code>object_uuid</code>,
                           <code>event_uuid</code>.
                         </li>
                         <li>
                           <code>object</code> — object document plus
-                          <code>object_uuid</code> and <code>event_uuid</code>.
+                          <code>uuid</code> and <code>event_uuid</code>.
                         </li>
                         <li>
                           <code>correlation</code> —

@@ -110,9 +110,7 @@ class ReactorContext:
         event = events_repository.get_event_from_opensearch(UUID(event_uuid))
         if event is None:
             raise ValueError(f"event {event_uuid} not found")
-        tag = tags_repository.get_tag_by_name(self._db, tag_name)
-        if tag is None:
-            raise ValueError(f"tag {tag_name!r} not found")
+        tag = tags_repository.get_or_create_tag_by_name(self._db, tag_name)
         tags_repository.tag_event(self._db, event, tag)
         self._audit(
             "event.tag",
@@ -125,9 +123,7 @@ class ReactorContext:
         attr = attributes_repository.get_attribute_from_opensearch(UUID(attribute_uuid))
         if attr is None:
             raise ValueError(f"attribute {attribute_uuid} not found")
-        tag = tags_repository.get_tag_by_name(self._db, tag_name)
-        if tag is None:
-            raise ValueError(f"tag {tag_name!r} not found")
+        tag = tags_repository.get_or_create_tag_by_name(self._db, tag_name)
         tags_repository.tag_attribute(self._db, attr, tag)
         self._audit(
             "attribute.tag",

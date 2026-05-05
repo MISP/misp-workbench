@@ -1,10 +1,11 @@
 <script setup>
-import { ref, reactive, onMounted, computed } from "vue";
+import { ref, reactive, onMounted, onBeforeUnmount, computed } from "vue";
 import { storeToRefs } from "pinia";
 import { RouterLink, useRouter } from "vue-router";
 import { useReactorStore, useAuthStore, useToastsStore } from "@/stores";
 import Spinner from "@/components/misc/Spinner.vue";
 import { authHelper } from "@/helpers";
+import { VueMonacoEditor } from "@guolao/vue-monaco-editor";
 import {
   faHourglassHalf,
   faPen,
@@ -21,6 +22,26 @@ dayjs.extend(utc);
 
 const props = defineProps({ id: { type: [String, Number], required: true } });
 
+const monacoOptions = {
+  fontSize: 13,
+  readOnly: true,
+  minimap: { enabled: false },
+  scrollBeyondLastLine: false,
+  automaticLayout: true,
+  tabSize: 4,
+  insertSpaces: true,
+  wordWrap: "on",
+  renderLineHighlight: "none",
+};
+
+function detectMonacoTheme() {
+  return document.documentElement.getAttribute("data-bs-theme") === "dark"
+    ? "vs-dark"
+    : "vs";
+}
+const monacoTheme = ref(detectMonacoTheme());
+let themeObserver = null;
+
 const router = useRouter();
 const reactorStore = useReactorStore();
 const toastsStore = useToastsStore();
@@ -34,12 +55,7 @@ const canUpdate = computed(() =>
 const canDelete = computed(() =>
   authHelper.hasScope(scopes.value, "reactor:delete"),
 );
-const canRun = computed(() => authHelper.hasScope(scopes.value, "reactor:run"));
-
 const source = ref("");
-const testPayload = ref("{}");
-const testResult = ref(null);
-const testLog = ref(null);
 const runLogs = reactive({});
 const cardId = Math.random().toString(36).substring(2, 8);
 const activeRunFilter = ref("ALL"); // ALL | success | failed
@@ -69,10 +85,24 @@ const filteredRuns = computed(() => {
 });
 
 onMounted(async () => {
+  themeObserver = new MutationObserver((mutations) => {
+    if (mutations.some((m) => m.attributeName === "data-bs-theme")) {
+      monacoTheme.value = detectMonacoTheme();
+    }
+  });
+  themeObserver.observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ["data-bs-theme"],
+  });
   await reactorStore.getById(props.id);
   const sourceResp = await reactorStore.getSource(props.id);
   source.value = sourceResp.source;
   await reactorStore.getRuns(props.id);
+});
+
+onBeforeUnmount(() => {
+  themeObserver?.disconnect();
+  themeObserver = null;
 });
 
 async function refreshRuns() {
@@ -88,27 +118,6 @@ const hasMoreRuns = computed(() => {
   const loaded = runs.value.items?.length ?? 0;
   return loaded < (runs.value.total ?? 0);
 });
-
-async function runTest() {
-  testResult.value = null;
-  testLog.value = null;
-  let parsed;
-  try {
-    parsed = JSON.parse(testPayload.value || "{}");
-  } catch (e) {
-    toastsStore.push(`Invalid JSON: ${e.message}`, "danger");
-    return;
-  }
-  try {
-    const run = await reactorStore.test(props.id, parsed);
-    testResult.value = run;
-    const log = await reactorStore.getRunLog(run.id);
-    testLog.value = log.log;
-    await refreshRuns();
-  } catch (err) {
-    toastsStore.push(err?.message || String(err), "danger");
-  }
-}
 
 async function ensureRunLog(run) {
   if (runLogs[run.id] !== undefined) return;
@@ -239,50 +248,19 @@ async function deleteScript() {
     </div>
 
     <div class="card mb-4">
-      <div class="card-header">Source</div>
-      <div class="card-body p-0">
-        <pre
-          class="m-0 p-3 font-monospace small"
-          style="white-space: pre-wrap"
-          >{{ source }}</pre
-        >
+      <div
+        class="card-header d-flex justify-content-between align-items-center"
+      >
+        <small class="text-muted font-monospace">python</small>
       </div>
-    </div>
-
-    <div v-if="canRun" class="card mb-4">
-      <div class="card-header">Test run</div>
-      <div class="card-body">
-        <label class="form-label small">payload (JSON)</label>
-        <textarea
-          class="form-control font-monospace small"
-          rows="4"
-          v-model="testPayload"
+      <div class="card-body p-0">
+        <VueMonacoEditor
+          :value="source"
+          language="python"
+          :theme="monacoTheme"
+          :options="monacoOptions"
+          :height="`420px`"
         />
-        <button
-          class="btn btn-primary btn-sm mt-2"
-          :disabled="reactorStore.status.testing"
-          @click="runTest"
-        >
-          {{ reactorStore.status.testing ? "Running…" : "Run" }}
-        </button>
-        <div v-if="testResult" class="mt-3">
-          <div class="small">
-            Status:
-            <span
-              class="badge"
-              :class="
-                testResult.status === 'success' ? 'bg-success' : 'bg-danger'
-              "
-              >{{ testResult.status }}</span
-            >
-          </div>
-          <pre
-            class="p-2 mt-2 small"
-            v-if="testLog"
-            style="max-height: 200px; overflow: auto"
-            >{{ testLog }}</pre
-          >
-        </div>
       </div>
     </div>
 
