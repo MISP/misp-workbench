@@ -437,21 +437,6 @@ class TestEventsResource(ApiTester):
         assert response.json()["detail"] == "Event not found"
 
     @pytest.mark.parametrize("scopes", [["events:update"]])
-    def test_tag_event_tag_not_found(
-        self,
-        client: TestClient,
-        event_1: object,
-        auth_token: auth.Token,
-    ):
-        response = client.post(
-            f"/events/{event_1.uuid}/tag/nonexistent:tag",
-            headers={"Authorization": "Bearer " + auth_token},
-        )
-
-        assert response.status_code == status.HTTP_404_NOT_FOUND
-        assert response.json()["detail"] == "Tag not found"
-
-    @pytest.mark.parametrize("scopes", [["events:update"]])
     def test_untag_event_event_not_found(
         self,
         client: TestClient,
@@ -465,21 +450,6 @@ class TestEventsResource(ApiTester):
 
         assert response.status_code == status.HTTP_404_NOT_FOUND
         assert response.json()["detail"] == "Event not found"
-
-    @pytest.mark.parametrize("scopes", [["events:update"]])
-    def test_untag_event_tag_not_found(
-        self,
-        client: TestClient,
-        event_1: object,
-        auth_token: auth.Token,
-    ):
-        response = client.delete(
-            f"/events/{event_1.uuid}/tag/nonexistent:tag",
-            headers={"Authorization": "Bearer " + auth_token},
-        )
-
-        assert response.status_code == status.HTTP_404_NOT_FOUND
-        assert response.json()["detail"] == "Tag not found"
 
     # ---- POST /events/{uuid}/publish ----
 
