@@ -16024,7 +16024,7 @@
           "max_writes": {
             "type": "integer",
             "title": "Max Writes",
-            "default": 100
+            "default": 10
           },
           "id": {
             "type": "integer",
@@ -16151,7 +16151,7 @@
           "max_writes": {
             "type": "integer",
             "title": "Max Writes",
-            "default": 100
+            "default": 10
           },
           "source": {
             "type": "string",
