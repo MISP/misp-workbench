@@ -195,10 +195,10 @@ async function deleteScript() {
     </div>
 
     <div class="row mb-4">
-      <div class="col-md-6">
+      <div class="col-12">
         <dl class="row mb-0 small">
-          <dt class="col-sm-4">Status</dt>
-          <dd class="col-sm-8">
+          <dt class="col-sm-2">Status</dt>
+          <dd class="col-sm-10">
             <span
               class="badge"
               :class="
@@ -207,8 +207,8 @@ async function deleteScript() {
               >{{ script.status }}</span
             >
           </dd>
-          <dt class="col-sm-4">Triggers</dt>
-          <dd class="col-sm-8 font-monospace">
+          <dt class="col-sm-2">Triggers</dt>
+          <dd class="col-sm-10 font-monospace">
             <div v-for="(t, i) in script.triggers" :key="i">
               {{ t.resource_type }}.{{ t.action
               }}<span v-if="t.filters && Object.keys(t.filters).length">
@@ -216,63 +216,25 @@ async function deleteScript() {
               >
             </div>
           </dd>
-          <dt class="col-sm-4">Entrypoint</dt>
-          <dd class="col-sm-8 font-monospace">{{ script.entrypoint }}</dd>
-          <dt class="col-sm-4">Timeout</dt>
-          <dd class="col-sm-8">{{ script.timeout_seconds }}s</dd>
-          <dt class="col-sm-4">Max writes</dt>
-          <dd class="col-sm-8">{{ script.max_writes }}</dd>
-          <dt class="col-sm-4">Last run</dt>
-          <dd class="col-sm-8">
+          <dt class="col-sm-2">Entrypoint</dt>
+          <dd class="col-sm-10 font-monospace">{{ script.entrypoint }}</dd>
+          <dt class="col-sm-2">Timeout</dt>
+          <dd class="col-sm-10">{{ script.timeout_seconds }}s</dd>
+          <dt class="col-sm-2">Max writes</dt>
+          <dd class="col-sm-10">{{ script.max_writes }}</dd>
+          <dt class="col-sm-2">Last run</dt>
+          <dd class="col-sm-10">
             <template v-if="script.last_run_at">
               {{ dayjs.utc(script.last_run_at).local().fromNow() }}
               ({{ script.last_run_status }})
             </template>
             <template v-else>never</template>
           </dd>
-          <dt class="col-sm-4">SHA-256</dt>
-          <dd class="col-sm-8 font-monospace small text-truncate">
+          <dt class="col-sm-2">SHA-256</dt>
+          <dd class="col-sm-10 font-monospace small text-truncate">
             {{ script.source_sha256 }}
           </dd>
         </dl>
-      </div>
-      <div class="col-md-6" v-if="canRun">
-        <div class="card">
-          <div class="card-header">Test run</div>
-          <div class="card-body">
-            <label class="form-label small">payload (JSON)</label>
-            <textarea
-              class="form-control font-monospace small"
-              rows="4"
-              v-model="testPayload"
-            />
-            <button
-              class="btn btn-primary btn-sm mt-2"
-              :disabled="reactorStore.status.testing"
-              @click="runTest"
-            >
-              {{ reactorStore.status.testing ? "Running…" : "Run" }}
-            </button>
-            <div v-if="testResult" class="mt-3">
-              <div class="small">
-                Status:
-                <span
-                  class="badge"
-                  :class="
-                    testResult.status === 'success' ? 'bg-success' : 'bg-danger'
-                  "
-                  >{{ testResult.status }}</span
-                >
-              </div>
-              <pre
-                class="p-2 mt-2 small"
-                v-if="testLog"
-                style="max-height: 200px; overflow: auto"
-                >{{ testLog }}</pre
-              >
-            </div>
-          </div>
-        </div>
       </div>
     </div>
 
@@ -284,6 +246,43 @@ async function deleteScript() {
           style="white-space: pre-wrap"
           >{{ source }}</pre
         >
+      </div>
+    </div>
+
+    <div v-if="canRun" class="card mb-4">
+      <div class="card-header">Test run</div>
+      <div class="card-body">
+        <label class="form-label small">payload (JSON)</label>
+        <textarea
+          class="form-control font-monospace small"
+          rows="4"
+          v-model="testPayload"
+        />
+        <button
+          class="btn btn-primary btn-sm mt-2"
+          :disabled="reactorStore.status.testing"
+          @click="runTest"
+        >
+          {{ reactorStore.status.testing ? "Running…" : "Run" }}
+        </button>
+        <div v-if="testResult" class="mt-3">
+          <div class="small">
+            Status:
+            <span
+              class="badge"
+              :class="
+                testResult.status === 'success' ? 'bg-success' : 'bg-danger'
+              "
+              >{{ testResult.status }}</span
+            >
+          </div>
+          <pre
+            class="p-2 mt-2 small"
+            v-if="testLog"
+            style="max-height: 200px; overflow: auto"
+            >{{ testLog }}</pre
+          >
+        </div>
       </div>
     </div>
 
