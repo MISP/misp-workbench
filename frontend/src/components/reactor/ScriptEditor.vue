@@ -6,6 +6,7 @@ import {
   shallowRef,
   onMounted,
   onBeforeUnmount,
+  watch,
 } from "vue";
 import { router } from "@/router";
 import { useReactorStore, useToastsStore } from "@/stores";
@@ -363,6 +364,69 @@ const selectedTrigger = computed(() => {
   return t ? { resource_type: t.resource_type, action: t.action } : null;
 });
 
+const testStorageKey = computed(
+  () => `reactor:script:${savedScriptId.value ?? props.scriptId ?? "new"}:test`,
+);
+
+let _testStorageHydrated = false;
+function loadTestStateFromStorage() {
+  try {
+    const raw = localStorage.getItem(testStorageKey.value);
+    if (!raw) return;
+    const data = JSON.parse(raw);
+    if (typeof data.payload === "string") {
+      testPayloadText.value = data.payload;
+    }
+    if (data.trigger?.resource_type && data.trigger?.action) {
+      const idx = triggers.value.findIndex(
+        (t) =>
+          t.resource_type === data.trigger.resource_type &&
+          t.action === data.trigger.action,
+      );
+      if (idx >= 0) selectedTriggerIdx.value = idx;
+    }
+  } catch {
+    // corrupt entry — drop it silently
+  }
+}
+
+function saveTestStateToStorage() {
+  if (!_testStorageHydrated) return;
+  try {
+    localStorage.setItem(
+      testStorageKey.value,
+      JSON.stringify({
+        payload: testPayloadText.value,
+        trigger: selectedTrigger.value,
+      }),
+    );
+  } catch {
+    // quota / disabled storage — fail silently
+  }
+}
+
+onMounted(() => {
+  // In add mode triggers are seeded synchronously, so we can hydrate now.
+  // In edit mode we have to wait for the API call to populate them.
+  if (loaded.value) {
+    loadTestStateFromStorage();
+    _testStorageHydrated = true;
+    return;
+  }
+  const stop = watch(loaded, (isLoaded) => {
+    if (!isLoaded) return;
+    loadTestStateFromStorage();
+    _testStorageHydrated = true;
+    stop();
+  });
+});
+
+watch(
+  [testPayloadText, selectedTriggerIdx, triggers, testStorageKey],
+  saveTestStateToStorage,
+  { deep: true },
+);
+
 const SAMPLE_PAYLOADS = {
   event: {
     event_uuid: "5fbf7e2a-3a18-4f04-9e3a-1c1f0a9d3e10",
@@ -681,7 +745,7 @@ async function runTest() {
               language="python"
               :theme="monacoTheme"
               :options="monacoOptions"
-              :height="`520px`"
+              :height="`1000px`"
               @mount="onEditorMount"
             />
           </div>
@@ -703,7 +767,7 @@ async function runTest() {
               {{ reactorStore.status.testing ? "Running…" : "Run" }}
             </button>
           </div>
-          <div class="card-body d-flex flex-column" style="min-height: 520px">
+          <div class="card-body d-flex flex-column" style="min-height: 1000px">
             <label class="form-label small mb-1">Trigger</label>
             <select
               class="form-select form-select-sm mb-3"
