@@ -10,7 +10,7 @@ from app.schemas import reactor as reactor_schemas
 from app.services.redis import get_redis_client
 from app.services.tech_lab.reactor import storage as reactor_storage
 from app.services.tech_lab.reactor import triggers as reactor_triggers
-from app.services.tech_lab.reactor.runner import read_log
+from app.services.tech_lab.reactor.runner import read_log, read_profile
 from fastapi_pagination.ext.sqlalchemy import paginate
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -216,6 +216,20 @@ def get_run_log(db: Session, run_id: int, user_id: int) -> str | None:
     if run is None:
         return None
     return read_log(run.log_uri or "")
+
+
+def get_run_profile(db: Session, run_id: int, user_id: int) -> dict | None:
+    """Return the persisted flame-chart tree for a run, or None.
+
+    Two distinct ``None`` cases:
+    - Run doesn't exist (or doesn't belong to ``user_id``).
+    - Run exists but wasn't profiled (no JSON blob persisted).
+    The router maps both to 404, which is the right thing for the UI.
+    """
+    run = get_run(db, run_id, user_id)
+    if run is None:
+        return None
+    return read_profile(run.id)
 
 
 def create_run(

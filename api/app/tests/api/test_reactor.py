@@ -434,3 +434,84 @@ class TestReactorRouter(ApiTester):
             headers={"Authorization": "Bearer " + auth_token},
         )
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+    # ── POST /tech-lab/reactor/scripts/{id}/test?profile=true ────────────────
+
+    @pytest.mark.parametrize(
+        "scopes", [["reactor:create", "reactor:run", "reactor:read"]]
+    )
+    def test_test_run_with_profile_true_attaches_profile_and_flame_tree(
+        self, client: TestClient, auth_token: auth.Token
+    ):
+        created = client.post(
+            "/tech-lab/reactor/scripts/",
+            json={
+                "name": "profile-me",
+                "source": (
+                    "def handle(ctx, payload, trigger):\n"
+                    "    for _ in range(10000):\n"
+                    "        sum(range(100))\n"
+                ),
+                "triggers": [],
+            },
+            headers={"Authorization": "Bearer " + auth_token},
+        ).json()
+
+        run = client.post(
+            f"/tech-lab/reactor/scripts/{created['id']}/test?profile=true",
+            json={"payload": {}},
+            headers={"Authorization": "Bearer " + auth_token},
+        ).json()
+        assert run["status"] == "success"
+
+        log_response = client.get(
+            f"/tech-lab/reactor/runs/{run['id']}/log",
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+        log_body = log_response.json()["log"]
+        assert "=== profile ===" in log_body
+
+        profile_response = client.get(
+            f"/tech-lab/reactor/runs/{run['id']}/profile",
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+        assert profile_response.status_code == status.HTTP_200_OK
+        body = profile_response.json()
+        assert body["run_id"] == run["id"]
+        tree = body["tree"]
+        assert "name" in tree and "value" in tree
+        assert isinstance(tree["children"], list)
+
+    @pytest.mark.parametrize(
+        "scopes", [["reactor:create", "reactor:run", "reactor:read"]]
+    )
+    def test_get_run_profile_returns_404_when_not_profiled(
+        self, client: TestClient, auth_token: auth.Token
+    ):
+        # Run without ?profile=true → no flame tree persisted → 404.
+        created = client.post(
+            "/tech-lab/reactor/scripts/",
+            json={"name": "no-profile", "source": SAMPLE_SOURCE, "triggers": []},
+            headers={"Authorization": "Bearer " + auth_token},
+        ).json()
+        run = client.post(
+            f"/tech-lab/reactor/scripts/{created['id']}/test",
+            json={"payload": {}},
+            headers={"Authorization": "Bearer " + auth_token},
+        ).json()
+
+        response = client.get(
+            f"/tech-lab/reactor/runs/{run['id']}/profile",
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    @pytest.mark.parametrize("scopes", [["reactor:read"]])
+    def test_get_run_profile_returns_404_for_missing_run(
+        self, client: TestClient, auth_token: auth.Token
+    ):
+        response = client.get(
+            "/tech-lab/reactor/runs/999999/profile",
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+        assert response.status_code == status.HTTP_404_NOT_FOUND

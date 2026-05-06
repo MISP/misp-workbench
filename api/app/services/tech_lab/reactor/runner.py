@@ -10,11 +10,13 @@ Container-level isolation does the real work; this module is responsible for:
 
 import functools
 import io
+import json
 import logging
 import sys
 from contextlib import redirect_stderr, redirect_stdout
 from datetime import datetime, timezone
 
+import pyinstrument
 from app.models import reactor as reactor_models
 from app.services.tech_lab.reactor import storage as reactor_storage
 from app.services.tech_lab.reactor.context import ReactorContext
@@ -28,7 +30,15 @@ from sqlalchemy.orm import Session
 logger = logging.getLogger(__name__)
 
 
-def run_script(db: Session, run_id: int) -> None:
+def run_script(db: Session, run_id: int, *, profile: bool = False) -> None:
+    """Execute a queued reactor run.
+
+    ``profile=True`` samples the user handler with pyinstrument. The text
+    summary is appended to the run log under ``=== profile ===`` and the
+    full call tree is persisted as JSON at ``reactor/runs/<id>.profile.json``
+    so the UI can render an interactive flame chart. Intended for the
+    synchronous ``/test`` endpoint — too heavy for prod queue workers.
+    """
     run = (
         db.query(reactor_models.ReactorRun)
         .filter(reactor_models.ReactorRun.id == run_id)
@@ -66,6 +76,7 @@ def run_script(db: Session, run_id: int) -> None:
     error: str | None = None
     status = "success"
     ctx: ReactorContext | None = None
+    profiler = pyinstrument.Profiler() if profile else None
 
     try:
         # Source read lives inside the try so storage errors (for example a
@@ -84,7 +95,14 @@ def run_script(db: Session, run_id: int) -> None:
                     raise RuntimeError(
                         f"entrypoint {script.entrypoint!r} not defined or not callable"
                     )
-                fn(ctx, payload, trigger)
+                if profiler is not None:
+                    profiler.start()
+                    try:
+                        fn(ctx, payload, trigger)
+                    finally:
+                        profiler.stop()
+                else:
+                    fn(ctx, payload, trigger)
     except ScriptTimeout as e:
         status = "timed_out"
         error = str(e)
@@ -93,8 +111,13 @@ def run_script(db: Session, run_id: int) -> None:
         error = f"{type(e).__name__}: {e}"
         logger.exception("reactor run id=%s failed", run_id)
 
-    log_blob = _format_log(stdout.getvalue(), stderr.getvalue(), error)
+    profile_text = _format_profile(profiler) if profiler is not None else None
+    log_blob = _format_log(
+        stdout.getvalue(), stderr.getvalue(), error, profile=profile_text
+    )
     log_uri = _write_log(run_id, log_blob)
+    if profiler is not None:
+        _write_profile(run_id, profiler)
 
     run.status = status
     run.error = error
@@ -120,7 +143,9 @@ def _read_source(source_uri: str) -> str:
     return reactor_storage.read_object(source_uri).decode("utf-8")
 
 
-def _format_log(stdout: str, stderr: str, error: str | None) -> str:
+def _format_log(
+    stdout: str, stderr: str, error: str | None, profile: str | None = None
+) -> str:
     parts = []
     if stdout:
         parts.append("=== stdout ===\n" + stdout)
@@ -128,7 +153,58 @@ def _format_log(stdout: str, stderr: str, error: str | None) -> str:
         parts.append("=== stderr ===\n" + stderr)
     if error:
         parts.append("=== error ===\n" + error)
+    if profile:
+        parts.append("=== profile ===\n" + profile)
     return "\n".join(parts) if parts else ""
+
+
+def _format_profile(profiler: pyinstrument.Profiler) -> str:
+    """Render pyinstrument's text summary for the run log."""
+    return profiler.output_text(unicode=True, color=False, show_all=False)
+
+
+def _write_profile(run_id: int, profiler: pyinstrument.Profiler) -> str:
+    """Persist a d3-flame-graph-shaped tree to storage. Returns the key."""
+    tree = _profile_to_flame_tree(profiler)
+    key = f"reactor/runs/{run_id}.profile.json"
+    reactor_storage.write_object(key, json.dumps(tree).encode("utf-8"))
+    return key
+
+
+def _profile_to_flame_tree(profiler: pyinstrument.Profiler) -> dict:
+    """Convert pyinstrument's call tree to ``{name, value, children}``.
+
+    d3-flame-graph wants ``value`` in arbitrary units; pyinstrument frames
+    expose ``time`` (seconds) which is what we want. ``time`` is already
+    inclusive (frame + descendants), matching flame-graph semantics.
+    """
+    root_frame = profiler.last_session.root_frame() if profiler.last_session else None
+    if root_frame is None:
+        return {"name": "(empty)", "value": 0, "children": []}
+    return _frame_to_flame_node(root_frame)
+
+
+def _frame_to_flame_node(frame) -> dict:
+    name = getattr(frame, "function", None) or "<unknown>"
+    file_short = getattr(frame, "file_path_short", None)
+    if file_short:
+        line = getattr(frame, "line_no", None)
+        name = f"{name} ({file_short}:{line})" if line else f"{name} ({file_short})"
+    return {
+        "name": name,
+        "value": float(getattr(frame, "time", 0.0)),
+        "children": [_frame_to_flame_node(c) for c in (frame.children or [])],
+    }
+
+
+def read_profile(run_id: int) -> dict | None:
+    key = f"reactor/runs/{run_id}.profile.json"
+    if not reactor_storage.object_exists(key):
+        return None
+    try:
+        return json.loads(reactor_storage.read_object(key).decode("utf-8"))
+    except (FileNotFoundError, ValueError):
+        return None
 
 
 def _write_log(run_id: int, content: str) -> str:

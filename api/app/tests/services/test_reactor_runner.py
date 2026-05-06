@@ -363,6 +363,71 @@ class TestRunScriptLifecycle:
         assert "script exceeded 1s" in log_blob
         assert script.last_run_status == "timed_out"
 
+    def test_profile_true_appends_profile_section_and_writes_flame_json(self):
+        run = _make_run()
+        script = _make_script()
+        db = _fake_db(run=run, script=script)
+
+        # Handler does a tiny amount of work so pyinstrument has at least one
+        # sample to report; with no work the tree may be empty.
+        source = (
+            "def handle(ctx, payload, trigger):\n"
+            "    for _ in range(10000):\n"
+            "        sum(range(100))\n"
+        )
+        with _patched_storage(source) as written:
+            runner.run_script(db, run.id, profile=True)
+
+        assert run.status == "success"
+        log_blob = written[run.log_uri].decode()
+        assert "=== profile ===" in log_blob
+
+        # The flame tree was persisted alongside the log.
+        profile_key = f"reactor/runs/{run.id}.profile.json"
+        assert profile_key in written
+        import json as _json
+
+        tree = _json.loads(written[profile_key].decode())
+        assert "name" in tree and "value" in tree and "children" in tree
+        assert isinstance(tree["children"], list)
+
+    def test_profile_false_does_not_append_profile_section(self):
+        run = _make_run()
+        script = _make_script()
+        db = _fake_db(run=run, script=script)
+
+        source = (
+            "def handle(ctx, payload, trigger):\n"
+            "    pass\n"
+        )
+        with _patched_storage(source) as written:
+            runner.run_script(db, run.id)  # default profile=False
+
+        log_blob = written[run.log_uri].decode()
+        assert "=== profile ===" not in log_blob
+        # And no flame tree was persisted.
+        assert not any(k.endswith(".profile.json") for k in written)
+
+    def test_read_profile_returns_none_when_missing(self):
+        with patch.object(
+            runner.reactor_storage, "object_exists", return_value=False
+        ):
+            assert runner.read_profile(999) is None
+
+    def test_read_profile_decodes_json_when_present(self):
+        with patch.object(
+            runner.reactor_storage, "object_exists", return_value=True
+        ), patch.object(
+            runner.reactor_storage,
+            "read_object",
+            return_value=b'{"name": "root", "value": 1.0, "children": []}',
+        ):
+            assert runner.read_profile(7) == {
+                "name": "root",
+                "value": 1.0,
+                "children": [],
+            }
+
     def test_writes_count_propagates_from_context(self):
         run = _make_run()
         script = _make_script()

@@ -19,6 +19,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
 import TriggerFiltersEditor from "@/components/reactor/TriggerFiltersEditor.vue";
+import FlameChart from "@/components/reactor/FlameChart.vue";
 
 const props = defineProps({
   mode: {
@@ -355,7 +356,9 @@ const testPayloadText = ref("{}");
 const testRun = ref(null);
 const testLog = ref(null);
 const testError = ref(null);
+const testFlameTree = ref(null);
 const selectedTriggerIdx = ref(0);
+const profileEnabled = ref(false);
 
 const selectedTrigger = computed(() => {
   const t = triggers.value[selectedTriggerIdx.value];
@@ -383,6 +386,9 @@ function loadTestStateFromStorage() {
       );
       if (idx >= 0) selectedTriggerIdx.value = idx;
     }
+    if (typeof data.profile === "boolean") {
+      profileEnabled.value = data.profile;
+    }
   } catch {
     // corrupt entry — drop it silently
   }
@@ -396,6 +402,7 @@ function saveTestStateToStorage() {
       JSON.stringify({
         payload: testPayloadText.value,
         trigger: selectedTrigger.value,
+        profile: profileEnabled.value,
       }),
     );
   } catch {
@@ -420,7 +427,13 @@ onMounted(() => {
 });
 
 watch(
-  [testPayloadText, selectedTriggerIdx, triggers, testStorageKey],
+  [
+    testPayloadText,
+    selectedTriggerIdx,
+    triggers,
+    profileEnabled,
+    testStorageKey,
+  ],
   saveTestStateToStorage,
   { deep: true },
 );
@@ -506,6 +519,7 @@ async function runTest() {
   testError.value = null;
   testRun.value = null;
   testLog.value = null;
+  testFlameTree.value = null;
   if (!canSubmit.value) {
     testError.value = "Set a name and at least one trigger first.";
     return;
@@ -523,10 +537,12 @@ async function runTest() {
       scriptPayload: buildScriptPayload(),
       testPayload: parsedPayload,
       trigger: selectedTrigger.value,
+      profile: profileEnabled.value,
     });
     savedScriptId.value = result.scriptId;
     testRun.value = result.run;
     testLog.value = result.log;
+    testFlameTree.value = result.flameTree ?? null;
   } catch (err) {
     testError.value = err?.message || String(err);
   }
@@ -756,14 +772,34 @@ async function runTest() {
             class="card-header d-flex justify-content-between align-items-center"
           >
             <span>Test sandbox</span>
-            <button
-              class="btn btn-primary btn-sm"
-              :disabled="reactorStore.status.testing"
-              @click="runTest"
-            >
-              <FontAwesomeIcon :icon="faPlay" class="me-1" />
-              {{ reactorStore.status.testing ? "Running…" : "Run" }}
-            </button>
+            <div class="d-flex align-items-center gap-3">
+              <div
+                class="form-check form-switch m-0"
+                title="Wrap the handler in cProfile and append a profile section to the run log."
+              >
+                <input
+                  id="reactor-test-profile"
+                  class="form-check-input"
+                  type="checkbox"
+                  v-model="profileEnabled"
+                  :disabled="reactorStore.status.testing"
+                />
+                <label
+                  class="form-check-label small"
+                  for="reactor-test-profile"
+                >
+                  Profile
+                </label>
+              </div>
+              <button
+                class="btn btn-primary btn-sm"
+                :disabled="reactorStore.status.testing"
+                @click="runTest"
+              >
+                <FontAwesomeIcon :icon="faPlay" class="me-1" />
+                {{ reactorStore.status.testing ? "Running…" : "Run" }}
+              </button>
+            </div>
           </div>
           <div class="card-body d-flex flex-column" style="min-height: 1000px">
             <label class="form-label small mb-1">Trigger</label>
@@ -852,6 +888,12 @@ async function runTest() {
                   : testLog || "(empty)"
               }}</pre
             >
+
+            <FlameChart
+              v-if="testFlameTree"
+              class="mt-3"
+              :tree="testFlameTree"
+            />
           </div>
         </div>
       </div>

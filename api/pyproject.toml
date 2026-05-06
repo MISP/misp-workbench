@@ -33,6 +33,7 @@ pyjwt = "^2.12.0"
 boto3 = "^1.35"
 celery-redbeat = "^2.3.3"
 fastmcp = "^2.0"
+pyinstrument = "^5.0"
 
 [tool.poetry.dev-dependencies]
 pytest = "^9.0.3"

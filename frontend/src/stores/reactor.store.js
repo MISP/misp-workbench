@@ -100,6 +100,16 @@ export const useReactorStore = defineStore({
     async getRunLog(runId) {
       return fetchWrapper.get(`${baseUrl}/runs/${runId}/log`);
     },
+    async getRunProfile(runId) {
+      // Resolves to null when the run wasn't profiled (404) so callers can
+      // omit the chart without raising.
+      try {
+        return await fetchWrapper.get(`${baseUrl}/runs/${runId}/profile`);
+      } catch (err) {
+        if (err?.status === 404) return null;
+        throw err;
+      }
+    },
     async test(id, payload = {}) {
       this.status.testing = true;
       return await fetchWrapper
@@ -112,6 +122,7 @@ export const useReactorStore = defineStore({
       scriptPayload,
       testPayload,
       trigger,
+      profile = false,
     }) {
       this.status.testing = true;
       try {
@@ -128,12 +139,17 @@ export const useReactorStore = defineStore({
         const body = { payload: testPayload ?? payload ?? {} };
         if (trigger?.resource_type) body.resource_type = trigger.resource_type;
         if (trigger?.action) body.action = trigger.action;
-        const run = await fetchWrapper.post(
-          `${baseUrl}/scripts/${id}/test`,
-          body,
-        );
+        const url = profile
+          ? `${baseUrl}/scripts/${id}/test?profile=true`
+          : `${baseUrl}/scripts/${id}/test`;
+        const run = await fetchWrapper.post(url, body);
         const log = await fetchWrapper.get(`${baseUrl}/runs/${run.id}/log`);
-        return { scriptId: id, run, log: log.log };
+        let flameTree = null;
+        if (profile) {
+          const resp = await this.getRunProfile(run.id);
+          flameTree = resp?.tree ?? null;
+        }
+        return { scriptId: id, run, log: log.log, flameTree };
       } finally {
         this.status.testing = false;
       }

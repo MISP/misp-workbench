@@ -184,6 +184,28 @@ async def get_run_log(
     return reactor_schemas.ReactorRunLog(run_id=run_id, log=log)
 
 
+@router.get("/tech-lab/reactor/runs/{run_id}/profile")
+async def get_run_profile(
+    run_id: int,
+    db: Session = Depends(get_db),
+    user: user_schemas.User = Security(
+        get_current_active_user, scopes=["reactor:read"]
+    ),
+):
+    """Return the flame-chart tree for a profiled run.
+
+    The tree is in d3-flame-graph format: ``{name, value, children}`` where
+    ``value`` is wall-clock seconds (inclusive of children). 404 when the
+    run isn't found or wasn't profiled.
+    """
+    tree = reactor_repository.get_run_profile(db, run_id, user_id=user.id)
+    if tree is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="No profile for this run"
+        )
+    return {"run_id": run_id, "tree": tree}
+
+
 @router.post(
     "/tech-lab/reactor/scripts/{script_id}/test",
     response_model=reactor_schemas.ReactorRun,
@@ -191,6 +213,7 @@ async def get_run_log(
 async def test_run(
     script_id: int,
     payload: reactor_schemas.ReactorTestRequest,
+    profile: bool = False,
     db: Session = Depends(get_db),
     user: user_schemas.User = Security(
         get_current_active_user, scopes=["reactor:run"]
@@ -200,6 +223,10 @@ async def test_run(
 
     Useful while iterating. Runs in the API process, **not** the sandbox
     worker — admins should keep ``reactor:run`` to trusted users for now.
+
+    Pass ``?profile=true`` to attach cProfile around the handler. The
+    top-20 functions by cumulative time are appended to the run log under
+    a ``=== profile ===`` section, viewable via ``GET /runs/{id}/log``.
     """
     db_script = reactor_repository.get_script_by_id(db, script_id, user_id=user.id)
     if db_script is None:
@@ -215,6 +242,6 @@ async def test_run(
             "payload": payload.payload,
         },
     )
-    reactor_runner.run_script(db, run.id)
+    reactor_runner.run_script(db, run.id, profile=profile)
     db.refresh(run)
     return run
