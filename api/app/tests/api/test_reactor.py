@@ -216,3 +216,221 @@ class TestReactorRouter(ApiTester):
         assert args[0] == "attribute"
         assert args[1] == "created"
         assert args[2]["attribute_uuid"] == "11111111-1111-1111-1111-111111111111"
+
+    # ── GET /tech-lab/reactor/scripts/{id} ───────────────────────────────────
+
+    @pytest.mark.parametrize("scopes", [["reactor:read", "reactor:create"]])
+    def test_get_script_returns_uploaded_script(
+        self, client: TestClient, auth_token: auth.Token
+    ):
+        created = client.post(
+            "/tech-lab/reactor/scripts/",
+            json={"name": "single", "source": SAMPLE_SOURCE, "triggers": []},
+            headers={"Authorization": "Bearer " + auth_token},
+        ).json()
+
+        response = client.get(
+            f"/tech-lab/reactor/scripts/{created['id']}",
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+        assert response.status_code == status.HTTP_200_OK
+        data = response.json()
+        assert data["id"] == created["id"]
+        assert data["name"] == "single"
+        assert data["source_sha256"] == created["source_sha256"]
+
+    @pytest.mark.parametrize("scopes", [["reactor:read"]])
+    def test_get_script_returns_404_when_missing(
+        self, client: TestClient, auth_token: auth.Token
+    ):
+        response = client.get(
+            "/tech-lab/reactor/scripts/999999",
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+        assert response.json()["detail"] == "Reactor script not found"
+
+    @pytest.mark.parametrize("scopes", [[]])
+    def test_get_script_unauthorized(
+        self, client: TestClient, auth_token: auth.Token
+    ):
+        response = client.get(
+            "/tech-lab/reactor/scripts/1",
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+    # ── GET /tech-lab/reactor/scripts/ — filter param ────────────────────────
+
+    @pytest.mark.parametrize("scopes", [["reactor:read", "reactor:create"]])
+    def test_list_scripts_filters_by_name(
+        self, client: TestClient, auth_token: auth.Token
+    ):
+        client.post(
+            "/tech-lab/reactor/scripts/",
+            json={"name": "needle-script", "source": SAMPLE_SOURCE, "triggers": []},
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+        client.post(
+            "/tech-lab/reactor/scripts/",
+            json={"name": "haystack-script", "source": SAMPLE_SOURCE, "triggers": []},
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+
+        response = client.get(
+            "/tech-lab/reactor/scripts/?filter=needle",
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+        assert response.status_code == status.HTTP_200_OK
+        names = [item["name"] for item in response.json()["items"]]
+        assert "needle-script" in names
+        assert "haystack-script" not in names
+
+    # ── GET /tech-lab/reactor/scripts/{id}/source — 404 ──────────────────────
+
+    @pytest.mark.parametrize("scopes", [["reactor:read"]])
+    def test_get_script_source_returns_404_when_missing(
+        self, client: TestClient, auth_token: auth.Token
+    ):
+        response = client.get(
+            "/tech-lab/reactor/scripts/999999/source",
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    # ── PATCH /tech-lab/reactor/scripts/{id} — 404 ───────────────────────────
+
+    @pytest.mark.parametrize("scopes", [["reactor:update"]])
+    def test_update_script_returns_404_when_missing(
+        self, client: TestClient, auth_token: auth.Token
+    ):
+        response = client.patch(
+            "/tech-lab/reactor/scripts/999999",
+            json={"name": "no-such-script"},
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    # ── DELETE /tech-lab/reactor/scripts/{id} — 404 ──────────────────────────
+
+    @pytest.mark.parametrize("scopes", [["reactor:delete"]])
+    def test_delete_script_returns_404_when_missing(
+        self, client: TestClient, auth_token: auth.Token
+    ):
+        response = client.delete(
+            "/tech-lab/reactor/scripts/999999",
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    # ── GET /tech-lab/reactor/scripts/{id}/runs ──────────────────────────────
+
+    @pytest.mark.parametrize(
+        "scopes", [["reactor:create", "reactor:run", "reactor:read"]]
+    )
+    def test_list_runs_returns_runs_for_script(
+        self, client: TestClient, auth_token: auth.Token
+    ):
+        created = client.post(
+            "/tech-lab/reactor/scripts/",
+            json={"name": "runs-host", "source": SAMPLE_SOURCE, "triggers": []},
+            headers={"Authorization": "Bearer " + auth_token},
+        ).json()
+        # Generate a run by hitting /test, so list_runs has something to return.
+        client.post(
+            f"/tech-lab/reactor/scripts/{created['id']}/test",
+            json={"payload": {}},
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+
+        response = client.get(
+            f"/tech-lab/reactor/scripts/{created['id']}/runs",
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+        assert response.status_code == status.HTTP_200_OK
+        data = response.json()
+        assert data["total"] >= 1
+        assert all(item["script_id"] == created["id"] for item in data["items"])
+
+    @pytest.mark.parametrize("scopes", [["reactor:read"]])
+    def test_list_runs_returns_404_for_missing_script(
+        self, client: TestClient, auth_token: auth.Token
+    ):
+        response = client.get(
+            "/tech-lab/reactor/scripts/999999/runs",
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    # ── GET /tech-lab/reactor/runs/{id} ──────────────────────────────────────
+
+    @pytest.mark.parametrize(
+        "scopes", [["reactor:create", "reactor:run", "reactor:read"]]
+    )
+    def test_get_run_returns_run(self, client: TestClient, auth_token: auth.Token):
+        created = client.post(
+            "/tech-lab/reactor/scripts/",
+            json={"name": "run-host", "source": SAMPLE_SOURCE, "triggers": []},
+            headers={"Authorization": "Bearer " + auth_token},
+        ).json()
+        run = client.post(
+            f"/tech-lab/reactor/scripts/{created['id']}/test",
+            json={"payload": {"x": 1}},
+            headers={"Authorization": "Bearer " + auth_token},
+        ).json()
+
+        response = client.get(
+            f"/tech-lab/reactor/runs/{run['id']}",
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+        assert response.status_code == status.HTTP_200_OK
+        data = response.json()
+        assert data["id"] == run["id"]
+        assert data["script_id"] == created["id"]
+        assert data["status"] == "success"
+
+    @pytest.mark.parametrize("scopes", [["reactor:read"]])
+    def test_get_run_returns_404_when_missing(
+        self, client: TestClient, auth_token: auth.Token
+    ):
+        response = client.get(
+            "/tech-lab/reactor/runs/999999",
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    # ── GET /tech-lab/reactor/runs/{id}/log ──────────────────────────────────
+
+    @pytest.mark.parametrize("scopes", [["reactor:read"]])
+    def test_get_run_log_returns_404_when_missing(
+        self, client: TestClient, auth_token: auth.Token
+    ):
+        response = client.get(
+            "/tech-lab/reactor/runs/999999/log",
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    # ── POST /tech-lab/reactor/scripts/{id}/test — 404 + auth ────────────────
+
+    @pytest.mark.parametrize("scopes", [["reactor:run"]])
+    def test_test_run_returns_404_for_missing_script(
+        self, client: TestClient, auth_token: auth.Token
+    ):
+        response = client.post(
+            "/tech-lab/reactor/scripts/999999/test",
+            json={"payload": {}},
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    @pytest.mark.parametrize("scopes", [[]])
+    def test_test_run_unauthorized(
+        self, client: TestClient, auth_token: auth.Token
+    ):
+        response = client.post(
+            "/tech-lab/reactor/scripts/1/test",
+            json={"payload": {}},
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
