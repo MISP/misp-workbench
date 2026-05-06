@@ -231,6 +231,48 @@ $ docker compose restart worker
 docker compose exec worker poetry run celery -A app.worker.tasks purge
 ``` 
 
+### Profiling reactor scripts
+
+Two complementary tools, picked by *what* you're trying to learn:
+
+#### `?profile=true` on the test endpoint — for iterating on a single script
+
+Hit the synchronous test endpoint with `?profile=true` to run the handler under cProfile and have the top 20 functions by cumulative time appended to the run log under a `=== profile ===` section. Best for "is my script slow because of `ctx.enrich`, my own loop, or the storage round-trip?"
+
+```bash
+curl -X POST 'https://api.your-domain.com/tech-lab/reactor/scripts/42/test?profile=true' \
+  -H "Authorization: Bearer $TOKEN" \
+  -H 'Content-Type: application/json' \
+  -d '{"payload": {"value": "1.2.3.4", "type": "ip-src"}}'
+
+# then fetch the run log:
+curl -H "Authorization: Bearer $TOKEN" \
+  https://api.your-domain.com/tech-lab/reactor/runs/<run_id>/log
+```
+
+The endpoint requires the `reactor:run` scope. Profiling only runs against `/test` invocations — production sandbox runs ignore it because cProfile adds non-trivial overhead per call.
+
+#### `py-spy` against the sandbox worker — for production / no-code-change profiling
+
+`py-spy` samples the running Python process from outside, so you can flame-graph a real prod run without redeploying. Two recipes:
+
+```bash
+# Find the worker PID inside the reactor sandbox container
+docker compose exec worker_reactor_sandbox sh -c 'pgrep -af "celery.*reactor_sandbox"'
+
+# 1. One-shot stack snapshot — useful when a run is hung and you want to
+#    see where it's stuck right now.
+docker compose exec worker_reactor_sandbox py-spy dump --pid <pid>
+
+# 2. Sampling profile over a window — produces an SVG flame graph.
+docker compose exec worker_reactor_sandbox py-spy record --pid <pid> -o /tmp/reactor.svg --duration 30
+docker compose cp worker_reactor_sandbox:/tmp/reactor.svg ./reactor.svg
+```
+
+`py-spy` needs `CAP_SYS_PTRACE` on Linux. If `py-spy dump` fails with `Permission denied`, restart the sandbox worker with `--cap-add=SYS_PTRACE` (or run it as root in dev).
+
+Install in the worker image with `pip install py-spy` — it's a binary so it adds ~5 MB and doesn't touch app code.
+
 ### Garage / s3 (storage)
 ```bash
 $ docker compose exec garage /garage bucket info attachments
