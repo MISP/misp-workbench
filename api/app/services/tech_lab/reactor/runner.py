@@ -8,7 +8,6 @@ Container-level isolation does the real work; this module is responsible for:
 - moving the run row through queued -> running -> success/failed/timed_out
 """
 
-import inspect
 import io
 import logging
 import sys
