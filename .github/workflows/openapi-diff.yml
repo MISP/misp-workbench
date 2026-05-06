@@ -1,0 +1,101 @@
+name: OpenAPI diff
+
+on:
+  pull_request:
+    paths:
+      - "api/**"
+      - "docs/features/api/openapi.json"
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  diff:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve base spec
+        id: base
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          mkdir -p .oasdiff
+          if git cat-file -e "origin/${BASE_REF}:docs/features/api/openapi.json" 2>/dev/null; then
+            git show "origin/${BASE_REF}:docs/features/api/openapi.json" > .oasdiff/base.json
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Diff specs (JSON)
+        if: steps.base.outputs.exists == 'true'
+        uses: oasdiff/oasdiff-action/diff@main
+        with:
+          base: .oasdiff/base.json
+          revision: docs/features/api/openapi.json
+          format: json
+          output-to-file: .oasdiff/diff.json
+
+      - name: Build endpoint summary
+        env:
+          BASE_EXISTS: ${{ steps.base.outputs.exists }}
+        run: |
+          render_section() {
+            local title="$1" file="$2"
+            if [ -s "$file" ]; then
+              echo "### $title"
+              echo
+              sed 's/^/- `/; s/$/`/' "$file"
+              echo
+            fi
+          }
+
+          {
+            echo "## OpenAPI changes"
+            echo
+            if [ "$BASE_EXISTS" != "true" ]; then
+              echo "_New OpenAPI spec introduced in this PR — no base to diff against._"
+            elif [ ! -s .oasdiff/diff.json ] || [ "$(jq -r 'if . == null or . == {} then "empty" else "ok" end' .oasdiff/diff.json)" = "empty" ]; then
+              echo "_No changes to the OpenAPI spec._"
+            else
+              # Added: paths added entirely (all methods) + operations added on modified paths
+              jq -r '
+                ([.paths.added // [] | .[] as $p | "ALL " + $p]) +
+                ([(.paths.modified // {}) | to_entries[] as $e
+                  | (($e.value.operations.added // {}) | keys[]) as $op
+                  | ($op | ascii_upcase) + " " + $e.key])
+                | .[]' .oasdiff/diff.json > .oasdiff/added.txt
+
+              # Removed: paths deleted + operations deleted on modified paths
+              jq -r '
+                ([.paths.deleted // [] | .[] as $p | "ALL " + $p]) +
+                ([(.paths.modified // {}) | to_entries[] as $e
+                  | (($e.value.operations.deleted // {}) | keys[]) as $op
+                  | ($op | ascii_upcase) + " " + $e.key])
+                | .[]' .oasdiff/diff.json > .oasdiff/removed.txt
+
+              # Modified: operations modified on modified paths
+              jq -r '
+                (.paths.modified // {}) | to_entries[] as $e
+                | (($e.value.operations.modified // {}) | keys[]) as $op
+                | ($op | ascii_upcase) + " " + $e.key' .oasdiff/diff.json > .oasdiff/modified.txt
+
+              render_section "Added endpoints" .oasdiff/added.txt
+              render_section "Removed endpoints" .oasdiff/removed.txt
+              render_section "Modified endpoints" .oasdiff/modified.txt
+
+              if [ ! -s .oasdiff/added.txt ] && [ ! -s .oasdiff/removed.txt ] && [ ! -s .oasdiff/modified.txt ]; then
+                echo "_Spec changed but no endpoint-level differences (e.g. components/schemas, descriptions)._"
+              fi
+            fi
+          } > .oasdiff/comment.md
+
+      - name: Post sticky comment
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: openapi-diff
+          path: .oasdiff/comment.md

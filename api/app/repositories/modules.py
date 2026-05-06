@@ -132,13 +132,14 @@ def query_module(
 ):
 
     db_module_config = get_module_config(db, query.module)
-    query.config = db_module_config.config
 
-    if db_module_config.enabled is not True:
-        raise Exception("Module is not enabled")
+    if db_module_config is None or db_module_config.enabled is not True:
+        raise Exception(f"Module {query.module!r} is not enabled")
+
+    query.config = db_module_config.config
 
     url = f"{get_modules_service_url()}/query"
     logger.info("query misp-module: %s" % query.module)
-    req = requests.post(url, query.json())
+    req = requests.post(url, query.model_dump_json())
 
     return req.json()

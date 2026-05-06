@@ -237,11 +237,7 @@ def tag_event(
             status_code=status.HTTP_404_NOT_FOUND, detail="Event not found"
         )
 
-    tag = tags_repository.get_tag_by_name(db, tag_name=tag)
-    if tag is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Tag not found"
-        )
+    tag = tags_repository.get_or_create_tag_by_name(db, tag_name=tag)
 
     tags_repository.tag_event(db=db, event=event, tag=tag)
 

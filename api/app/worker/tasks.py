@@ -22,8 +22,10 @@ from app.repositories import attributes as attributes_repository
 from app.repositories import notifications as notifications_repository
 from app.repositories import galaxies as galaxies_repository
 from app.repositories import hunts as hunts_repository
+from app.repositories import reactor as reactor_repository
 from app.repositories import taxonomies as taxonomies_repository
 from app.schemas import attribute as attribute_schemas
+from app.services.tech_lab.reactor import runner as reactor_runner
 from celery import Celery
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
@@ -49,6 +51,54 @@ celery_app.conf.update(
 logger = logging.getLogger(__name__)
 
 engine = create_engine(SQLALCHEMY_DATABASE_URL)
+
+
+def _reactor_event_payload(os_event, event_uuid: str) -> dict:
+    if os_event is None:
+        return {"event_uuid": event_uuid}
+    data = (
+        os_event.model_dump(mode="json")
+        if hasattr(os_event, "model_dump")
+        else dict(os_event)
+    )
+    data["event_uuid"] = event_uuid
+    return data
+
+
+def _reactor_attribute_payload(
+    os_attr, attribute_uuid: str, object_uuid, event_uuid: str | None
+) -> dict:
+    data = (
+        os_attr.model_dump(mode="json")
+        if os_attr is not None and hasattr(os_attr, "model_dump")
+        else (dict(os_attr) if os_attr is not None else {})
+    )
+    data["attribute_uuid"] = attribute_uuid
+    data["object_uuid"] = object_uuid
+    data["event_uuid"] = event_uuid
+    return data
+
+
+def _reactor_object_payload(os_obj, object_uuid: str, event_uuid: str | None) -> dict:
+    data = (
+        os_obj.model_dump(mode="json")
+        if os_obj is not None and hasattr(os_obj, "model_dump")
+        else (dict(os_obj) if os_obj is not None else {})
+    )
+    data["object_uuid"] = object_uuid
+    data["event_uuid"] = event_uuid
+    return data
+
+
+def _dispatch_if_subscribed(resource_type: str, action: str, payload: dict) -> None:
+    """Skip the Celery hop when no active script subscribes to this trigger.
+
+    The gate is best-effort (Redis-backed, fail-open). If it returns False we
+    can be confident no script is listening; if it returns True we still hand
+    off to ``reactor_dispatch`` which does the authoritative DB check.
+    """
+    if reactor_repository.has_active_subscriber(resource_type, action):
+        reactor_dispatch.delay(resource_type, action, payload)
 
 
 @celery_app.task
@@ -146,6 +196,7 @@ def handle_created_event(event_uuid: str):
     if os_event is not None:
         with Session(engine) as db:
             notifications_repository.create_event_notifications(db, "created", event=os_event)
+        _dispatch_if_subscribed("event", "created", _reactor_event_payload(os_event, event_uuid))
 
     return True
 
@@ -164,6 +215,7 @@ def handle_updated_event(event_uuid: str):
         )
         with Session(engine) as db:
             notifications_repository.create_event_notifications(db, "updated", event=os_event)
+        _dispatch_if_subscribed("event", "updated", _reactor_event_payload(os_event, event_uuid))
 
     return True
 
@@ -176,6 +228,7 @@ def handle_deleted_event(event_uuid: str):
     if os_event is not None:
         with Session(engine) as db:
             notifications_repository.create_event_notifications(db, "deleted", event=os_event)
+        _dispatch_if_subscribed("event", "deleted", _reactor_event_payload(os_event, event_uuid))
 
     delete_indexed_event(event_uuid)
 
@@ -192,6 +245,11 @@ def handle_created_attribute(attribute_uuid: str, object_uuid, event_uuid: str |
         os_attr = attributes_repository.get_attribute_from_opensearch(UUID(attribute_uuid))
         if os_attr is not None:
             notifications_repository.create_attribute_notifications(db, "created", attribute=os_attr)
+            _dispatch_if_subscribed(
+                "attribute",
+                "created",
+                _reactor_attribute_payload(os_attr, attribute_uuid, object_uuid, event_uuid),
+            )
 
     return True
 
@@ -203,6 +261,11 @@ def handle_updated_attribute(attribute_uuid: str, object_uuid, event_uuid: str |
         os_attr = attributes_repository.get_attribute_from_opensearch(UUID(attribute_uuid))
         if os_attr is not None:
             notifications_repository.create_attribute_notifications(db, "updated", attribute=os_attr)
+            _dispatch_if_subscribed(
+                "attribute",
+                "updated",
+                _reactor_attribute_payload(os_attr, attribute_uuid, object_uuid, event_uuid),
+            )
 
     return True
 
@@ -217,6 +280,11 @@ def handle_deleted_attribute(attribute_uuid: str, object_uuid, event_uuid: str |
         os_attr = attributes_repository.get_attribute_from_opensearch(UUID(attribute_uuid))
         if os_attr is not None:
             notifications_repository.create_attribute_notifications(db, "deleted", attribute=os_attr)
+            _dispatch_if_subscribed(
+                "attribute",
+                "deleted",
+                _reactor_attribute_payload(os_attr, attribute_uuid, object_uuid, event_uuid),
+            )
 
     return True
 
@@ -232,6 +300,9 @@ def handle_created_object(object_uuid: str, event_uuid: str | None):
         os_obj = objects_repository.get_object_from_opensearch(UUID(object_uuid))
         if os_obj is not None:
             notifications_repository.create_object_notifications(db, "created", object=os_obj)
+            _dispatch_if_subscribed(
+                "object", "created", _reactor_object_payload(os_obj, object_uuid, event_uuid)
+            )
 
     return True
 
@@ -244,6 +315,9 @@ def handle_updated_object(object_uuid: str, event_uuid: str | None):
         os_obj = objects_repository.get_object_from_opensearch(UUID(object_uuid))
         if os_obj is not None:
             notifications_repository.create_object_notifications(db, "updated", object=os_obj)
+            _dispatch_if_subscribed(
+                "object", "updated", _reactor_object_payload(os_obj, object_uuid, event_uuid)
+            )
 
     return True
 
@@ -259,6 +333,9 @@ def handle_deleted_object(object_uuid: str, event_uuid: str | None):
         os_obj = objects_repository.get_object_from_opensearch(UUID(object_uuid))
         if os_obj is not None:
             notifications_repository.create_object_notifications(db, "deleted", object=os_obj)
+            _dispatch_if_subscribed(
+                "object", "deleted", _reactor_object_payload(os_obj, object_uuid, event_uuid)
+            )
 
     return True
 
@@ -673,6 +750,16 @@ def handle_created_sighting(
             notifications_repository.create_sighting_notifications(
                 db, "created", attribute=attribute, sighting=sighting
             )
+        _dispatch_if_subscribed(
+            "sighting",
+            "created",
+            {
+                "value": value,
+                "type": sighting_type,
+                "organisation": organisation,
+                "timestamp": sighting["timestamp"],
+            },
+        )
 
 
 @celery_app.task
@@ -700,6 +787,8 @@ def handle_created_correlation(
             db, "created", correlation=correlation
         )
 
+    _dispatch_if_subscribed("correlation", "created", correlation)
+
     return True
 
 
@@ -711,6 +800,7 @@ def handle_published_event(event_uuid: str):
     if os_event is not None:
         with Session(engine) as db:
             notifications_repository.create_event_notifications(db, "published", event=os_event)
+        _dispatch_if_subscribed("event", "published", _reactor_event_payload(os_event, event_uuid))
 
     logger.info("handling published event uuid=%s job finished", event_uuid)
     return True
@@ -724,6 +814,7 @@ def handle_unpublished_event(event_uuid: str):
     if os_event is not None:
         with Session(engine) as db:
             notifications_repository.create_event_notifications(db, "unpublished", event=os_event)
+        _dispatch_if_subscribed("event", "unpublished", _reactor_event_payload(os_event, event_uuid))
 
     logger.info("handling unpublished event uuid=%s job finished", event_uuid)
     return True
@@ -913,3 +1004,31 @@ def dummy_sleep(duration: int = 600):
     time.sleep(duration)
     logger.info("dummy_sleep job finished")
     return {"slept_for": duration}
+
+
+# ──────────────────────────────────────────────────────────────────────────
+# Tech Lab — Reactor Scripts
+# ──────────────────────────────────────────────────────────────────────────
+
+
+@celery_app.task
+def reactor_dispatch(resource_type: str, action: str, payload: dict):
+    """Find scripts subscribed to (resource_type, action) and queue runs.
+
+    Cheap lookup that runs on the default queue alongside the existing
+    `handle_*` tasks. Actual script execution happens on the
+    ``reactor_sandbox`` queue served by an isolated worker container.
+    """
+    with Session(engine) as db:
+        reactor_repository.dispatch_triggered_scripts(db, resource_type, action, payload)
+    return True
+
+
+@celery_app.task(queue="reactor_sandbox", time_limit=300, soft_time_limit=240)
+def run_reactor_script(run_id: int):
+    """Execute a reactor script run. Container provides the real isolation."""
+    logger.info("run_reactor_script run_id=%s started", run_id)
+    with Session(engine) as db:
+        reactor_runner.run_script(db, run_id)
+    logger.info("run_reactor_script run_id=%s finished", run_id)
+    return True

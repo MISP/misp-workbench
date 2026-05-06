@@ -3,6 +3,7 @@ from app.models.audit_log import AuditLog  # noqa
 from app.models.hunt import Hunt  # noqa
 from app.models.module import ModuleSettings  # noqa
 from app.models.organisation import Organisation  # noqa
+from app.models.reactor import ReactorRun, ReactorScript  # noqa
 from app.models.role import Role  # noqa
 from app.models.server import Server  # noqa
 from app.models.sharing_groups import (  # noqa

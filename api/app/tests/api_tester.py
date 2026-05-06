@@ -15,6 +15,7 @@ from app.models import server as server_models
 from app.models import sharing_groups as sharing_groups_models
 from app.models import tag as tag_models
 from app.models import notification as notification_models
+from app.models import reactor as reactor_models
 from app.models import taxonomy as taxonomy_models
 from app.models import user as user_models
 from app.models import role as role_models
@@ -80,6 +81,13 @@ class ApiTester:
         db.query(server_models.Server).delete(synchronize_session=False)
         db.query(hunt_models.HuntRunHistory).delete(synchronize_session=False)
         db.query(hunt_models.Hunt).delete(synchronize_session=False)
+        # Clear reactor children before scripts to avoid the
+        # last_run_id self-reference blocking the truncate.
+        db.execute(
+            reactor_models.ReactorScript.__table__.update().values(last_run_id=None)
+        )
+        db.query(reactor_models.ReactorRun).delete(synchronize_session=False)
+        db.query(reactor_models.ReactorScript).delete(synchronize_session=False)
         db.query(notification_models.Notification).delete(synchronize_session=False)
         db.query(api_key_models.ApiKey).delete(synchronize_session=False)
         db.query(audit_log_models.AuditLog).delete(synchronize_session=False)
