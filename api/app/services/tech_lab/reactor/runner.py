@@ -114,9 +114,18 @@ def _call_handler(fn, ctx, payload, trigger) -> None:
     Newer scripts can declare ``(ctx, payload, trigger)`` to receive the
     ``{"resource_type", "action"}`` info that fired the run.
     """
-    try:
+    sig = inspect.signature(fn)
+    params = sig.parameters.values()
+    positional = [
+        p
+        for p in params
+        if p.kind in (inspect.Parameter.POSITIONAL_ONLY, inspect.Parameter.POSITIONAL_OR_KEYWORD)
+    ]
+    has_varargs = any(p.kind == inspect.Parameter.VAR_POSITIONAL for p in params)
+
+    if has_varargs or len(positional) >= 3:
         fn(ctx, payload, trigger)
-    except TypeError:
+    else:
         fn(ctx, payload)
 
 
