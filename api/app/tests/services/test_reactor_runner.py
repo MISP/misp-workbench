@@ -285,6 +285,25 @@ class TestRunScriptLifecycle:
         assert "trigger {'resource_type': 'event', 'action': 'created'}" in log_blob
         assert "payload {'info': 'phish'}" in log_blob
 
+    def test_storage_error_marks_failed_instead_of_escaping(self):
+        # Regression: a missing source object used to bubble out of run_script
+        # and crash the Celery task, leaving the row stuck in "running".
+        run = _make_run()
+        script = _make_script()
+        db = _fake_db(run=run, script=script)
+
+        with patch.object(
+            runner.reactor_storage,
+            "read_object",
+            side_effect=RuntimeError("AccessDenied: No such key"),
+        ), patch.object(runner.reactor_storage, "write_object"):
+            runner.run_script(db, run.id)  # must not raise
+
+        assert run.status == "failed"
+        assert run.error is not None
+        assert "AccessDenied" in run.error
+        assert script.last_run_status == "failed"
+
     def test_handler_exception_marks_failed_with_type_and_message(self):
         run = _make_run()
         script = _make_script()

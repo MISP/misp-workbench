@@ -54,7 +54,6 @@ def run_script(db: Session, run_id: int) -> None:
     run.started_at = datetime.now(timezone.utc)
     db.commit()
 
-    source = _read_source(script.source_uri)
     triggered_by = run.triggered_by or {}
     payload = triggered_by.get("payload", {})
     trigger = {
@@ -69,6 +68,10 @@ def run_script(db: Session, run_id: int) -> None:
     ctx: ReactorContext | None = None
 
     try:
+        # Source read lives inside the try so storage errors (for example a
+        # missing S3 object) become a failed run row instead of an escaped
+        # Celery exception that leaves the row stuck in "running".
+        source = _read_source(script.source_uri)
         ctx = ReactorContext(db, script, run)
         compiled = compile(source, f"<reactor:{script.id}>", "exec")
         script_globals: dict = {"__builtins__": restricted_builtins(), "__name__": "__reactor__"}
