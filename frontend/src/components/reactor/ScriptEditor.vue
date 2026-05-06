@@ -980,9 +980,7 @@ async function runTest() {
                       <code>{"resource_type": str, "action": str}</code>
                       — identifies which configured trigger fired the run.
                       Useful when one script is wired to multiple triggers and
-                      needs to branch on them. Older 2-arg handlers (<code
-                        >def handle(ctx, payload):</code
-                      >) are still supported for backward compatibility.
+                      needs to branch on them.
                     </td>
                   </tr>
                 </tbody>

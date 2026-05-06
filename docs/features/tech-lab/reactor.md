@@ -66,8 +66,6 @@ def handle(ctx, payload, trigger):
 | `payload` | `dict` | The resource that fired the trigger. Shape depends on `trigger["resource_type"]` (see below). |
 | `trigger` | `dict` | `{"resource_type": str, "action": str}` — identifies which configured trigger fired the run. |
 
-Older 2-arg handlers (`def handle(ctx, payload):`) are still accepted for backward compatibility — the runner uses `inspect.signature` to detect arity.
-
 ### `payload` shapes
 
 | `resource_type` | Top-level keys |

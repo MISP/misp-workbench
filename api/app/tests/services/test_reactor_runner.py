@@ -53,42 +53,6 @@ class TestFormatLog:
 
 
 # ──────────────────────────────────────────────────────────────────────────
-# _call_handler — backwards-compat dispatch
-# ──────────────────────────────────────────────────────────────────────────
-
-
-class TestCallHandler:
-    def test_two_arg_handler_called_without_trigger(self):
-        seen = []
-
-        def handle(ctx, payload):
-            seen.append((ctx, payload))
-
-        runner._call_handler(handle, "ctx", {"k": "v"}, {"resource_type": "event"})
-        assert seen == [("ctx", {"k": "v"})]
-
-    def test_three_arg_handler_receives_trigger(self):
-        seen = []
-
-        def handle(ctx, payload, trigger):
-            seen.append((ctx, payload, trigger))
-
-        runner._call_handler(handle, "ctx", {"k": "v"}, {"resource_type": "event"})
-        assert seen == [("ctx", {"k": "v"}, {"resource_type": "event"})]
-
-    def test_var_positional_handler_receives_trigger(self):
-        seen = []
-
-        def handle(*args):
-            seen.append(args)
-
-        runner._call_handler(handle, "ctx", {"k": "v"}, {"resource_type": "event"})
-        # *args path always passes the trigger.
-        assert seen == [("ctx", {"k": "v"}, {"resource_type": "event"})]
-
-
-
-# ──────────────────────────────────────────────────────────────────────────
 # Source / log helpers
 # ──────────────────────────────────────────────────────────────────────────
 
@@ -273,7 +237,7 @@ class TestRunScriptLifecycle:
         db = _fake_db(run=run, script=script)
 
         source = (
-            "def handle(ctx, payload):\n"
+            "def handle(ctx, payload, trigger):\n"
             "    print('payload was', payload)\n"
         )
         with _patched_storage(source) as written:
@@ -321,30 +285,13 @@ class TestRunScriptLifecycle:
         assert "trigger {'resource_type': 'event', 'action': 'created'}" in log_blob
         assert "payload {'info': 'phish'}" in log_blob
 
-    def test_legacy_triggered_by_without_payload_key_passes_whole_dict(self):
-        # Older runs stored the trigger payload at the top level rather than
-        # nested under "payload"; the runner falls back to the whole dict.
-        run = _make_run(triggered_by={"info": "phish"})
-        script = _make_script()
-        db = _fake_db(run=run, script=script)
-
-        source = (
-            "def handle(ctx, payload):\n"
-            "    print('payload', payload)\n"
-        )
-        with _patched_storage(source) as written:
-            runner.run_script(db, run.id)
-
-        log_blob = written[run.log_uri].decode()
-        assert "payload {'info': 'phish'}" in log_blob
-
     def test_handler_exception_marks_failed_with_type_and_message(self):
         run = _make_run()
         script = _make_script()
         db = _fake_db(run=run, script=script)
 
         source = (
-            "def handle(ctx, payload):\n"
+            "def handle(ctx, payload, trigger):\n"
             "    raise ValueError('boom')\n"
         )
         with _patched_storage(source) as written:
@@ -382,7 +329,7 @@ class TestRunScriptLifecycle:
             yield  # noqa: unreachable, satisfies generator protocol
 
         source = (
-            "def handle(ctx, payload):\n"
+            "def handle(ctx, payload, trigger):\n"
             "    pass\n"
         )
         with _patched_storage(source) as written, patch.object(
@@ -408,7 +355,7 @@ class TestRunScriptLifecycle:
         fake_ctx._writes_count = 4
 
         source = (
-            "def handle(ctx, payload):\n"
+            "def handle(ctx, payload, trigger):\n"
             "    pass\n"
         )
         with _patched_storage(source), patch.object(
@@ -423,22 +370,21 @@ class TestRunScriptLifecycle:
         script = _make_script()
         db = _fake_db(run=run, script=script)
 
+        # Snapshot run.status when the handler enters its time-limit context —
+        # that's the moment immediately before the user code actually runs.
         observed_status = []
 
+        @contextmanager
+        def _spy_time_limit(seconds):
+            observed_status.append(run.status)
+            yield
+
         source = (
-            "def handle(ctx, payload):\n"
+            "def handle(ctx, payload, trigger):\n"
             "    pass\n"
         )
-
-        # Inspect the run state right before the handler is dispatched.
-        original_call = runner._call_handler
-
-        def _spy(*args, **kwargs):
-            observed_status.append(run.status)
-            return original_call(*args, **kwargs)
-
         with _patched_storage(source), patch.object(
-            runner, "_call_handler", side_effect=_spy
+            runner, "time_limit", _spy_time_limit
         ):
             runner.run_script(db, run.id)
 

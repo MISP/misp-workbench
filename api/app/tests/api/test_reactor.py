@@ -12,7 +12,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
 
-SAMPLE_SOURCE = "def handle(ctx, payload):\n    ctx.log('hello', payload)\n"
+SAMPLE_SOURCE = "def handle(ctx, payload, trigger):\n    ctx.log('hello', payload)\n"
 
 
 @pytest.fixture(autouse=True)
@@ -124,7 +124,7 @@ class TestReactorRouter(ApiTester):
 
         response = client.patch(
             f"/tech-lab/reactor/scripts/{created['id']}",
-            json={"source": "def handle(ctx, payload):\n    return 1\n"},
+            json={"source": "def handle(ctx, payload, trigger):\n    return 1\n"},
             headers={"Authorization": "Bearer " + auth_token},
         )
         assert response.status_code == status.HTTP_200_OK
@@ -159,7 +159,7 @@ class TestReactorRouter(ApiTester):
             "/tech-lab/reactor/scripts/",
             json={
                 "name": "test-run",
-                "source": "def handle(ctx, payload):\n    ctx.log('payload was', payload)\n",
+                "source": "def handle(ctx, payload, trigger):\n    ctx.log('payload was', payload)\n",
                 "triggers": [],
             },
             headers={"Authorization": "Bearer " + auth_token},

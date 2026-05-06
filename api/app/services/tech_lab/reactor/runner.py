@@ -9,7 +9,6 @@ Container-level isolation does the real work; this module is responsible for:
 """
 
 import functools
-import inspect
 import io
 import logging
 import sys
@@ -57,7 +56,7 @@ def run_script(db: Session, run_id: int) -> None:
 
     source = _read_source(script.source_uri)
     triggered_by = run.triggered_by or {}
-    payload = triggered_by.get("payload", triggered_by)
+    payload = triggered_by.get("payload", {})
     trigger = {
         "resource_type": triggered_by.get("resource_type"),
         "action": triggered_by.get("action"),
@@ -82,7 +81,7 @@ def run_script(db: Session, run_id: int) -> None:
                     raise RuntimeError(
                         f"entrypoint {script.entrypoint!r} not defined or not callable"
                     )
-                _call_handler(fn, ctx, payload, trigger)
+                fn(ctx, payload, trigger)
     except ScriptTimeout as e:
         status = "timed_out"
         error = str(e)
@@ -107,35 +106,6 @@ def run_script(db: Session, run_id: int) -> None:
     script.updated_at = run.finished_at
 
     db.commit()
-
-
-def _call_handler(fn, ctx, payload, trigger) -> None:
-    """Invoke the user handler.
-
-    Backward compat: 2-arg ``(ctx, payload)`` handlers are still accepted.
-    Newer scripts can declare ``(ctx, payload, trigger)`` to receive the
-    ``{"resource_type", "action"}`` info that fired the run.
-    """
-    sig = inspect.signature(fn)
-    params = list(sig.parameters.values())
-    positional = [
-        p
-        for p in params
-        if p.kind in (inspect.Parameter.POSITIONAL_ONLY, inspect.Parameter.POSITIONAL_OR_KEYWORD)
-    ]
-    has_varargs = any(p.kind == inspect.Parameter.VAR_POSITIONAL for p in params)
-
-    if has_varargs or len(positional) >= 3:
-        try:
-            fn(ctx, payload, trigger)
-        except TypeError as exc:
-            msg = str(exc)
-            if "positional argument" in msg or "arguments" in msg:
-                fn(ctx, payload)
-            else:
-                raise
-    else:
-        fn(ctx, payload)
 
 
 @functools.lru_cache(maxsize=128)
