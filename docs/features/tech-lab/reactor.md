@@ -207,3 +207,17 @@ Clicking *Run* saves the script (creating it on first run, patching it on subseq
 | `reactor:run` | Use the synchronous test endpoint |
 
 The Test sandbox's *Run* button is gated on `reactor:run`. Async runs triggered by real platform events do not require any per-user scope — they execute under the script owner's identity.
+
+## Screenshots
+
+### Creating or editing a Reactor Script
+<img src="../../screenshots/tech-lab/reactor-scripts/misp-workbench-1_tech-lab_reactor-scripts_edit.png">
+
+### View details and run log of a Reactor Script
+<img src="../../screenshots/tech-lab/reactor-scripts/misp-workbench-2_tech-lab_reactor-scripts_view.png">
+
+### See Reactor Scripts reference docs
+<img src="../../screenshots/tech-lab/reactor-scripts/misp-workbench-3_tech-lab_reactor-scripts_reference_docs.png">
+
+### See Reactor Scripts library
+<img src="../../screenshots/tech-lab/reactor-scripts/misp-workbench-4_tech-lab_reactor-scripts_reference_library.png">
