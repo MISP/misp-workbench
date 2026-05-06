@@ -130,10 +130,13 @@ def _call_handler(fn, ctx, payload, trigger) -> None:
             p.kind == inspect.Parameter.VAR_POSITIONAL for p in positional
         ) or len([p for p in positional if p.kind != inspect.Parameter.VAR_POSITIONAL]) >= 3
     except (TypeError, ValueError):
-        accepts_trigger = True
+        accepts_trigger = False
 
     if accepts_trigger:
-        fn(ctx, payload, trigger)
+        try:
+            fn(ctx, payload, trigger)
+        except TypeError:
+            fn(ctx, payload)
     else:
         fn(ctx, payload)
 
