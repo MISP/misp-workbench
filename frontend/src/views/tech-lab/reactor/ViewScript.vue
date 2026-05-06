@@ -259,7 +259,7 @@ async function deleteScript() {
           language="python"
           :theme="monacoTheme"
           :options="monacoOptions"
-          :height="`1000px`"
+          :height="`600px`"
         />
       </div>
     </div>
