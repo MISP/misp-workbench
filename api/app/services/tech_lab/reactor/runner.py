@@ -124,7 +124,16 @@ def _call_handler(fn, ctx, payload, trigger) -> None:
     has_varargs = any(p.kind == inspect.Parameter.VAR_POSITIONAL for p in params)
 
     if has_varargs or len(positional) >= 3:
-        fn(ctx, payload, trigger)
+        try:
+            fn(ctx, payload, trigger)
+        except TypeError as exc:
+            # Some dynamically-provided callables (for example in tests) may
+            # still reject the 3-arg form despite introspection. Retry with
+            # backward-compatible 2-arg invocation.
+            try:
+                fn(ctx, payload)
+            except TypeError:
+                raise exc
     else:
         fn(ctx, payload)
 
