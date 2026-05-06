@@ -219,13 +219,11 @@ const EXAMPLE_LIBRARY = {
     for obj in (result.get("results") or {}).get("Object", []):
         for attr in obj.get("Attribute", []):
             relation = attr.get("object_relation") or attr.get("type")
-            ctx.log(
-                "mmdb_lookup",
-                payload["value"],
-                f"{obj.get('name')}.{relation}",
-                "=",
-                attr.get("value"),
-            )
+
+            if obj.get('name') == "geolocation" and relation == "countrycode":
+                ctx.tag_attribute(payload["uuid"], f"country={attr.get('value')}")
+                ctx.log(f"attribute {payload.get('uuid')} tagged with \`country={attr.get('value')}\`")
+                return
 `,
     },
   ],
