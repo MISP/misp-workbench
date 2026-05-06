@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 
 from app.models import reactor as reactor_models
 from app.schemas import reactor as reactor_schemas
+from app.services.redis import get_redis_client
 from app.services.tech_lab.reactor import storage as reactor_storage
 from app.services.tech_lab.reactor import triggers as reactor_triggers
 from app.services.tech_lab.reactor.runner import read_log
@@ -15,6 +16,63 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 logger = logging.getLogger(__name__)
+
+
+# Redis cache of "<resource_type>:<action>" entries that at least one active
+# script subscribes to. Fronts dispatch so handlers can short-circuit before
+# paying for a Celery hop + DB scan when nothing is listening.
+_ACTIVE_TRIGGERS_KEY = "reactor:active_triggers"
+_ACTIVE_TRIGGERS_SENTINEL = "reactor:active_triggers:populated"
+
+
+def has_active_subscriber(resource_type: str, action: str) -> bool:
+    """Return True if any active script subscribes to ``(resource_type, action)``.
+
+    Fail-open: if the cache is cold or Redis is unreachable, returns True so
+    the handler still dispatches and ``dispatch_triggered_scripts`` does the
+    authoritative check. Correctness must not depend on Redis being up.
+    """
+    try:
+        client = get_redis_client()
+        if not client.exists(_ACTIVE_TRIGGERS_SENTINEL):
+            return True
+        return bool(client.sismember(_ACTIVE_TRIGGERS_KEY, f"{resource_type}:{action}"))
+    except Exception:  # noqa: BLE001
+        logger.exception("reactor active-trigger gate failed; falling open")
+        return True
+
+
+def refresh_active_triggers_cache(db: Session) -> set[str]:
+    """Recompute the active-trigger set from the DB and replace the cache.
+
+    Called from script CRUD so the gate stays accurate. Returns the recomputed
+    set (mostly for tests). On Redis error, logs and continues — the gate will
+    fall open on the next read.
+    """
+    scripts = (
+        db.query(reactor_models.ReactorScript)
+        .filter(reactor_models.ReactorScript.status == "active")
+        .all()
+    )
+    keys: set[str] = set()
+    for s in scripts:
+        for t in s.triggers or []:
+            r = t.get("resource_type")
+            a = t.get("action")
+            if r and a:
+                keys.add(f"{r}:{a}")
+
+    try:
+        client = get_redis_client()
+        pipe = client.pipeline()
+        pipe.delete(_ACTIVE_TRIGGERS_KEY)
+        if keys:
+            pipe.sadd(_ACTIVE_TRIGGERS_KEY, *keys)
+        pipe.set(_ACTIVE_TRIGGERS_SENTINEL, "1")
+        pipe.execute()
+    except Exception:  # noqa: BLE001
+        logger.exception("failed to refresh reactor active-trigger cache")
+    return keys
 
 
 # ──────────────────────────────────────────────────────────────────────────
@@ -68,6 +126,7 @@ def create_script(
     db.add(db_script)
     db.commit()
     db.refresh(db_script)
+    refresh_active_triggers_cache(db)
     return db_script
 
 
@@ -99,6 +158,7 @@ def update_script(
     db_script.updated_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(db_script)
+    refresh_active_triggers_cache(db)
     return db_script
 
 
@@ -109,6 +169,7 @@ def delete_script(db: Session, script_id: int, user_id: int):
     _delete_source(db_script.source_uri)
     db.delete(db_script)
     db.commit()
+    refresh_active_triggers_cache(db)
     return {"status": "success"}
 
 

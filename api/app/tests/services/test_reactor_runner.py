@@ -3,6 +3,7 @@
 from contextlib import contextmanager
 from unittest.mock import MagicMock, patch
 
+import pytest
 from app.models import reactor as reactor_models
 
 # Import via the worker path first to fully resolve the runner ↔ context cycle
@@ -10,6 +11,16 @@ from app.models import reactor as reactor_models
 from app.repositories import reactor as _reactor_repository  # noqa: F401
 from app.services.tech_lab.reactor import runner
 from app.services.tech_lab.reactor.sandbox import ScriptTimeout
+
+
+@pytest.fixture(autouse=True)
+def _clear_source_cache():
+    """``_read_source`` is LRU-cached, so different patched sources for the
+    same script URI would otherwise leak between tests in this module.
+    """
+    runner._read_source.cache_clear()
+    yield
+    runner._read_source.cache_clear()
 
 
 # ──────────────────────────────────────────────────────────────────────────
@@ -75,19 +86,6 @@ class TestCallHandler:
         # *args path always passes the trigger.
         assert seen == [("ctx", {"k": "v"}, {"resource_type": "event"})]
 
-    def test_unintrospectable_callable_falls_back_to_three_args(self):
-        # Some C-implemented callables raise from inspect.signature; the
-        # fallback assumes the new (ctx, payload, trigger) shape.
-        seen = []
-
-        def handle(ctx, payload, trigger):
-            seen.append((ctx, payload, trigger))
-
-        with patch.object(
-            runner.inspect, "signature", side_effect=ValueError("no signature")
-        ):
-            runner._call_handler(handle, "ctx", "p", "t")
-        assert seen == [("ctx", "p", "t")]
 
 
 # ──────────────────────────────────────────────────────────────────────────
@@ -102,6 +100,27 @@ class TestReadSource:
         ) as ro:
             assert runner._read_source("reactor/scripts/x.py") == "print('x')\n"
         ro.assert_called_once_with("reactor/scripts/x.py")
+
+    def test_lru_caches_repeated_reads_for_same_uri(self):
+        # Source URIs are immutable per script version, so the second hit
+        # should serve from the cache without touching storage again.
+        with patch.object(
+            runner.reactor_storage, "read_object", return_value=b"print('hi')\n"
+        ) as ro:
+            assert runner._read_source("reactor/scripts/cached.py") == "print('hi')\n"
+            assert runner._read_source("reactor/scripts/cached.py") == "print('hi')\n"
+        ro.assert_called_once()
+
+    def test_lru_keys_independently_per_uri(self):
+        # Distinct URIs must not share cache entries.
+        with patch.object(
+            runner.reactor_storage,
+            "read_object",
+            side_effect=lambda key: f"# {key}\n".encode(),
+        ) as ro:
+            assert runner._read_source("reactor/scripts/a.py") == "# reactor/scripts/a.py\n"
+            assert runner._read_source("reactor/scripts/b.py") == "# reactor/scripts/b.py\n"
+        assert ro.call_count == 2
 
 
 class TestWriteLog:

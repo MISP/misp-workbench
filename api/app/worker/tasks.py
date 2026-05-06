@@ -90,6 +90,17 @@ def _reactor_object_payload(os_obj, object_uuid: str, event_uuid: str | None) ->
     return data
 
 
+def _dispatch_if_subscribed(resource_type: str, action: str, payload: dict) -> None:
+    """Skip the Celery hop when no active script subscribes to this trigger.
+
+    The gate is best-effort (Redis-backed, fail-open). If it returns False we
+    can be confident no script is listening; if it returns True we still hand
+    off to ``reactor_dispatch`` which does the authoritative DB check.
+    """
+    if reactor_repository.has_active_subscriber(resource_type, action):
+        reactor_dispatch.delay(resource_type, action, payload)
+
+
 @celery_app.task
 def server_pull_by_id(server_id: int, user_id: int, technique: str):
     logger.info("pull server_id=%s job started", server_id)
@@ -185,7 +196,7 @@ def handle_created_event(event_uuid: str):
     if os_event is not None:
         with Session(engine) as db:
             notifications_repository.create_event_notifications(db, "created", event=os_event)
-        reactor_dispatch.delay("event", "created", _reactor_event_payload(os_event, event_uuid))
+        _dispatch_if_subscribed("event", "created", _reactor_event_payload(os_event, event_uuid))
 
     return True
 
@@ -204,7 +215,7 @@ def handle_updated_event(event_uuid: str):
         )
         with Session(engine) as db:
             notifications_repository.create_event_notifications(db, "updated", event=os_event)
-        reactor_dispatch.delay("event", "updated", _reactor_event_payload(os_event, event_uuid))
+        _dispatch_if_subscribed("event", "updated", _reactor_event_payload(os_event, event_uuid))
 
     return True
 
@@ -217,7 +228,7 @@ def handle_deleted_event(event_uuid: str):
     if os_event is not None:
         with Session(engine) as db:
             notifications_repository.create_event_notifications(db, "deleted", event=os_event)
-        reactor_dispatch.delay("event", "deleted", _reactor_event_payload(os_event, event_uuid))
+        _dispatch_if_subscribed("event", "deleted", _reactor_event_payload(os_event, event_uuid))
 
     delete_indexed_event(event_uuid)
 
@@ -234,7 +245,7 @@ def handle_created_attribute(attribute_uuid: str, object_uuid, event_uuid: str |
         os_attr = attributes_repository.get_attribute_from_opensearch(UUID(attribute_uuid))
         if os_attr is not None:
             notifications_repository.create_attribute_notifications(db, "created", attribute=os_attr)
-            reactor_dispatch.delay(
+            _dispatch_if_subscribed(
                 "attribute",
                 "created",
                 _reactor_attribute_payload(os_attr, attribute_uuid, object_uuid, event_uuid),
@@ -250,7 +261,7 @@ def handle_updated_attribute(attribute_uuid: str, object_uuid, event_uuid: str |
         os_attr = attributes_repository.get_attribute_from_opensearch(UUID(attribute_uuid))
         if os_attr is not None:
             notifications_repository.create_attribute_notifications(db, "updated", attribute=os_attr)
-            reactor_dispatch.delay(
+            _dispatch_if_subscribed(
                 "attribute",
                 "updated",
                 _reactor_attribute_payload(os_attr, attribute_uuid, object_uuid, event_uuid),
@@ -269,7 +280,7 @@ def handle_deleted_attribute(attribute_uuid: str, object_uuid, event_uuid: str |
         os_attr = attributes_repository.get_attribute_from_opensearch(UUID(attribute_uuid))
         if os_attr is not None:
             notifications_repository.create_attribute_notifications(db, "deleted", attribute=os_attr)
-            reactor_dispatch.delay(
+            _dispatch_if_subscribed(
                 "attribute",
                 "deleted",
                 _reactor_attribute_payload(os_attr, attribute_uuid, object_uuid, event_uuid),
@@ -289,7 +300,7 @@ def handle_created_object(object_uuid: str, event_uuid: str | None):
         os_obj = objects_repository.get_object_from_opensearch(UUID(object_uuid))
         if os_obj is not None:
             notifications_repository.create_object_notifications(db, "created", object=os_obj)
-            reactor_dispatch.delay(
+            _dispatch_if_subscribed(
                 "object", "created", _reactor_object_payload(os_obj, object_uuid, event_uuid)
             )
 
@@ -304,7 +315,7 @@ def handle_updated_object(object_uuid: str, event_uuid: str | None):
         os_obj = objects_repository.get_object_from_opensearch(UUID(object_uuid))
         if os_obj is not None:
             notifications_repository.create_object_notifications(db, "updated", object=os_obj)
-            reactor_dispatch.delay(
+            _dispatch_if_subscribed(
                 "object", "updated", _reactor_object_payload(os_obj, object_uuid, event_uuid)
             )
 
@@ -322,7 +333,7 @@ def handle_deleted_object(object_uuid: str, event_uuid: str | None):
         os_obj = objects_repository.get_object_from_opensearch(UUID(object_uuid))
         if os_obj is not None:
             notifications_repository.create_object_notifications(db, "deleted", object=os_obj)
-            reactor_dispatch.delay(
+            _dispatch_if_subscribed(
                 "object", "deleted", _reactor_object_payload(os_obj, object_uuid, event_uuid)
             )
 
@@ -739,7 +750,7 @@ def handle_created_sighting(
             notifications_repository.create_sighting_notifications(
                 db, "created", attribute=attribute, sighting=sighting
             )
-        reactor_dispatch.delay(
+        _dispatch_if_subscribed(
             "sighting",
             "created",
             {
@@ -776,7 +787,7 @@ def handle_created_correlation(
             db, "created", correlation=correlation
         )
 
-    reactor_dispatch.delay("correlation", "created", correlation)
+    _dispatch_if_subscribed("correlation", "created", correlation)
 
     return True
 
@@ -789,7 +800,7 @@ def handle_published_event(event_uuid: str):
     if os_event is not None:
         with Session(engine) as db:
             notifications_repository.create_event_notifications(db, "published", event=os_event)
-        reactor_dispatch.delay("event", "published", _reactor_event_payload(os_event, event_uuid))
+        _dispatch_if_subscribed("event", "published", _reactor_event_payload(os_event, event_uuid))
 
     logger.info("handling published event uuid=%s job finished", event_uuid)
     return True
@@ -803,7 +814,7 @@ def handle_unpublished_event(event_uuid: str):
     if os_event is not None:
         with Session(engine) as db:
             notifications_repository.create_event_notifications(db, "unpublished", event=os_event)
-        reactor_dispatch.delay("event", "unpublished", _reactor_event_payload(os_event, event_uuid))
+        _dispatch_if_subscribed("event", "unpublished", _reactor_event_payload(os_event, event_uuid))
 
     logger.info("handling unpublished event uuid=%s job finished", event_uuid)
     return True

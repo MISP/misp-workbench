@@ -8,6 +8,8 @@ Container-level isolation does the real work; this module is responsible for:
 - moving the run row through queued -> running -> success/failed/timed_out
 """
 
+import functools
+import inspect
 import io
 import logging
 import sys
@@ -136,7 +138,12 @@ def _call_handler(fn, ctx, payload, trigger) -> None:
         fn(ctx, payload)
 
 
+@functools.lru_cache(maxsize=128)
 def _read_source(source_uri: str) -> str:
+    """Fetch and decode script source. Cached because URIs are immutable —
+    every script update writes a new ``reactor/scripts/<uuid>.py`` and the
+    old key is deleted, so a hit is always still-fresh source.
+    """
     return reactor_storage.read_object(source_uri).decode("utf-8")
 
 

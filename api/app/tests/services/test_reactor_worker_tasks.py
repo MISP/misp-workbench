@@ -7,6 +7,8 @@ fires ``reactor_dispatch.delay`` from the existing ``handle_*`` tasks.
 
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 # Importing via the worker path resolves the runner ↔ context circular import
 # that bites when tasks.py is loaded from a fresh module under test.
 from app.worker import tasks as worker_tasks
@@ -15,6 +17,18 @@ from app.worker import tasks as worker_tasks
 EVENT_UUID = "11111111-1111-1111-1111-111111111111"
 ATTR_UUID = "22222222-2222-2222-2222-222222222222"
 OBJ_UUID = "33333333-3333-3333-3333-333333333333"
+
+
+@pytest.fixture(autouse=True)
+def _gate_open():
+    """Default to "gate open" so wiring tests aren't gated by Redis state.
+
+    Tests that exercise the gate itself patch over this with their own value.
+    """
+    with patch.object(
+        worker_tasks.reactor_repository, "has_active_subscriber", return_value=True
+    ):
+        yield
 
 
 def _pydantic_like(data: dict):
@@ -118,6 +132,43 @@ class TestRunReactorScriptTask:
         args, _ = run_script.call_args
         # (db, run_id)
         assert args[1] == 99
+
+
+class TestDispatchIfSubscribedHelper:
+    """The handlers route through ``_dispatch_if_subscribed`` so the Celery
+    hop is skipped when the Redis-backed gate reports no subscriber.
+    """
+
+    def test_skips_dispatch_when_gate_is_false(self):
+        with patch.object(
+            worker_tasks.reactor_repository, "has_active_subscriber", return_value=False
+        ), patch.object(worker_tasks.reactor_dispatch, "delay") as delay:
+            worker_tasks._dispatch_if_subscribed("attribute", "created", {"x": 1})
+        delay.assert_not_called()
+
+    def test_dispatches_when_gate_is_true(self):
+        with patch.object(
+            worker_tasks.reactor_repository, "has_active_subscriber", return_value=True
+        ), patch.object(worker_tasks.reactor_dispatch, "delay") as delay:
+            worker_tasks._dispatch_if_subscribed("attribute", "created", {"x": 1})
+        delay.assert_called_once_with("attribute", "created", {"x": 1})
+
+    def test_handler_skips_dispatch_end_to_end_when_no_subscriber(self):
+        # Gate False ⇒ even the gold-path handle_* doesn't enqueue.
+        with patch.object(
+            worker_tasks.reactor_repository, "has_active_subscriber", return_value=False
+        ), patch.object(worker_tasks.reactor_dispatch, "delay") as delay, \
+                patch.object(
+                    worker_tasks.events_repository,
+                    "get_event_from_opensearch",
+                    return_value=_pydantic_like({"info": "phish"}),
+                ), patch.object(
+                    worker_tasks.notifications_repository,
+                    "create_event_notifications",
+                    return_value=None,
+                ):
+            worker_tasks.handle_created_event(EVENT_UUID)
+        delay.assert_not_called()
 
 
 # ──────────────────────────────────────────────────────────────────────────
