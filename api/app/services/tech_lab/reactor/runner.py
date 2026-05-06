@@ -116,28 +116,8 @@ def _call_handler(fn, ctx, payload, trigger) -> None:
     ``{"resource_type", "action"}`` info that fired the run.
     """
     try:
-        positional = [
-            p
-            for p in inspect.signature(fn).parameters.values()
-            if p.kind
-            in (
-                inspect.Parameter.POSITIONAL_ONLY,
-                inspect.Parameter.POSITIONAL_OR_KEYWORD,
-                inspect.Parameter.VAR_POSITIONAL,
-            )
-        ]
-        accepts_trigger = any(
-            p.kind == inspect.Parameter.VAR_POSITIONAL for p in positional
-        ) or len([p for p in positional if p.kind != inspect.Parameter.VAR_POSITIONAL]) >= 3
-    except (TypeError, ValueError):
-        accepts_trigger = False
-
-    if accepts_trigger:
-        try:
-            fn(ctx, payload, trigger)
-        except TypeError:
-            fn(ctx, payload)
-    else:
+        fn(ctx, payload, trigger)
+    except TypeError:
         fn(ctx, payload)
 
 
