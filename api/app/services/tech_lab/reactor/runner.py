@@ -124,7 +124,14 @@ def _call_handler(fn, ctx, payload, trigger) -> None:
     has_varargs = any(p.kind == inspect.Parameter.VAR_POSITIONAL for p in params)
 
     if has_varargs or len(positional) >= 3:
-        fn(ctx, payload, trigger)
+        try:
+            fn(ctx, payload, trigger)
+        except TypeError as exc:
+            msg = str(exc)
+            if "positional argument" in msg or "arguments" in msg:
+                fn(ctx, payload)
+            else:
+                raise
     else:
         fn(ctx, payload)
 
