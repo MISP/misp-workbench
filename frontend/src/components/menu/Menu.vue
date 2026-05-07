@@ -190,6 +190,13 @@ function navAndClose(path) {
                 >reactor scripts</RouterLink
               >
             </li>
+            <li>
+              <RouterLink
+                to="/tech-lab/notebooks"
+                class="dropdown-item fw-light"
+                >notebooks</RouterLink
+              >
+            </li>
           </ul>
         </div>
         <div class="nav-item dropdown">
@@ -427,6 +434,15 @@ function navAndClose(path) {
                 @click.prevent="navAndClose('/tech-lab/reactor')"
               >
                 reactor scripts
+              </RouterLink>
+            </li>
+            <li>
+              <RouterLink
+                to="/tech-lab/notebooks"
+                class="list-group-item list-group-item-action ps-4"
+                @click.prevent="navAndClose('/tech-lab/notebooks')"
+              >
+                notebooks
               </RouterLink>
             </li>
           </ul>

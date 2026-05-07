@@ -152,12 +152,42 @@ class LabKernelRegistry:
 
         startup_code = render_startup(user_id=key[0], notebook_id=key[1])
         msg_id = client.execute(startup_code, silent=True, store_history=False)
-        # Drain shell reply for startup; ignore IOPub here — silent=True suppresses
-        # display, and we don't want startup output leaking onto user cells.
+        # Drain shell reply for startup; surface errors loudly so a silent
+        # import failure (e.g. mwctipy not on sys.path) doesn't yield a zombie
+        # kernel whose user cells then complain about an unbound ``mwlab``.
         try:
-            client.get_shell_msg(timeout=30)
+            reply = client.get_shell_msg(timeout=30)
         except Exception:  # noqa: BLE001
-            logger.exception("startup execute_request did not complete (msg=%s)", msg_id)
+            self._teardown_entry(entry)
+            raise RuntimeError(
+                f"lab kernel startup did not reply within 30s (msg={msg_id})"
+            )
+        content = (reply or {}).get("content") or {}
+        if content.get("status") != "ok":
+            ename = content.get("ename", "StartupError")
+            evalue = content.get("evalue", "(no message)")
+            self._teardown_entry(entry)
+            raise RuntimeError(f"lab kernel startup failed: {ename}: {evalue}")
+        # Drain the small handful of IOPub status messages emitted during the
+        # silent startup so the next user cell's poll doesn't pick them up.
+        import time as _time
+
+        deadline = _time.monotonic() + 5
+        while True:
+            try:
+                msg = client.get_iopub_msg(
+                    timeout=max(0.05, deadline - _time.monotonic())
+                )
+            except Exception:  # noqa: BLE001
+                break
+            parent = msg.get("parent_header") or {}
+            if parent.get("msg_id") != msg_id:
+                continue
+            if (
+                msg.get("msg_type") == "status"
+                and (msg.get("content") or {}).get("execution_state") == "idle"
+            ):
+                break
         return entry
 
     def _teardown_entry(self, entry: _Entry) -> None:
