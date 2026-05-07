@@ -210,6 +210,29 @@ services:
     networks:
       - backend
 
+  lab-worker:
+    build:
+      context: ./api
+    # Dedicated worker for Tech Lab notebook kernels. Threadpool — not
+    # prefork — because all kernels share one Python process; any thread
+    # must be able to drive any kernel via the in-memory KernelManager
+    # registry. Prefork would shard the registry across N subprocesses.
+    command: poetry run celery -A app.worker.tasks worker --loglevel=info --hostname lab@%h --queues=lab_kernel --pool=threads --concurrency=8 -E
+    restart: unless-stopped
+    environment:
+      <<: *default-env
+    depends_on:
+      - api
+      - redis
+      - postgres
+    mem_limit: 512m
+    pids_limit: 256
+    volumes:
+      - garage-creds:/var/lib/misp-workbench/secrets
+      - oauth-creds:/var/lib/misp-workbench/oauth-creds
+    networks:
+      - backend
+
   beat:
     build:
       context: ./api

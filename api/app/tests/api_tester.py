@@ -15,6 +15,7 @@ from app.models import server as server_models
 from app.models import sharing_groups as sharing_groups_models
 from app.models import tag as tag_models
 from app.models import notification as notification_models
+from app.models import lab as lab_models
 from app.models import reactor as reactor_models
 from app.models import taxonomy as taxonomy_models
 from app.models import user as user_models
@@ -88,6 +89,11 @@ class ApiTester:
         )
         db.query(reactor_models.ReactorRun).delete(synchronize_session=False)
         db.query(reactor_models.ReactorScript).delete(synchronize_session=False)
+        # Lab notebooks: clear executions → notebooks → folders. Folders self-FK
+        # is CASCADE so a single delete is enough.
+        db.query(lab_models.LabExecution).delete(synchronize_session=False)
+        db.query(lab_models.LabNotebook).delete(synchronize_session=False)
+        db.query(lab_models.LabFolder).delete(synchronize_session=False)
         db.query(notification_models.Notification).delete(synchronize_session=False)
         db.query(api_key_models.ApiKey).delete(synchronize_session=False)
         db.query(audit_log_models.AuditLog).delete(synchronize_session=False)

@@ -11,6 +11,7 @@ from app.routers import (
     feeds,
     galaxies,
     hunts,
+    lab,
     mcp,
     modules,
     object_templates,
@@ -152,6 +153,9 @@ app.include_router(audit_logs.router, tags=["Audit Logs"])
 
 # Tech Lab — Reactor Scripts
 app.include_router(reactor.router, tags=["Tech Lab / Reactor"])
+
+# Tech Lab — Notebooks
+app.include_router(lab.router, tags=["Tech Lab / Notebooks"])
 
 # MCP config endpoint (must be registered before the /mcp mount)
 app.include_router(mcp.router, tags=["MCP"])
