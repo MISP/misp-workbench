@@ -6,8 +6,6 @@ import {
   computed,
   onMounted,
   onBeforeUnmount,
-  createApp,
-  h,
 } from "vue";
 import { storeToRefs } from "pinia";
 import { useNotebooksStore, useToastsStore } from "@/stores";
@@ -16,10 +14,17 @@ import {
   faCodeBranch,
   faPlay,
   faForwardStep,
+  faBook,
+  faDownload,
+  faCode,
+  faColumns,
+  faTableList,
+  faBroom,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
-import CellOutput from "./CellOutput.vue";
 import KernelStatusPill from "./KernelStatusPill.vue";
+import MwctipyReferenceModal from "./MwctipyReferenceModal.vue";
+import OutputPanel from "./OutputPanel.vue";
 import { parseCells, findCellAtLine } from "./cellDelimiterParser";
 
 const props = defineProps({
@@ -35,6 +40,7 @@ const {
   saveStatus,
   notebooks: storeNotebooks,
   inFlight,
+  cellMeta,
 } = storeToRefs(notebooksStore);
 
 const editorRef = shallowRef(null);
@@ -43,11 +49,48 @@ const monaco = shallowRef(null);
 // id → ITextModel (kept outside reactive state to preserve Monaco identity).
 const models = new Map();
 
-// notebookId → Map<cellId, { zoneId, dom, app, outputsRef, observer }>
-const viewZonesByNotebook = new Map();
-
 const currentNotebook = ref(null);
 const loading = ref(false);
+
+// ── View-mode toggle (code | split | output), persisted to localStorage ──
+
+const VIEW_MODE_KEY = "misp-workbench:notebooks:viewMode";
+const viewMode = ref(localStorage.getItem(VIEW_MODE_KEY) || "split");
+watch(viewMode, (m) => {
+  try {
+    localStorage.setItem(VIEW_MODE_KEY, m);
+  } catch {
+    /* quota / disabled — ignore */
+  }
+});
+
+const showEditor = computed(() => viewMode.value !== "output");
+const showOutputs = computed(() => viewMode.value !== "code");
+
+// Reactive snapshot of the current notebook from the store (so output panel
+// re-renders whenever cell_outputs are merged after a poll completes).
+const liveNotebook = computed(() => {
+  if (!currentNotebook.value) return null;
+  return (
+    storeNotebooks.value[currentNotebook.value.id] || currentNotebook.value
+  );
+});
+
+const liveSource = computed(() => {
+  // Prefer the editor model (so the panel reflects unsaved edits) over the
+  // store copy.
+  const model = models.get(currentNotebook.value?.id);
+  if (model) return model.getValue();
+  return liveNotebook.value?.source || "";
+});
+
+const liveCellOutputs = computed(() => liveNotebook.value?.cell_outputs || {});
+const liveCellMeta = computed(() => {
+  if (!currentNotebook.value) return {};
+  return cellMeta.value[currentNotebook.value.id] || {};
+});
+
+// ── Ownership / read-only ───────────────────────────────────────────────
 
 const isOwner = computed(() => {
   if (!currentNotebook.value || props.currentUserId == null) return false;
@@ -84,6 +127,8 @@ const monacoOptions = computed(() => ({
   readOnly: readOnly.value,
 }));
 
+// ── Theme ───────────────────────────────────────────────────────────────
+
 function detectMonacoTheme() {
   return document.documentElement.getAttribute("data-bs-theme") === "dark"
     ? "vs-dark"
@@ -107,12 +152,6 @@ onMounted(() => {
 onBeforeUnmount(() => {
   themeObserver?.disconnect();
   themeObserver = null;
-  // Tear down all view zones and their Vue apps.
-  for (const map of viewZonesByNotebook.values()) {
-    for (const z of map.values()) destroyZone(z);
-  }
-  viewZonesByNotebook.clear();
-  // Dispose Monaco models.
   for (const m of models.values()) {
     try {
       m.dispose();
@@ -123,12 +162,21 @@ onBeforeUnmount(() => {
   models.clear();
 });
 
+// ── Monaco model swap ───────────────────────────────────────────────────
+
+// Track every model edit so liveSource() gets re-evaluated.
+const _editTick = ref(0);
+
 function onEditorMount(editor, monacoInstance) {
   editorRef.value = editor;
   monaco.value = monacoInstance;
-  if (currentNotebook.value) {
-    swapModel(currentNotebook.value);
-  }
+  // Shift+Enter — Jupyter convention: run the current cell and advance the
+  // cursor to the start of the next cell.
+  editor.addCommand(
+    monacoInstance.KeyMod.Shift | monacoInstance.KeyCode.Enter,
+    () => runAndAdvance(),
+  );
+  if (currentNotebook.value) swapModel(currentNotebook.value);
 }
 
 function ensureModelFor(notebook) {
@@ -138,35 +186,25 @@ function ensureModelFor(notebook) {
     model = monaco.value.editor.createModel(notebook.source || "", "python");
     models.set(notebook.id, model);
     model.onDidChangeContent(() => onModelChange(notebook.id));
-  } else {
-    if (notebook.source != null && model.getValue() !== notebook.source) {
-      model.setValue(notebook.source);
-    }
+  } else if (notebook.source != null && model.getValue() !== notebook.source) {
+    model.setValue(notebook.source);
   }
   return model;
 }
 
 function swapModel(notebook) {
   if (!editorRef.value || !monaco.value) return;
-
-  // Hide view zones from any other notebook before swapping.
-  hideAllViewZones();
-
   const model = ensureModelFor(notebook);
   if (model) editorRef.value.setModel(model);
-
-  // Render this notebook's cell outputs as view zones.
-  syncViewZones(notebook.id);
+  _editTick.value++;
 }
 
-// ── Auto-save (1s debounce per notebook) ────────────────────────────────
+// ── Auto-save (1s debounce) ─────────────────────────────────────────────
 
 const _saveTimers = new Map();
 function onModelChange(notebookId) {
   if (currentNotebook.value?.id !== notebookId) return;
-  // Re-sync view zones immediately so cells added/removed reflect on screen
-  // even before the source is persisted.
-  syncViewZones(notebookId);
+  _editTick.value++;
   if (readOnly.value) return;
   const existing = _saveTimers.get(notebookId);
   if (existing) clearTimeout(existing);
@@ -187,166 +225,6 @@ async function flushSave(notebookId) {
   }
 }
 
-// ── View zones: one per cell, mounting CellOutput.vue ───────────────────
-
-function getZoneMap(notebookId) {
-  let map = viewZonesByNotebook.get(notebookId);
-  if (!map) {
-    map = new Map();
-    viewZonesByNotebook.set(notebookId, map);
-  }
-  return map;
-}
-
-function destroyZone(zone) {
-  try {
-    zone.observer?.disconnect();
-  } catch {
-    /* noop */
-  }
-  try {
-    zone.app?.unmount();
-  } catch {
-    /* noop */
-  }
-  // The DOM node is removed from layout when the editor disposes the zone;
-  // we don't need to detach it manually.
-}
-
-function hideAllViewZones() {
-  if (!editorRef.value) return;
-  editorRef.value.changeViewZones((accessor) => {
-    for (const map of viewZonesByNotebook.values()) {
-      for (const zone of map.values()) {
-        if (zone.zoneId != null) {
-          try {
-            accessor.removeZone(zone.zoneId);
-          } catch {
-            /* noop */
-          }
-          zone.zoneId = null;
-        }
-      }
-    }
-  });
-}
-
-// Re-parse the model and reconcile view zones with the cell list. Each
-// cell gets one zone whose afterLineNumber sits at the cell's last source
-// line; the zone's DOM hosts a Vue-mounted <CellOutput> bound to a
-// reactive ref that tracks notebook.cell_outputs[cellId].
-function syncViewZones(notebookId) {
-  if (!editorRef.value || !monaco.value) return;
-  const model = models.get(notebookId);
-  if (!model) return;
-  const nb = storeNotebooks.value[notebookId];
-  if (!nb) return;
-
-  const cells = parseCells(model.getValue());
-  const liveIds = new Set(cells.map((c) => c.cellId));
-  const zoneMap = getZoneMap(notebookId);
-
-  editorRef.value.changeViewZones((accessor) => {
-    // Remove zones for cells that no longer exist.
-    for (const [cellId, zone] of zoneMap.entries()) {
-      if (!liveIds.has(cellId)) {
-        if (zone.zoneId != null) {
-          try {
-            accessor.removeZone(zone.zoneId);
-          } catch {
-            /* noop */
-          }
-        }
-        destroyZone(zone);
-        zoneMap.delete(cellId);
-      }
-    }
-
-    // Add / update zones for current cells.
-    for (const cell of cells) {
-      let zone = zoneMap.get(cell.cellId);
-      if (!zone) {
-        zone = createZone(cell.cellId, nb.cell_outputs?.[cell.cellId] || []);
-        zoneMap.set(cell.cellId, zone);
-      } else {
-        // Update outputs in case they changed since last sync.
-        zone.outputsRef.value = nb.cell_outputs?.[cell.cellId] || [];
-      }
-      // (Re)place the zone after the cell's last source line.
-      if (zone.zoneId != null) {
-        try {
-          accessor.removeZone(zone.zoneId);
-        } catch {
-          /* noop */
-        }
-      }
-      const afterLine = Math.max(cell.sourceEndLine, cell.delimiterLine);
-      zone.zoneId = accessor.addZone({
-        afterLineNumber: afterLine,
-        domNode: zone.dom,
-        heightInPx: zone.dom.offsetHeight || 8,
-      });
-    }
-  });
-}
-
-function createZone(cellId, initialOutputs) {
-  const dom = document.createElement("div");
-  dom.className = "lab-view-zone";
-  // outputsRef must be reactive so updates re-render CellOutput.
-  const outputsRef = ref(initialOutputs);
-  const app = createApp({
-    setup() {
-      return () => h(CellOutput, { outputs: outputsRef.value });
-    },
-  });
-  app.mount(dom);
-
-  // Resize the zone whenever the rendered output changes height.
-  let observer = null;
-  if (typeof ResizeObserver !== "undefined") {
-    observer = new ResizeObserver(() => {
-      relayoutZone(cellId);
-    });
-    observer.observe(dom);
-  }
-  return { zoneId: null, dom, app, outputsRef, observer, cellId };
-}
-
-function relayoutZone(cellId) {
-  if (!editorRef.value || !currentNotebook.value) return;
-  const map = viewZonesByNotebook.get(currentNotebook.value.id);
-  const zone = map?.get(cellId);
-  if (!zone || zone.zoneId == null) return;
-  editorRef.value.changeViewZones((accessor) => {
-    try {
-      accessor.layoutZone(zone.zoneId);
-    } catch {
-      /* noop */
-    }
-  });
-}
-
-// React to outputs changing (after a cell run completes) by pushing the new
-// outputs into the matching zone's reactive ref.
-watch(
-  () => {
-    const nb = currentNotebook.value;
-    if (!nb) return null;
-    const live = storeNotebooks.value[nb.id];
-    return live?.cell_outputs;
-  },
-  (cellOutputs) => {
-    if (!cellOutputs || !currentNotebook.value) return;
-    const map = viewZonesByNotebook.get(currentNotebook.value.id);
-    if (!map) return;
-    for (const [cellId, zone] of map.entries()) {
-      zone.outputsRef.value = cellOutputs[cellId] || [];
-    }
-  },
-  { deep: true },
-);
-
 // ── React to notebook prop changes ──────────────────────────────────────
 
 watch(
@@ -354,7 +232,6 @@ watch(
   async (newId) => {
     if (newId == null) {
       currentNotebook.value = null;
-      hideAllViewZones();
       return;
     }
     loading.value = true;
@@ -374,6 +251,14 @@ watch(
   },
   { immediate: true },
 );
+
+// Expose a tracked source string so the OutputPanel re-renders on edits.
+// `void _editTick.value` forces a reactive subscription on the tick ref so
+// computed re-runs whenever the model emits onDidChangeContent.
+const trackedSource = computed(() => {
+  void _editTick.value;
+  return liveSource.value;
+});
 
 // ── Run cell / Run all / Interrupt / Restart ────────────────────────────
 
@@ -398,7 +283,6 @@ async function runCell() {
     toastsStore.push("Markdown cells aren't executed.", "info");
     return;
   }
-  // Save first so the server-side parse sees the latest source.
   await flushSave(currentNotebook.value.id);
   try {
     await notebooksStore.executeCell(
@@ -408,6 +292,77 @@ async function runCell() {
     );
   } catch (err) {
     toastsStore.push(`Run failed: ${err?.message || err}`, "danger");
+  }
+}
+
+// Shift+Enter handler — run current cell, then move the cursor to the start
+// of the next cell's body. Falls back to staying put if no next cell.
+async function runAndAdvance() {
+  if (!currentNotebook.value || !editorRef.value) return;
+  const model = models.get(currentNotebook.value.id);
+  if (!model) return;
+  const cells = parseCells(model.getValue());
+  const pos = editorRef.value.getPosition();
+  if (!pos) return;
+  const idx = cells.findIndex(
+    (c) =>
+      (pos.lineNumber >= c.sourceStartLine &&
+        pos.lineNumber <= c.sourceEndLine) ||
+      pos.lineNumber === c.delimiterLine,
+  );
+  if (idx === -1) return;
+  const cell = cells[idx];
+  if (cell.type === "code") {
+    await flushSave(currentNotebook.value.id);
+    try {
+      await notebooksStore.executeCell(
+        currentNotebook.value.id,
+        cell.cellId,
+        cell.source,
+      );
+    } catch (err) {
+      toastsStore.push(`Run failed: ${err?.message || err}`, "danger");
+    }
+  }
+  // Advance the cursor.
+  const next = cells[idx + 1];
+  if (next) {
+    editorRef.value.setPosition({
+      lineNumber: next.sourceStartLine,
+      column: 1,
+    });
+    editorRef.value.revealLineInCenterIfOutsideViewport(next.sourceStartLine);
+  }
+}
+
+// Per-cell run — invoked from the output panel's run button. Bypasses the
+// cursor entirely so users don't have to chase it.
+async function runCellById(cellId) {
+  if (!currentNotebook.value) return;
+  const model = models.get(currentNotebook.value.id);
+  if (!model) return;
+  const cell = parseCells(model.getValue()).find((c) => c.cellId === cellId);
+  if (!cell || cell.type !== "code") return;
+  await flushSave(currentNotebook.value.id);
+  try {
+    await notebooksStore.executeCell(
+      currentNotebook.value.id,
+      cell.cellId,
+      cell.source,
+    );
+  } catch (err) {
+    toastsStore.push(`Run failed: ${err?.message || err}`, "danger");
+  }
+}
+
+async function clearOutputs() {
+  if (!currentNotebook.value) return;
+  if (!confirm("Clear all outputs from this notebook?")) return;
+  try {
+    await notebooksStore.clearOutputs(currentNotebook.value.id);
+    toastsStore.push("Outputs cleared.", "success");
+  } catch (err) {
+    toastsStore.push(`Clear failed: ${err?.message || err}`, "danger");
   }
 }
 
@@ -452,6 +407,48 @@ async function fork() {
   }
 }
 
+async function exportIpynb() {
+  if (!currentNotebook.value) return;
+  await flushSave(currentNotebook.value.id);
+  try {
+    const blob = await notebooksStore.exportNotebook(currentNotebook.value.id);
+    const json = JSON.stringify(blob, null, 1);
+    const file = new Blob([json], { type: "application/json" });
+    const url = URL.createObjectURL(file);
+    const a = document.createElement("a");
+    const safeName =
+      (currentNotebook.value.name || "notebook").replace(/[^\w.-]+/g, "_") ||
+      "notebook";
+    a.href = url;
+    a.download = `${safeName}.ipynb`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  } catch (err) {
+    toastsStore.push(`Export failed: ${err?.message || err}`, "danger");
+  }
+}
+
+// ── Jump-to-cell from the output panel ──────────────────────────────────
+
+function jumpToCell(cellId) {
+  if (!editorRef.value) return;
+  const model = models.get(currentNotebook.value?.id);
+  if (!model) return;
+  const cells = parseCells(model.getValue());
+  const cell = cells.find((c) => c.cellId === cellId);
+  if (!cell) return;
+  // Switch to a mode where the editor is visible if it's hidden.
+  if (viewMode.value === "output") viewMode.value = "split";
+  editorRef.value.revealLineInCenter(cell.sourceStartLine);
+  editorRef.value.setPosition({
+    lineNumber: cell.sourceStartLine,
+    column: 1,
+  });
+  editorRef.value.focus();
+}
+
 const saveLabel = computed(() => {
   switch (currentSaveStatus.value) {
     case "saving":
@@ -469,7 +466,7 @@ const saveLabel = computed(() => {
 <template>
   <section class="notebook-editor d-flex flex-column h-100 flex-grow-1">
     <div
-      class="editor-toolbar border-bottom px-3 py-2 d-flex align-items-center gap-2"
+      class="editor-toolbar border-bottom px-3 py-2 d-flex align-items-center gap-2 flex-wrap"
     >
       <template v-if="currentNotebook">
         <strong class="me-2">{{ currentNotebook.name }}</strong>
@@ -488,13 +485,47 @@ const saveLabel = computed(() => {
         </span>
         <small class="text-muted" v-if="saveLabel">{{ saveLabel }}</small>
 
+        <!-- View-mode toggle -->
+        <div
+          class="btn-group btn-group-sm ms-3"
+          role="group"
+          aria-label="View mode"
+        >
+          <button
+            type="button"
+            class="btn btn-outline-secondary"
+            :class="{ active: viewMode === 'code' }"
+            title="Code only"
+            @click="viewMode = 'code'"
+          >
+            <FontAwesomeIcon :icon="faCode" />
+          </button>
+          <button
+            type="button"
+            class="btn btn-outline-secondary"
+            :class="{ active: viewMode === 'split' }"
+            title="Split"
+            @click="viewMode = 'split'"
+          >
+            <FontAwesomeIcon :icon="faColumns" />
+          </button>
+          <button
+            type="button"
+            class="btn btn-outline-secondary"
+            :class="{ active: viewMode === 'output' }"
+            title="Output only"
+            @click="viewMode = 'output'"
+          >
+            <FontAwesomeIcon :icon="faTableList" />
+          </button>
+        </div>
+
         <div class="ms-auto d-flex align-items-center gap-2">
           <KernelStatusPill
             :status="kernelStatus"
             @interrupt="interrupt"
             @restart="restart"
           />
-
           <button
             class="btn btn-outline-primary btn-sm"
             :disabled="kernelBusy"
@@ -513,7 +544,22 @@ const saveLabel = computed(() => {
             <FontAwesomeIcon :icon="faForwardStep" class="me-1" />
             Run all
           </button>
-
+          <button
+            class="btn btn-outline-secondary btn-sm"
+            @click="clearOutputs"
+            title="Clear all outputs from this notebook"
+          >
+            <FontAwesomeIcon :icon="faBroom" class="me-1" />
+            Clear outputs
+          </button>
+          <button
+            class="btn btn-outline-secondary btn-sm"
+            @click="exportIpynb"
+            title="Download as .ipynb"
+          >
+            <FontAwesomeIcon :icon="faDownload" class="me-1" />
+            Export
+          </button>
           <button
             v-if="readOnly"
             class="btn btn-outline-info btn-sm"
@@ -530,20 +576,57 @@ const saveLabel = computed(() => {
       </template>
     </div>
 
-    <div class="editor-body flex-grow-1 position-relative">
+    <MwctipyReferenceModal modal-id="mwctipyDocsModal" />
+
+    <div class="editor-body flex-grow-1 d-flex">
       <div
         v-if="!currentNotebook && !loading"
-        class="d-flex align-items-center justify-content-center text-muted h-100"
+        class="d-flex align-items-center justify-content-center text-muted flex-grow-1"
       >
         Pick a notebook on the left, or create a new one.
       </div>
-      <VueMonacoEditor
-        v-show="currentNotebook"
-        language="python"
-        :theme="monacoTheme"
-        :options="monacoOptions"
-        height="100%"
-        @mount="onEditorMount"
+
+      <div
+        v-show="currentNotebook && showEditor"
+        class="editor-pane"
+        :class="{ 'editor-pane-split': showOutputs }"
+      >
+        <div
+          class="editor-pane-toolbar border-bottom px-2 py-1 d-flex align-items-center"
+        >
+          <small class="text-muted font-monospace me-auto">python</small>
+          <button
+            class="btn btn-outline-secondary btn-sm"
+            data-bs-toggle="modal"
+            data-bs-target="#mwctipyDocsModal"
+            title="mwctipy reference (mwlab.* and render.*)"
+          >
+            <FontAwesomeIcon :icon="faBook" class="me-1" />
+            mwctipy
+          </button>
+        </div>
+        <div class="editor-pane-body flex-grow-1">
+          <VueMonacoEditor
+            language="python"
+            :theme="monacoTheme"
+            :options="monacoOptions"
+            height="100%"
+            @mount="onEditorMount"
+          />
+        </div>
+      </div>
+
+      <OutputPanel
+        v-if="currentNotebook && showOutputs"
+        :class="
+          showEditor ? 'output-pane-split' : 'output-pane-full flex-grow-1'
+        "
+        :source="trackedSource"
+        :cell-outputs="liveCellOutputs"
+        :cell-meta="liveCellMeta"
+        :kernel-busy="kernelBusy"
+        @jump-to-cell="jumpToCell"
+        @run-cell="runCellById"
       />
     </div>
   </section>
@@ -557,11 +640,26 @@ const saveLabel = computed(() => {
 .editor-body {
   min-height: 0;
 }
-</style>
-
-<style>
-/* Global so the view-zone DOM (rendered outside the scoped tree) gets it. */
-.lab-view-zone {
-  width: 100%;
+.editor-pane {
+  flex: 1 1 0%;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.editor-pane-split {
+  flex: 1 1 50%;
+}
+.editor-pane-toolbar {
+  background: var(--bs-tertiary-bg, #f8f9fa);
+}
+.editor-pane-body {
+  min-height: 0;
+}
+.output-pane-split {
+  flex: 1 1 50%;
+  min-width: 0;
+}
+.output-pane-full {
+  min-width: 0;
 }
 </style>

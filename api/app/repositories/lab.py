@@ -236,6 +236,31 @@ def delete_notebook(
     return {"status": "success"}
 
 
+def clear_outputs(
+    db: Session, notebook_id: int, current_user_id: int
+) -> Optional[lab_models.LabNotebook]:
+    """Reset ``cell_outputs`` to ``{}``. Owner-only.
+
+    Last-executed-at is also cleared so the UI doesn't keep showing a stale
+    timestamp. ``LabExecution`` rows survive — they're audit history.
+    """
+    nb = (
+        db.query(lab_models.LabNotebook)
+        .filter(lab_models.LabNotebook.id == notebook_id)
+        .first()
+    )
+    if nb is None or not _user_can_see(nb, current_user_id):
+        return None
+    if nb.user_id != current_user_id:
+        raise PermissionError("only the owner can clear outputs")
+    nb.cell_outputs = {}
+    nb.last_executed_at = None
+    nb.updated_at = datetime.now(timezone.utc)
+    db.commit()
+    db.refresh(nb)
+    return nb
+
+
 def fork_notebook(
     db: Session, notebook_id: int, current_user_id: int
 ) -> Optional[lab_models.LabNotebook]:

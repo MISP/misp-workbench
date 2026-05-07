@@ -6,12 +6,15 @@ ownership are enforced inside the repository; this layer only translates
 exceptions into HTTP responses.
 """
 
+import json
+
 from app.auth.security import get_current_active_user
 from app.db.session import get_db
 from app.repositories import lab as lab_repository
 from app.schemas import lab as lab_schemas
 from app.schemas import user as user_schemas
-from fastapi import APIRouter, Depends, HTTPException, Security, status
+from app.services.tech_lab.lab import nbformat_io
+from fastapi import APIRouter, Depends, File, HTTPException, Security, UploadFile, status
 from sqlalchemy.orm import Session
 
 router = APIRouter()
@@ -210,6 +213,30 @@ async def delete_notebook(
 
 
 @router.post(
+    "/tech-lab/notebooks/{notebook_id}/clear_outputs",
+    response_model=lab_schemas.LabNotebook,
+)
+async def clear_outputs(
+    notebook_id: int,
+    db: Session = Depends(get_db),
+    user: user_schemas.User = Security(
+        get_current_active_user, scopes=["lab:update"]
+    ),
+):
+    try:
+        nb = lab_repository.clear_outputs(
+            db, notebook_id, current_user_id=user.id
+        )
+    except PermissionError as e:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
+    if nb is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Notebook not found"
+        )
+    return nb
+
+
+@router.post(
     "/tech-lab/notebooks/{notebook_id}/fork",
     response_model=lab_schemas.LabNotebook,
     status_code=status.HTTP_201_CREATED,
@@ -379,3 +406,78 @@ async def shutdown_kernel(
 
     _task.apply_async(args=[user.id, notebook_id], queue="lab_kernel")
     return {"status": "queued"}
+
+
+# ──────────────────────────────────────────────────────────────────────────
+# Import / export
+# ──────────────────────────────────────────────────────────────────────────
+
+
+@router.get("/tech-lab/notebooks/{notebook_id}/export")
+async def export_notebook(
+    notebook_id: int,
+    db: Session = Depends(get_db),
+    user: user_schemas.User = Security(
+        get_current_active_user, scopes=["lab:read"]
+    ),
+):
+    """Return the notebook as nbformat 4.5 JSON.
+
+    Frontend wraps the response body in a ``Blob`` and saves it as
+    ``<name>.ipynb``. Outputs from the most recent run are included so the
+    downloaded file opens with results visible in JupyterLab.
+    """
+    nb = lab_repository.get_notebook_by_id(
+        db, notebook_id, current_user_id=user.id
+    )
+    if nb is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Notebook not found"
+        )
+    return nbformat_io.to_nbformat(nb)
+
+
+@router.post(
+    "/tech-lab/notebooks/import",
+    response_model=lab_schemas.LabNotebook,
+    status_code=status.HTTP_201_CREATED,
+)
+async def import_notebook(
+    file: UploadFile = File(...),
+    folder_id: int | None = None,
+    db: Session = Depends(get_db),
+    user: user_schemas.User = Security(
+        get_current_active_user, scopes=["lab:create"]
+    ),
+):
+    """Import an .ipynb. Always creates a *personal* notebook owned by the
+    current user — analysts can promote to global later by re-creating in a
+    Global folder if they want to share."""
+    raw = await file.read()
+    try:
+        blob = json.loads(raw.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid .ipynb (not valid JSON): {e}",
+        )
+    if not isinstance(blob, dict) or "cells" not in blob:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid .ipynb (missing cells)",
+        )
+    source, name = nbformat_io.from_nbformat(blob)
+    payload = lab_schemas.LabNotebookCreate(
+        name=name,
+        visibility="personal",
+        folder_id=folder_id,
+        source=source,
+    )
+    try:
+        return lab_repository.create_notebook(
+            db, payload, current_user_id=user.id
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)
+        )

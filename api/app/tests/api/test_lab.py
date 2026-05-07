@@ -600,6 +600,139 @@ class TestCellParser:
         assert cells[1].cell_id == "aaa"
 
 
+class TestNbformatIO:
+    """Round-trip tests for export/import."""
+
+    def test_to_nbformat_basic_shape(self):
+        from app.services.tech_lab.lab.nbformat_io import to_nbformat
+
+        class FakeNb:
+            id = 7
+            name = "x"
+            visibility = "personal"
+            source = (
+                "# %% [id=aaaa] code\n"
+                "print(1)\n"
+                "# %% [id=bbbb] markdown\n"
+                "## Notes\n"
+            )
+            cell_outputs = {
+                "aaaa": [
+                    {"output_type": "stream", "name": "stdout", "text": "1\n"}
+                ]
+            }
+
+        blob = to_nbformat(FakeNb())
+        assert blob["nbformat"] == 4
+        assert len(blob["cells"]) == 2
+        assert blob["cells"][0]["cell_type"] == "code"
+        assert blob["cells"][0]["id"] == "aaaa"
+        assert blob["cells"][0]["outputs"][0]["text"] == "1\n"
+        assert blob["cells"][1]["cell_type"] == "markdown"
+        assert blob["cells"][1]["id"] == "bbbb"
+
+    def test_from_nbformat_drops_outputs_and_preserves_ids(self):
+        from app.services.tech_lab.lab.nbformat_io import from_nbformat
+
+        blob = {
+            "nbformat": 4,
+            "nbformat_minor": 5,
+            "metadata": {"misp_workbench": {"name": "exported nb"}},
+            "cells": [
+                {
+                    "cell_type": "code",
+                    "id": "id-a",
+                    "source": "print(1)\n",
+                    "outputs": [
+                        {"output_type": "stream", "name": "stdout", "text": "1\n"}
+                    ],
+                    "execution_count": 5,
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "id-b",
+                    "source": ["## Hi\n"],
+                },
+            ],
+        }
+        source, name = from_nbformat(blob)
+        assert "[id=id-a] code" in source
+        assert "print(1)" in source
+        assert "[id=id-b] markdown" in source
+        assert "## Hi" in source
+        # Outputs are dropped.
+        assert "stdout" not in source
+        assert name == "exported nb"
+
+
+class TestExportImport(ApiTester):
+    @pytest.mark.parametrize("scopes", [["lab:create", "lab:read"]])
+    def test_export_returns_nbformat(
+        self, client: TestClient, auth_token: auth.Token
+    ):
+        cell_id = "abcd1234-abcd-abcd-abcd-abcdabcdabcd"
+        nb = client.post(
+            "/tech-lab/notebooks",
+            json={
+                "name": "export-me",
+                "visibility": "personal",
+                "source": f"# %% [id={cell_id}] code\nprint(2 + 2)\n",
+            },
+            headers={"Authorization": "Bearer " + auth_token},
+        ).json()
+        response = client.get(
+            f"/tech-lab/notebooks/{nb['id']}/export",
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+        assert response.status_code == status.HTTP_200_OK
+        body = response.json()
+        assert body["nbformat"] == 4
+        assert body["cells"][0]["id"] == cell_id
+        assert body["metadata"]["misp_workbench"]["name"] == "export-me"
+
+    @pytest.mark.parametrize("scopes", [["lab:create", "lab:read"]])
+    def test_import_creates_personal_notebook(
+        self,
+        client: TestClient,
+        auth_token: auth.Token,
+        api_tester_user: user_models.User,
+    ):
+        import io
+        import json as _json
+
+        blob = {
+            "nbformat": 4,
+            "nbformat_minor": 5,
+            "metadata": {"misp_workbench": {"name": "imported"}},
+            "cells": [
+                {
+                    "cell_type": "code",
+                    "id": "id-x",
+                    "source": "print('hi')\n",
+                    "outputs": [],
+                    "execution_count": None,
+                }
+            ],
+        }
+        files = {
+            "file": (
+                "imported.ipynb",
+                io.BytesIO(_json.dumps(blob).encode("utf-8")),
+                "application/json",
+            )
+        }
+        response = client.post(
+            "/tech-lab/notebooks/import",
+            files=files,
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+        assert response.status_code == status.HTTP_201_CREATED, response.text
+        data = response.json()
+        assert data["user_id"] == api_tester_user.id
+        assert data["visibility"] == "personal"
+        assert "[id=id-x] code" in data["source"]
+
+
 class TestKernelManagerUnit:
     def test_idle_eviction(self):
         from app.services.tech_lab.lab.kernel_manager import LabKernelRegistry

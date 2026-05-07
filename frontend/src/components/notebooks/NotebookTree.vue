@@ -6,6 +6,7 @@ import {
   faPlus,
   faFolder,
   faRotateRight,
+  faFileImport,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
 import TreeNode from "./TreeNode.vue";
@@ -138,6 +139,25 @@ async function onForkNotebook(notebook) {
   }
 }
 
+const importInput = ref(null);
+function triggerImport() {
+  importInput.value?.click();
+}
+async function onImportFile(event) {
+  const file = event.target.files?.[0];
+  if (!file) return;
+  try {
+    const nb = await notebooksStore.importNotebook(file);
+    toastsStore.push(`Imported "${nb.name}".`, "success");
+    emit("select-notebook", nb);
+  } catch (err) {
+    toastsStore.push(`Import failed: ${err?.message || err}`, "danger");
+  } finally {
+    // Reset so re-importing the same file fires another change event.
+    if (importInput.value) importInput.value.value = "";
+  }
+}
+
 onMounted(() => {
   notebooksStore.loadTree();
 });
@@ -149,12 +169,26 @@ onMounted(() => {
       <strong class="small text-muted me-auto">Notebooks</strong>
       <button
         class="btn btn-link btn-sm p-1 text-secondary"
+        title="Import .ipynb (creates a personal notebook)"
+        @click="triggerImport"
+      >
+        <FontAwesomeIcon :icon="faFileImport" />
+      </button>
+      <button
+        class="btn btn-link btn-sm p-1 text-secondary"
         title="Refresh"
         @click="notebooksStore.loadTree()"
         :disabled="status.loadingTree"
       >
         <FontAwesomeIcon :icon="faRotateRight" />
       </button>
+      <input
+        ref="importInput"
+        type="file"
+        accept=".ipynb,application/json"
+        class="d-none"
+        @change="onImportFile"
+      />
     </div>
 
     <div v-if="status.error" class="alert alert-warning small m-2 py-2">

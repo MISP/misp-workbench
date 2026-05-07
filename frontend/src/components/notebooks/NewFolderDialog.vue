@@ -1,5 +1,6 @@
 <script setup>
 import { ref, watch } from "vue";
+import { Modal } from "bootstrap";
 
 const props = defineProps({
   modalId: { type: String, default: "newFolderModal" },
@@ -9,6 +10,7 @@ const props = defineProps({
 
 const emit = defineEmits(["create"]);
 
+const modalEl = ref(null);
 const name = ref("");
 const error = ref(null);
 
@@ -31,11 +33,15 @@ function submit() {
     visibility: props.visibility,
     parent_id: props.parentId,
   });
+  name.value = "";
+  error.value = null;
+  Modal.getInstance(modalEl.value)?.hide();
 }
 </script>
 
 <template>
   <div
+    ref="modalEl"
     class="modal fade"
     :id="modalId"
     tabindex="-1"
@@ -83,12 +89,7 @@ function submit() {
           >
             Cancel
           </button>
-          <button
-            type="button"
-            class="btn btn-primary btn-sm"
-            data-bs-dismiss="modal"
-            @click="submit"
-          >
+          <button type="button" class="btn btn-primary btn-sm" @click="submit">
             Create
           </button>
         </div>

@@ -1,5 +1,6 @@
 <script setup>
 import { ref } from "vue";
+import { Modal } from "bootstrap";
 
 const props = defineProps({
   modalId: { type: String, default: "newNotebookModal" },
@@ -9,6 +10,7 @@ const props = defineProps({
 
 const emit = defineEmits(["create"]);
 
+const modalEl = ref(null);
 const name = ref("");
 const description = ref("");
 const error = ref(null);
@@ -19,7 +21,7 @@ const STARTER_SOURCE = `# %% [id=__GENERATE__] code
 mwlab
 `;
 
-function submit() {
+async function submit() {
   const trimmed = name.value.trim();
   if (!trimmed) {
     error.value = "Name is required";
@@ -40,11 +42,17 @@ function submit() {
   });
   name.value = "";
   description.value = "";
+  error.value = null;
+  // Close the modal explicitly. The form's parent handles the API call
+  // asynchronously; if it fails the parent surfaces a toast — we always
+  // dismiss after submit since the dialog only collects fields.
+  Modal.getInstance(modalEl.value)?.hide();
 }
 </script>
 
 <template>
   <div
+    ref="modalEl"
     class="modal fade"
     :id="modalId"
     tabindex="-1"
@@ -101,12 +109,7 @@ function submit() {
           >
             Cancel
           </button>
-          <button
-            type="button"
-            class="btn btn-primary btn-sm"
-            data-bs-dismiss="modal"
-            @click="submit"
-          >
+          <button type="button" class="btn btn-primary btn-sm" @click="submit">
             Create
           </button>
         </div>

@@ -10,6 +10,7 @@ export const useNotebooksStore = defineStore({
     notebooks: {}, // id → full notebook (lazy)
     saveStatus: {}, // id → "idle" | "saving" | "saved" | "error"
     inFlight: {}, // notebookId → { executionId → execution }
+    cellMeta: {}, // notebookId → { cellId → { durationMs, finishedAt, status } }
     status: {
       loadingTree: false,
       loadingNotebook: false,
@@ -121,6 +122,35 @@ export const useNotebooksStore = defineStore({
         this.status.forking = false;
       }
     },
+    async clearOutputs(id) {
+      const nb = await fetchWrapper.post(
+        `${baseUrl}/notebooks/${id}/clear_outputs`,
+        {},
+      );
+      this.notebooks[id] = nb;
+      // Drop local timing too so the panel goes back to the empty state.
+      if (this.cellMeta[id]) this.cellMeta[id] = {};
+      return nb;
+    },
+
+    // ── import / export ──────────────────────────────────────────────────
+    async exportNotebook(id) {
+      // The export endpoint returns nbformat-shaped JSON; we hand it to the
+      // browser as a Blob so the download keeps the .ipynb extension.
+      const blob = await fetchWrapper.get(`${baseUrl}/notebooks/${id}/export`);
+      return blob;
+    },
+    async importNotebook(file, folderId = null) {
+      const url = folderId
+        ? `${baseUrl}/notebooks/import?folder_id=${folderId}`
+        : `${baseUrl}/notebooks/import`;
+      const form = new FormData();
+      form.append("file", file);
+      const nb = await fetchWrapper.postFormData(url, form);
+      this.notebooks[nb.id] = nb;
+      await this.loadTree();
+      return nb;
+    },
 
     // ── execution ────────────────────────────────────────────────────────
     async executeCell(notebookId, cellId, source) {
@@ -200,6 +230,22 @@ export const useNotebooksStore = defineStore({
       const outputs = { ...(nb.cell_outputs || {}) };
       outputs[exec.cell_id] = exec.outputs || [];
       nb.cell_outputs = outputs;
+      // Capture timing so the output panel can show a footer.
+      // started_at / finished_at are ISO 8601 strings from the server.
+      let durationMs = null;
+      if (exec.started_at && exec.finished_at) {
+        const start = Date.parse(exec.started_at);
+        const end = Date.parse(exec.finished_at);
+        if (!Number.isNaN(start) && !Number.isNaN(end)) {
+          durationMs = Math.max(0, end - start);
+        }
+      }
+      if (!this.cellMeta[notebookId]) this.cellMeta[notebookId] = {};
+      this.cellMeta[notebookId][exec.cell_id] = {
+        durationMs,
+        finishedAt: exec.finished_at,
+        status: exec.status,
+      };
     },
 
     // ── helpers ──────────────────────────────────────────────────────────
