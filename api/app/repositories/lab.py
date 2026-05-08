@@ -11,10 +11,11 @@ import uuid
 from datetime import datetime, timezone
 from typing import Optional
 
-from app.models import lab as lab_models
-from app.schemas import lab as lab_schemas
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
+
+from app.models import lab as lab_models
+from app.schemas import lab as lab_schemas
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +26,16 @@ logger = logging.getLogger(__name__)
 
 
 def _user_can_see(row, current_user_id: int) -> bool:
-    return row.visibility == "global" or row.user_id == current_user_id
+    if row.visibility in ("global", "library"):
+        return True
+    return row.user_id == current_user_id
+
+
+def _ensure_writable(row) -> None:
+    """Reject mutations on library rows. Library content is the seed-managed
+    catalogue — users must fork to a personal copy to make changes."""
+    if row.visibility == "library":
+        raise PermissionError("library notebooks are read-only; fork to make changes")
 
 
 def get_folder_by_id(
@@ -45,7 +55,12 @@ def create_folder(
     db: Session,
     payload: lab_schemas.LabFolderCreate,
     current_user_id: int,
+    via_api: bool = True,
 ) -> lab_models.LabFolder:
+    if via_api and payload.visibility == "library":
+        raise PermissionError(
+            "library folders are seeded via CLI and cannot be created via API"
+        )
     if payload.parent_id is not None:
         parent = get_folder_by_id(db, payload.parent_id, current_user_id)
         if parent is None:
@@ -78,6 +93,7 @@ def update_folder(
     )
     if folder is None or not _user_can_see(folder, current_user_id):
         return None
+    _ensure_writable(folder)
     if folder.user_id != current_user_id:
         raise PermissionError("only the owner can update this folder")
 
@@ -101,9 +117,7 @@ def update_folder(
     return folder
 
 
-def delete_folder(
-    db: Session, folder_id: int, current_user_id: int
-) -> Optional[dict]:
+def delete_folder(db: Session, folder_id: int, current_user_id: int) -> Optional[dict]:
     folder = (
         db.query(lab_models.LabFolder)
         .filter(lab_models.LabFolder.id == folder_id)
@@ -111,6 +125,7 @@ def delete_folder(
     )
     if folder is None or not _user_can_see(folder, current_user_id):
         return None
+    _ensure_writable(folder)
     if folder.user_id != current_user_id:
         raise PermissionError("only the owner can delete this folder")
     db.delete(folder)
@@ -118,9 +133,7 @@ def delete_folder(
     return {"status": "success"}
 
 
-def _would_create_cycle(
-    db: Session, folder_id: int, new_parent_id: int
-) -> bool:
+def _would_create_cycle(db: Session, folder_id: int, new_parent_id: int) -> bool:
     """Return True if making folder_id a child of new_parent_id would form a cycle."""
     cursor = new_parent_id
     seen: set[int] = set()
@@ -161,7 +174,12 @@ def create_notebook(
     db: Session,
     payload: lab_schemas.LabNotebookCreate,
     current_user_id: int,
+    via_api: bool = True,
 ) -> lab_models.LabNotebook:
+    if via_api and payload.visibility == "library":
+        raise PermissionError(
+            "library notebooks are seeded via CLI and cannot be created via API"
+        )
     if payload.folder_id is not None:
         folder = get_folder_by_id(db, payload.folder_id, current_user_id)
         if folder is None:
@@ -197,6 +215,7 @@ def update_notebook(
     )
     if nb is None or not _user_can_see(nb, current_user_id):
         return None
+    _ensure_writable(nb)
     if nb.user_id != current_user_id:
         raise PermissionError("only the owner can update this notebook")
 
@@ -229,6 +248,7 @@ def delete_notebook(
     )
     if nb is None or not _user_can_see(nb, current_user_id):
         return None
+    _ensure_writable(nb)
     if nb.user_id != current_user_id:
         raise PermissionError("only the owner can delete this notebook")
     db.delete(nb)
@@ -251,6 +271,7 @@ def clear_outputs(
     )
     if nb is None or not _user_can_see(nb, current_user_id):
         return None
+    _ensure_writable(nb)
     if nb.user_id != current_user_id:
         raise PermissionError("only the owner can clear outputs")
     nb.cell_outputs = {}
@@ -402,6 +423,8 @@ def write_cell_source(
     nb = get_notebook_by_id(db, notebook_id, current_user_id)
     if nb is None:
         return None
+    if nb.visibility == "library":
+        return nb  # library is read-only; cell source travels via the request
     if nb.user_id != current_user_id:
         return nb  # non-owner: don't mutate; return as-is
 
@@ -431,7 +454,7 @@ def get_tree(db: Session, current_user_id: int) -> lab_schemas.LabTree:
         db.query(lab_models.LabFolder)
         .filter(
             or_(
-                lab_models.LabFolder.visibility == "global",
+                lab_models.LabFolder.visibility.in_(("global", "library")),
                 lab_models.LabFolder.user_id == current_user_id,
             )
         )
@@ -442,7 +465,7 @@ def get_tree(db: Session, current_user_id: int) -> lab_schemas.LabTree:
         db.query(lab_models.LabNotebook)
         .filter(
             or_(
-                lab_models.LabNotebook.visibility == "global",
+                lab_models.LabNotebook.visibility.in_(("global", "library")),
                 lab_models.LabNotebook.user_id == current_user_id,
             )
         )
@@ -451,7 +474,5 @@ def get_tree(db: Session, current_user_id: int) -> lab_schemas.LabTree:
     )
     return lab_schemas.LabTree(
         folders=[lab_schemas.LabFolder.model_validate(f) for f in folders],
-        notebooks=[
-            lab_schemas.LabNotebookSummary.model_validate(n) for n in notebooks
-        ],
+        notebooks=[lab_schemas.LabNotebookSummary.model_validate(n) for n in notebooks],
     )

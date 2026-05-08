@@ -7,6 +7,7 @@ import {
   faFolder,
   faRotateRight,
   faFileImport,
+  faBookOpen,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
 import TreeNode from "./TreeNode.vue";
@@ -48,6 +49,7 @@ function buildChildren(folderId) {
 
 const personal = computed(() => rootChildren("personal"));
 const globalRoot = computed(() => rootChildren("global"));
+const library = computed(() => rootChildren("library"));
 
 function openNewFolder(visibility) {
   newDialogVisibility.value = visibility;
@@ -238,6 +240,56 @@ onMounted(() => {
           />
           <TreeNode
             v-for="n in personal.notebooks"
+            :key="`n-${n.id}`"
+            :node="{ kind: 'notebook', notebook: n }"
+            :build-children="buildChildren"
+            :selected-notebook-id="selectedNotebookId"
+            :current-user-id="currentUserId"
+            @select-notebook="(nb) => $emit('select-notebook', nb)"
+            @delete-folder="onDeleteFolder"
+            @rename-folder="onRenameFolder"
+            @delete-notebook="onDeleteNotebook"
+            @rename-notebook="onRenameNotebook"
+            @fork-notebook="onForkNotebook"
+          />
+        </ul>
+      </div>
+
+      <!-- Library section (read-only prebuilt notebooks; users fork to run) -->
+      <div class="tree-section">
+        <div
+          class="tree-section-header"
+          title="Read-only prebuilt notebooks. Fork them to a personal copy to run or edit."
+        >
+          <FontAwesomeIcon :icon="faBookOpen" class="me-2 text-muted" />
+          <span class="me-auto">Library</span>
+        </div>
+        <div
+          v-if="library.folders.length === 0 && library.notebooks.length === 0"
+          class="text-muted small fst-italic px-3 py-1"
+        >
+          No library notebooks. Seed via
+          <code>python -m app.cli seed-lab-library</code>.
+        </div>
+        <ul class="list-unstyled m-0">
+          <TreeNode
+            v-for="f in library.folders"
+            :key="`f-${f.id}`"
+            :node="{ kind: 'folder', folder: f }"
+            :child-folders="buildChildren(f.id).folders"
+            :child-notebooks="buildChildren(f.id).notebooks"
+            :build-children="buildChildren"
+            :selected-notebook-id="selectedNotebookId"
+            :current-user-id="currentUserId"
+            @select-notebook="(n) => $emit('select-notebook', n)"
+            @delete-folder="onDeleteFolder"
+            @rename-folder="onRenameFolder"
+            @delete-notebook="onDeleteNotebook"
+            @rename-notebook="onRenameNotebook"
+            @fork-notebook="onForkNotebook"
+          />
+          <TreeNode
+            v-for="n in library.notebooks"
             :key="`n-${n.id}`"
             :node="{ kind: 'notebook', notebook: n }"
             :build-children="buildChildren"

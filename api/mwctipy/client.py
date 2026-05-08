@@ -16,7 +16,6 @@ from uuid import UUID
 
 from sqlalchemy.orm import Session
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -93,8 +92,11 @@ class MwLab:
         if query:
             must.append({"match": {"info": query}})
         if tags:
+            # tags.name is analyzed text — use match_phrase so hyphens and
+            # colons in tag names (e.g. misp-galaxy:threat-actor="…") match
+            # the same way the events repo does it.
             for t in tags:
-                must.append({"term": {"tags.name": t}})
+                must.append({"match_phrase": {"tags.name": t}})
         body = {
             "size": size,
             "query": {"bool": {"must": must}} if must else {"match_all": {}},
@@ -115,7 +117,10 @@ class MwLab:
         if value:
             must.append({"match": {"value": value}})
         if type:
-            must.append({"term": {"type": type}})
+            # type is analyzed text — "ip-dst" gets split on the hyphen, so a
+            # plain term query never matches. Use the .keyword sub-field for
+            # exact match, mirroring app.repositories.attributes.
+            must.append({"term": {"type.keyword": type}})
         body = {
             "size": size,
             "query": {"bool": {"must": must}} if must else {"match_all": {}},
@@ -169,7 +174,9 @@ class MwLab:
                     actor_type="lab_notebook",
                     actor_credential_id=self.notebook_id,
                     metadata={
-                        "module": module, "type": type, "value": value,
+                        "module": module,
+                        "type": type,
+                        "value": value,
                         "error": str(e),
                     },
                 )

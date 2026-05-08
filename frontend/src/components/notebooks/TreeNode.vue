@@ -9,6 +9,7 @@ import {
   faTrash,
   faPen,
   faCodeBranch,
+  faLock,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
 
@@ -41,7 +42,14 @@ const isNotebook = computed(() => props.node.kind === "notebook");
 const isSelected = computed(
   () => isNotebook.value && props.selectedNotebookId === props.node.notebook.id,
 );
+const visibility = computed(() =>
+  isFolder.value
+    ? props.node.folder.visibility
+    : props.node.notebook.visibility,
+);
+const isLibrary = computed(() => visibility.value === "library");
 const isOwned = computed(() => {
+  if (isLibrary.value) return false; // library is read-only regardless of seed owner
   if (props.currentUserId == null) return true;
   const owner = isFolder.value
     ? props.node.folder.user_id
@@ -89,6 +97,13 @@ function onClick() {
       <span class="tree-label flex-grow-1">
         <template v-if="isFolder">{{ node.folder.name }}</template>
         <template v-else>{{ node.notebook.name }}</template>
+        <FontAwesomeIcon
+          v-if="isLibrary"
+          :icon="faLock"
+          class="ms-1 text-muted"
+          title="Library notebook — fork to edit or run"
+          style="font-size: 0.7rem"
+        />
       </span>
 
       <span class="tree-actions">

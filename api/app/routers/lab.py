@@ -8,14 +8,23 @@ exceptions into HTTP responses.
 
 import json
 
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    HTTPException,
+    Security,
+    UploadFile,
+    status,
+)
+from sqlalchemy.orm import Session
+
 from app.auth.security import get_current_active_user
 from app.db.session import get_db
 from app.repositories import lab as lab_repository
 from app.schemas import lab as lab_schemas
 from app.schemas import user as user_schemas
 from app.services.tech_lab.lab import nbformat_io
-from fastapi import APIRouter, Depends, File, HTTPException, Security, UploadFile, status
-from sqlalchemy.orm import Session
 
 router = APIRouter()
 
@@ -28,9 +37,7 @@ router = APIRouter()
 @router.get("/tech-lab/tree", response_model=lab_schemas.LabTree)
 async def get_tree(
     db: Session = Depends(get_db),
-    user: user_schemas.User = Security(
-        get_current_active_user, scopes=["lab:read"]
-    ),
+    user: user_schemas.User = Security(get_current_active_user, scopes=["lab:read"]),
 ):
     return lab_repository.get_tree(db, current_user_id=user.id)
 
@@ -48,16 +55,14 @@ async def get_tree(
 async def create_folder(
     payload: lab_schemas.LabFolderCreate,
     db: Session = Depends(get_db),
-    user: user_schemas.User = Security(
-        get_current_active_user, scopes=["lab:create"]
-    ),
+    user: user_schemas.User = Security(get_current_active_user, scopes=["lab:create"]),
 ):
     try:
         return lab_repository.create_folder(db, payload, current_user_id=user.id)
+    except PermissionError as e:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
     except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
 
 @router.patch(
@@ -68,9 +73,7 @@ async def update_folder(
     folder_id: int,
     payload: lab_schemas.LabFolderUpdate,
     db: Session = Depends(get_db),
-    user: user_schemas.User = Security(
-        get_current_active_user, scopes=["lab:update"]
-    ),
+    user: user_schemas.User = Security(get_current_active_user, scopes=["lab:update"]),
 ):
     try:
         folder = lab_repository.update_folder(
@@ -79,9 +82,7 @@ async def update_folder(
     except PermissionError as e:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
     except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     if folder is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Folder not found"
@@ -96,14 +97,10 @@ async def update_folder(
 async def delete_folder(
     folder_id: int,
     db: Session = Depends(get_db),
-    user: user_schemas.User = Security(
-        get_current_active_user, scopes=["lab:delete"]
-    ),
+    user: user_schemas.User = Security(get_current_active_user, scopes=["lab:delete"]),
 ):
     try:
-        result = lab_repository.delete_folder(
-            db, folder_id, current_user_id=user.id
-        )
+        result = lab_repository.delete_folder(db, folder_id, current_user_id=user.id)
     except PermissionError as e:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
     if result is None:
@@ -125,18 +122,14 @@ async def delete_folder(
 async def create_notebook(
     payload: lab_schemas.LabNotebookCreate,
     db: Session = Depends(get_db),
-    user: user_schemas.User = Security(
-        get_current_active_user, scopes=["lab:create"]
-    ),
+    user: user_schemas.User = Security(get_current_active_user, scopes=["lab:create"]),
 ):
     try:
-        return lab_repository.create_notebook(
-            db, payload, current_user_id=user.id
-        )
+        return lab_repository.create_notebook(db, payload, current_user_id=user.id)
+    except PermissionError as e:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
     except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
 
 @router.get(
@@ -146,13 +139,9 @@ async def create_notebook(
 async def get_notebook(
     notebook_id: int,
     db: Session = Depends(get_db),
-    user: user_schemas.User = Security(
-        get_current_active_user, scopes=["lab:read"]
-    ),
+    user: user_schemas.User = Security(get_current_active_user, scopes=["lab:read"]),
 ):
-    nb = lab_repository.get_notebook_by_id(
-        db, notebook_id, current_user_id=user.id
-    )
+    nb = lab_repository.get_notebook_by_id(db, notebook_id, current_user_id=user.id)
     if nb is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Notebook not found"
@@ -168,9 +157,7 @@ async def update_notebook(
     notebook_id: int,
     payload: lab_schemas.LabNotebookUpdate,
     db: Session = Depends(get_db),
-    user: user_schemas.User = Security(
-        get_current_active_user, scopes=["lab:update"]
-    ),
+    user: user_schemas.User = Security(get_current_active_user, scopes=["lab:update"]),
 ):
     try:
         nb = lab_repository.update_notebook(
@@ -179,9 +166,7 @@ async def update_notebook(
     except PermissionError as e:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
     except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     if nb is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Notebook not found"
@@ -196,9 +181,7 @@ async def update_notebook(
 async def delete_notebook(
     notebook_id: int,
     db: Session = Depends(get_db),
-    user: user_schemas.User = Security(
-        get_current_active_user, scopes=["lab:delete"]
-    ),
+    user: user_schemas.User = Security(get_current_active_user, scopes=["lab:delete"]),
 ):
     try:
         result = lab_repository.delete_notebook(
@@ -219,14 +202,10 @@ async def delete_notebook(
 async def clear_outputs(
     notebook_id: int,
     db: Session = Depends(get_db),
-    user: user_schemas.User = Security(
-        get_current_active_user, scopes=["lab:update"]
-    ),
+    user: user_schemas.User = Security(get_current_active_user, scopes=["lab:update"]),
 ):
     try:
-        nb = lab_repository.clear_outputs(
-            db, notebook_id, current_user_id=user.id
-        )
+        nb = lab_repository.clear_outputs(db, notebook_id, current_user_id=user.id)
     except PermissionError as e:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
     if nb is None:
@@ -244,13 +223,9 @@ async def clear_outputs(
 async def fork_notebook(
     notebook_id: int,
     db: Session = Depends(get_db),
-    user: user_schemas.User = Security(
-        get_current_active_user, scopes=["lab:create"]
-    ),
+    user: user_schemas.User = Security(get_current_active_user, scopes=["lab:create"]),
 ):
-    nb = lab_repository.fork_notebook(
-        db, notebook_id, current_user_id=user.id
-    )
+    nb = lab_repository.fork_notebook(db, notebook_id, current_user_id=user.id)
     if nb is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Notebook not found"
@@ -272,16 +247,17 @@ async def execute_cell(
     notebook_id: int,
     payload: lab_schemas.LabExecuteRequest,
     db: Session = Depends(get_db),
-    user: user_schemas.User = Security(
-        get_current_active_user, scopes=["lab:run"]
-    ),
+    user: user_schemas.User = Security(get_current_active_user, scopes=["lab:run"]),
 ):
-    nb = lab_repository.get_notebook_by_id(
-        db, notebook_id, current_user_id=user.id
-    )
+    nb = lab_repository.get_notebook_by_id(db, notebook_id, current_user_id=user.id)
     if nb is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Notebook not found"
+        )
+    if nb.visibility == "library":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="library notebooks cannot be executed; fork to a personal copy",
         )
     # Owner-only: capture the editor-current source onto the blob so the
     # executor finds the same slice. Non-owners run against the stored
@@ -310,16 +286,17 @@ async def execute_cell(
 async def execute_all_cells(
     notebook_id: int,
     db: Session = Depends(get_db),
-    user: user_schemas.User = Security(
-        get_current_active_user, scopes=["lab:run"]
-    ),
+    user: user_schemas.User = Security(get_current_active_user, scopes=["lab:run"]),
 ):
-    nb = lab_repository.get_notebook_by_id(
-        db, notebook_id, current_user_id=user.id
-    )
+    nb = lab_repository.get_notebook_by_id(db, notebook_id, current_user_id=user.id)
     if nb is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Notebook not found"
+        )
+    if nb.visibility == "library":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="library notebooks cannot be executed; fork to a personal copy",
         )
 
     from app.services.tech_lab.lab.cell_parser import parse_cells
@@ -348,9 +325,7 @@ async def get_execution(
     notebook_id: int,
     execution_id: int,
     db: Session = Depends(get_db),
-    user: user_schemas.User = Security(
-        get_current_active_user, scopes=["lab:read"]
-    ),
+    user: user_schemas.User = Security(get_current_active_user, scopes=["lab:read"]),
 ):
     row = lab_repository.get_execution(db, execution_id, current_user_id=user.id)
     if row is None or row.notebook_id != notebook_id:
@@ -367,16 +342,17 @@ async def get_execution(
 async def interrupt_kernel(
     notebook_id: int,
     db: Session = Depends(get_db),
-    user: user_schemas.User = Security(
-        get_current_active_user, scopes=["lab:run"]
-    ),
+    user: user_schemas.User = Security(get_current_active_user, scopes=["lab:run"]),
 ):
-    nb = lab_repository.get_notebook_by_id(
-        db, notebook_id, current_user_id=user.id
-    )
+    nb = lab_repository.get_notebook_by_id(db, notebook_id, current_user_id=user.id)
     if nb is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Notebook not found"
+        )
+    if nb.visibility == "library":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="library notebooks have no running kernel",
         )
     from app.worker.tasks import lab_kernel_interrupt as _task
 
@@ -391,16 +367,17 @@ async def interrupt_kernel(
 async def shutdown_kernel(
     notebook_id: int,
     db: Session = Depends(get_db),
-    user: user_schemas.User = Security(
-        get_current_active_user, scopes=["lab:run"]
-    ),
+    user: user_schemas.User = Security(get_current_active_user, scopes=["lab:run"]),
 ):
-    nb = lab_repository.get_notebook_by_id(
-        db, notebook_id, current_user_id=user.id
-    )
+    nb = lab_repository.get_notebook_by_id(db, notebook_id, current_user_id=user.id)
     if nb is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Notebook not found"
+        )
+    if nb.visibility == "library":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="library notebooks have no running kernel",
         )
     from app.worker.tasks import lab_kernel_shutdown as _task
 
@@ -417,9 +394,7 @@ async def shutdown_kernel(
 async def export_notebook(
     notebook_id: int,
     db: Session = Depends(get_db),
-    user: user_schemas.User = Security(
-        get_current_active_user, scopes=["lab:read"]
-    ),
+    user: user_schemas.User = Security(get_current_active_user, scopes=["lab:read"]),
 ):
     """Return the notebook as nbformat 4.5 JSON.
 
@@ -427,9 +402,7 @@ async def export_notebook(
     ``<name>.ipynb``. Outputs from the most recent run are included so the
     downloaded file opens with results visible in JupyterLab.
     """
-    nb = lab_repository.get_notebook_by_id(
-        db, notebook_id, current_user_id=user.id
-    )
+    nb = lab_repository.get_notebook_by_id(db, notebook_id, current_user_id=user.id)
     if nb is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Notebook not found"
@@ -446,9 +419,7 @@ async def import_notebook(
     file: UploadFile = File(...),
     folder_id: int | None = None,
     db: Session = Depends(get_db),
-    user: user_schemas.User = Security(
-        get_current_active_user, scopes=["lab:create"]
-    ),
+    user: user_schemas.User = Security(get_current_active_user, scopes=["lab:create"]),
 ):
     """Import an .ipynb. Always creates a *personal* notebook owned by the
     current user — analysts can promote to global later by re-creating in a
@@ -474,10 +445,6 @@ async def import_notebook(
         source=source,
     )
     try:
-        return lab_repository.create_notebook(
-            db, payload, current_user_id=user.id
-        )
+        return lab_repository.create_notebook(db, payload, current_user_id=user.id)
     except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))

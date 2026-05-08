@@ -28,8 +28,19 @@ function safeHtml(html) {
   return DOMPurify.sanitize(String(html || ""));
 }
 
+// IPython tracebacks ship with ANSI SGR escape sequences for colour. We don't
+// have a terminal renderer, so strip them before display — the structural
+// markers (arrows, line numbers, labels) survive as plain text.
+const ANSI_RE = /\x1B\[[0-9;]*[A-Za-z]/g;
+
+function stripAnsi(text) {
+  return String(text || "").replace(ANSI_RE, "");
+}
+
 function tracebackText(item) {
-  if (Array.isArray(item.traceback)) return item.traceback.join("\n");
+  if (Array.isArray(item.traceback)) {
+    return item.traceback.map(stripAnsi).join("\n");
+  }
   return `${item.ename || "Error"}: ${item.evalue || ""}`;
 }
 
@@ -50,7 +61,7 @@ function jsonPretty(value) {
         v-if="item.output_type === 'stream'"
         class="cell-output-stream"
         :class="item.name === 'stderr' ? 'is-stderr' : ''"
-        >{{ item.text }}</pre
+        >{{ stripAnsi(item.text) }}</pre
       >
 
       <pre v-else-if="item.output_type === 'error'" class="cell-output-error">{{

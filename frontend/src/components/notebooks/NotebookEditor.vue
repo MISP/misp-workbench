@@ -92,8 +92,13 @@ const liveCellMeta = computed(() => {
 
 // ── Ownership / read-only ───────────────────────────────────────────────
 
+const isLibrary = computed(
+  () => currentNotebook.value?.visibility === "library",
+);
+
 const isOwner = computed(() => {
   if (!currentNotebook.value || props.currentUserId == null) return false;
+  if (isLibrary.value) return false; // library is read-only regardless of seed owner
   return currentNotebook.value.user_id === props.currentUserId;
 });
 
@@ -273,7 +278,7 @@ function cellAtCursor() {
 }
 
 async function runCell() {
-  if (!currentNotebook.value) return;
+  if (!currentNotebook.value || isLibrary.value) return;
   const cell = cellAtCursor();
   if (!cell) {
     toastsStore.push("Place the cursor inside a code cell first.", "warning");
@@ -298,7 +303,7 @@ async function runCell() {
 // Shift+Enter handler — run current cell, then move the cursor to the start
 // of the next cell's body. Falls back to staying put if no next cell.
 async function runAndAdvance() {
-  if (!currentNotebook.value || !editorRef.value) return;
+  if (!currentNotebook.value || isLibrary.value || !editorRef.value) return;
   const model = models.get(currentNotebook.value.id);
   if (!model) return;
   const cells = parseCells(model.getValue());
@@ -338,7 +343,7 @@ async function runAndAdvance() {
 // Per-cell run — invoked from the output panel's run button. Bypasses the
 // cursor entirely so users don't have to chase it.
 async function runCellById(cellId) {
-  if (!currentNotebook.value) return;
+  if (!currentNotebook.value || isLibrary.value) return;
   const model = models.get(currentNotebook.value.id);
   if (!model) return;
   const cell = parseCells(model.getValue()).find((c) => c.cellId === cellId);
@@ -367,7 +372,7 @@ async function clearOutputs() {
 }
 
 async function runAll() {
-  if (!currentNotebook.value) return;
+  if (!currentNotebook.value || isLibrary.value) return;
   await flushSave(currentNotebook.value.id);
   try {
     await notebooksStore.executeAll(currentNotebook.value.id);
@@ -472,13 +477,15 @@ const saveLabel = computed(() => {
         <strong class="me-2">{{ currentNotebook.name }}</strong>
         <span
           class="badge me-1"
-          :class="
-            currentNotebook.visibility === 'global' ? 'bg-info' : 'bg-secondary'
-          "
+          :class="{
+            'bg-info': currentNotebook.visibility === 'global',
+            'bg-warning text-dark': currentNotebook.visibility === 'library',
+            'bg-secondary': currentNotebook.visibility === 'personal',
+          }"
           >{{ currentNotebook.visibility }}</span
         >
         <span
-          v-if="readOnly"
+          v-if="readOnly && !isLibrary"
           class="badge bg-warning-subtle text-warning-emphasis me-1"
         >
           read-only
@@ -522,11 +529,13 @@ const saveLabel = computed(() => {
 
         <div class="ms-auto d-flex align-items-center gap-2">
           <KernelStatusPill
+            v-if="!isLibrary"
             :status="kernelStatus"
             @interrupt="interrupt"
             @restart="restart"
           />
           <button
+            v-if="!isLibrary"
             class="btn btn-outline-primary btn-sm"
             :disabled="kernelBusy"
             @click="runCell"
@@ -536,7 +545,7 @@ const saveLabel = computed(() => {
             Run cell
           </button>
           <button
-            v-if="!kernelBusy"
+            v-if="!isLibrary && !kernelBusy"
             class="btn btn-outline-secondary btn-sm"
             @click="runAll"
             title="Run all code cells in order"
@@ -545,6 +554,7 @@ const saveLabel = computed(() => {
             Run all
           </button>
           <button
+            v-if="!isLibrary && isOwner"
             class="btn btn-outline-secondary btn-sm"
             @click="clearOutputs"
             title="Clear all outputs from this notebook"
@@ -577,6 +587,21 @@ const saveLabel = computed(() => {
     </div>
 
     <MwctipyReferenceModal modal-id="mwctipyDocsModal" />
+
+    <div
+      v-if="isLibrary"
+      class="alert alert-warning d-flex align-items-center gap-2 mb-0 rounded-0 py-2 px-3 small"
+    >
+      <FontAwesomeIcon :icon="faCodeBranch" />
+      <span class="me-auto">
+        This is a library notebook — read-only and not runnable. Fork it to a
+        personal copy to edit and execute.
+      </span>
+      <button class="btn btn-sm btn-warning" @click="fork">
+        <FontAwesomeIcon :icon="faCodeBranch" class="me-1" />
+        Fork to personal
+      </button>
+    </div>
 
     <div class="editor-body flex-grow-1 d-flex">
       <div
@@ -625,6 +650,7 @@ const saveLabel = computed(() => {
         :cell-outputs="liveCellOutputs"
         :cell-meta="liveCellMeta"
         :kernel-busy="kernelBusy"
+        :runnable="!isLibrary"
         @jump-to-cell="jumpToCell"
         @run-cell="runCellById"
       />

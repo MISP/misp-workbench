@@ -1,11 +1,17 @@
+import json
+from datetime import datetime, timezone
+from pathlib import Path
 from typing import Optional
 
 import typer
+
 from app.database import SessionLocal
+from app.models import lab as lab_models
 from app.repositories import organisations as organisations_repository
 from app.repositories import users as user_repository
 from app.schemas import organisations as organisation_schemas
 from app.schemas import user as user_schemas
+from app.services.tech_lab.lab import nbformat_io
 from app.worker import tasks
 
 app = typer.Typer()
@@ -76,6 +82,91 @@ def load_galaxies(user_id: Optional[int] = None):
 @app.command()
 def load_taxonomies(user_id: Optional[int] = None):
     tasks.load_taxonomies.delay()
+
+
+@app.command()
+def seed_lab_library(
+    owner_email: str = typer.Option(
+        ...,
+        "--owner-email",
+        help="Email of the user that will own the seeded notebooks",
+    ),
+    directory: Path = typer.Option(
+        Path("/code/lab_library"),
+        "--directory",
+        help="Directory containing .ipynb files to seed",
+    ),
+):
+    """Upsert notebooks from .ipynb files into the Library section.
+
+    Each file becomes a notebook with visibility=library, named after the file
+    stem. Re-running the command updates the source of existing library
+    notebooks (matched by name) without touching personal forks.
+    """
+    if not directory.exists() or not directory.is_dir():
+        typer.echo(f"Directory not found: {directory}", err=True)
+        raise typer.Exit(code=1)
+
+    db = SessionLocal()
+    owner = user_repository.get_user_by_email(db, email=owner_email)
+    if owner is None:
+        typer.echo(f"User not found: {owner_email}", err=True)
+        raise typer.Exit(code=1)
+
+    files = sorted(directory.glob("*.ipynb"))
+    if not files:
+        typer.echo(f"No .ipynb files in {directory}")
+        return
+
+    created = updated = 0
+    for path in files:
+        try:
+            blob = json.loads(path.read_text(encoding="utf-8"))
+        except (UnicodeDecodeError, json.JSONDecodeError) as e:
+            typer.echo(f"Skipping {path.name}: invalid JSON ({e})", err=True)
+            continue
+        if not isinstance(blob, dict) or "cells" not in blob:
+            typer.echo(f"Skipping {path.name}: not a valid .ipynb", err=True)
+            continue
+        source, fallback_name = nbformat_io.from_nbformat(blob)
+        # Prefer the file stem so re-running with renamed metadata still
+        # matches the same library entry.
+        name = path.stem
+        description = ((blob.get("metadata") or {}).get("misp_workbench") or {}).get(
+            "description"
+        ) or fallback_name
+
+        existing = (
+            db.query(lab_models.LabNotebook)
+            .filter(
+                lab_models.LabNotebook.visibility == "library",
+                lab_models.LabNotebook.name == name,
+            )
+            .first()
+        )
+        now = datetime.now(timezone.utc)
+        if existing is None:
+            row = lab_models.LabNotebook(
+                user_id=owner.id,
+                folder_id=None,
+                visibility="library",
+                name=name,
+                description=description,
+                source=source,
+                cell_outputs={},
+                created_at=now,
+            )
+            db.add(row)
+            created += 1
+        else:
+            existing.source = source
+            existing.description = description
+            existing.cell_outputs = {}
+            existing.last_executed_at = None
+            existing.updated_at = now
+            updated += 1
+    db.commit()
+    typer.echo(f"Library seeded: {created} created, {updated} updated.")
 
 
 if __name__ == "__main__":

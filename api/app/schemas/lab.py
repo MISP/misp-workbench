@@ -3,10 +3,8 @@ from typing import Any, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
-LabVisibility = Literal["personal", "global"]
-LabExecutionStatus = Literal[
-    "queued", "running", "success", "error", "interrupted"
-]
+LabVisibility = Literal["personal", "global", "library"]
+LabExecutionStatus = Literal["queued", "running", "success", "error", "interrupted"]
 
 
 # ──────────────────────────────────────────────────────────────────────────
@@ -88,8 +86,10 @@ class LabNotebook(LabNotebookBase):
 
 
 class LabTree(BaseModel):
-    """Single response that returns Personal + Global trees so the left
-    panel renders in one round trip."""
+    """Single response that returns Personal + Global + Library trees so the
+    left panel renders in one round trip. Library notebooks are read-only
+    prebuilt content (seeded via CLI); users fork them to a personal copy
+    before running."""
 
     folders: list[LabFolder]
     notebooks: list[LabNotebookSummary]
