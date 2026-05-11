@@ -283,17 +283,36 @@ def clear_outputs(
 
 
 def fork_notebook(
-    db: Session, notebook_id: int, current_user_id: int
+    db: Session,
+    notebook_id: int,
+    current_user_id: int,
+    target_visibility: str = "personal",
 ) -> Optional[lab_models.LabNotebook]:
-    """Duplicate a visible notebook into a new personal one owned by the current user.
+    """Duplicate a visible notebook into a new one owned by the current user.
 
-    Cell ids inside ``source`` are regenerated so the original and the fork
+    ``target_visibility`` selects where the copy lands:
+
+    - ``"personal"`` (default) — the classic "fork to a private copy" flow,
+      used when readers want to mutate / execute a library or shared notebook.
+    - ``"global"`` — "publish to global" flow, used by an owner to share their
+      personal notebook with the rest of the workbench. Library notebooks
+      cannot be published this way (use the CLI seeder instead).
+
+    Cell ids inside ``source`` are regenerated so the original and the copy
     can be open simultaneously without execution conflicts; ``cell_outputs``
     is rewritten to use the new ids.
     """
+    if target_visibility not in ("personal", "global"):
+        raise ValueError("target_visibility must be 'personal' or 'global'")
+
     src = get_notebook_by_id(db, notebook_id, current_user_id)
     if src is None:
         return None
+
+    if target_visibility == "global" and src.visibility == "library":
+        raise ValueError(
+            "library notebooks cannot be published to global; seed via CLI"
+        )
 
     new_source, id_map = _regenerate_cell_ids(src.source or "")
     new_outputs: dict[str, list[dict]] = {}
@@ -301,11 +320,16 @@ def fork_notebook(
         if old_id in (src.cell_outputs or {}):
             new_outputs[new_id] = src.cell_outputs[old_id]
 
+    # Personal forks keep the "(fork)" suffix so the tree disambiguates them
+    # from the source. Global publishes keep the original name — they're the
+    # canonical shared copy.
+    name = src.name if target_visibility == "global" else f"{src.name} (fork)"
+
     fork = lab_models.LabNotebook(
         user_id=current_user_id,
         folder_id=None,
-        visibility="personal",
-        name=f"{src.name} (fork)",
+        visibility=target_visibility,
+        name=name,
         description=src.description,
         source=new_source,
         cell_outputs=new_outputs,

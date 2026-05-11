@@ -361,6 +361,68 @@ class TestLabRouter(ApiTester):
         assert "aaaa1111-aaaa-aaaa-aaaa-aaaaaaaaaaaa" not in data["source"]
         assert "[id=" in data["source"]
 
+    @pytest.mark.parametrize("scopes", [["lab:create"]])
+    def test_publish_personal_to_global_creates_global_copy(
+        self,
+        client: TestClient,
+        db: Session,
+        api_tester_user: user_models.User,
+        auth_token: auth.Token,
+    ):
+        original_source = (
+            "# %% [id=aaaa2222-aaaa-aaaa-aaaa-aaaaaaaaaaaa] code\n"
+            "y = 2\n"
+        )
+        nb = lab_repository.create_notebook(
+            db,
+            lab_schemas.LabNotebookCreate(
+                name="shareable",
+                visibility="personal",
+                source=original_source,
+            ),
+            current_user_id=api_tester_user.id,
+        )
+        response = client.post(
+            f"/tech-lab/notebooks/{nb.id}/fork?visibility=global",
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+        assert response.status_code == status.HTTP_201_CREATED, response.text
+        data = response.json()
+        assert data["user_id"] == api_tester_user.id
+        assert data["visibility"] == "global"
+        # Global publish keeps the original name (no "(fork)" suffix).
+        assert data["name"] == "shareable"
+        assert data["folder_id"] is None
+        assert "aaaa2222-aaaa-aaaa-aaaa-aaaaaaaaaaaa" not in data["source"]
+        assert "[id=" in data["source"]
+        # Personal original is untouched.
+        db.refresh(nb)
+        assert nb.visibility == "personal"
+
+    @pytest.mark.parametrize("scopes", [["lab:create"]])
+    def test_publish_library_to_global_rejected(
+        self,
+        client: TestClient,
+        db: Session,
+        api_tester_user: user_models.User,
+        auth_token: auth.Token,
+    ):
+        nb = lab_repository.create_notebook(
+            db,
+            lab_schemas.LabNotebookCreate(
+                name="lib-thing",
+                visibility="library",
+                source="# %% code\nprint('hi')\n",
+            ),
+            current_user_id=api_tester_user.id,
+            via_api=False,
+        )
+        response = client.post(
+            f"/tech-lab/notebooks/{nb.id}/fork?visibility=global",
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
 
 class TestLabExecution(ApiTester):
     """Execute-flow tests with the celery task stubbed to a synchronous runner."""

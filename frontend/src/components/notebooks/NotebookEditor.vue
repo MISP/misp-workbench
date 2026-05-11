@@ -22,6 +22,7 @@ import {
   faBroom,
   faPlus,
   faFileLines,
+  faGlobe,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
 import KernelStatusPill from "./KernelStatusPill.vue";
@@ -450,6 +451,26 @@ async function fork() {
   }
 }
 
+async function publishToGlobal() {
+  if (!currentNotebook.value) return;
+  if (
+    !confirm(
+      "Create a global copy of this notebook? Everyone in the workbench will be able to view and fork it. The personal original stays put.",
+    )
+  )
+    return;
+  try {
+    const gnb = await notebooksStore.forkNotebook(
+      currentNotebook.value.id,
+      "global",
+    );
+    toastsStore.push(`Published "${gnb.name}" to Global.`, "success");
+    emit("select-notebook", gnb);
+  } catch (err) {
+    toastsStore.push(`Publish failed: ${err?.message || err}`, "danger");
+  }
+}
+
 async function exportIpynb() {
   if (!currentNotebook.value) return;
   await flushSave(currentNotebook.value.id);
@@ -616,6 +637,15 @@ const saveLabel = computed(() => {
           >
             <FontAwesomeIcon :icon="faCodeBranch" class="me-1" />
             Fork to personal
+          </button>
+          <button
+            v-if="isOwner && currentNotebook.visibility === 'personal'"
+            class="btn btn-outline-info btn-sm"
+            @click="publishToGlobal"
+            title="Create a global copy others can view and fork"
+          >
+            <FontAwesomeIcon :icon="faGlobe" class="me-1" />
+            Publish to global
           </button>
         </div>
       </template>

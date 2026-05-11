@@ -108,13 +108,14 @@ export const useNotebooksStore = defineStore({
       delete this.saveStatus[id];
       await this.loadTree();
     },
-    async forkNotebook(id) {
+    async forkNotebook(id, visibility = "personal") {
       this.status.forking = true;
       try {
-        const nb = await fetchWrapper.post(
-          `${baseUrl}/notebooks/${id}/fork`,
-          {},
-        );
+        const url =
+          visibility === "personal"
+            ? `${baseUrl}/notebooks/${id}/fork`
+            : `${baseUrl}/notebooks/${id}/fork?visibility=${encodeURIComponent(visibility)}`;
+        const nb = await fetchWrapper.post(url, {});
         this.notebooks[nb.id] = nb;
         await this.loadTree();
         return nb;

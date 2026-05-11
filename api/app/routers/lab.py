@@ -7,6 +7,7 @@ exceptions into HTTP responses.
 """
 
 import json
+from typing import Literal
 
 from fastapi import (
     APIRouter,
@@ -222,10 +223,16 @@ async def clear_outputs(
 )
 async def fork_notebook(
     notebook_id: int,
+    visibility: Literal["personal", "global"] = "personal",
     db: Session = Depends(get_db),
     user: user_schemas.User = Security(get_current_active_user, scopes=["lab:create"]),
 ):
-    nb = lab_repository.fork_notebook(db, notebook_id, current_user_id=user.id)
+    try:
+        nb = lab_repository.fork_notebook(
+            db, notebook_id, current_user_id=user.id, target_visibility=visibility
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     if nb is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Notebook not found"
