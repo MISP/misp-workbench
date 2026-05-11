@@ -1042,11 +1042,11 @@ def run_reactor_script(run_id: int):
 
 
 @celery_app.task(queue="lab_kernel", time_limit=600, soft_time_limit=540)
-def lab_execute_cell(execution_id: int):
+def lab_execute_cell(execution_id: int, timeout_seconds: int = 60):
     """Run one queued cell execution. Lives on the lab-worker container."""
     logger.info("lab_execute_cell execution_id=%s started", execution_id)
     with Session(engine) as db:
-        lab_executor.execute_cell(db, execution_id)
+        lab_executor.execute_cell(db, execution_id, timeout_seconds=timeout_seconds)
     logger.info("lab_execute_cell execution_id=%s finished", execution_id)
     return True
 

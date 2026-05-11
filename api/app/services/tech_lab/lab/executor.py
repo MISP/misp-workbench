@@ -27,6 +27,7 @@ def execute_cell(
     db: Session,
     execution_id: int,
     *,
+    timeout_seconds: int = 60,
     registry: Optional[km.LabKernelRegistry] = None,
 ) -> None:
     """Run one queued execution to completion (success / error / interrupted).
@@ -76,7 +77,7 @@ def execute_cell(
 
     reg = registry or km.get_default_registry()
     key = (row.user_id, row.notebook_id)
-    timeout = 60
+    timeout = max(1, int(timeout_seconds))
 
     outputs: list[dict[str, Any]] = []
     execution_count: Optional[int] = None
@@ -90,9 +91,18 @@ def execute_cell(
             msg_id = client.execute(  # type: ignore[attr-defined]
                 cell_source, silent=False, store_history=True
             )
-            outputs, execution_count, error_text, status = _drain_iopub(
+            outputs, execution_count, error_text, status, timed_out = _drain_iopub(
                 client, msg_id, timeout=timeout
             )
+            if timed_out:
+                # Send SIGINT so the runaway cell raises KeyboardInterrupt and
+                # stops emitting IOPub. If we don't, the kernel keeps running
+                # and the *next* execution drains its leftover messages.
+                reg.interrupt(key)
+                grace_outputs, _, _, _, _ = _drain_iopub(
+                    client, msg_id, timeout=5
+                )
+                outputs.extend(grace_outputs)
             reg.touch(key)
     except Exception as e:  # noqa: BLE001
         status = "error"
@@ -125,15 +135,19 @@ def _drain_iopub(
     parent_msg_id: str,
     *,
     timeout: int,
-) -> tuple[list[dict[str, Any]], Optional[int], Optional[str], str]:
+) -> tuple[list[dict[str, Any]], Optional[int], Optional[str], str, bool]:
     """Collect IOPub messages whose parent is ``parent_msg_id`` until idle.
 
-    Returns ``(outputs, execution_count, error_text, status)``.
+    Returns ``(outputs, execution_count, error_text, status, timed_out)``.
+    ``timed_out`` is True when the deadline elapsed before an ``idle`` status
+    message was received — the caller is then expected to send an interrupt
+    and drain leftover messages.
     """
     outputs: list[dict[str, Any]] = []
     execution_count: Optional[int] = None
     error_text: Optional[str] = None
     status = "success"
+    timed_out = False
     deadline = time.monotonic() + timeout
 
     while True:
@@ -143,6 +157,7 @@ def _drain_iopub(
         except Exception:  # noqa: BLE001
             status = "interrupted"
             error_text = f"cell exceeded {timeout}s"
+            timed_out = True
             break
         parent = msg.get("parent_header") or {}
         if parent.get("msg_id") != parent_msg_id:
@@ -193,4 +208,4 @@ def _drain_iopub(
         elif msg_type == "execute_input":
             execution_count = content.get("execution_count")
 
-    return outputs, execution_count, error_text, status
+    return outputs, execution_count, error_text, status, timed_out

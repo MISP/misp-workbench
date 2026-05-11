@@ -528,6 +528,101 @@ class TestLabExecution(ApiTester):
         assert "eeee1111-eeee-eeee-eeee-eeeeeeeeeeee" in cell_ids
         assert "eeee3333-eeee-eeee-eeee-eeeeeeeeeeee" in cell_ids
 
+    def test_executor_timeout_interrupts_kernel(
+        self, db: Session, api_tester_user: user_models.User
+    ):
+        """When ``_drain_iopub`` reports ``timed_out=True`` the executor must
+        interrupt the kernel and drain leftover IOPub before returning, so
+        the next cell on the same kernel doesn't pick up stale messages."""
+        import threading
+        import time
+
+        from app.services.tech_lab.lab import executor as lab_executor
+        from app.services.tech_lab.lab.kernel_manager import (
+            LabKernelRegistry,
+            _Entry,
+        )
+
+        cell_id = "eeee4444-eeee-eeee-eeee-eeeeeeeeeeee"
+        source = f"# %% [id={cell_id}] code\nwhile True: pass\n"
+        nb = lab_repository.create_notebook(
+            db,
+            lab_schemas.LabNotebookCreate(
+                name="timeout-test", visibility="personal", source=source
+            ),
+            current_user_id=api_tester_user.id,
+        )
+        row = lab_repository.create_execution(
+            db, nb.id, cell_id, current_user_id=api_tester_user.id
+        )
+
+        class _Manager:
+            def __init__(self):
+                self.interrupt_called = False
+                self.shutdown_called = False
+
+            def shutdown_kernel(self, now=False):
+                self.shutdown_called = True
+
+            def interrupt_kernel(self):
+                self.interrupt_called = True
+                client.interrupted = True
+
+        class _Client:
+            def __init__(self):
+                self.interrupted = False
+
+            def execute(self, src, silent=False, store_history=True):
+                return "msg-1"
+
+            def stop_channels(self):
+                pass
+
+            def get_iopub_msg(self, timeout=None):
+                # Pre-interrupt: simulate the cell never replying, so the
+                # drain deadline elapses and timed_out=True flows back.
+                if not self.interrupted:
+                    raise TimeoutError("no message")
+                # Post-interrupt: emit one stream output, then idle, so the
+                # grace drain terminates promptly.
+                if not getattr(self, "_drained_grace", False):
+                    self._drained_grace = True
+                    return {
+                        "parent_header": {"msg_id": "msg-1"},
+                        "msg_type": "stream",
+                        "content": {"name": "stdout", "text": "post-interrupt\n"},
+                    }
+                return {
+                    "parent_header": {"msg_id": "msg-1"},
+                    "msg_type": "status",
+                    "content": {"execution_state": "idle"},
+                }
+
+        manager = _Manager()
+        client = _Client()
+
+        reg = LabKernelRegistry(idle_seconds=10_000)
+        reg._kernels[(api_tester_user.id, nb.id)] = _Entry(
+            manager=manager,
+            client=client,
+            cwd="",
+            last_active=time.monotonic(),
+            lock=threading.Lock(),
+            started=True,
+        )
+
+        lab_executor.execute_cell(
+            db, row.id, timeout_seconds=1, registry=reg
+        )
+
+        db.refresh(row)
+        assert row.status == "interrupted"
+        assert manager.interrupt_called
+        assert any(
+            o.get("output_type") == "stream" and "post-interrupt" in o.get("text", "")
+            for o in (row.outputs or [])
+        )
+
 
 class TestLabRepositoryUnit:
     """Pure-Python unit tests for helpers that don't need the API."""
@@ -733,20 +828,52 @@ class TestExportImport(ApiTester):
         assert "[id=id-x] code" in data["source"]
 
 
-class TestKernelManagerUnit:
-    def test_idle_eviction(self):
-        from app.services.tech_lab.lab.kernel_manager import LabKernelRegistry
+class _FakeManager:
+    def __init__(self):
+        self.shutdown_called = False
+        self.interrupt_called = False
 
-        reg = LabKernelRegistry(idle_seconds=0)  # immediate eviction
-        # Inject a fake entry without spawning a real kernel.
-        from app.services.tech_lab.lab.kernel_manager import _Entry
+    def shutdown_kernel(self, now=False):
+        self.shutdown_called = True
+
+    def interrupt_kernel(self):
+        self.interrupt_called = True
+
+
+class _FakeClient:
+    def __init__(self):
+        self.channels_stopped = False
+
+    def stop_channels(self):
+        self.channels_stopped = True
+
+
+class TestKernelManagerUnit:
+    def test_idle_eviction_pops_and_tears_down(self):
+        """Eviction must shut down the kernel manager and remove the per-kernel
+        tempdir — earlier versions only popped the dict entry, leaking the
+        subprocess and its working directory."""
+        import os
+        import tempfile
         import time
 
+        from app.services.tech_lab.lab.kernel_manager import (
+            LabKernelRegistry,
+            _Entry,
+        )
+
+        reg = LabKernelRegistry(idle_seconds=0)  # immediate eviction
+        manager = _FakeManager()
+        client = _FakeClient()
+        cwd = tempfile.mkdtemp(prefix="lab-test-")
         reg._kernels[(1, 1)] = _Entry(
-            manager=object(),
-            client=object(),
-            cwd="/tmp",
+            manager=manager,
+            client=client,
+            cwd=cwd,
             last_active=time.monotonic() - 10,
         )
         reg._evict_idle()
         assert (1, 1) not in reg._kernels
+        assert manager.shutdown_called
+        assert client.channels_stopped
+        assert not os.path.exists(cwd)

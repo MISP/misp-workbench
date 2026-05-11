@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import logging
 import os
+import shutil
 import tempfile
 import threading
 import time
@@ -117,15 +118,14 @@ class LabKernelRegistry:
         cutoff = now - self._idle_seconds
         with self._lock:
             stale = [
-                k for k, v in self._kernels.items() if v.last_active < cutoff
+                (k, v) for k, v in self._kernels.items() if v.last_active < cutoff
             ]
-            for k in stale:
+            for k, _ in stale:
                 self._kernels.pop(k, None)
-                logger.info("evicting idle lab kernel %s", k)
-        # Tear down outside the lock — manager.shutdown() can block on subprocess wait.
-        for k in stale:
-            # _teardown_entry uses the entry directly; we already popped, so re-find via fresh KM API
-            pass  # entries already removed; kernels GC'd when last reference drops
+        # Tear down outside the lock — manager.shutdown_kernel() can block on subprocess wait.
+        for k, entry in stale:
+            logger.info("evicting idle lab kernel %s", k)
+            self._teardown_entry(entry)
 
     def _spawn(self, key: KernelKey) -> _Entry:
         # Local import: jupyter_client is only available inside the lab-worker
@@ -199,6 +199,8 @@ class LabKernelRegistry:
             entry.manager.shutdown_kernel(now=True)  # type: ignore[attr-defined]
         except Exception:  # noqa: BLE001
             logger.exception("manager.shutdown_kernel failed")
+        if entry.cwd:
+            shutil.rmtree(entry.cwd, ignore_errors=True)
 
 
 # ── module-level default registry (used by Celery tasks) ──────────────────

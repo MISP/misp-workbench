@@ -271,7 +271,9 @@ async def execute_cell(
 
     from app.worker.tasks import lab_execute_cell as _task
 
-    async_result = _task.apply_async(args=[row.id], queue="lab_kernel")
+    async_result = _task.apply_async(
+        args=[row.id, payload.timeout_seconds], queue="lab_kernel"
+    )
     row.celery_task_id = getattr(async_result, "id", None)
     db.commit()
     db.refresh(row)
