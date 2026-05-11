@@ -10494,6 +10494,20 @@
               "type": "integer",
               "title": "Notebook Id"
             }
+          },
+          {
+            "name": "visibility",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "personal",
+                "global"
+              ],
+              "type": "string",
+              "default": "personal",
+              "title": "Visibility"
+            }
           }
         ],
         "responses": {
