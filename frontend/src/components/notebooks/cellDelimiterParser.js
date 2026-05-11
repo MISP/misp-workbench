@@ -10,7 +10,7 @@
 const DELIMITER_RE =
   /^#\s*%%(?:\s*\[id=([0-9a-fA-F-]+)\])?(?:\s+(code|markdown))?\s*(.*)$/;
 
-function uuid() {
+export function uuid() {
   if (typeof crypto !== "undefined" && crypto.randomUUID) {
     return crypto.randomUUID();
   }

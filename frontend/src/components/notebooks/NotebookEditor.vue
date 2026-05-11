@@ -20,12 +20,14 @@ import {
   faColumns,
   faTableList,
   faBroom,
+  faPlus,
+  faFileLines,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
 import KernelStatusPill from "./KernelStatusPill.vue";
 import MwctipyReferenceModal from "./MwctipyReferenceModal.vue";
 import OutputPanel from "./OutputPanel.vue";
-import { parseCells, findCellAtLine } from "./cellDelimiterParser";
+import { parseCells, findCellAtLine, uuid } from "./cellDelimiterParser";
 
 const props = defineProps({
   notebookId: { type: Number, default: null },
@@ -74,14 +76,6 @@ const liveNotebook = computed(() => {
   return (
     storeNotebooks.value[currentNotebook.value.id] || currentNotebook.value
   );
-});
-
-const liveSource = computed(() => {
-  // Prefer the editor model (so the panel reflects unsaved edits) over the
-  // store copy.
-  const model = models.get(currentNotebook.value?.id);
-  if (model) return model.getValue();
-  return liveNotebook.value?.source || "";
 });
 
 const liveCellOutputs = computed(() => liveNotebook.value?.cell_outputs || {});
@@ -257,12 +251,16 @@ watch(
   { immediate: true },
 );
 
-// Expose a tracked source string so the OutputPanel re-renders on edits.
-// `void _editTick.value` forces a reactive subscription on the tick ref so
-// computed re-runs whenever the model emits onDidChangeContent.
+// Source string the OutputPanel reads. The Monaco model is not reactive, so
+// we subscribe to ``_editTick`` (bumped on every onDidChangeContent) and
+// call ``model.getValue()`` inline — wrapping it in another computed would
+// hide the read behind a cached layer and stale-render markdown until the
+// next notebook switch.
 const trackedSource = computed(() => {
   void _editTick.value;
-  return liveSource.value;
+  const model = models.get(currentNotebook.value?.id);
+  if (model) return model.getValue();
+  return liveNotebook.value?.source || "";
 });
 
 // ── Run cell / Run all / Interrupt / Restart ────────────────────────────
@@ -358,6 +356,46 @@ async function runCellById(cellId) {
   } catch (err) {
     toastsStore.push(`Run failed: ${err?.message || err}`, "danger");
   }
+}
+
+// Insert a new code or markdown cell after the cell at the cursor (or at the
+// end of the document if the cursor isn't inside a cell). Uses Monaco's edit
+// API so undo/redo and onDidChangeContent (auto-save) all behave correctly.
+function insertCell(type) {
+  if (!currentNotebook.value || readOnly.value || isLibrary.value) return;
+  if (!editorRef.value || !monaco.value) return;
+  const model = models.get(currentNotebook.value.id);
+  if (!model) return;
+
+  const cells = parseCells(model.getValue());
+  const pos = editorRef.value.getPosition();
+  let endLine = model.getLineCount();
+  if (pos && cells.length > 0) {
+    const cell = findCellAtLine(cells, pos.lineNumber);
+    if (cell) endLine = cell.sourceEndLine;
+  }
+
+  const lineLen = model.getLineContent(endLine).length;
+  // Don't prepend a newline when the doc is a single empty line — otherwise
+  // we'd seed a permanent leading blank line.
+  const isEmptyDoc = endLine === 1 && lineLen === 0;
+  const delimiter = `# %% [id=${uuid()}] ${type}\n`;
+  const text = (isEmptyDoc ? "" : "\n") + delimiter;
+
+  const range = new monaco.value.Range(
+    endLine,
+    lineLen + 1,
+    endLine,
+    lineLen + 1,
+  );
+  editorRef.value.executeEdits("insert-cell", [
+    { range, text, forceMoveMarkers: true },
+  ]);
+
+  const cursorLine = isEmptyDoc ? 2 : endLine + 2;
+  editorRef.value.setPosition({ lineNumber: cursorLine, column: 1 });
+  editorRef.value.revealLineInCenterIfOutsideViewport(cursorLine);
+  editorRef.value.focus();
 }
 
 async function clearOutputs() {
@@ -617,9 +655,43 @@ const saveLabel = computed(() => {
         :class="{ 'editor-pane-split': showOutputs }"
       >
         <div
-          class="editor-pane-toolbar border-bottom px-2 py-1 d-flex align-items-center"
+          class="editor-pane-toolbar border-bottom px-2 py-1 d-flex align-items-center gap-2"
         >
           <small class="text-muted font-monospace me-auto">python</small>
+          <div v-if="!readOnly" class="dropdown">
+            <button
+              type="button"
+              class="btn btn-outline-secondary btn-sm dropdown-toggle"
+              data-bs-toggle="dropdown"
+              aria-expanded="false"
+              title="Add a new cell after the current cell"
+            >
+              <FontAwesomeIcon :icon="faPlus" class="me-1" />
+              Add
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end">
+              <li>
+                <button
+                  type="button"
+                  class="dropdown-item"
+                  @click="insertCell('code')"
+                >
+                  <FontAwesomeIcon :icon="faCode" class="me-2" />
+                  Code
+                </button>
+              </li>
+              <li>
+                <button
+                  type="button"
+                  class="dropdown-item"
+                  @click="insertCell('markdown')"
+                >
+                  <FontAwesomeIcon :icon="faFileLines" class="me-2" />
+                  Markdown
+                </button>
+              </li>
+            </ul>
+          </div>
           <button
             class="btn btn-outline-secondary btn-sm"
             data-bs-toggle="modal"
