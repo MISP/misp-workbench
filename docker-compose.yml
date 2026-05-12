@@ -213,6 +213,8 @@ services:
   lab-worker:
     build:
       context: ./api
+      args:
+        POETRY_GROUPS: lab
     # Dedicated worker for Tech Lab notebook kernels. Threadpool — not
     # prefork — because all kernels share one Python process; any thread
     # must be able to drive any kernel via the in-memory KernelManager
