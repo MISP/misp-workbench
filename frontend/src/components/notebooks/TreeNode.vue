@@ -10,6 +10,7 @@ import {
   faPen,
   faCodeBranch,
   faLock,
+  faThumbtack,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
 
@@ -24,6 +25,7 @@ const props = defineProps({
   selectedNotebookId: { type: Number, default: null },
   currentUserId: { type: Number, default: null },
   depth: { type: Number, default: 0 },
+  forceOpen: { type: Boolean, default: false },
 });
 
 const emit = defineEmits([
@@ -33,9 +35,16 @@ const emit = defineEmits([
   "delete-notebook",
   "rename-notebook",
   "fork-notebook",
+  "toggle-pin",
 ]);
 
-const open = ref(props.depth < 1);
+const internalOpen = ref(props.depth < 1);
+const open = computed({
+  get: () => props.forceOpen || internalOpen.value,
+  set: (v) => {
+    internalOpen.value = v;
+  },
+});
 
 const isFolder = computed(() => props.node.kind === "folder");
 const isNotebook = computed(() => props.node.kind === "notebook");
@@ -56,6 +65,12 @@ const isOwned = computed(() => {
     : props.node.notebook.user_id;
   return owner === props.currentUserId;
 });
+// Pinning is a per-user bookmark — any visible notebook can be pinned,
+// regardless of visibility or ownership.
+const canPin = computed(() => isNotebook.value);
+const isPinned = computed(
+  () => isNotebook.value && !!props.node.notebook.is_pinned,
+);
 
 function toggle() {
   if (isFolder.value) open.value = !open.value;
@@ -106,7 +121,23 @@ function onClick() {
         />
       </span>
 
+      <FontAwesomeIcon
+        v-if="isNotebook && isPinned"
+        :icon="faThumbtack"
+        class="ms-1 text-warning pin-badge"
+        title="Pinned"
+      />
+
       <span class="tree-actions">
+        <button
+          v-if="canPin"
+          class="btn btn-link btn-sm p-0 ms-1 pin-toggle"
+          :class="isPinned ? 'text-warning' : 'text-secondary'"
+          :title="isPinned ? 'Unpin' : 'Pin to top'"
+          @click.stop="$emit('toggle-pin', node.notebook)"
+        >
+          <FontAwesomeIcon :icon="faThumbtack" />
+        </button>
         <button
           v-if="isNotebook && !isOwned"
           class="btn btn-link btn-sm p-0 ms-1 text-info"
@@ -153,12 +184,14 @@ function onClick() {
         :selected-notebook-id="selectedNotebookId"
         :current-user-id="currentUserId"
         :depth="depth + 1"
+        :force-open="forceOpen"
         @select-notebook="(n) => $emit('select-notebook', n)"
         @delete-folder="(f) => $emit('delete-folder', f)"
         @rename-folder="(f) => $emit('rename-folder', f)"
         @delete-notebook="(n) => $emit('delete-notebook', n)"
         @rename-notebook="(n) => $emit('rename-notebook', n)"
         @fork-notebook="(n) => $emit('fork-notebook', n)"
+        @toggle-pin="(n) => $emit('toggle-pin', n)"
       />
       <TreeNode
         v-for="cn in childNotebooks"
@@ -168,12 +201,14 @@ function onClick() {
         :selected-notebook-id="selectedNotebookId"
         :current-user-id="currentUserId"
         :depth="depth + 1"
+        :force-open="forceOpen"
         @select-notebook="(n) => $emit('select-notebook', n)"
         @delete-folder="(f) => $emit('delete-folder', f)"
         @rename-folder="(f) => $emit('rename-folder', f)"
         @delete-notebook="(n) => $emit('delete-notebook', n)"
         @rename-notebook="(n) => $emit('rename-notebook', n)"
         @fork-notebook="(n) => $emit('fork-notebook', n)"
+        @toggle-pin="(n) => $emit('toggle-pin', n)"
       />
     </ul>
   </li>
@@ -183,11 +218,11 @@ function onClick() {
 .tree-row {
   display: flex;
   align-items: center;
-  padding: 4px 6px;
+  padding: 3px 6px;
   cursor: pointer;
   user-select: none;
   border-radius: 4px;
-  font-size: 0.875rem;
+  font-size: 0.78rem;
 }
 .tree-row:hover {
   background: var(--bs-tertiary-bg, #eee);
@@ -211,6 +246,17 @@ function onClick() {
 }
 .tree-row:hover .tree-actions {
   visibility: visible;
+}
+/* Pinned badge stays visible even when not hovering so users can see the
+   pin state at a glance; the toggle button only appears on hover. */
+.pin-badge {
+  font-size: 0.7rem;
+}
+.tree-row:hover .pin-badge {
+  display: none;
+}
+.pin-toggle {
+  font-size: 0.85rem;
 }
 .tree-label {
   white-space: nowrap;

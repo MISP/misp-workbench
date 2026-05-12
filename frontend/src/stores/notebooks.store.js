@@ -6,7 +6,8 @@ const baseUrl = `${import.meta.env.VITE_API_URL}/tech-lab`;
 export const useNotebooksStore = defineStore({
   id: "notebooks",
   state: () => ({
-    tree: { folders: [], notebooks: [] },
+    tree: { folders: [], notebooks: [], pinned_notebook_ids: [] },
+    pinnedIds: new Set(),
     notebooks: {}, // id → full notebook (lazy)
     saveStatus: {}, // id → "idle" | "saving" | "saved" | "error"
     inFlight: {}, // notebookId → { executionId → execution }
@@ -26,7 +27,15 @@ export const useNotebooksStore = defineStore({
       this.status.loadingTree = true;
       this.status.error = null;
       try {
-        this.tree = await fetchWrapper.get(`${baseUrl}/tree`);
+        const tree = await fetchWrapper.get(`${baseUrl}/tree`);
+        this.pinnedIds = new Set(tree.pinned_notebook_ids || []);
+        // Surface is_pinned on each summary so existing components can read
+        // it without threading the set through every prop.
+        tree.notebooks = (tree.notebooks || []).map((n) => ({
+          ...n,
+          is_pinned: this.pinnedIds.has(n.id),
+        }));
+        this.tree = tree;
         return this.tree;
       } catch (err) {
         this.status.error = err?.message || String(err);
@@ -121,6 +130,26 @@ export const useNotebooksStore = defineStore({
         return nb;
       } finally {
         this.status.forking = false;
+      }
+    },
+    async togglePin(id, shouldPin) {
+      if (shouldPin) {
+        await fetchWrapper.post(`${baseUrl}/notebooks/${id}/pin`, {});
+        this.pinnedIds.add(id);
+      } else {
+        await fetchWrapper.delete(`${baseUrl}/notebooks/${id}/pin`);
+        this.pinnedIds.delete(id);
+      }
+      // Force a new Set instance so reactive consumers re-evaluate.
+      this.pinnedIds = new Set(this.pinnedIds);
+      // Patch the tree summary in place so the Pinned section reflects the
+      // change immediately without a full tree refetch.
+      const idx = (this.tree.notebooks || []).findIndex((n) => n.id === id);
+      if (idx >= 0) {
+        this.tree.notebooks[idx] = {
+          ...this.tree.notebooks[idx],
+          is_pinned: !!shouldPin,
+        };
       }
     },
     async clearOutputs(id) {

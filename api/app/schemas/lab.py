@@ -93,6 +93,7 @@ class LabTree(BaseModel):
 
     folders: list[LabFolder]
     notebooks: list[LabNotebookSummary]
+    pinned_notebook_ids: list[int] = Field(default_factory=list)
 
 
 # ──────────────────────────────────────────────────────────────────────────

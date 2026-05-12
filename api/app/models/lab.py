@@ -43,6 +43,29 @@ class LabNotebook(Base):
     updated_at = Column(DateTime(timezone=True), nullable=True)
 
 
+class LabNotebookPin(Base):
+    """Per-user notebook pin. Composite PK on ``(user_id, notebook_id)``.
+
+    Pinning is a viewer preference, not a property of the notebook itself —
+    two users can pin the same global notebook independently, and unpinning
+    only affects the current user's view.
+    """
+
+    __tablename__ = "lab_notebook_pins"
+
+    user_id = Column(
+        Integer,
+        ForeignKey("users.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    notebook_id = Column(
+        Integer,
+        ForeignKey("lab_notebooks.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    created_at = Column(DateTime(timezone=True), nullable=False)
+
+
 class LabExecution(Base):
     __tablename__ = "lab_executions"
 

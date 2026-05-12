@@ -217,6 +217,40 @@ async def clear_outputs(
 
 
 @router.post(
+    "/tech-lab/notebooks/{notebook_id}/pin",
+    status_code=status.HTTP_200_OK,
+)
+async def pin_notebook(
+    notebook_id: int,
+    db: Session = Depends(get_db),
+    user: user_schemas.User = Security(get_current_active_user, scopes=["lab:read"]),
+):
+    result = lab_repository.pin_notebook(db, notebook_id, current_user_id=user.id)
+    if result is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Notebook not found"
+        )
+    return result
+
+
+@router.delete(
+    "/tech-lab/notebooks/{notebook_id}/pin",
+    status_code=status.HTTP_200_OK,
+)
+async def unpin_notebook(
+    notebook_id: int,
+    db: Session = Depends(get_db),
+    user: user_schemas.User = Security(get_current_active_user, scopes=["lab:read"]),
+):
+    result = lab_repository.unpin_notebook(db, notebook_id, current_user_id=user.id)
+    if result is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Notebook not found"
+        )
+    return result
+
+
+@router.post(
     "/tech-lab/notebooks/{notebook_id}/fork",
     response_model=lab_schemas.LabNotebook,
     status_code=status.HTTP_201_CREATED,

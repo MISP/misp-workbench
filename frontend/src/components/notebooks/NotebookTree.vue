@@ -8,6 +8,9 @@ import {
   faRotateRight,
   faFileImport,
   faBookOpen,
+  faMagnifyingGlass,
+  faThumbtack,
+  faXmark,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
 import TreeNode from "./TreeNode.vue";
@@ -27,22 +30,72 @@ const { tree, status } = storeToRefs(notebooksStore);
 const newDialogVisibility = ref("personal");
 const newDialogFolderId = ref(null);
 
+const query = ref("");
+const hasQuery = computed(() => query.value.trim().length > 0);
+function nameMatches(name) {
+  if (!hasQuery.value) return true;
+  return (name || "").toLowerCase().includes(query.value.trim().toLowerCase());
+}
+
+// Set of folder ids that should remain visible under the current search. A
+// folder qualifies if its own name matches OR any descendant (folder /
+// notebook) name matches. Returns null when there is no query so callers can
+// skip the filter cheaply.
+const visibleFolderIds = computed(() => {
+  if (!hasQuery.value) return null;
+  const folders = tree.value.folders || [];
+  const notebooks = tree.value.notebooks || [];
+  const foldersByParent = new Map();
+  for (const f of folders) {
+    const key = f.parent_id ?? null;
+    if (!foldersByParent.has(key)) foldersByParent.set(key, []);
+    foldersByParent.get(key).push(f);
+  }
+  const notebooksByFolder = new Map();
+  for (const n of notebooks) {
+    if (n.folder_id == null) continue;
+    if (!notebooksByFolder.has(n.folder_id))
+      notebooksByFolder.set(n.folder_id, []);
+    notebooksByFolder.get(n.folder_id).push(n);
+  }
+  const visible = new Set();
+  function visit(folder) {
+    let hit = nameMatches(folder.name);
+    for (const cf of foldersByParent.get(folder.id) || []) {
+      if (visit(cf)) hit = true;
+    }
+    for (const n of notebooksByFolder.get(folder.id) || []) {
+      if (nameMatches(n.name)) hit = true;
+    }
+    if (hit) visible.add(folder.id);
+    return hit;
+  }
+  for (const f of folders.filter((x) => x.parent_id == null)) visit(f);
+  return visible;
+});
+
 function rootChildren(visibility) {
   const folders = (tree.value.folders || []).filter(
-    (f) => f.visibility === visibility && f.parent_id == null,
+    (f) =>
+      f.visibility === visibility &&
+      f.parent_id == null &&
+      (!visibleFolderIds.value || visibleFolderIds.value.has(f.id)),
   );
   const notebooks = (tree.value.notebooks || []).filter(
-    (n) => n.visibility === visibility && n.folder_id == null,
+    (n) =>
+      n.visibility === visibility && n.folder_id == null && nameMatches(n.name),
   );
   return { folders, notebooks };
 }
 
 function buildChildren(folderId) {
   const folders = (tree.value.folders || []).filter(
-    (f) => f.parent_id === folderId,
+    (f) =>
+      f.parent_id === folderId &&
+      (!visibleFolderIds.value || visibleFolderIds.value.has(f.id)),
   );
   const notebooks = (tree.value.notebooks || []).filter(
-    (n) => n.folder_id === folderId,
+    (n) => n.folder_id === folderId && nameMatches(n.name),
   );
   return { folders, notebooks };
 }
@@ -50,6 +103,12 @@ function buildChildren(folderId) {
 const personal = computed(() => rootChildren("personal"));
 const globalRoot = computed(() => rootChildren("global"));
 const library = computed(() => rootChildren("library"));
+
+const pinned = computed(() =>
+  (tree.value.notebooks || [])
+    .filter((n) => n.is_pinned && nameMatches(n.name))
+    .sort((a, b) => a.name.localeCompare(b.name)),
+);
 
 function openNewFolder(visibility) {
   newDialogVisibility.value = visibility;
@@ -131,6 +190,14 @@ async function onRenameNotebook(notebook) {
   }
 }
 
+async function onTogglePin(notebook) {
+  try {
+    await notebooksStore.togglePin(notebook.id, !notebook.is_pinned);
+  } catch (err) {
+    toastsStore.push(`Failed to pin: ${err?.message || err}`, "danger");
+  }
+}
+
 async function onForkNotebook(notebook) {
   try {
     const fork = await notebooksStore.forkNotebook(notebook.id);
@@ -193,11 +260,60 @@ onMounted(() => {
       />
     </div>
 
+    <div class="tree-search px-2 py-2 border-bottom">
+      <div class="input-group input-group-sm">
+        <span class="input-group-text bg-body">
+          <FontAwesomeIcon :icon="faMagnifyingGlass" class="text-muted" />
+        </span>
+        <input
+          v-model="query"
+          type="search"
+          class="form-control"
+          placeholder="Search notebooks…"
+          aria-label="Search notebooks"
+        />
+        <button
+          v-if="hasQuery"
+          class="btn btn-outline-secondary"
+          type="button"
+          title="Clear"
+          @click="query = ''"
+        >
+          <FontAwesomeIcon :icon="faXmark" />
+        </button>
+      </div>
+    </div>
+
     <div v-if="status.error" class="alert alert-warning small m-2 py-2">
       {{ status.error }}
     </div>
 
     <div class="tree-body flex-grow-1 overflow-auto">
+      <!-- Pinned section (personal notebooks the user has pinned) -->
+      <div v-if="pinned.length > 0" class="tree-section">
+        <div class="tree-section-header">
+          <FontAwesomeIcon :icon="faThumbtack" class="me-2 text-warning" />
+          <span class="me-auto">Pinned</span>
+        </div>
+        <ul class="list-unstyled m-0">
+          <TreeNode
+            v-for="n in pinned"
+            :key="`pin-${n.id}`"
+            :node="{ kind: 'notebook', notebook: n }"
+            :build-children="buildChildren"
+            :selected-notebook-id="selectedNotebookId"
+            :current-user-id="currentUserId"
+            @select-notebook="(nb) => $emit('select-notebook', nb)"
+            @delete-folder="onDeleteFolder"
+            @rename-folder="onRenameFolder"
+            @delete-notebook="onDeleteNotebook"
+            @rename-notebook="onRenameNotebook"
+            @fork-notebook="onForkNotebook"
+            @toggle-pin="onTogglePin"
+          />
+        </ul>
+      </div>
+
       <!-- Personal section -->
       <div class="tree-section">
         <div class="tree-section-header">
@@ -231,12 +347,14 @@ onMounted(() => {
             :build-children="buildChildren"
             :selected-notebook-id="selectedNotebookId"
             :current-user-id="currentUserId"
+            :force-open="hasQuery"
             @select-notebook="(n) => $emit('select-notebook', n)"
             @delete-folder="onDeleteFolder"
             @rename-folder="onRenameFolder"
             @delete-notebook="onDeleteNotebook"
             @rename-notebook="onRenameNotebook"
             @fork-notebook="onForkNotebook"
+            @toggle-pin="onTogglePin"
           />
           <TreeNode
             v-for="n in personal.notebooks"
@@ -251,6 +369,7 @@ onMounted(() => {
             @delete-notebook="onDeleteNotebook"
             @rename-notebook="onRenameNotebook"
             @fork-notebook="onForkNotebook"
+            @toggle-pin="onTogglePin"
           />
         </ul>
       </div>
@@ -281,12 +400,14 @@ onMounted(() => {
             :build-children="buildChildren"
             :selected-notebook-id="selectedNotebookId"
             :current-user-id="currentUserId"
+            :force-open="hasQuery"
             @select-notebook="(n) => $emit('select-notebook', n)"
             @delete-folder="onDeleteFolder"
             @rename-folder="onRenameFolder"
             @delete-notebook="onDeleteNotebook"
             @rename-notebook="onRenameNotebook"
             @fork-notebook="onForkNotebook"
+            @toggle-pin="onTogglePin"
           />
           <TreeNode
             v-for="n in library.notebooks"
@@ -301,6 +422,7 @@ onMounted(() => {
             @delete-notebook="onDeleteNotebook"
             @rename-notebook="onRenameNotebook"
             @fork-notebook="onForkNotebook"
+            @toggle-pin="onTogglePin"
           />
         </ul>
       </div>
@@ -338,12 +460,14 @@ onMounted(() => {
             :build-children="buildChildren"
             :selected-notebook-id="selectedNotebookId"
             :current-user-id="currentUserId"
+            :force-open="hasQuery"
             @select-notebook="(n) => $emit('select-notebook', n)"
             @delete-folder="onDeleteFolder"
             @rename-folder="onRenameFolder"
             @delete-notebook="onDeleteNotebook"
             @rename-notebook="onRenameNotebook"
             @fork-notebook="onForkNotebook"
+            @toggle-pin="onTogglePin"
           />
           <TreeNode
             v-for="n in globalRoot.notebooks"
@@ -358,6 +482,7 @@ onMounted(() => {
             @delete-notebook="onDeleteNotebook"
             @rename-notebook="onRenameNotebook"
             @fork-notebook="onForkNotebook"
+            @toggle-pin="onTogglePin"
           />
         </ul>
       </div>

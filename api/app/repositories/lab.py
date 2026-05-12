@@ -496,7 +496,65 @@ def get_tree(db: Session, current_user_id: int) -> lab_schemas.LabTree:
         .order_by(lab_models.LabNotebook.name.asc())
         .all()
     )
+    pinned_ids = [
+        nb_id
+        for (nb_id,) in db.query(lab_models.LabNotebookPin.notebook_id)
+        .filter(lab_models.LabNotebookPin.user_id == current_user_id)
+        .all()
+    ]
     return lab_schemas.LabTree(
         folders=[lab_schemas.LabFolder.model_validate(f) for f in folders],
         notebooks=[lab_schemas.LabNotebookSummary.model_validate(n) for n in notebooks],
+        pinned_notebook_ids=pinned_ids,
     )
+
+
+def pin_notebook(
+    db: Session, notebook_id: int, current_user_id: int
+) -> Optional[dict]:
+    """Create a pin for the current user. Idempotent. Returns None if the
+    user cannot see the notebook (caller maps to 404)."""
+    nb = (
+        db.query(lab_models.LabNotebook)
+        .filter(lab_models.LabNotebook.id == notebook_id)
+        .first()
+    )
+    if nb is None or not _user_can_see(nb, current_user_id):
+        return None
+    existing = (
+        db.query(lab_models.LabNotebookPin)
+        .filter(
+            lab_models.LabNotebookPin.user_id == current_user_id,
+            lab_models.LabNotebookPin.notebook_id == notebook_id,
+        )
+        .first()
+    )
+    if existing is None:
+        db.add(
+            lab_models.LabNotebookPin(
+                user_id=current_user_id,
+                notebook_id=notebook_id,
+                created_at=datetime.now(timezone.utc),
+            )
+        )
+        db.commit()
+    return {"status": "pinned"}
+
+
+def unpin_notebook(
+    db: Session, notebook_id: int, current_user_id: int
+) -> Optional[dict]:
+    """Remove the pin for the current user. Idempotent."""
+    nb = (
+        db.query(lab_models.LabNotebook)
+        .filter(lab_models.LabNotebook.id == notebook_id)
+        .first()
+    )
+    if nb is None or not _user_can_see(nb, current_user_id):
+        return None
+    db.query(lab_models.LabNotebookPin).filter(
+        lab_models.LabNotebookPin.user_id == current_user_id,
+        lab_models.LabNotebookPin.notebook_id == notebook_id,
+    ).delete()
+    db.commit()
+    return {"status": "unpinned"}
