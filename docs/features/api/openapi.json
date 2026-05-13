@@ -10471,6 +10471,98 @@
         }
       }
     },
+    "/tech-lab/notebooks/{notebook_id}/pin": {
+      "post": {
+        "tags": [
+          "Tech Lab / Notebooks"
+        ],
+        "summary": "Pin Notebook",
+        "operationId": "pin_notebook_tech_lab_notebooks__notebook_id__pin_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "lab:read"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "notebook_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Notebook Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Tech Lab / Notebooks"
+        ],
+        "summary": "Unpin Notebook",
+        "operationId": "unpin_notebook_tech_lab_notebooks__notebook_id__pin_delete",
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "lab:read"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "notebook_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Notebook Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/tech-lab/notebooks/{notebook_id}/fork": {
       "post": {
         "tags": [
@@ -14963,6 +15055,13 @@
             },
             "type": "array",
             "title": "Notebooks"
+          },
+          "pinned_notebook_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Pinned Notebook Ids"
           }
         },
         "type": "object",
