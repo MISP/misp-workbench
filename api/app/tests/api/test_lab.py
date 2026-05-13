@@ -399,6 +399,144 @@ class TestLabRouter(ApiTester):
         db.refresh(nb)
         assert nb.visibility == "personal"
 
+    # ── Pin / unpin ─────────────────────────────────────────────────────────
+
+    @pytest.mark.parametrize("scopes", [["lab:create", "lab:read"]])
+    def test_pin_notebook_appears_in_tree(
+        self, client: TestClient, auth_token: auth.Token
+    ):
+        nb = client.post(
+            "/tech-lab/notebooks",
+            json={"name": "pin-me", "visibility": "personal"},
+            headers={"Authorization": "Bearer " + auth_token},
+        ).json()
+        response = client.post(
+            f"/tech-lab/notebooks/{nb['id']}/pin",
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+        assert response.status_code == status.HTTP_200_OK, response.text
+        assert response.json() == {"status": "pinned"}
+
+        tree = client.get(
+            "/tech-lab/tree",
+            headers={"Authorization": "Bearer " + auth_token},
+        ).json()
+        assert nb["id"] in tree["pinned_notebook_ids"]
+
+    @pytest.mark.parametrize("scopes", [["lab:create", "lab:read"]])
+    def test_pin_notebook_idempotent(
+        self,
+        client: TestClient,
+        db: Session,
+        api_tester_user: user_models.User,
+        auth_token: auth.Token,
+    ):
+        nb = client.post(
+            "/tech-lab/notebooks",
+            json={"name": "pin-twice", "visibility": "personal"},
+            headers={"Authorization": "Bearer " + auth_token},
+        ).json()
+        for _ in range(2):
+            response = client.post(
+                f"/tech-lab/notebooks/{nb['id']}/pin",
+                headers={"Authorization": "Bearer " + auth_token},
+            )
+            assert response.status_code == status.HTTP_200_OK
+        # Exactly one pin row in the DB — no duplicates.
+        count = (
+            db.query(lab_models.LabNotebookPin)
+            .filter(
+                lab_models.LabNotebookPin.user_id == api_tester_user.id,
+                lab_models.LabNotebookPin.notebook_id == nb["id"],
+            )
+            .count()
+        )
+        assert count == 1
+
+    @pytest.mark.parametrize("scopes", [["lab:read"]])
+    def test_pin_notebook_not_found(
+        self, client: TestClient, auth_token: auth.Token
+    ):
+        response = client.post(
+            "/tech-lab/notebooks/999999/pin",
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    @pytest.mark.parametrize("scopes", [["lab:read"]])
+    def test_pin_personal_notebook_of_other_user_404(
+        self,
+        client: TestClient,
+        db: Session,
+        user_1: user_models.User,
+        auth_token: auth.Token,
+    ):
+        nb = lab_repository.create_notebook(
+            db,
+            lab_schemas.LabNotebookCreate(
+                name="user_1-private", visibility="personal", source=""
+            ),
+            current_user_id=user_1.id,
+        )
+        response = client.post(
+            f"/tech-lab/notebooks/{nb.id}/pin",
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    @pytest.mark.parametrize("scopes", [["lab:create", "lab:read"]])
+    def test_unpin_notebook_removes_from_tree(
+        self, client: TestClient, auth_token: auth.Token
+    ):
+        nb = client.post(
+            "/tech-lab/notebooks",
+            json={"name": "unpin-me", "visibility": "personal"},
+            headers={"Authorization": "Bearer " + auth_token},
+        ).json()
+        client.post(
+            f"/tech-lab/notebooks/{nb['id']}/pin",
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+        response = client.delete(
+            f"/tech-lab/notebooks/{nb['id']}/pin",
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+        assert response.status_code == status.HTTP_200_OK, response.text
+        assert response.json() == {"status": "unpinned"}
+
+        tree = client.get(
+            "/tech-lab/tree",
+            headers={"Authorization": "Bearer " + auth_token},
+        ).json()
+        assert nb["id"] not in tree["pinned_notebook_ids"]
+
+    @pytest.mark.parametrize("scopes", [["lab:create", "lab:read"]])
+    def test_unpin_notebook_idempotent(
+        self, client: TestClient, auth_token: auth.Token
+    ):
+        nb = client.post(
+            "/tech-lab/notebooks",
+            json={"name": "never-pinned", "visibility": "personal"},
+            headers={"Authorization": "Bearer " + auth_token},
+        ).json()
+        # Two unpins on a never-pinned notebook still succeed.
+        for _ in range(2):
+            response = client.delete(
+                f"/tech-lab/notebooks/{nb['id']}/pin",
+                headers={"Authorization": "Bearer " + auth_token},
+            )
+            assert response.status_code == status.HTTP_200_OK
+
+    @pytest.mark.parametrize("scopes", [["lab:read"]])
+    def test_unpin_notebook_not_found(
+        self, client: TestClient, auth_token: auth.Token
+    ):
+        response = client.delete(
+            "/tech-lab/notebooks/999999/pin",
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
     @pytest.mark.parametrize("scopes", [["lab:create"]])
     def test_publish_library_to_global_rejected(
         self,
@@ -589,6 +727,144 @@ class TestLabExecution(ApiTester):
         cell_ids = {r["cell_id"] for r in rows}
         assert "eeee1111-eeee-eeee-eeee-eeeeeeeeeeee" in cell_ids
         assert "eeee3333-eeee-eeee-eeee-eeeeeeeeeeee" in cell_ids
+
+    # ── get_execution ────────────────────────────────────────────────────────
+
+    @pytest.mark.parametrize("scopes", [["lab:read"]])
+    def test_get_execution_returns_row(
+        self,
+        client: TestClient,
+        db: Session,
+        api_tester_user: user_models.User,
+        auth_token: auth.Token,
+    ):
+        cell_id = "ffff1111-ffff-ffff-ffff-ffffffffffff"
+        nb = lab_repository.create_notebook(
+            db,
+            lab_schemas.LabNotebookCreate(
+                name="get-exec",
+                visibility="personal",
+                source=f"# %% [id={cell_id}] code\nprint(1)\n",
+            ),
+            current_user_id=api_tester_user.id,
+        )
+        ex = lab_repository.create_execution(
+            db, nb.id, cell_id, current_user_id=api_tester_user.id
+        )
+        response = client.get(
+            f"/tech-lab/notebooks/{nb.id}/executions/{ex.id}",
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+        assert response.status_code == status.HTTP_200_OK, response.text
+        data = response.json()
+        assert data["id"] == ex.id
+        assert data["notebook_id"] == nb.id
+        assert data["cell_id"] == cell_id
+        assert data["status"] == "queued"
+
+    @pytest.mark.parametrize("scopes", [["lab:read"]])
+    def test_get_execution_mismatched_notebook_id_404(
+        self,
+        client: TestClient,
+        db: Session,
+        api_tester_user: user_models.User,
+        auth_token: auth.Token,
+    ):
+        """The router rejects when ``execution.notebook_id`` doesn't match the
+        path's ``notebook_id`` — prevents id-substitution from leaking another
+        notebook's execution."""
+        cell_id = "ffff2222-ffff-ffff-ffff-ffffffffffff"
+        nb_a = lab_repository.create_notebook(
+            db,
+            lab_schemas.LabNotebookCreate(
+                name="nb-a",
+                visibility="personal",
+                source=f"# %% [id={cell_id}] code\nprint(1)\n",
+            ),
+            current_user_id=api_tester_user.id,
+        )
+        nb_b = lab_repository.create_notebook(
+            db,
+            lab_schemas.LabNotebookCreate(
+                name="nb-b", visibility="personal", source=""
+            ),
+            current_user_id=api_tester_user.id,
+        )
+        ex = lab_repository.create_execution(
+            db, nb_a.id, cell_id, current_user_id=api_tester_user.id
+        )
+        response = client.get(
+            f"/tech-lab/notebooks/{nb_b.id}/executions/{ex.id}",
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    @pytest.mark.parametrize("scopes", [["lab:read"]])
+    def test_get_execution_personal_notebook_invisible_to_other_user_404(
+        self,
+        client: TestClient,
+        db: Session,
+        user_1: user_models.User,
+        auth_token: auth.Token,
+    ):
+        cell_id = "ffff3333-ffff-ffff-ffff-ffffffffffff"
+        nb = lab_repository.create_notebook(
+            db,
+            lab_schemas.LabNotebookCreate(
+                name="user_1-private-exec",
+                visibility="personal",
+                source=f"# %% [id={cell_id}] code\nprint(1)\n",
+            ),
+            current_user_id=user_1.id,
+        )
+        ex = lab_repository.create_execution(
+            db, nb.id, cell_id, current_user_id=user_1.id
+        )
+        response = client.get(
+            f"/tech-lab/notebooks/{nb.id}/executions/{ex.id}",
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    @pytest.mark.parametrize("scopes", [["lab:read"]])
+    def test_get_execution_on_global_notebook_visible_to_reader(
+        self,
+        client: TestClient,
+        db: Session,
+        user_1: user_models.User,
+        auth_token: auth.Token,
+    ):
+        cell_id = "ffff4444-ffff-ffff-ffff-ffffffffffff"
+        nb = lab_repository.create_notebook(
+            db,
+            lab_schemas.LabNotebookCreate(
+                name="user_1-shared-exec",
+                visibility="global",
+                source=f"# %% [id={cell_id}] code\nprint(1)\n",
+            ),
+            current_user_id=user_1.id,
+        )
+        # Execution belongs to user_1, on a global notebook — reader should
+        # be able to fetch it.
+        ex = lab_repository.create_execution(
+            db, nb.id, cell_id, current_user_id=user_1.id
+        )
+        response = client.get(
+            f"/tech-lab/notebooks/{nb.id}/executions/{ex.id}",
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+        assert response.status_code == status.HTTP_200_OK, response.text
+        assert response.json()["id"] == ex.id
+
+    @pytest.mark.parametrize("scopes", [["lab:read"]])
+    def test_get_execution_not_found(
+        self, client: TestClient, auth_token: auth.Token
+    ):
+        response = client.get(
+            "/tech-lab/notebooks/1/executions/999999",
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+        assert response.status_code == status.HTTP_404_NOT_FOUND
 
     def test_executor_timeout_interrupts_kernel(
         self, db: Session, api_tester_user: user_models.User
