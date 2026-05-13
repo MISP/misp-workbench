@@ -111,6 +111,27 @@ class LabKernelRegistry:
             if entry is not None:
                 entry.last_active = time.monotonic()
 
+    def snapshot(self) -> dict:
+        """Read-only summary of the current registry, safe to ship over the wire."""
+        now = time.monotonic()
+        with self._lock:
+            kernels = [
+                {
+                    "user_id": user_id,
+                    "notebook_id": notebook_id,
+                    "cwd": entry.cwd,
+                    "idle_seconds": int(now - entry.last_active),
+                    "started": entry.started,
+                }
+                for (user_id, notebook_id), entry in self._kernels.items()
+            ]
+        kernels.sort(key=lambda k: k["idle_seconds"])
+        return {
+            "idle_seconds_threshold": self._idle_seconds,
+            "kernel_count": len(kernels),
+            "kernels": kernels,
+        }
+
     # ── internals ──────────────────────────────────────────────────────────
 
     def _evict_idle(self) -> None:

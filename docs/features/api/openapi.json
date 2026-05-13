@@ -8159,6 +8159,33 @@
         ]
       }
     },
+    "/diagnostics/lab": {
+      "get": {
+        "tags": [
+          "Diagnostics"
+        ],
+        "summary": "Get Lab Diagnostics",
+        "description": "Lab-worker connectivity and running jupyter kernels.\n\nWorker presence is derived from Celery inspect \u2014 we look for a worker\nsubscribed to the ``lab_kernel`` queue. The kernel registry lives inside\nthe lab-worker process, so we round-trip a short task to fetch a snapshot.",
+        "operationId": "get_lab_diagnostics_diagnostics_lab_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "tasks:read"
+            ]
+          }
+        ]
+      }
+    },
     "/hunts/": {
       "get": {
         "tags": [

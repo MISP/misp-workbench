@@ -1061,3 +1061,9 @@ def lab_kernel_interrupt(user_id: int, notebook_id: int):
 def lab_kernel_shutdown(user_id: int, notebook_id: int):
     lab_kernel_manager.get_default_registry().shutdown((user_id, notebook_id))
     return True
+
+
+@celery_app.task(queue="lab_kernel")
+def lab_kernel_list():
+    """Snapshot of running kernels for the diagnostics endpoint."""
+    return lab_kernel_manager.get_default_registry().snapshot()

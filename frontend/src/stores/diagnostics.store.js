@@ -11,6 +11,7 @@ export const useDiagnosticsStore = defineStore({
     postgres: null,
     storage: null,
     modules: null,
+    lab: null,
     status: {
       loading: false,
       error: false,
@@ -54,6 +55,14 @@ export const useDiagnosticsStore = defineStore({
       fetchWrapper
         .get(`${baseUrl}/modules`)
         .then((response) => (this.modules = response))
+        .catch((error) => (this.status = { error }))
+        .finally(() => (this.status = { loading: false }));
+    },
+    async getLab() {
+      this.status = { loading: true };
+      fetchWrapper
+        .get(`${baseUrl}/lab`)
+        .then((response) => (this.lab = response))
         .catch((error) => (this.status = { error }))
         .finally(() => (this.status = { loading: false }));
     },
