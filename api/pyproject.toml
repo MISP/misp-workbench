@@ -42,6 +42,8 @@ optional = true
 ipykernel = "^6.29"
 jupyter-client = "^8.6"
 pandas = "^2.2"
+altair = "^5.5"
+vl-convert-python = "^1.7"
 
 [tool.poetry.dev-dependencies]
 pytest = "^9.0.3"
