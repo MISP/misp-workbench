@@ -380,3 +380,66 @@ def get_modules_diagnostics(
             "url": url,
             "error": str(e),
         }
+
+
+@router.get("/diagnostics/lab")
+def get_lab_diagnostics(
+    user: user_schemas.User = Security(get_current_active_user, scopes=["tasks:read"]),
+):
+    """Lab-worker connectivity and running jupyter kernels.
+
+    Worker presence is derived from Celery inspect — we look for a worker
+    subscribed to the ``lab_kernel`` queue. The kernel registry lives inside
+    the lab-worker process, so we round-trip a short task to fetch a snapshot.
+    """
+    from app.worker.tasks import celery_app, lab_kernel_list
+
+    worker_info = None
+    try:
+        inspect = celery_app.control.inspect(timeout=2)
+        active_queues = inspect.active_queues() or {}
+        stats = inspect.stats() or {}
+        for worker_name, queues in active_queues.items():
+            if any(q.get("name") == "lab_kernel" for q in queues):
+                s = stats.get(worker_name) or {}
+                worker_info = {
+                    "name": worker_name,
+                    "pool_implementation": (s.get("pool") or {}).get(
+                        "implementation"
+                    ),
+                    "concurrency": (s.get("pool") or {}).get("max-concurrency"),
+                    "uptime_seconds": s.get("uptime"),
+                    "pid": (s.get("pool") or {}).get("processes") or s.get("pid"),
+                }
+                break
+    except Exception as e:
+        logger.warning("Failed to inspect celery for lab-worker: %s", e)
+
+    if worker_info is None:
+        return {
+            "connected": False,
+            "worker": None,
+            "kernel_count": 0,
+            "kernels": [],
+            "idle_seconds_threshold": None,
+            "error": "lab-worker not found on lab_kernel queue",
+        }
+
+    try:
+        snapshot = lab_kernel_list.apply_async(queue="lab_kernel").get(timeout=5)
+    except Exception as e:
+        logger.error("Failed to snapshot lab kernels: %s", e)
+        return {
+            "connected": True,
+            "worker": worker_info,
+            "kernel_count": 0,
+            "kernels": [],
+            "idle_seconds_threshold": None,
+            "error": f"snapshot task failed: {e}",
+        }
+
+    return {
+        "connected": True,
+        "worker": worker_info,
+        **snapshot,
+    }

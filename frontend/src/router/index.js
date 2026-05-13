@@ -57,6 +57,7 @@ import {
   AddReactorScript,
   EditReactorScript,
   ViewReactorScript,
+  NotebooksWorkspace,
 } from "@/views";
 
 export const router = createRouter({
@@ -133,6 +134,12 @@ export const router = createRouter({
     {
       path: "/tech-lab/reactor/:id",
       component: ViewReactorScript,
+      props: true,
+    },
+    { path: "/tech-lab/notebooks", component: NotebooksWorkspace },
+    {
+      path: "/tech-lab/notebooks/:id",
+      component: NotebooksWorkspace,
       props: true,
     },
     { path: "/roles", component: IndexRoles },

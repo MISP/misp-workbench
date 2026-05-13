@@ -18,6 +18,7 @@ A modern MISP-compatible threat intelligence platform. It provides a self-contai
 | [Batch Import](features/batch-import.md) | Easily import a list of indicators and add them as attributes to an event in a single operation. |
 | [Retention](features/retention.md) | Configurable event retention period with automatic purge of expired events |
 | [Reactor Scripts](features/tech-lab/reactor.md) | User-defined Python scripts that react to platform events and run in an isolated sandbox |
+| [Notebooks](features/tech-lab/notebooks.md) | Interactive analyst notebooks with a pre-imported SDK (`mwlab`) for ad-hoc exploration of events, attributes, correlations, and enrichments |
 | [OpenSearch](features/opensearch/index.md) | Full-text search, dashboards, and ingestion pipelines |
 | [REST API](features/api/index.md) | FastAPI backend with automatic OpenAPI documentation |
 | **Storage** | Garage (S3-compatible) or local filesystem for attachments |

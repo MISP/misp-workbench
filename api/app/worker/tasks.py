@@ -26,6 +26,8 @@ from app.repositories import reactor as reactor_repository
 from app.repositories import taxonomies as taxonomies_repository
 from app.schemas import attribute as attribute_schemas
 from app.services.tech_lab.reactor import runner as reactor_runner
+from app.services.tech_lab.lab import executor as lab_executor
+from app.services.tech_lab.lab import kernel_manager as lab_kernel_manager
 from celery import Celery
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
@@ -1032,3 +1034,36 @@ def run_reactor_script(run_id: int):
         reactor_runner.run_script(db, run_id)
     logger.info("run_reactor_script run_id=%s finished", run_id)
     return True
+
+
+# ──────────────────────────────────────────────────────────────────────────
+# Tech Lab — Notebooks
+# ──────────────────────────────────────────────────────────────────────────
+
+
+@celery_app.task(queue="lab_kernel", time_limit=600, soft_time_limit=540)
+def lab_execute_cell(execution_id: int, timeout_seconds: int = 60):
+    """Run one queued cell execution. Lives on the lab-worker container."""
+    logger.info("lab_execute_cell execution_id=%s started", execution_id)
+    with Session(engine) as db:
+        lab_executor.execute_cell(db, execution_id, timeout_seconds=timeout_seconds)
+    logger.info("lab_execute_cell execution_id=%s finished", execution_id)
+    return True
+
+
+@celery_app.task(queue="lab_kernel")
+def lab_kernel_interrupt(user_id: int, notebook_id: int):
+    lab_kernel_manager.get_default_registry().interrupt((user_id, notebook_id))
+    return True
+
+
+@celery_app.task(queue="lab_kernel")
+def lab_kernel_shutdown(user_id: int, notebook_id: int):
+    lab_kernel_manager.get_default_registry().shutdown((user_id, notebook_id))
+    return True
+
+
+@celery_app.task(queue="lab_kernel")
+def lab_kernel_list():
+    """Snapshot of running kernels for the diagnostics endpoint."""
+    return lab_kernel_manager.get_default_registry().snapshot()

@@ -8159,6 +8159,33 @@
         ]
       }
     },
+    "/diagnostics/lab": {
+      "get": {
+        "tags": [
+          "Diagnostics"
+        ],
+        "summary": "Get Lab Diagnostics",
+        "description": "Lab-worker connectivity and running jupyter kernels.\n\nWorker presence is derived from Celery inspect \u2014 we look for a worker\nsubscribed to the ``lab_kernel`` queue. The kernel registry lives inside\nthe lab-worker process, so we round-trip a short task to fetch a snapshot.",
+        "operationId": "get_lab_diagnostics_diagnostics_lab_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "tasks:read"
+            ]
+          }
+        ]
+      }
+    },
     "/hunts/": {
       "get": {
         "tags": [
@@ -10053,6 +10080,958 @@
         }
       }
     },
+    "/tech-lab/tree": {
+      "get": {
+        "tags": [
+          "Tech Lab / Notebooks"
+        ],
+        "summary": "Get Tree",
+        "operationId": "get_tree_tech_lab_tree_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LabTree"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "lab:read"
+            ]
+          }
+        ]
+      }
+    },
+    "/tech-lab/folders": {
+      "post": {
+        "tags": [
+          "Tech Lab / Notebooks"
+        ],
+        "summary": "Create Folder",
+        "operationId": "create_folder_tech_lab_folders_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LabFolderCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LabFolder"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "lab:create"
+            ]
+          }
+        ]
+      }
+    },
+    "/tech-lab/folders/{folder_id}": {
+      "patch": {
+        "tags": [
+          "Tech Lab / Notebooks"
+        ],
+        "summary": "Update Folder",
+        "operationId": "update_folder_tech_lab_folders__folder_id__patch",
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "lab:update"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "folder_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Folder Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LabFolderUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LabFolder"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Tech Lab / Notebooks"
+        ],
+        "summary": "Delete Folder",
+        "operationId": "delete_folder_tech_lab_folders__folder_id__delete",
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "lab:delete"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "folder_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Folder Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tech-lab/notebooks": {
+      "post": {
+        "tags": [
+          "Tech Lab / Notebooks"
+        ],
+        "summary": "Create Notebook",
+        "operationId": "create_notebook_tech_lab_notebooks_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LabNotebookCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LabNotebook"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "lab:create"
+            ]
+          }
+        ]
+      }
+    },
+    "/tech-lab/notebooks/{notebook_id}": {
+      "get": {
+        "tags": [
+          "Tech Lab / Notebooks"
+        ],
+        "summary": "Get Notebook",
+        "operationId": "get_notebook_tech_lab_notebooks__notebook_id__get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "lab:read"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "notebook_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Notebook Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LabNotebook"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Tech Lab / Notebooks"
+        ],
+        "summary": "Update Notebook",
+        "operationId": "update_notebook_tech_lab_notebooks__notebook_id__patch",
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "lab:update"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "notebook_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Notebook Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LabNotebookUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LabNotebook"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Tech Lab / Notebooks"
+        ],
+        "summary": "Delete Notebook",
+        "operationId": "delete_notebook_tech_lab_notebooks__notebook_id__delete",
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "lab:delete"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "notebook_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Notebook Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tech-lab/notebooks/{notebook_id}/clear_outputs": {
+      "post": {
+        "tags": [
+          "Tech Lab / Notebooks"
+        ],
+        "summary": "Clear Outputs",
+        "operationId": "clear_outputs_tech_lab_notebooks__notebook_id__clear_outputs_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "lab:update"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "notebook_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Notebook Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LabNotebook"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tech-lab/notebooks/{notebook_id}/pin": {
+      "post": {
+        "tags": [
+          "Tech Lab / Notebooks"
+        ],
+        "summary": "Pin Notebook",
+        "operationId": "pin_notebook_tech_lab_notebooks__notebook_id__pin_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "lab:read"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "notebook_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Notebook Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Tech Lab / Notebooks"
+        ],
+        "summary": "Unpin Notebook",
+        "operationId": "unpin_notebook_tech_lab_notebooks__notebook_id__pin_delete",
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "lab:read"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "notebook_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Notebook Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tech-lab/notebooks/{notebook_id}/fork": {
+      "post": {
+        "tags": [
+          "Tech Lab / Notebooks"
+        ],
+        "summary": "Fork Notebook",
+        "operationId": "fork_notebook_tech_lab_notebooks__notebook_id__fork_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "lab:create"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "notebook_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Notebook Id"
+            }
+          },
+          {
+            "name": "visibility",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "personal",
+                "global"
+              ],
+              "type": "string",
+              "default": "personal",
+              "title": "Visibility"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LabNotebook"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tech-lab/notebooks/{notebook_id}/cells/execute": {
+      "post": {
+        "tags": [
+          "Tech Lab / Notebooks"
+        ],
+        "summary": "Execute Cell",
+        "operationId": "execute_cell_tech_lab_notebooks__notebook_id__cells_execute_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "lab:run"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "notebook_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Notebook Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LabExecuteRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LabExecution"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tech-lab/notebooks/{notebook_id}/cells/execute_all": {
+      "post": {
+        "tags": [
+          "Tech Lab / Notebooks"
+        ],
+        "summary": "Execute All Cells",
+        "operationId": "execute_all_cells_tech_lab_notebooks__notebook_id__cells_execute_all_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "lab:run"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "notebook_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Notebook Id"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/LabExecution"
+                  },
+                  "title": "Response Execute All Cells Tech Lab Notebooks  Notebook Id  Cells Execute All Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tech-lab/notebooks/{notebook_id}/executions/{execution_id}": {
+      "get": {
+        "tags": [
+          "Tech Lab / Notebooks"
+        ],
+        "summary": "Get Execution",
+        "operationId": "get_execution_tech_lab_notebooks__notebook_id__executions__execution_id__get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "lab:read"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "notebook_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Notebook Id"
+            }
+          },
+          {
+            "name": "execution_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Execution Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LabExecution"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tech-lab/notebooks/{notebook_id}/kernel/interrupt": {
+      "post": {
+        "tags": [
+          "Tech Lab / Notebooks"
+        ],
+        "summary": "Interrupt Kernel",
+        "operationId": "interrupt_kernel_tech_lab_notebooks__notebook_id__kernel_interrupt_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "lab:run"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "notebook_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Notebook Id"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tech-lab/notebooks/{notebook_id}/kernel/shutdown": {
+      "post": {
+        "tags": [
+          "Tech Lab / Notebooks"
+        ],
+        "summary": "Shutdown Kernel",
+        "operationId": "shutdown_kernel_tech_lab_notebooks__notebook_id__kernel_shutdown_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "lab:run"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "notebook_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Notebook Id"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tech-lab/notebooks/{notebook_id}/export": {
+      "get": {
+        "tags": [
+          "Tech Lab / Notebooks"
+        ],
+        "summary": "Export Notebook",
+        "description": "Return the notebook as nbformat 4.5 JSON.\n\nFrontend wraps the response body in a ``Blob`` and saves it as\n``<name>.ipynb``. Outputs from the most recent run are included so the\ndownloaded file opens with results visible in JupyterLab.",
+        "operationId": "export_notebook_tech_lab_notebooks__notebook_id__export_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "lab:read"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "notebook_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Notebook Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tech-lab/notebooks/import": {
+      "post": {
+        "tags": [
+          "Tech Lab / Notebooks"
+        ],
+        "summary": "Import Notebook",
+        "description": "Import an .ipynb. Always creates a *personal* notebook owned by the\ncurrent user \u2014 analysts can promote to global later by re-creating in a\nGlobal folder if they want to share.",
+        "operationId": "import_notebook_tech_lab_notebooks_import_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "lab:create"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "folder_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Folder Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_import_notebook_tech_lab_notebooks_import_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LabNotebook"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/mcp/config": {
       "get": {
         "tags": [
@@ -10963,6 +11942,20 @@
           "action"
         ],
         "title": "AuditLog"
+      },
+      "Body_import_notebook_tech_lab_notebooks_import_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "format": "binary",
+            "title": "File"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "title": "Body_import_notebook_tech_lab_notebooks_import_post"
       },
       "Body_login_for_access_token_auth_token_post": {
         "properties": {
@@ -13528,6 +14521,583 @@
         },
         "type": "object",
         "title": "HuntUpdate"
+      },
+      "LabExecuteRequest": {
+        "properties": {
+          "cell_id": {
+            "type": "string",
+            "title": "Cell Id"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source"
+          },
+          "timeout_seconds": {
+            "type": "integer",
+            "title": "Timeout Seconds",
+            "default": 60
+          }
+        },
+        "type": "object",
+        "required": [
+          "cell_id",
+          "source"
+        ],
+        "title": "LabExecuteRequest"
+      },
+      "LabExecution": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "notebook_id": {
+            "type": "integer",
+            "title": "Notebook Id"
+          },
+          "user_id": {
+            "type": "integer",
+            "title": "User Id"
+          },
+          "cell_id": {
+            "type": "string",
+            "title": "Cell Id"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "queued",
+              "running",
+              "success",
+              "error",
+              "interrupted"
+            ],
+            "title": "Status"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "outputs": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Outputs"
+          },
+          "execution_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Execution Count"
+          },
+          "celery_task_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Celery Task Id"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "notebook_id",
+          "user_id",
+          "cell_id",
+          "status",
+          "created_at"
+        ],
+        "title": "LabExecution"
+      },
+      "LabFolder": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "visibility": {
+            "type": "string",
+            "enum": [
+              "personal",
+              "global",
+              "library"
+            ],
+            "title": "Visibility"
+          },
+          "parent_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Id"
+          },
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "user_id": {
+            "type": "integer",
+            "title": "User Id"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "visibility",
+          "id",
+          "user_id",
+          "created_at"
+        ],
+        "title": "LabFolder"
+      },
+      "LabFolderCreate": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "visibility": {
+            "type": "string",
+            "enum": [
+              "personal",
+              "global",
+              "library"
+            ],
+            "title": "Visibility"
+          },
+          "parent_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "visibility"
+        ],
+        "title": "LabFolderCreate"
+      },
+      "LabFolderUpdate": {
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "parent_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Id"
+          }
+        },
+        "type": "object",
+        "title": "LabFolderUpdate"
+      },
+      "LabNotebook": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "visibility": {
+            "type": "string",
+            "enum": [
+              "personal",
+              "global",
+              "library"
+            ],
+            "title": "Visibility"
+          },
+          "folder_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Folder Id"
+          },
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "user_id": {
+            "type": "integer",
+            "title": "User Id"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source",
+            "default": ""
+          },
+          "cell_outputs": {
+            "additionalProperties": {
+              "items": {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              "type": "array"
+            },
+            "type": "object",
+            "title": "Cell Outputs"
+          },
+          "last_executed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Executed At"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "visibility",
+          "id",
+          "user_id",
+          "created_at"
+        ],
+        "title": "LabNotebook"
+      },
+      "LabNotebookCreate": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "visibility": {
+            "type": "string",
+            "enum": [
+              "personal",
+              "global",
+              "library"
+            ],
+            "title": "Visibility"
+          },
+          "folder_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Folder Id"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "visibility"
+        ],
+        "title": "LabNotebookCreate"
+      },
+      "LabNotebookSummary": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "visibility": {
+            "type": "string",
+            "enum": [
+              "personal",
+              "global",
+              "library"
+            ],
+            "title": "Visibility"
+          },
+          "folder_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Folder Id"
+          },
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "user_id": {
+            "type": "integer",
+            "title": "User Id"
+          },
+          "last_executed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Executed At"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "visibility",
+          "id",
+          "user_id",
+          "created_at"
+        ],
+        "title": "LabNotebookSummary",
+        "description": "Tree-view payload \u2014 omits source/cell_outputs to keep the tree fetch small."
+      },
+      "LabNotebookUpdate": {
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "folder_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Folder Id"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          }
+        },
+        "type": "object",
+        "title": "LabNotebookUpdate"
+      },
+      "LabTree": {
+        "properties": {
+          "folders": {
+            "items": {
+              "$ref": "#/components/schemas/LabFolder"
+            },
+            "type": "array",
+            "title": "Folders"
+          },
+          "notebooks": {
+            "items": {
+              "$ref": "#/components/schemas/LabNotebookSummary"
+            },
+            "type": "array",
+            "title": "Notebooks"
+          },
+          "pinned_notebook_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Pinned Notebook Ids"
+          }
+        },
+        "type": "object",
+        "required": [
+          "folders",
+          "notebooks"
+        ],
+        "title": "LabTree",
+        "description": "Single response that returns Personal + Global + Library trees so the\nleft panel renders in one round trip. Library notebooks are read-only\nprebuilt content (seeded via CLI); users fork them to a personal copy\nbefore running."
       },
       "Module": {
         "properties": {

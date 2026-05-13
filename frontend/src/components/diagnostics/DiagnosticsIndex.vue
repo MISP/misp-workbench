@@ -7,6 +7,7 @@ import RedisCard from "@/components/diagnostics/RedisCard.vue";
 import PostgresCard from "@/components/diagnostics/PostgresCard.vue";
 import StorageCard from "@/components/diagnostics/StorageCard.vue";
 import MispModulesCard from "@/components/diagnostics/MispModulesCard.vue";
+import LabWorkerCard from "@/components/diagnostics/LabWorkerCard.vue";
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
 import { faRotate } from "@fortawesome/free-solid-svg-icons";
 
@@ -26,6 +27,7 @@ function refresh() {
   diagnosticsStore.getPostgres();
   diagnosticsStore.getStorage();
   diagnosticsStore.getModules();
+  diagnosticsStore.getLab();
   lastUpdated.value = new Date();
 }
 
@@ -105,6 +107,7 @@ function formatTime(date) {
         <StorageCard />
         <MispModulesCard />
         <WorkersCard />
+        <LabWorkerCard />
       </div>
     </div>
   </div>

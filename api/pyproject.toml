@@ -35,6 +35,16 @@ celery-redbeat = "^2.3.3"
 fastmcp = "^2.0"
 pyinstrument = "^5.0"
 
+[tool.poetry.group.lab]
+optional = true
+
+[tool.poetry.group.lab.dependencies]
+ipykernel = "^6.29"
+jupyter-client = "^8.6"
+pandas = "^2.2"
+altair = "^5.5"
+vl-convert-python = "^1.7"
+
 [tool.poetry.dev-dependencies]
 pytest = "^9.0.3"
 pytest-cov = "^6.2.1"

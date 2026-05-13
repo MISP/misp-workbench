@@ -1,6 +1,7 @@
 FROM python:3.11-slim AS base
 
 ARG ENV_VARS
+ARG POETRY_GROUPS=""
 
 ENV ENV_VARS=${ENV_VARS} \
     POETRY_VERSION=1.8.2 \
@@ -13,7 +14,7 @@ COPY poetry.lock pyproject.toml entrypoint.sh /code/
 
 RUN pip install "poetry==$POETRY_VERSION"
 
-RUN poetry install
+RUN poetry install ${POETRY_GROUPS:+--with $POETRY_GROUPS}
 
 COPY . /code
 

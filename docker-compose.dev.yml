@@ -76,6 +76,20 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
+  lab-worker:
+    ports:
+      - "5681:5681"
+    command:
+      [
+        "sh",
+        "-c",
+        "poetry run python -m debugpy --listen 0.0.0.0:5681 -m celery -A app.worker.tasks worker --loglevel=debug --hostname=lab1@%h --queues=lab_kernel --pool=threads --concurrency=4",
+      ]
+    volumes:
+      - ./api:/code
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
 
   beat:
     ports:

@@ -12,6 +12,7 @@
 | [Batch Import](batch-import.md) | Easily import a list of indicators and add them as attributes to an event in a single operation. |
 | [Retention](retention.md) | Configurable event retention period with automatic purge of expired events |
 | [Reactor Scripts](tech-lab/reactor.md) | User-defined Python scripts that react to platform events (event/attribute/object/correlation/sighting) and run in an isolated sandbox |
+| [Notebooks](tech-lab/notebooks.md) | Interactive analyst notebooks with a pre-imported SDK (`mwlab`) for ad-hoc exploration of events, attributes, correlations, and enrichments |
 | [OpenSearch](opensearch/index.md) | Full-text search, dashboards, and ingestion pipelines |
 | [REST API](api/index.md) | FastAPI backend with automatic OpenAPI documentation |
 | **Storage** | Garage (S3-compatible) or local filesystem for attachments |
