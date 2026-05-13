@@ -82,7 +82,6 @@ def execute_cell(
     outputs: list[dict[str, Any]] = []
     execution_count: Optional[int] = None
     error_text: Optional[str] = None
-    status = "success"
 
     try:
         entry = reg.get_or_start(key)
