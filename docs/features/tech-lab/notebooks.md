@@ -4,7 +4,7 @@ Tech Lab Notebooks are interactive, jupyter-style analyst notebooks running insi
 
 Where **Reactor Scripts** are *push-triggered* automation (something happens → a script fires), **Notebooks** are the *pull* side: an analyst sitting in front of the data and exploring it interactively.
 
-<img src="../../screenshots/tech-lab/notebooks/misp-workbench-1_tech-lab_notebooks.png">
+<img src="../../../screenshots/tech-lab/notebooks/misp-workbench-1_tech-lab_notebooks.png">
 
 
 !!! info "Where to find it"
@@ -153,7 +153,7 @@ events = mwlab.search_events(tags=["tlp:white", "type:OSINT"], size=20)
 mwlab.dataframe(events)
 ```
 
-<img src="../../screenshots/tech-lab/notebooks/misp-workbench-2_tech-lab_notebooks_search.png">
+<img src="../../../screenshots/tech-lab/notebooks/misp-workbench-2_tech-lab_notebooks_search.png">
 
 
 ### Geolocate an IP
@@ -165,7 +165,7 @@ for obj in (result.get("results") or {}).get("Object", []):
         print(obj.get("name"), attr.get("object_relation"), "=", attr.get("value"))
 ```
 
-<img src="../../screenshots/tech-lab/notebooks/misp-workbench-3_tech-lab_notebooks_geolocation.png">
+<img src="../../../screenshots/tech-lab/notebooks/misp-workbench-3_tech-lab_notebooks_geolocation.png">
 
 ### Build a timeline view
 
@@ -176,7 +176,7 @@ events = mwlab.search_events(query="phishing", size=10)
 HTML(render.timeline(events))
 ```
 
-<img src="../../screenshots/tech-lab/notebooks/misp-workbench-4_tech-lab_notebooks_timeline.png">
+<img src="../../../screenshots/tech-lab/notebooks/misp-workbench-4_tech-lab_notebooks_timeline.png">
 
 ### Tag cloud across recent events
 
@@ -187,7 +187,7 @@ events = mwlab.search_events(size=100)
 HTML(render.tag_cloud(events))
 ```
 
-<img src="../../screenshots/tech-lab/notebooks/misp-workbench-5_tech-lab_notebooks_tag_cloud.png">
+<img src="../../../screenshots/tech-lab/notebooks/misp-workbench-5_tech-lab_notebooks_tag_cloud.png">
 
 ### Pivot from an attribute to its event
 
@@ -198,7 +198,7 @@ for attr in hits:
     print(attr["uuid"], "→", event["info"])
 ```
 
-<img src="../../screenshots/tech-lab/notebooks/misp-workbench-6_tech-lab_notebooks_pivot.png">
+<img src="../../../screenshots/tech-lab/notebooks/misp-workbench-6_tech-lab_notebooks_pivot.png">
 
 ## Installing extra Python packages
 
