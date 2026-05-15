@@ -4,13 +4,13 @@ ARG ENV_VARS
 ARG POETRY_GROUPS=""
 
 ENV ENV_VARS=${ENV_VARS} \
-    POETRY_VERSION=1.8.2 \
+    POETRY_VERSION=2.4.1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 
 WORKDIR /code
 
-COPY poetry.lock pyproject.toml entrypoint.sh /code/
+COPY poetry.lock pyproject.toml poetry.toml entrypoint.sh /code/
 
 RUN pip install "poetry==$POETRY_VERSION"
 

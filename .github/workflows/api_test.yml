@@ -8,7 +8,7 @@ jobs:
     strategy:
       matrix:
         python-version: ["3.11"]
-        poetry-version: [1.8.2]
+        poetry-version: [2.4.1]
 
     services:
       postgres:

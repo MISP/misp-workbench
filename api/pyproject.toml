@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "misp-workbench API server"
 authors = ["Luciano Righetti <luciano.righetti@circl.lu>", "CIRCL <team@circl.lu>"]
 license = "AGPL-3.0"
+package-mode = false
 
 [tool.poetry.dependencies]
 python = "^3.10"
@@ -45,7 +46,7 @@ pandas = "^2.2"
 altair = "^5.5"
 vl-convert-python = "^1.7"
 
-[tool.poetry.dev-dependencies]
+[tool.poetry.group.dev.dependencies]
 pytest = "^9.0.3"
 pytest-cov = "^6.2.1"
 requests = "^2.33.0"
