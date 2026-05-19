@@ -16,7 +16,8 @@
     "docs:screenshots:dark": "playwright test --config=scripts/docs-screenshots/playwright.config.ts --project=screenshots-dark",
     "docs:screenshots:explore": "playwright test scripts/docs-screenshots/explore.spec.ts --config=scripts/docs-screenshots/playwright.config.ts",
     "docs:screenshots:hunts": "playwright test scripts/docs-screenshots/hunts.spec.ts --config=scripts/docs-screenshots/playwright.config.ts",
-    "docs:screenshots:audit-logs": "playwright test scripts/docs-screenshots/audit-logs.spec.ts --config=scripts/docs-screenshots/playwright.config.ts",
+    "docs:screenshots:audit-logs": "npm run docs:seed && playwright test scripts/docs-screenshots/audit-logs.spec.ts --config=scripts/docs-screenshots/playwright.config.ts",
+    "docs:screenshots:feeds": "playwright test scripts/docs-screenshots/feeds.spec.ts --config=scripts/docs-screenshots/playwright.config.ts",
     "build-only": "vite build",
     "type-check": "vue-tsc --noEmit -p tsconfig.vitest.json --composite false",
     "lint": "eslint . --fix"

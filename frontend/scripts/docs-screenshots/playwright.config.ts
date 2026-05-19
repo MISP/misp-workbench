@@ -1,7 +1,7 @@
 import { defineConfig } from "@playwright/test";
 import path from "node:path";
 
-const FRONTEND_URL = process.env.DOCS_FRONTEND_URL ?? "http://localhost:3000";
+const FRONTEND_URL = process.env.DOCS_FRONTEND_URL ?? "http://localhost:3001";
 const STORAGE_STATE = path.join(__dirname, ".auth", "user.json");
 
 export default defineConfig({
