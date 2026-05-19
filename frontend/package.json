@@ -12,6 +12,10 @@
     "docs:seed:reset": "docker compose exec api poetry run python -m app.cli seed-docs-fixtures --reset",
     "docs:screenshots": "playwright test --config=scripts/docs-screenshots/playwright.config.ts",
     "docs:screenshots:headed": "playwright test --config=scripts/docs-screenshots/playwright.config.ts --headed",
+    "docs:screenshots:light": "playwright test --config=scripts/docs-screenshots/playwright.config.ts --project=screenshots-light",
+    "docs:screenshots:dark": "playwright test --config=scripts/docs-screenshots/playwright.config.ts --project=screenshots-dark",
+    "docs:screenshots:explore": "playwright test scripts/docs-screenshots/explore.spec.ts --config=scripts/docs-screenshots/playwright.config.ts",
+    "docs:screenshots:hunts": "playwright test scripts/docs-screenshots/hunts.spec.ts --config=scripts/docs-screenshots/playwright.config.ts",
     "build-only": "vite build",
     "type-check": "vue-tsc --noEmit -p tsconfig.vitest.json --composite false",
     "lint": "eslint . --fix"

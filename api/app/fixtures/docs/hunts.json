@@ -1,8 +1,8 @@
 [
   {
-    "name": "Cobalt Strike C2 indicators",
-    "description": "Surface attributes tagged as Cobalt Strike infrastructure.",
-    "query": "tags.name:\"misp-galaxy:tool=\\\"Cobalt Strike\\\"\"",
+    "name": "IP and domain indicators",
+    "description": "Surface every IP and domain attribute (broad matcher used for docs screenshots).",
+    "query": "type.keyword:ip-src OR type.keyword:ip-dst OR type.keyword:domain",
     "hunt_type": "opensearch",
     "index_target": "attributes",
     "status": "active"
@@ -24,9 +24,9 @@
     "status": "active"
   },
   {
-    "name": "Suspicious encoded PowerShell",
-    "description": "Sigma-style rule for encoded PowerShell payload execution.",
-    "query": "powershell.exe -enc",
+    "name": "Detection rules for CVE-2024-3400",
+    "description": "Detection rules available for the Palo Alto GlobalProtect command injection (CVE-2024-3400).",
+    "query": "CVE-2024-3400",
     "hunt_type": "rulezet",
     "index_target": "attributes",
     "status": "active"

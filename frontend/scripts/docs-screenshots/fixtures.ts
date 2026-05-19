@@ -5,8 +5,8 @@ import path from "node:path";
  * Keep in sync if the seed command's defaults change.
  */
 export const DOCS_USER = {
-  email: "docs@misp-workbench.local",
-  password: "docs-fixture-password",
+  email: "admin@admin.test",
+  password: "admin",
 };
 
 export const SCREENSHOTS_DIR = path.resolve(
@@ -25,8 +25,8 @@ export const EVENT_UUIDS = {
 };
 
 export const HUNT_NAMES = {
-  opensearch: "Cobalt Strike C2 indicators",
+  opensearch: "IP and domain indicators",
   cpe: "Microsoft Exchange Server vulnerabilities",
   mitre: "MITRE ATT&CK — Spearphishing Attachment (T1566.001)",
-  rulezet: "Suspicious encoded PowerShell",
+  rulezet: "Detection rules for CVE-2024-3400",
 };

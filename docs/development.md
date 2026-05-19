@@ -103,15 +103,40 @@ Run against a running dev stack (`docker compose ... up`):
 ```bash
 cd frontend
 npm run docs:seed              # idempotent — creates fixture org/user/events/hunts
-npm run docs:screenshots       # runs Playwright headless, writes PNGs in place
+npm run docs:screenshots       # captures both light and dark themes
 ```
 
-Events and attributes are re-timed on every seed run so they always sit
-within the Explore view's default 30-day window. Hunts are upserted by name
-— run `npm run docs:seed:reset` to wipe and re-create them after editing
-`hunts.json`.
+Each spec runs twice — once per Playwright project (`screenshots-light`,
+`screenshots-dark`). Dark captures land alongside the light ones with a
+`-dark` suffix, e.g. `misp-workbench-1_explore.png` +
+`misp-workbench-1_explore-dark.png`.
 
-To watch the captures interactively, use `npm run docs:screenshots:headed`.
+Reference both variants from a docs page using the mkdocs-material
+`#only-light` / `#only-dark` URL fragments — only the variant matching the
+reader's selected palette renders:
+
+```html
+<img src="../../screenshots/explore/misp-workbench-1_explore.png#only-light">
+<img src="../../screenshots/explore/misp-workbench-1_explore-dark.png#only-dark">
+```
+
+Other useful scripts:
+
+| Script | Purpose |
+|---|---|
+| `npm run docs:screenshots:explore` | Capture only the Explore feature shots |
+| `npm run docs:screenshots:hunts` | Capture only the Hunts feature shots |
+| `npm run docs:screenshots:light` | Capture only the light variants |
+| `npm run docs:screenshots:dark` | Capture only the dark variants |
+| `npm run docs:screenshots:headed` | Watch the captures run in a visible browser |
+| `npm run docs:seed:reset` | Wipe and re-create the fixture user's hunts (events/attributes are always re-timed) |
+
+Filters compose — pass extra flags after `--`. For example, only the dark
+Explore shots: `npm run docs:screenshots:explore -- --project=screenshots-dark`.
+
+Events and attributes are re-timed on every seed run so they always sit
+within the Explore view's default 30-day window.
+
 Override the frontend URL with `DOCS_FRONTEND_URL=...` if the dev server is
 on a non-default port.
 

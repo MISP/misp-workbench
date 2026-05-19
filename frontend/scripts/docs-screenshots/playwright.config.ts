@@ -20,7 +20,6 @@ export default defineConfig({
     browserName: "chromium",
     viewport: { width: 1600, height: 1000 },
     deviceScaleFactor: 3,
-    colorScheme: "light",
     locale: "en-US",
     timezoneId: "UTC",
     actionTimeout: 10_000,
@@ -33,10 +32,21 @@ export default defineConfig({
       testMatch: /auth\.setup\.ts/,
     },
     {
-      name: "screenshots",
+      name: "screenshots-light",
       dependencies: ["auth"],
+      metadata: { theme: "light" },
       use: {
         storageState: STORAGE_STATE,
+        colorScheme: "light",
+      },
+    },
+    {
+      name: "screenshots-dark",
+      dependencies: ["auth"],
+      metadata: { theme: "dark" },
+      use: {
+        storageState: STORAGE_STATE,
+        colorScheme: "dark",
       },
     },
   ],

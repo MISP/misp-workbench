@@ -17,6 +17,11 @@ coverage
 /cypress/videos/
 /cypress/screenshots/
 
+# Playwright (docs screenshot pipeline)
+/test-results/
+/playwright-report/
+/scripts/docs-screenshots/.auth/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

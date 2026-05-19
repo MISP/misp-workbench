@@ -1,10 +1,11 @@
 import { test, expect } from "@playwright/test";
-import { capture, pinForCapture } from "./helpers";
+import { applyTheme, capture, pinForCapture } from "./helpers";
 
 const FEATURE = "explore";
 
 test.describe("Explore screenshots", () => {
   test.beforeEach(async ({ page }) => {
+    await applyTheme(page);
     await page.goto("/explore");
     await expect(page.locator("input.form-control.text-console")).toBeVisible();
     await pinForCapture(page);
@@ -14,6 +15,17 @@ test.describe("Explore screenshots", () => {
     await page.fill("input.form-control.text-console", "*");
     await page.locator("button.btn-primary >> svg").first().click();
     await page.waitForSelector(".card", { timeout: 10_000 });
+
+    // Timeline renders via chart.js into a <canvas> after its own fetch
+    // resolves. Wait for the spinner to disappear and the canvas to appear,
+    // then give chart.js a beat to finish drawing bars.
+    await expect(
+      page.locator(".explore-timeline", { hasText: "Loading timeline" }),
+    ).toHaveCount(0, { timeout: 15_000 });
+    await expect(page.locator(".explore-timeline canvas")).toBeVisible({
+      timeout: 15_000,
+    });
+    await page.waitForTimeout(500);
 
     await capture(page, FEATURE, "misp-workbench-1_explore");
   });
