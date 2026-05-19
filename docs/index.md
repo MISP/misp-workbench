@@ -1,6 +1,7 @@
 # misp-workbench
 
-![misp-workbench](images/misp-workbench-hori-color.jpg)
+<img src="../../images/misp-workbench-verti-color.svg#only-light">
+<img src="../../images/misp-workbench-verti-white.svg#only-dark">
 
 A modern MISP-compatible threat intelligence platform. It provides a self-contained solution for ingesting, correlating, and analysing threat intelligence data — without requiring a full MISP instance.
 
