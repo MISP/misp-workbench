@@ -1,0 +1,46 @@
+[
+  {
+    "action": "user.login",
+    "resource_type": "user",
+    "actor_type": "user",
+    "offset_minutes": 240,
+    "ip_address": "192.0.2.17",
+    "user_agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/121.0 Safari/537.36",
+    "metadata": {}
+  },
+  {
+    "action": "api_key.created",
+    "resource_type": "api_key",
+    "resource_id": 42,
+    "actor_type": "user",
+    "offset_minutes": 180,
+    "ip_address": "192.0.2.17",
+    "user_agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/121.0 Safari/537.36",
+    "metadata": {
+      "name": "feed-sync (read-only)",
+      "scopes": ["feeds:read", "events:read", "attributes:read"],
+      "expires_at": null
+    }
+  },
+  {
+    "action": "runtime_setting.updated",
+    "resource_type": "runtime_setting",
+    "actor_type": "user",
+    "offset_minutes": 90,
+    "ip_address": "192.0.2.17",
+    "user_agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/121.0 Safari/537.36",
+    "metadata": {
+      "namespace": "feeds.default_retention_days",
+      "diff": { "from": 90, "to": 120 }
+    }
+  },
+  {
+    "action": "user.logout",
+    "resource_type": "user",
+    "actor_type": "user",
+    "offset_minutes": 30,
+    "ip_address": "192.0.2.17",
+    "user_agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/121.0 Safari/537.36",
+    "metadata": {}
+  }
+]

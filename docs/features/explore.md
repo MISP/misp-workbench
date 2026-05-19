@@ -68,8 +68,8 @@ Any query — including the active time range filter — can be turned into a Hu
 
 1. Type or select a query.
 2. Click the :fontawesome-solid-floppy-disk: dropdown → **Save as Hunt**.
-        <img src="../../screenshots/explore/misp-workbench-6_explore_save-search-as-hunt.png#only-light" style="height: 200px;">
-        <img src="../../screenshots/explore/misp-workbench-6_explore_save-search-as-hunt-dark.png#only-dark" style="height: 200px;">
+        <img src="../../screenshots/explore/misp-workbench-6_explore_save-search-as-hunt.png#only-light">
+        <img src="../../screenshots/explore/misp-workbench-6_explore_save-search-as-hunt-dark.png#only-dark">
 3. The current query (plus any `@timestamp` range clause) is pre-filled in the Hunt creation modal.
 4. Give the hunt a name and confirm. The hunt is immediately available in the [Hunts](hunts.md) view.
 

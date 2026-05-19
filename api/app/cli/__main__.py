@@ -6,6 +6,7 @@ from typing import Optional
 import typer
 
 from app.database import SessionLocal
+from app.models import audit_log as audit_log_models
 from app.models import hunt as hunt_models
 from app.models import lab as lab_models
 from app.repositories import attributes as attributes_repository
@@ -238,6 +239,7 @@ def seed_docs_fixtures(
     events_data = json.loads((fixtures_dir / "events.json").read_text())
     attrs_data = json.loads((fixtures_dir / "attributes.json").read_text())
     hunts_data = json.loads((fixtures_dir / "hunts.json").read_text())
+    audit_data = json.loads((fixtures_dir / "audit_logs.json").read_text())
 
     client = get_opensearch_client()
 
@@ -245,6 +247,14 @@ def seed_docs_fixtures(
         db.query(hunt_models.Hunt).filter(hunt_models.Hunt.user_id == user.id).delete()
         db.commit()
         typer.echo("Reset existing docs hunts.")
+
+    # Audit logs are always re-timed and overwritten so screenshots show
+    # recent entries. We mark each fixture row with metadata._docs_fixture so
+    # we can wipe only docs-seeded entries — never any real audit history.
+    db.query(audit_log_models.AuditLog).filter(
+        audit_log_models.AuditLog.metadata_["_docs_fixture"].astext == "true",
+    ).delete(synchronize_session=False)
+    db.commit()
 
     # Recompute timestamps every run so events/attributes always sit within
     # the last 30 days (the default Explore date filter). Events and
@@ -299,11 +309,32 @@ def seed_docs_fixtures(
         )
         hunts_created += 1
 
+    for entry in audit_data:
+        offset_minutes = entry.get("offset_minutes", 0)
+        created_at = now - timedelta(minutes=offset_minutes)
+        meta = dict(entry.get("metadata") or {})
+        meta["_docs_fixture"] = True
+        db.add(
+            audit_log_models.AuditLog(
+                created_at=created_at,
+                actor_user_id=user.id,
+                actor_type=entry.get("actor_type", "user"),
+                resource_type=entry["resource_type"],
+                resource_id=entry.get("resource_id"),
+                action=entry["action"],
+                ip_address=entry.get("ip_address"),
+                user_agent=entry.get("user_agent"),
+                metadata_=meta,
+            )
+        )
+    db.commit()
+
     typer.echo(
         f"Docs fixtures seeded: "
         f"events={len(events_data)} upserted, "
         f"attributes={len(attrs_data)} upserted, "
-        f"hunts={hunts_created} created / {hunts_skipped} skipped."
+        f"hunts={hunts_created} created / {hunts_skipped} skipped, "
+        f"audit_logs={len(audit_data)} re-timed."
     )
     typer.echo(f"Login: {DOCS_USER_EMAIL} / {DOCS_USER_PASSWORD}")
 
