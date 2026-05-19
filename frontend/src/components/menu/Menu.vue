@@ -11,12 +11,18 @@ import {
   faMoon,
   faSun,
   faRightFromBracket,
+  faUser,
+  faShield,
+  faKey,
+  faSlidersH,
 } from "@fortawesome/free-solid-svg-icons";
 import AddEventButton from "@/components/events/AddEventButton.vue";
 
 const authStore = useAuthStore();
 const router = useRouter();
-const { scopes } = storeToRefs(authStore);
+const { scopes, decoded_access_token } = storeToRefs(authStore);
+
+const userEmail = computed(() => decoded_access_token.value?.sub || "");
 
 const canReadUsers = computed(() =>
   authHelper.hasScope(scopes.value, "users:read"),
@@ -337,12 +343,82 @@ function navAndClose(path) {
           </button>
         </RouterLink>
 
-        <button
-          @click="authStore.logout()"
-          class="btn btn-outline text-danger btn-sm"
-        >
-          <FontAwesomeIcon :icon="faRightFromBracket" />
-        </button>
+        <div class="nav-item dropdown">
+          <a
+            class="btn btn-outline btn-sm dropdown-toggle"
+            href="#"
+            id="userProfileDropdown"
+            role="button"
+            data-bs-toggle="dropdown"
+            aria-expanded="false"
+          >
+            <FontAwesomeIcon :icon="faUser" />
+          </a>
+          <ul
+            class="dropdown-menu dropdown-menu-end"
+            aria-labelledby="userProfileDropdown"
+          >
+            <li v-if="userEmail">
+              <span class="dropdown-item-text fw-light small text-muted">{{
+                userEmail
+              }}</span>
+            </li>
+            <li><hr class="dropdown-divider" /></li>
+            <li>
+              <h6 class="dropdown-header">Profile</h6>
+            </li>
+            <li>
+              <RouterLink to="/users/me" class="dropdown-item fw-light">
+                <FontAwesomeIcon :icon="faUser" fixed-width class="me-1" />
+                user profile
+              </RouterLink>
+            </li>
+            <li><hr class="dropdown-divider" /></li>
+            <li>
+              <h6 class="dropdown-header">Security</h6>
+            </li>
+            <li v-if="canReadApiKeys">
+              <RouterLink
+                to="/settings/api-keys"
+                class="dropdown-item fw-light"
+              >
+                <FontAwesomeIcon :icon="faKey" fixed-width class="me-1" />
+                API keys
+              </RouterLink>
+            </li>
+            <li v-if="canAdminApiKeys">
+              <RouterLink to="/admin/api-keys" class="dropdown-item fw-light">
+                <FontAwesomeIcon :icon="faShield" fixed-width class="me-1" />
+                API keys (admin)
+              </RouterLink>
+            </li>
+            <li><hr class="dropdown-divider" /></li>
+            <li>
+              <h6 class="dropdown-header">Preferences</h6>
+            </li>
+            <li v-if="canReadUserSettings">
+              <RouterLink to="/settings/user" class="dropdown-item fw-light">
+                <FontAwesomeIcon :icon="faSlidersH" fixed-width class="me-1" />
+                user settings
+              </RouterLink>
+            </li>
+            <li><hr class="dropdown-divider" /></li>
+            <li>
+              <button
+                type="button"
+                class="dropdown-item fw-light text-danger"
+                @click="authStore.logout()"
+              >
+                <FontAwesomeIcon
+                  :icon="faRightFromBracket"
+                  fixed-width
+                  class="me-1"
+                />
+                sign out
+              </button>
+            </li>
+          </ul>
+        </div>
       </div>
     </div>
   </nav>
@@ -606,6 +682,73 @@ function navAndClose(path) {
         </li>
       </ul>
 
+      <ul class="list-group list-group-flush">
+        <li class="list-group-item">
+          <strong>
+            <FontAwesomeIcon :icon="faUser" class="me-2" />
+            <span v-if="userEmail">{{ userEmail }}</span>
+            <span v-else>account</span>
+          </strong>
+          <ul class="list-group mt-2">
+            <li>
+              <small class="text-muted ps-4 d-block">Profile</small>
+            </li>
+            <li>
+              <RouterLink
+                to="/users/me"
+                class="list-group-item list-group-item-action ps-4"
+                @click.prevent="navAndClose('/users/me')"
+              >
+                user profile
+              </RouterLink>
+            </li>
+            <li>
+              <small class="text-muted ps-4 d-block mt-2">Security</small>
+            </li>
+            <li v-if="canReadApiKeys">
+              <RouterLink
+                to="/settings/api-keys"
+                class="list-group-item list-group-item-action ps-4"
+                @click.prevent="navAndClose('/settings/api-keys')"
+              >
+                API keys
+              </RouterLink>
+            </li>
+            <li v-if="canAdminApiKeys">
+              <RouterLink
+                to="/admin/api-keys"
+                class="list-group-item list-group-item-action ps-4"
+                @click.prevent="navAndClose('/admin/api-keys')"
+              >
+                API keys (admin)
+              </RouterLink>
+            </li>
+            <li>
+              <small class="text-muted ps-4 d-block mt-2">Preferences</small>
+            </li>
+            <li v-if="canReadUserSettings">
+              <RouterLink
+                to="/settings/user"
+                class="list-group-item list-group-item-action ps-4"
+                @click.prevent="navAndClose('/settings/user')"
+              >
+                user settings
+              </RouterLink>
+            </li>
+            <li>
+              <button
+                type="button"
+                class="list-group-item list-group-item-action ps-4 text-danger w-100 text-start"
+                @click="authStore.logout()"
+              >
+                <FontAwesomeIcon :icon="faRightFromBracket" class="me-2" />
+                sign out
+              </button>
+            </li>
+          </ul>
+        </li>
+      </ul>
+
       <hr />
 
       <div class="px-3 mb-3">
@@ -618,11 +761,6 @@ function navAndClose(path) {
           <span class="ms-2">{{
             theme === "light" ? "Dark Mode" : "Light Mode"
           }}</span>
-        </button>
-
-        <button class="btn btn-outline text-danger" @click="authStore.logout()">
-          <FontAwesomeIcon :icon="faRightFromBracket" />
-          <span class="ms-2">Logout</span>
         </button>
       </div>
     </div>
