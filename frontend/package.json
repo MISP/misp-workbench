@@ -8,6 +8,10 @@
     "test:unit": "vitest --environment jsdom",
     "test:e2e": "start-server-and-test preview http://127.0.0.1:4173/ 'cypress open --e2e'",
     "test:e2e:ci": "start-server-and-test preview http://127.0.0.1:4173/ 'cypress run --e2e'",
+    "docs:seed": "docker compose exec api poetry run python -m app.cli seed-docs-fixtures",
+    "docs:seed:reset": "docker compose exec api poetry run python -m app.cli seed-docs-fixtures --reset",
+    "docs:screenshots": "playwright test --config=scripts/docs-screenshots/playwright.config.ts",
+    "docs:screenshots:headed": "playwright test --config=scripts/docs-screenshots/playwright.config.ts --headed",
     "build-only": "vite build",
     "type-check": "vue-tsc --noEmit -p tsconfig.vitest.json --composite false",
     "lint": "eslint . --fix"
@@ -62,6 +66,7 @@
     "@vitejs/plugin-vue-jsx": "^1.3.10",
     "@vue/eslint-config-prettier": "^7.1.0",
     "@vue/eslint-config-typescript": "^14.3.0",
+    "@playwright/test": "^1.50.0",
     "@vue/test-utils": "^2.0.0",
     "cypress": "^13.13.1",
     "eslint-config-prettier": "^10.0.1",

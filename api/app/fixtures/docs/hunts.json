@@ -1,0 +1,34 @@
+[
+  {
+    "name": "Cobalt Strike C2 indicators",
+    "description": "Surface attributes tagged as Cobalt Strike infrastructure.",
+    "query": "tags.name:\"misp-galaxy:tool=\\\"Cobalt Strike\\\"\"",
+    "hunt_type": "opensearch",
+    "index_target": "attributes",
+    "status": "active"
+  },
+  {
+    "name": "Microsoft Exchange Server vulnerabilities",
+    "description": "Watch for events referencing exposed Exchange servers.",
+    "query": "cpe:2.3:a:microsoft:exchange_server:*",
+    "hunt_type": "cpe",
+    "index_target": "events",
+    "status": "active"
+  },
+  {
+    "name": "MITRE ATT&CK — Spearphishing Attachment (T1566.001)",
+    "description": "Find events matching the T1566.001 technique.",
+    "query": "T1566.001",
+    "hunt_type": "mitre-attack-pattern",
+    "index_target": "events",
+    "status": "active"
+  },
+  {
+    "name": "Suspicious encoded PowerShell",
+    "description": "Sigma-style rule for encoded PowerShell payload execution.",
+    "query": "powershell.exe -enc",
+    "hunt_type": "rulezet",
+    "index_target": "attributes",
+    "status": "active"
+  }
+]

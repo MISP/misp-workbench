@@ -83,6 +83,38 @@ npm run test:e2e:ci  # Cypress headless
 npm run lint    # ESLint fix
 ```
 
+### Documentation screenshots
+
+Screenshots referenced from `docs/features/*.md` are captured by a Playwright
+script in `frontend/scripts/docs-screenshots/`. The script logs in as a
+fixture user, navigates each documented view, and writes PNGs directly into
+`docs/screenshots/<feature>/`.
+
+First-time setup:
+
+```bash
+cd frontend
+npm install
+npx playwright install chromium
+```
+
+Run against a running dev stack (`docker compose ... up`):
+
+```bash
+cd frontend
+npm run docs:seed              # idempotent — creates fixture org/user/events/hunts
+npm run docs:screenshots       # runs Playwright headless, writes PNGs in place
+```
+
+Events and attributes are re-timed on every seed run so they always sit
+within the Explore view's default 30-day window. Hunts are upserted by name
+— run `npm run docs:seed:reset` to wipe and re-create them after editing
+`hunts.json`.
+
+To watch the captures interactively, use `npm run docs:screenshots:headed`.
+Override the frontend URL with `DOCS_FRONTEND_URL=...` if the dev server is
+on a non-default port.
+
 ## Code conventions
 
 ### Backend
