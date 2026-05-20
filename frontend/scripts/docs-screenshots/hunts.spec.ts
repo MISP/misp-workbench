@@ -174,6 +174,33 @@ test.describe("Hunts screenshots", () => {
   });
 
   test("8 — scheduled hunt created", async ({ page }) => {
+    // Per-row cleanup at the end of prior runs was unreliable (only deleted
+    // the first row and didn't wait on the confirm dialog), so over time
+    // the scheduled-tasks table accumulated ten-plus `run_hunt` rows. Wipe
+    // via the API before the test so the captured table always shows
+    // exactly one freshly-created row.
+    //
+    // The JWT is in localStorage (auth store), not cookies — page.request
+    // alone doesn't see it. Land on /events first so the app boots and
+    // hydrates the token from storageState, then grab it.
+    const apiBase = "http://localhost:8080";
+    await page.goto("/events/a1f30000-0001-4001-8000-000000000001");
+    const token = await page.evaluate(() =>
+      localStorage.getItem("access_token"),
+    );
+    const auth = { Authorization: `Bearer ${token}` };
+    const scheduled = await page.request
+      .get(`${apiBase}/tasks/scheduled`, { headers: auth })
+      .then((r) => (r.ok() ? r.json() : []))
+      .catch(() => []);
+    for (const t of scheduled || []) {
+      if (t?.task_name === "app.worker.tasks.run_hunt") {
+        await page.request
+          .delete(`${apiBase}/tasks/scheduled/${t.id}`, { headers: auth })
+          .catch(() => undefined);
+      }
+    }
+
     await page.goto("/tasks");
 
     const card = page.locator(".card", { hasText: "Scheduled Tasks" }).first();
@@ -189,12 +216,10 @@ test.describe("Hunts screenshots", () => {
     await modal.getByRole("button", { name: /create|save/i }).click();
     await expect(modal).not.toBeVisible({ timeout: 10_000 });
 
-    // The new row should appear in the scheduled tasks table.
+    // The new row should appear; verify there's exactly one run_hunt row.
     await expect(
-      card.locator("table tbody tr", { hasText: "run_hunt" }).first(),
-    ).toBeVisible({
-      timeout: 10_000,
-    });
+      card.locator("table tbody tr", { hasText: "run_hunt" }),
+    ).toHaveCount(1, { timeout: 10_000 });
     await pinForCapture(page);
 
     await capture(
@@ -202,27 +227,60 @@ test.describe("Hunts screenshots", () => {
       FEATURE,
       "misp-workbench-8_hunts_scheduled-task-created-scheduled-hunt",
     );
-
-    // Clean up so re-runs start from an empty scheduled-tasks list.
-    const row = card.locator("table tbody tr", { hasText: "run_hunt" }).first();
-    const deleteBtn = row
-      .getByRole("button", { name: /delete|trash|remove/i })
-      .first();
-    if (await deleteBtn.count()) {
-      await deleteBtn.click().catch(() => undefined);
-      // dismiss any confirm dialog
-      const confirm = page
-        .getByRole("button", { name: /confirm|yes|delete/i })
-        .first();
-      if (await confirm.count()) {
-        await confirm.click().catch(() => undefined);
-      }
-    }
   });
 
-  // Stub for the one remaining shot:
-  //   5_hunts_view-opensearch-hunt-matches-notification — fires when a
-  //   scheduled run finds new matches; requires the Celery worker to execute
-  //   the scheduled hunt and the notification system to push a row. Wire
-  //   when we extend coverage to the notifications page.
+  test("5 — hunt matches notification row", async ({ page }) => {
+    // Stub the notifications feed with a single hunt.result.changed entry
+    // so we don't need a real Celery run to push one. The visible row
+    // captures the user-facing surface of the notification — the original
+    // shot was framed exactly the same way.
+    const API_PORT = 8080;
+    await page.route(
+      new RegExp(`:${API_PORT}/notifications(\\?|$)`),
+      (route) => {
+        if (route.request().method() !== "GET") return route.fallback();
+        return route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({
+            total: 1,
+            page: 1,
+            size: 20,
+            items: [
+              {
+                id: 901,
+                user_id: 1,
+                type: "hunt.result.changed",
+                entity_uuid: null,
+                entity_type: "hunt",
+                read: false,
+                // ~1 min ago so the relative-time label reads "a minute ago".
+                created_at: new Date(Date.now() - 60_000).toISOString(),
+                payload: {
+                  hunt_id: 5,
+                  hunt_name: "Suspicious IPs",
+                  total: 12,
+                  previous_total: 11,
+                },
+              },
+            ],
+          }),
+        });
+      },
+    );
+
+    await page.goto("/notifications");
+    await expect(page.getByText("Suspicious IPs")).toBeVisible({
+      timeout: 10_000,
+    });
+    await expect(page.getByText("hunt.result.changed")).toBeVisible();
+    await pinForCapture(page);
+
+    // Just the row — matches the original framing (no toolbar/header).
+    await capture(
+      page.locator("table tbody tr").first(),
+      FEATURE,
+      "misp-workbench-5_hunts_view-opensearch-hunt-matches-notification",
+    );
+  });
 });
