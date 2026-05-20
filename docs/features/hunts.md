@@ -51,26 +51,32 @@ The `index_target` field selects where to look:
 1. Go to the ***hunt*** menu option in the main nav bar and click the ***+ New Hunt*** button.
     - _OpenSearch_ hunt:
     
-    <img src="../../screenshots/hunts/misp-workbench-1_hunts_new-opensearch-hunt.png" style="height: 500px;">
+    <img src="../../screenshots/hunts/misp-workbench-1_hunts_new-opensearch-hunt.png#only-light" style="height: 500px;">
+    <img src="../../screenshots/hunts/misp-workbench-1_hunts_new-opensearch-hunt-dark.png#only-dark" style="height: 500px;">
     
     - _Rulezet_ hunt:
     
-    <img src="../../screenshots/hunts/misp-workbench-2_hunts_new-rulezet-hunt.png" style="height: 500px;">
+    <img src="../../screenshots/hunts/misp-workbench-2_hunts_new-rulezet-hunt.png#only-light" style="height: 500px;">
+    <img src="../../screenshots/hunts/misp-workbench-2_hunts_new-rulezet-hunt-dark.png#only-dark" style="height: 500px;">
 
     - _CPE_ hunt:
     
-    <img src="../../screenshots/hunts/misp-workbench-2_hunts_new-cpe-hunt.png" style="height: 500px;">
+    <img src="../../screenshots/hunts/misp-workbench-2_hunts_new-cpe-hunt.png#only-light" style="height: 500px;">
+    <img src="../../screenshots/hunts/misp-workbench-2_hunts_new-cpe-hunt-dark.png#only-dark" style="height: 500px;">
 
     - _MITRE ATT&CK_ hunt:
     
-    <img src="../../screenshots/hunts/misp-workbench-2_hunts_new-mitre-attack-hunt.png" style="height: 500px;">
+    <img src="../../screenshots/hunts/misp-workbench-2_hunts_new-mitre-attack-hunt.png#only-light" style="height: 500px;">
+    <img src="../../screenshots/hunts/misp-workbench-2_hunts_new-mitre-attack-hunt-dark.png#only-dark" style="height: 500px;">
 
 2. Click the eye icon on the newly created hunt to view its details. To run the hunt immediately, click the ***Run Now*** button.
-    <img src="../../screenshots/hunts/misp-workbench-3_hunts_view-opensearch-hunt.png" style="max-width: 100%; height: auto;">
+    <img src="../../screenshots/hunts/misp-workbench-3_hunts_view-opensearch-hunt.png#only-light" style="max-width: 100%; height: auto;">
+    <img src="../../screenshots/hunts/misp-workbench-3_hunts_view-opensearch-hunt-dark.png#only-dark" style="max-width: 100%; height: auto;">
 
 3. Once results are available, you can see the matches and the delta compared to the previous run.
 
-    <img src="../../screenshots/hunts/misp-workbench-4_hunts_view-opensearch-hunt-matches.png" style="max-width: 100%; height: auto;">
+    <img src="../../screenshots/hunts/misp-workbench-4_hunts_view-opensearch-hunt-matches.png#only-light" style="max-width: 100%; height: auto;">
+    <img src="../../screenshots/hunts/misp-workbench-4_hunts_view-opensearch-hunt-matches-dark.png#only-dark" style="max-width: 100%; height: auto;">
 
 4. When a hunt produces a new match or its results differ from the previous run, the user receives a notification.
 
@@ -81,11 +87,14 @@ The `index_target` field selects where to look:
 ### Creating a scheduled task for a _Hunt_
 
 1. Go to ***internals*** → ***tasks*** to open the scheduled tasks view, then click the ***+ New*** button.
-    <img src="../../screenshots/hunts/misp-workbench-6_hunts_scheduled-task-add-button.png" style="max-width: 100%; height: auto;">
+    <img src="../../screenshots/hunts/misp-workbench-6_hunts_scheduled-task-add-button.png#only-light" style="max-width: 100%; height: auto;">
+    <img src="../../screenshots/hunts/misp-workbench-6_hunts_scheduled-task-add-button-dark.png#only-dark" style="max-width: 100%; height: auto;">
 2. Select ***run_task*** as the task type, then select the hunt you want to run periodically. The run frequency can be defined using a fixed interval or a crontab expression for more granular scheduling.
-    <img src="../../screenshots/hunts/misp-workbench-7_hunts_scheduled-task-add-scheduled-hunt.png" style="height: 500px;">
+    <img src="../../screenshots/hunts/misp-workbench-7_hunts_scheduled-task-add-scheduled-hunt.png#only-light" style="height: 500px;">
+    <img src="../../screenshots/hunts/misp-workbench-7_hunts_scheduled-task-add-scheduled-hunt-dark.png#only-dark" style="height: 500px;">
 3. You can pause a scheduled task at any time.
-    <img src="../../screenshots/hunts/misp-workbench-8_hunts_scheduled-task-created-scheduled-hunt.png" style="max-width: 100%; height: auto;">
+    <img src="../../screenshots/hunts/misp-workbench-8_hunts_scheduled-task-created-scheduled-hunt.png#only-light" style="max-width: 100%; height: auto;">
+    <img src="../../screenshots/hunts/misp-workbench-8_hunts_scheduled-task-created-scheduled-hunt-dark.png#only-dark" style="max-width: 100%; height: auto;">
 
 
 ## Creating a _Hunt_ using the API
