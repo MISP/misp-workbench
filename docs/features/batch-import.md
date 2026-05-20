@@ -24,7 +24,8 @@ Import all valid attributes into the event
 3. A summary bar shows total lines, valid count, and invalid count.
 4. **Detected types** badges show how many indicators were found per type.
 
-<img src="../../screenshots/freetext-import/misp-workbench_1-freetext-import-modal.png">
+<img src="../../screenshots/batch-import/misp-workbench_1-batch-import-modal.png#only-light">
+<img src="../../screenshots/batch-import/misp-workbench_1-batch-import-modal-dark.png#only-dark">
 
 ## Auto-detection
 
