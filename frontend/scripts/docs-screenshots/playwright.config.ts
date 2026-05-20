@@ -12,6 +12,13 @@ export default defineConfig({
   retries: 0,
   reporter: [["list"]],
 
+  // Seeds docs fixtures once per suite invocation. The audit-logs spec
+  // depends on the four `_docs_fixture` audit rows landing on page 1; this
+  // hook re-times them at every run so the umbrella `docs:screenshots`
+  // works as reliably as `docs:screenshots:audit-logs` used to.
+  // Disable with DOCS_SCREENSHOTS_SKIP_SEED=1.
+  globalSetup: path.join(__dirname, "global-setup.ts"),
+
   // NOTE: don't spread devices["Desktop Chrome"] into the projects —
   // its preset viewport (1280x720) and deviceScaleFactor (1) override
   // the values we want here.
