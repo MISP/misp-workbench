@@ -18,6 +18,7 @@
     "docs:screenshots:hunts": "playwright test scripts/docs-screenshots/hunts.spec.ts --config=scripts/docs-screenshots/playwright.config.ts",
     "docs:screenshots:audit-logs": "npm run docs:seed && playwright test scripts/docs-screenshots/audit-logs.spec.ts --config=scripts/docs-screenshots/playwright.config.ts",
     "docs:screenshots:feeds": "playwright test scripts/docs-screenshots/feeds.spec.ts --config=scripts/docs-screenshots/playwright.config.ts",
+    "docs:screenshots:enrichments": "playwright test scripts/docs-screenshots/enrichments.spec.ts --config=scripts/docs-screenshots/playwright.config.ts",
     "build-only": "vite build",
     "type-check": "vue-tsc --noEmit -p tsconfig.vitest.json --composite false",
     "lint": "eslint . --fix"

@@ -49,7 +49,8 @@ Modules are managed under ***internals*** → ***modules***.
 
 All modules available from the misp-modules service are listed with their name, author, version, and description. Use the search bar to filter by name or toggle **Only enabled** to see active modules.
 
-<img src="../../../screenshots/enrichments/misp-workbench-4_modules.png">
+<img src="../../screenshots/enrichments/misp-workbench-4_modules.png#only-light">
+<img src="../../screenshots/enrichments/misp-workbench-4_modules-dark.png#only-dark">
 
 ### Enabling a module
 
@@ -59,26 +60,31 @@ Click **enable** on a module card. Disabled modules are not available for enrich
 
 Some modules require configuration (API keys, endpoints, etc.). If a module has configurable settings, a **configure** button appears. Click it to set key-value pairs that are stored in the database and passed to the module on every query.
 
-<img src="../../../screenshots/enrichments/misp-workbench-5_module-settings.png">
+<img src="../../screenshots/enrichments/misp-workbench-5_module-settings.png#only-light">
+<img src="../../screenshots/enrichments/misp-workbench-5_module-settings-dark.png#only-dark">
 
 ### Testing a module
 
 Click **query** on an enabled module to send a test query directly from the settings page.
 
-<img src="../../../screenshots/enrichments/misp-workbench-6_module-settings-test.png">
+<img src="../../screenshots/enrichments/misp-workbench-6_module-settings-test.png#only-light">
+<img src="../../screenshots/enrichments/misp-workbench-6_module-settings-test-dark.png#only-dark">
 
 ## Enriching an attribute
 
 1. Navigate to an event's attribute list.
 2. Click the :fontawesome-solid-magic-wand-sparkles: **Enrich** action on any attribute.
-            <img src="../../../screenshots/enrichments/misp-workbench-1_enrichment-attribute.png">
+            <img src="../../screenshots/enrichments/misp-workbench-1_enrichment-attribute.png#only-light">
+            <img src="../../screenshots/enrichments/misp-workbench-1_enrichment-attribute-dark.png#only-dark">
 3. The enrichment modal shows the attribute details and a list of all enabled modules.
-            <img src="../../../screenshots/enrichments/misp-workbench-2_enrichment-modal.png">
+            <img src="../../screenshots/enrichments/misp-workbench-2_enrichment-modal.png#only-light">
+            <img src="../../screenshots/enrichments/misp-workbench-2_enrichment-modal-dark.png#only-dark">
 4. Select which modules to query (or use the checkbox in the header to select all), then click **Query**.
 5. Results appear grouped by module. Each result is either:
       - **Attribute** — a single value (e.g. a resolved domain, a hash)
       - **Object** — a structured group of attributes with object references back to the source attribute
-            <img src="../../../screenshots/enrichments/misp-workbench-3_enrichment-results.png">
+            <img src="../../screenshots/enrichments/misp-workbench-3_enrichment-results.png#only-light">
+            <img src="../../screenshots/enrichments/misp-workbench-3_enrichment-results-dark.png#only-dark">
 6. Use the checkboxes to select which results to keep, or click **Select All Enrichments**.
 7. Click **Add** to create the selected attributes and objects in the event.
 
