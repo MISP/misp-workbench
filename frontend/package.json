@@ -20,6 +20,7 @@
     "docs:screenshots:feeds": "playwright test scripts/docs-screenshots/feeds.spec.ts --config=scripts/docs-screenshots/playwright.config.ts",
     "docs:screenshots:enrichments": "playwright test scripts/docs-screenshots/enrichments.spec.ts --config=scripts/docs-screenshots/playwright.config.ts",
     "docs:screenshots:correlations": "playwright test scripts/docs-screenshots/correlations.spec.ts --config=scripts/docs-screenshots/playwright.config.ts",
+    "docs:screenshots:notebooks": "playwright test scripts/docs-screenshots/notebooks.spec.ts --config=scripts/docs-screenshots/playwright.config.ts",
     "build-only": "vite build",
     "type-check": "vue-tsc --noEmit -p tsconfig.vitest.json --composite false",
     "lint": "eslint . --fix"
