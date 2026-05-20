@@ -27,7 +27,8 @@ Each purged event UUID is logged
 
 Retention is configured via **runtime settings** under the `retention` namespace. Navigate to ***Internals*** → ***Runtime Settings*** → ***retention***.
 
-<img src="../../screenshots/retention-period/misp-workbench-1_runtime_settings_retention.png">
+<img src="../../screenshots/retention-period/misp-workbench-1_runtime_settings_retention.png#only-light">
+<img src="../../screenshots/retention-period/misp-workbench-1_runtime_settings_retention-dark.png#only-dark">
 
 | Setting | Type | Default | Description |
 |---|---|---|---|

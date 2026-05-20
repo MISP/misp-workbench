@@ -1,0 +1,29 @@
+[
+  {
+    "uuid": "a1f30000-0001-4001-8000-000000000001",
+    "info": "Cobalt Strike infrastructure observed targeting EU banks",
+    "date_offset_days": 14,
+    "threat_level": 1,
+    "analysis": 2,
+    "distribution": 0,
+    "published": true
+  },
+  {
+    "uuid": "a1f30000-0001-4001-8000-000000000002",
+    "info": "WannaCry ransomware variant — recent resurgence",
+    "date_offset_days": 7,
+    "threat_level": 1,
+    "analysis": 1,
+    "distribution": 0,
+    "published": true
+  },
+  {
+    "uuid": "a1f30000-0001-4001-8000-000000000003",
+    "info": "Phishing campaign impersonating Microsoft Office 365 login",
+    "date_offset_days": 2,
+    "threat_level": 2,
+    "analysis": 2,
+    "distribution": 0,
+    "published": true
+  }
+]

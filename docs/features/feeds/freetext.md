@@ -2,7 +2,8 @@
 
 Freetext feeds ingest plain text files with one indicator per line. The attribute type is either detected automatically using heuristics or set to a fixed value.
 
-<img src="../../../screenshots/feeds/misp-workbench-1_freetext-feed.png">
+<img src="../../../screenshots/feeds/misp-workbench-1_freetext-feed.png#only-light">
+<img src="../../../screenshots/feeds/misp-workbench-1_freetext-feed-dark.png#only-dark">
 
 
 ## Type detection
@@ -30,7 +31,8 @@ When set to **Automatic**, each line is classified in order:
 | **Fixed type** | Assign the same MISP attribute type to every line |
 
 
-<img src="../../../screenshots/feeds/misp-workbench-2_freetext-feed-settings.png">
+<img src="../../../screenshots/feeds/misp-workbench-2_freetext-feed-settings.png#only-light">
+<img src="../../../screenshots/feeds/misp-workbench-2_freetext-feed-settings-dark.png#only-dark">
 
 
 ## Example

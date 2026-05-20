@@ -1,0 +1,56 @@
+[
+  {
+    "uuid": "b2f30000-0001-4002-8000-000000000001",
+    "event_uuid": "a1f30000-0001-4001-8000-000000000001",
+    "category": "Network activity",
+    "type": "ip-src",
+    "value": "185.220.101.42",
+    "comment": "Cobalt Strike team server",
+    "to_ids": true
+  },
+  {
+    "uuid": "b2f30000-0001-4002-8000-000000000002",
+    "event_uuid": "a1f30000-0001-4001-8000-000000000001",
+    "category": "Network activity",
+    "type": "domain",
+    "value": "c2.example-cobalt.net",
+    "comment": "C2 domain",
+    "to_ids": true
+  },
+  {
+    "uuid": "b2f30000-0001-4002-8000-000000000003",
+    "event_uuid": "a1f30000-0001-4001-8000-000000000001",
+    "category": "Payload delivery",
+    "type": "md5",
+    "value": "5d41402abc4b2a76b9719d911017c592",
+    "comment": "Beacon loader",
+    "to_ids": true
+  },
+  {
+    "uuid": "b2f30000-0001-4002-8000-000000000004",
+    "event_uuid": "a1f30000-0001-4001-8000-000000000002",
+    "category": "Payload delivery",
+    "type": "sha256",
+    "value": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "comment": "WannaCry dropper",
+    "to_ids": true
+  },
+  {
+    "uuid": "b2f30000-0001-4002-8000-000000000005",
+    "event_uuid": "a1f30000-0001-4001-8000-000000000002",
+    "category": "Network activity",
+    "type": "url",
+    "value": "http://payment.fake-banking.com/transfer",
+    "comment": "Ransom payment page",
+    "to_ids": true
+  },
+  {
+    "uuid": "b2f30000-0001-4002-8000-000000000006",
+    "event_uuid": "a1f30000-0001-4001-8000-000000000003",
+    "category": "Payload delivery",
+    "type": "email-src",
+    "value": "support@microsoft-office365-login.com",
+    "comment": "Phishing sender",
+    "to_ids": true
+  }
+]

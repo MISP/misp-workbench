@@ -1,0 +1,270 @@
+name: Regenerate Docs Screenshots
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      pr_title_suffix:
+        description: Optional suffix appended to the PR title (e.g. "post v1.4.2 audit")
+        required: false
+        default: ""
+
+# Runs the docs-screenshots Playwright suite against a freshly-seeded dev
+# stack and opens a PR with any regenerated PNGs. Triggered automatically
+# when a release is published, and on demand via the Actions tab.
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  regen:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16.3
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: misp
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      opensearch:
+        image: opensearchproject/opensearch:1.3.16
+        ports:
+          - 9200:9200
+          - 9300:9300
+        env:
+          OPENSEARCH_HOSTNAME: localhost
+          OPENSEARCH_PORT: 9200
+          OPENSEARCH_INITIAL_ADMIN_PASSWORD: ";pnNZC+$#&5Af%'"
+          cluster.name: opensearch-cluster
+          node.name: opensearch-misp1
+          discovery.type: single-node
+          bootstrap.memory_lock: true
+          OPENSEARCH_JAVA_OPTS: "-Xms512m -Xmx512m"
+          plugins.security.disabled: true
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+
+      modules:
+        image: ghcr.io/misp/misp-docker/misp-modules:latest
+        ports:
+          - 6666:6666
+        env:
+          REDIS_BACKEND: redis
+
+    env:
+      ENVIRONMENT: test
+      POSTGRES_HOSTNAME: localhost
+      POSTGRES_PORT: 5432
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_DB: misp
+      OPENSEARCH_HOSTNAME: localhost
+      OPENSEARCH_PORT: 9200
+      REDIS_HOSTNAME: localhost
+      REDIS_PORT: 6379
+      REDIS_CACHE_DB: 5
+      CELERY_BROKER_URL: redis://localhost:6379/0
+      CELERY_RESULT_BACKEND: redis://localhost:6379/0
+      MAIL_USERNAME: mail-user
+      MAIL_PASSWORD: mail-pwd
+      MAIL_PORT: 1025
+      MAIL_SERVER: localhost
+      MODULES_HOST: localhost
+      MODULES_PORT: 6666
+      STORAGE_ENGINE: local
+      FLOWER_BASIC_AUTH: flower:flower
+      OAUTH2_SECRET_KEY: e6d14a781f168c29f8ba7dad72c2ad1418375ab9e3878ea671ba87cf76618511
+      OAUTH2_REFRESH_SECRET_KEY: e6d14a781f168c29f8ba7dad72c2ad1418375ab9e3878ea671ba87cf76618511_refresh
+      OAUTH2_ALGORITHM: HS256
+      OAUTH2_ACCESS_TOKEN_EXPIRE_MINUTES: 30
+      OAUTH2_REFRESH_TOKEN_EXPIRE_DAYS: 7
+      MCP_AUTH_ENABLED: "false"
+      DOCS_FRONTEND_URL: http://localhost:3001
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install and configure Poetry
+        uses: snok/install-poetry@v1
+        with:
+          version: 2.4.1
+          virtualenvs-create: true
+          virtualenvs-in-project: true
+          installer-parallel: true
+
+      - name: Install API dependencies
+        working-directory: api
+        run: poetry install --no-interaction --no-root
+
+      - name: Create OpenSearch indices
+        run: |
+          OPENSEARCH_URL="http://localhost:9200"
+          echo "Waiting for OpenSearch..."
+          for i in $(seq 1 30); do
+            curl -s "${OPENSEARCH_URL}" >/dev/null 2>&1 && break
+            sleep 3
+          done
+          for file in opensearch/pipelines/*.json; do
+            curl -s -X PUT "${OPENSEARCH_URL}/_ingest/pipeline/$(basename "$file" .json)" \
+              -H "Content-Type: application/json" -d "@${file}"
+          done
+          for file in opensearch/index-templates/*.json; do
+            curl -s -X PUT "${OPENSEARCH_URL}/_index_template/$(basename "$file" .json)" \
+              -H "Content-Type: application/json" -d "@${file}"
+          done
+          for file in opensearch/mappings/*.json; do
+            curl -s -X PUT "${OPENSEARCH_URL}/$(basename "$file" .json)" \
+              -H "Content-Type: application/json" -d "@${file}"
+          done
+
+      - name: Run DB migrations
+        working-directory: api
+        run: poetry run alembic upgrade head
+
+      - name: Seed docs user + fixtures
+        working-directory: api
+        run: |
+          # The seed-docs-fixtures CLI auto-creates the docs admin user
+          # (admin@admin.test / admin) and the events/attributes/hunts/audit
+          # log entries the spec navigates to.
+          poetry run python -m app.cli seed-docs-fixtures --reset
+
+      - name: Start API (uvicorn) on :8080
+        working-directory: api
+        run: |
+          nohup poetry run uvicorn app.main:app --host 0.0.0.0 --port 8080 \
+            > /tmp/api.log 2>&1 &
+          echo "Waiting for API..."
+          for i in $(seq 1 30); do
+            curl -fs http://localhost:8080/docs >/dev/null 2>&1 && break
+            sleep 2
+          done
+          curl -fs http://localhost:8080/docs >/dev/null
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Configure frontend .env
+        working-directory: frontend
+        run: |
+          cp .env.dist .env
+          # Ensure VITE_API_URL matches the uvicorn port we booted above.
+          sed -i 's|^VITE_API_URL=.*|VITE_API_URL=http://localhost:8080|' .env
+
+      - name: Start Vite dev server on :3001
+        working-directory: frontend
+        run: |
+          nohup npm run dev > /tmp/vite.log 2>&1 &
+          echo "Waiting for Vite..."
+          for i in $(seq 1 30); do
+            curl -fs http://localhost:3001/ >/dev/null 2>&1 && break
+            sleep 2
+          done
+          curl -fs http://localhost:3001/ >/dev/null
+
+      - name: Install Playwright browsers
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium
+
+      - name: Run docs:screenshots
+        working-directory: frontend
+        run: npm run docs:screenshots
+
+      - name: Detect screenshot changes
+        id: diff
+        run: |
+          git add -A docs/screenshots
+          if git diff --cached --quiet -- docs/screenshots; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "No screenshot changes — nothing to PR."
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            git diff --cached --stat -- docs/screenshots
+          fi
+
+      - name: Upload server logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: server-logs
+          path: |
+            /tmp/api.log
+            /tmp/vite.log
+          if-no-files-found: ignore
+
+      # Build the PR title/branch/commit-message strings as job env vars so
+      # user-controllable inputs (release tag name, workflow_dispatch suffix)
+      # are never expanded into a shell context.
+      - name: Compute PR metadata
+        if: steps.diff.outputs.changed == 'true'
+        id: meta
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          SUFFIX: ${{ inputs.pr_title_suffix }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          # Sanitise the release tag to ref-safe chars before using it in a
+          # branch name. Falls back to the run id for workflow_dispatch.
+          if [ -n "$RELEASE_TAG" ]; then
+            SAFE_TAG=$(printf '%s' "$RELEASE_TAG" | tr -c 'A-Za-z0-9._-' '-')
+            BRANCH="docs/regen-screenshots-${SAFE_TAG}"
+            TITLE="docs: regenerate screenshots for ${RELEASE_TAG}"
+            COMMIT="docs: regenerate screenshots for ${RELEASE_TAG}"
+          else
+            BRANCH="docs/regen-screenshots-${RUN_ID}"
+            TITLE="docs: regenerate screenshots"
+            COMMIT="docs: regenerate screenshots"
+          fi
+          if [ -n "$SUFFIX" ]; then
+            TITLE="${TITLE} — ${SUFFIX}"
+          fi
+          {
+            echo "branch=${BRANCH}"
+            echo "title=${TITLE}"
+            echo "commit=${COMMIT}"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Open PR with regenerated screenshots
+        if: steps.diff.outputs.changed == 'true'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          branch: ${{ steps.meta.outputs.branch }}
+          base: main
+          title: ${{ steps.meta.outputs.title }}
+          commit-message: ${{ steps.meta.outputs.commit }}
+          body: |
+            Auto-generated by `.github/workflows/docs_screenshots.yml`.
+
+            Trigger: `${{ github.event_name }}`
+
+            Review the visual diff in this PR before merging. If something
+            looks off, it usually means a spec stub no longer matches the
+            real UI shape — fix the spec rather than committing the bad PNGs.
+          add-paths: docs/screenshots
+          delete-branch: true

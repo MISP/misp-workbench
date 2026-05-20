@@ -2,7 +2,8 @@
 
 CSV feeds ingest delimited text files where each row becomes a MISP attribute.
 
-<img src="../../../screenshots/feeds/misp-workbench-1_csv-feed.png">
+<img src="../../../screenshots/feeds/misp-workbench-1_csv-feed.png#only-light">
+<img src="../../../screenshots/feeds/misp-workbench-1_csv-feed-dark.png#only-dark">
 
 ## Configuration
 
@@ -13,13 +14,15 @@ CSV feeds ingest delimited text files where each row becomes a MISP attribute.
 | **Delimiter** | `,` `;` `\|` `\t` ` ` | Column separator |
 | **First row is header** | on / off | Skip the first row during ingestion |
 
-<img src="../../../screenshots/feeds/misp-workbench-2_csv-feed-preview.png">
+<img src="../../../screenshots/feeds/misp-workbench-2_csv-feed-preview.png#only-light">
+<img src="../../../screenshots/feeds/misp-workbench-2_csv-feed-preview-dark.png#only-dark">
 
 ### Attribute value mapping
 
 Configure how CSV columns are mapped to MISP attribute fields. Select which column (by index or header name) contains the indicator value.
 
-<img src="../../../screenshots/feeds/misp-workbench-3_csv-feed-value-mapping.png">
+<img src="../../../screenshots/feeds/misp-workbench-3_csv-feed-value-mapping.png#only-light">
+<img src="../../../screenshots/feeds/misp-workbench-3_csv-feed-value-mapping-dark.png#only-dark">
 
 #### Type strategy
 
@@ -46,7 +49,8 @@ Each property can be:
 | `last_seen` | Timestamp |
 
 
-<img src="../../../screenshots/feeds/misp-workbench-4_csv-feed-advanced-value-mapping.png">
+<img src="../../../screenshots/feeds/misp-workbench-4_csv-feed-advanced-value-mapping.png#only-light">
+<img src="../../../screenshots/feeds/misp-workbench-4_csv-feed-advanced-value-mapping-dark.png#only-dark">
 
 ## Example
 
