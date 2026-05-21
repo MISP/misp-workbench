@@ -97,6 +97,8 @@ class ApiTester:
         db.query(notification_models.Notification).delete(synchronize_session=False)
         db.query(api_key_models.ApiKey).delete(synchronize_session=False)
         db.query(audit_log_models.AuditLog).delete(synchronize_session=False)
+        from app.models import user_setting as user_setting_models
+        db.query(user_setting_models.UserSetting).delete(synchronize_session=False)
         db.query(user_models.User).delete(synchronize_session=False)
         db.query(module_models.ModuleSettings).delete(synchronize_session=False)
         db.query(taxonomy_models.TaxonomyEntry).delete(synchronize_session=False)
