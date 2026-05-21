@@ -1,5 +1,9 @@
+import io
 import os
 import logging
+import tarfile
+import uuid as uuid_lib
+import zipfile
 
 import requests
 from app.models import feed as feed_models
@@ -11,8 +15,9 @@ from app.schemas import feed as feed_schemas
 from app.schemas import user as user_schemas
 from app.schemas import attribute as attribute_schemas
 from app.schemas import event as event_schemas
+from app.services.attachments import get_attachment
 from app.worker import tasks
-from fastapi import HTTPException, status
+from fastapi import HTTPException, UploadFile, status
 from pymisp import MISPEvent
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
@@ -22,6 +27,9 @@ import json
 logger = logging.getLogger(__name__)
 
 USER_AGENT = "misp-workbench/" + os.environ.get("APP_VERSION", "")
+
+LOCAL_FILE_PREFIX = "feed-uploads/"
+MAX_UPLOAD_BYTES = 2 * 1024 * 1024 * 1024  # 2 GB
 
 
 def get_feeds(db: Session, skip: int = 0, limit: int = 100):
@@ -111,7 +119,154 @@ def build_feed_headers(feed) -> dict:
     return headers
 
 
+def store_feed_upload(file: UploadFile, source_format: str) -> dict:
+    """Persist an uploaded feed file to storage.
+
+    Returns the storage key (used as feed.url when input_source='local'),
+    plus filename/size metadata that the caller stores in feed.settings.localFile.
+    For MISP, the upload must be a .zip/.tar(.gz) archive; relevant members
+    (manifest.json, hashes.csv, per-event {uuid}.json) are extracted and stored
+    individually under `<key>/<member>`.
+    """
+    if source_format not in {"misp", "csv", "json", "freetext"}:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Unsupported source_format for upload: {source_format}",
+        )
+
+    content = file.file.read()
+    size = len(content)
+    if size == 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Uploaded file is empty",
+        )
+    if size > MAX_UPLOAD_BYTES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Uploaded file exceeds maximum allowed size ({MAX_UPLOAD_BYTES} bytes)",
+        )
+
+    from app.repositories.attachments import store_attachment
+
+    key = f"{LOCAL_FILE_PREFIX}{uuid_lib.uuid4()}"
+
+    if source_format == "misp":
+        members = _extract_misp_archive(content, file.filename or "")
+        for member_name, member_data in members.items():
+            store_attachment(f"{key}/{member_name}", member_data)
+    else:
+        store_attachment(key, content)
+
+    return {
+        "key": key,
+        "filename": file.filename or "",
+        "size": size,
+        "source_format": source_format,
+    }
+
+
+def _extract_misp_archive(content: bytes, filename: str) -> dict:
+    name_lower = (filename or "").lower()
+    if name_lower.endswith(".zip"):
+        members = _extract_zip(content)
+    elif (
+        name_lower.endswith(".tar.gz")
+        or name_lower.endswith(".tgz")
+        or name_lower.endswith(".tar")
+    ):
+        members = _extract_tar(content)
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="MISP feed uploads must be a .zip or .tar(.gz) archive",
+        )
+    if "manifest.json" not in members:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="MISP feed archive must contain manifest.json",
+        )
+    return members
+
+
+def _extract_zip(content: bytes) -> dict:
+    members = {}
+    try:
+        with zipfile.ZipFile(io.BytesIO(content)) as zf:
+            for info in zf.infolist():
+                if info.is_dir():
+                    continue
+                inner_name = _normalize_misp_member_name(info.filename)
+                if inner_name is None:
+                    continue
+                members[inner_name] = zf.read(info.filename)
+    except zipfile.BadZipFile as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid zip archive: {e}",
+        )
+    return members
+
+
+def _extract_tar(content: bytes) -> dict:
+    members = {}
+    try:
+        with tarfile.open(fileobj=io.BytesIO(content), mode="r:*") as tf:
+            for info in tf:
+                if not info.isfile():
+                    continue
+                inner_name = _normalize_misp_member_name(info.name)
+                if inner_name is None:
+                    continue
+                fh = tf.extractfile(info)
+                if fh is None:
+                    continue
+                members[inner_name] = fh.read()
+    except tarfile.TarError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid tar archive: {e}",
+        )
+    return members
+
+
+def _normalize_misp_member_name(path: str):
+    if not path or ".." in path.split("/") or path.startswith("/"):
+        return None
+    base = os.path.basename(path)
+    if not base:
+        return None
+    if base in ("manifest.json", "hashes.csv"):
+        return base
+    if base.endswith(".json"):
+        return base
+    return None
+
+
+def fetch_csv_content_from_local(key: str) -> list:
+    content = get_attachment(key).decode("utf-8")
+    lines = content.splitlines()
+    return [
+        line for line in lines if line.strip() and not line.strip().startswith("#")
+    ]
+
+
+def fetch_json_content_from_local(key: str) -> str:
+    return get_attachment(key).decode("utf-8")
+
+
+def get_local_misp_manifest(key: str) -> dict:
+    return json.loads(get_attachment(f"{key}/manifest.json").decode("utf-8"))
+
+
+def get_local_misp_event(key: str, event_uuid: str) -> dict:
+    return json.loads(get_attachment(f"{key}/{event_uuid}.json").decode("utf-8"))
+
+
 def fetch_feed_event_by_uuid(feed, event_uuid):
+    if getattr(feed, "input_source", "network") == "local":
+        return get_local_misp_event(feed.url, event_uuid)
+
     url = f"{feed.url}/{event_uuid}.json"
     response = requests.get(url, headers=build_feed_headers(feed))
     if response.status_code == 200:
@@ -193,7 +348,21 @@ def process_feed_event(
 
 
 def get_feed_manifest(feed):
+    if getattr(feed, "input_source", "network") == "local":
+        return _LocalManifestResponse(get_local_misp_manifest(feed.url))
     return requests.get(f"{feed.url}/manifest.json", headers=build_feed_headers(feed))
+
+
+class _LocalManifestResponse:
+    """Adapter so callers can use the same .status_code / .json() interface as requests."""
+
+    def __init__(self, manifest: dict):
+        self.status_code = 200
+        self._manifest = manifest
+        self.text = ""
+
+    def json(self):
+        return self._manifest
 
 
 def fetch_feed(db: Session, feed_id: int, user: user_schemas.User):
@@ -692,29 +861,32 @@ def preview_csv_feed(settings: dict = None, limit: int = 5):
         )
     if settings["input_source"] == "network":
         lines = fetch_csv_content_from_network(settings["url"])
-        preview_lines = [line for line in lines[:limit]]
-        parsed_preview_lines = parse_csv_feed_lines(settings["settings"], preview_lines)
-
-        processed_preview = [
-            process_csv_feed_row(row, settings["settings"])
-            for row in parsed_preview_lines
-        ]
-
-        return {
-            "result": "success",
-            "rows": parsed_preview_lines,
-            "preview": processed_preview,
-        }
     elif settings["input_source"] == "local":
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Local file preview is not yet supported",
-        )
+        if not settings.get("url"):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Missing local file key for CSV preview",
+            )
+        lines = fetch_csv_content_from_local(settings["url"])
     else:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid mode or missing URI for CSV preview",
+            detail="Invalid input_source for CSV preview",
         )
+
+    preview_lines = [line for line in lines[:limit]]
+    parsed_preview_lines = parse_csv_feed_lines(settings["settings"], preview_lines)
+
+    processed_preview = [
+        process_csv_feed_row(row, settings["settings"])
+        for row in parsed_preview_lines
+    ]
+
+    return {
+        "result": "success",
+        "rows": parsed_preview_lines,
+        "preview": processed_preview,
+    }
 
 
 def parse_csv_feed_lines(settings, preview_lines):
@@ -927,13 +1099,22 @@ def process_json_item_to_attribute(item, settings: dict):
 
 
 def preview_json_feed(settings: dict = None, limit: int = 5):
-    if settings.get("input_source") != "network":
+    input_source = (settings or {}).get("input_source")
+    if input_source == "network":
+        content = fetch_json_content_from_network(settings["url"])
+    elif input_source == "local":
+        if not settings.get("url"):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Missing local file key for JSON preview",
+            )
+        content = fetch_json_content_from_local(settings["url"])
+    else:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Local file preview is not yet supported",
+            detail="Invalid input_source for JSON preview",
         )
 
-    content = fetch_json_content_from_network(settings["url"])
     json_cfg = (settings.get("settings") or {}).get("jsonConfig") or {}
     items = parse_json_feed_items(content, json_cfg)
 

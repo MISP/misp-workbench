@@ -50,13 +50,22 @@ def detect_type(value: str) -> Optional[str]:
 
 
 def preview_freetext_feed(settings: dict, limit: int = 10):
-    if settings.get("input_source") != "network":
+    input_source = (settings or {}).get("input_source")
+    if input_source == "network":
+        lines = feeds_repository.fetch_csv_content_from_network(settings["url"])
+    elif input_source == "local":
+        if not settings.get("url"):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Missing local file key for freetext preview",
+            )
+        lines = feeds_repository.fetch_csv_content_from_local(settings["url"])
+    else:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Local file preview is not yet supported",
+            detail="Invalid input_source for freetext preview",
         )
 
-    lines = feeds_repository.fetch_csv_content_from_network(settings["url"])
     freetext_config = (settings.get("settings") or {}).get("freetextConfig", {})
     type_detection = freetext_config.get("type_detection", "automatic")
     fixed_type = freetext_config.get("fixed_type")

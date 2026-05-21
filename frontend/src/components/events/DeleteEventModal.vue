@@ -11,6 +11,7 @@ const props = defineProps(["event_uuid"]);
 const emit = defineEmits(["event-deleted"]);
 
 const modalEl = ref(null);
+const hardDelete = ref(false);
 
 defineExpose({
   modalEl,
@@ -18,9 +19,12 @@ defineExpose({
 
 function onSubmit() {
   return eventsStore
-    .delete(props.event_uuid)
+    .delete(props.event_uuid, { force: hardDelete.value })
     .then(() => {
-      emit("event-deleted", { event_uuid: props.event_uuid });
+      emit("event-deleted", {
+        event_uuid: props.event_uuid,
+        force: hardDelete.value,
+      });
       Modal.getInstance(modalEl.value)?.hide();
     })
     .catch((error) => (status.error = error));
@@ -50,7 +54,26 @@ function onSubmit() {
           ></button>
         </div>
         <div class="modal-body">
-          Are you sure you want to delete this event?
+          <p class="mb-3">Are you sure you want to delete this event?</p>
+          <div class="form-check">
+            <input
+              class="form-check-input"
+              type="checkbox"
+              :id="'hardDeleteCheck_' + event_uuid"
+              v-model="hardDelete"
+            />
+            <label
+              class="form-check-label"
+              :for="'hardDeleteCheck_' + event_uuid"
+            >
+              Hard delete (permanently remove, not recoverable)
+            </label>
+            <div class="form-text text-muted">
+              By default the event is soft-deleted and can be restored. Hard
+              delete removes the event and all its attributes, objects, tags and
+              reports permanently.
+            </div>
+          </div>
         </div>
         <div v-if="status.error" class="w-100 alert alert-danger mt-3 mb-3">
           {{ status.error }}

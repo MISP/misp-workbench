@@ -67,21 +67,26 @@ async def search_events(
     size: int = Query(10, ge=1, le=100),
     sort_by: Optional[str] = Query("@timestamp", pattern="^(_score|@timestamp)$"),
     sort_order: Optional[str] = Query("desc", pattern="^(asc|desc)$"),
+    include_deleted: bool = Query(False),
     user: user_schemas.User = Security(get_current_active_user, scopes=["events:read"]),
 ):
 
     from_value = (page - 1) * size
 
-    return events_repository.search_events(query, page, from_value, size, sort_by, sort_order)
+    return events_repository.search_events(
+        query, page, from_value, size, sort_by, sort_order,
+        include_deleted=include_deleted,
+    )
 
 
 @router.get("/events/histogram")
 async def get_events_histogram(
     query: str = Query(..., min_length=0),
     interval: Optional[str] = Query("1d", pattern="^(1d|1w|1M)$"),
+    include_deleted: bool = Query(False),
     user: user_schemas.User = Security(get_current_active_user, scopes=["events:read"]),
 ):
-    return events_repository.search_events_histogram(query, interval)
+    return events_repository.search_events_histogram(query, interval, include_deleted=include_deleted)
 
 
 @router.get("/events/export")

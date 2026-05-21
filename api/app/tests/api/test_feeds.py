@@ -362,10 +362,29 @@ class TestJsonFeedPreview(ApiTester):
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     @pytest.mark.parametrize("scopes", [_PREVIEW_SCOPE])
-    def test_preview_local_source_returns_400(self, client: TestClient, auth_token: auth.Token):
+    def test_preview_local_source_reads_from_storage(self, client: TestClient, auth_token: auth.Token):
+        with patch(
+            "app.repositories.feeds.fetch_json_content_from_local",
+            return_value=_ARRAY_FEED,
+        ):
+            response = client.post(
+                "/feeds/json/preview",
+                json={
+                    **_BASE_REQUEST,
+                    "input_source": "local",
+                    "url": "feed-uploads/abc",
+                    "settings": _settings(),
+                },
+                headers={"Authorization": "Bearer " + auth_token},
+            )
+        assert response.status_code == status.HTTP_200_OK
+        assert len(response.json()["items"]) == 3
+
+    @pytest.mark.parametrize("scopes", [_PREVIEW_SCOPE])
+    def test_preview_local_source_missing_key_returns_400(self, client: TestClient, auth_token: auth.Token):
         response = client.post(
             "/feeds/json/preview",
-            json={**_BASE_REQUEST, "input_source": "local", "settings": _settings()},
+            json={**_BASE_REQUEST, "input_source": "local", "url": "", "settings": _settings()},
             headers={"Authorization": "Bearer " + auth_token},
         )
         assert response.status_code == status.HTTP_400_BAD_REQUEST

@@ -1,6 +1,7 @@
 <script setup>
-import { reactive, watch } from "vue";
+import { computed, reactive, watch } from "vue";
 import DistributionLevelSelect from "../enums/DistributionLevelSelect.vue";
+import FeedFileUpload from "@/components/feeds/FeedFileUpload.vue";
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
 import { faLink } from "@fortawesome/free-solid-svg-icons";
 import { FeedSchema } from "@/schemas/feed";
@@ -10,6 +11,10 @@ const props = defineProps({
   modelValue: {
     type: Object,
     required: true,
+  },
+  sourceFormat: {
+    type: String,
+    default: "misp",
   },
 });
 
@@ -27,8 +32,44 @@ const local = reactive({
   schedule: "86400",
   fetch_on_create: true,
   headers: {},
+  settings: {},
   ...props.modelValue,
 });
+
+const isLocal = computed(() => local.input_source === "local");
+
+const localFile = computed(() => (local.settings || {}).localFile || {});
+
+watch(
+  () => local.input_source,
+  (next, prev) => {
+    if (next === prev) return;
+    if (next === "local") {
+      local.schedule = "disabled";
+      local.url = "";
+    } else {
+      const nextSettings = { ...(local.settings || {}) };
+      delete nextSettings.localFile;
+      local.settings = nextSettings;
+      local.url = "";
+    }
+  },
+);
+
+function onFileUploaded({ key, filename, size }) {
+  local.url = key;
+  local.settings = {
+    ...(local.settings || {}),
+    localFile: { filename, size },
+  };
+}
+
+function onFileCleared() {
+  local.url = "";
+  const next = { ...(local.settings || {}) };
+  delete next.localFile;
+  local.settings = next;
+}
 
 const auth = reactive({
   type: "none",
@@ -138,17 +179,37 @@ function handleDistributionLevelUpdated(distributionLevelId) {
           <div class="invalid-feedback">{{ errors["feed.distribution"] }}</div>
         </div>
 
-        <!-- <div class="col-md-2">
-          <label class="form-label" for="feed.input_source">Source</label>
-          <Field class="form-control" id="feed.input_source" name="feed.input_source" as="select"
-            v-model="local.input_source" :class="{ 'is-invalid': errors['feed.input_source'] }">
-            <option value="network">Network</option>
-            <option value="local" disabled>Local</option>
-          </Field>
-          <div class="invalid-feedback">{{ errors["feed.input_source"] }}</div>
-        </div> -->
+        <div class="col-md-12">
+          <label class="form-label">Input source</label>
+          <div class="d-flex gap-3">
+            <div class="form-check">
+              <input
+                class="form-check-input"
+                type="radio"
+                id="inputSourceNetwork"
+                value="network"
+                v-model="local.input_source"
+              />
+              <label class="form-check-label" for="inputSourceNetwork">
+                Network (fetch from URL)
+              </label>
+            </div>
+            <div class="form-check">
+              <input
+                class="form-check-input"
+                type="radio"
+                id="inputSourceLocal"
+                value="local"
+                v-model="local.input_source"
+              />
+              <label class="form-check-label" for="inputSourceLocal">
+                Upload file
+              </label>
+            </div>
+          </div>
+        </div>
 
-        <div class="col-10">
+        <div v-if="!isLocal" class="col-10">
           <label class="form-label" for="feed.url">URI</label>
           <div class="input-group mb-3">
             <div class="input-group-prepend">
@@ -170,7 +231,19 @@ function handleDistributionLevelUpdated(distributionLevelId) {
           </div>
         </div>
 
-        <div class="col-12">
+        <div v-else class="col-12">
+          <label class="form-label">File</label>
+          <FeedFileUpload
+            :source-format="sourceFormat"
+            :filename="localFile.filename"
+            :size="localFile.size"
+            :storage-key="local.url"
+            @uploaded="onFileUploaded"
+            @cleared="onFileCleared"
+          />
+        </div>
+
+        <div v-if="!isLocal" class="col-12">
           <label class="form-label">Authentication</label>
           <select class="form-select mb-2" v-model="auth.type">
             <option value="none">No Authentication</option>
@@ -227,7 +300,7 @@ function handleDistributionLevelUpdated(distributionLevelId) {
           <div class="invalid-feedback">{{ errors["feed.fixed_event"] }}</div>
         </div>
 
-        <div class="col-md-6">
+        <div v-if="!isLocal" class="col-md-6">
           <label class="form-label">Update interval</label>
           <select class="form-select" v-model="local.schedule">
             <option value="3600">Hourly</option>
@@ -237,7 +310,7 @@ function handleDistributionLevelUpdated(distributionLevelId) {
           </select>
         </div>
 
-        <div class="col-md-6 d-flex align-items-end">
+        <div v-if="!isLocal" class="col-md-6 d-flex align-items-end">
           <div class="form-check">
             <input
               class="form-check-input"
@@ -249,6 +322,11 @@ function handleDistributionLevelUpdated(distributionLevelId) {
               Fetch immediately after creation
             </label>
           </div>
+        </div>
+
+        <div v-else class="col-12 text-muted small">
+          Uploaded feeds are ingested once when the feed is created. Replace the
+          file on the Update Feed page to re-ingest later.
         </div>
       </div>
     </Form>

@@ -41,11 +41,10 @@ def store_attachment(
         # upload file to local storage
         if settings.Storage.engine == "local":
             base_path = "/tmp/attachments"
-            if os.path.exists(base_path) is False:
-                os.makedirs(base_path)
             fullpath = os.path.normpath(os.path.join(base_path, filename))
             if not fullpath.startswith(base_path):
                 raise Exception("not allowed")
+            os.makedirs(os.path.dirname(fullpath), exist_ok=True)
             with open(fullpath, "wb") as f:
                 f.write(file_content)
     except Exception as e:

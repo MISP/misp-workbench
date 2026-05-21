@@ -317,7 +317,7 @@ def create_object_from_pulled_object(
         "distribution": dist_val,
         "sharing_group_id": None,
         "comment": pulled_object.comment or "",
-        "deleted": pulled_object.deleted or False,
+        "deleted": getattr(pulled_object, "deleted", False) or False,
         "first_seen": (
             int(pulled_object.first_seen.timestamp())
             if hasattr(pulled_object, "first_seen") and pulled_object.first_seen
@@ -402,7 +402,7 @@ def update_object_from_pulled_object(
             distribution=event_schemas.DistributionLevel(pulled_object.distribution),
             sharing_group_id=None,
             comment=pulled_object.comment,
-            deleted=pulled_object.deleted,
+            deleted=getattr(pulled_object, "deleted", False) or False,
             first_seen=(
                 int(pulled_object.first_seen.timestamp())
                 if hasattr(pulled_object, "first_seen") and pulled_object.first_seen
@@ -569,7 +569,7 @@ def update_objects_from_fetched_event(
                     timestamp=int(reference.timestamp) if reference.timestamp else 0,
                     referenced_type=referenced_type,
                     comment=reference.comment or "",
-                    deleted=referenced.deleted,
+                    deleted=getattr(referenced, "deleted", False) or False,
                 ),
             )
 

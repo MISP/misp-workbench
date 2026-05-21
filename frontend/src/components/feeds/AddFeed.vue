@@ -11,6 +11,7 @@ import TestCSVFeedModal from "@/components/feeds/csv/TestCSVFeedModal.vue";
 import PreviewFeedModal from "@/components/feeds/misp/PreviewFeedModal.vue";
 import AddFeedJson from "@/components/feeds/json/AddFeedJson.vue";
 import AddFeedFreetext from "@/components/feeds/freetext/AddFeedFreetext.vue";
+import TestFreetextFeedModal from "@/components/feeds/freetext/TestFreetextFeedModal.vue";
 import DefaultFeedPicker from "@/components/feeds/DefaultFeedPicker.vue";
 
 const feedsStore = useFeedsStore();
@@ -56,6 +57,8 @@ const previewMISPResult = ref(null);
 const previewMISPError = ref(null);
 const testCSVFeedResultOpen = ref(false);
 const testCSVFeedResult = reactive({});
+const testFreetextFeedResultOpen = ref(false);
+const testFreetextFeedResult = reactive({});
 
 /**
  * Reset type-specific config when switching types
@@ -64,11 +67,16 @@ const testCSVFeedResult = reactive({});
 watch(feedType, () => {
   config.value.rules = {};
   config.value.settings = {};
+  if (config.value.input_source === "local") {
+    config.value.url = "";
+  }
 });
 
 const canSubmit = computed(() => {
   return config.value.name && config.value.url;
 });
+
+const isLocal = computed(() => config.value.input_source === "local");
 
 function submit() {
   const feed = {
@@ -80,34 +88,39 @@ function submit() {
   return feedsStore
     .create(feed)
     .then((response) => {
-      // Create scheduled task if schedule is defined
-      if (config.value.schedule && config.value.schedule !== "disabled") {
-        const intervalSeconds = parseInt(config.value.schedule);
-
-        const taskData = {
-          task_name: "app.worker.tasks.fetch_feed",
-          params: {
-            kwargs: {
-              feed_id: response.id,
-            },
-          },
-          schedule: {
-            type: "interval",
-            every: intervalSeconds,
-          },
-          enabled: config.value.fetch_on_create,
-        };
-
-        tasksStore.create_scheduled_task(taskData).catch((error) => {
-          console.error("Failed to create scheduled task:", error);
-          // Continue with feed creation even if task creation fails
-        });
-      }
-
-      if (config.value.fetch_on_create) {
+      // Local-source feeds are one-shot: skip scheduled task, fetch once now.
+      if (isLocal.value) {
         feedsStore.fetch(response.id).catch((error) => {
-          console.error("Failed to enqueue immediate feed fetch:", error);
+          console.error("Failed to enqueue local feed fetch:", error);
         });
+      } else {
+        if (config.value.schedule && config.value.schedule !== "disabled") {
+          const intervalSeconds = parseInt(config.value.schedule);
+
+          const taskData = {
+            task_name: "app.worker.tasks.fetch_feed",
+            params: {
+              kwargs: {
+                feed_id: response.id,
+              },
+            },
+            schedule: {
+              type: "interval",
+              every: intervalSeconds,
+            },
+            enabled: config.value.fetch_on_create,
+          };
+
+          tasksStore.create_scheduled_task(taskData).catch((error) => {
+            console.error("Failed to create scheduled task:", error);
+          });
+        }
+
+        if (config.value.fetch_on_create) {
+          feedsStore.fetch(response.id).catch((error) => {
+            console.error("Failed to enqueue immediate feed fetch:", error);
+          });
+        }
       }
 
       toastsStore.push(
@@ -173,7 +186,11 @@ function test() {
   }
 
   if (feed.type === "csv") {
-    testCSVFeed();
+    return testCSVFeed();
+  }
+
+  if (feed.type === "freetext") {
+    return testFreetextFeed();
   }
 }
 
@@ -218,11 +235,36 @@ function testCSVFeed() {
     });
 }
 
+function testFreetextFeed() {
+  const freetextFeed = {
+    ...getFeedFromConfig(),
+    settings: config.value.settings,
+  };
+
+  return feedsStore.previewFreetextFeed(freetextFeed).then((response) => {
+    if (!response) {
+      testFreetextFeedResult.value = {
+        success: false,
+        message:
+          feedsStore.status.error?.message ||
+          feedsStore.status.error ||
+          "Preview failed.",
+      };
+    } else {
+      testFreetextFeedResult.value = response;
+    }
+    testFreetextFeedResultOpen.value = true;
+  });
+}
+
 function closePreviewMISP() {
   previewMISPOpen.value = false;
 }
 function closeCSVFeedTestResult() {
   testCSVFeedResultOpen.value = false;
+}
+function closeFreetextFeedTestResult() {
+  testFreetextFeedResultOpen.value = false;
 }
 </script>
 
@@ -290,7 +332,7 @@ function closeCSVFeedTestResult() {
               <h5 class="mb-0">Feed Settings</h5>
             </div>
             <div class="card-body">
-              <FeedBaseForm v-model="config" />
+              <FeedBaseForm v-model="config" :source-format="feedType" />
             </div>
           </div>
         </div>
@@ -330,5 +372,10 @@ function closeCSVFeedTestResult() {
     :config="config"
     :testResult="testCSVFeedResult.value"
     @closeModal="closeCSVFeedTestResult"
+  />
+  <TestFreetextFeedModal
+    v-if="testFreetextFeedResultOpen"
+    :testResult="testFreetextFeedResult.value"
+    @closeModal="closeFreetextFeedTestResult"
   />
 </template>

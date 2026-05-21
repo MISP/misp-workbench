@@ -32,7 +32,10 @@ watch(
   () => {
     emit("update:modelValue", {
       ...props.modelValue,
-      settings: { freetextConfig: { ...freetextConfig } },
+      settings: {
+        ...(props.modelValue.settings || {}),
+        freetextConfig: { ...freetextConfig },
+      },
     });
   },
   { deep: true },
@@ -69,7 +72,10 @@ function loadPreview() {
   feedsStore
     .previewFreetextFeed({
       ...props.modelValue,
-      settings: { freetextConfig: { ...freetextConfig } },
+      settings: {
+        ...(props.modelValue.settings || {}),
+        freetextConfig: { ...freetextConfig },
+      },
     })
     .then((response) => {
       previewRows.value = response?.rows ?? [];

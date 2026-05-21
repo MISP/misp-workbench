@@ -57,6 +57,7 @@ const correlationsSortOrder = useLocalStorageRef(
   "explore_correlations_sort_order",
   "desc",
 );
+const includeDeleted = useLocalStorageRef("explore_include_deleted", false);
 
 const eventsFilters = ref([]);
 const attributesFilters = ref([]);
@@ -125,9 +126,14 @@ function onTimelineFilterDay(date) {
 
 async function searchTimeline(query) {
   timelineLoading.value = true;
+  const histogramParams = {
+    query,
+    interval: "1d",
+    include_deleted: includeDeleted.value,
+  };
   const [eventsHist, attributesHist, correlationsHist] = await Promise.all([
-    eventsStore.histogram({ query, interval: "1d" }),
-    attributesStore.histogram({ query, interval: "1d" }),
+    eventsStore.histogram(histogramParams),
+    attributesStore.histogram(histogramParams),
     correlationsStore.histogram({ query, interval: "1d" }),
   ]);
   timelineEventBuckets.value = eventsHist?.buckets ?? [];
@@ -144,6 +150,7 @@ function search() {
     query: applyFilters(base, eventsFilters.value),
     sort_by: eventsSortBy.value,
     sort_order: eventsSortOrder.value,
+    include_deleted: includeDeleted.value,
   });
   attributesStore.search({
     page: 1,
@@ -151,6 +158,7 @@ function search() {
     query: applyFilters(base, attributesFilters.value),
     sort_by: attributesSortBy.value,
     sort_order: attributesSortOrder.value,
+    include_deleted: includeDeleted.value,
   });
   correlationsStore.search({
     page: 1,
@@ -200,6 +208,7 @@ function onEventsPageChange(page) {
     query: applyFilters(buildQuery(), eventsFilters.value),
     sort_by: eventsSortBy.value,
     sort_order: eventsSortOrder.value,
+    include_deleted: includeDeleted.value,
   });
 }
 
@@ -210,6 +219,7 @@ function onAttributesPageChange(page) {
     query: applyFilters(buildQuery(), attributesFilters.value),
     sort_by: attributesSortBy.value,
     sort_order: attributesSortOrder.value,
+    include_deleted: includeDeleted.value,
   });
 }
 
@@ -222,6 +232,7 @@ function onEventsSortChange({ sortBy, sortOrder }) {
     query: applyFilters(buildQuery(), eventsFilters.value),
     sort_by: sortBy,
     sort_order: sortOrder,
+    include_deleted: includeDeleted.value,
   });
 }
 
@@ -234,6 +245,7 @@ function onAttributesSortChange({ sortBy, sortOrder }) {
     query: applyFilters(buildQuery(), attributesFilters.value),
     sort_by: sortBy,
     sort_order: sortOrder,
+    include_deleted: includeDeleted.value,
   });
 }
 
@@ -267,6 +279,7 @@ function onEventsFilterChange(filters) {
     query: applyFilters(buildQuery(), filters),
     sort_by: eventsSortBy.value,
     sort_order: eventsSortOrder.value,
+    include_deleted: includeDeleted.value,
   });
 }
 
@@ -278,6 +291,7 @@ function onAttributesFilterChange(filters) {
     query: applyFilters(buildQuery(), filters),
     sort_by: attributesSortBy.value,
     sort_order: attributesSortOrder.value,
+    include_deleted: includeDeleted.value,
   });
 }
 
@@ -395,6 +409,22 @@ body {
           }
         "
       />
+      <div class="form-check form-switch mt-2">
+        <input
+          class="form-check-input"
+          type="checkbox"
+          id="includeDeletedToggle"
+          v-model="includeDeleted"
+          @change="search"
+        />
+        <label
+          class="form-check-label small text-muted"
+          for="includeDeletedToggle"
+          title="Include soft-deleted events and attributes in results"
+        >
+          Include deleted
+        </label>
+      </div>
     </div>
 
     <div

@@ -68,10 +68,11 @@ export const useEventsStore = defineStore({
         .then((response) => (this.event = response))
         .finally(() => (this.status = { creating: false }));
     },
-    async delete(id) {
+    async delete(id, { force = false } = {}) {
       this.status = { deleting: true };
+      const url = force ? `${baseUrl}/${id}?force=true` : `${baseUrl}/${id}`;
       return await fetchWrapper
-        .delete(`${baseUrl}/${id}`)
+        .delete(url)
         .catch((error) => (this.status = { error }))
         .finally(() => (this.status = { deleting: false }));
     },

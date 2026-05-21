@@ -50,7 +50,10 @@ watch(
   () => {
     emit("update:modelValue", {
       ...props.modelValue,
-      settings: csvConfig ? { csvConfig } : {},
+      settings: {
+        ...(props.modelValue.settings || {}),
+        csvConfig: { ...csvConfig },
+      },
     });
   },
   { deep: true },
@@ -98,7 +101,10 @@ function previewCsvFeed() {
   feedsStore
     .previewCsvFeed({
       ...props.modelValue,
-      settings: { csvConfig },
+      settings: {
+        ...(props.modelValue.settings || {}),
+        csvConfig: { ...csvConfig },
+      },
     })
     .then((response) => {
       csvRows.value = response.rows || [];

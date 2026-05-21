@@ -418,7 +418,12 @@ def fetch_csv_feed(feed_id: int, user_id: int):
 
         db_event = feeds_repository.get_or_create_feed_event(db, db_feed, user)
 
-        lines = feeds_repository.fetch_csv_content_from_network(db_feed.url, extra_headers=db_feed.headers)
+        if db_feed.input_source == "local":
+            lines = feeds_repository.fetch_csv_content_from_local(db_feed.url)
+        else:
+            lines = feeds_repository.fetch_csv_content_from_network(
+                db_feed.url, extra_headers=db_feed.headers
+            )
         rows = feeds_repository.parse_csv_feed_lines(db_feed.settings, lines)
 
         for row in rows:
@@ -477,9 +482,12 @@ def fetch_freetext_feed(feed_id: int, user_id: int):
 
         db_event = feeds_repository.get_or_create_feed_event(db, db_feed, user)
 
-        lines = feeds_repository.fetch_csv_content_from_network(
-            db_feed.url, extra_headers=db_feed.headers
-        )
+        if db_feed.input_source == "local":
+            lines = feeds_repository.fetch_csv_content_from_local(db_feed.url)
+        else:
+            lines = feeds_repository.fetch_csv_content_from_network(
+                db_feed.url, extra_headers=db_feed.headers
+            )
 
         freetext_config = (db_feed.settings or {}).get("freetextConfig", {})
         type_detection = freetext_config.get("type_detection", "automatic")
@@ -534,9 +542,12 @@ def fetch_json_feed(feed_id: int, user_id: int):
 
         db_event = feeds_repository.get_or_create_feed_event(db, db_feed, user)
 
-        content = feeds_repository.fetch_json_content_from_network(
-            db_feed.url, extra_headers=db_feed.headers
-        )
+        if db_feed.input_source == "local":
+            content = feeds_repository.fetch_json_content_from_local(db_feed.url)
+        else:
+            content = feeds_repository.fetch_json_content_from_network(
+                db_feed.url, extra_headers=db_feed.headers
+            )
         json_cfg = (db_feed.settings or {}).get("jsonConfig") or {}
         items = feeds_repository.parse_json_feed_items(content, json_cfg)
 
