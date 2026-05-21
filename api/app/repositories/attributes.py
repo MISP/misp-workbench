@@ -174,7 +174,7 @@ def create_attribute_from_pulled_attribute(
     # TODO: process sharing group // captureSG
     # TODO: enforce warninglist
 
-    dist = pulled_attribute.distribution
+    dist = getattr(pulled_attribute, "distribution", None)
     dist_val = (
         event_schemas.DistributionLevel(dist)
         if dist is not None
@@ -189,14 +189,14 @@ def create_attribute_from_pulled_attribute(
             if isinstance(pulled_attribute.value, str)
             else str(pulled_attribute.value)
         ),
-        to_ids=pulled_attribute.to_ids,
+        to_ids=getattr(pulled_attribute, "to_ids", False) or False,
         uuid=pulled_attribute.uuid,
         timestamp=int(pulled_attribute.timestamp.timestamp()),
         distribution=dist_val,
-        comment=pulled_attribute.comment,
+        comment=getattr(pulled_attribute, "comment", "") or "",
         sharing_group_id=None,
-        deleted=pulled_attribute.deleted,
-        disable_correlation=pulled_attribute.disable_correlation,
+        deleted=getattr(pulled_attribute, "deleted", False) or False,
+        disable_correlation=getattr(pulled_attribute, "disable_correlation", False) or False,
         object_relation=getattr(pulled_attribute, "object_relation", None),
         first_seen=(
             int(pulled_attribute.first_seen.timestamp())
@@ -221,7 +221,7 @@ def create_attribute_from_pulled_attribute(
     # TODO: process sightings
     # TODO: process galaxies
 
-    capture_attribute_tags(db, pulled_attribute.tags, user, str(local_attribute.uuid))
+    capture_attribute_tags(db, getattr(pulled_attribute, "tags", []) or [], user, str(local_attribute.uuid))
 
     return local_attribute
 
@@ -247,10 +247,10 @@ def update_attribute_from_pulled_attribute(
             distribution=event_schemas.DistributionLevel(
                 pulled_attribute.distribution or DistributionLevel.INHERIT_EVENT
             ),
-            comment=pulled_attribute.comment,
+            comment=getattr(pulled_attribute, "comment", "") or "",
             sharing_group_id=None,
-            deleted=pulled_attribute.deleted,
-            disable_correlation=pulled_attribute.disable_correlation,
+            deleted=getattr(pulled_attribute, "deleted", False) or False,
+            disable_correlation=getattr(pulled_attribute, "disable_correlation", False) or False,
             object_relation=getattr(
                 pulled_attribute, "object_relation", local_attribute.object_relation
             ),
@@ -272,7 +272,7 @@ def update_attribute_from_pulled_attribute(
             str(pulled_attribute.uuid), pulled_attribute.data.getvalue()
         )
 
-    capture_attribute_tags(db, pulled_attribute.tags, user, str(local_attribute.uuid))
+    capture_attribute_tags(db, getattr(pulled_attribute, "tags", []) or [], user, str(local_attribute.uuid))
 
     # TODO: process sightings
     # TODO: process galaxies
@@ -326,7 +326,7 @@ def capture_attribute_tags(
 ):
     tag_name_to_db_tag = {}
 
-    tag_names = [tag.name for tag in tags if not tag.local]
+    tag_names = [tag.name for tag in tags if not getattr(tag, "local", False)]
 
     existing_tags = (
         db.query(tag_models.Tag).filter(tag_models.Tag.name.in_(tag_names)).all()
@@ -337,7 +337,7 @@ def capture_attribute_tags(
 
     new_tags = []
     for tag in tags:
-        if tag.local:
+        if getattr(tag, "local", False):
             continue
 
         if tag.name not in tag_name_to_db_tag:
@@ -397,16 +397,18 @@ def search_attributes(
     size: int = 10,
     sort_by: str = "@timestamp",
     sort_order: str = "desc",
+    include_deleted: bool = False,
 ):
     OpenSearchClient = get_opensearch_client()
 
+    bool_query = {
+        "must": {"query_string": {"query": query, "default_field": "value"}},
+    }
+    if not include_deleted:
+        bool_query["filter"] = {"term": {"deleted": False}}
+
     search_body = {
-        "query": {
-            "bool": {
-                "must": {"query_string": {"query": query, "default_field": "value"}},
-                "filter": {"term": {"deleted": False}},
-            }
-        },
+        "query": {"bool": bool_query},
         "from": from_value,
         "size": size,
         "sort": [{sort_by: {"order": sort_order}}],
@@ -423,17 +425,18 @@ def search_attributes(
         "results": response["hits"]["hits"],
     }
 
-def search_attributes_histogram(query: str = None, interval: str = "1d"):
+def search_attributes_histogram(query: str = None, interval: str = "1d", include_deleted: bool = False):
     OpenSearchClient = get_opensearch_client()
+
+    bool_query = {
+        "must": {"query_string": {"query": query or "*", "default_field": "value"}},
+    }
+    if not include_deleted:
+        bool_query["filter"] = {"term": {"deleted": False}}
 
     search_body = {
         "size": 0,
-        "query": {
-            "bool": {
-                "must": {"query_string": {"query": query or "*", "default_field": "value"}},
-                "filter": {"term": {"deleted": False}},
-            }
-        },
+        "query": {"bool": bool_query},
         "aggs": {
             "attributes_over_time": {
                 "date_histogram": {

@@ -54,6 +54,7 @@ async def search_attributes(
     size: int = Query(10, ge=1, le=100),
     sort_by: Optional[str] = Query("@timestamp", pattern="^(_score|@timestamp)$"),
     sort_order: Optional[str] = Query("desc", pattern="^(asc|desc)$"),
+    include_deleted: bool = Query(False),
     user: user_schemas.User = Security(
         get_current_active_user, scopes=["attributes:read"]
     ),
@@ -61,17 +62,21 @@ async def search_attributes(
 
     from_value = (page - 1) * size
 
-    return attributes_repository.search_attributes(query, page, from_value, size, sort_by, sort_order)
+    return attributes_repository.search_attributes(
+        query, page, from_value, size, sort_by, sort_order,
+        include_deleted=include_deleted,
+    )
 
 @router.get("/attributes/histogram")
 async def get_attributes_histogram(
     query: str = Query(..., min_length=0),
     interval: Optional[str] = Query("1d", pattern="^(1d|1w|1M)$"),
+    include_deleted: bool = Query(False),
     user: user_schemas.User = Security(
         get_current_active_user, scopes=["attributes:read"]
     ),
 ):
-    return attributes_repository.search_attributes_histogram(query, interval)
+    return attributes_repository.search_attributes_histogram(query, interval, include_deleted=include_deleted)
 
 
 @router.get("/attributes/export")

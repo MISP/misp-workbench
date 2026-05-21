@@ -10,7 +10,7 @@ from app.repositories import tasks as tasks_repository
 from app.schemas import feed as feed_schemas
 from app.schemas import user as user_schemas
 from app.worker import tasks
-from fastapi import APIRouter, Depends, HTTPException, Security, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Security, UploadFile, status
 from sqlalchemy.orm import Session
 
 _DEFAULTS_PATH = Path(__file__).parent.parent / "defaults" / "default-feeds.json"
@@ -90,6 +90,17 @@ def get_feed_by_id(
             status_code=status.HTTP_404_NOT_FOUND, detail="Feed not found"
         )
     return db_feed
+
+
+@router.post("/feeds/upload")
+def upload_feed_file(
+    file: UploadFile = File(...),
+    source_format: str = Form(...),
+    user: user_schemas.User = Security(
+        get_current_active_user, scopes=["feeds:create"]
+    ),
+):
+    return feeds_repository.store_feed_upload(file=file, source_format=source_format)
 
 
 @router.post(

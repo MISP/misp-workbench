@@ -62,7 +62,10 @@ watch(
   () => {
     emit("update:modelValue", {
       ...props.modelValue,
-      settings: { jsonConfig: { ...jsonConfig } },
+      settings: {
+        ...(props.modelValue.settings || {}),
+        jsonConfig: { ...jsonConfig },
+      },
     });
   },
   { deep: true },
@@ -103,7 +106,10 @@ function loadPreview() {
   feedsStore
     .previewJsonFeed({
       ...props.modelValue,
-      settings: { jsonConfig: { ...jsonConfig } },
+      settings: {
+        ...(props.modelValue.settings || {}),
+        jsonConfig: { ...jsonConfig },
+      },
     })
     .then((response) => {
       previewItems.value = response?.items ?? [];

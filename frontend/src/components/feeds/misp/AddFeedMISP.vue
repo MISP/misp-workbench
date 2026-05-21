@@ -18,7 +18,7 @@ function parseTimestamp(ts) {
   const match = String(ts).match(/^(\d+)([dwm])$/);
   if (match)
     return { enabled: true, value: parseInt(match[1]), unit: match[2] };
-  return { enabled: true, value: 30, unit: "d" };
+  return { enabled: false, value: 30, unit: "d" };
 }
 
 const initialRules = props.modelValue?.rules;
@@ -26,7 +26,7 @@ const initialRules = props.modelValue?.rules;
 const basic = reactive({
   timestamp: initialRules?.timestamp
     ? parseTimestamp(initialRules.timestamp)
-    : { enabled: true, value: 30, unit: "d" },
+    : { enabled: false, value: 30, unit: "d" },
   tags: {
     enabled: !!initialRules?.tags?.length,
     tags: initialRules?.tags ? [...initialRules.tags] : [],
@@ -70,6 +70,39 @@ function buildAndEmitRules() {
 
   emit("update:modelValue", { ...props.modelValue, rules: rules ?? {} });
 }
+
+/**
+ * One-time sync from props.modelValue.rules → basic, in case the parent
+ * passes rules after AddFeedMISP has mounted (e.g. async feed load in Edit).
+ */
+let syncedFromProps = !!(initialRules && Object.keys(initialRules).length);
+watch(
+  () => props.modelValue?.rules,
+  (newRules) => {
+    if (syncedFromProps) return;
+    if (!newRules || Object.keys(newRules).length === 0) return;
+
+    if (newRules.timestamp) {
+      const parsed = parseTimestamp(newRules.timestamp);
+      basic.timestamp.enabled = parsed.enabled;
+      basic.timestamp.value = parsed.value;
+      basic.timestamp.unit = parsed.unit;
+    } else {
+      basic.timestamp.enabled = false;
+    }
+    if (newRules.tags?.length) {
+      basic.tags.enabled = true;
+      basic.tags.tags = [...newRules.tags];
+    }
+    if (newRules.orgs?.length) {
+      basic.orgs.enabled = true;
+      basic.orgs.orgs = [...newRules.orgs];
+    }
+    advancedJson.value = JSON.stringify(newRules, null, 2);
+    syncedFromProps = true;
+  },
+  { immediate: true, deep: true },
+);
 
 /**
  * Emit rules on mount (immediate) and whenever the UI changes.

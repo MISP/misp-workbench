@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from "vue";
+import { computed, ref } from "vue";
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
 import { storeToRefs } from "pinia";
 import { useAttachmentsStore } from "@/stores";
@@ -9,14 +9,30 @@ import {
   faSpinner,
 } from "@fortawesome/free-solid-svg-icons";
 import AttachmentIcon from "@/components/attachments/AttachmentIcon.vue";
+import Pagination from "@/components/misc/Pagination.vue";
 
 const props = defineProps(["event_uuid"]);
 const emit = defineEmits(["object-created", "object-deleted"]);
 
 const attachmentsStore = useAttachmentsStore();
-const { attachments, status } = storeToRefs(attachmentsStore);
+const { attachments, status, page, pages, total } =
+  storeToRefs(attachmentsStore);
 
-attachmentsStore.getEventAttachments(props.event_uuid);
+const pageSize = 10;
+const currentPage = ref(1);
+
+function loadPage(p) {
+  currentPage.value = p;
+  attachmentsStore.getEventAttachments(props.event_uuid, {
+    page: p,
+    size: pageSize,
+  });
+}
+
+loadPage(1);
+
+const hasPrevPage = computed(() => currentPage.value > 1);
+const hasNextPage = computed(() => currentPage.value < (pages.value || 0));
 
 const files = ref([]);
 const fileInput = ref(null);
@@ -74,6 +90,7 @@ const uploadFiles = () => {
         emit("object-created", object);
       });
       status.value = { uploading: false };
+      loadPage(1);
     })
     .catch((error) => {
       status.value = { uploading: false, error: error };
@@ -84,6 +101,7 @@ function handleAttachmentDeleted(attachment_id) {
   attachments.value = attachments.value.filter(
     (attachment) => attachment.id !== attachment_id,
   );
+  loadPage(currentPage.value);
 }
 
 function handleObjectDeleted(object_uuid) {
@@ -107,13 +125,30 @@ function handleObjectDeleted(object_uuid) {
       <span v-if="status.loading">
         <FontAwesomeIcon :icon="faSpinner" spin class="ms-2" />
       </span>
-      <div class="row row-cols-1 row-cols-md-2">
+      <div class="row row-cols-1 row-cols-md-2 row-cols-lg-5">
         <AttachmentIcon
           v-for="attachment in attachments"
           :key="attachment.id"
           :attachment="attachment"
           @object-deleted="handleObjectDeleted"
           @attachment-deleted="handleAttachmentDeleted"
+        />
+      </div>
+      <div
+        v-if="pages > 1"
+        class="d-flex align-items-center justify-content-between mt-3"
+      >
+        <small class="text-muted">
+          Page {{ page }} of {{ pages }} — {{ total }} attachment{{
+            total === 1 ? "" : "s"
+          }}
+        </small>
+        <Pagination
+          :currentPage="currentPage"
+          :hasPrevPage="hasPrevPage"
+          :hasNextPage="hasNextPage"
+          @prevPageClick="loadPage(currentPage - 1)"
+          @nextPageClick="loadPage(currentPage + 1)"
         />
       </div>
       <div

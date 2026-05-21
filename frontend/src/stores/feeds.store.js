@@ -43,11 +43,16 @@ export const useFeedsStore = defineStore({
     },
     async update(feed) {
       this.status = { updating: true };
-      fetchWrapper
-        .patch(`${baseUrl}/${feed.id}`, feed)
-        .then((response) => (this.feed = response))
-        .catch((error) => (this.status.error = error))
-        .finally(() => (this.status.updating = false));
+      try {
+        const response = await fetchWrapper.patch(
+          `${baseUrl}/${feed.id}`,
+          feed,
+        );
+        this.feed = response;
+        return response;
+      } finally {
+        this.status.updating = false;
+      }
     },
     async delete(id) {
       this.status = { loading: true };
@@ -95,6 +100,12 @@ export const useFeedsStore = defineStore({
       return await fetchWrapper
         .get(`${baseUrl}/defaults`)
         .catch((error) => (this.status.error = error));
+    },
+    async uploadFile(file, sourceFormat) {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("source_format", sourceFormat);
+      return await fetchWrapper.postFormData(`${baseUrl}/upload`, formData);
     },
   },
 });

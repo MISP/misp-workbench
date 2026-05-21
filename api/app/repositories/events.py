@@ -147,17 +147,19 @@ def search_events(
     sort_by: str = "@timestamp",
     sort_order: str = "desc",
     searchAttributes: bool = False,
+    include_deleted: bool = False,
 ):
     OpenSearchClient = get_opensearch_client()
 
     index = "misp-attributes" if searchAttributes else "misp-events"
+    bool_query = {
+        "must": {"query_string": {"query": query, "default_field": "info"}},
+    }
+    if not include_deleted:
+        bool_query["filter"] = {"term": {"deleted": False}}
+
     search_body = {
-        "query": {
-            "bool": {
-                "must": {"query_string": {"query": query, "default_field": "info"}},
-                "filter": {"term": {"deleted": False}},
-            }
-        },
+        "query": {"bool": bool_query},
         "from": from_value,
         "size": size,
         "sort": [{sort_by: {"order": sort_order}}],
@@ -175,17 +177,18 @@ def search_events(
     }
 
 
-def search_events_histogram(query: str = None, interval: str = "1d"):
+def search_events_histogram(query: str = None, interval: str = "1d", include_deleted: bool = False):
     OpenSearchClient = get_opensearch_client()
+
+    bool_query = {
+        "must": {"query_string": {"query": query or "*", "default_field": "info"}},
+    }
+    if not include_deleted:
+        bool_query["filter"] = {"term": {"deleted": False}}
 
     search_body = {
         "size": 0,
-        "query": {
-            "bool": {
-                "must": {"query_string": {"query": query or "*", "default_field": "info"}},
-                "filter": {"term": {"deleted": False}},
-            }
-        },
+        "query": {"bool": bool_query},
         "aggs": {
             "events_over_time": {
                 "date_histogram": {
@@ -476,7 +479,11 @@ def create_event_from_fetched_event(
         "sharing_group_id": feed.sharing_group_id,
         "locked": (fetched_event.locked if hasattr(fetched_event, "locked") else False),
         "threat_level": int(fetched_event.threat_level_id) if fetched_event.threat_level_id else 4,
-        "publish_timestamp": int(fetched_event.publish_timestamp.timestamp()),
+        "publish_timestamp": (
+            int(fetched_event.publish_timestamp.timestamp())
+            if getattr(fetched_event, "publish_timestamp", None)
+            else ts
+        ),
         "disable_correlation": getattr(fetched_event, "disable_correlation", False),
         "extends_uuid": (
             str(fetched_event.extends_uuid)
@@ -505,7 +512,7 @@ def create_event_from_fetched_event(
                 colour=tag.colour,
                 org_id=user.org_id,
                 user_id=user.id,
-                local_only=tag.local,
+                local_only=getattr(tag, "local", False) or False,
             )
             db.add(db_tag)
             db.commit()
@@ -544,7 +551,11 @@ def update_event_from_fetched_event(
         "sharing_group_id": feed.sharing_group_id,
         "locked": (fetched_event.locked if hasattr(fetched_event, "locked") else False),
         "threat_level": int(fetched_event.threat_level_id) if fetched_event.threat_level_id else 4,
-        "publish_timestamp": int(fetched_event.publish_timestamp.timestamp()),
+        "publish_timestamp": (
+            int(fetched_event.publish_timestamp.timestamp())
+            if getattr(fetched_event, "publish_timestamp", None)
+            else ts
+        ),
         "disable_correlation": getattr(fetched_event, "disable_correlation", False),
         "extends_uuid": (
             str(fetched_event.extends_uuid)
@@ -565,7 +576,7 @@ def update_event_from_fetched_event(
                 colour=tag.colour,
                 org_id=user.org_id,
                 user_id=user.id,
-                local_only=tag.local,
+                local_only=getattr(tag, "local", False) or False,
             )
             db.add(db_tag)
             db.commit()

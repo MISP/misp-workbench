@@ -98,7 +98,7 @@ function closeTestResult() {
               <h5 class="mb-0">Feed Settings</h5>
             </div>
             <div class="card-body">
-              <FeedBaseForm v-model="config" />
+              <FeedBaseForm v-model="config" source-format="csv" />
             </div>
           </div>
         </div>

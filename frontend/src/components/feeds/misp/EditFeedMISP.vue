@@ -23,6 +23,7 @@ const config = ref({
   input_source: feed.value.input_source,
   headers: feed.value.headers ?? {},
   rules: feed.value.rules ?? {},
+  settings: feed.value.settings ?? {},
 });
 
 // preview modal state
@@ -43,6 +44,7 @@ function submit() {
     input_source: config.value.input_source,
     headers: config.value.headers ?? {},
     rules: config.value.rules ?? {},
+    settings: config.value.settings ?? {},
   };
 
   return feedsStore
@@ -105,7 +107,7 @@ function test() {
               <h5 class="mb-0">Feed Settings</h5>
             </div>
             <div class="card-body">
-              <FeedBaseForm v-model="config" />
+              <FeedBaseForm v-model="config" source-format="misp" />
             </div>
           </div>
         </div>
