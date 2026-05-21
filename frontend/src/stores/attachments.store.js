@@ -29,9 +29,11 @@ export const useAttachmentsStore = defineStore({
         files,
       );
     },
-    async getEventAttachments(uuid) {
+    async getEventAttachments(uuid, { page = 1, size = 10 } = {}) {
+      this.status = { loading: true };
+      const qs = new URLSearchParams({ page, size }).toString();
       return await fetchWrapper
-        .get(`${baseUrl}/events/${uuid}/attachments`)
+        .get(`${baseUrl}/events/${uuid}/attachments?${qs}`)
         .then(
           (response) => (
             (this.attachments = response.items),

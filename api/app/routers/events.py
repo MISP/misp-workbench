@@ -317,6 +317,7 @@ async def upload_attachments(
 )
 def get_event_attachments(
     event_uuid: str,
+    page_params: Params = Depends(),
     db: Session = Depends(get_db),
     user: user_schemas.User = Security(get_current_active_user, scopes=["events:read"]),
 ):
@@ -326,16 +327,14 @@ def get_event_attachments(
             status_code=status.HTTP_404_NOT_FOUND, detail="Event not found"
         )
 
-    objects = objects_repository.get_objects(
-        db,
-        event_uuid=db_event.uuid,
+    return objects_repository.get_objects_from_opensearch(
+        page_params,
+        event_uuid=str(db_event.uuid),
         deleted=False,
         template_uuid=[
             "688c46fb-5edb-40a3-8273-1af7923e2215"  # TODO: get the object template from the json file
         ],
     )
-
-    return objects
 
 
 

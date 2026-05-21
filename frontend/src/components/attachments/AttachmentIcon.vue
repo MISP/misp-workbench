@@ -160,7 +160,7 @@ async function downloadAttachment() {
 </style>
 
 <template>
-  <div class="col-12 col-md-6 col-lg-2 col-xl-2">
+  <div class="col">
     <div class="card m-2 file-card">
       <div class="card-body">
         <RouterLink :to="`/objects/${attachment.id}`">
