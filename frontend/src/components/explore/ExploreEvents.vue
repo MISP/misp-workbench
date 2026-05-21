@@ -112,7 +112,7 @@ function buildQuery() {
     const { from, to } = activeTimeRange.value;
     parts.push(`@timestamp:[${from} TO ${to}]`);
   }
-  return parts.join(" AND ");
+  return parts.length ? parts.join(" AND ") : "*";
 }
 
 function onTimelineFilterDay(date) {
