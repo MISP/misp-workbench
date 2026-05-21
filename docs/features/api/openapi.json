@@ -1222,6 +1222,16 @@
               "default": "desc",
               "title": "Sort Order"
             }
+          },
+          {
+            "name": "include_deleted",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Include Deleted"
+            }
           }
         ],
         "responses": {
@@ -1287,6 +1297,16 @@
               ],
               "default": "1d",
               "title": "Interval"
+            }
+          },
+          {
+            "name": "include_deleted",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Include Deleted"
             }
           }
         ],
@@ -2437,6 +2457,16 @@
               "default": "desc",
               "title": "Sort Order"
             }
+          },
+          {
+            "name": "include_deleted",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Include Deleted"
+            }
           }
         ],
         "responses": {
@@ -2502,6 +2532,16 @@
               ],
               "default": "1d",
               "title": "Interval"
+            }
+          },
+          {
+            "name": "include_deleted",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Include Deleted"
             }
           }
         ],
@@ -5431,6 +5471,52 @@
             }
           }
         }
+      }
+    },
+    "/feeds/upload": {
+      "post": {
+        "tags": [
+          "Feeds"
+        ],
+        "summary": "Upload Feed File",
+        "operationId": "upload_feed_file_feeds_upload_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_feed_file_feeds_upload_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "feeds:create"
+            ]
+          }
+        ]
       }
     },
     "/feeds/{feed_id}/explore": {
@@ -12037,6 +12123,25 @@
           "attachments_meta"
         ],
         "title": "Body_upload_attachments_events__event_uuid__upload_attachments__post"
+      },
+      "Body_upload_feed_file_feeds_upload_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "format": "binary",
+            "title": "File"
+          },
+          "source_format": {
+            "type": "string",
+            "title": "Source Format"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file",
+          "source_format"
+        ],
+        "title": "Body_upload_feed_file_feeds_upload_post"
       },
       "CorrelationDeleteResponse": {
         "properties": {
