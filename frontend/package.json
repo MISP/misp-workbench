@@ -81,7 +81,7 @@
     "@vue/eslint-config-typescript": "^14.3.0",
     "@playwright/test": "^1.50.0",
     "@vue/test-utils": "^2.0.0",
-    "cypress": "^13.13.1",
+    "cypress": "^15.15.0",
     "eslint-config-prettier": "^10.0.1",
     "eslint-plugin-cypress": "^2.12.1",
     "eslint-plugin-prettier": "^5.2.3",
