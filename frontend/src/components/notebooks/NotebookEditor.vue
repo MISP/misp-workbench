@@ -22,6 +22,7 @@ import {
   faBroom,
   faPlus,
   faFileLines,
+  faFilePdf,
   faGlobe,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
@@ -29,6 +30,7 @@ import KernelStatusPill from "./KernelStatusPill.vue";
 import MwctipyReferenceModal from "./MwctipyReferenceModal.vue";
 import OutputPanel from "./OutputPanel.vue";
 import { parseCells, findCellAtLine, uuid } from "./cellDelimiterParser";
+import { exportNotebookPdf } from "./notebookPdfExport";
 
 const props = defineProps({
   notebookId: { type: Number, default: null },
@@ -471,6 +473,8 @@ async function publishToGlobal() {
   }
 }
 
+// ── Export (.ipynb or rendered PDF) ─────────────────────────────────────
+
 async function exportIpynb() {
   if (!currentNotebook.value) return;
   await flushSave(currentNotebook.value.id);
@@ -491,6 +495,23 @@ async function exportIpynb() {
     URL.revokeObjectURL(url);
   } catch (err) {
     toastsStore.push(`Export failed: ${err?.message || err}`, "danger");
+  }
+}
+
+// Render the markdown + cell outputs (exactly what the output panel shows)
+// into a print window so the browser can "Save as PDF". Uses the live Monaco
+// source so unsaved edits are reflected.
+function exportPdf() {
+  if (!currentNotebook.value) return;
+  try {
+    exportNotebookPdf(
+      currentNotebook.value,
+      trackedSource.value,
+      liveCellOutputs.value,
+      liveCellMeta.value,
+    );
+  } catch (err) {
+    toastsStore.push(`PDF export failed: ${err?.message || err}`, "danger");
   }
 }
 
@@ -621,14 +642,36 @@ const saveLabel = computed(() => {
             <FontAwesomeIcon :icon="faBroom" class="me-1" />
             Clear outputs
           </button>
-          <button
-            class="btn btn-outline-secondary btn-sm"
-            @click="exportIpynb"
-            title="Download as .ipynb"
-          >
-            <FontAwesomeIcon :icon="faDownload" class="me-1" />
-            Export
-          </button>
+          <div class="dropdown">
+            <button
+              type="button"
+              class="btn btn-outline-secondary btn-sm dropdown-toggle"
+              data-bs-toggle="dropdown"
+              aria-expanded="false"
+              title="Export notebook"
+            >
+              <FontAwesomeIcon :icon="faDownload" class="me-1" />
+              Export
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end">
+              <li>
+                <button
+                  type="button"
+                  class="dropdown-item"
+                  @click="exportIpynb"
+                >
+                  <FontAwesomeIcon :icon="faCode" class="me-2" />
+                  Jupyter (.ipynb)
+                </button>
+              </li>
+              <li>
+                <button type="button" class="dropdown-item" @click="exportPdf">
+                  <FontAwesomeIcon :icon="faFilePdf" class="me-2" />
+                  PDF (rendered)
+                </button>
+              </li>
+            </ul>
+          </div>
           <button
             v-if="readOnly"
             class="btn btn-outline-info btn-sm"
@@ -789,5 +832,8 @@ const saveLabel = computed(() => {
 }
 .output-pane-full {
   min-width: 0;
+}
+.export-menu {
+  min-width: 12rem;
 }
 </style>
