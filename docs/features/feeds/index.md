@@ -1,6 +1,6 @@
 # Feeds
 
-misp-workbench supports four feed source formats. Each feed is fetched either on demand or on a configurable schedule (hourly, daily, weekly).
+misp-workbench supports four feed source formats. Each feed is fetched either on demand or on a configurable schedule (hourly, daily, weekly). Feeds can be sourced either from a remote URL or from a file [uploaded directly to misp-workbench](local-files.md).
 
 | Format | Description |
 |---|---|
@@ -17,12 +17,13 @@ All feed types share a set of base settings:
 |---|---|
 | **Name** | Display name for the feed |
 | **Provider** | Organisation or source name |
-| **URL** | Remote URL of the feed |
+| **Input source** | `Network` (fetch from URL) or `Upload file` — see [Local File Feeds](local-files.md) |
+| **URL** | Remote URL of the feed (network mode only) |
 | **Distribution** | MISP distribution level for ingested attributes |
 | **Enabled** | Whether the feed is active |
 | **Fixed Event** | If on, all fetches append to a single event; if off, a new event is created per fetch |
-| **Update interval** | Automatic fetch schedule (hourly / daily / weekly / disabled) |
-| **Fetch immediately** | Enqueue an immediate fetch when the feed is created |
+| **Update interval** | Automatic fetch schedule (hourly / daily / weekly / disabled) — hidden in upload mode |
+| **Fetch immediately** | Enqueue an immediate fetch when the feed is created — hidden in upload mode |
 
 ## Default feed list
 
