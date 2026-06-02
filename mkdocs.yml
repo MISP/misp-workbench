@@ -39,6 +39,7 @@ nav:
       - CSV Feeds: features/feeds/csv.md
       - JSON Feeds: features/feeds/json.md
       - Freetext Feeds: features/feeds/freetext.md
+      - Local File Feeds: features/feeds/local-files.md
     - Explore: features/explore.md
     - Hunts: features/hunts.md
     - Correlations: features/correlations.md
