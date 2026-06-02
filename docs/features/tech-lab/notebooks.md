@@ -140,10 +140,15 @@ Open any global notebook you don't own and click **Fork to personal**. A new not
 
 ## Import / export
 
+The **Export** button is a dropdown offering two mutually exclusive formats:
+
 | Action | Format |
 |---|---|
-| **Export** | Downloads the notebook as a `nbformat`-compliant `.ipynb` so it opens in stock JupyterLab. |
+| **Export → Jupyter (.ipynb)** | Downloads the notebook as a `nbformat`-compliant `.ipynb` so it opens in stock JupyterLab. |
+| **Export → PDF (rendered)** | Opens a print view of the rendered notebook — markdown cells and cell outputs exactly as shown in the **Outputs** panel — and hands it to the browser's print dialog, where you choose *Save as PDF*. Uses the current (including unsaved) editor source, so it reflects the latest edits. Allow pop-ups for the workbench origin, as the print view opens in a new tab. |
 | **Import** | Upload an `.ipynb`; the server normalises it into the delimiter-source shape and creates a personal notebook. |
+
+The PDF mirrors the same rendering rules as the Outputs panel (see [Outputs](#outputs)): markdown is rendered, code cells appear with their output and execution timing, and images are embedded inline. Code cells with no output are omitted, matching the panel.
 
 ## Examples
 
