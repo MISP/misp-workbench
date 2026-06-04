@@ -6,7 +6,7 @@ This repository provides a modern MISP-compatible stack: a Python backend API wi
 
 This tool is designed for security analysts who want to work with MISP IOCs (Indicators of Compromise) without the complexity of managing a full MISP instance or participating in the MISP community. It provides a streamlined, self-contained solution for ingesting, correlating, and analyzing threat intelligence data.
 
-Some screenshots are available [here](docs/screenshots/). 
+Documentation and screenshots are available [here](https://misp-workbench.readthedocs.io/en/latest/). 
 
 ### Features
 - **Correlations**: batch and incremental correlation generation scans attributes in OpenSearch and creates correlated attribute records. Correlation work is implemented in the backend and scheduled/executed via Celery tasks; results are surfaced in the frontend UI.

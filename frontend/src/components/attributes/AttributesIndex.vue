@@ -79,7 +79,7 @@ function handleObjectCreated(object) {
         <tr>
           <th scope="col">value</th>
           <th scope="col">type</th>
-          <th style="width: 250px" scope="col" class="d-none d-sm-table-cell">
+          <th style="width: 40%" scope="col" class="d-none d-sm-table-cell">
             tags
           </th>
           <th scope="col" class="d-none d-sm-table-cell">timestamp</th>

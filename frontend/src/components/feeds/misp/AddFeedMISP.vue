@@ -26,7 +26,7 @@ const initialRules = props.modelValue?.rules;
 const basic = reactive({
   timestamp: initialRules?.timestamp
     ? parseTimestamp(initialRules.timestamp)
-    : { enabled: false, value: 30, unit: "d" },
+    : { enabled: true, value: 30, unit: "d" },
   tags: {
     enabled: !!initialRules?.tags?.length,
     tags: initialRules?.tags ? [...initialRules.tags] : [],
