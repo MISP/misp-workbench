@@ -176,6 +176,9 @@ function navAndClose(path) {
           />
         </RouterLink>
         <RouterLink to="/hunts" class="nav-item nav-link py-1">hunt</RouterLink>
+        <RouterLink to="/exports" class="nav-item nav-link py-1"
+          >export</RouterLink
+        >
         <RouterLink to="/explore" class="nav-item nav-link py-1"
           >explore</RouterLink
         >
@@ -489,6 +492,15 @@ function navAndClose(path) {
             @click.prevent="navAndClose('/hunts')"
           >
             hunt
+          </RouterLink>
+        </li>
+        <li>
+          <RouterLink
+            to="/exports"
+            class="list-group-item list-group-item-action"
+            @click.prevent="navAndClose('/exports')"
+          >
+            export
           </RouterLink>
         </li>
         <li>

@@ -1,2 +1,5 @@
 [solver]
 min-release-age = 7
+# misp-stix tracks MISP/STIX spec releases closely; pin to a same-day release
+# rather than wait out the 7-day age gate applied to all other packages.
+min-release-age-exclude = ["misp-stix"]

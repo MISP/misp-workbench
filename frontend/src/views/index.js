@@ -42,6 +42,8 @@ export { default as IndexApiKeys } from "./settings/api-keys/IndexApiKeys.vue";
 export { default as AdminApiKeys } from "./settings/api-keys/AdminApiKeys.vue";
 export { default as AdminAuditLogs } from "./admin/audit-logs/AdminAuditLogs.vue";
 export { default as IndexNotifications } from "./notifications/IndexNotifications.vue";
+export { default as IndexExports } from "./exports/IndexExports.vue";
+export { default as AddExport } from "./exports/AddExport.vue";
 export { default as IndexHunts } from "./hunts/IndexHunts.vue";
 export { default as AddHunt } from "./hunts/AddHunt.vue";
 export { default as EditHunt } from "./hunts/EditHunt.vue";

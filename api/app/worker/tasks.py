@@ -1078,3 +1078,20 @@ def lab_kernel_shutdown(user_id: int, notebook_id: int):
 def lab_kernel_list():
     """Snapshot of running kernels for the diagnostics endpoint."""
     return lab_kernel_manager.get_default_registry().snapshot()
+
+
+# ──────────────────────────────────────────────────────────────────────────
+# Exports — async IOC export jobs
+# ──────────────────────────────────────────────────────────────────────────
+
+
+@celery_app.task
+def run_export(export_id: int):
+    """Run an IOC export job: query OpenSearch, transform, store the artifact."""
+    logger.info("run_export export_id=%s started", export_id)
+    from app.repositories import exports as exports_repository
+
+    with Session(engine) as db:
+        exports_repository.run_export(db, export_id)
+    logger.info("run_export export_id=%s finished", export_id)
+    return True
