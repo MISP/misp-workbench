@@ -351,6 +351,7 @@ class TestExportsResource(ApiTester):
 
         # Two attributes from two different misp-workbench events — they should
         # be merged into a single MISP event named after the export.
+        first_seen_epoch = int(datetime(2026, 6, 19, tzinfo=timezone.utc).timestamp())
         hits = [
             {
                 "uuid": "11111111-1111-4111-8111-111111111111",
@@ -358,6 +359,7 @@ class TestExportsResource(ApiTester):
                 "value": "1.2.3.4",
                 "category": "Network activity",
                 "event_uuid": "aaaaaaaa-1111-4111-8111-111111111111",
+                "first_seen": first_seen_epoch,
             },
             {
                 "uuid": "22222222-2222-4222-8222-222222222222",
@@ -396,6 +398,17 @@ class TestExportsResource(ApiTester):
             assert "uuid" not in event and "id" not in event
             for attr in event["Attribute"]:
                 assert "uuid" not in attr and "id" not in attr
+                # null-valued fields are dropped from the MISP output.
+                assert None not in attr.values()
+            # first_seen is emitted as a microsecond ISO-8601 string.
+            seen = {
+                a["value"]: a.get("first_seen") for a in event["Attribute"]
+            }
+            assert seen["1.2.3.4"] == "2026-06-19T00:00:00.000000+00:00"
+            # the attribute without first_seen has it dropped entirely.
+            assert "first_seen" not in next(
+                a for a in event["Attribute"] if a["value"] == "5.6.7.8"
+            )
         finally:
             db.delete(export)
             db.commit()

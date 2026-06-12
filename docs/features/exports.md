@@ -36,7 +36,10 @@ can always fetch the same URL for the latest results.
     different misp-workbench events. It requires a **distribution** level and
     keeps correlation enabled. The `uuid` and `id` fields are stripped from the
     event and its attributes, so importing the file always creates fresh
-    records rather than colliding with existing ones.
+    records rather than colliding with existing ones. `first_seen`/`last_seen`
+    are emitted as microsecond ISO-8601 strings
+    (e.g. `2026-06-19T00:00:00.000000+00:00`), and any field with a `null`
+    value is omitted to keep the output compact.
 
 !!! note "STIX limits"
     STIX 2.1 conversion is CPU-intensive, so STIX exports are capped at
