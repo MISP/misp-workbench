@@ -283,14 +283,46 @@ def _to_misp_json(
         obj.pop("uuid", None)
         obj.pop("id", None)
 
+    # first_seen/last_seen are stored as epoch seconds; MISP serializes them as
+    # microsecond-precision ISO-8601 strings (e.g. "2026-06-19T00:00:00.000000+00:00").
+    def _format_seen(obj: dict) -> None:
+        for field in ("first_seen", "last_seen"):
+            value = obj.get(field)
+            if value is None:
+                continue
+            try:
+                obj[field] = datetime.fromtimestamp(
+                    int(value), tz=timezone.utc
+                ).isoformat(timespec="microseconds")
+            except (ValueError, TypeError, OverflowError) as exc:
+                logger.debug(
+                    "Unable to format %s value %r as timestamp in MISP export: %s",
+                    field,
+                    value,
+                    exc,
+                )
+
     event = payload.get("Event", {})
     _strip_ids(event)
     for attribute in event.get("Attribute", []):
         _strip_ids(attribute)
+        _format_seen(attribute)
     for misp_object in event.get("Object", []):
         _strip_ids(misp_object)
+        _format_seen(misp_object)
         for attribute in misp_object.get("Attribute", []):
             _strip_ids(attribute)
+            _format_seen(attribute)
+
+    # Drop keys with null values so the exported MISP JSON stays compact.
+    def _drop_nulls(obj):
+        if isinstance(obj, dict):
+            return {k: _drop_nulls(v) for k, v in obj.items() if v is not None}
+        if isinstance(obj, list):
+            return [_drop_nulls(v) for v in obj]
+        return obj
+
+    payload = _drop_nulls(payload)
 
     content = json.dumps(payload, default=str, indent=2).encode("utf-8")
     return content, "json", "application/json", len(attributes)
