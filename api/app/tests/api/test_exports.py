@@ -379,6 +379,14 @@ class TestExportConverters:
         object_types = {o["type"] for o in bundle["objects"]}
         assert "indicator" in object_types
 
+    def test_stix_record_cap(self):
+        oversized = [
+            dict(self.SAMPLE_ATTRIBUTES[0], uuid=f"{i:032x}")
+            for i in range(converters.MAX_STIX_RECORDS + 1)
+        ]
+        with pytest.raises(ValueError, match="STIX export is limited"):
+            converters.convert("stix", oversized, "attributes")
+
     def test_unsupported_format(self):
         with pytest.raises(ValueError):
             converters.convert("pdf", self.SAMPLE_ATTRIBUTES, "attributes")

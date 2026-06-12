@@ -15,6 +15,12 @@ from typing import Iterable
 
 logger = logging.getLogger(__name__)
 
+# STIX 2.1 conversion (misp-stix + python-stix2 serialization) is pure-Python
+# and scales poorly: python-stix2's pretty serializer sorts every property via
+# a recursive scan of the whole bundle, so tens of thousands of attributes can
+# peg a CPU core for hours. Cap STIX exports well below the generic record cap.
+MAX_STIX_RECORDS = 10_000
+
 
 def _tag_names(tags) -> list[str]:
     """Normalise the ``tags`` field (list of dicts or strings) to names."""
@@ -160,6 +166,12 @@ def _events_from_event_hits(hits: list[dict]) -> list:
 def to_stix21(hits: list[dict], index_target: str) -> tuple[bytes, str, str]:
     from misp_stix_converter import MISPtoSTIX21Parser
 
+    if len(hits) > MAX_STIX_RECORDS:
+        raise ValueError(
+            f"STIX export is limited to {MAX_STIX_RECORDS} records "
+            f"(query matched {len(hits)}). Narrow the query or use JSON/CSV."
+        )
+
     if index_target == "events":
         events = _events_from_event_hits(hits)
     else:
@@ -170,7 +182,9 @@ def to_stix21(hits: list[dict], index_target: str) -> tuple[bytes, str, str]:
         parser.parse_misp_event(event)
 
     bundle = parser.bundle
-    payload = bundle.serialize(pretty=True).encode("utf-8")
+    # pretty=True triggers python-stix2's recursive property sort, which is
+    # pathologically slow on large bundles; serialize compactly instead.
+    payload = bundle.serialize().encode("utf-8")
     return payload, "json", "application/stix+json"
 
 

@@ -1085,9 +1085,13 @@ def lab_kernel_list():
 # ──────────────────────────────────────────────────────────────────────────
 
 
-@celery_app.task
+@celery_app.task(time_limit=720, soft_time_limit=600)
 def run_export(export_id: int):
-    """Run an IOC export job: query OpenSearch, transform, store the artifact."""
+    """Run an IOC export job: query OpenSearch, transform, store the artifact.
+
+    The soft time limit raises SoftTimeLimitExceeded inside ``run_export``,
+    which records the job as failed rather than leaving it stuck on "running".
+    """
     logger.info("run_export export_id=%s started", export_id)
     from app.repositories import exports as exports_repository
 

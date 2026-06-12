@@ -18,6 +18,7 @@ import ExploreSearchHistory from "./ExploreSearchHistory.vue";
 import ExploreResultsSection from "./ExploreResultsSection.vue";
 import ExploreTimeRangeFilter from "./ExploreTimeRangeFilter.vue";
 import AddHuntModal from "@/components/hunts/AddHuntModal.vue";
+import AddExportModal from "@/components/exports/AddExportModal.vue";
 import EventsPropertiesModal from "@/components/misc/EventsPropertiesModal.vue";
 import AttributesPropertiesModal from "@/components/misc/AttributesPropertiesModal.vue";
 import ExploreTimelineChart from "./ExploreTimelineChart.vue";
@@ -38,6 +39,9 @@ eventsStore.retentionStatus().then((config) => {
 const searchQuery = ref("");
 const activeTimeRange = ref(null);
 const huntModalOpen = ref(false);
+const exportModalOpen = ref(false);
+const exportModalQuery = ref("");
+const exportModalTarget = ref("attributes");
 const activeTab = useLocalStorageRef("explore_active_tab", "events");
 const eventsSortBy = useLocalStorageRef("explore_events_sort_by", "@timestamp");
 const eventsSortOrder = useLocalStorageRef("explore_events_sort_order", "desc");
@@ -327,6 +331,14 @@ async function downloadAllResults(type, format = "json") {
   }
 }
 
+function openExportModal(type) {
+  const filters =
+    type === "events" ? eventsFilters.value : attributesFilters.value;
+  exportModalQuery.value = applyFilters(buildQuery(), filters);
+  exportModalTarget.value = type;
+  exportModalOpen.value = true;
+}
+
 function saveSearch(term) {
   userSettingsStore.update("explore", {
     saved_searches: Array.from(new Set([term, ...storedExploreSearches.value])),
@@ -521,8 +533,10 @@ body {
               :sort-order="eventsSortOrder"
               :filter-fields="['organisation', 'tags']"
               :visible="activeTab === 'events'"
+              :exportable="true"
               @page-change="onEventsPageChange"
               @download="downloadAllResults('events', $event)"
+              @save-export="openExportModal('events')"
               @sort-change="onEventsSortChange"
               @filter-change="onEventsFilterChange"
             >
@@ -549,8 +563,10 @@ body {
               :sort-order="attributesSortOrder"
               :filter-fields="['organisation', 'tags', 'type']"
               :visible="activeTab === 'attributes'"
+              :exportable="true"
               @page-change="onAttributesPageChange"
               @download="downloadAllResults('attributes', $event)"
+              @save-export="openExportModal('attributes')"
               @sort-change="onAttributesSortChange"
               @filter-change="onAttributesFilterChange"
             >
@@ -598,5 +614,13 @@ body {
     :initial-query="buildQuery()"
     @created="huntModalOpen = false"
     @close="huntModalOpen = false"
+  />
+
+  <AddExportModal
+    v-if="exportModalOpen"
+    :initial-query="exportModalQuery"
+    :initial-index-target="exportModalTarget"
+    @created="exportModalOpen = false"
+    @close="exportModalOpen = false"
   />
 </template>

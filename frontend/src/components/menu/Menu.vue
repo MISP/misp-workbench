@@ -176,9 +176,6 @@ function navAndClose(path) {
           />
         </RouterLink>
         <RouterLink to="/hunts" class="nav-item nav-link py-1">hunt</RouterLink>
-        <RouterLink to="/exports" class="nav-item nav-link py-1"
-          >export</RouterLink
-        >
         <RouterLink to="/explore" class="nav-item nav-link py-1"
           >explore</RouterLink
         >
@@ -284,6 +281,11 @@ function navAndClose(path) {
             <li v-if="canReadCorrelations">
               <RouterLink to="/correlations" class="dropdown-item fw-light"
                 >correlations</RouterLink
+              >
+            </li>
+            <li>
+              <RouterLink to="/exports" class="dropdown-item fw-light"
+                >exports</RouterLink
               >
             </li>
             <li><hr class="dropdown-divider" /></li>
@@ -496,15 +498,6 @@ function navAndClose(path) {
         </li>
         <li>
           <RouterLink
-            to="/exports"
-            class="list-group-item list-group-item-action"
-            @click.prevent="navAndClose('/exports')"
-          >
-            export
-          </RouterLink>
-        </li>
-        <li>
-          <RouterLink
             to="/explore"
             class="list-group-item list-group-item-action"
             @click.prevent="navAndClose('/explore')"
@@ -625,6 +618,15 @@ function navAndClose(path) {
                 @click.prevent="navAndClose('/correlations')"
               >
                 correlations
+              </RouterLink>
+            </li>
+            <li>
+              <RouterLink
+                to="/exports"
+                class="list-group-item list-group-item-action ps-4"
+                @click.prevent="navAndClose('/exports')"
+              >
+                exports
               </RouterLink>
             </li>
             <li v-if="canReadTasks">
