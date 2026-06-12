@@ -326,6 +326,75 @@ class TestExportsResource(ApiTester):
             db.delete(export)
             db.commit()
 
+    def test_run_export_misp_format(
+        self,
+        db: Session,
+        api_tester_user,
+    ):
+        import json
+        from datetime import datetime, timezone
+
+        from app.repositories import exports as exports_repository
+
+        export = export_models.Export(
+            user_id=api_tester_user.id,
+            name="My MISP export",
+            query="type:ip-dst",
+            index_target="attributes",
+            format="misp",
+            status="queued",
+            created_at=datetime(2024, 1, 1, tzinfo=timezone.utc),
+        )
+        db.add(export)
+        db.commit()
+        db.refresh(export)
+
+        # Two attributes from two different misp-workbench events — they should
+        # be merged into a single MISP event named after the export.
+        hits = [
+            {
+                "uuid": "11111111-1111-4111-8111-111111111111",
+                "type": "ip-dst",
+                "value": "1.2.3.4",
+                "category": "Network activity",
+                "event_uuid": "aaaaaaaa-1111-4111-8111-111111111111",
+            },
+            {
+                "uuid": "22222222-2222-4222-8222-222222222222",
+                "type": "ip-dst",
+                "value": "5.6.7.8",
+                "category": "Network activity",
+                "event_uuid": "bbbbbbbb-2222-4222-8222-222222222222",
+            },
+        ]
+
+        try:
+            with patch(
+                "app.repositories.exports._fetch_hits", return_value=hits
+            ), patch(
+                "app.repositories.exports.store_export",
+                return_value="exports/export-misp.json",
+            ) as mock_store:
+                exports_repository.run_export(db, export.id)
+
+            db.refresh(export)
+            assert export.status == "completed"
+            # One event containing both attributes; record_count = attributes.
+            assert export.record_count == 2
+
+            stored_bytes = mock_store.call_args.args[1]
+            payload = json.loads(stored_bytes)
+            # A single MISP event object, not a list.
+            assert isinstance(payload, dict)
+            event = payload["Event"]
+            assert event["info"] == "My MISP export"
+            assert len(event["Attribute"]) == 2
+            values = {a["value"] for a in event["Attribute"]}
+            assert values == {"1.2.3.4", "5.6.7.8"}
+        finally:
+            db.delete(export)
+            db.commit()
+
     # ── scheduling ────────────────────────────────────────────────────────────
 
     @pytest.mark.parametrize("scopes", [["exports:create"]])

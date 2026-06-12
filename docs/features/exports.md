@@ -16,7 +16,7 @@ can always fetch the same URL for the latest results.
 |---|---|
 | **Query** | Lucene query run against the selected index |
 | **Index target** | Which index to export: `attributes` or `events` |
-| **Format** | `json`, `csv`, or `stix` (STIX 2.1) |
+| **Format** | `json`, `misp` (MISP JSON), `csv`, or `stix` (STIX 2.1) |
 | **Status** | `queued`, `running`, `completed`, or `failed` |
 | **Schedule** | Optional recurring cadence (crontab). When set, the export re-runs automatically and overwrites its previous file |
 | **Schedule enabled** | Whether the schedule is active (`enabled`) or paused |
@@ -27,6 +27,7 @@ can always fetch the same URL for the latest results.
 |---|---|---|
 | `json` | Raw OpenSearch `_source` documents | Passthrough dump |
 | `csv` | Flattened rows of the most useful fields | Tags joined with `|` |
+| `misp` | MISP schema compatible JSON format | [MISP schema](https://github.com/MISP/misp-rfc) |
 | `stix` | A STIX 2.1 bundle | Attributes are grouped into events and converted via the [misp-stix](https://github.com/MISP/misp-stix) library |
 
 !!! note "STIX limits"
