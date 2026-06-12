@@ -13,13 +13,29 @@ const exportJob = reactive({
   query: "",
   index_target: "attributes",
   format: "json",
+  distribution: null,
 });
 
 const scheduleModel = ref({ schedule: null, schedule_enabled: false });
 
 const apiError = ref(null);
 
-const canSubmit = computed(() => exportJob.name && exportJob.query);
+// MISP exports build a single event, so an event distribution level is required.
+const DISTRIBUTION_OPTIONS = [
+  { value: 0, label: "Your organisation only" },
+  { value: 1, label: "This community only" },
+  { value: 2, label: "Connected communities" },
+  { value: 3, label: "All communities" },
+];
+
+const isMisp = computed(() => exportJob.format === "misp");
+
+const canSubmit = computed(
+  () =>
+    exportJob.name &&
+    exportJob.query &&
+    (!isMisp.value || exportJob.distribution !== null),
+);
 
 const stixDisabled = computed(() => exportJob.index_target === "events");
 
@@ -117,6 +133,28 @@ function cancel() {
         <div class="form-text">
           STIX 2.1 groups matching attributes into events and converts them via
           the misp-stix library.
+        </div>
+      </div>
+
+      <div v-if="isMisp" class="mb-4">
+        <label class="form-label" for="export-distribution">Distribution</label>
+        <select
+          id="export-distribution"
+          class="form-select"
+          v-model.number="exportJob.distribution"
+        >
+          <option :value="null" disabled>Select a distribution level…</option>
+          <option
+            v-for="opt in DISTRIBUTION_OPTIONS"
+            :key="opt.value"
+            :value="opt.value"
+          >
+            {{ opt.label }}
+          </option>
+        </select>
+        <div class="form-text">
+          All matches are merged into a single MISP event with this distribution
+          level. Correlation stays enabled.
         </div>
       </div>
 

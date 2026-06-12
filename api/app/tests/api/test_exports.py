@@ -391,6 +391,11 @@ class TestExportsResource(ApiTester):
             assert len(event["Attribute"]) == 2
             values = {a["value"] for a in event["Attribute"]}
             assert values == {"1.2.3.4", "5.6.7.8"}
+            # uuid/id are stripped from the event and every attribute so
+            # importing creates fresh records.
+            assert "uuid" not in event and "id" not in event
+            for attr in event["Attribute"]:
+                assert "uuid" not in attr and "id" not in attr
         finally:
             db.delete(export)
             db.commit()

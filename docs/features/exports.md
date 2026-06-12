@@ -27,8 +27,16 @@ can always fetch the same URL for the latest results.
 |---|---|---|
 | `json` | Raw OpenSearch `_source` documents | Passthrough dump |
 | `csv` | Flattened rows of the most useful fields | Tags joined with `|` |
-| `misp` | MISP schema compatible JSON format | [MISP schema](https://github.com/MISP/misp-rfc) |
+| `misp` | A single [MISP-schema](https://github.com/MISP/misp-rfc) event | All matches are merged into one event named after the export |
 | `stix` | A STIX 2.1 bundle | Attributes are grouped into events and converted via the [misp-stix](https://github.com/MISP/misp-stix) library |
+
+!!! note "MISP format"
+    The `misp` format collects every matching attribute into a **single MISP
+    event** (named after the export), even when the attributes come from
+    different misp-workbench events. It requires a **distribution** level and
+    keeps correlation enabled. The `uuid` and `id` fields are stripped from the
+    event and its attributes, so importing the file always creates fresh
+    records rather than colliding with existing ones.
 
 !!! note "STIX limits"
     STIX 2.1 conversion is CPU-intensive, so STIX exports are capped at
