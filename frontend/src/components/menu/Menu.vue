@@ -283,6 +283,11 @@ function navAndClose(path) {
                 >correlations</RouterLink
               >
             </li>
+            <li>
+              <RouterLink to="/exports" class="dropdown-item fw-light"
+                >exports</RouterLink
+              >
+            </li>
             <li><hr class="dropdown-divider" /></li>
             <li v-if="canReadTasks">
               <RouterLink to="/tasks" class="dropdown-item fw-light"
@@ -613,6 +618,15 @@ function navAndClose(path) {
                 @click.prevent="navAndClose('/correlations')"
               >
                 correlations
+              </RouterLink>
+            </li>
+            <li>
+              <RouterLink
+                to="/exports"
+                class="list-group-item list-group-item-action ps-4"
+                @click.prevent="navAndClose('/exports')"
+              >
+                exports
               </RouterLink>
             </li>
             <li v-if="canReadTasks">

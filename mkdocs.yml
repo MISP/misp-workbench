@@ -42,6 +42,7 @@ nav:
       - Local File Feeds: features/feeds/local-files.md
     - Explore: features/explore.md
     - Hunts: features/hunts.md
+    - Exports: features/exports.md
     - Correlations: features/correlations.md
     - Notifications: features/notifications.md
     - Enrichments: features/enrichments.md

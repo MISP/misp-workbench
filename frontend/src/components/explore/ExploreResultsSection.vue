@@ -23,11 +23,13 @@ const props = defineProps({
   sortOrder: { type: String, default: "desc" },
   filterFields: { type: Array, default: () => ["organisation", "tags"] },
   visible: { type: Boolean, default: true },
+  exportable: { type: Boolean, default: false },
 });
 
 const emit = defineEmits([
   "page-change",
   "download",
+  "save-export",
   "sort-change",
   "filter-change",
 ]);
@@ -152,6 +154,14 @@ function onTypesChanged(types) {
                 All results (JSON)
               </button>
             </li>
+            <template v-if="exportable">
+              <li><hr class="dropdown-divider" /></li>
+              <li>
+                <button class="dropdown-item" @click="emit('save-export')">
+                  Save as export…
+                </button>
+              </li>
+            </template>
           </ul>
         </div>
 

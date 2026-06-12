@@ -8,6 +8,7 @@ from app.routers import (
     auth,
     diagnostics,
     events,
+    exports,
     feeds,
     galaxies,
     hunts,
@@ -141,6 +142,9 @@ app.include_router(diagnostics.router, tags=["Diagnostics"])
 
 # Hunts resource
 app.include_router(hunts.router, tags=["Hunts"])
+
+# Exports resource
+app.include_router(exports.router, tags=["Exports"])
 
 # Notifications resource
 app.include_router(notifications.router, tags=["Notifications"])

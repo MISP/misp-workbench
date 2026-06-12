@@ -6,6 +6,7 @@ from app.auth import auth
 from app.db.session import get_db
 from app.main import app
 from app.models import event as event_models
+from app.models import export as export_models
 from app.models import feed as feed_models
 from app.models import galaxy as galaxy_models
 from app.models import hunt as hunt_models
@@ -701,6 +702,29 @@ class ApiTester:
         db.refresh(hunt_1)
 
         yield hunt_1
+
+    @pytest.fixture(scope="class")
+    def export_1(self, db: Session, api_tester_user: user_models.User):
+        from datetime import datetime, timezone
+
+        export_1 = export_models.Export(
+            user_id=api_tester_user.id,
+            name="Test Export",
+            query="type:ip-dst",
+            index_target="attributes",
+            format="json",
+            status="completed",
+            storage_key="exports/export-test.json",
+            file_size=42,
+            record_count=3,
+            created_at=datetime(2024, 1, 1, 0, 0, 0, tzinfo=timezone.utc),
+            finished_at=datetime(2024, 1, 1, 0, 1, 0, tzinfo=timezone.utc),
+        )
+        db.add(export_1)
+        db.commit()
+        db.refresh(export_1)
+
+        yield export_1
 
     @pytest.fixture(scope="class")
     def hunt_run_history_1(self, db: Session, hunt_1: hunt_models.Hunt):

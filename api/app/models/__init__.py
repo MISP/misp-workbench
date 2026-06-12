@@ -1,5 +1,6 @@
 from app.models.api_key import ApiKey  # noqa
 from app.models.audit_log import AuditLog  # noqa
+from app.models.export import Export  # noqa
 from app.models.hunt import Hunt  # noqa
 from app.models.module import ModuleSettings  # noqa
 from app.models.organisation import Organisation  # noqa
