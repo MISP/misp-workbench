@@ -8867,6 +8867,55 @@
         }
       }
     },
+    "/exports/{export_id}/run": {
+      "post": {
+        "tags": [
+          "Exports"
+        ],
+        "summary": "Run Export Now",
+        "operationId": "run_export_now_exports__export_id__run_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "exports:create"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "export_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Export Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Export"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/exports/{export_id}": {
       "get": {
         "tags": [
@@ -13327,6 +13376,17 @@
             "title": "Format",
             "default": "json"
           },
+          "distribution": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Distribution"
+          },
           "id": {
             "type": "integer",
             "title": "Id"
@@ -13508,6 +13568,17 @@
             ],
             "title": "Format",
             "default": "json"
+          },
+          "distribution": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Distribution"
           },
           "schedule": {
             "anyOf": [
