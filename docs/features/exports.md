@@ -27,8 +27,16 @@ can always fetch the same URL for the latest results.
 |---|---|---|
 | `json` | Raw OpenSearch `_source` documents | Passthrough dump |
 | `csv` | Flattened rows of the most useful fields | Tags joined with `|` |
-| `misp` | MISP schema compatible JSON format | [MISP schema](https://github.com/MISP/misp-rfc) |
+| `misp` | A single [MISP-schema](https://github.com/MISP/misp-rfc) event | All matches are merged into one event named after the export |
 | `stix` | A STIX 2.1 bundle | Attributes are grouped into events and converted via the [misp-stix](https://github.com/MISP/misp-stix) library |
+
+!!! note "MISP format"
+    The `misp` format collects every matching attribute into a **single MISP
+    event** (named after the export), even when the attributes come from
+    different misp-workbench events. It requires a **distribution** level and
+    keeps correlation enabled. The `uuid` and `id` fields are stripped from the
+    event and its attributes, so importing the file always creates fresh
+    records rather than colliding with existing ones.
 
 !!! note "STIX limits"
     STIX 2.1 conversion is CPU-intensive, so STIX exports are capped at
@@ -49,6 +57,9 @@ can always fetch the same URL for the latest results.
 3. Click ***Create Export***. The job is queued and runs immediately; the list
    polls until it settles to `completed` or `failed`.
 4. Once `completed`, click ***Download*** to fetch the file.
+
+Use ***Run now*** on any row to re-run an export on demand — it re-executes the
+stored query and overwrites the existing file in place.
 
 Alternatively, from the ***explore*** view use the ***Save as export…*** option
 in the Download menu — it opens the export dialog pre-filled with the current
@@ -156,6 +167,7 @@ Required scopes: `exports:create`
 |---|---|---|---|
 | `GET` | `/exports/` | List all exports (paginated) | `exports:read` |
 | `POST` | `/exports/` | Create an export (runs immediately) | `exports:create` |
+| `POST` | `/exports/{id}/run` | Re-run an export in place (overwrites its file) | `exports:create` |
 | `GET` | `/exports/{id}` | Get an export | `exports:read` |
 | `PATCH` | `/exports/{id}/schedule` | Set, pause/resume, or clear the schedule | `exports:create` |
 | `GET` | `/exports/{id}/download` | Download the stored artifact | `exports:read` |

@@ -31,6 +31,8 @@ class Export(Base):
     query = Column(Text, nullable=False)
     index_target = Column(String(50), nullable=False, default="attributes")
     format = Column(String(20), nullable=False, default="json")
+    # Event distribution level for MISP-format exports (0–4); null otherwise.
+    distribution = Column(Integer, nullable=True)
     status = Column(String(50), nullable=False, default="queued")
     storage_key = Column(String(512), nullable=True)
     file_size = Column(Integer, nullable=True)

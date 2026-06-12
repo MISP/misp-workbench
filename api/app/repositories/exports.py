@@ -159,6 +159,20 @@ def update_export_schedule(
     return db_export
 
 
+def requeue_export(
+    db: Session, export_id: int, user_id: int
+) -> export_models.Export:
+    """Reset an existing export to ``queued`` so it can be re-run in place."""
+    db_export = get_export_by_id(db, export_id, user_id)
+    if db_export is None:
+        return None
+    db_export.status = "queued"
+    db_export.error = None
+    db.commit()
+    db.refresh(db_export)
+    return db_export
+
+
 def set_celery_task_id(db: Session, export_id: int, task_id: str) -> None:
     db_export = (
         db.query(export_models.Export)
@@ -211,7 +225,13 @@ def _fetch_hits(index: str, query: str) -> list[dict]:
     return hits
 
 
-def _to_misp_json(db: Session, hits: list[dict], index_target: str, name: str):
+def _to_misp_json(
+    db: Session,
+    hits: list[dict],
+    index_target: str,
+    name: str,
+    distribution: int = None,
+):
     """Serialize all matching attributes into a single MISP event.
 
     Every matching attribute is collected into one synthetic MISP event named
@@ -221,7 +241,6 @@ def _to_misp_json(db: Session, hits: list[dict], index_target: str, name: str):
     output matches MISP's event API shape (``{"Event": {...}}``).
     """
     import json
-    import uuid as uuid_module
 
     from app.schemas import attribute as attribute_schemas
     from app.schemas import event as event_schemas
@@ -248,19 +267,31 @@ def _to_misp_json(db: Session, hits: list[dict], index_target: str, name: str):
             except Exception as e:  # skip malformed rows
                 logger.warning("Skipping attribute in MISP export: %s", e)
 
-    # Stable UUID per export so re-runs (e.g. scheduled) update the same event
-    # on re-import rather than creating a new one each time.
-    event_uuid = uuid_module.uuid5(
-        uuid_module.NAMESPACE_URL, f"misp-workbench:export:{name}"
-    )
     misp_event = event_schemas.Event(
         info=name,
-        uuid=event_uuid,
         timestamp=int(datetime.now(timezone.utc).timestamp()),
+        distribution=distribution,
+        disable_correlation=False,
         attributes=attributes,
     )
 
     payload = misp_event.to_misp_format()
+
+    # Strip identifiers so importing the file always creates fresh records
+    # rather than colliding with existing event/attribute uuids.
+    def _strip_ids(obj: dict) -> None:
+        obj.pop("uuid", None)
+        obj.pop("id", None)
+
+    event = payload.get("Event", {})
+    _strip_ids(event)
+    for attribute in event.get("Attribute", []):
+        _strip_ids(attribute)
+    for misp_object in event.get("Object", []):
+        _strip_ids(misp_object)
+        for attribute in misp_object.get("Attribute", []):
+            _strip_ids(attribute)
+
     content = json.dumps(payload, default=str, indent=2).encode("utf-8")
     return content, "json", "application/json", len(attributes)
 
@@ -293,7 +324,11 @@ def run_export(db: Session, export_id: int) -> None:
             # MISP format merges all matches into one event via the server-push
             # serializer; record_count reflects the attributes in that event.
             content, extension, _content_type, record_count = _to_misp_json(
-                db, hits, db_export.index_target, db_export.name
+                db,
+                hits,
+                db_export.index_target,
+                db_export.name,
+                db_export.distribution,
             )
         else:
             content, extension, _content_type = converters.convert(

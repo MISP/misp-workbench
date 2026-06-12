@@ -61,6 +61,27 @@ async def create_export(
     return db_export
 
 
+@router.post("/exports/{export_id}/run", response_model=export_schemas.Export)
+async def run_export_now(
+    export_id: int,
+    db: Session = Depends(get_db),
+    user: user_schemas.User = Security(
+        get_current_active_user, scopes=["exports:create"]
+    ),
+):
+    db_export = exports_repository.requeue_export(
+        db, export_id=export_id, user_id=user.id
+    )
+    if db_export is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Export not found"
+        )
+    result = tasks.run_export.delay(db_export.id)
+    exports_repository.set_celery_task_id(db, db_export.id, result.id)
+    db.refresh(db_export)
+    return db_export
+
+
 @router.get("/exports/{export_id}", response_model=export_schemas.Export)
 async def get_export_by_id(
     export_id: int,
