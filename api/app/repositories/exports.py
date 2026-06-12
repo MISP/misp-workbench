@@ -159,6 +159,20 @@ def update_export_schedule(
     return db_export
 
 
+def requeue_export(
+    db: Session, export_id: int, user_id: int
+) -> export_models.Export:
+    """Reset an existing export to ``queued`` so it can be re-run in place."""
+    db_export = get_export_by_id(db, export_id, user_id)
+    if db_export is None:
+        return None
+    db_export.status = "queued"
+    db_export.error = None
+    db.commit()
+    db.refresh(db_export)
+    return db_export
+
+
 def set_celery_task_id(db: Session, export_id: int, task_id: str) -> None:
     db_export = (
         db.query(export_models.Export)

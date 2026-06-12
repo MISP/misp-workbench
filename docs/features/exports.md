@@ -58,6 +58,9 @@ can always fetch the same URL for the latest results.
    polls until it settles to `completed` or `failed`.
 4. Once `completed`, click ***Download*** to fetch the file.
 
+Use ***Run now*** on any row to re-run an export on demand — it re-executes the
+stored query and overwrites the existing file in place.
+
 Alternatively, from the ***explore*** view use the ***Save as export…*** option
 in the Download menu — it opens the export dialog pre-filled with the current
 query.
@@ -164,6 +167,7 @@ Required scopes: `exports:create`
 |---|---|---|---|
 | `GET` | `/exports/` | List all exports (paginated) | `exports:read` |
 | `POST` | `/exports/` | Create an export (runs immediately) | `exports:create` |
+| `POST` | `/exports/{id}/run` | Re-run an export in place (overwrites its file) | `exports:create` |
 | `GET` | `/exports/{id}` | Get an export | `exports:read` |
 | `PATCH` | `/exports/{id}/schedule` | Set, pause/resume, or clear the schedule | `exports:create` |
 | `GET` | `/exports/{id}/download` | Download the stored artifact | `exports:read` |

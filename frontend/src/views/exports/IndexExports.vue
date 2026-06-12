@@ -112,6 +112,22 @@ async function deleteExport(item) {
   exportsStore.getAll();
 }
 
+const runningId = ref(null);
+
+async function runExport(item) {
+  runningId.value = item.id;
+  try {
+    await exportsStore.run(item.id);
+    toastsStore.push(`Export "${item.name}" re-queued.`, "success");
+    await exportsStore.getAll();
+    schedulePoll();
+  } catch (err) {
+    toastsStore.push(err?.message || "Failed to re-run export.", "danger");
+  } finally {
+    runningId.value = null;
+  }
+}
+
 // Poll while any export is still queued/running so the table updates without
 // a manual refresh; stop once everything has settled.
 let pollTimer = null;
@@ -246,6 +262,18 @@ onUnmounted(() => clearTimeout(pollTimer));
               {{ downloadingId === item.id ? "…" : "Download" }}
             </button>
             <template v-if="canCreate">
+              <button
+                class="btn btn-outline-success btn-sm me-1"
+                title="Re-run this export now (overwrites its file)"
+                :disabled="
+                  runningId === item.id ||
+                  item.status === 'queued' ||
+                  item.status === 'running'
+                "
+                @click="runExport(item)"
+              >
+                {{ runningId === item.id ? "…" : "Run now" }}
+              </button>
               <button
                 v-if="item.schedule"
                 class="btn btn-outline-secondary btn-sm me-1"
