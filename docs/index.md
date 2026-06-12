@@ -12,6 +12,7 @@ A modern MISP-compatible threat intelligence platform. It provides a self-contai
 | [Feed ingestion](features/feeds/index.md) | Ingest MISP, CSV, JSON, and Freetext feeds on a schedule or on demand |
 | [Correlations](features/correlations.md) | Batch and incremental correlation scans over indexed attributes |
 | [Explore](features/explore.md) | Lucene queries against OpenSearch for fast indicator lookups |
+| [Exports](features/exports.md) | File based exports in JSON, CSV or STIX 2.1 format |
 | [Enrichments](features/enrichments.md) | IOC enrichment powered by [misp-modules](https://github.com/MISP/misp-modules) |
 | [MCP Server](features/mcp/index.md) | AI assistant integration via the Model Context Protocol — query threat intel from Claude, Cursor, etc. |
 | [Hunt](features/hunts.md) | Hunts are saved searches that run periodically and trigger alerts. |
