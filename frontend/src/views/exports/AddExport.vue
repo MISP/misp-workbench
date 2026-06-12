@@ -3,6 +3,7 @@ import { ref, reactive, computed } from "vue";
 import { router } from "@/router";
 import { useExportsStore, useToastsStore } from "@/stores";
 import LuceneQuerySyntaxHint from "@/components/misc/LuceneQuerySyntaxHint.vue";
+import ExportScheduleFields from "@/components/exports/ExportScheduleFields.vue";
 
 const exportsStore = useExportsStore();
 const toastsStore = useToastsStore();
@@ -13,6 +14,8 @@ const exportJob = reactive({
   index_target: "attributes",
   format: "json",
 });
+
+const scheduleModel = ref({ schedule: null, schedule_enabled: false });
 
 const apiError = ref(null);
 
@@ -30,7 +33,11 @@ function onIndexTargetChange() {
 async function submit() {
   apiError.value = null;
   await exportsStore
-    .create({ ...exportJob })
+    .create({
+      ...exportJob,
+      schedule: scheduleModel.value.schedule,
+      schedule_enabled: scheduleModel.value.schedule_enabled,
+    })
     .then((response) => {
       toastsStore.push(
         `Export "${response.name}" queued. It will be ready shortly.`,
@@ -110,6 +117,11 @@ function cancel() {
           STIX 2.1 groups matching attributes into events and converts them via
           the misp-stix library.
         </div>
+      </div>
+
+      <hr />
+      <div class="mb-4">
+        <ExportScheduleFields v-model="scheduleModel" />
       </div>
 
       <div v-if="apiError" class="alert alert-danger">{{ apiError }}</div>

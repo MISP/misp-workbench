@@ -1086,11 +1086,14 @@ def lab_kernel_list():
 
 
 @celery_app.task(time_limit=720, soft_time_limit=600)
-def run_export(export_id: int):
+def run_export(export_id: int, **kwargs):
     """Run an IOC export job: query OpenSearch, transform, store the artifact.
 
     The soft time limit raises SoftTimeLimitExceeded inside ``run_export``,
     which records the job as failed rather than leaving it stuck on "running".
+
+    ``**kwargs`` absorbs scheduler-injected arguments (e.g. ``user_id``) when
+    the task is triggered by a recurring redbeat schedule.
     """
     logger.info("run_export export_id=%s started", export_id)
     from app.repositories import exports as exports_repository

@@ -42,6 +42,9 @@ export const useExportsStore = defineStore({
         .post(`${baseUrl}/`, payload)
         .finally(() => (this.status.creating = false));
     },
+    async updateSchedule(id, payload) {
+      return await fetchWrapper.patch(`${baseUrl}/${id}/schedule`, payload);
+    },
     async delete(id) {
       return await fetchWrapper.delete(`${baseUrl}/${id}`);
     },

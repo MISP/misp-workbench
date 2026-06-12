@@ -3,6 +3,7 @@ import { ref, computed, onUnmounted } from "vue";
 import { storeToRefs } from "pinia";
 import { useExportsStore, useAuthStore, useToastsStore } from "@/stores";
 import Spinner from "@/components/misc/Spinner.vue";
+import ExportScheduleModal from "@/components/exports/ExportScheduleModal.vue";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
 import utc from "dayjs/plugin/utc";
@@ -39,6 +40,59 @@ function formatBytes(bytes) {
 }
 
 const downloadingId = ref(null);
+const scheduleModalItem = ref(null);
+
+const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+function pad2(v) {
+  return String(v).padStart(2, "0");
+}
+
+// Human-readable summary of a stored crontab schedule.
+function scheduleSummary(s) {
+  if (!s) return null;
+  const time = `${pad2(s.hour === "*" ? 0 : s.hour)}:${pad2(
+    s.minute === "*" ? 0 : s.minute,
+  )}`;
+  if (s.day_of_week !== "*" && s.day_of_month === "*") {
+    const d = DAY_LABELS[parseInt(s.day_of_week, 10)] ?? s.day_of_week;
+    return `Weekly · ${d} ${time}`;
+  }
+  if (s.day_of_month !== "*") return `Monthly · day ${s.day_of_month} ${time}`;
+  if (s.hour !== "*") return `Daily · ${time}`;
+  if (s.minute !== "*") return `Hourly · :${pad2(s.minute)}`;
+  return "Custom";
+}
+
+async function toggleScheduleEnabled(item) {
+  try {
+    await exportsStore.updateSchedule(item.id, {
+      schedule_enabled: !item.schedule_enabled,
+    });
+    await exportsStore.getAll();
+  } catch (err) {
+    toastsStore.push(err?.message || "Failed to update schedule.", "danger");
+  }
+}
+
+async function unschedule(item) {
+  if (!window.confirm(`Remove the schedule for "${item.name}"?`)) return;
+  try {
+    await exportsStore.updateSchedule(item.id, {
+      schedule: null,
+      schedule_enabled: false,
+    });
+    toastsStore.push(`Schedule removed for "${item.name}".`, "success");
+    await exportsStore.getAll();
+  } catch (err) {
+    toastsStore.push(err?.message || "Failed to remove schedule.", "danger");
+  }
+}
+
+async function onScheduleSaved() {
+  scheduleModalItem.value = null;
+  await exportsStore.getAll();
+}
 
 async function downloadExport(item) {
   downloadingId.value = item.id;
@@ -116,6 +170,7 @@ onUnmounted(() => clearTimeout(pollTimer));
           <th v-if="!$isMobile">records</th>
           <th v-if="!$isMobile">size</th>
           <th v-if="!$isMobile">created</th>
+          <th v-if="!$isMobile">schedule</th>
           <th class="text-end">status</th>
           <th class="text-end">actions</th>
         </tr>
@@ -157,6 +212,22 @@ onUnmounted(() => clearTimeout(pollTimer));
           <td v-if="!$isMobile" class="text-muted small">
             {{ dayjs.utc(item.created_at).local().fromNow() }}
           </td>
+          <td v-if="!$isMobile" class="small">
+            <template v-if="item.schedule">
+              <span
+                class="badge"
+                :class="item.schedule_enabled ? 'bg-info' : 'bg-secondary'"
+                :title="item.schedule_enabled ? 'Active' : 'Paused'"
+              >
+                {{ scheduleSummary(item.schedule) }}
+                <span v-if="!item.schedule_enabled">(paused)</span>
+              </span>
+              <div v-if="item.last_run_at" class="text-muted">
+                last run {{ dayjs.utc(item.last_run_at).local().fromNow() }}
+              </div>
+            </template>
+            <span v-else class="text-muted">—</span>
+          </td>
           <td class="text-end">
             <span
               class="badge"
@@ -174,6 +245,33 @@ onUnmounted(() => clearTimeout(pollTimer));
             >
               {{ downloadingId === item.id ? "…" : "Download" }}
             </button>
+            <template v-if="canCreate">
+              <button
+                v-if="item.schedule"
+                class="btn btn-outline-secondary btn-sm me-1"
+                :title="
+                  item.schedule_enabled ? 'Pause schedule' : 'Resume schedule'
+                "
+                @click="toggleScheduleEnabled(item)"
+              >
+                {{ item.schedule_enabled ? "Pause" : "Resume" }}
+              </button>
+              <button
+                class="btn btn-outline-secondary btn-sm me-1"
+                :title="item.schedule ? 'Edit schedule' : 'Add schedule'"
+                @click="scheduleModalItem = item"
+              >
+                {{ item.schedule ? "Edit schedule" : "Schedule" }}
+              </button>
+              <button
+                v-if="item.schedule"
+                class="btn btn-outline-warning btn-sm me-1"
+                title="Remove schedule"
+                @click="unschedule(item)"
+              >
+                Unschedule
+              </button>
+            </template>
             <button
               v-if="canDelete"
               class="btn btn-outline-danger btn-sm"
@@ -186,4 +284,11 @@ onUnmounted(() => clearTimeout(pollTimer));
       </tbody>
     </table>
   </div>
+
+  <ExportScheduleModal
+    v-if="scheduleModalItem"
+    :export-item="scheduleModalItem"
+    @saved="onScheduleSaved"
+    @close="scheduleModalItem = null"
+  />
 </template>

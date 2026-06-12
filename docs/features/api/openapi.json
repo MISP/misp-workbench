@@ -8956,6 +8956,65 @@
         }
       }
     },
+    "/exports/{export_id}/schedule": {
+      "patch": {
+        "tags": [
+          "Exports"
+        ],
+        "summary": "Update Export Schedule",
+        "operationId": "update_export_schedule_exports__export_id__schedule_patch",
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "exports:create"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "export_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Export Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExportScheduleUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Export"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/exports/{export_id}/download": {
       "get": {
         "tags": [
@@ -13340,6 +13399,44 @@
             ],
             "title": "Celery Task Id"
           },
+          "schedule": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ScheduleTaskSchedule"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "schedule_enabled": {
+            "type": "boolean",
+            "title": "Schedule Enabled",
+            "default": false
+          },
+          "scheduled_task_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scheduled Task Name"
+          },
+          "last_run_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Run At"
+          },
           "created_at": {
             "type": "string",
             "format": "date-time",
@@ -13409,6 +13506,21 @@
             ],
             "title": "Format",
             "default": "json"
+          },
+          "schedule": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ScheduleTaskSchedule"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "schedule_enabled": {
+            "type": "boolean",
+            "title": "Schedule Enabled",
+            "default": false
           }
         },
         "type": "object",
@@ -13417,6 +13529,33 @@
           "query"
         ],
         "title": "ExportCreate"
+      },
+      "ExportScheduleUpdate": {
+        "properties": {
+          "schedule": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ScheduleTaskSchedule"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "schedule_enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Schedule Enabled"
+          }
+        },
+        "type": "object",
+        "title": "ExportScheduleUpdate"
       },
       "Feed": {
         "properties": {

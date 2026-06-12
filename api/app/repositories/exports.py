@@ -1,5 +1,6 @@
 import logging
 from datetime import datetime, timezone
+from uuid import uuid4
 
 from fastapi_pagination.ext.sqlalchemy import paginate
 from opensearchpy import helpers as opensearch_helpers
@@ -15,6 +16,63 @@ from app.services.exports_storage import store_export
 from app.services.opensearch import get_opensearch_client
 
 logger = logging.getLogger(__name__)
+
+# The redbeat task that a recurring export schedule fires.
+EXPORT_TASK_NAME = "app.worker.tasks.run_export"
+
+
+def _build_interval(schedule: dict):
+    """Translate a stored schedule dict into a celery beat schedule."""
+    from celery.schedules import crontab
+    from celery.schedules import schedule as celery_schedule
+
+    if schedule.get("type") == "crontab":
+        return crontab(
+            minute=schedule.get("minute", "*"),
+            hour=schedule.get("hour", "*"),
+            day_of_week=schedule.get("day_of_week", "*"),
+            day_of_month=schedule.get("day_of_month", "*"),
+            month_of_year=schedule.get("month_of_year", "*"),
+        )
+    return celery_schedule(int(schedule.get("every")))
+
+
+def _register_export_schedule(db_export: export_models.Export) -> str:
+    """Create or replace the redbeat entry for a recurring export.
+
+    Reuses the row's existing ``scheduled_task_name`` so updates replace the
+    same entry. Returns the entry name to persist on the row.
+    """
+    from redbeat import RedBeatSchedulerEntry
+
+    from app.worker.tasks import celery_app
+
+    name = db_export.scheduled_task_name or str(uuid4())
+    entry = RedBeatSchedulerEntry(
+        name,
+        EXPORT_TASK_NAME,
+        _build_interval(db_export.schedule),
+        args=[db_export.id],
+        kwargs={},
+        app=celery_app,
+        enabled=db_export.schedule_enabled,
+    )
+    entry.save()
+    return name
+
+
+def _unregister_export_schedule(name: str) -> None:
+    """Best-effort removal of an export's redbeat entry."""
+    if not name:
+        return
+    from redbeat import RedBeatSchedulerEntry
+
+    from app.worker.tasks import celery_app
+
+    try:
+        RedBeatSchedulerEntry.from_key(f"redbeat:{name}", app=celery_app).delete()
+    except Exception as e:
+        logger.warning("Failed to remove export schedule %s: %s", name, e)
 
 INDEX_MAP = {
     "attributes": "misp-attributes",
@@ -58,6 +116,46 @@ def create_export(
     db.add(db_export)
     db.commit()
     db.refresh(db_export)
+
+    if db_export.schedule:
+        db_export.scheduled_task_name = _register_export_schedule(db_export)
+        db.commit()
+        db.refresh(db_export)
+
+    return db_export
+
+
+def update_export_schedule(
+    db: Session,
+    export_id: int,
+    user_id: int,
+    payload: export_schemas.ExportScheduleUpdate,
+) -> export_models.Export:
+    """Set, change, pause/resume, or clear an export's recurring schedule."""
+    db_export = get_export_by_id(db, export_id, user_id)
+    if db_export is None:
+        return None
+
+    # schedule explicitly set to null -> unschedule.
+    if "schedule" in payload.model_fields_set and payload.schedule is None:
+        _unregister_export_schedule(db_export.scheduled_task_name)
+        db_export.schedule = None
+        db_export.scheduled_task_name = None
+        db_export.schedule_enabled = False
+        db.commit()
+        db.refresh(db_export)
+        return db_export
+
+    if payload.schedule is not None:
+        db_export.schedule = payload.schedule.model_dump()
+    if payload.schedule_enabled is not None:
+        db_export.schedule_enabled = payload.schedule_enabled
+
+    if db_export.schedule:
+        db_export.scheduled_task_name = _register_export_schedule(db_export)
+
+    db.commit()
+    db.refresh(db_export)
     return db_export
 
 
@@ -76,6 +174,8 @@ def delete_export(db: Session, export_id: int, user_id: int):
     db_export = get_export_by_id(db, export_id, user_id)
     if not db_export:
         return None
+    if db_export.scheduled_task_name:
+        _unregister_export_schedule(db_export.scheduled_task_name)
     if db_export.storage_key:
         delete_export_artifact(db_export.storage_key)
     db.delete(db_export)
@@ -147,6 +247,7 @@ def run_export(db: Session, export_id: int) -> None:
         db_export.record_count = len(hits)
         db_export.status = "completed"
         db_export.finished_at = datetime.now(timezone.utc)
+        db_export.last_run_at = db_export.finished_at
         db.commit()
         logger.info(
             "Export %s completed: %s records, %s bytes",

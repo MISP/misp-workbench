@@ -1,4 +1,13 @@
-from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    Column,
+    DateTime,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+)
 
 from app.database import Base
 
@@ -28,6 +37,12 @@ class Export(Base):
     record_count = Column(Integer, nullable=True)
     error = Column(Text, nullable=True)
     celery_task_id = Column(String(128), nullable=True)
+    # Recurring exports: when ``schedule`` is set the job is registered with the
+    # redbeat scheduler and re-runs in place (overwriting its own artifact).
+    schedule = Column(JSON, nullable=True)
+    scheduled_task_name = Column(String(128), nullable=True)
+    schedule_enabled = Column(Boolean, nullable=False, default=False)
+    last_run_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), nullable=False)
     started_at = Column(DateTime(timezone=True), nullable=True)
     finished_at = Column(DateTime(timezone=True), nullable=True)

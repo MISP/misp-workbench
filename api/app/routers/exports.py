@@ -78,6 +78,25 @@ async def get_export_by_id(
     return db_export
 
 
+@router.patch("/exports/{export_id}/schedule", response_model=export_schemas.Export)
+async def update_export_schedule(
+    export_id: int,
+    payload: export_schemas.ExportScheduleUpdate,
+    db: Session = Depends(get_db),
+    user: user_schemas.User = Security(
+        get_current_active_user, scopes=["exports:create"]
+    ),
+):
+    db_export = exports_repository.update_export_schedule(
+        db, export_id=export_id, user_id=user.id, payload=payload
+    )
+    if db_export is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Export not found"
+        )
+    return db_export
+
+
 @router.get("/exports/{export_id}/download")
 async def download_export(
     export_id: int,

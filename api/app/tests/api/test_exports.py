@@ -284,6 +284,7 @@ class TestExportsResource(ApiTester):
             assert export.record_count == 2
             assert export.storage_key == "exports/export-run.json"
             assert export.file_size > 0
+            assert export.last_run_at is not None
             mock_store.assert_called_once()
         finally:
             db.delete(export)
@@ -324,6 +325,137 @@ class TestExportsResource(ApiTester):
         finally:
             db.delete(export)
             db.commit()
+
+    # ── scheduling ────────────────────────────────────────────────────────────
+
+    @pytest.mark.parametrize("scopes", [["exports:create"]])
+    def test_create_export_with_schedule_registers_entry(
+        self,
+        client: TestClient,
+        auth_token: auth.Token,
+    ):
+        class _FakeResult:
+            id = "fake-task-id"
+
+        with patch(
+            "app.worker.tasks.run_export.delay", return_value=_FakeResult()
+        ), patch(
+            "app.repositories.exports._register_export_schedule",
+            return_value="sched-uuid",
+        ) as mock_register:
+            response = client.post(
+                "/exports/",
+                json={
+                    "name": "Daily IPs",
+                    "query": "type:ip-dst",
+                    "format": "json",
+                    "schedule": {"type": "crontab", "minute": "0", "hour": "2"},
+                    "schedule_enabled": True,
+                },
+                headers={"Authorization": "Bearer " + auth_token},
+            )
+
+        data = response.json()
+        assert response.status_code == status.HTTP_201_CREATED
+        assert data["schedule"]["hour"] == "2"
+        assert data["schedule_enabled"] is True
+        assert data["scheduled_task_name"] == "sched-uuid"
+        mock_register.assert_called_once()
+
+    @pytest.mark.parametrize("scopes", [["exports:create"]])
+    def test_update_schedule_toggle_and_clear(
+        self,
+        client: TestClient,
+        auth_token: auth.Token,
+        db: Session,
+        api_tester_user,
+    ):
+        from datetime import datetime, timezone
+
+        export = export_models.Export(
+            user_id=api_tester_user.id,
+            name="Sched",
+            query="type:ip-dst",
+            index_target="attributes",
+            format="json",
+            status="completed",
+            schedule={"type": "crontab", "minute": "0", "hour": "*"},
+            scheduled_task_name="existing-uuid",
+            schedule_enabled=True,
+            created_at=datetime(2024, 1, 1, tzinfo=timezone.utc),
+        )
+        db.add(export)
+        db.commit()
+        db.refresh(export)
+
+        # pause
+        with patch(
+            "app.repositories.exports._register_export_schedule",
+            return_value="existing-uuid",
+        ) as mock_register:
+            response = client.patch(
+                f"/exports/{export.id}/schedule",
+                json={"schedule_enabled": False},
+                headers={"Authorization": "Bearer " + auth_token},
+            )
+        assert response.status_code == status.HTTP_200_OK
+        assert response.json()["schedule_enabled"] is False
+        mock_register.assert_called_once()
+
+        # clear / unschedule
+        with patch(
+            "app.repositories.exports._unregister_export_schedule"
+        ) as mock_unregister:
+            response = client.patch(
+                f"/exports/{export.id}/schedule",
+                json={"schedule": None},
+                headers={"Authorization": "Bearer " + auth_token},
+            )
+        data = response.json()
+        assert response.status_code == status.HTTP_200_OK
+        assert data["schedule"] is None
+        assert data["scheduled_task_name"] is None
+        assert data["schedule_enabled"] is False
+        mock_unregister.assert_called_once_with("existing-uuid")
+
+    @pytest.mark.parametrize("scopes", [["exports:delete"]])
+    def test_delete_scheduled_export_unregisters(
+        self,
+        client: TestClient,
+        auth_token: auth.Token,
+        db: Session,
+        api_tester_user,
+    ):
+        from datetime import datetime, timezone
+
+        export = export_models.Export(
+            user_id=api_tester_user.id,
+            name="Sched delete",
+            query="type:ip-dst",
+            index_target="attributes",
+            format="json",
+            status="completed",
+            scheduled_task_name="del-uuid",
+            schedule={"type": "crontab", "minute": "0", "hour": "*"},
+            schedule_enabled=True,
+            created_at=datetime(2024, 1, 1, tzinfo=timezone.utc),
+        )
+        db.add(export)
+        db.commit()
+        db.refresh(export)
+
+        with patch(
+            "app.repositories.exports._unregister_export_schedule"
+        ) as mock_unregister, patch(
+            "app.repositories.exports.delete_export_artifact"
+        ):
+            response = client.delete(
+                f"/exports/{export.id}",
+                headers={"Authorization": "Bearer " + auth_token},
+            )
+
+        assert response.status_code == status.HTTP_204_NO_CONTENT
+        mock_unregister.assert_called_once_with("del-uuid")
 
 
 class TestExportConverters:
