@@ -294,8 +294,13 @@ def _to_misp_json(
                 obj[field] = datetime.fromtimestamp(
                     int(value), tz=timezone.utc
                 ).isoformat(timespec="microseconds")
-            except (ValueError, TypeError, OverflowError):
-                pass
+            except (ValueError, TypeError, OverflowError) as exc:
+                logger.debug(
+                    "Unable to format %s value %r as timestamp in MISP export: %s",
+                    field,
+                    value,
+                    exc,
+                )
 
     event = payload.get("Event", {})
     _strip_ids(event)
