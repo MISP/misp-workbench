@@ -21,6 +21,7 @@ DOWNLOAD_META = {
     "json": ("application/json", "json"),
     "csv": ("text/csv", "csv"),
     "stix": ("application/stix+json", "json"),
+    "misp": ("application/json", "json"),
 }
 
 

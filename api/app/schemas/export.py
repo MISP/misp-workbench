@@ -5,7 +5,7 @@ from pydantic import BaseModel, ConfigDict
 
 from app.schemas.task import ScheduleTaskSchedule
 
-ExportFormat = Literal["json", "csv", "stix"]
+ExportFormat = Literal["json", "csv", "stix", "misp"]
 ExportIndexTarget = Literal["attributes", "events"]
 ExportStatus = Literal["queued", "running", "completed", "failed"]
 

@@ -211,6 +211,60 @@ def _fetch_hits(index: str, query: str) -> list[dict]:
     return hits
 
 
+def _to_misp_json(db: Session, hits: list[dict], index_target: str, name: str):
+    """Serialize all matching attributes into a single MISP event.
+
+    Every matching attribute is collected into one synthetic MISP event named
+    after the export — even when the attributes originate from different
+    misp-workbench events. The event is rendered with ``Event.to_misp_format()``
+    (the same serializer used to push events to a remote MISP server), so the
+    output matches MISP's event API shape (``{"Event": {...}}``).
+    """
+    import json
+    import uuid as uuid_module
+
+    from app.schemas import attribute as attribute_schemas
+    from app.schemas import event as event_schemas
+
+    attributes: list = []
+    if index_target == "events":
+        # Pull the full events (with their attributes) and flatten them.
+        from app.repositories import events as events_repository
+
+        raw_uuids = [h.get("uuid") for h in hits]
+        ordered_uuids, seen = [], set()
+        for u in raw_uuids:
+            if u and u not in seen:
+                seen.add(u)
+                ordered_uuids.append(u)
+        for start in range(0, len(ordered_uuids), 1000):
+            chunk = ordered_uuids[start : start + 1000]
+            for event in events_repository.get_events_by_uuids(db, chunk):
+                attributes.extend(event.attributes)
+    else:
+        for source in hits:
+            try:
+                attributes.append(attribute_schemas.Attribute.model_validate(source))
+            except Exception as e:  # skip malformed rows
+                logger.warning("Skipping attribute in MISP export: %s", e)
+
+    # Stable UUID per export so re-runs (e.g. scheduled) update the same event
+    # on re-import rather than creating a new one each time.
+    event_uuid = uuid_module.uuid5(
+        uuid_module.NAMESPACE_URL, f"misp-workbench:export:{name}"
+    )
+    misp_event = event_schemas.Event(
+        info=name,
+        uuid=event_uuid,
+        timestamp=int(datetime.now(timezone.utc).timestamp()),
+        attributes=attributes,
+    )
+
+    payload = misp_event.to_misp_format()
+    content = json.dumps(payload, default=str, indent=2).encode("utf-8")
+    return content, "json", "application/json", len(attributes)
+
+
 def run_export(db: Session, export_id: int) -> None:
     """Execute an export job: query OpenSearch, convert, store the artifact.
 
@@ -235,16 +289,24 @@ def run_export(db: Session, export_id: int) -> None:
         index = INDEX_MAP.get(db_export.index_target, "misp-attributes")
         hits = _fetch_hits(index, db_export.query)
 
-        content, extension, _content_type = converters.convert(
-            db_export.format, hits, db_export.index_target
-        )
+        if db_export.format == "misp":
+            # MISP format merges all matches into one event via the server-push
+            # serializer; record_count reflects the attributes in that event.
+            content, extension, _content_type, record_count = _to_misp_json(
+                db, hits, db_export.index_target, db_export.name
+            )
+        else:
+            content, extension, _content_type = converters.convert(
+                db_export.format, hits, db_export.index_target
+            )
+            record_count = len(hits)
 
         storage_key = f"export-{db_export.id}.{extension}"
         stored_key = store_export(storage_key, content)
 
         db_export.storage_key = stored_key
         db_export.file_size = len(content)
-        db_export.record_count = len(hits)
+        db_export.record_count = record_count
         db_export.status = "completed"
         db_export.finished_at = datetime.now(timezone.utc)
         db_export.last_run_at = db_export.finished_at
@@ -252,7 +314,7 @@ def run_export(db: Session, export_id: int) -> None:
         logger.info(
             "Export %s completed: %s records, %s bytes",
             export_id,
-            len(hits),
+            record_count,
             len(content),
         )
     except Exception as e:

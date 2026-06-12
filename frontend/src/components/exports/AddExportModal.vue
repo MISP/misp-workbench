@@ -165,6 +165,7 @@ function close() {
               v-model="exportJob.format"
             >
               <option value="json">JSON</option>
+              <option value="misp">JSON (MISP)</option>
               <option value="csv">CSV</option>
               <option value="stix" :disabled="stixDisabled">
                 STIX 2.1{{ stixDisabled ? " (attributes only)" : "" }}

@@ -13321,7 +13321,8 @@
             "enum": [
               "json",
               "csv",
-              "stix"
+              "stix",
+              "misp"
             ],
             "title": "Format",
             "default": "json"
@@ -13502,7 +13503,8 @@
             "enum": [
               "json",
               "csv",
-              "stix"
+              "stix",
+              "misp"
             ],
             "title": "Format",
             "default": "json"
