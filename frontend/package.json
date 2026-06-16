@@ -52,7 +52,7 @@
     "d3": "^7.9.0",
     "d3-flame-graph": "^5.0.0",
     "dayjs": "^1.11.13",
-    "dompurify": "^3.4.0",
+    "dompurify": "^3.4.9",
     "eslint": "^9.18.0",
     "flatpickr": "^4.6.13",
     "github-markdown-css": "^5.8.1",
