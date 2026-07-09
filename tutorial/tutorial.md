@@ -134,41 +134,95 @@ Click **Select from defaults** to browse the curated list of well-known public f
 
 ### Option B — configure manually
 
-**1. Pick a format.** For a public MISP feed, choose the **MISP Format** card.
+Let's ingest a real CSV feed: [Cloudflare's published IPv4 ranges](https://www.cloudflare.com/ips-v4/). It's a plain list of CIDR blocks, one per line, with no header row and no delimiter — a good example of the CSV format's simplest shape.
 
-![MISP feed form](../docs/screenshots/feeds/misp-workbench-2_misp-feed.png)
+**1. Pick a format.** Choose the **CSV Format** card.
+
+![CSV feed form](../docs/screenshots/feeds/misp-workbench-1_csv-feed.png)
 
 **2. Feed Settings** (shared across all formats):
 
 | Field | Value | Notes |
 |---|---|---|
-| **Name** | `CIRCL OSINT Feed` | |
+| **Name** | `Cloudflare IPv4 ranges` | |
 | **Enabled** | ✅ | Feed is active |
-| **Provider** | `CIRCL` | Source/organisation name |
+| **Provider** | `Cloudflare` | Source/organisation name |
 | **Distribution** | *Your choice* | MISP distribution level for ingested attributes |
 | **Input source** | **Network (fetch from URL)** | Or *Upload file* to ingest a local file once |
-| **URI** | `https://.../feed/` | The remote feed URL (Network mode) |
-| **Fixed Event** | on/off | On = append every fetch to one event; off = new event per fetch |
+| **URI** | `https://www.cloudflare.com/ips-v4/` | The remote feed URL (Network mode) |
+| **Fixed Event** | on | Append every fetch to one event — a single "Cloudflare IPv4 ranges" event that stays current |
 | **Update interval** | **Daily** | Hourly / Daily / Weekly / No automatic updates |
 | **Fetch immediately after creation** | ✅ | Also runs one fetch right away |
 
-For authenticated feeds set **Authentication → Auth Header** (header name + secret).
+For authenticated feeds set **Authentication → Auth Header** (header name + secret). Cloudflare's list is public, so leave it off.
 
-**3. Format-specific config.**
+**3. CSV config.** Because the file is a bare list of CIDRs:
 
-- **MISP** → a *MISP Feed Rules* card, identical Basic/Advanced pattern to server pull rules (filter by published-after time, tags, orgs). Defaults to the last 30 days.
+- **First row is header** → **off** (the first line is already data).
+- **Delimiter** → `,` (there's only one column, so this doesn't matter here).
 
-  ![MISP feed rules](../docs/screenshots/feeds/misp-workbench-3_misp-feed-rules.png)
+Click **Preview** to load the table — you'll see a single column of CIDR values.
 
-- **CSV** → set *First row is header* and *Delimiter*, preview the table, choose **Row → Attribute** or **Row → Object**, then map the **value column** and **type** (fixed or from a column, with optional type-value remapping).
+![CSV feed preview](../docs/screenshots/feeds/misp-workbench-2_csv-feed-preview.png)
 
-- **JSON** → choose *array / object / NDJSON*, set an *Items path*, then map the **value field** and **attribute type**.
+Then map the rows to attributes:
 
-- **Freetext** → choose **Automatic** type detection or a **Fixed type**, and preview the detected indicators.
+- Choose **Row → Attribute** (each line becomes one attribute; use **Row → Object** only for multi-field rows).
+- Set the **value column** to the (only) column.
+- Set the **type** to a **fixed** value of `ip-dst` — MISP's IP types accept CIDR notation.
 
-**4. Preview & create.** For MISP feeds, **Preview** (`test-connection`) confirms the URL is reachable and returns a valid manifest, and shows how many events survive your rules. Click **Add Feed**.
+![CSV value mapping](../docs/screenshots/feeds/misp-workbench-3_csv-feed-value-mapping.png)
 
-![MISP feed preview](../docs/screenshots/feeds/misp-workbench-4_misp-feed-preview.png)
+For richer feeds you can instead derive the **type** from a column and remap raw column values to MISP types under **Advanced** — for example mapping a `category` column's values onto different attribute types.
+
+![CSV advanced value mapping](../docs/screenshots/feeds/misp-workbench-4_csv-feed-advanced-value-mapping.png)
+
+**4. Preview & create.** Confirm the previewed table and mapping look right, then click **Add Feed**.
+
+### Option C — a JSON feed
+
+Cloudflare also publishes the same ranges through its API as JSON: [`https://api.cloudflare.com/client/v4/ips`](https://api.cloudflare.com/client/v4/ips). The response nests the IPv4 ranges inside a `result` object, so it's a good example of the JSON format's **Items path** mapping:
+
+```json
+{
+  "result": {
+    "ipv4_cidrs": ["173.245.48.0/20", "103.21.244.0/22", "..."],
+    "ipv6_cidrs": ["2400:cb00::/32", "..."],
+    "etag": "38f79d050aa027e3be3865e495dcc9bc"
+  },
+  "success": true,
+  "errors": [],
+  "messages": []
+}
+```
+
+**1. Pick a format.** Choose the **JSON Format** card.
+
+![JSON feed form](../docs/screenshots/feeds/misp-workbench-1_json-feed.png)
+
+**2. Feed Settings** — same as above, but with:
+
+| Field | Value |
+|---|---|
+| **Name** | `Cloudflare IPv4 ranges (JSON)` |
+| **Provider** | `Cloudflare` |
+| **URI** | `https://api.cloudflare.com/client/v4/ips` |
+
+**3. JSON config.**
+
+- **Structure** → **array** (once you point the items path at the CIDR list below, each element is a plain string).
+- **Items path** → `result.ipv4_cidrs` — dot-notation to the array you want to ingest. Click **Preview** to fetch the response and confirm the path resolves to the list of CIDRs.
+
+  ![JSON feed preview](../docs/screenshots/feeds/misp-workbench-2_json-feed-preview.png)
+
+  ![JSON feed preview with items path](../docs/screenshots/feeds/misp-workbench-3_json-feed-preview-with-json-path.png)
+
+- **Value field** → leave empty / `.` — each item *is* the value (a bare string), not an object with fields. For object items you'd put the field name here (e.g. `ip`).
+- **Attribute type** → fixed `ip-dst`.
+
+  ![JSON attribute mapping](../docs/screenshots/feeds/misp-workbench-4_json-feed-attribute-mapping.png)
+
+**4. Preview & create.** Confirm the resolved items and mapping, then click **Add Feed**.
 
 ### Fetch & manage
 
