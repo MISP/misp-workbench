@@ -352,7 +352,7 @@ To start, click the **New notebook** (+) button in the *Personal* section, give 
 **Find recent IOCs by tag:**
 
 ```python
-events = mwlab.search_events(tags=["tlp:white"], size=20)
+events = mwlab.search_events(tags=["tlp:clear"], size=20)
 mwlab.dataframe(events)
 ```
 
@@ -361,10 +361,10 @@ mwlab.dataframe(events)
 **Pivot from an attribute to its event:**
 
 ```python
-hits = mwlab.search_attributes(value="example.com", type="domain")
+hits = mwlab.search_attributes(value="*.com", type="domain", size=20)
 for attr in hits:
     event = mwlab.get_event(attr["event_uuid"])
-    print(attr["uuid"], "→", event["info"])
+    print(attr["value"], "→", attr["uuid"], "→", event["info"])
 ```
 
 **Enrich / geolocate an indicator** (audited under your identity):
