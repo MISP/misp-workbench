@@ -388,7 +388,7 @@ onMounted(() => {
           class="text-muted small fst-italic px-3 py-1"
         >
           No library notebooks. Seed via
-          <code>python -m app.cli seed-lab-library</code>.
+          <code>python -m app.cli seed-lab-library</code>
         </div>
         <ul class="list-unstyled m-0">
           <TreeNode
