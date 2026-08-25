@@ -54,6 +54,9 @@ logger = logging.getLogger(__name__)
 
 engine = create_engine(SQLALCHEMY_DATABASE_URL)
 
+# Attributes handed to a single correlate_attributes task by a bulk ingest.
+CORRELATION_BATCH_SIZE = 500
+
 
 def _reactor_event_payload(os_event, event_uuid: str) -> dict:
     if os_event is None:
@@ -124,7 +127,7 @@ def pull_event_by_uuid(event_uuid: str, server_id: int, user_id: int):
         "pull event uuid=%s from server id=%s, job started", event_uuid, server_id
     )
 
-    with Session(engine) as db:
+    with Session(engine) as db, attributes_repository.deferred_correlations():
         user = users_repository.get_user_by_id(db, user_id)
         if user is None:
             raise Exception("User not found")
@@ -238,7 +241,12 @@ def handle_deleted_event(event_uuid: str):
 
 
 @celery_app.task
-def handle_created_attribute(attribute_uuid: str, object_uuid, event_uuid: str | None):
+def handle_created_attribute(
+    attribute_uuid: str,
+    object_uuid,
+    event_uuid: str | None,
+    correlate: bool = True,
+):
     logger.info("handling created attribute uuid=%s job started", attribute_uuid)
     with Session(engine) as db:
         if object_uuid is None and event_uuid:
@@ -252,12 +260,19 @@ def handle_created_attribute(attribute_uuid: str, object_uuid, event_uuid: str |
                 "created",
                 _reactor_attribute_payload(os_attr, attribute_uuid, object_uuid, event_uuid),
             )
+            if correlate:
+                correlate_attribute.delay(attribute_uuid)
 
     return True
 
 
 @celery_app.task
-def handle_updated_attribute(attribute_uuid: str, object_uuid, event_uuid: str | None):
+def handle_updated_attribute(
+    attribute_uuid: str,
+    object_uuid,
+    event_uuid: str | None,
+    recorrelate: bool = True,
+):
     logger.info("handling updated attribute uuid=%s job started", attribute_uuid)
     with Session(engine) as db:
         os_attr = attributes_repository.get_attribute_from_opensearch(UUID(attribute_uuid))
@@ -268,6 +283,8 @@ def handle_updated_attribute(attribute_uuid: str, object_uuid, event_uuid: str |
                 "updated",
                 _reactor_attribute_payload(os_attr, attribute_uuid, object_uuid, event_uuid),
             )
+            if recorrelate:
+                correlate_attribute.delay(attribute_uuid)
 
     return True
 
@@ -287,6 +304,8 @@ def handle_deleted_attribute(attribute_uuid: str, object_uuid, event_uuid: str |
                 "deleted",
                 _reactor_attribute_payload(os_attr, attribute_uuid, object_uuid, event_uuid),
             )
+
+    correlations_repository.delete_attribute_correlations(attribute_uuid)
 
     return True
 
@@ -393,7 +412,7 @@ def fetch_feed(feed_id: int, user_id: int):
 def fetch_feed_event(event_uuid: str, feed_id: int, user_id: int):
     logger.info("fetch feed event uuid=%s job started", event_uuid)
 
-    with Session(engine) as db:
+    with Session(engine) as db, attributes_repository.deferred_correlations():
         user = users_repository.get_user_by_id(db, user_id)
         db_feed = feeds_repository.get_feed_by_id(db, feed_id=feed_id)
 
@@ -412,7 +431,7 @@ def fetch_csv_feed(feed_id: int, user_id: int):
     attributes_created = 0
     failed_rows = 0
 
-    with Session(engine) as db:
+    with Session(engine) as db, attributes_repository.deferred_correlations():
         user = users_repository.get_user_by_id(db, user_id)
         db_feed = feeds_repository.get_feed_by_id(db, feed_id=feed_id)
 
@@ -476,7 +495,7 @@ def fetch_freetext_feed(feed_id: int, user_id: int):
     attributes_created = 0
     failed_rows = 0
 
-    with Session(engine) as db:
+    with Session(engine) as db, attributes_repository.deferred_correlations():
         user = users_repository.get_user_by_id(db, user_id)
         db_feed = feeds_repository.get_feed_by_id(db, feed_id=feed_id)
 
@@ -536,7 +555,7 @@ def fetch_json_feed(feed_id: int, user_id: int):
     attributes_created = 0
     failed_items = 0
 
-    with Session(engine) as db:
+    with Session(engine) as db, attributes_repository.deferred_correlations():
         user = users_repository.get_user_by_id(db, user_id)
         db_feed = feeds_repository.get_feed_by_id(db, feed_id=feed_id)
 
@@ -786,21 +805,43 @@ def handle_created_correlation(
 ):
     logger.info("handling created correlation id=%s job started", source_attribute_uuid)
 
-    with Session(engine) as db:
-        correlation = {
-            "source_attribute_uuid": source_attribute_uuid,
-            "source_event_uuid": source_event_uuid,
-            "target_event_uuid": target_event_uuid,
-            "target_attribute_uuid": target_attribute_uuid,
-            "target_attribute_type": target_attribute_type,
-            "target_attribute_value": target_attribute_value,
-        }
+    handle_created_correlations(
+        [
+            {
+                "source_attribute_uuid": source_attribute_uuid,
+                "source_event_uuid": source_event_uuid,
+                "target_event_uuid": target_event_uuid,
+                "target_attribute_uuid": target_attribute_uuid,
+                "target_attribute_type": target_attribute_type,
+                "target_attribute_value": target_attribute_value,
+            }
+        ]
+    )
 
-        notifications_repository.create_correlation_notifications(
-            db, "created", correlation=correlation
+    return True
+
+
+@celery_app.task
+def handle_created_correlations(correlations: list[dict]):
+    """Handle a batch of created correlations in one go.
+
+    Correlation runs produce them in bulk, so notifications are written from a
+    single session instead of one task, session and commit per correlation.
+    """
+    logger.info("handling %s created correlations job started", len(correlations))
+
+    if not correlations:
+        return True
+
+    with Session(engine) as db:
+        notifications_repository.create_correlation_notifications_bulk(
+            db, "created", correlations
         )
 
-    _dispatch_if_subscribed("correlation", "created", correlation)
+    for correlation in correlations:
+        _dispatch_if_subscribed("correlation", "created", correlation)
+
+    logger.info("handling %s created correlations job finished", len(correlations))
 
     return True
 
@@ -830,6 +871,84 @@ def handle_unpublished_event(event_uuid: str):
         _dispatch_if_subscribed("event", "unpublished", _reactor_event_payload(os_event, event_uuid))
 
     logger.info("handling unpublished event uuid=%s job finished", event_uuid)
+    return True
+
+
+def correlations_enabled(runtimeSettings) -> bool:
+    return bool(runtimeSettings.get_value("correlations.correlateOnChange", True))
+
+
+def enqueue_deferred_correlations(batch: dict):
+    """Enqueue the correlation tasks a bulk ingest collected.
+
+    The batch is split into fixed size chunks so a large feed or pull spreads
+    over the workers instead of riding in one oversized message.
+    """
+    for rebuild, key in ((False, "created"), (True, "updated")):
+        attribute_uuids = batch.get(key) or []
+
+        for start in range(0, len(attribute_uuids), CORRELATION_BATCH_SIZE):
+            correlate_attributes.delay(
+                attribute_uuids[start : start + CORRELATION_BATCH_SIZE], rebuild
+            )
+
+    logger.info(
+        "enqueued correlations for %s created and %s updated attributes",
+        len(batch.get("created") or []),
+        len(batch.get("updated") or []),
+    )
+
+
+@celery_app.task
+def correlate_attributes(attribute_uuids: list[str], rebuild: bool = False):
+    """Correlate a batch of attributes produced by a bulk ingest."""
+    logger.info("correlating %s attributes job started", len(attribute_uuids))
+
+    with Session(engine) as db:
+        runtimeSettings = get_runtime_settings(db)
+
+    if not correlations_enabled(runtimeSettings):
+        logger.info(
+            "correlating attributes skipped: correlations.correlateOnChange is off"
+        )
+        return True
+
+    result = correlations_repository.correlate_attribute_uuids(
+        runtimeSettings, attribute_uuids, rebuild=rebuild
+    )
+
+    logger.info(
+        "correlating %s attributes job finished, %s correlations stored",
+        len(attribute_uuids),
+        result["stored"],
+    )
+
+    return True
+
+
+@celery_app.task
+def correlate_attribute(attribute_uuid: str):
+    """Correlate a single attribute, enqueued whenever one is created or changed."""
+    logger.info("correlating attribute uuid=%s job started", attribute_uuid)
+
+    with Session(engine) as db:
+        runtimeSettings = get_runtime_settings(db)
+
+    if not correlations_enabled(runtimeSettings):
+        logger.info(
+            "correlating attribute uuid=%s skipped: correlations.correlateOnChange is off",
+            attribute_uuid,
+        )
+        return True
+
+    result = correlations_repository.correlate_attribute(runtimeSettings, attribute_uuid)
+
+    logger.info(
+        "correlating attribute uuid=%s job finished, %s correlations stored",
+        attribute_uuid,
+        result["stored"],
+    )
+
     return True
 
 

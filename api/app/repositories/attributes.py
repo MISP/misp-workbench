@@ -18,6 +18,41 @@ from pymisp import MISPAttribute, MISPTag
 from sqlalchemy.orm import Session
 from collections import defaultdict
 from opensearchpy.exceptions import NotFoundError
+from contextlib import contextmanager
+from contextvars import ContextVar
+
+# Fields that make an attribute correlate differently, so a change to any of
+# them has to invalidate and rebuild its correlations.
+CORRELATION_RELEVANT_FIELDS = ("value", "type", "disable_correlation", "deleted")
+
+_deferred_correlations: ContextVar = ContextVar(
+    "attributes_deferred_correlations", default=None
+)
+
+
+@contextmanager
+def deferred_correlations():
+    """Collect the attributes to correlate instead of correlating them one by one.
+
+    Bulk ingestion - a feed fetch, a server pull, an event import - creates
+    attributes in the thousands, and correlating each one as it lands means a
+    task, a search and a notification round trip per attribute. Inside this
+    context the uuids are collected instead, so the caller can hand whole
+    batches to ``tasks.correlate_attributes`` once the ingest is done.
+
+    Yields a ``{"created": [...], "updated": [...]}`` batch; attributes that
+    already existed need their stale correlations dropped first, freshly created
+    ones do not. On exit the batch is enqueued, including when the ingest failed
+    part way through, so whatever did land still gets correlated.
+    """
+    batch = {"created": [], "updated": []}
+    token = _deferred_correlations.set(batch)
+
+    try:
+        yield batch
+    finally:
+        _deferred_correlations.reset(token)
+        tasks.enqueue_deferred_correlations(batch)
 
 
 def enrich_attributes_page_with_correlations(
@@ -160,7 +195,13 @@ def create_attribute(
 
     client.index(index="misp-attributes", id=attribute_uuid, body=attr_doc, refresh=True)
 
-    tasks.handle_created_attribute.delay(attribute_uuid, attr_doc["object_uuid"], event_uuid)
+    deferred = _deferred_correlations.get()
+    if deferred is not None:
+        deferred["created"].append(attribute_uuid)
+
+    tasks.handle_created_attribute.delay(
+        attribute_uuid, attr_doc["object_uuid"], event_uuid, deferred is None
+    )
 
     return attribute_schemas.Attribute.model_validate(attr_doc)
 
@@ -295,7 +336,22 @@ def update_attribute(
 
     client.update(index="misp-attributes", id=str(os_attr.uuid), body={"doc": patch}, refresh=True)
 
-    tasks.handle_updated_attribute.delay(str(os_attr.uuid), os_attr.object_uuid, str(os_attr.event_uuid) if os_attr.event_uuid else None)
+    recorrelate = any(
+        field in patch and patch[field] != getattr(os_attr, field)
+        for field in CORRELATION_RELEVANT_FIELDS
+    )
+
+    deferred = _deferred_correlations.get()
+    if recorrelate and deferred is not None:
+        deferred["updated"].append(str(os_attr.uuid))
+        recorrelate = False
+
+    tasks.handle_updated_attribute.delay(
+        str(os_attr.uuid),
+        os_attr.object_uuid,
+        str(os_attr.event_uuid) if os_attr.event_uuid else None,
+        recorrelate,
+    )
 
     return get_attribute_from_opensearch(os_attr.uuid)
 

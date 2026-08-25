@@ -6,6 +6,7 @@ from opensearchpy.exceptions import NotFoundError
 from app.services.runtime_settings import RuntimeSettings
 from app.worker import tasks
 import datetime
+import json
 import logging
 
 logger = logging.getLogger(__name__)
@@ -21,8 +22,22 @@ POSSIBLE_CIDR_ATTRIBUTES_TYPES = [
     "ip-dst|port",
     "domain|ip",
 ]
-BULK_BUFFER = []
 BULK_SIZE = 100
+# Correlation queries batched into a single multi-search request. Raising it
+# means fewer round trips but a larger response to hold in memory, since every
+# query can bring back up to ``maxCorrelationsPerDoc`` hits.
+MSEARCH_CHUNK_SIZE = 25
+MGET_CHUNK_SIZE = 500
+DELETE_CHUNK_SIZE = 1000
+NOTIFICATION_CHUNK_SIZE = 200
+# Only the fields correlation needs, so batched responses stay small.
+CORRELATION_SOURCE_FIELDS = [
+    "type",
+    "value",
+    "event_uuid",
+    "disable_correlation",
+    "deleted",
+]
 
 
 def get_correlations(params: correlation_schemas.CorrelationQueryParams, page: int = 0, from_value: int = 0, size: int = 100):
@@ -80,7 +95,10 @@ def get_correlations(params: correlation_schemas.CorrelationQueryParams, page: i
 def get_attributes(filters: dict = {}):
     OpenSearchClient = get_opensearch_client()
 
-    query = {"query": {"bool": {"must": [{"term": {"disable_correlation": False}}]}}}
+    query = {
+        "query": {"bool": {"must": [{"term": {"disable_correlation": False}}]}},
+        "_source": CORRELATION_SOURCE_FIELDS,
+    }
 
     if filters.get("event_uuid"):
         query["query"]["bool"]["must"].append(
@@ -181,74 +199,118 @@ def build_cidr_query(uuid, event_uuid, doc):
     }
 
 
-def flush_bulk_correlations():
-    global BULK_BUFFER
+def chunked(iterable, size):
+    """Yield successive ``size`` long chunks of an iterable (streams generators)."""
+    chunk = []
 
-    OpenSearchClient = get_opensearch_client()
+    for item in iterable:
+        chunk.append(item)
+        if len(chunk) >= size:
+            yield chunk
+            chunk = []
 
-    if not BULK_BUFFER:
-        return
-
-    opensearch_helpers.bulk(OpenSearchClient, BULK_BUFFER)
-    BULK_BUFFER = []
-
-
-def store_correlations_bulk(
-    attribute_uuid, event_uuid, hits, match_type, runtimeSettings: RuntimeSettings
-):
-    if not hits:
-        return
-
-    for hit in hits:
-        correlation_doc = {
-            "_index": "misp-attribute-correlations",
-            "_id": f"{attribute_uuid}|{hit['_id']}|{match_type}",
-            "_source": {
-                "source_attribute_uuid": attribute_uuid,
-                "source_attribute_type": hit["_source"]["type"],
-                "source_event_uuid": event_uuid,
-                "target_attribute_uuid": hit["_id"],
-                "target_attribute_type": hit["_source"]["type"],
-                "target_attribute_value": hit["_source"]["value"],
-                "target_event_uuid": hit["_source"]["event_uuid"],
-                "match_type": match_type,
-                "score": hit["_score"],
-                "@timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
-            },
-        }
-
-        BULK_BUFFER.append(correlation_doc)
-
-        tasks.handle_created_correlation.delay(
-            attribute_uuid,
-            correlation_doc["_source"]["source_event_uuid"],
-            correlation_doc["_source"]["target_event_uuid"],
-            correlation_doc["_source"]["target_attribute_uuid"],
-            correlation_doc["_source"]["target_attribute_type"],
-            correlation_doc["_source"]["target_attribute_value"],
-        )
-
-        if len(BULK_BUFFER) >= runtimeSettings.get_value(
-            "correlations.opensearchFlushBulkSize", BULK_SIZE
-        ):
-            flush_bulk_correlations()
+    if chunk:
+        yield chunk
 
 
-def correlate_document(doc, runtimeSettings: RuntimeSettings):
-    OpenSearchClient = get_opensearch_client()
+def attribute_ref(doc):
+    """Reduce an OpenSearch attribute hit to the fields a correlation doc needs."""
+    return {
+        "uuid": doc["_id"],
+        "type": doc["_source"].get("type"),
+        "value": doc["_source"].get("value"),
+        "event_uuid": doc["_source"].get("event_uuid"),
+    }
 
-    value = doc["_source"].get("value")
-    event_uuid = doc["_source"].get("event_uuid")
 
-    if not value:
-        return
+def is_correlatable(doc):
+    """Whether an indexed attribute may take part in correlations."""
+    source = doc["_source"]
 
-    if not event_uuid:
+    if not source.get("value"):
+        return False
+
+    if not source.get("event_uuid"):
         logger.warning(
-            f"correlate_document: skipping attribute {doc['_id']} - event_uuid is None"
+            "is_correlatable: skipping attribute %s - event_uuid is None", doc["_id"]
         )
-        return
+        return False
 
+    if source.get("disable_correlation"):
+        return False
+
+    if source.get("deleted"):
+        return False
+
+    return True
+
+
+def event_correlation_disabled(event_uuid):
+    """Read the event level disable_correlation flag straight from the index."""
+    OpenSearchClient = get_opensearch_client()
+
+    try:
+        doc = OpenSearchClient.get(
+            index="misp-events",
+            id=str(event_uuid),
+            _source_includes=["disable_correlation"],
+        )
+    except NotFoundError:
+        return False
+
+    return bool(doc["_source"].get("disable_correlation", False))
+
+
+def build_correlation_doc(source, target, match_type, score):
+    """Build the bulk action for a single directed source -> target correlation."""
+    return {
+        "_index": "misp-attribute-correlations",
+        "_id": f"{source['uuid']}|{target['uuid']}|{match_type}",
+        "_source": {
+            "source_attribute_uuid": source["uuid"],
+            "source_attribute_type": source["type"],
+            "source_event_uuid": source["event_uuid"],
+            "target_attribute_uuid": target["uuid"],
+            "target_attribute_type": target["type"],
+            "target_attribute_value": target["value"],
+            "target_event_uuid": target["event_uuid"],
+            "match_type": match_type,
+            "score": score,
+            "@timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        },
+    }
+
+
+def correlation_notification_payload(correlation_source):
+    """The subset of a correlation doc that notifications and the reactor consume."""
+    return {
+        "source_attribute_uuid": correlation_source["source_attribute_uuid"],
+        "source_event_uuid": correlation_source["source_event_uuid"],
+        "target_event_uuid": correlation_source["target_event_uuid"],
+        "target_attribute_uuid": correlation_source["target_attribute_uuid"],
+        "target_attribute_type": correlation_source["target_attribute_type"],
+        "target_attribute_value": correlation_source["target_attribute_value"],
+    }
+
+
+def dispatch_correlation_notifications(correlation_docs):
+    """Hand new correlations to the notification worker in batches.
+
+    One task per correlation is what makes a bulk ingest expensive, so the
+    payloads are grouped and a single task handles each group.
+    """
+    payloads = [
+        correlation_notification_payload(doc["_source"]) for doc in correlation_docs
+    ]
+
+    for chunk in chunked(payloads, NOTIFICATION_CHUNK_SIZE):
+        tasks.handle_created_correlations.delay(chunk)
+
+
+def build_correlation_queries(doc, runtimeSettings: RuntimeSettings):
+    """Return the ``(match_type, query)`` pairs configured for an attribute."""
+    queries = []
+    value = doc["_source"].get("value")
     match_types = runtimeSettings.get_value("correlations.matchTypes", ["term", "cidr"])
 
     for match_type in match_types:
@@ -262,38 +324,322 @@ def correlate_document(doc, runtimeSettings: RuntimeSettings):
                 or "/" not in value
             ):
                 continue
-            query = build_cidr_query(doc["_id"], doc["_source"]["event_uuid"], doc)
+            queries.append(
+                (
+                    match_type,
+                    build_cidr_query(doc["_id"], doc["_source"]["event_uuid"], doc),
+                )
+            )
         else:
             try:
-                query = build_query(
-                    doc["_id"],
-                    doc["_source"]["event_uuid"],
-                    value,
-                    match_type,
-                    runtimeSettings,
+                queries.append(
+                    (
+                        match_type,
+                        build_query(
+                            doc["_id"],
+                            doc["_source"]["event_uuid"],
+                            value,
+                            match_type,
+                            runtimeSettings,
+                        ),
+                    )
                 )
             except ValueError as e:
-                logger.error(f"correlate_document: {str(e)}")
-                continue
+                logger.error(f"build_correlation_queries: {str(e)}")
 
-        res = OpenSearchClient.search(
-            index="misp-attributes",
-            body=query,
-            size=runtimeSettings.get_value(
-                "correlations.maxCorrelationsPerDoc",
-                runtimeSettings.get_value(
-                    "correlations.opensearchFlushBulkSize", MAX_CORRELATIONS_PER_DOC
-                ),
+    return queries
+
+
+def correlation_query_key(match_type, query):
+    """Key identifying a correlation query, so identical ones run only once.
+
+    The self-exclusion on ``uuid`` is deliberately left out of the key: the
+    query also excludes the attribute's whole event, and an attribute always
+    belongs to its own event, so two attributes of the same event looking for
+    the same value get exactly the same hits either way.
+    """
+    bool_query = query["query"]["bool"]
+    must_not = [
+        clause
+        for clause in bool_query["must_not"]
+        if "uuid.keyword" not in clause.get("term", {})
+    ]
+
+    return json.dumps(
+        {
+            "match_type": match_type,
+            "must": bool_query["must"],
+            "must_not": must_not,
+        },
+        sort_keys=True,
+    )
+
+
+def run_correlation_msearch(queries, size):
+    """Run several correlation queries in a single multi-search request."""
+    OpenSearchClient = get_opensearch_client()
+
+    body = []
+    for query in queries:
+        body.append({"index": "misp-attributes"})
+        body.append({**query, "size": size, "_source": CORRELATION_SOURCE_FIELDS})
+
+    responses = OpenSearchClient.msearch(body=body)["responses"]
+
+    results = []
+    for response in responses:
+        if "error" in response:
+            logger.error("correlation multi-search failed: %s", response["error"])
+            results.append([])
+            continue
+
+        results.append([hit for hit in response["hits"]["hits"] if is_correlatable(hit)])
+
+    return results
+
+
+def max_correlations_per_doc(runtimeSettings: RuntimeSettings):
+    return runtimeSettings.get_value(
+        "correlations.maxCorrelationsPerDoc",
+        runtimeSettings.get_value(
+            "correlations.opensearchFlushBulkSize", MAX_CORRELATIONS_PER_DOC
+        ),
+    )
+
+
+def build_chunk_correlation_docs(
+    docs, runtimeSettings: RuntimeSettings, bidirectional: bool
+):
+    """Build the correlation docs for a chunk of attributes in one round trip."""
+    plan = []
+    queries = {}
+
+    for doc in docs:
+        if not is_correlatable(doc):
+            continue
+
+        for match_type, query in build_correlation_queries(doc, runtimeSettings):
+            key = correlation_query_key(match_type, query)
+            queries.setdefault(key, query)
+            plan.append((doc, match_type, key))
+
+    if not plan:
+        return []
+
+    keys = list(queries)
+    hits_by_key = dict(
+        zip(
+            keys,
+            run_correlation_msearch(
+                [queries[key] for key in keys], max_correlations_per_doc(runtimeSettings)
             ),
         )
+    )
 
-        store_correlations_bulk(
-            doc["_id"],
-            doc["_source"]["event_uuid"],
-            res["hits"]["hits"],
-            match_type,
-            runtimeSettings,
+    correlation_docs = {}
+    for doc, match_type, key in plan:
+        source = attribute_ref(doc)
+
+        for hit in hits_by_key.get(key, []):
+            if hit["_id"] == doc["_id"]:
+                continue
+
+            target = attribute_ref(hit)
+            score = hit["_score"]
+
+            forward = build_correlation_doc(source, target, match_type, score)
+            correlation_docs.setdefault(forward["_id"], forward)
+
+            if bidirectional:
+                reverse = build_correlation_doc(target, source, match_type, score)
+                correlation_docs.setdefault(reverse["_id"], reverse)
+
+    return list(correlation_docs.values())
+
+
+def index_correlation_docs(correlation_docs):
+    """Index correlation docs and return the ones that were actually new.
+
+    Documents are written with ``op_type=create``, so re-correlating an
+    attribute that already has its correlations stored costs nothing and, more
+    importantly, does not notify followers a second time.
+    """
+    OpenSearchClient = get_opensearch_client()
+
+    actions = [{**doc, "_op_type": "create"} for doc in correlation_docs]
+
+    _, errors = opensearch_helpers.bulk(
+        OpenSearchClient, actions, raise_on_error=False
+    )
+
+    skipped = set()
+    for error in errors:
+        info = error.get("create", {})
+        skipped.add(info.get("_id"))
+
+        if info.get("status") != 409:
+            logger.error(
+                "failed to index correlation %s: %s",
+                info.get("_id"),
+                info.get("error"),
+            )
+
+    return [doc for doc in correlation_docs if doc["_id"] not in skipped]
+
+
+def correlate_attributes(
+    runtimeSettings: RuntimeSettings,
+    docs,
+    bidirectional: bool = True,
+    known_correlation_ids=None,
+):
+    """Correlate a batch of indexed attributes with as few round trips as possible.
+
+    ``docs`` may be a generator, so a whole event or the entire index can be
+    streamed through without being held in memory. Per chunk there is one
+    multi-search for the matching and one bulk request for the writing, and the
+    resulting notifications are dispatched in batches.
+
+    Correlations are stored in both directions unless ``bidirectional`` is off:
+    the attributes that were already indexed have to expose the incoming ones as
+    well, and every consumer looks correlations up by ``source_attribute_uuid``.
+    A full run visits every attribute anyway, so it can skip the reverse writes.
+    """
+    known = known_correlation_ids or set()
+    chunk_size = runtimeSettings.get_value(
+        "correlations.msearchChunkSize", MSEARCH_CHUNK_SIZE
+    )
+    flush_size = runtimeSettings.get_value(
+        "correlations.opensearchFlushBulkSize", BULK_SIZE
+    )
+
+    stored = 0
+    pending = []
+
+    def flush():
+        nonlocal stored, pending
+
+        if not pending:
+            return
+
+        created = index_correlation_docs(pending)
+        stored += len(created)
+        dispatch_correlation_notifications(
+            [doc for doc in created if doc["_id"] not in known]
         )
+        pending = []
+
+    for chunk in chunked(docs, chunk_size):
+        pending.extend(
+            build_chunk_correlation_docs(chunk, runtimeSettings, bidirectional)
+        )
+
+        if len(pending) >= flush_size:
+            flush()
+
+    flush()
+
+    if stored:
+        refresh_correlations_index()
+
+    return {"stored": stored}
+
+
+def refresh_correlations_index():
+    try:
+        get_opensearch_client().indices.refresh(index="misp-attribute-correlations")
+    except NotFoundError:
+        pass
+
+
+def skip_uncorrelated_events(docs):
+    """Drop the attributes whose event has correlation disabled.
+
+    The flag is read once per event rather than once per attribute: a bulk
+    ingest batch normally belongs to a single event.
+    """
+    disabled_by_event = {}
+
+    for doc in docs:
+        event_uuid = doc["_source"].get("event_uuid")
+
+        if event_uuid not in disabled_by_event:
+            disabled_by_event[event_uuid] = event_correlation_disabled(event_uuid)
+
+        if not disabled_by_event[event_uuid]:
+            yield doc
+
+
+def get_attributes_by_uuid(attribute_uuids):
+    """Yield the indexed attributes for a list of uuids, one mget per chunk."""
+    OpenSearchClient = get_opensearch_client()
+
+    for chunk in chunked(attribute_uuids, MGET_CHUNK_SIZE):
+        response = OpenSearchClient.mget(
+            index="misp-attributes",
+            body={"ids": [str(attribute_uuid) for attribute_uuid in chunk]},
+            _source_includes=CORRELATION_SOURCE_FIELDS,
+        )
+
+        for doc in response["docs"]:
+            if doc.get("found"):
+                yield doc
+            else:
+                logger.warning(
+                    "get_attributes_by_uuid: attribute %s is not indexed", doc["_id"]
+                )
+
+
+def correlate_attribute(runtimeSettings: RuntimeSettings, attribute_uuid: str):
+    """Correlate a single attribute, as fired when one is created or changed."""
+    OpenSearchClient = get_opensearch_client()
+
+    try:
+        doc = OpenSearchClient.get(
+            index="misp-attributes",
+            id=str(attribute_uuid),
+            _source_includes=CORRELATION_SOURCE_FIELDS,
+        )
+    except NotFoundError:
+        logger.warning(
+            "correlate_attribute: attribute %s is not indexed", attribute_uuid
+        )
+        return {"stored": 0}
+
+    # Anything stored before is stale: the value, the type or the correlation
+    # flag may have changed since the attribute was last correlated.
+    known_correlation_ids = get_attribute_correlation_ids(attribute_uuid)
+    delete_attributes_correlations([attribute_uuid])
+
+    if not is_correlatable(doc) or event_correlation_disabled(
+        doc["_source"]["event_uuid"]
+    ):
+        return {"stored": 0}
+
+    return correlate_attributes(
+        runtimeSettings, [doc], known_correlation_ids=known_correlation_ids
+    )
+
+
+def correlate_attribute_uuids(
+    runtimeSettings: RuntimeSettings, attribute_uuids, rebuild: bool = False
+):
+    """Correlate the batch of attributes a bulk ingest produced.
+
+    ``rebuild`` is for attributes that already existed: their stored
+    correlations are dropped first because the value they matched on may have
+    changed. Freshly created attributes have nothing to drop, and the
+    ``op_type=create`` write keeps the run idempotent either way.
+    """
+    if not attribute_uuids:
+        return {"stored": 0}
+
+    if rebuild:
+        delete_attributes_correlations(attribute_uuids)
+
+    docs = skip_uncorrelated_events(get_attributes_by_uuid(attribute_uuids))
+
+    return correlate_attributes(runtimeSettings, docs)
 
 
 def search_correlations(
@@ -404,11 +750,11 @@ def get_top_correlated_events(source_event_uuid: str):
 
 
 def run_correlations(runtimeSettings: RuntimeSettings, filters: dict = {}):
-
-    for doc in get_attributes(filters):
-        correlate_document(doc, runtimeSettings)
-
-    flush_bulk_correlations()
+    # A full run visits every attribute, so each pair is written when its own
+    # side comes up and the reverse writes would only duplicate the work.
+    correlate_attributes(
+        runtimeSettings, get_attributes(filters), bidirectional=bool(filters)
+    )
 
     return True
 
@@ -551,10 +897,72 @@ def delete_event_correlations(event_uuid: str):
 
     return {"message": f"Correlations for event {event_uuid} deleted successfully."}
 
+
+def build_attribute_correlations_query(attribute_uuids):
+    """Match every correlation doc referencing the attributes, in both directions."""
+    ids = [str(attribute_uuid) for attribute_uuid in attribute_uuids]
+
+    return {
+        "query": {
+            "bool": {
+                "should": [
+                    {"terms": {"source_attribute_uuid.keyword": ids}},
+                    {"terms": {"target_attribute_uuid.keyword": ids}},
+                ]
+            }
+        }
+    }
+
+
+def get_attribute_correlation_ids(attribute_uuid: str):
+    """Ids of the correlation docs currently stored for the attribute.
+
+    Used to tell an actually new correlation from one that is merely being
+    rebuilt, so re-correlating an attribute does not re-notify its followers.
+    """
+    OpenSearchClient = get_opensearch_client()
+
+    body = build_attribute_correlations_query([attribute_uuid])
+    body["_source"] = False
+    body["size"] = MAX_CORRELATIONS_PER_DOC * 2
+
+    try:
+        response = OpenSearchClient.search(
+            index="misp-attribute-correlations", body=body
+        )
+    except NotFoundError:
+        return set()
+
+    return {hit["_id"] for hit in response["hits"]["hits"]}
+
+
+def delete_attributes_correlations(attribute_uuids):
+    """Delete every correlation referencing the attributes, in both directions."""
+    OpenSearchClient = get_opensearch_client()
+
+    for chunk in chunked(attribute_uuids, DELETE_CHUNK_SIZE):
+        try:
+            OpenSearchClient.delete_by_query(
+                index="misp-attribute-correlations",
+                body=build_attribute_correlations_query(chunk),
+                refresh=True,
+                conflicts="proceed",
+            )
+        except NotFoundError:
+            logger.info(
+                "delete_attributes_correlations: correlations index is missing, nothing to delete"
+            )
+            return True
+
+    return True
+
+
+def delete_attribute_correlations(attribute_uuid: str):
+    """Delete every correlation referencing the attribute, in both directions."""
+    return delete_attributes_correlations([attribute_uuid])
+
+
 def correlate_event(runtimeSettings: RuntimeSettings, event_uuid: str):
-    run_correlations(
-        runtimeSettings,
-        filters={"event_uuid": event_uuid}
-    )
+    run_correlations(runtimeSettings, filters={"event_uuid": event_uuid})
 
     return {"message": f"Correlations for event {event_uuid} created successfully."}

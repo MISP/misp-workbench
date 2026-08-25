@@ -711,6 +711,25 @@ def import_data(db: Session, event: event_schemas.Event, data: dict):
     total_imported_attributes = 0
     total_attributes = 0
 
+    with attributes_repository.deferred_correlations():
+        total_imported_attributes, total_attributes = _import_attributes(
+            db, event, data
+        )
+
+    return {
+        "message": f"Imported {total_imported_attributes} out of {total_attributes} attributes.",
+        "imported_attributes": total_imported_attributes,
+        "total_attributes": total_attributes,
+        "failed_attributes": total_attributes - total_imported_attributes,
+        "event_uuid": str(event.uuid),
+    }
+
+
+def _import_attributes(db: Session, event: event_schemas.Event, data: dict):
+
+    total_imported_attributes = 0
+    total_attributes = 0
+
     if "attributes" in data:
         total_attributes = len(data["attributes"])
 
@@ -729,13 +748,7 @@ def import_data(db: Session, event: event_schemas.Event, data: dict):
                 logger.error(f"Error importing attribute: {e}")
                 continue
 
-    return {
-        "message": f"Imported {total_imported_attributes} out of {total_attributes} attributes.",
-        "imported_attributes": total_imported_attributes,
-        "total_attributes": total_attributes,
-        "failed_attributes": total_attributes - total_imported_attributes,
-        "event_uuid": str(event.uuid),
-    }
+    return total_imported_attributes, total_attributes
 
 
 def get_event_vulnerabilities(

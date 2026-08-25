@@ -437,29 +437,45 @@ def create_correlation_notifications(db: Session, type: str, correlation: dict):
     if not correlation:
         return []
 
-    # Get followers of the attribute
-    attribute_followers = get_followers_for(
-        db, "attributes", correlation["source_attribute_uuid"]
-    )
+    return create_correlation_notifications_bulk(db, type, [correlation])
+
+
+def create_correlation_notifications_bulk(
+    db: Session, type: str, correlations: list[dict]
+):
+    """Create the notifications for a batch of correlations in a single flush.
+
+    Bulk correlation runs produce thousands of correlations; going through the
+    single correlation path would mean a task, a session and a commit for each
+    one of them.
+    """
+    if not correlations:
+        return []
 
     notifications = []
-    for follower in attribute_followers:
-        notification = notification_models.Notification(
-            user_id=follower,
-            type=f"attribute.correlation.{type}",
-            entity_type="attribute",
-            entity_uuid=correlation["source_attribute_uuid"],
-            read=False,
-            payload={
-                "source_event_uuid": correlation["source_event_uuid"],
-                "target_event_uuid": correlation["target_event_uuid"],
-                "target_attribute_uuid": correlation["target_attribute_uuid"],
-                "target_attribute_type": correlation["target_attribute_type"],
-                "target_attribute_value": correlation["target_attribute_value"],
-            },
-            created_at=datetime.now(),
+    for correlation in correlations:
+        # Get followers of the attribute
+        attribute_followers = get_followers_for(
+            db, "attributes", correlation["source_attribute_uuid"]
         )
-        notifications.append(notification)
+
+        for follower in attribute_followers:
+            notification = notification_models.Notification(
+                user_id=follower,
+                type=f"attribute.correlation.{type}",
+                entity_type="attribute",
+                entity_uuid=correlation["source_attribute_uuid"],
+                read=False,
+                payload={
+                    "source_event_uuid": correlation["source_event_uuid"],
+                    "target_event_uuid": correlation["target_event_uuid"],
+                    "target_attribute_uuid": correlation["target_attribute_uuid"],
+                    "target_attribute_type": correlation["target_attribute_type"],
+                    "target_attribute_value": correlation["target_attribute_value"],
+                },
+                created_at=datetime.now(),
+            )
+            notifications.append(notification)
 
     if notifications:
         db.add_all(notifications)

@@ -271,6 +271,29 @@ async function deleteRetentionSchedule() {
                     "
                   >
                     <div class="row g-3">
+                      <div class="col-12">
+                        <div class="form-check form-switch">
+                          <input
+                            class="form-check-input"
+                            type="checkbox"
+                            id="correlateOnChange"
+                            v-model="formValues.correlations.correlateOnChange"
+                          />
+                          <label
+                            class="form-check-label fw-semibold"
+                            for="correlateOnChange"
+                          >
+                            Correlate on Change
+                          </label>
+                        </div>
+                        <div class="form-text">
+                          When enabled, attributes are correlated in a
+                          background task as soon as they are created or their
+                          value changes, instead of waiting for the next full
+                          correlation run.
+                        </div>
+                      </div>
+
                       <div class="col-md-6">
                         <label class="form-label fw-semibold"
                           >Match Types</label
@@ -386,6 +409,22 @@ async function deleteRetentionSchedule() {
                           class="form-control"
                           v-model.number="
                             formValues.correlations.opensearchFlushBulkSize
+                          "
+                        />
+                      </div>
+
+                      <div class="col-md-4">
+                        <label
+                          class="form-label fw-semibold"
+                          for="msearchChunkSize"
+                          >OpenSearch Multi-Search Chunk Size</label
+                        >
+                        <input
+                          id="msearchChunkSize"
+                          type="number"
+                          class="form-control"
+                          v-model.number="
+                            formValues.correlations.msearchChunkSize
                           "
                         />
                       </div>

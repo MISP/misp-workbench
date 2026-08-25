@@ -1,18 +1,29 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
+from app.repositories import correlations as correlations_repository
 from app.repositories.correlations import (
+    build_chunk_correlation_docs,
     build_cidr_query,
     build_query,
+    chunked,
+    correlate_attribute,
+    correlate_attribute_uuids,
+    delete_attribute_correlations,
+    delete_attributes_correlations,
     delete_correlations,
     delete_event_correlations,
+    get_attributes_by_uuid,
     get_correlations,
     get_correlations_stats,
     get_top_correlated_events,
     get_total_correlations,
+    index_correlation_docs,
+    is_correlatable,
 )
 from app.schemas.correlation import CorrelationQueryParams
 from fastapi import HTTPException
+from opensearchpy.exceptions import NotFoundError
 
 PATCH = "app.repositories.correlations.get_opensearch_client"
 
@@ -357,3 +368,432 @@ class TestDeleteEventCorrelations:
 
         assert exc_info.value.status_code == 500
         assert "timeout" in exc_info.value.detail
+
+
+# ── chunked ───────────────────────────────────────────────────────────────────
+
+class TestChunked:
+    def test_splits_into_chunks(self):
+        assert list(chunked(range(5), 2)) == [[0, 1], [2, 3], [4]]
+
+    def test_streams_generators(self):
+        assert list(chunked((n for n in range(3)), 5)) == [[0, 1, 2]]
+
+    def test_empty_yields_nothing(self):
+        assert list(chunked([], 3)) == []
+
+
+# ── delete_attributes_correlations ────────────────────────────────────────────
+
+class TestDeleteAttributesCorrelations:
+    def test_deletes_both_directions(self):
+        mock_os = MagicMock()
+
+        with patch(PATCH, return_value=mock_os):
+            assert delete_attribute_correlations("attr-aaa") is True
+
+        call_kwargs = mock_os.delete_by_query.call_args.kwargs
+        assert call_kwargs["index"] == "misp-attribute-correlations"
+        should = call_kwargs["body"]["query"]["bool"]["should"]
+        assert {"terms": {"source_attribute_uuid.keyword": ["attr-aaa"]}} in should
+        assert {"terms": {"target_attribute_uuid.keyword": ["attr-aaa"]}} in should
+
+    def test_batches_are_chunked(self):
+        mock_os = MagicMock()
+        uuids = [f"attr-{n}" for n in range(5)]
+
+        with patch(PATCH, return_value=mock_os), \
+                patch.object(correlations_repository, "DELETE_CHUNK_SIZE", 2):
+            assert delete_attributes_correlations(uuids) is True
+
+        assert mock_os.delete_by_query.call_count == 3
+
+    def test_missing_index_is_not_an_error(self):
+        mock_os = MagicMock()
+        mock_os.delete_by_query.side_effect = NotFoundError(404, "no index", {})
+
+        with patch(PATCH, return_value=mock_os):
+            assert delete_attribute_correlations("attr-aaa") is True
+
+
+# ── is_correlatable ───────────────────────────────────────────────────────────
+
+class TestIsCorrelatable:
+    def _doc(self, **overrides):
+        source = {
+            "value": "1.2.3.4",
+            "event_uuid": "event-1",
+            "type": "ip-src",
+            "disable_correlation": False,
+            "deleted": False,
+        }
+        source.update(overrides)
+        return {"_id": "attr-1", "_source": source}
+
+    def test_plain_attribute_is_correlatable(self):
+        assert is_correlatable(self._doc()) is True
+
+    def test_empty_value_is_not_correlatable(self):
+        assert is_correlatable(self._doc(value="")) is False
+
+    def test_missing_event_uuid_is_not_correlatable(self):
+        assert is_correlatable(self._doc(event_uuid=None)) is False
+
+    def test_disabled_correlation_is_not_correlatable(self):
+        assert is_correlatable(self._doc(disable_correlation=True)) is False
+
+    def test_deleted_is_not_correlatable(self):
+        assert is_correlatable(self._doc(deleted=True)) is False
+
+
+def _attribute(uuid, value="1.2.3.4", event_uuid="event-1", score=None, **overrides):
+    source = {
+        "uuid": uuid,
+        "value": value,
+        "event_uuid": event_uuid,
+        "type": "ip-src",
+        "disable_correlation": False,
+        "deleted": False,
+    }
+    source.update(overrides)
+    doc = {"_id": uuid, "_source": source}
+    if score is not None:
+        doc["_score"] = score
+    return doc
+
+
+def _settings(match_types=None, **overrides):
+    values = {"correlations.matchTypes": match_types or ["term"]}
+    values.update(overrides)
+    settings = MagicMock()
+    settings.get_value.side_effect = lambda key, default: values.get(key, default)
+    return settings
+
+
+# ── build_chunk_correlation_docs ──────────────────────────────────────────────
+
+class TestBuildChunkCorrelationDocs:
+    def _mock_os(self, responses):
+        mock = MagicMock()
+        mock.msearch.return_value = {
+            "responses": [{"hits": {"hits": hits}} for hits in responses]
+        }
+        return mock
+
+    def test_one_multi_search_for_the_whole_chunk(self):
+        docs = [
+            _attribute("attr-1", value="1.1.1.1"),
+            _attribute("attr-2", value="2.2.2.2"),
+        ]
+        mock_os = self._mock_os([[], []])
+
+        with patch(PATCH, return_value=mock_os):
+            build_chunk_correlation_docs(docs, _settings(), bidirectional=True)
+
+        mock_os.msearch.assert_called_once()
+        # two queries, each one a header line plus a body line
+        assert len(mock_os.msearch.call_args.kwargs["body"]) == 4
+
+    def test_identical_queries_run_once(self):
+        # same value in the same event: the query excludes the whole event, so
+        # both attributes would search for exactly the same thing
+        docs = [_attribute("attr-1"), _attribute("attr-2")]
+        target = _attribute("attr-old", event_uuid="event-2", score=2.0)
+        mock_os = self._mock_os([[target]])
+
+        with patch(PATCH, return_value=mock_os):
+            correlation_docs = build_chunk_correlation_docs(
+                docs, _settings(), bidirectional=True
+            )
+
+        assert len(mock_os.msearch.call_args.kwargs["body"]) == 2
+        # both attributes still get their correlations, in both directions
+        assert {doc["_id"] for doc in correlation_docs} == {
+            "attr-1|attr-old|term",
+            "attr-old|attr-1|term",
+            "attr-2|attr-old|term",
+            "attr-old|attr-2|term",
+        }
+
+    def test_forward_only_when_not_bidirectional(self):
+        docs = [_attribute("attr-1")]
+        target = _attribute("attr-old", event_uuid="event-2", score=2.0)
+        mock_os = self._mock_os([[target]])
+
+        with patch(PATCH, return_value=mock_os):
+            correlation_docs = build_chunk_correlation_docs(
+                docs, _settings(), bidirectional=False
+            )
+
+        assert [doc["_id"] for doc in correlation_docs] == ["attr-1|attr-old|term"]
+
+    def test_source_keeps_its_own_type(self):
+        docs = [_attribute("attr-1", type="domain|ip", value="evil.com|1.1.1.1")]
+        target = _attribute("attr-old", event_uuid="event-2", score=2.0)
+        mock_os = self._mock_os([[target]])
+
+        with patch(PATCH, return_value=mock_os):
+            correlation_docs = build_chunk_correlation_docs(
+                docs, _settings(), bidirectional=False
+            )
+
+        assert correlation_docs[0]["_source"]["source_attribute_type"] == "domain|ip"
+        assert correlation_docs[0]["_source"]["target_attribute_type"] == "ip-src"
+
+    def test_non_correlatable_docs_and_hits_are_skipped(self):
+        docs = [_attribute("attr-1", deleted=True)]
+        mock_os = self._mock_os([])
+
+        with patch(PATCH, return_value=mock_os):
+            assert build_chunk_correlation_docs(docs, _settings(), True) == []
+
+        mock_os.msearch.assert_not_called()
+
+    def test_failed_sub_search_is_logged_and_skipped(self):
+        docs = [_attribute("attr-1")]
+        mock_os = MagicMock()
+        mock_os.msearch.return_value = {"responses": [{"error": "boom"}]}
+
+        with patch(PATCH, return_value=mock_os):
+            assert build_chunk_correlation_docs(docs, _settings(), True) == []
+
+
+# ── index_correlation_docs ────────────────────────────────────────────────────
+
+class TestIndexCorrelationDocs:
+    def _docs(self):
+        return [
+            {"_index": "misp-attribute-correlations", "_id": "a|b|term", "_source": {}},
+            {"_index": "misp-attribute-correlations", "_id": "b|a|term", "_source": {}},
+        ]
+
+    def test_writes_with_op_type_create(self):
+        with patch(PATCH), patch(
+            "app.repositories.correlations.opensearch_helpers.bulk",
+            return_value=(2, []),
+        ) as bulk:
+            created = index_correlation_docs(self._docs())
+
+        actions = bulk.call_args.args[1]
+        assert all(action["_op_type"] == "create" for action in actions)
+        assert len(created) == 2
+
+    def test_existing_correlations_are_not_reported_as_created(self):
+        errors = [{"create": {"_id": "a|b|term", "status": 409, "error": {}}}]
+
+        with patch(PATCH), patch(
+            "app.repositories.correlations.opensearch_helpers.bulk",
+            return_value=(1, errors),
+        ):
+            created = index_correlation_docs(self._docs())
+
+        assert [doc["_id"] for doc in created] == ["b|a|term"]
+
+    def test_hard_failures_are_not_reported_as_created(self):
+        errors = [{"create": {"_id": "a|b|term", "status": 500, "error": {}}}]
+
+        with patch(PATCH), patch(
+            "app.repositories.correlations.opensearch_helpers.bulk",
+            return_value=(1, errors),
+        ):
+            created = index_correlation_docs(self._docs())
+
+        assert [doc["_id"] for doc in created] == ["b|a|term"]
+
+
+# ── correlate_attribute ───────────────────────────────────────────────────────
+
+class TestCorrelateAttribute:
+    ATTR_UUID = "attr-new"
+
+    def _mock_os(
+        self, doc, hits, event_disable_correlation=False, known_ids=()
+    ):
+        mock = MagicMock()
+
+        def get(index, id, **kwargs):
+            if index == "misp-events":
+                return {"_source": {"disable_correlation": event_disable_correlation}}
+            return doc
+
+        mock.get.side_effect = get
+        mock.search.return_value = {
+            "hits": {"hits": [{"_id": _id} for _id in known_ids]}
+        }
+        mock.msearch.return_value = {"responses": [{"hits": {"hits": hits}}]}
+        return mock
+
+    def _patch_bulk(self, created=2):
+        return patch(
+            "app.repositories.correlations.opensearch_helpers.bulk",
+            return_value=(created, []),
+        )
+
+    def test_stores_both_directions_and_notifies(self):
+        doc = _attribute(self.ATTR_UUID)
+        hit = _attribute("attr-old", event_uuid="event-2", score=3.0)
+        mock_os = self._mock_os(doc, [hit])
+
+        with patch(PATCH, return_value=mock_os), self._patch_bulk(), \
+                patch("app.repositories.correlations.tasks") as mock_tasks:
+            result = correlate_attribute(_settings(), self.ATTR_UUID)
+
+        assert result == {"stored": 2}
+        # one batched notification task carrying both directions
+        mock_tasks.handle_created_correlations.delay.assert_called_once()
+        payloads = mock_tasks.handle_created_correlations.delay.call_args.args[0]
+        assert {payload["source_attribute_uuid"] for payload in payloads} == {
+            self.ATTR_UUID,
+            "attr-old",
+        }
+
+    def test_stale_correlations_are_dropped_first(self):
+        doc = _attribute(self.ATTR_UUID)
+        mock_os = self._mock_os(doc, [])
+
+        with patch(PATCH, return_value=mock_os), self._patch_bulk(0), \
+                patch("app.repositories.correlations.tasks"):
+            result = correlate_attribute(_settings(), self.ATTR_UUID)
+
+        assert result == {"stored": 0}
+        assert mock_os.delete_by_query.called
+
+    def test_attribute_with_correlation_disabled_is_skipped(self):
+        doc = _attribute(self.ATTR_UUID, disable_correlation=True)
+        mock_os = self._mock_os(doc, [])
+
+        with patch(PATCH, return_value=mock_os), \
+                patch("app.repositories.correlations.tasks"):
+            result = correlate_attribute(_settings(), self.ATTR_UUID)
+
+        assert result == {"stored": 0}
+        # stale correlations are still cleaned up, but no matching runs
+        assert mock_os.delete_by_query.called
+        mock_os.msearch.assert_not_called()
+
+    def test_event_with_correlation_disabled_is_skipped(self):
+        doc = _attribute(self.ATTR_UUID)
+        mock_os = self._mock_os(doc, [], event_disable_correlation=True)
+
+        with patch(PATCH, return_value=mock_os), \
+                patch("app.repositories.correlations.tasks"):
+            result = correlate_attribute(_settings(), self.ATTR_UUID)
+
+        assert result == {"stored": 0}
+        mock_os.msearch.assert_not_called()
+
+    def test_unindexed_attribute_is_a_noop(self):
+        mock_os = MagicMock()
+        mock_os.get.side_effect = NotFoundError(404, "not found", {})
+
+        with patch(PATCH, return_value=mock_os):
+            result = correlate_attribute(_settings(), self.ATTR_UUID)
+
+        assert result == {"stored": 0}
+        assert not mock_os.delete_by_query.called
+
+    def test_rebuilt_correlations_are_not_notified_again(self):
+        doc = _attribute(self.ATTR_UUID)
+        hit = _attribute("attr-old", event_uuid="event-2", score=3.0)
+        mock_os = self._mock_os(
+            doc, [hit], known_ids=[f"{self.ATTR_UUID}|attr-old|term"]
+        )
+
+        with patch(PATCH, return_value=mock_os), self._patch_bulk(), \
+                patch("app.repositories.correlations.tasks") as mock_tasks:
+            result = correlate_attribute(_settings(), self.ATTR_UUID)
+
+        assert result == {"stored": 2}
+        # only the reverse direction is new
+        payloads = mock_tasks.handle_created_correlations.delay.call_args.args[0]
+        assert [payload["source_attribute_uuid"] for payload in payloads] == ["attr-old"]
+
+
+# ── get_attributes_by_uuid ────────────────────────────────────────────────────
+
+class TestGetAttributesByUuid:
+    def test_reads_attributes_with_one_mget_per_chunk(self):
+        mock_os = MagicMock()
+        mock_os.mget.side_effect = [
+            {
+                "docs": [
+                    {**_attribute("attr-1"), "found": True},
+                    {**_attribute("attr-2"), "found": True},
+                ]
+            },
+            {"docs": [{"_id": "attr-3", "found": False}]},
+        ]
+
+        with patch(PATCH, return_value=mock_os), \
+                patch.object(correlations_repository, "MGET_CHUNK_SIZE", 2):
+            docs = list(get_attributes_by_uuid(["attr-1", "attr-2", "attr-3"]))
+
+        assert mock_os.mget.call_count == 2
+        assert [doc["_id"] for doc in docs] == ["attr-1", "attr-2"]
+
+
+# ── correlate_attribute_uuids ─────────────────────────────────────────────────
+
+class TestCorrelateAttributeUuids:
+    def _mock_os(self, docs, hits):
+        mock = MagicMock()
+        mock.mget.return_value = {"docs": [{**doc, "found": True} for doc in docs]}
+        mock.get.return_value = {"_source": {"disable_correlation": False}}
+
+        def msearch(body):
+            # one response per query, and a query is a header plus a body line
+            return {"responses": [{"hits": {"hits": hits}}] * (len(body) // 2)}
+
+        mock.msearch.side_effect = msearch
+        return mock
+
+    def test_empty_batch_is_a_noop(self):
+        mock_os = MagicMock()
+
+        with patch(PATCH, return_value=mock_os):
+            assert correlate_attribute_uuids(_settings(), []) == {"stored": 0}
+
+        assert not mock_os.mget.called
+
+    def test_correlates_the_whole_batch(self):
+        docs = [_attribute("attr-1"), _attribute("attr-2", event_uuid="event-2")]
+        hit = _attribute("attr-old", event_uuid="event-3", score=1.0)
+        mock_os = self._mock_os(docs, [hit])
+
+        with patch(PATCH, return_value=mock_os), \
+                patch(
+                    "app.repositories.correlations.opensearch_helpers.bulk",
+                    return_value=(4, []),
+                ), \
+                patch("app.repositories.correlations.tasks"):
+            result = correlate_attribute_uuids(_settings(), ["attr-1", "attr-2"])
+
+        assert result["stored"] == 4
+        # created attributes have nothing stale to drop
+        assert not mock_os.delete_by_query.called
+
+    def test_rebuild_drops_existing_correlations_first(self):
+        docs = [_attribute("attr-1")]
+        mock_os = self._mock_os(docs, [])
+
+        with patch(PATCH, return_value=mock_os), \
+                patch(
+                    "app.repositories.correlations.opensearch_helpers.bulk",
+                    return_value=(0, []),
+                ), \
+                patch("app.repositories.correlations.tasks"):
+            correlate_attribute_uuids(_settings(), ["attr-1"], rebuild=True)
+
+        assert mock_os.delete_by_query.called
+
+    def test_attributes_of_uncorrelated_events_are_skipped(self):
+        docs = [_attribute("attr-1")]
+        mock_os = self._mock_os(docs, [])
+        mock_os.get.return_value = {"_source": {"disable_correlation": True}}
+
+        with patch(PATCH, return_value=mock_os), \
+                patch("app.repositories.correlations.tasks"):
+            result = correlate_attribute_uuids(_settings(), ["attr-1"])
+
+        assert result == {"stored": 0}
+        mock_os.msearch.assert_not_called()
