@@ -61,11 +61,20 @@ cp frontend/.env.dist frontend/.env
 # Edit frontend/.env and set VITE_API_URL=https://api.your-domain.com
 ```
 
+`pivotick` (graph visualization, built on D3 force simulations) is not published
+on npm. It is a git submodule at `frontend/submodules/pivotick`, pinned to a
+release tag, and built from source into `submodules/pivotick/dist`, which the
+`pivotick` alias in `vite.config.mts` resolves. `npm run build` builds it first;
+run `npm run build:pivotick` once before `npm run dev` on a fresh clone. Upstream
+type-checks with `noEmit`, so it ships no `.d.ts` — the ambient declarations live
+in `src/types/pivotick.d.ts`.
+
 ```bash
 cd frontend
 npm install
+npm run build:pivotick  # build the pinned pivotick submodule
 npm run dev          # Dev server
-npm run build        # Production build
+npm run build        # Production build (builds pivotick first)
 npm run lint         # ESLint fix
 npm run test:unit    # Vitest unit tests
 npm run test:e2e     # Cypress interactive

@@ -3,7 +3,8 @@
   "version": "0.0.0",
   "scripts": {
     "dev": "vite",
-    "build": "run-p type-check build-only",
+    "build": "npm run build:pivotick && run-p type-check build-only",
+    "build:pivotick": "npm --prefix submodules/pivotick ci --ignore-scripts && npm --prefix submodules/pivotick run build",
     "preview": "vite preview --port 4173",
     "test:unit": "vitest --environment jsdom",
     "test:e2e": "start-server-and-test preview http://127.0.0.1:4173/ 'cypress open --e2e'",

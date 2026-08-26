@@ -7,3 +7,6 @@
 [submodule "api/app/submodules/misp-galaxy"]
 	path = api/app/submodules/misp-galaxy
 	url = https://github.com/MISP/misp-galaxy
+[submodule "frontend/submodules/pivotick"]
+	path = frontend/submodules/pivotick
+	url = https://github.com/Pivotick/Pivotick.git

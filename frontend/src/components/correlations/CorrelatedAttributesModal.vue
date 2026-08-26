@@ -1,12 +1,22 @@
 <script setup>
-import { computed, ref } from "vue";
+import { computed, defineAsyncComponent, ref } from "vue";
+import { router } from "@/router";
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
 import {
   faCopy,
+  faDiagramProject,
+  faList,
   faMagnifyingGlass,
   faSitemap,
   faXmark,
 } from "@fortawesome/free-solid-svg-icons";
+import { correlationHelper } from "@/helpers";
+
+// The graph pulls in the pivotick bundle, so it is only fetched once someone
+// actually switches to it.
+const CorrelationGraph = defineAsyncComponent(
+  () => import("@/components/correlations/CorrelationGraph.vue"),
+);
 
 const props = defineProps({
   attribute: {
@@ -26,9 +36,9 @@ const props = defineProps({
 // Attributes shown per event before the group has to be expanded, so an
 // attribute correlating with a thousand others still renders instantly.
 const COLLAPSED_GROUP_SIZE = 25;
-const APPROXIMATE_MATCH_TYPES = ["fuzzy", "prefix"];
 
 const query = ref("");
+const view = ref("list");
 const expandedEvents = ref(new Set());
 
 const modalId = computed(
@@ -37,96 +47,35 @@ const modalId = computed(
 
 const correlations = computed(() => props.attribute.correlations || []);
 
-function matchesQuery(source, needle) {
-  return [
-    source.target_attribute_value,
-    source.target_attribute_type,
-    source.target_event_uuid,
-    source.match_type,
-  ].some((field) =>
-    String(field ?? "")
-      .toLowerCase()
-      .includes(needle),
-  );
-}
-
-function bestScore(attribute) {
-  return Math.max(...attribute.matches.map((match) => match.score ?? 0));
-}
-
 /**
- * Correlations arrive as one document per matched pair, so the same attribute
- * shows up once per match type. Group them by event and merge them per
- * attribute: the question this panel answers is "which other events hold this
- * indicator", and the match types belong to the row, not to a row of their own.
+ * The filter drives both views, so it is applied to the raw documents and the
+ * merging happens after. See `correlationHelper` for why one attribute can
+ * arrive as several documents.
  */
-function groupCorrelations(needle) {
-  const groups = new Map();
+const filteredCorrelations = computed(() => {
+  const needle = query.value.trim().toLowerCase();
 
-  for (const correlation of correlations.value) {
-    const source = correlation._source;
+  return correlations.value.filter((correlation) =>
+    correlationHelper.matchesQuery(correlation._source, needle),
+  );
+});
 
-    if (needle && !matchesQuery(source, needle)) {
-      continue;
-    }
+const allAttributes = computed(() =>
+  correlationHelper.mergeCorrelatedAttributes(correlations.value),
+);
+const filteredAttributes = computed(() =>
+  correlationHelper.mergeCorrelatedAttributes(filteredCorrelations.value),
+);
 
-    let group = groups.get(source.target_event_uuid);
-    if (!group) {
-      group = { eventUuid: source.target_event_uuid, attributes: new Map() };
-      groups.set(group.eventUuid, group);
-    }
-
-    let attribute = group.attributes.get(source.target_attribute_uuid);
-    if (!attribute) {
-      attribute = {
-        uuid: source.target_attribute_uuid,
-        type: source.target_attribute_type,
-        value: source.target_attribute_value,
-        matches: [],
-        seenAt: null,
-      };
-      group.attributes.set(attribute.uuid, attribute);
-    }
-
-    attribute.matches.push({
-      type: source.match_type,
-      score: source.score,
-    });
-
-    const seenAt = source["@timestamp"];
-    if (seenAt && (!attribute.seenAt || seenAt > attribute.seenAt)) {
-      attribute.seenAt = seenAt;
-    }
-  }
-
-  return [...groups.values()]
-    .map((group) => ({
-      eventUuid: group.eventUuid,
-      attributes: [...group.attributes.values()].sort(
-        (a, b) => bestScore(b) - bestScore(a) || a.value.localeCompare(b.value),
-      ),
-    }))
-    .sort(
-      (a, b) =>
-        b.attributes.length - a.attributes.length ||
-        a.eventUuid.localeCompare(b.eventUuid),
-    );
-}
-
-const allGroups = computed(() => groupCorrelations(""));
+const allGroups = computed(() =>
+  correlationHelper.groupByEvent(allAttributes.value),
+);
 const eventGroups = computed(() =>
-  groupCorrelations(query.value.trim().toLowerCase()),
+  correlationHelper.groupByEvent(filteredAttributes.value),
 );
 
-const totalAttributes = computed(() =>
-  allGroups.value.reduce((total, group) => total + group.attributes.length, 0),
-);
-const shownAttributes = computed(() =>
-  eventGroups.value.reduce(
-    (total, group) => total + group.attributes.length,
-    0,
-  ),
-);
+const totalAttributes = computed(() => allAttributes.value.length);
+const shownAttributes = computed(() => filteredAttributes.value.length);
 
 const lastCorrelatedAt = computed(() =>
   correlations.value.reduce((latest, correlation) => {
@@ -156,7 +105,7 @@ function expandEvent(eventUuid) {
 }
 
 function isApproximate(matchType) {
-  return APPROXIMATE_MATCH_TYPES.includes(matchType);
+  return correlationHelper.isApproximateMatch(matchType);
 }
 
 function formatSeenAt(timestamp) {
@@ -180,6 +129,11 @@ function copyValue(value) {
 
 function hideModal() {
   props.modal?.hide();
+}
+
+function navigate(route) {
+  hideModal();
+  router.push(route);
 }
 </script>
 
@@ -240,30 +194,89 @@ function hideModal() {
               </template>
             </p>
 
-            <div v-if="filterable" class="filter input-group input-group-sm">
-              <span class="input-group-text">
-                <FontAwesomeIcon :icon="faMagnifyingGlass" />
-              </span>
-              <input
-                v-model="query"
-                type="search"
-                class="form-control"
-                aria-label="Filter correlations"
-                placeholder="Filter by value, type or event"
-              />
-              <button
-                v-if="filtering"
-                type="button"
-                class="btn btn-outline-secondary"
-                title="Clear filter"
-                @click="query = ''"
+            <div class="d-flex flex-wrap align-items-center gap-2">
+              <div v-if="filterable" class="filter input-group input-group-sm">
+                <span class="input-group-text">
+                  <FontAwesomeIcon :icon="faMagnifyingGlass" />
+                </span>
+                <input
+                  v-model="query"
+                  type="search"
+                  class="form-control"
+                  aria-label="Filter correlations"
+                  placeholder="Filter by value, type or event"
+                />
+                <button
+                  v-if="filtering"
+                  type="button"
+                  class="btn btn-outline-secondary"
+                  title="Clear filter"
+                  @click="query = ''"
+                >
+                  <FontAwesomeIcon :icon="faXmark" />
+                </button>
+              </div>
+
+              <div
+                class="btn-group btn-group-sm flex-shrink-0"
+                role="group"
+                aria-label="Correlation view"
               >
-                <FontAwesomeIcon :icon="faXmark" />
-              </button>
+                <button
+                  type="button"
+                  class="btn"
+                  :class="
+                    view === 'list' ? 'btn-secondary' : 'btn-outline-secondary'
+                  "
+                  :aria-pressed="view === 'list'"
+                  @click="view = 'list'"
+                >
+                  <FontAwesomeIcon :icon="faList" class="me-1" />List
+                </button>
+                <button
+                  type="button"
+                  class="btn"
+                  :class="
+                    view === 'graph' ? 'btn-secondary' : 'btn-outline-secondary'
+                  "
+                  :aria-pressed="view === 'graph'"
+                  @click="view = 'graph'"
+                >
+                  <FontAwesomeIcon :icon="faDiagramProject" class="me-1" />Graph
+                </button>
+              </div>
             </div>
           </div>
 
-          <div v-if="eventGroups.length" class="d-grid gap-3">
+          <div v-if="!totalAttributes" class="empty text-center py-5">
+            <FontAwesomeIcon :icon="faSitemap" class="empty__icon mb-3" />
+            <p class="mb-1">No correlations yet</p>
+            <p class="text-body-secondary small mb-0">
+              This attribute has no matching values in other events.
+              Correlations are created in the background when an attribute is
+              added or its value changes.
+            </p>
+          </div>
+
+          <div v-else-if="!shownAttributes" class="empty text-center py-5">
+            <p class="mb-2">Nothing matches “{{ query }}”.</p>
+            <button
+              type="button"
+              class="btn btn-sm btn-outline-secondary"
+              @click="query = ''"
+            >
+              Clear filter
+            </button>
+          </div>
+
+          <CorrelationGraph
+            v-else-if="view === 'graph'"
+            :attribute="attribute"
+            :correlations="filteredCorrelations"
+            @navigate="navigate"
+          />
+
+          <div v-else class="d-grid gap-3">
             <section
               v-for="group in eventGroups"
               :key="group.eventUuid"
@@ -341,27 +354,6 @@ function hideModal() {
                 Show {{ hiddenCount(group) }} more from this event
               </button>
             </section>
-          </div>
-
-          <div v-else-if="filtering" class="empty text-center py-5">
-            <p class="mb-2">Nothing matches “{{ query }}”.</p>
-            <button
-              type="button"
-              class="btn btn-sm btn-outline-secondary"
-              @click="query = ''"
-            >
-              Clear filter
-            </button>
-          </div>
-
-          <div v-else class="empty text-center py-5">
-            <FontAwesomeIcon :icon="faSitemap" class="empty__icon mb-3" />
-            <p class="mb-1">No correlations yet</p>
-            <p class="text-body-secondary small mb-0">
-              This attribute has no matching values in other events.
-              Correlations are created in the background when an attribute is
-              added or its value changes.
-            </p>
           </div>
         </div>
 

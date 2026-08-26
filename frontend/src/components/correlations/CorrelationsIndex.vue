@@ -1,18 +1,31 @@
 <script setup>
-import { computed, onMounted, ref } from "vue";
+import { computed, defineAsyncComponent, onMounted, ref } from "vue";
 import { Modal } from "bootstrap";
 import { storeToRefs } from "pinia";
+import { router } from "@/router";
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
-import { faRotate, faSitemap } from "@fortawesome/free-solid-svg-icons";
+import {
+  faDiagramProject,
+  faList,
+  faRotate,
+  faSitemap,
+} from "@fortawesome/free-solid-svg-icons";
 import ApiError from "@/components/misc/ApiError.vue";
 import Spinner from "@/components/misc/Spinner.vue";
 import { useCorrelationsStore, useToastsStore } from "@/stores";
+
+// The network pulls in the pivotick bundle, so it is only fetched once someone
+// actually switches to it.
+const CorrelationsNetwork = defineAsyncComponent(
+  () => import("@/components/correlations/CorrelationsNetwork.vue"),
+);
 
 const correlationsStore = useCorrelationsStore();
 const toastsStore = useToastsStore();
 const { stats, status } = storeToRefs(correlationsStore);
 
 const rebuildModalEl = ref(null);
+const view = ref("list");
 let rebuildModal = null;
 
 correlationsStore.getStats();
@@ -83,6 +96,10 @@ const rankings = computed(() => [
   },
 ]);
 
+function navigate(route) {
+  router.push(route);
+}
+
 function confirmRebuild() {
   rebuildModal?.hide();
 
@@ -112,18 +129,45 @@ function confirmRebuild() {
       </p>
     </div>
 
-    <button
-      class="btn btn-outline-danger btn-sm"
-      :disabled="status.generating"
-      @click="rebuildModal?.show()"
-    >
-      <FontAwesomeIcon
-        :icon="faRotate"
-        class="me-1"
-        :spin="status.generating"
-      />
-      {{ status.generating ? "Rebuilding…" : "Rebuild correlations" }}
-    </button>
+    <div class="d-flex flex-wrap align-items-center gap-2">
+      <div
+        class="btn-group btn-group-sm flex-shrink-0"
+        role="group"
+        aria-label="Correlation view"
+      >
+        <button
+          type="button"
+          class="btn"
+          :class="view === 'list' ? 'btn-secondary' : 'btn-outline-secondary'"
+          :aria-pressed="view === 'list'"
+          @click="view = 'list'"
+        >
+          <FontAwesomeIcon :icon="faList" class="me-1" />Rankings
+        </button>
+        <button
+          type="button"
+          class="btn"
+          :class="view === 'graph' ? 'btn-secondary' : 'btn-outline-secondary'"
+          :aria-pressed="view === 'graph'"
+          @click="view = 'graph'"
+        >
+          <FontAwesomeIcon :icon="faDiagramProject" class="me-1" />Network
+        </button>
+      </div>
+
+      <button
+        class="btn btn-outline-danger btn-sm"
+        :disabled="status.generating"
+        @click="rebuildModal?.show()"
+      >
+        <FontAwesomeIcon
+          :icon="faRotate"
+          class="me-1"
+          :spin="status.generating"
+        />
+        {{ status.generating ? "Rebuilding…" : "Rebuild correlations" }}
+      </button>
+    </div>
   </div>
 
   <div v-if="status.error" class="alert alert-danger">
@@ -140,6 +184,8 @@ function confirmRebuild() {
       changed. Rebuild them here to correlate everything already indexed.
     </p>
   </div>
+
+  <CorrelationsNetwork v-else-if="view === 'graph'" @navigate="navigate" />
 
   <div v-else class="d-grid gap-3">
     <section v-for="ranking in rankings" :key="ranking.key" class="card">

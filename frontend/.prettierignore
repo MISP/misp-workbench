@@ -1,0 +1,3 @@
+# Vendored third party source, formatted by its own project.
+submodules/
+dist/

@@ -18,7 +18,13 @@ export default defineConfigWithVueTs(
   },
   {
     name: "app/files-to-ignore",
-    ignores: ["**/dist/**", "**/dist-ssr/**", "**/coverage/**"],
+    ignores: [
+      "**/dist/**",
+      "**/dist-ssr/**",
+      "**/coverage/**",
+      // Vendored third party source, linted by its own project.
+      "submodules/**",
+    ],
   },
   pluginVue.configs["flat/essential"],
   vueTsConfigs.base,

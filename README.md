@@ -30,6 +30,13 @@ git submodule update --init --remote --recursive
 docker compose -f docker-compose.yml -f docker-compose.dev.yml --env-file=".env.dev" up --build
 ```
 
+> `--remote` moves every submodule to the tip of its upstream branch, which is
+> what the MISP data submodules want. `frontend/submodules/pivotick` is a code
+> dependency pinned to a release tag instead, so run
+> `git submodule update --init --recursive` (without `--remote`) to keep it on
+> the pinned commit, or `git -C frontend/submodules/pivotick checkout <tag>`
+> after a `--remote` update.
+
 #### Production setup
 
 Before starting the production stack, create the Garage config file from the template and fill in your secrets:
@@ -73,8 +80,12 @@ Go to http://localhost:3000/login and login.
     - install and run the dev server (npm/yarn):
         ```bash
         npm install
+        npm run build:pivotick   # once per pinned submodule revision
         npm run dev
         ```
+    - `pivotick` (graph visualization) is not published on npm, so it is built
+      from `frontend/submodules/pivotick`. `npm run build` does this for you;
+      the dev server needs it built once beforehand.
 
 - **Backend**
     - see `api/README.md` for dependency installation and local server commands. The Python project is defined in `api/pyproject.toml` (poetry or pip can be used to install dependencies).
