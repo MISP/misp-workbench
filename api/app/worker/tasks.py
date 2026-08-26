@@ -127,7 +127,7 @@ def pull_event_by_uuid(event_uuid: str, server_id: int, user_id: int):
         "pull event uuid=%s from server id=%s, job started", event_uuid, server_id
     )
 
-    with Session(engine) as db, attributes_repository.deferred_correlations():
+    with Session(engine) as db, attributes_repository.bulk_ingest():
         user = users_repository.get_user_by_id(db, user_id)
         if user is None:
             raise Exception("User not found")
@@ -245,11 +245,18 @@ def handle_created_attribute(
     attribute_uuid: str,
     object_uuid,
     event_uuid: str | None,
-    correlate: bool = True,
+    bulk: bool = False,
 ):
+    """Follow up on a created attribute.
+
+    ``bulk`` marks an attribute created by an ingest, which counts and
+    correlates its attributes in one pass at the end instead. See
+    ``attributes_repository.bulk_ingest``.
+    """
     logger.info("handling created attribute uuid=%s job started", attribute_uuid)
     with Session(engine) as db:
-        if object_uuid is None and event_uuid:
+        # Attributes inside objects count towards the event too, as in MISP.
+        if event_uuid and not bulk:
             events_repository.increment_attribute_count(db, event_uuid)
 
         os_attr = attributes_repository.get_attribute_from_opensearch(UUID(attribute_uuid))
@@ -260,7 +267,7 @@ def handle_created_attribute(
                 "created",
                 _reactor_attribute_payload(os_attr, attribute_uuid, object_uuid, event_uuid),
             )
-            if correlate:
+            if not bulk:
                 correlate_attribute.delay(attribute_uuid)
 
     return True
@@ -293,7 +300,7 @@ def handle_updated_attribute(
 def handle_deleted_attribute(attribute_uuid: str, object_uuid, event_uuid: str | None):
     logger.info("handling deleted attribute uuid=%s job started", attribute_uuid)
     with Session(engine) as db:
-        if object_uuid is None and event_uuid:
+        if event_uuid:
             events_repository.decrement_attribute_count(db, event_uuid)
 
         os_attr = attributes_repository.get_attribute_from_opensearch(UUID(attribute_uuid))
@@ -311,11 +318,12 @@ def handle_deleted_attribute(attribute_uuid: str, object_uuid, event_uuid: str |
 
 
 @celery_app.task
-def handle_created_object(object_uuid: str, event_uuid: str | None):
+def handle_created_object(object_uuid: str, event_uuid: str | None, bulk: bool = False):
+    """Follow up on a created object. ``bulk`` as in handle_created_attribute."""
     logger.info("handling created object uuid=%s job started", object_uuid)
 
     with Session(engine) as db:
-        if event_uuid:
+        if event_uuid and not bulk:
             events_repository.increment_object_count(db, event_uuid)
 
         os_obj = objects_repository.get_object_from_opensearch(UUID(object_uuid))
@@ -412,7 +420,7 @@ def fetch_feed(feed_id: int, user_id: int):
 def fetch_feed_event(event_uuid: str, feed_id: int, user_id: int):
     logger.info("fetch feed event uuid=%s job started", event_uuid)
 
-    with Session(engine) as db, attributes_repository.deferred_correlations():
+    with Session(engine) as db, attributes_repository.bulk_ingest():
         user = users_repository.get_user_by_id(db, user_id)
         db_feed = feeds_repository.get_feed_by_id(db, feed_id=feed_id)
 
@@ -431,7 +439,7 @@ def fetch_csv_feed(feed_id: int, user_id: int):
     attributes_created = 0
     failed_rows = 0
 
-    with Session(engine) as db, attributes_repository.deferred_correlations():
+    with Session(engine) as db, attributes_repository.bulk_ingest():
         user = users_repository.get_user_by_id(db, user_id)
         db_feed = feeds_repository.get_feed_by_id(db, feed_id=feed_id)
 
@@ -478,6 +486,8 @@ def fetch_csv_feed(feed_id: int, user_id: int):
 
             index += 1
 
+    events_repository.sync_event_counts(str(db_event.uuid))
+
     logger.info("fetch csv feed id=%s job finished", feed_id)
 
     return {
@@ -495,7 +505,7 @@ def fetch_freetext_feed(feed_id: int, user_id: int):
     attributes_created = 0
     failed_rows = 0
 
-    with Session(engine) as db, attributes_repository.deferred_correlations():
+    with Session(engine) as db, attributes_repository.bulk_ingest():
         user = users_repository.get_user_by_id(db, user_id)
         db_feed = feeds_repository.get_feed_by_id(db, feed_id=feed_id)
 
@@ -538,6 +548,8 @@ def fetch_freetext_feed(feed_id: int, user_id: int):
                 failed_rows += 1
                 logger.error("Error processing freetext feed line: %s", e)
 
+    events_repository.sync_event_counts(str(db_event.uuid))
+
     logger.info("fetch freetext feed id=%s job finished", feed_id)
 
     return {
@@ -555,7 +567,7 @@ def fetch_json_feed(feed_id: int, user_id: int):
     attributes_created = 0
     failed_items = 0
 
-    with Session(engine) as db, attributes_repository.deferred_correlations():
+    with Session(engine) as db, attributes_repository.bulk_ingest():
         user = users_repository.get_user_by_id(db, user_id)
         db_feed = feeds_repository.get_feed_by_id(db, feed_id=feed_id)
 
@@ -600,6 +612,8 @@ def fetch_json_feed(feed_id: int, user_id: int):
             except Exception as e:
                 failed_items += 1
                 logger.error("Error processing JSON feed item: %s", e)
+
+    events_repository.sync_event_counts(str(db_event.uuid))
 
     logger.info("fetch json feed id=%s job finished", feed_id)
 

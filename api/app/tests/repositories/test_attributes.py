@@ -37,38 +37,39 @@ def _indexed_attribute(**overrides):
 
 
 class TestCreateAttributeCorrelation:
-    def test_correlates_straight_away_by_default(self):
+    def test_not_marked_bulk_by_default(self):
         with patch(OS_PATCH, return_value=MagicMock()), \
                 patch(TASKS_PATCH) as tasks:
             attributes_repository.create_attribute(MagicMock(), _attribute_create())
 
         args = tasks.handle_created_attribute.delay.call_args.args
-        assert args[3] is True
+        assert args[3] is False
 
     def test_defers_inside_a_bulk_ingest(self):
         with patch(OS_PATCH, return_value=MagicMock()), \
                 patch(TASKS_PATCH) as tasks, \
-                attributes_repository.deferred_correlations() as batch:
+                attributes_repository.bulk_ingest() as batch:
             created = attributes_repository.create_attribute(
                 MagicMock(), _attribute_create()
             )
 
         assert batch["created"] == [str(created.uuid)]
         assert batch["updated"] == []
-        # the handler still runs for notifications, it just does not correlate
+        # the handler still runs for notifications, it just leaves correlating
+        # and counting to the ingest
         args = tasks.handle_created_attribute.delay.call_args.args
-        assert args[3] is False
+        assert args[3] is True
 
     def test_the_context_does_not_leak(self):
         with patch(OS_PATCH, return_value=MagicMock()), patch(TASKS_PATCH):
-            with attributes_repository.deferred_correlations():
+            with attributes_repository.bulk_ingest():
                 pass
 
         with patch(OS_PATCH, return_value=MagicMock()), \
                 patch(TASKS_PATCH) as tasks:
             attributes_repository.create_attribute(MagicMock(), _attribute_create())
 
-        assert tasks.handle_created_attribute.delay.call_args.args[3] is True
+        assert tasks.handle_created_attribute.delay.call_args.args[3] is False
 
 
 class TestUpdateAttributeCorrelation:
@@ -108,7 +109,7 @@ class TestUpdateAttributeCorrelation:
 
         with patch(OS_PATCH, return_value=MagicMock()), \
                 patch(TASKS_PATCH) as tasks, self._patch_lookup(), \
-                attributes_repository.deferred_correlations() as batch:
+                attributes_repository.bulk_ingest() as batch:
             attributes_repository.update_attribute(
                 MagicMock(), ATTR_UUID, patch_update
             )

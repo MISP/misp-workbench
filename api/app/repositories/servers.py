@@ -398,6 +398,8 @@ def create_or_update_pulled_event(
                 db, str(created.uuid), event.attributes, user
             )
 
+            events_repository.sync_event_counts(str(created.uuid))
+
             logger.info(f"Event {event.uuid} created")
             return created
     else:
@@ -444,6 +446,8 @@ def create_or_update_pulled_event(
             sync_repository.update_pulled_event_attributes(
                 db, str(updated.uuid), event.attributes, user
             )
+
+            events_repository.sync_event_counts(str(updated.uuid))
 
             # TODO: publish event update to ZMQ
             logger.info("Updated event %s" % event.uuid)

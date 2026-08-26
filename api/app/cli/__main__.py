@@ -339,5 +339,71 @@ def seed_docs_fixtures(
     typer.echo(f"Login: {DOCS_USER_EMAIL} / {DOCS_USER_PASSWORD}")
 
 
+@app.command()
+def sync_event_counts(
+    event_uuid: Optional[str] = typer.Option(
+        None, "--event-uuid", help="Only this event; every event when omitted"
+    ),
+    dry_run: bool = typer.Option(
+        False, "--dry-run", help="Report what would change without writing"
+    ),
+):
+    """Recount attribute_count and object_count from the indexed documents.
+
+    Reconciles events whose totals drifted, which the per attribute increments
+    used to cause on any sizeable ingest.
+    """
+    from app.services.opensearch import get_opensearch_client
+    from opensearchpy import helpers as opensearch_helpers
+
+    client = get_opensearch_client()
+
+    if event_uuid:
+        events = [{"_id": event_uuid, "_source": {}}]
+    else:
+        events = opensearch_helpers.scan(
+            client=client,
+            index="misp-events",
+            query={
+                "query": {"match_all": {}},
+                "_source": ["attribute_count", "object_count", "info"],
+            },
+            scroll="5m",
+            size=200,
+        )
+
+    checked = 0
+    drifted = 0
+
+    for event in events:
+        uuid = event["_id"]
+        stored = event["_source"]
+        checked += 1
+
+        attribute_count = events_repository.count_event_attributes(uuid)
+        object_count = events_repository.count_event_objects(uuid)
+
+        if (
+            stored.get("attribute_count") == attribute_count
+            and stored.get("object_count") == object_count
+        ):
+            continue
+
+        drifted += 1
+        typer.echo(
+            f"{uuid} attributes {stored.get('attribute_count')} -> {attribute_count}, "
+            f"objects {stored.get('object_count')} -> {object_count}"
+        )
+
+        if not dry_run:
+            events_repository.sync_event_counts(uuid)
+
+    typer.echo(
+        f"{checked} event(s) checked, {drifted} corrected."
+        if not dry_run
+        else f"{checked} event(s) checked, {drifted} would change (dry run)."
+    )
+
+
 if __name__ == "__main__":
     app()

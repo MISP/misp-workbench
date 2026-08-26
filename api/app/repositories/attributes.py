@@ -25,20 +25,23 @@ from contextvars import ContextVar
 # them has to invalidate and rebuild its correlations.
 CORRELATION_RELEVANT_FIELDS = ("value", "type", "disable_correlation", "deleted")
 
-_deferred_correlations: ContextVar = ContextVar(
-    "attributes_deferred_correlations", default=None
-)
+_bulk_ingest: ContextVar = ContextVar("attributes_bulk_ingest", default=None)
 
 
 @contextmanager
-def deferred_correlations():
-    """Collect the attributes to correlate instead of correlating them one by one.
+def bulk_ingest():
+    """Mark a bulk ingest, so per attribute follow-ups are handled in bulk.
 
     Bulk ingestion - a feed fetch, a server pull, an event import - creates
-    attributes in the thousands, and correlating each one as it lands means a
-    task, a search and a notification round trip per attribute. Inside this
-    context the uuids are collected instead, so the caller can hand whole
-    batches to ``tasks.correlate_attributes`` once the ingest is done.
+    attributes in the thousands. Correlating each one as it lands means a task,
+    a search and a notification round trip per attribute, and counting them one
+    task at a time leaves the event's totals reading zero until the queue
+    drains. Inside this context:
+
+    - the uuids to correlate are collected, so the caller can hand whole batches
+      to ``tasks.correlate_attributes`` once the ingest is done
+    - the attribute and object counts are left alone, because the ingest calls
+      ``events_repository.sync_event_counts`` at the end instead
 
     Yields a ``{"created": [...], "updated": [...]}`` batch; attributes that
     already existed need their stale correlations dropped first, freshly created
@@ -46,13 +49,18 @@ def deferred_correlations():
     part way through, so whatever did land still gets correlated.
     """
     batch = {"created": [], "updated": []}
-    token = _deferred_correlations.set(batch)
+    token = _bulk_ingest.set(batch)
 
     try:
         yield batch
     finally:
-        _deferred_correlations.reset(token)
+        _bulk_ingest.reset(token)
         tasks.enqueue_deferred_correlations(batch)
+
+
+def in_bulk_ingest() -> bool:
+    """Whether the caller is inside a :func:`bulk_ingest` context."""
+    return _bulk_ingest.get() is not None
 
 
 def enrich_attributes_page_with_correlations(
@@ -195,12 +203,12 @@ def create_attribute(
 
     client.index(index="misp-attributes", id=attribute_uuid, body=attr_doc, refresh=True)
 
-    deferred = _deferred_correlations.get()
+    deferred = _bulk_ingest.get()
     if deferred is not None:
         deferred["created"].append(attribute_uuid)
 
     tasks.handle_created_attribute.delay(
-        attribute_uuid, attr_doc["object_uuid"], event_uuid, deferred is None
+        attribute_uuid, attr_doc["object_uuid"], event_uuid, deferred is not None
     )
 
     return attribute_schemas.Attribute.model_validate(attr_doc)
@@ -341,7 +349,7 @@ def update_attribute(
         for field in CORRELATION_RELEVANT_FIELDS
     )
 
-    deferred = _deferred_correlations.get()
+    deferred = _bulk_ingest.get()
     if recorrelate and deferred is not None:
         deferred["updated"].append(str(os_attr.uuid))
         recorrelate = False

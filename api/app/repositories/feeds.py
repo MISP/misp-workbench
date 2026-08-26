@@ -344,6 +344,10 @@ def process_feed_event(
 
     db.commit()
 
+    # The ingest owns the event's totals: the per attribute increments are
+    # suppressed inside the bulk ingest context that wraps this call.
+    events_repository.sync_event_counts(str(local_event.uuid))
+
     return {"result": "success", "message": "Event processed"}
 
 

@@ -286,7 +286,9 @@ def create_object(
         object_reference.event_uuid = event_uuid
         object_references_repository.create_object_reference(db, object_reference)
 
-    tasks.handle_created_object.delay(object_uuid, event_uuid)
+    tasks.handle_created_object.delay(
+        object_uuid, event_uuid, attributes_repository.in_bulk_ingest()
+    )
 
     obj_doc["attributes"] = built_attrs
     return object_schemas.Object.model_validate(obj_doc)
@@ -351,7 +353,9 @@ def create_object_from_pulled_object(
             db, pulled_object_reference, event_uuid
         )
 
-    tasks.handle_created_object.delay(object_uuid, event_uuid)
+    tasks.handle_created_object.delay(
+        object_uuid, event_uuid, attributes_repository.in_bulk_ingest()
+    )
 
     return get_object_from_opensearch(UUID(object_uuid))
 

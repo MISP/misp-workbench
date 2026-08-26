@@ -180,8 +180,12 @@ class TestCorrelationWiring:
             return_value=None,
         )
 
+    def _patch_counts(self):
+        return patch.object(worker_tasks.events_repository, "increment_attribute_count")
+
     def test_created_attribute_is_correlated(self):
         with patch.object(worker_tasks.correlate_attribute, "delay") as delay, \
+                self._patch_counts(), \
                 self._patch_attr_lookup(), self._patch_notifications():
             worker_tasks.handle_created_attribute(ATTR_UUID, OBJ_UUID, EVENT_UUID)
 
@@ -189,9 +193,10 @@ class TestCorrelationWiring:
 
     def test_created_attribute_skips_correlation_for_a_bulk_ingest(self):
         with patch.object(worker_tasks.correlate_attribute, "delay") as delay, \
+                self._patch_counts(), \
                 self._patch_attr_lookup(), self._patch_notifications():
             worker_tasks.handle_created_attribute(
-                ATTR_UUID, OBJ_UUID, EVENT_UUID, correlate=False
+                ATTR_UUID, OBJ_UUID, EVENT_UUID, bulk=True
             )
 
         delay.assert_not_called()
@@ -203,6 +208,37 @@ class TestCorrelationWiring:
             worker_tasks.handle_created_attribute(ATTR_UUID, OBJ_UUID, None)
 
         delay.assert_not_called()
+
+    def test_created_attribute_counts_towards_its_event(self):
+        with patch.object(worker_tasks.correlate_attribute, "delay"), \
+                self._patch_counts() as increment, \
+                self._patch_attr_lookup(), self._patch_notifications():
+            worker_tasks.handle_created_attribute(ATTR_UUID, OBJ_UUID, EVENT_UUID)
+
+        # an attribute inside an object counts too, as in MISP
+        increment.assert_called_once()
+        assert increment.call_args.args[1] == EVENT_UUID
+
+    def test_bulk_created_attribute_is_not_counted(self):
+        with patch.object(worker_tasks.correlate_attribute, "delay"), \
+                self._patch_counts() as increment, \
+                self._patch_attr_lookup(), self._patch_notifications():
+            worker_tasks.handle_created_attribute(
+                ATTR_UUID, OBJ_UUID, EVENT_UUID, bulk=True
+            )
+
+        increment.assert_not_called()
+
+    def test_deleted_object_attribute_is_uncounted(self):
+        with patch.object(
+            worker_tasks.correlations_repository, "delete_attribute_correlations"
+        ), patch.object(
+            worker_tasks.events_repository, "decrement_attribute_count"
+        ) as decrement, \
+                self._patch_attr_lookup(), self._patch_notifications():
+            worker_tasks.handle_deleted_attribute(ATTR_UUID, OBJ_UUID, EVENT_UUID)
+
+        decrement.assert_called_once()
 
     def test_updated_attribute_is_recorrelated(self):
         with patch.object(worker_tasks.correlate_attribute, "delay") as delay, \
