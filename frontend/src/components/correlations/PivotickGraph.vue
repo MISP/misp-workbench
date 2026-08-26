@@ -39,6 +39,11 @@ const props = defineProps({
     type: String,
     default: "min(60vh, 30rem)",
   },
+  /** Simulation overrides merged over the defaults below. */
+  simulation: {
+    type: Object,
+    default: () => ({}),
+  },
 });
 
 const emit = defineEmits(["navigate"]);
@@ -69,6 +74,7 @@ function buildOptions() {
       d3LinkDistance: 110,
       d3ManyBodyStrength: -600,
       d3CollideRadiusMultiplier: 2.4,
+      ...props.simulation,
       callbacks: {
         // Spreading the layout pushes nodes past the initial viewport, so the
         // view is refit once the simulation comes to rest.
