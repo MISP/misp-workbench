@@ -101,11 +101,70 @@ class TestEnqueueDeferredCorrelations:
 
         assert [len(call.args[0]) for call in delay.call_args_list] == [2, 2, 1]
 
+    def test_handled_attributes_are_enqueued_in_chunks(self):
+        batch = {
+            "created": [],
+            "updated": [],
+            "handled": [[f"attr-{n}", None, EVENT_UUID] for n in range(5)],
+        }
+
+        with patch.object(worker_tasks.handle_created_attributes, "delay") as delay, \
+                patch.object(worker_tasks, "CORRELATION_BATCH_SIZE", 2):
+            worker_tasks.enqueue_deferred_correlations(batch)
+
+        assert [len(call.args[0]) for call in delay.call_args_list] == [2, 2, 1]
+
     def test_nothing_collected_enqueues_nothing(self):
-        with patch.object(worker_tasks.correlate_attributes, "delay") as delay:
-            worker_tasks.enqueue_deferred_correlations({"created": [], "updated": []})
+        with patch.object(worker_tasks.correlate_attributes, "delay") as delay, \
+                patch.object(worker_tasks.handle_created_attributes, "delay") as handle:
+            worker_tasks.enqueue_deferred_correlations(
+                {"created": [], "updated": [], "handled": []}
+            )
 
         delay.assert_not_called()
+        handle.assert_not_called()
+
+
+class TestHandleCreatedAttributes:
+    ITEMS = [
+        [ATTR_UUID, OBJ_UUID, EVENT_UUID],
+        ["33333333-3333-3333-3333-333333333333", None, EVENT_UUID],
+    ]
+
+    def test_notifies_every_attribute_from_one_session(self):
+        with patch.object(
+            worker_tasks.attributes_repository,
+            "get_attribute_from_opensearch",
+            return_value=_pydantic_like({"type": "ip-src", "value": "1.2.3.4"}),
+        ), patch.object(
+            worker_tasks.notifications_repository,
+            "create_attribute_notifications",
+            return_value=None,
+        ) as notify:
+            assert worker_tasks.handle_created_attributes(self.ITEMS) is True
+
+        assert notify.call_count == 2
+
+    def test_missing_attribute_is_skipped(self):
+        with patch.object(
+            worker_tasks.attributes_repository,
+            "get_attribute_from_opensearch",
+            return_value=None,
+        ), patch.object(
+            worker_tasks.notifications_repository,
+            "create_attribute_notifications",
+        ) as notify:
+            worker_tasks.handle_created_attributes(self.ITEMS)
+
+        notify.assert_not_called()
+
+    def test_empty_batch_is_a_noop(self):
+        with patch.object(
+            worker_tasks.attributes_repository, "get_attribute_from_opensearch"
+        ) as lookup:
+            assert worker_tasks.handle_created_attributes([]) is True
+
+        lookup.assert_not_called()
 
 
 class TestHandleCreatedCorrelations:

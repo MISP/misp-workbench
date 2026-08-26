@@ -1,0 +1,12 @@
+{
+    "description": "Split composite values on '|' into expanded.value_parts so each component can correlate on its own, as MISP does for types like domain|ip or filename|sha256. Port components are left out: a bare port number is not an indicator and would correlate with every address sharing it.",
+    "processors": [
+        {
+            "script": {
+                "lang": "painless",
+                "source": "if (ctx.value != null) { if (ctx.expanded == null) { ctx.expanded = new HashMap(); } def type = ctx.type == null ? '' : ctx.type; def components = ctx.value.splitOnToken('|'); def limit = type.endsWith('|port') ? 1 : components.length; def parts = new ArrayList(); for (int i = 0; i < limit; i++) { def trimmed = components[i].trim(); if (trimmed.length() > 0 && !parts.contains(trimmed)) { parts.add(trimmed); } } ctx.expanded.value_parts = parts; }",
+                "ignore_failure": true
+            }
+        }
+    ]
+}

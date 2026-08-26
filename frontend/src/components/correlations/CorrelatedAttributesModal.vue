@@ -85,6 +85,19 @@ const lastCorrelatedAt = computed(() =>
   }, null),
 );
 
+/**
+ * The API attaches a bounded number of correlations per attribute and reports
+ * the real total separately, so a heavily correlated attribute does not claim
+ * the slice it was given is everything.
+ */
+const withheld = computed(() =>
+  Math.max(
+    0,
+    (props.attribute.correlation_count ?? correlations.value.length) -
+      correlations.value.length,
+  ),
+);
+
 const filtering = computed(() => query.value.trim() !== "");
 const filterable = computed(() => totalAttributes.value > 6);
 
@@ -190,6 +203,11 @@ function navigate(route) {
                 {{ allGroups.length === 1 ? "event" : "events" }}
                 <template v-if="lastCorrelatedAt">
                   &middot; last correlated {{ formatSeenAt(lastCorrelatedAt) }}
+                </template>
+                <template v-if="withheld">
+                  &middot; strongest {{ correlations.length }} of
+                  {{ (attribute.correlation_count ?? 0).toLocaleString() }}
+                  correlations
                 </template>
               </template>
             </p>

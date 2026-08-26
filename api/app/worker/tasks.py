@@ -235,6 +235,11 @@ def handle_deleted_event(event_uuid: str):
             notifications_repository.create_event_notifications(db, "deleted", event=os_event)
         _dispatch_if_subscribed("event", "deleted", _reactor_event_payload(os_event, event_uuid))
 
+    # Correlations reference events on both sides, so they outlive the event
+    # unless they go with it - leaving other attributes pointing at something
+    # that no longer exists.
+    correlations_repository.delete_event_correlations(event_uuid)
+
     delete_indexed_event(event_uuid)
 
     return True
@@ -888,14 +893,54 @@ def handle_unpublished_event(event_uuid: str):
     return True
 
 
+@celery_app.task
+def handle_created_attributes(items: list):
+    """Handle a batch of created attributes: notifications and reactor dispatch.
+
+    An ingest creates attributes in the thousands, and one task per attribute is
+    a broker round trip, a session and an OpenSearch get each. Counting and
+    correlating are already batched; this is the rest of the per attribute work.
+
+    Each item is ``[attribute_uuid, object_uuid, event_uuid]``.
+    """
+    logger.info("handling %s created attributes job started", len(items))
+
+    if not items:
+        return True
+
+    with Session(engine) as db:
+        for attribute_uuid, object_uuid, event_uuid in items:
+            os_attr = attributes_repository.get_attribute_from_opensearch(
+                UUID(attribute_uuid)
+            )
+
+            if os_attr is None:
+                continue
+
+            notifications_repository.create_attribute_notifications(
+                db, "created", attribute=os_attr
+            )
+            _dispatch_if_subscribed(
+                "attribute",
+                "created",
+                _reactor_attribute_payload(
+                    os_attr, attribute_uuid, object_uuid, event_uuid
+                ),
+            )
+
+    logger.info("handling %s created attributes job finished", len(items))
+
+    return True
+
+
 def correlations_enabled(runtimeSettings) -> bool:
     return bool(runtimeSettings.get_value("correlations.correlateOnChange", True))
 
 
 def enqueue_deferred_correlations(batch: dict):
-    """Enqueue the correlation tasks a bulk ingest collected.
+    """Enqueue the follow-up tasks a bulk ingest collected.
 
-    The batch is split into fixed size chunks so a large feed or pull spreads
+    Everything is split into fixed size chunks so a large feed or pull spreads
     over the workers instead of riding in one oversized message.
     """
     for rebuild, key in ((False, "created"), (True, "updated")):
@@ -906,8 +951,14 @@ def enqueue_deferred_correlations(batch: dict):
                 attribute_uuids[start : start + CORRELATION_BATCH_SIZE], rebuild
             )
 
+    handled = batch.get("handled") or []
+    for start in range(0, len(handled), CORRELATION_BATCH_SIZE):
+        handle_created_attributes.delay(
+            handled[start : start + CORRELATION_BATCH_SIZE]
+        )
+
     logger.info(
-        "enqueued correlations for %s created and %s updated attributes",
+        "enqueued follow-ups for %s created and %s updated attributes",
         len(batch.get("created") or []),
         len(batch.get("updated") or []),
     )

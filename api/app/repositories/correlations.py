@@ -12,6 +12,8 @@ import logging
 logger = logging.getLogger(__name__)
 
 MAX_CORRELATIONS_PER_DOC = 1000
+# Match types that find a value without matching it exactly.
+APPROXIMATE_MATCH_TYPES = ("fuzzy", "prefix")
 CORRELATION_PREFIX_LENGTH = 10
 CORRELATION_MIN_SCORE = 2
 CORRELATION_FUZZYNESS = "AUTO"
@@ -116,7 +118,64 @@ def get_attributes(filters: dict = {}):
         yield doc
 
 
-def build_query(uuid, event_uuid, value, match_type, runtimeSettings: RuntimeSettings):
+def value_parts(value, attribute_type=None):
+    """The components of a composite value, or just the value itself.
+
+    MISP composite types - ``domain|ip``, ``filename|sha256`` and friends - join
+    two values with a pipe, and each component is an indicator in its own right.
+    The port of a ``...|port`` type is not: it would correlate with every address
+    sharing it, so only the address counts.
+
+    Kept in step with the misp-attributes_value_parts ingest pipeline, which
+    fills the field this is matched against.
+    """
+    components = str(value or "").split("|")
+
+    if str(attribute_type or "").endswith("|port"):
+        components = components[:1]
+
+    parts = []
+    for part in components:
+        part = part.strip()
+        if part and part not in parts:
+            parts.append(part)
+
+    return parts
+
+
+def build_term_match(value, attribute_type=None):
+    """Match a value exactly, or on any component it shares with another.
+
+    Without this a ``domain|ip`` of ``evil.com|1.2.3.4`` would only ever
+    correlate with the identical composite, never with a bare ``domain`` of
+    ``evil.com``. The components are matched through ``expanded.value_parts``,
+    which the misp-attributes_value_parts ingest pipeline fills in; the exact
+    clause is kept so attributes indexed before that pipeline existed still
+    correlate on their full value.
+    """
+    return {
+        "bool": {
+            "should": [
+                {"term": {"value.keyword": value}},
+                {
+                    "terms": {
+                        "expanded.value_parts": value_parts(value, attribute_type)
+                    }
+                },
+            ],
+            "minimum_should_match": 1,
+        }
+    }
+
+
+def build_query(
+    uuid,
+    event_uuid,
+    value,
+    match_type,
+    runtimeSettings: RuntimeSettings,
+    attribute_type=None,
+):
 
     if uuid is None:
         logger.error(f"build_query: UUID is None, event_uuid={event_uuid}")
@@ -138,7 +197,7 @@ def build_query(uuid, event_uuid, value, match_type, runtimeSettings: RuntimeSet
     }
 
     if match_type == "term":
-        query["query"]["bool"]["must"] = [{"term": {"value.keyword": value}}]
+        query["query"]["bool"]["must"] = [build_term_match(value, attribute_type)]
     elif match_type == "prefix":
         query["query"]["bool"]["must"] = [
             {
@@ -199,6 +258,10 @@ def build_cidr_query(uuid, event_uuid, doc):
     }
 
 
+def is_approximate_match(match_type) -> bool:
+    return match_type in APPROXIMATE_MATCH_TYPES
+
+
 def chunked(iterable, size):
     """Yield successive ``size`` long chunks of an iterable (streams generators)."""
     chunk = []
@@ -224,7 +287,16 @@ def attribute_ref(doc):
 
 
 def is_correlatable(doc):
-    """Whether an indexed attribute may take part in correlations."""
+    """Whether an indexed attribute may take part in correlations.
+
+    TODO: exclude warninglisted values. Values like 8.8.8.8, the RFC1918
+    ranges, the empty file hashes or anything in the Alexa/Cisco top lists
+    correlate with almost everything and bury the real signal - which is what
+    ``correlations.maxCorrelationsPerDoc`` is currently papering over. MISP
+    ships warninglists for exactly this; enforcing them here (and at ingest,
+    see the TODO in attributes_repository.create_attribute_from_pulled_attribute)
+    would cut both the noise and the correlation volume.
+    """
     source = doc["_source"]
 
     if not source.get("value"):
@@ -307,6 +379,21 @@ def dispatch_correlation_notifications(correlation_docs):
         tasks.handle_created_correlations.delay(chunk)
 
 
+def min_score_for(match_type, runtimeSettings: RuntimeSettings):
+    """The score floor to apply to a match type, or None to apply none.
+
+    Only approximate matching produces a score worth thresholding. A term or
+    cidr hit is exact, and its score says nothing about the quality of the
+    match, so a floor there would only throw away correct correlations.
+    """
+    if not is_approximate_match(match_type):
+        return None
+
+    min_score = runtimeSettings.get_value("correlations.minScore", CORRELATION_MIN_SCORE)
+
+    return min_score if min_score and min_score > 0 else None
+
+
 def build_correlation_queries(doc, runtimeSettings: RuntimeSettings):
     """Return the ``(match_type, query)`` pairs configured for an attribute."""
     queries = []
@@ -341,6 +428,7 @@ def build_correlation_queries(doc, runtimeSettings: RuntimeSettings):
                             value,
                             match_type,
                             runtimeSettings,
+                            doc["_source"].get("type"),
                         ),
                     )
                 )
@@ -380,9 +468,14 @@ def run_correlation_msearch(queries, size):
     OpenSearchClient = get_opensearch_client()
 
     body = []
-    for query in queries:
+    for query, min_score in queries:
+        search = {**query, "size": size, "_source": CORRELATION_SOURCE_FIELDS}
+
+        if min_score is not None:
+            search["min_score"] = min_score
+
         body.append({"index": "misp-attributes"})
-        body.append({**query, "size": size, "_source": CORRELATION_SOURCE_FIELDS})
+        body.append(search)
 
     responses = OpenSearchClient.msearch(body=body)["responses"]
 
@@ -420,7 +513,7 @@ def build_chunk_correlation_docs(
 
         for match_type, query in build_correlation_queries(doc, runtimeSettings):
             key = correlation_query_key(match_type, query)
-            queries.setdefault(key, query)
+            queries.setdefault(key, (query, min_score_for(match_type, runtimeSettings)))
             plan.append((doc, match_type, key))
 
     if not plan:
@@ -839,6 +932,12 @@ def get_total_correlations():
     return total_correlations["count"]
 
 
+# TODO: aggregate event pairs server side, for the overview network view. A
+# terms aggregation on source_event_uuid with a sub-aggregation on
+# target_event_uuid would give every connected pair and its weight over the
+# whole index in one request. The frontend currently samples the 300 most
+# recent correlation documents and folds them client side, which is honest
+# about being a sample but is neither complete nor cheap.
 def get_correlations_stats():
     try:
         return {
@@ -855,20 +954,34 @@ def get_correlations_stats():
 
 
 def delete_correlations():
+    """Drop and recreate the correlations index, keeping its mapping.
+
+    The mapping is carried over from the live index rather than reapplied from
+    ``opensearch/mappings/misp-attribute-correlations.json``, which is what the
+    opensearch container provisions it from, so a recreate here cannot drift
+    from what was actually in use.
+    """
     OpenSearchClient = get_opensearch_client()
 
     try:
-        mapping = OpenSearchClient.indices.get_mapping(
-            index="misp-attribute-correlations"
-        )
+        try:
+            mapping = OpenSearchClient.indices.get_mapping(
+                index="misp-attribute-correlations"
+            )["misp-attribute-correlations"]["mappings"]
+        except NotFoundError:
+            # Nothing to drop. The index is recreated so the provisioned
+            # mapping is not silently replaced by a dynamic one on first write.
+            logger.info(
+                "delete_correlations: index is missing, recreating it empty"
+            )
+            mapping = None
 
-        OpenSearchClient.indices.delete(index="misp-attribute-correlations")
+        if mapping is not None:
+            OpenSearchClient.indices.delete(index="misp-attribute-correlations")
 
         OpenSearchClient.indices.create(
             index="misp-attribute-correlations",
-            body={
-                "mappings": mapping["misp-attribute-correlations"]["mappings"],
-            },
+            body={"mappings": mapping} if mapping else None,
         )
     except Exception as e:
         raise HTTPException(

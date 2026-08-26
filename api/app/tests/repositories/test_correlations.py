@@ -42,11 +42,37 @@ class TestBuildQuery:
     def test_term_match(self):
         query = build_query("uuid-1", "event-1", "1.2.3.4", "term", self._settings())
 
-        assert query["query"]["bool"]["must"] == [
-            {"term": {"value.keyword": "1.2.3.4"}}
-        ]
+        should = query["query"]["bool"]["must"][0]["bool"]["should"]
+        assert {"term": {"value.keyword": "1.2.3.4"}} in should
+        assert {"terms": {"expanded.value_parts": ["1.2.3.4"]}} in should
         assert {"term": {"uuid.keyword": "uuid-1"}} in query["query"]["bool"]["must_not"]
         assert {"term": {"event_uuid": "event-1"}} in query["query"]["bool"]["must_not"]
+
+    def test_term_match_drops_the_port_component(self):
+        query = build_query(
+            "uuid-1",
+            "event-1",
+            "1.2.3.4|443",
+            "term",
+            self._settings(),
+            "ip-src|port",
+        )
+
+        should = query["query"]["bool"]["must"][0]["bool"]["should"]
+        # the address correlates, the port does not
+        assert {"terms": {"expanded.value_parts": ["1.2.3.4"]}} in should
+
+    def test_term_match_covers_composite_components(self):
+        query = build_query(
+            "uuid-1", "event-1", "evil.com|1.2.3.4", "term", self._settings()
+        )
+
+        should = query["query"]["bool"]["must"][0]["bool"]["should"]
+        # the whole value, and either component on its own
+        assert {"term": {"value.keyword": "evil.com|1.2.3.4"}} in should
+        assert {
+            "terms": {"expanded.value_parts": ["evil.com", "1.2.3.4"]}
+        } in should
 
     def test_prefix_match(self):
         query = build_query("uuid-1", "event-1", "evil.example.com", "prefix", self._settings(prefix_length=5))
@@ -74,6 +100,47 @@ class TestBuildQuery:
     def test_none_event_uuid_raises(self):
         with pytest.raises(ValueError, match="event_uuid cannot be None"):
             build_query("uuid-1", None, "val", "term", self._settings())
+
+
+class TestMinScore:
+    def _settings(self, min_score=2):
+        settings = MagicMock()
+        settings.get_value.side_effect = lambda key, default: {
+            "correlations.minScore": min_score,
+        }.get(key, default)
+        return settings
+
+    def test_applied_to_approximate_matches(self):
+        assert correlations_repository.min_score_for("fuzzy", self._settings()) == 2
+        assert correlations_repository.min_score_for("prefix", self._settings()) == 2
+
+    def test_not_applied_to_exact_matches(self):
+        # a term or cidr hit is exact; its score says nothing about quality, so
+        # a floor there would only drop correct correlations
+        assert correlations_repository.min_score_for("term", self._settings()) is None
+        assert correlations_repository.min_score_for("cidr", self._settings()) is None
+
+    def test_zero_means_no_floor(self):
+        assert correlations_repository.min_score_for("fuzzy", self._settings(0)) is None
+
+    def test_reaches_the_search_body(self):
+        mock_os = MagicMock()
+        mock_os.msearch.return_value = {"responses": [{"hits": {"hits": []}}]}
+
+        with patch(PATCH, return_value=mock_os):
+            correlations_repository.run_correlation_msearch([({"query": {}}, 3)], 10)
+
+        body = mock_os.msearch.call_args.kwargs["body"]
+        assert body[1]["min_score"] == 3
+
+    def test_absent_when_there_is_no_floor(self):
+        mock_os = MagicMock()
+        mock_os.msearch.return_value = {"responses": [{"hits": {"hits": []}}]}
+
+        with patch(PATCH, return_value=mock_os):
+            correlations_repository.run_correlation_msearch([({"query": {}}, None)], 10)
+
+        assert "min_score" not in mock_os.msearch.call_args.kwargs["body"][1]
 
 
 # ── build_cidr_query ──────────────────────────────────────────────────────────
