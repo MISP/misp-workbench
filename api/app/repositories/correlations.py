@@ -546,10 +546,20 @@ def correlate_attributes(
 
 
 def refresh_correlations_index():
+    """Make the correlations just written visible to searches.
+
+    Only called after a write reported documents as created, so a missing index
+    means something removed it underneath the run - a concurrent
+    ``delete_correlations``, most likely. The correlations are lost, but the run
+    itself has nothing left to do about it, so it is logged and not raised.
+    """
     try:
         get_opensearch_client().indices.refresh(index="misp-attribute-correlations")
     except NotFoundError:
-        pass
+        logger.error(
+            "refresh_correlations_index: index misp-attribute-correlations is missing, "
+            "the correlations just written were dropped with it"
+        )
 
 
 def skip_uncorrelated_events(docs):
