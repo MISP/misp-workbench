@@ -41,6 +41,9 @@ const eventsStore = useEventsStore();
 // library, so it is repainted directly rather than through rendering.
 const eventDetails = new Map();
 const loadingDetails = new Set();
+// Node id -> the element handed to the library, the event it is waiting on and
+// how to paint it. Keyed by node because an attribute tooltip and its event's
+// tooltip can both be waiting on the same lookup.
 const tooltipBodies = new Map();
 
 const documents = ref([]);
@@ -320,19 +323,20 @@ const attributeNetwork = computed(() => {
   const attributes = new Map();
   const links = new Map();
 
-  const upsert = (uuid, type, value) => {
+  const upsert = (uuid, type, value, eventUuid) => {
     if (!uuid) {
       return null;
     }
 
     let attribute = attributes.get(uuid);
     if (!attribute) {
-      attribute = { uuid, type, value, peers: new Set() };
+      attribute = { uuid, type, value, eventUuid, peers: new Set() };
       attributes.set(uuid, attribute);
     }
 
     attribute.type = attribute.type ?? type;
     attribute.value = attribute.value ?? value;
+    attribute.eventUuid = attribute.eventUuid ?? eventUuid;
 
     return attribute;
   };
@@ -344,11 +348,13 @@ const attributeNetwork = computed(() => {
       source.source_attribute_uuid,
       source.source_attribute_type,
       undefined,
+      source.source_event_uuid,
     );
     upsert(
       source.target_attribute_uuid,
       source.target_attribute_type,
       source.target_attribute_value,
+      source.target_event_uuid,
     );
   }
 
@@ -383,6 +389,7 @@ const attributeNetwork = computed(() => {
         label: attribute.value ?? shortUuid(attribute.uuid),
         value: attribute.value,
         type: attribute.type,
+        eventUuid: attribute.eventUuid,
         weight: attribute.peers.size,
         route: `/attributes/${attribute.uuid}`,
       },
@@ -604,13 +611,57 @@ async function loadEventDetails(uuid) {
   } finally {
     loadingDetails.delete(uuid);
 
-    // The library still holds the element it was given, so filling it in now
-    // updates a tooltip that is already open.
-    const element = tooltipBodies.get(uuid);
-    if (element) {
-      paintEventDetails(element, uuid);
+    // The library still holds the elements it was given, so filling them in
+    // now updates a tooltip that is already open.
+    for (const entry of tooltipBodies.values()) {
+      if (entry.eventUuid === uuid) {
+        entry.paint(entry.element, uuid);
+      }
     }
   }
+}
+
+/** The event an attribute belongs to, named once the lookup lands. */
+function paintAttributeEvent(element, uuid) {
+  const details = eventDetails.get(uuid);
+
+  element.replaceChildren();
+
+  const label = document.createElement("span");
+  label.textContent = "Event ";
+  label.style.color = "var(--bs-secondary-color)";
+  element.append(label);
+
+  const name = document.createElement("span");
+  name.textContent =
+    details && !details.error && details.info ? details.info : shortUuid(uuid);
+  name.style.fontWeight = "600";
+  element.append(name);
+}
+
+function registerBody(node, element, eventUuid, paint) {
+  tooltipBodies.set(String(node.id), { element, eventUuid, paint });
+  paint(element, eventUuid);
+  loadEventDetails(eventUuid);
+}
+
+/**
+ * Attribute nodes get a body of their own so the library does not fall back to
+ * its default property list, which lays out the node's internals - kind, route,
+ * weight - as though they were the attribute's fields.
+ */
+function attributeTooltipBody(node) {
+  const element = document.createElement("div");
+  element.style.marginTop = "0.35rem";
+  element.style.fontSize = "0.75rem";
+
+  const eventUuid = node.getData()?.eventUuid;
+
+  if (eventUuid) {
+    registerBody(node, element, eventUuid, paintAttributeEvent);
+  }
+
+  return element;
 }
 
 function eventTooltipBody(node) {
@@ -623,9 +674,7 @@ function eventTooltipBody(node) {
     return element;
   }
 
-  tooltipBodies.set(uuid, element);
-  paintEventDetails(element, uuid);
-  loadEventDetails(uuid);
+  registerBody(node, element, uuid, paintEventDetails);
 
   return element;
 }
@@ -648,6 +697,7 @@ const tooltip = computed(() =>
 
           return `${node.getData()?.type ?? "attribute"} · correlates with ${weight}`;
         },
+        body: attributeTooltipBody,
       },
 );
 </script>
@@ -727,7 +777,7 @@ const tooltip = computed(() =>
         :is-directed="false"
         :tooltip="tooltip"
         :simulation="simulation"
-        :expandable="mode === 'events'"
+        :click-action="mode === 'events' ? 'expand' : 'inspect'"
         height="min(70vh, 34rem)"
         @navigate="emit('navigate', $event)"
         @expand="expand"
@@ -748,8 +798,9 @@ const tooltip = computed(() =>
           zoom.
         </template>
         <template v-else>
-          <strong>Click</strong> an attribute to open it. Drag to rearrange,
-          scroll to zoom.
+          <strong>Click</strong> an attribute to see its details.
+          <strong>Double-click</strong> to open it. Drag to rearrange, scroll to
+          zoom.
         </template>
       </p>
 

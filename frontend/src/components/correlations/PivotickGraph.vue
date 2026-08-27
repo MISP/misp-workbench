@@ -49,18 +49,23 @@ const props = defineProps({
     default: () => ({}),
   },
   /**
-   * Where a node can be expanded, a click expands it and a double click opens
-   * it. The library fires click and dblclick independently, so the expansion is
-   * held back briefly and dropped if a double click follows - otherwise
-   * double clicking would also expand on its way out. The wait is invisible
-   * here because expanding goes on to fetch anyway.
+   * What a single click does:
    *
-   * Graphs with nothing to expand keep click to open, since there is no second
-   * action to disambiguate from.
+   * - `open`    navigate to the node, the only action available
+   * - `expand`  ask for the node to be expanded, double click to open
+   * - `inspect` show the node's tooltip, double click to open
+   *
+   * Anything other than `open` gives the double click its own meaning, and the
+   * library fires click and dblclick independently. `expand` is therefore held
+   * briefly and dropped when a second click follows, since it costs a request
+   * and changes the picture; the wait is invisible because expanding goes on to
+   * fetch anyway. `inspect` fires straight away - a tooltip that flashes up
+   * before a double click navigates away costs nothing.
    */
-  expandable: {
-    type: Boolean,
-    default: false,
+  clickAction: {
+    type: String,
+    default: "open",
+    validator: (value) => ["open", "expand", "inspect"].includes(value),
   },
 });
 
@@ -74,12 +79,20 @@ const theme = ref(readTheme());
 
 let graph = null;
 let themeObserver = null;
-let expandTimer = null;
+let clickTimer = null;
 // What the live instance currently holds, so growth can be applied in place.
 let rendered = { nodes: new Set(), edges: new Set() };
 
 function edgeId(edge) {
   return String(edge.id ?? `${edge.from}|${edge.to}`);
+}
+
+function navigate(node) {
+  const route = node.getData()?.route;
+
+  if (route) {
+    emit("navigate", route);
+  }
 }
 
 function readTheme() {
@@ -133,14 +146,14 @@ function buildOptions() {
         : {}),
     },
     callbacks: {
-      onNodeClick: (_pointerEvent, node) => {
-        if (!props.expandable) {
-          const route = node.getData()?.route;
+      onNodeClick: (pointerEvent, node) => {
+        if (props.clickAction === "open") {
+          navigate(node);
+          return;
+        }
 
-          if (route) {
-            emit("navigate", route);
-          }
-
+        if (props.clickAction === "inspect") {
+          graph?.UIManager?.tooltip?.openForNodeOnElement(pointerEvent, node);
           return;
         }
 
@@ -148,20 +161,15 @@ function buildOptions() {
         // the node they came from instead of flying in from the origin.
         const payload = { ...node.getData(), x: node.x, y: node.y };
 
-        clearTimeout(expandTimer);
-        expandTimer = setTimeout(
+        clearTimeout(clickTimer);
+        clickTimer = setTimeout(
           () => emit("expand", payload),
           DOUBLE_CLICK_GRACE,
         );
       },
       onNodeDbclick: (_pointerEvent, node) => {
-        clearTimeout(expandTimer);
-
-        const route = node.getData()?.route;
-
-        if (route) {
-          emit("navigate", route);
-        }
+        clearTimeout(clickTimer);
+        navigate(node);
       },
     },
   };
@@ -254,7 +262,7 @@ onMounted(() => {
 onBeforeUnmount(() => {
   themeObserver?.disconnect();
   themeObserver = null;
-  clearTimeout(expandTimer);
+  clearTimeout(clickTimer);
   destroy();
 });
 
