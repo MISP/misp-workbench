@@ -9,12 +9,12 @@
 import { computed, onMounted, ref } from "vue";
 import { ColorPaletteMapper } from "pivotick";
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
-import { faSitemap } from "@fortawesome/free-solid-svg-icons";
+import { faCircleInfo, faSitemap } from "@fortawesome/free-solid-svg-icons";
 import ApiError from "@/components/misc/ApiError.vue";
 import GraphLegend from "@/components/correlations/GraphLegend.vue";
 import PivotickGraph from "@/components/correlations/PivotickGraph.vue";
-import { correlationHelper } from "@/helpers";
-import { useCorrelationsStore } from "@/stores";
+import { correlationHelper, tagHelper } from "@/helpers";
+import { useCorrelationsStore, useEventsStore } from "@/stores";
 
 const emit = defineEmits(["navigate"]);
 
@@ -26,17 +26,37 @@ const SAMPLE_PAGE_SIZE = 100;
 // drawn and the rest is reported rather than dropped silently.
 const MAX_NODES = 150;
 const MAX_LEGEND_TYPES = 8;
+const MAX_TOOLTIP_TAGS = 6;
+// How far a newly expanded neighbour starts from the node it came from.
+const SEED_RADIUS = 60;
 const LABEL_LENGTH = 18;
 const EVENT_COLOR = "#6c757d";
 const NEUTRAL_COLOR = "#adb5bd";
 
 const correlationsStore = useCorrelationsStore();
+const eventsStore = useEventsStore();
+
+// What an event is called and how it is tagged, read the first time a node is
+// hovered. Plain Maps, not refs: the tooltip is handed a DOM element by the
+// library, so it is repainted directly rather than through rendering.
+const eventDetails = new Map();
+const loadingDetails = new Set();
+const tooltipBodies = new Map();
 
 const documents = ref([]);
 const total = ref(0);
 const loading = ref(true);
 const error = ref(null);
 const mode = ref("events");
+
+// Events walked outward from, the neighbours that walk brought in, and the
+// connections between them. Kept apart from the sampled base network so an
+// expansion is never culled by the cap that trims the sample.
+const expanded = ref(new Set());
+const expanding = ref(new Set());
+const discoveredEvents = ref(new Map());
+const discoveredLinks = ref(new Map());
+const budgetReached = ref(false);
 
 onMounted(async () => {
   try {
@@ -146,8 +166,149 @@ const eventNetwork = computed(() => {
     data: { weight: link.weight.size },
   }));
 
-  return capNetwork(nodes, edges);
+  return mergeExpansion(capNetwork(nodes, edges));
 });
+
+/**
+ * Fold what expanding nodes brought in on top of the sampled network. The
+ * sample is capped, the expansion is not: a node the reader asked for has to
+ * stay on screen, so the budget is enforced when expanding instead.
+ */
+function mergeExpansion(base) {
+  if (!discoveredEvents.value.size && !discoveredLinks.value.size) {
+    return base;
+  }
+
+  const nodes = [...base.nodes];
+  const seen = new Set(nodes.map((node) => node.id));
+
+  for (const [uuid, discovered] of discoveredEvents.value) {
+    if (seen.has(uuid)) {
+      continue;
+    }
+
+    seen.add(uuid);
+    nodes.push({
+      id: uuid,
+      // Seeded next to the event it was found from, so an expansion grows out
+      // of the node that was clicked rather than arriving from off screen.
+      x: discovered.x,
+      y: discovered.y,
+      data: {
+        kind: "event",
+        label: shortUuid(uuid),
+        uuid,
+        weight: discovered.weight,
+        route: `/events/${uuid}`,
+      },
+    });
+  }
+
+  const edges = [...base.links];
+  const edgeKeys = new Set(
+    edges.map((edge) => [edge.from, edge.to].sort().join("|")),
+  );
+
+  for (const [key, link] of discoveredLinks.value) {
+    if (edgeKeys.has(key) || !seen.has(link.from) || !seen.has(link.to)) {
+      continue;
+    }
+
+    edgeKeys.add(key);
+    edges.push({ from: link.from, to: link.to, data: { weight: link.weight } });
+  }
+
+  return { nodes, links: edges, omitted: base.omitted };
+}
+
+/**
+ * Walk one step out from an event: the events it shares indicators with, added
+ * to the picture rather than replacing it.
+ *
+ * The endpoint returns the strongest neighbours only, which doubles as the
+ * per-node fan-out cap. Two more guards matter here: an event is only walked
+ * once, and the whole graph stops growing at MAX_NODES - a single popular value
+ * can correlate with a thousand others, and without a budget one expansion
+ * would bury everything already on screen.
+ */
+/** A spot just off the expanded node, so its neighbours appear beside it. */
+function seedPosition(node) {
+  if (typeof node?.x !== "number" || typeof node?.y !== "number") {
+    return {};
+  }
+
+  const angle = Math.random() * Math.PI * 2;
+
+  return {
+    x: node.x + Math.cos(angle) * SEED_RADIUS,
+    y: node.y + Math.sin(angle) * SEED_RADIUS,
+  };
+}
+
+async function expand(node) {
+  const uuid = node?.uuid;
+
+  if (
+    mode.value !== "events" ||
+    !uuid ||
+    expanded.value.has(uuid) ||
+    expanding.value.has(uuid)
+  ) {
+    return;
+  }
+
+  if (network.value.nodes.length >= MAX_NODES) {
+    budgetReached.value = true;
+    return;
+  }
+
+  expanding.value = new Set(expanding.value).add(uuid);
+
+  try {
+    const neighbours = await correlationsStore.eventNeighbours(uuid);
+    const events = new Map(discoveredEvents.value);
+    const links = new Map(discoveredLinks.value);
+    let room = MAX_NODES - network.value.nodes.length;
+
+    for (const bucket of neighbours || []) {
+      const known =
+        events.has(bucket.key) ||
+        network.value.nodes.some((existing) => existing.id === bucket.key);
+
+      if (!known) {
+        if (room <= 0) {
+          budgetReached.value = true;
+          break;
+        }
+
+        room -= 1;
+        // The bucket count is what this pair shares. A newly discovered event
+        // has no total of its own yet, so its own edge stands in for its size.
+        events.set(bucket.key, {
+          uuid: bucket.key,
+          weight: bucket.doc_count,
+          ...seedPosition(node),
+        });
+      }
+
+      links.set([uuid, bucket.key].sort().join("|"), {
+        from: uuid,
+        to: bucket.key,
+        weight: bucket.doc_count,
+      });
+    }
+
+    discoveredEvents.value = events;
+    discoveredLinks.value = links;
+    expanded.value = new Set(expanded.value).add(uuid);
+  } catch (caught) {
+    error.value = caught;
+  } finally {
+    const pending = new Set(expanding.value);
+    pending.delete(uuid);
+    expanding.value = pending;
+  }
+}
 
 /**
  * The attribute view. A correlation document names the target's type and value
@@ -353,6 +514,122 @@ const legendItems = computed(() => {
   return items;
 });
 
+function mutedLine(text) {
+  const line = document.createElement("div");
+  line.textContent = text;
+  line.style.color = "var(--bs-secondary-color)";
+
+  return line;
+}
+
+function tagChip(tag) {
+  const chip = document.createElement("span");
+  chip.textContent = tagHelper.getTag("", tag.name);
+  chip.style.backgroundColor = tagHelper.getBackgroundColor(tag.colour);
+  chip.style.color = tagHelper.getContrastColor(tag.colour);
+  chip.style.borderRadius = "0.25rem";
+  chip.style.padding = "0.05rem 0.35rem";
+  chip.style.fontSize = "0.6875rem";
+  chip.style.whiteSpace = "nowrap";
+
+  return chip;
+}
+
+/**
+ * Styled inline rather than through the stylesheet: these elements are built
+ * imperatively for the library, so they carry no scope attribute and scoped
+ * rules would not reach them.
+ */
+function paintEventDetails(element, uuid) {
+  const details = eventDetails.get(uuid);
+
+  element.replaceChildren();
+
+  if (!details) {
+    element.append(mutedLine("Loading event…"));
+    return;
+  }
+
+  if (details.error) {
+    element.append(mutedLine("Could not load this event"));
+    return;
+  }
+
+  if (details.info) {
+    const name = document.createElement("div");
+    name.textContent = details.info;
+    name.style.fontWeight = "600";
+    name.className = "text-info text-break";
+    name.style.marginBottom = details.tags.length ? "0.25rem" : "0";
+    element.append(name);
+  }
+
+  if (details.tags.length) {
+    const row = document.createElement("div");
+    row.style.display = "flex";
+    row.style.flexWrap = "wrap";
+    row.style.gap = "0.2rem";
+
+    for (const tag of details.tags.slice(0, MAX_TOOLTIP_TAGS)) {
+      row.append(tagChip(tag));
+    }
+
+    if (details.tags.length > MAX_TOOLTIP_TAGS) {
+      row.append(mutedLine(`+${details.tags.length - MAX_TOOLTIP_TAGS}`));
+    }
+
+    element.append(row);
+  }
+
+  if (!details.info && !details.tags.length) {
+    element.append(mutedLine("No name or tags"));
+  }
+}
+
+async function loadEventDetails(uuid) {
+  if (eventDetails.has(uuid) || loadingDetails.has(uuid)) {
+    return;
+  }
+
+  loadingDetails.add(uuid);
+
+  try {
+    const event = await eventsStore.summary(uuid);
+    eventDetails.set(uuid, {
+      info: event?.info ?? "",
+      tags: event?.tags ?? [],
+    });
+  } catch {
+    eventDetails.set(uuid, { error: true });
+  } finally {
+    loadingDetails.delete(uuid);
+
+    // The library still holds the element it was given, so filling it in now
+    // updates a tooltip that is already open.
+    const element = tooltipBodies.get(uuid);
+    if (element) {
+      paintEventDetails(element, uuid);
+    }
+  }
+}
+
+function eventTooltipBody(node) {
+  const uuid = node.getData()?.uuid;
+  const element = document.createElement("div");
+  element.style.marginTop = "0.35rem";
+  element.style.fontSize = "0.75rem";
+
+  if (!uuid) {
+    return element;
+  }
+
+  tooltipBodies.set(uuid, element);
+  paintEventDetails(element, uuid);
+  loadEventDetails(uuid);
+
+  return element;
+}
+
 const tooltip = computed(() =>
   mode.value === "events"
     ? {
@@ -362,6 +639,7 @@ const tooltip = computed(() =>
 
           return `${weight} shared ${weight === 1 ? "indicator" : "indicators"}`;
         },
+        body: eventTooltipBody,
       }
     : {
         title: (node) => node.getData()?.label,
@@ -449,8 +727,10 @@ const tooltip = computed(() =>
         :is-directed="false"
         :tooltip="tooltip"
         :simulation="simulation"
+        :expandable="mode === 'events'"
         height="min(70vh, 34rem)"
         @navigate="emit('navigate', $event)"
+        @expand="expand"
       />
 
       <GraphLegend
@@ -460,7 +740,20 @@ const tooltip = computed(() =>
         :omitted-types="omittedTypes"
       />
 
-      <p class="graph-caption mb-0 mt-2">
+      <p class="graph-hint mb-0 mt-2">
+        <FontAwesomeIcon :icon="faCircleInfo" class="me-1" />
+        <template v-if="mode === 'events'">
+          <strong>Click</strong> an event to pull in the events it connects to.
+          <strong>Double-click</strong> to open it. Drag to rearrange, scroll to
+          zoom.
+        </template>
+        <template v-else>
+          <strong>Click</strong> an attribute to open it. Drag to rearrange,
+          scroll to zoom.
+        </template>
+      </p>
+
+      <p class="graph-caption mb-0 mt-1">
         {{ network.nodes.length }}
         <template v-if="mode === 'events'">
           connected
@@ -472,7 +765,16 @@ const tooltip = computed(() =>
         </template>
         &middot; {{ network.links.length }}
         {{ network.links.length === 1 ? "connection" : "connections" }}
-        &middot; click a node to open it
+        <template v-if="expanded.size">
+          &middot; {{ expanded.size }}
+          {{ expanded.size === 1 ? "event" : "events" }} expanded
+        </template>
+        <template v-if="expanding.size"> &middot; expanding… </template>
+        <template v-if="budgetReached">
+          <br />
+          Stopped growing at {{ MAX_NODES }} nodes. Open an event to keep
+          following it from there.
+        </template>
         <template v-if="network.omitted">
           &middot; {{ network.omitted }} quieter
           {{ network.omitted === 1 ? "node" : "nodes" }} not drawn
@@ -491,6 +793,17 @@ const tooltip = computed(() =>
 .graph-caption {
   font-size: 0.75rem;
   color: var(--bs-secondary-color);
+}
+
+/* What the graph responds to, kept apart from what it currently contains. */
+.graph-hint {
+  font-size: 0.75rem;
+  color: var(--bs-secondary-color);
+}
+
+.graph-hint strong {
+  font-weight: 600;
+  color: var(--bs-body-color);
 }
 
 .empty__icon {

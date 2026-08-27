@@ -151,7 +151,7 @@ function confirmRebuild() {
           :aria-pressed="view === 'graph'"
           @click="view = 'graph'"
         >
-          <FontAwesomeIcon :icon="faDiagramProject" class="me-1" />Network
+          <FontAwesomeIcon :icon="faDiagramProject" class="me-1" />Graph
         </button>
       </div>
 

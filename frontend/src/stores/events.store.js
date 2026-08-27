@@ -53,6 +53,16 @@ export const useEventsStore = defineStore({
         .catch((error) => (this.status = { error }))
         .finally(() => (this.status = { loading: false }));
     },
+    /**
+     * An event's name and tags, for a tooltip or a label.
+     *
+     * Returns rather than storing, and stays out of `status`: a hover must not
+     * disturb a view that is already showing an event, nor flip a loading flag
+     * the surrounding page swaps its content on.
+     */
+    async summary(event_uuid) {
+      return await fetchWrapper.get(`${baseUrl}/${event_uuid}`);
+    },
     async update(event) {
       this.status = { updating: true };
       fetchWrapper

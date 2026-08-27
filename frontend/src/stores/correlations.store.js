@@ -99,6 +99,18 @@ export const useCorrelationsStore = defineStore("correlations", {
         total: responses[0]?.total ?? 0,
       };
     },
+    /**
+     * The events a given event correlates with, strongest first, as
+     * `[{ key, doc_count }]` - the aggregation the /events/{uuid}/top endpoint
+     * already does server side, which is also a natural fan-out cap.
+     *
+     * Left out of `status` for the same reason as `sample`: a component
+     * fetching into a view that swaps on status.loading unmounts itself
+     * mid-request.
+     */
+    async eventNeighbours(event_uuid) {
+      return await fetchWrapper.get(`${baseUrl}/events/${event_uuid}/top`);
+    },
     async histogram(params = { query: "", interval: "1d" }) {
       const queryParams = { ...params, query: params.query || "*" };
       return await fetchWrapper
