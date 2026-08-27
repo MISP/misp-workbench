@@ -60,49 +60,61 @@ fi
 
 echo "OpenSearch is up! Proceeding with setup."
 
-echo "Creating OpenSearch ingest pipelines..."
+# Pipelines are upserted rather than created-if-absent: a PUT replaces the
+# definition, so editing a pipeline file actually reaches an existing cluster.
+# Skipping what already exists meant a changed pipeline was silently ignored.
+echo "Applying OpenSearch ingest pipelines..."
 for file in "${PIPELINES_DIR}"/*.json; do
   PIPELINE_NAME=$(basename "$file" .json)
 
-  STATUS=$(curl -s -o /dev/null -w "%{http_code}" "${OPENSEARCH_URL}/_ingest/pipeline/${PIPELINE_NAME}" || true)
-  if [ "$STATUS" -eq 200 ]; then
-    echo "Pipeline '$PIPELINE_NAME' already exists. Skipping..."
-  else
-    echo "Creating pipeline '$PIPELINE_NAME' using mapping file '$file'..."
-    curl -s -X PUT "${OPENSEARCH_URL}/_ingest/pipeline/${PIPELINE_NAME}" \
-         -H "Content-Type: application/json" \
-         --user admin:${OPENSEARCH_INITIAL_ADMIN_PASSWORD} \
-         -k \
-         -d @"$file"
-    echo "Pipeline '$PIPELINE_NAME' created."
-  fi
+  echo "Applying pipeline '$PIPELINE_NAME' from '$file'..."
+  curl -s -X PUT "${OPENSEARCH_URL}/_ingest/pipeline/${PIPELINE_NAME}" \
+       -H "Content-Type: application/json" \
+       --user admin:${OPENSEARCH_INITIAL_ADMIN_PASSWORD} \
+       -k \
+       -d @"$file"
+  echo " <- pipeline '$PIPELINE_NAME' applied."
 done
 
-echo "Creating OpenSearch index templates..."
+# Upserted for the same reason as the pipelines. A template only affects
+# indices created after it, so this changes nothing for existing ones.
+echo "Applying OpenSearch index templates..."
 for file in "${INDEX_TEMPLATES_DIR}"/*.json; do
   INDEX_TEMPLATE_NAME=$(basename "$file" .json)
 
-  STATUS=$(curl -s -o /dev/null -w "%{http_code}" "${OPENSEARCH_URL}/_index_template/${INDEX_TEMPLATE_NAME}" || true)
-  if [ "$STATUS" -eq 200 ]; then
-    echo "Index template '$INDEX_TEMPLATE_NAME' already exists. Skipping..."
-  else
-    echo "Creating index template '$INDEX_TEMPLATE_NAME' using mapping file '$file'..."
-    curl -s -X PUT "${OPENSEARCH_URL}/_index_template/${INDEX_TEMPLATE_NAME}" \
-         -H "Content-Type: application/json" \
-         --user admin:${OPENSEARCH_INITIAL_ADMIN_PASSWORD} \
-         -k \
-         -d @"$file"
-    echo "Index template '$INDEX_TEMPLATE_NAME' created."
-  fi
+  echo "Applying index template '$INDEX_TEMPLATE_NAME' from '$file'..."
+  curl -s -X PUT "${OPENSEARCH_URL}/_index_template/${INDEX_TEMPLATE_NAME}" \
+       -H "Content-Type: application/json" \
+       --user admin:${OPENSEARCH_INITIAL_ADMIN_PASSWORD} \
+       -k \
+       -d @"$file"
+  echo " <- index template '$INDEX_TEMPLATE_NAME' applied."
 done
 
+# An index is created from its mapping file when missing. When it already
+# exists the mapping is applied on top instead, which adds fields that were
+# introduced since. OpenSearch rejects a change to an existing field's type,
+# so that is reported rather than ignored - it needs a reindex, which this
+# script deliberately does not do on its own.
 echo "Initializing OpenSearch indices..."
 for file in "${MAPPINGS_DIR}"/*.json; do
   INDEX_NAME=$(basename "$file" .json)
 
   STATUS=$(curl -s -o /dev/null  --user admin:${OPENSEARCH_INITIAL_ADMIN_PASSWORD} -k -w "%{http_code}" "${OPENSEARCH_URL}/${INDEX_NAME}" || true)
   if [ "$STATUS" -eq 200 ]; then
-    echo "Index '$INDEX_NAME' already exists. Skipping..."
+    echo "Index '$INDEX_NAME' exists, applying its mapping..."
+    RESPONSE=$(curl -s -X PUT "${OPENSEARCH_URL}/${INDEX_NAME}/_mapping" \
+         -H "Content-Type: application/json" \
+         --user admin:${OPENSEARCH_INITIAL_ADMIN_PASSWORD} \
+         -k \
+         -d "$(sed -n '/"mappings"/,$p' "$file" | sed '1s/.*"mappings"[[:space:]]*:[[:space:]]*//' | sed '$ s/}[[:space:]]*$//')")
+    case "$RESPONSE" in
+      *'"acknowledged":true'*)
+        echo " <- mapping for '$INDEX_NAME' applied." ;;
+      *)
+        echo " !! mapping for '$INDEX_NAME' was NOT applied: $RESPONSE"
+        echo "    a changed field type needs a reindex; new fields would have been added." ;;
+    esac
   else
     echo "Creating index '$INDEX_NAME' using mapping file '$file'..."
     curl -s -X PUT "${OPENSEARCH_URL}/${INDEX_NAME}" \
