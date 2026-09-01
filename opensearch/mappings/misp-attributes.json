@@ -100,8 +100,11 @@
                     "ip": {
                         "type": "ip"
                     },
-                    "ip_range": { 
-                        "type": "ip_range" 
+                    "ip_range": {
+                        "type": "ip_range"
+                    },
+                    "value_parts": {
+                        "type": "keyword"
                     }
                 }
             },

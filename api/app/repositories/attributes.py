@@ -1,3 +1,4 @@
+import logging
 import math
 import time
 from datetime import datetime
@@ -16,41 +17,137 @@ from fastapi import HTTPException, status
 from fastapi_pagination import Page, Params
 from pymisp import MISPAttribute, MISPTag
 from sqlalchemy.orm import Session
-from collections import defaultdict
 from opensearchpy.exceptions import NotFoundError
+from contextlib import contextmanager
+from contextvars import ContextVar
+
+logger = logging.getLogger(__name__)
+
+# Fields that make an attribute correlate differently, so a change to any of
+# them has to invalidate and rebuild its correlations.
+CORRELATION_RELEVANT_FIELDS = ("value", "type", "disable_correlation", "deleted")
+
+_bulk_ingest: ContextVar = ContextVar("attributes_bulk_ingest", default=None)
+
+
+@contextmanager
+def bulk_ingest():
+    """Mark a bulk ingest, so per attribute follow-ups are handled in bulk.
+
+    Bulk ingestion - a feed fetch, a server pull, an event import - creates
+    attributes in the thousands. Correlating each one as it lands means a task,
+    a search and a notification round trip per attribute, and counting them one
+    task at a time leaves the event's totals reading zero until the queue
+    drains. Inside this context:
+
+    - the uuids to correlate are collected, so the caller can hand whole batches
+      to ``tasks.correlate_attributes`` once the ingest is done
+    - the attribute and object counts are left alone, because the ingest calls
+      ``events_repository.sync_event_counts`` at the end instead
+    - the created attributes are handled in batches too, instead of one
+      notification and reactor task per attribute
+    - documents are indexed without forcing a refresh each time; the index is
+      refreshed once on the way out
+
+    Yields a ``{"created": [...], "updated": [...], "handled": [...]}`` batch;
+    attributes that already existed need their stale correlations dropped first,
+    freshly created ones do not. On exit the batch is enqueued, including when
+    the ingest failed part way through, so whatever did land still gets
+    correlated.
+    """
+    batch = {"created": [], "updated": [], "handled": []}
+    token = _bulk_ingest.set(batch)
+
+    try:
+        yield batch
+    finally:
+        _bulk_ingest.reset(token)
+
+        # Everything written during the ingest was indexed without a refresh,
+        # so make it searchable before anything counts or correlates it.
+        refresh_attributes_index()
+
+        tasks.enqueue_deferred_correlations(batch)
+
+
+def refresh_attributes_index():
+    try:
+        get_opensearch_client().indices.refresh(index="misp-attributes")
+    except NotFoundError:
+        logger.warning("refresh_attributes_index: misp-attributes is missing")
+
+
+def in_bulk_ingest() -> bool:
+    """Whether the caller is inside a :func:`bulk_ingest` context."""
+    return _bulk_ingest.get() is not None
+
+
+# Correlations attached to one attribute of a page. An attribute can hold far
+# more than this - the total is reported separately so nothing is silently lost.
+CORRELATIONS_PER_ATTRIBUTE = 100
 
 
 def enrich_attributes_page_with_correlations(
     attributes_page: Page[attribute_schemas.Attribute],
 ) -> Page[attribute_schemas.Attribute]:
+    """Attach each attribute's correlations to a page of attributes.
+
+    Bucketed per attribute rather than fetched as one flat result set: a flat
+    search has to be bounded by OpenSearch's 10000 hit window, which a page of
+    heavily correlated attributes exceeds, and it truncates without saying so.
+    Each bucket also reports its true total, which the page can show even when
+    only the first few correlations are attached.
+    """
     OpenSearchClient = get_opensearch_client()
 
-    uuids = [attr.uuid for attr in attributes_page.items]
+    uuids = [str(attr.uuid) for attr in attributes_page.items]
     if not uuids:
         return attributes_page
 
     query = {
+        "size": 0,
         "query": {"terms": {"source_attribute_uuid.keyword": uuids}},
-        "size": 10000,  # results should be less than MAX_CORRELATIONS_PER_DOC * page_size
+        "aggs": {
+            "by_attribute": {
+                "terms": {
+                    "field": "source_attribute_uuid.keyword",
+                    "size": len(uuids),
+                },
+                "aggs": {
+                    "correlations": {
+                        "top_hits": {
+                            "size": CORRELATIONS_PER_ATTRIBUTE,
+                            "sort": [{"score": {"order": "desc"}}],
+                        }
+                    }
+                },
+            }
+        },
     }
 
     try:
         response = OpenSearchClient.search(
             index="misp-attribute-correlations", body=query
         )
-        hits = response["hits"]["hits"]
+        buckets = response["aggregations"]["by_attribute"]["buckets"]
     except NotFoundError:
         for attr in attributes_page.items:
             attr.correlations = []
+            attr.correlation_count = 0
         return attributes_page
 
-    correlation_map = defaultdict(list)
-    for hit in hits:
-        source_attribute_uuid = hit["_source"]["source_attribute_uuid"]
-        correlation_map[source_attribute_uuid].append(hit)
+    correlation_map = {
+        bucket["key"]: {
+            "hits": bucket["correlations"]["hits"]["hits"],
+            "total": bucket["doc_count"],
+        }
+        for bucket in buckets
+    }
 
     for attr in attributes_page.items:
-        attr.correlations = correlation_map.get(str(attr.uuid), [])
+        bucket = correlation_map.get(str(attr.uuid))
+        attr.correlations = bucket["hits"] if bucket else []
+        attr.correlation_count = bucket["total"] if bucket else 0
 
     return attributes_page
 
@@ -158,9 +255,29 @@ def create_attribute(
         "@timestamp": datetime.fromtimestamp(attribute.timestamp or now).isoformat(),
     }
 
-    client.index(index="misp-attributes", id=attribute_uuid, body=attr_doc, refresh=True)
+    deferred = _bulk_ingest.get()
 
-    tasks.handle_created_attribute.delay(attribute_uuid, attr_doc["object_uuid"], event_uuid)
+    # Forcing a refresh per attribute is the single most expensive thing an
+    # ingest does to OpenSearch - a feed event can hold thousands. Updates and
+    # gets by id are realtime regardless, so only search visibility waits, and
+    # the bulk ingest context refreshes once when it finishes.
+    client.index(
+        index="misp-attributes",
+        id=attribute_uuid,
+        body=attr_doc,
+        refresh=deferred is None,
+    )
+
+    if deferred is not None:
+        deferred["created"].append(attribute_uuid)
+        # Notifications and reactor dispatch are batched with the rest.
+        deferred["handled"].append(
+            [attribute_uuid, attr_doc["object_uuid"], event_uuid]
+        )
+    else:
+        tasks.handle_created_attribute.delay(
+            attribute_uuid, attr_doc["object_uuid"], event_uuid, False
+        )
 
     return attribute_schemas.Attribute.model_validate(attr_doc)
 
@@ -295,7 +412,22 @@ def update_attribute(
 
     client.update(index="misp-attributes", id=str(os_attr.uuid), body={"doc": patch}, refresh=True)
 
-    tasks.handle_updated_attribute.delay(str(os_attr.uuid), os_attr.object_uuid, str(os_attr.event_uuid) if os_attr.event_uuid else None)
+    recorrelate = any(
+        field in patch and patch[field] != getattr(os_attr, field)
+        for field in CORRELATION_RELEVANT_FIELDS
+    )
+
+    deferred = _bulk_ingest.get()
+    if recorrelate and deferred is not None:
+        deferred["updated"].append(str(os_attr.uuid))
+        recorrelate = False
+
+    tasks.handle_updated_attribute.delay(
+        str(os_attr.uuid),
+        os_attr.object_uuid,
+        str(os_attr.event_uuid) if os_attr.event_uuid else None,
+        recorrelate,
+    )
 
     return get_attribute_from_opensearch(os_attr.uuid)
 

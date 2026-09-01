@@ -268,6 +268,7 @@ class TestAttributeHandlerWiring:
 
     def test_handle_updated_attribute_dispatches(self):
         with patch.object(worker_tasks.reactor_dispatch, "delay") as delay, \
+                patch.object(worker_tasks.correlate_attribute, "delay"), \
                 self._patch_attr_lookup(), self._patch_notifications():
             worker_tasks.handle_updated_attribute(ATTR_UUID, OBJ_UUID, EVENT_UUID)
         args, _ = delay.call_args
@@ -282,6 +283,10 @@ class TestAttributeHandlerWiring:
         with patch.object(worker_tasks.reactor_dispatch, "delay") as delay, \
                 patch.object(
                     worker_tasks.events_repository, "decrement_attribute_count"
+                ), \
+                patch.object(
+                    worker_tasks.correlations_repository,
+                    "delete_attribute_correlations",
                 ), \
                 self._patch_attr_lookup(), self._patch_notifications():
             worker_tasks.handle_deleted_attribute(ATTR_UUID, None, EVENT_UUID)

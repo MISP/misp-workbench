@@ -33,6 +33,9 @@ class AttributeBase(BaseModel):
 class Attribute(AttributeBase):
     tags: list[Tag] = []
     correlations: Optional[list[dict]] = None
+    # How many correlations the attribute has in total, which can exceed the
+    # number attached above. See enrich_attributes_page_with_correlations.
+    correlation_count: Optional[int] = None
     expanded: Optional[dict] = None
     model_config = ConfigDict(from_attributes=True)
 

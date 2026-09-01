@@ -5,6 +5,11 @@
             "pipeline": {
                 "name": "misp-attributes_ip_extraction"
             }
+        },
+        {
+            "pipeline": {
+                "name": "misp-attributes_value_parts"
+            }
         }
     ]
 }

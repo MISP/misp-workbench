@@ -11941,6 +11941,17 @@
             ],
             "title": "Correlations"
           },
+          "correlation_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Correlation Count"
+          },
           "expanded": {
             "anyOf": [
               {

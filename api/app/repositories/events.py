@@ -396,8 +396,10 @@ def create_event_from_pulled_event(pulled_event: MISPEvent) -> event_schemas.Eve
         "user_id": pulled_event.user_id,
         "published": pulled_event.published or False,
         "analysis": int(pulled_event.analysis) if pulled_event.analysis is not None else 0,
-        "attribute_count": int(pulled_event.attribute_count) if pulled_event.attribute_count else 0,
-        "object_count": len(pulled_event.objects),
+        # Set by sync_event_counts once the attributes and objects are in. The
+        # remote's own totals count things this instance may not have stored.
+        "attribute_count": 0,
+        "object_count": 0,
         "timestamp": ts,
         "distribution": int(pulled_event.distribution) if pulled_event.distribution is not None else 0,
         "sharing_group_id": int(pulled_event.sharing_group_id) if pulled_event.sharing_group_id and int(pulled_event.sharing_group_id) > 0 else None,
@@ -435,8 +437,8 @@ def update_event_from_pulled_event(
         "info": pulled_event.info,
         "published": pulled_event.published or False,
         "analysis": int(pulled_event.analysis) if pulled_event.analysis is not None else 0,
-        "attribute_count": int(pulled_event.attribute_count) if pulled_event.attribute_count else 0,
-        "object_count": len(pulled_event.objects),
+        # The counts are left to sync_event_counts, which runs after the
+        # attributes and objects of this pull have been applied.
         "timestamp": ts,
         "distribution": int(pulled_event.distribution) if pulled_event.distribution is not None else 0,
         "sharing_group_id": int(pulled_event.sharing_group_id) if pulled_event.sharing_group_id and int(pulled_event.sharing_group_id) > 0 else None,
@@ -472,8 +474,9 @@ def create_event_from_fetched_event(
         "user_id": user.id,
         "published": fetched_event.published or False,
         "analysis": int(fetched_event.analysis) if fetched_event.analysis is not None else 0,
+        # Set by sync_event_counts once the attributes and objects are in.
         "attribute_count": 0,
-        "object_count": len(fetched_event.objects),
+        "object_count": 0,
         "timestamp": ts,
         "distribution": feed.distribution.value if hasattr(feed.distribution, "value") else int(feed.distribution),
         "sharing_group_id": feed.sharing_group_id,
@@ -543,7 +546,6 @@ def update_event_from_fetched_event(
         "info": fetched_event.info,
         "published": fetched_event.published or False,
         "analysis": int(fetched_event.analysis) if fetched_event.analysis is not None else 0,
-        "object_count": len(fetched_event.objects),
         "org_id": Orgc.id,
         "orgc_id": Orgc.id,
         "timestamp": ts,
@@ -617,6 +619,68 @@ def delete_event(db: Session, event_uuid: UUID, force: bool = False) -> None:
 
     # Soft delete: mark deleted=True in OS but keep the document so it remains searchable
     client.update(index="misp-events", id=event_uuid, body={"doc": {"deleted": True}}, refresh=True)
+
+
+def count_event_attributes(event_uuid: str) -> int:
+    """Attributes currently indexed for an event, those inside objects included."""
+    return get_opensearch_client().count(
+        index="misp-attributes",
+        body={
+            "query": {
+                "bool": {
+                    "must": [{"term": {"event_uuid": str(event_uuid)}}],
+                    "must_not": [{"term": {"deleted": True}}],
+                }
+            }
+        },
+    )["count"]
+
+
+def count_event_objects(event_uuid: str) -> int:
+    return get_opensearch_client().count(
+        index="misp-objects",
+        body={
+            "query": {
+                "bool": {
+                    "must": [{"term": {"event_uuid": str(event_uuid)}}],
+                    "must_not": [{"term": {"deleted": True}}],
+                }
+            }
+        },
+    )["count"]
+
+
+def sync_event_counts(event_uuid: str) -> dict:
+    """Set an event's attribute and object counts from what is actually indexed.
+
+    Ingest owns these numbers rather than the per attribute increments: a feed
+    can create tens of thousands of attributes, and counting them one background
+    task at a time leaves the event reading zero for as long as the queue takes
+    to drain, then lands on a total nothing reconciles.
+
+    Recounting also stays right where a payload total would not: attributes the
+    ingest skipped as duplicates, re-fetches that add to an existing event, and
+    anything an earlier run lost.
+    """
+    attribute_count = count_event_attributes(event_uuid)
+    object_count = count_event_objects(event_uuid)
+
+    try:
+        get_opensearch_client().update(
+            index="misp-events",
+            id=str(event_uuid),
+            body={
+                "doc": {
+                    "attribute_count": attribute_count,
+                    "object_count": object_count,
+                }
+            },
+            refresh=True,
+        )
+    except NotFoundError:
+        logger.warning("sync_event_counts: event %s is not indexed", event_uuid)
+
+    return {"attribute_count": attribute_count, "object_count": object_count}
 
 
 def increment_attribute_count(db: Session, event_uuid: str, attributes_count: int = 1) -> None:
@@ -711,6 +775,27 @@ def import_data(db: Session, event: event_schemas.Event, data: dict):
     total_imported_attributes = 0
     total_attributes = 0
 
+    with attributes_repository.bulk_ingest():
+        total_imported_attributes, total_attributes = _import_attributes(
+            db, event, data
+        )
+
+    sync_event_counts(str(event.uuid))
+
+    return {
+        "message": f"Imported {total_imported_attributes} out of {total_attributes} attributes.",
+        "imported_attributes": total_imported_attributes,
+        "total_attributes": total_attributes,
+        "failed_attributes": total_attributes - total_imported_attributes,
+        "event_uuid": str(event.uuid),
+    }
+
+
+def _import_attributes(db: Session, event: event_schemas.Event, data: dict):
+
+    total_imported_attributes = 0
+    total_attributes = 0
+
     if "attributes" in data:
         total_attributes = len(data["attributes"])
 
@@ -729,13 +814,7 @@ def import_data(db: Session, event: event_schemas.Event, data: dict):
                 logger.error(f"Error importing attribute: {e}")
                 continue
 
-    return {
-        "message": f"Imported {total_imported_attributes} out of {total_attributes} attributes.",
-        "imported_attributes": total_imported_attributes,
-        "total_attributes": total_attributes,
-        "failed_attributes": total_attributes - total_imported_attributes,
-        "event_uuid": str(event.uuid),
-    }
+    return total_imported_attributes, total_attributes
 
 
 def get_event_vulnerabilities(
