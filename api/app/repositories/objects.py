@@ -131,6 +131,54 @@ def get_objects_from_opensearch(
     return Page(items=items, total=total, page=params.page, size=params.size, pages=pages)
 
 
+def search_objects(
+    query: str = None,
+    page: int = 0,
+    from_value: int = 0,
+    size: int = 10,
+    sort_by: str = "@timestamp",
+    sort_order: str = "desc",
+    include_deleted: bool = False,
+):
+    """
+    Free text search over objects, mirroring search_attributes.
+
+    Matches the template name, comment, description and uuid, which is what
+    identifies an object to a reader. Added so an analyst relationship can
+    point at an object, which needs a way to find one.
+    """
+    OpenSearchClient = get_opensearch_client()
+
+    bool_query = {
+        "must": {
+            "query_string": {
+                "query": query or "*",
+                "fields": ["name", "comment", "description", "uuid"],
+            }
+        },
+    }
+    if not include_deleted:
+        bool_query["filter"] = {"term": {"deleted": False}}
+
+    search_body = {
+        "query": {"bool": bool_query},
+        "from": from_value,
+        "size": size,
+        "sort": [{sort_by: {"order": sort_order}}],
+    }
+    response = OpenSearchClient.search(index="misp-objects", body=search_body)
+
+    return {
+        "page": page,
+        "size": size,
+        "total": response["hits"]["total"]["value"],
+        "took": response["took"],
+        "timed_out": response["timed_out"],
+        "max_score": response["hits"]["max_score"],
+        "results": response["hits"]["hits"],
+    }
+
+
 def get_object_from_opensearch(
     object_uuid: UUID,
 ) -> Optional[object_schemas.Object]:

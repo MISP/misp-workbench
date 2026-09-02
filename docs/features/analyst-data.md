@@ -150,7 +150,21 @@ Threads render nested under their parent, indented up to four levels so a deep
 discussion stays readable. Opinions show their 0-100 score with the matching
 MISP band (*Strongly disagree* through *Strongly agree*).
 
-Relationships added from the UI point at another **event**, chosen with a
-picker that searches the event index. Relationships targeting an attribute or
-object can still arrive over sync and are displayed, but the UI does not yet
-create them.
+A relationship can point at an **event**, an **attribute** or an **object**.
+The picker takes the target type first and then searches that index remotely,
+so it works on instances with more records than a dropdown could hold.
+Changing the type clears the selection, since the previous one belonged to a
+different index.
+
+Attribute and object search back this: `GET /attributes/search` already
+existed, and `GET /objects/search` was added alongside it, matching an
+object's template name, comment, description and uuid.
+
+A rendered relationship shows the target's type, its name, and a link to it --
+the event's info, the attribute's value with its type and category, or the
+object's template name with its comment. Only the uuid and type are stored, so
+the record is looked up and cached by type and uuid, which means several
+relationships pointing at the same thing cost one request. A target that no
+longer exists reads "no longer available" rather than linking into a 404, which
+is what happens when a relationship arrives over sync ahead of what it points
+at.

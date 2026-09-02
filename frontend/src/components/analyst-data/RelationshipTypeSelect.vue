@@ -47,6 +47,11 @@ async function initTomSelect() {
     },
     onChange(value) {
       emit("update:modelValue", value ?? "");
+      // Close and release focus once a type is chosen. Left focused, the
+      // dropdown re-opens on the next interaction and its 300+ entries cover
+      // the field below it.
+      tomselect?.close();
+      tomselect?.blur();
     },
   });
 

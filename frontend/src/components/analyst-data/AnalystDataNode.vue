@@ -1,7 +1,7 @@
 <script setup>
-import { computed } from "vue";
+import { computed, watch, onMounted } from "vue";
 import { storeToRefs } from "pinia";
-import { useAuthStore } from "@/stores";
+import { useAuthStore, useAnalystDataStore } from "@/stores";
 import { authHelper } from "@/helpers";
 import OpinionScale from "@/components/analyst-data/OpinionScale.vue";
 import Timestamp from "@/components/misc/Timestamp.vue";
@@ -27,6 +27,9 @@ const emit = defineEmits(["reply", "edit", "delete"]);
 
 const authStore = useAuthStore();
 const { scopes, decoded_access_token } = storeToRefs(authStore);
+
+const analystDataStore = useAnalystDataStore();
+const { targets } = storeToRefs(analystDataStore);
 
 const data = computed(() => props.node.data ?? {});
 
@@ -65,6 +68,33 @@ const typeIcon = {
 // Replies are indented, but only so far -- a deep thread should stay readable
 // rather than walk off the right edge of the card.
 const indent = computed(() => Math.min(props.depth, 4) * 1.5);
+
+/**
+ * What a relationship points at, resolved to a name and a link.
+ *
+ * The document stores only the uuid and the type, so the record is looked up.
+ * The store caches by type and uuid, so several relationships pointing at the
+ * same thing cost one request.
+ */
+const relatedTarget = computed(() => {
+  void targets.value;
+  if (props.node.analyst_type !== "Relationship") return null;
+  return analystDataStore.targetFor(
+    data.value.related_object_type,
+    data.value.related_object_uuid,
+  );
+});
+
+function resolveRelatedTarget() {
+  if (props.node.analyst_type !== "Relationship") return;
+  analystDataStore.resolveTarget(
+    data.value.related_object_type,
+    data.value.related_object_uuid,
+  );
+}
+
+onMounted(resolveRelatedTarget);
+watch(() => data.value.related_object_uuid, resolveRelatedTarget);
 
 const children = computed(() => [
   ...(props.node.notes ?? []),
@@ -106,14 +136,42 @@ const children = computed(() => [
             <span class="badge text-bg-primary">
               {{ data.relationship_type }}
             </span>
-            <span class="ms-2 text-body-secondary small">
+            <span class="badge text-bg-secondary ms-1">
               {{ data.related_object_type }}
             </span>
+
             <div class="mt-1">
-              <UUID
-                v-if="data.related_object_uuid"
-                :uuid="data.related_object_uuid"
-              />
+              <!-- named and linked once resolved -->
+              <RouterLink
+                v-if="relatedTarget?.route"
+                :to="relatedTarget.route"
+                class="analyst-target"
+              >
+                {{ relatedTarget.label }}
+              </RouterLink>
+              <span
+                v-else-if="relatedTarget?.missing"
+                class="text-body-secondary fst-italic"
+              >
+                no longer available
+              </span>
+              <span v-else-if="relatedTarget" class="analyst-target">
+                {{ relatedTarget.label ?? data.related_object_uuid }}
+              </span>
+              <span v-else class="placeholder-glow">
+                <span class="placeholder" style="width: 8rem"></span>
+              </span>
+
+              <div
+                v-if="relatedTarget?.sublabel"
+                class="text-body-secondary small"
+              >
+                {{ relatedTarget.sublabel }}
+              </div>
+
+              <div v-if="data.related_object_uuid" class="mt-1">
+                <UUID :uuid="data.related_object_uuid" />
+              </div>
             </div>
           </div>
 
@@ -171,6 +229,10 @@ const children = computed(() => [
 </template>
 
 <style scoped>
+.analyst-target {
+  word-break: break-all;
+}
+
 .analyst-text {
   white-space: pre-wrap;
   word-break: break-word;

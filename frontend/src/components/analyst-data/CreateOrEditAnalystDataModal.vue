@@ -2,7 +2,7 @@
 import { ref, computed, watch } from "vue";
 import { storeToRefs } from "pinia";
 import { useAnalystDataStore } from "@/stores";
-import EventPicker from "@/components/analyst-data/EventPicker.vue";
+import RelatedObjectPicker from "@/components/analyst-data/RelatedObjectPicker.vue";
 import RelationshipTypeSelect from "@/components/analyst-data/RelationshipTypeSelect.vue";
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
 import {
@@ -62,6 +62,15 @@ watch(identity, () => {
 
 const isEdit = computed(() => Boolean(props.existing));
 
+// What a relationship may point at, per MISP's analyst data model.
+const relatedObjectTypes = ["Event", "Attribute", "Object"];
+
+function onRelatedTypeChange(event) {
+  form.value.related_object_type = event.target.value;
+  // the previous selection belongs to the previous index
+  form.value.related_object_uuid = "";
+}
+
 const types = [
   { value: "Note", label: "Note", icon: faNoteSticky },
   { value: "Opinion", label: "Opinion", icon: faCommentDots },
@@ -107,7 +116,7 @@ function payloadForType() {
   if (!form.value.relationship_type)
     return { error: "Pick a relationship type." };
   if (!form.value.related_object_uuid)
-    return { error: "Pick the event this relates to." };
+    return { error: "Pick the record this relates to." };
 
   return {
     payload: {
@@ -249,10 +258,38 @@ async function onSubmit() {
               <RelationshipTypeSelect v-model="form.relationship_type" />
             </div>
             <div class="mb-3">
-              <label class="form-label">Related event</label>
-              <EventPicker v-model="form.related_object_uuid" />
+              <label class="form-label" for="relatedObjectType">
+                Related object
+              </label>
+              <div class="input-group">
+                <select
+                  id="relatedObjectType"
+                  class="form-select flex-grow-0"
+                  style="max-width: 9rem"
+                  aria-label="Related object type"
+                  :value="form.related_object_type"
+                  @change="onRelatedTypeChange"
+                >
+                  <option
+                    v-for="type in relatedObjectTypes"
+                    :key="type"
+                    :value="type"
+                  >
+                    {{ type }}
+                  </option>
+                </select>
+                <div class="flex-grow-1">
+                  <!-- Not keyed: the picker rebuilds its own control when
+                       the type changes. Remounting it made Vue re-patch DOM
+                       that TomSelect had moved, which threw. -->
+                  <RelatedObjectPicker
+                    v-model="form.related_object_uuid"
+                    :object-type="form.related_object_type"
+                  />
+                </div>
+              </div>
               <div class="form-text">
-                Relationships added here point at another event.
+                A relationship can point at an event, an attribute or an object.
               </div>
             </div>
           </template>
@@ -292,3 +329,12 @@ async function onSubmit() {
     </div>
   </div>
 </template>
+
+<style scoped>
+/* tom-select renders its own control, which has to square off against the
+   type dropdown to its left rather than keeping its rounded corners */
+.input-group :deep(.ts-wrapper) {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}
+</style>

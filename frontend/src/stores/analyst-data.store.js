@@ -2,6 +2,36 @@ import { defineStore } from "pinia";
 import { fetchWrapper } from "@/helpers";
 
 const baseUrl = `${import.meta.env.VITE_API_URL}/analyst-data`;
+const apiUrl = import.meta.env.VITE_API_URL;
+
+// Where a relationship target is read from, and how it is labelled, per type.
+// Types outside this map (GalaxyCluster and friends, which can arrive over
+// sync) are shown as a bare uuid rather than guessed at.
+const targetSources = {
+  Event: {
+    url: (uuid) => `${apiUrl}/events/${uuid}`,
+    label: (r) => r.info || "(no info)",
+    sublabel: () => null,
+    route: (uuid) => `/events/${uuid}`,
+  },
+  Attribute: {
+    url: (uuid) => `${apiUrl}/attributes/${uuid}`,
+    label: (r) => r.value ?? "",
+    sublabel: (r) => [r.type, r.category].filter(Boolean).join(" · ") || null,
+    route: (uuid) => `/attributes/${uuid}`,
+  },
+  Object: {
+    url: (uuid) => `${apiUrl}/objects/${uuid}`,
+    label: (r) => r.name ?? "",
+    sublabel: (r) => r.comment || r.description || null,
+    route: (uuid) => `/objects/${uuid}`,
+  },
+};
+
+// In-flight lookups, so several relationships pointing at the same record
+// resolve on one request. Deliberately outside the store state: it holds
+// promises, which do not belong in reactive data.
+const inFlight = new Map();
 
 // Endpoint path per analyst data type. The type is also what the API expects
 // as `object_type` when attaching analyst data to other analyst data.
@@ -21,6 +51,8 @@ export const useAnalystDataStore = defineStore({
     // analyst data totals keyed by object uuid, fetched per event so a page of
     // attribute rows can be badged from one request
     counts: {},
+    // resolved relationship targets, keyed "Type:uuid"
+    targets: {},
     relationshipTypes: [],
     status: {
       loading: false,
@@ -34,6 +66,9 @@ export const useAnalystDataStore = defineStore({
     hasThreadsFor: (state) => (objectUuid) =>
       Object.prototype.hasOwnProperty.call(state.threads, objectUuid),
     countFromEvent: (state) => (objectUuid) => state.counts[objectUuid] ?? 0,
+    // null until resolved; { label, sublabel, route, missing } afterwards
+    targetFor: (state) => (objectType, objectUuid) =>
+      state.targets[`${objectType}:${objectUuid}`] ?? null,
     threadsFor: (state) => (objectUuid) =>
       state.threads[objectUuid] ?? {
         notes: [],
@@ -95,6 +130,58 @@ export const useAnalystDataStore = defineStore({
         .get(`${baseUrl}/events/${event_uuid}/counts`)
         .then((counts) => (this.counts = counts ?? {}))
         .catch((error) => (this.status.error = error));
+    },
+    /**
+     * Look up what a relationship points at, so it can be shown by name and
+     * linked rather than as a bare uuid.
+     *
+     * Cached by type and uuid, and de-duplicated while in flight. Reads
+     * through fetchWrapper rather than the events/attributes/objects stores
+     * because their getById actions overwrite the record the page is showing.
+     */
+    async resolveTarget(objectType, objectUuid) {
+      if (!objectType || !objectUuid) return null;
+
+      const key = `${objectType}:${objectUuid}`;
+      if (this.targets[key]) return this.targets[key];
+      if (inFlight.has(key)) return inFlight.get(key);
+
+      const source = targetSources[objectType];
+      if (!source) {
+        // a type this UI has no page for: record it so callers stop asking
+        const unknown = {
+          label: null,
+          sublabel: null,
+          route: null,
+          missing: false,
+        };
+        this.targets = { ...this.targets, [key]: unknown };
+        return unknown;
+      }
+
+      const request = fetchWrapper
+        .get(source.url(objectUuid))
+        .then((record) => ({
+          label: source.label(record) || objectUuid,
+          sublabel: source.sublabel(record),
+          route: source.route(objectUuid),
+          missing: false,
+        }))
+        // deleted, or never synced: say so instead of linking into a 404
+        .catch(() => ({
+          label: null,
+          sublabel: null,
+          route: null,
+          missing: true,
+        }))
+        .then((resolved) => {
+          this.targets = { ...this.targets, [key]: resolved };
+          inFlight.delete(key);
+          return resolved;
+        });
+
+      inFlight.set(key, request);
+      return request;
     },
     async getRelationshipTypes() {
       // the vocabulary does not change between requests, so fetch it once
