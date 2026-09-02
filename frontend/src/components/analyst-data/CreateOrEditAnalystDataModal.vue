@@ -264,8 +264,8 @@ async function onSubmit() {
               <div class="input-group">
                 <select
                   id="relatedObjectType"
-                  class="form-select flex-grow-0"
-                  style="max-width: 9rem"
+                  class="form-select"
+                  style="flex: 0 0 9rem"
                   aria-label="Related object type"
                   :value="form.related_object_type"
                   @change="onRelatedTypeChange"
