@@ -542,6 +542,13 @@ class TestAnalystDataWrites(ApiTester):
     ):
         headers = {"Authorization": "Bearer " + auth_token}
 
+        # The OpenSearch cleanup runs at class teardown, not between tests, so
+        # earlier tests in this class have already left analyst data on this
+        # event. Assert on the delta rather than on absolute totals.
+        before = client.get(
+            f"/analyst-data/events/{event_1.uuid}/counts", headers=headers
+        ).json()
+
         parent = client.post(
             "/analyst-data/notes",
             json={
@@ -573,17 +580,16 @@ class TestAnalystDataWrites(ApiTester):
         response = client.get(
             f"/analyst-data/events/{event_1.uuid}/counts", headers=headers
         )
-
         assert response.status_code == status.HTTP_200_OK
-        counts = response.json()
+        after = response.json()
 
-        # the event's own total counts the note and its reply, so a long thread
-        # does not badge as "1"
-        assert counts[str(event_1.uuid)] == 2
+        # the note and its reply both land on the event's total, so a long
+        # thread does not badge as "1"
+        assert after[str(event_1.uuid)] - before.get(str(event_1.uuid), 0) == 2
         # the attribute is keyed separately, which is what badges its row
-        assert counts[str(attribute_1.uuid)] == 1
+        assert after[str(attribute_1.uuid)] - before.get(str(attribute_1.uuid), 0) == 1
         # a reply is counted inside its thread rather than getting its own key
-        assert parent["uuid"] not in counts
+        assert parent["uuid"] not in after
 
     @pytest.mark.parametrize("scopes", [["analyst_data:read"]])
     def test_counts_unknown_event_is_404(
