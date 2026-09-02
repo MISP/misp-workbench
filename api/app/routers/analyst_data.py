@@ -4,6 +4,7 @@ from app.repositories import analyst_data as analyst_data_repository
 from app.repositories import events as events_repository
 from app.schemas import analyst_data as analyst_data_schemas
 from app.schemas import user as user_schemas
+from app.services.analyst_relationships import get_local_relationship_types
 from fastapi import APIRouter, Depends, HTTPException, Query, Security, status
 from sqlalchemy.orm import Session
 
@@ -102,3 +103,153 @@ def get_object_analyst_data(
     return analyst_data_repository.get_analyst_data_by_object_uuid(
         object_uuid=object_uuid, object_type=object_type
     )
+
+
+@router.get("/analyst-data/events/{event_uuid}/counts")
+def get_event_analyst_data_counts(
+    event_uuid: str,
+    db: Session = Depends(get_db),
+    user: user_schemas.User = Security(
+        get_current_active_user, scopes=["analyst_data:read"]
+    ),
+) -> dict[str, int]:
+    """
+    Analyst data totals for everything belonging to an event, keyed by object
+    uuid, so a page can badge every attribute and object in one request.
+    """
+    db_event = events_repository.get_event_by_uuid(db, event_uuid=event_uuid)
+    if db_event is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Event not found"
+        )
+
+    return analyst_data_repository.get_analyst_data_counts_for_event(
+        event_uuid=str(db_event.uuid)
+    )
+
+
+@router.get("/analyst-data/relationship-types")
+def get_relationship_types(
+    user: user_schemas.User = Security(
+        get_current_active_user, scopes=["analyst_data:read"]
+    ),
+):
+    """
+    The MISP relationship vocabulary, for the relationship type picker. A type
+    outside this list is still accepted on create.
+    """
+    return get_local_relationship_types()
+
+
+# ── Writes ────────────────────────────────────────────────────────────────────
+
+
+def _create(analyst_type, payload, user):
+    created = analyst_data_repository.create_analyst_data(
+        analyst_type=analyst_type, payload=payload, user=user
+    )
+
+    if created is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No %s found with uuid %s to attach this to"
+            % (payload["object_type"], payload["object_uuid"]),
+        )
+
+    return created
+
+
+@router.post("/analyst-data/notes", status_code=status.HTTP_201_CREATED)
+def create_note(
+    note: analyst_data_schemas.NoteCreate,
+    user: user_schemas.User = Security(
+        get_current_active_user, scopes=["analyst_data:create"]
+    ),
+):
+    return _create(analyst_data_schemas.AnalystDataType.NOTE, note.model_dump(), user)
+
+
+@router.post("/analyst-data/opinions", status_code=status.HTTP_201_CREATED)
+def create_opinion(
+    opinion: analyst_data_schemas.OpinionCreate,
+    user: user_schemas.User = Security(
+        get_current_active_user, scopes=["analyst_data:create"]
+    ),
+):
+    return _create(
+        analyst_data_schemas.AnalystDataType.OPINION, opinion.model_dump(), user
+    )
+
+
+@router.post("/analyst-data/relationships", status_code=status.HTTP_201_CREATED)
+def create_relationship(
+    relationship: analyst_data_schemas.RelationshipCreate,
+    user: user_schemas.User = Security(
+        get_current_active_user, scopes=["analyst_data:create"]
+    ),
+):
+    return _create(
+        analyst_data_schemas.AnalystDataType.RELATIONSHIP,
+        relationship.model_dump(),
+        user,
+    )
+
+
+@router.put("/analyst-data/{analyst_uuid}")
+def update_analyst_data(
+    analyst_uuid: str,
+    update: analyst_data_schemas.AnalystDataUpdate,
+    user: user_schemas.User = Security(
+        get_current_active_user, scopes=["analyst_data:update"]
+    ),
+):
+    # exclude_unset so a partial update does not blank the fields it omits
+    payload = update.model_dump(exclude_unset=True)
+
+    if not payload:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No fields to update",
+        )
+
+    try:
+        updated = analyst_data_repository.update_analyst_data(
+            analyst_uuid=analyst_uuid, payload=payload, user=user
+        )
+    except ValueError as ex:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(ex))
+    except PermissionError as ex:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(ex))
+
+    if updated is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Analyst data not found"
+        )
+
+    return updated
+
+
+@router.delete("/analyst-data/{analyst_uuid}")
+def delete_analyst_data(
+    analyst_uuid: str,
+    user: user_schemas.User = Security(
+        get_current_active_user, scopes=["analyst_data:delete"]
+    ),
+):
+    """
+    Soft delete. Replies nested under this document are deleted with it, except
+    any belonging to another organisation.
+    """
+    try:
+        deleted = analyst_data_repository.delete_analyst_data(
+            analyst_uuid=analyst_uuid, user=user
+        )
+    except PermissionError as ex:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(ex))
+
+    if deleted is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Analyst data not found"
+        )
+
+    return deleted

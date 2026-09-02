@@ -14,7 +14,7 @@ The following indices are created automatically on first startup:
 | `misp-attribute-correlations` | Correlation results linking attributes across events |
 | `misp-sightings` | Sighting records with observer and metadata |
 | `misp-event-reports` | Event report content and distribution |
-| `misp-analyst-data` | Analyst notes, opinions, and relationships captured on sync and feed fetch |
+| `misp-analyst-data` | Analyst notes, opinions, and relationships, whether captured on sync and feed fetch or added by an analyst |
 
 ### Attribute index enrichments
 

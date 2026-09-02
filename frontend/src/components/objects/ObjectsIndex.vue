@@ -5,6 +5,7 @@ import { useObjectsStore } from "@/stores";
 import { Modal } from "bootstrap";
 import ObjectAttributesList from "@/components/objects/ObjectAttributesList.vue";
 import ObjectActions from "@/components/objects/ObjectActions.vue";
+import AnalystDataPanel from "@/components/analyst-data/AnalystDataPanel.vue";
 import AddObjectModal from "@/components/objects/AddObjectModal.vue";
 import DeleteObjectModal from "@/components/objects/DeleteObjectModal.vue";
 import Paginate from "vuejs-paginate-next";
@@ -63,6 +64,12 @@ function openAddObjectModal() {
             :attributes="object.attributes"
             :object_uuid="object.uuid"
             @attribute-enriched="handleObjectsUpdated"
+          />
+        </div>
+        <div class="card-footer bg-transparent">
+          <AnalystDataPanel
+            :object_uuid="object.uuid"
+            :object_type="'Object'"
           />
         </div>
       </div>

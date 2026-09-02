@@ -7,6 +7,7 @@ import CreateOrEditReportModal from "@/components/reports/CreateOrEditReportModa
 import ObjectsIndex from "@/components/objects/ObjectsIndex.vue";
 import TagsSelect from "@/components/tags/TagsSelect.vue";
 import ReportsIndex from "@/components/reports/ReportsIndex.vue";
+import AnalystDataIndex from "@/components/analyst-data/AnalystDataIndex.vue";
 import DistributionLevel from "@/components/enums/DistributionLevel.vue";
 import UUID from "@/components/misc/UUID.vue";
 import ThreatLevel from "@/components/enums/ThreatLevel.vue";
@@ -30,6 +31,8 @@ import {
   faShapes,
   faCubesStacked,
   faPlus,
+  faCommentDots,
+  faFileLines,
 } from "@fortawesome/free-solid-svg-icons";
 import Timestamp from "@/components/misc/Timestamp.vue";
 
@@ -299,31 +302,50 @@ div.row h3 {
       <div class="col col-sm-4 mt-2">
         <CorrelatedEvents :results="correlated_events" />
       </div>
-      <div class="col col-sm-12">
-        <div class="card mt-2">
-          <div class="card-header">
-            <div class="row">
-              <div class="col-10">Reports</div>
+      <div class="row">
+        <div class="col col-sm-12">
+          <div class="card mt-2">
+            <div class="card-header">
+              <div class="row">
+                <div class="col-10">
+                  <FontAwesomeIcon :icon="faFileLines" /> Reports
+                </div>
+              </div>
+            </div>
+            <div class="card-body d-flex flex-column">
+              <ReportsIndex
+                :event_uuid="event.uuid"
+                :key="reports_last_updated"
+                @report-updated="handleReportUpdated"
+                @report-deleted="handleReportDeleted"
+              />
+              <div class="mt-4 text-center">
+                <button
+                  type="button"
+                  class="btn btn-outline-primary"
+                  data-placement="top"
+                  data-toggle="tooltip"
+                  title="Create Event Report"
+                  @click="openCreateorEditReportModal"
+                >
+                  <FontAwesomeIcon :icon="faPlus" /> Create Event Report
+                </button>
+              </div>
             </div>
           </div>
-          <div class="card-body d-flex flex-column">
-            <ReportsIndex
-              :event_uuid="event.uuid"
-              :key="reports_last_updated"
-              @report-updated="handleReportUpdated"
-              @report-deleted="handleReportDeleted"
-            />
-            <div class="mt-4 text-center">
-              <button
-                type="button"
-                class="btn btn-outline-primary"
-                data-placement="top"
-                data-toggle="tooltip"
-                title="Create Event Report"
-                @click="openCreateorEditReportModal"
-              >
-                <FontAwesomeIcon :icon="faPlus" /> Create Event Report
-              </button>
+        </div>
+      </div>
+      <div class="row">
+        <div class="col col-sm-12">
+          <div class="card mt-2">
+            <div class="card-header">
+              <FontAwesomeIcon :icon="faCommentDots" /> Analyst Data
+            </div>
+            <div class="card-body">
+              <AnalystDataIndex
+                :object_uuid="event.uuid"
+                :object_type="'Event'"
+              />
             </div>
           </div>
         </div>

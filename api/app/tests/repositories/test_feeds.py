@@ -116,8 +116,8 @@ class TestFeedsRepository(ApiTester):
             attribute_threads = analyst_data_repository.get_analyst_data_by_object_uuid(
                 "317e63e6-b95d-4dd1-b4fd-de2f64f33fd8", "Attribute"
             )
-            assert {n.uuid for n in attribute_threads.notes} == {
-                "c1a66666-6666-4666-8666-666666666666"
+            assert "c1a66666-6666-4666-8666-666666666666" in {
+                n.uuid for n in attribute_threads.notes
             }
 
             # check the object references were created

@@ -74,4 +74,83 @@ The threaded responses return `notes`, `opinions`, and `relationships`, each
 entry carrying its own `notes`, `opinions`, and `relationships` for replies at
 any depth.
 
-All three endpoints require the `analyst_data:read` scope.
+All three read endpoints require the `analyst_data:read` scope.
+
+### Relationship vocabulary
+
+`GET /analyst-data/relationship-types` returns the MISP relationship
+vocabulary shipped by the `misp-objects` submodule, which populates the
+relationship type picker. A type outside that list is still accepted on
+create -- MISP allows free-form relationship types, and one arriving over sync
+must not be rejected.
+
+## Writing analyst data
+
+| Endpoint | Purpose | Scope |
+|---|---|---|
+| `POST /analyst-data/notes` | Add a note | `analyst_data:create` |
+| `POST /analyst-data/opinions` | Add an opinion (0-100 plus a comment) | `analyst_data:create` |
+| `POST /analyst-data/relationships` | Add a relationship | `analyst_data:create` |
+| `PUT /analyst-data/{uuid}` | Partial update | `analyst_data:update` |
+| `DELETE /analyst-data/{uuid}` | Soft delete | `analyst_data:delete` |
+
+Every create takes `object_uuid` and `object_type` naming the parent. Replying
+to a note means passing that note's uuid with `object_type: "Note"`.
+
+### Who may change analyst data
+
+Analyst data is attributed content -- it records its author and creating
+organisation -- so it follows the ownership rule MISP applies rather than the
+scope-only model used for events, attributes and objects:
+
+- **Only the creating organisation may edit or delete it.** Anyone else gets a
+  403, even holding `analyst_data:update` / `analyst_data:delete`. A role with
+  the `*` scope bypasses this, matching how local tags are handled.
+- **Analyst data pulled from a remote server or a feed therefore cannot be
+  rewritten locally**, which is the point: it is another instance's
+  commentary.
+- Where no organisation was recorded, the check falls back to the author's
+  email. Data with neither is not editable by anyone but an admin.
+
+In the UI, edit and delete are shown to the author (and to admins) and hidden
+otherwise. That is narrower than the API allows -- the token carries the
+user's email, not their org uuid -- but it never offers an action that would
+be refused.
+
+Notes on behaviour:
+
+- **Authorship is taken from the token**, never the request body.
+- **The parent must exist.** A create against an unknown uuid is a 404 rather
+  than analyst data pointing at nothing.
+- **`event_uuid` is resolved server side** -- from the attribute or object, or
+  inherited from the parent note when replying -- so the event scoped read
+  finds everything belonging to an event however deeply it is nested.
+- **Updates are partial**, and a field belonging to another type is rejected
+  with a 400 rather than silently stored (an `opinion` on a `Note`, say).
+- **Deletes are soft and cascade to replies** — but only to replies the caller
+  owns. The document stays so a later sync of the same uuid does not resurrect
+  it, and nested replies go with their parent rather than being left stranded
+  under a note that no longer reads. Another organisation's reply on a shared
+  thread is left intact rather than destroyed as collateral, so it survives
+  even though it is no longer reachable from the thread it hung off.
+
+## In the UI
+
+Analyst data appears in three places, each with add, reply, edit and delete
+where the user's scopes allow:
+
+- **Event view** -- an *Analyst Data* card, alongside Reports.
+- **Attribute rows** -- a toggle in the actions column expands the analyst data
+  for that attribute. It loads only when expanded, so an event with many
+  attributes does not fire a request per row.
+- **Object cards** -- a collapsible *Analyst data* section in the card footer,
+  loaded on the same terms.
+
+Threads render nested under their parent, indented up to four levels so a deep
+discussion stays readable. Opinions show their 0-100 score with the matching
+MISP band (*Strongly disagree* through *Strongly agree*).
+
+Relationships added from the UI point at another **event**, chosen with a
+picker that searches the event index. Relationships targeting an attribute or
+object can still arrive over sync and are displayed, but the UI does not yet
+create them.
