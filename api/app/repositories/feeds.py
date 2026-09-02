@@ -320,6 +320,9 @@ def process_feed_event(
         sync_repository.create_pulled_event_attributes(
             db, str(local_event.uuid), event.attributes, user
         )
+
+        # process analyst data (notes, opinions, relationships)
+        sync_repository.create_pulled_analyst_data(db, event, local_event.uuid, user)
     else:
 
         local_event = events_repository.update_event_from_fetched_event(
@@ -341,6 +344,9 @@ def process_feed_event(
         sync_repository.update_pulled_event_attributes(
             db, str(local_event.uuid), event.attributes, user
         )
+
+        # process analyst data (notes, opinions, relationships)
+        sync_repository.create_pulled_analyst_data(db, event, local_event.uuid, user)
 
     db.commit()
 

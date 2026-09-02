@@ -98,6 +98,7 @@ AVAILABLE_SCOPES: dict[str, str] = {
         "correlations:read": "Read correlations.",
         "correlations:create": "Create correlations.",
         "correlations:delete": "Delete correlations.",
+        "analyst_data:read": "Read analyst data (notes, opinions, relationships).",
         "reports:read": "Read reports.",
         "reports:create": "Create reports.",
         "reports:update": "Update reports.",

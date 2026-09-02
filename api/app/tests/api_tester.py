@@ -118,7 +118,12 @@ class ApiTester:
             from app.services.opensearch import get_opensearch_client
 
             os_client = get_opensearch_client()
-            for index in ("misp-events", "misp-attributes", "misp-objects"):
+            for index in (
+                "misp-events",
+                "misp-attributes",
+                "misp-objects",
+                "misp-analyst-data",
+            ):
                 try:
                     os_client.delete_by_query(
                         index=index,

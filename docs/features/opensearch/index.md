@@ -1,6 +1,6 @@
 # OpenSearch
 
-misp-workbench uses [OpenSearch](https://opensearch.org/) as its search and analytics engine. All events, attributes, objects, correlations, sightings, and event reports are indexed so they can be queried through the [Explore](../explore.md) view and used by [Correlations](../correlations.md) and [Hunts](../hunts.md).
+misp-workbench uses [OpenSearch](https://opensearch.org/) as its search and analytics engine. All events, attributes, objects, correlations, sightings, event reports, and analyst data are indexed so they can be queried through the [Explore](../explore.md) view and used by [Correlations](../correlations.md) and [Hunts](../hunts.md).
 
 ## Indices
 
@@ -14,6 +14,7 @@ The following indices are created automatically on first startup:
 | `misp-attribute-correlations` | Correlation results linking attributes across events |
 | `misp-sightings` | Sighting records with observer and metadata |
 | `misp-event-reports` | Event report content and distribution |
+| `misp-analyst-data` | Analyst notes, opinions, and relationships captured on sync and feed fetch |
 
 ### Attribute index enrichments
 

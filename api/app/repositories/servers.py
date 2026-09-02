@@ -186,6 +186,7 @@ def pull_event_by_uuid(
     data = {
         "deleted": [0, 1],
         "excludeGalaxy": 1,
+        "includeAnalystData": 1,
         "includeEventCorrelations": 0,
         "includeFeedCorrelations": 0,
         "includeWarninglistHits": 0,
@@ -277,7 +278,13 @@ def update_pulled_event_before_insert(
         # process event reports
         if event.event_reports:
             # TODO handle event reports
-            pass
+            for event_report in event.event_reports:
+                downgrade_analyst_data_distribution(event_report)
+
+        # process analyst data (notes, opinions, relationships) attached to
+        # the event itself; the attribute and object ones are downgraded by
+        # update_pulled_attribute_before_insert / _object_before_insert above
+        downgrade_analyst_data_distribution(event)
 
     # these transformations come from app/Model/Event.php::_add()
     event.org_id = server.org_id
@@ -313,6 +320,8 @@ def update_pulled_attribute_before_insert(attribute: MISPAttribute) -> MISPAttri
     # remove local tags obtained via pull
     attribute.tags = [tag for tag in attribute.tags if not tag.local]
 
+    downgrade_analyst_data_distribution(attribute)
+
     return attribute
 
 
@@ -321,24 +330,76 @@ def update_pulled_object_before_insert(object: MISPObject) -> MISPObject:
 
     object.distribution = downgrade_distribution(object.distribution)
 
+    downgrade_analyst_data_distribution(object)
+
     for attribute in object.attributes:
         attribute = update_pulled_attribute_before_insert(attribute)
 
     return object
 
 
-def downgrade_distribution(distribution: DistributionLevel) -> DistributionLevel:
-    if distribution is None:
-        return DistributionLevel.COMMUNITY_ONLY
+def downgrade_analyst_data_distribution(parent) -> None:
+    """
+    Downgrade the distribution of analyst data pulled from an external server,
+    matching what is intended for the event, its attributes and its objects.
 
-    if distribution == DistributionLevel.COMMUNITY_ONLY:
-        # if community only, downgrade to organisation only after pull
-        return DistributionLevel.ORGANISATION_ONLY
-    elif distribution == DistributionLevel.CONNECTED_COMMUNITIES:
-        # if connected communities downgrade to community only
-        return DistributionLevel.COMMUNITY_ONLY
+    pymisp flattens nested analyst data onto the top level list while keeping
+    each item pointed at its real parent, so iterating the three lists reaches
+    a whole thread. The recursion is kept for payloads that stay nested.
+    """
+    for attribute_name in ("notes", "opinions", "relationships"):
+        for analyst_data in getattr(parent, attribute_name, None) or []:
+            analyst_data.distribution = downgrade_distribution(
+                getattr(analyst_data, "distribution", None)
+            )
+            downgrade_analyst_data_distribution(analyst_data)
 
-    return distribution
+
+# The only two levels a pull downgrades, keyed by the raw integer level.
+# All communities, sharing group and inherit are passed through untouched.
+# see: app/Model/Server.php::__updatePulledEventBeforeInsert()
+_DISTRIBUTION_DOWNGRADE = {
+    DistributionLevel.COMMUNITY_ONLY.value: DistributionLevel.ORGANISATION_ONLY.value,
+    DistributionLevel.CONNECTED_COMMUNITIES.value: DistributionLevel.COMMUNITY_ONLY.value,
+}
+
+
+def downgrade_distribution(distribution) -> int:
+    """
+    Downgrade a distribution level for data pulled from an external server:
+    community only becomes organisation only, connected communities becomes
+    community only. Every other level is left alone.
+
+    Returns a plain int, not a DistributionLevel member. The result is assigned
+    back onto pymisp objects and the ingest then reads it with int(), which a
+    plain Enum member does not support.
+
+    The level is reduced to an int before the lookup because DistributionLevel
+    is a plain Enum whose members never compare equal to the ints pymisp
+    supplies -- comparing them directly is what made this a silent no-op.
+    """
+    if distribution is None or distribution == "":
+        # A missing level is taken as community only and not downgraded
+        # further, which is the behaviour this function was written to have.
+        return DistributionLevel.COMMUNITY_ONLY.value
+
+    if isinstance(distribution, DistributionLevel):
+        level = distribution.value
+    else:
+        # pymisp hands back ints, MISP's JSON carries strings.
+        try:
+            level = int(distribution)
+        except (TypeError, ValueError):
+            logger.warning(
+                "unexpected distribution %r on pulled data, restricting it to %s",
+                distribution,
+                DistributionLevel.ORGANISATION_ONLY.name,
+            )
+            # Malformed input from a remote server: fail closed rather than
+            # letting an unreadable level pass through as-is.
+            return DistributionLevel.ORGANISATION_ONLY.value
+
+    return _DISTRIBUTION_DOWNGRADE.get(level, level)
 
 
 def check_if_event_is_not_empty(event: MISPEvent) -> bool:
@@ -397,6 +458,9 @@ def create_or_update_pulled_event(
             sync_repository.create_pulled_event_attributes(
                 db, str(created.uuid), event.attributes, user
             )
+            # after the attributes and objects, so the analyst data captured
+            # for them lands once the objects it annotates exist locally
+            sync_repository.create_pulled_analyst_data(db, event, created.uuid, user)
 
             events_repository.sync_event_counts(str(created.uuid))
 
@@ -446,6 +510,7 @@ def create_or_update_pulled_event(
             sync_repository.update_pulled_event_attributes(
                 db, str(updated.uuid), event.attributes, user
             )
+            sync_repository.create_pulled_analyst_data(db, event, updated.uuid, user)
 
             events_repository.sync_event_counts(str(updated.uuid))
 
@@ -560,7 +625,9 @@ def preview_pull_server(
         required_orgs = [required_orgs]
 
     try:
-        filtered_events = remote_misp.search_index(published=True, timestamp=timestamp, minimal=True)
+        filtered_events = remote_misp.search_index(
+            published=True, timestamp=timestamp, minimal=True
+        )
         all_events = remote_misp.search_index(published=True, minimal=True)
     except Exception as ex:
         raise HTTPException(
@@ -572,6 +639,7 @@ def preview_pull_server(
     filtered = list(filtered_events)
 
     if required_tags:
+
         def event_has_tag(event, tag_name):
             for tag_entry in event.get("EventTag", []):
                 tag = tag_entry.get("Tag", tag_entry)
@@ -580,12 +648,13 @@ def preview_pull_server(
                     return True
             return False
 
-        filtered = [e for e in filtered if any(event_has_tag(e, t) for t in required_tags)]
+        filtered = [
+            e for e in filtered if any(event_has_tag(e, t) for t in required_tags)
+        ]
 
     if required_orgs:
         filtered = [
-            e for e in filtered
-            if e.get("Orgc", {}).get("name", "") in required_orgs
+            e for e in filtered if e.get("Orgc", {}).get("name", "") in required_orgs
         ]
 
     total_filtered = len(filtered)
@@ -810,11 +879,7 @@ def push_event_by_uuid(
     try:
         event_json = db_event.to_misp_format()
 
-        if (
-            db_event.published
-            and not db_event.attributes
-            and not db_event.objects
-        ):
+        if db_event.published and not db_event.attributes and not db_event.objects:
             return {
                 "status": 400,
                 "message": "Cannot push a published event with no attributes or objects.",
@@ -873,6 +938,7 @@ def push_server_by_id_full(
 
     # get a list of the event UUIDs eligible to be pushed to the server
     from app.services.opensearch import get_opensearch_client as _get_os_client
+
     _os = _get_os_client()
     _resp = _os.search(
         index="misp-events",
@@ -881,10 +947,14 @@ def push_server_by_id_full(
                 "bool": {
                     "must": [
                         {"term": {"published": True}},
-                        {"terms": {"distribution": [
-                            DistributionLevel.CONNECTED_COMMUNITIES.value,
-                            DistributionLevel.ALL_COMMUNITIES.value,
-                        ]}},
+                        {
+                            "terms": {
+                                "distribution": [
+                                    DistributionLevel.CONNECTED_COMMUNITIES.value,
+                                    DistributionLevel.ALL_COMMUNITIES.value,
+                                ]
+                            }
+                        },
                     ]
                 }
             },

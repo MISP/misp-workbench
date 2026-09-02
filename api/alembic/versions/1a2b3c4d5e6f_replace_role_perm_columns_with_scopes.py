@@ -71,6 +71,7 @@ _USER_SCOPES = [
     "servers:read",
     "galaxies:read",
     "taxonomies:read",
+    "analyst_data:read",
     "reports:read",
     "reports:create",
     "reports:update",
@@ -124,6 +125,7 @@ _DEFAULT_ROLE_SCOPES = {
         "mcp:*",
         "organisations:*",
         "reports:*",
+        "analyst_data:*",
         "sightings:*",
     ],
     3: _USER_SCOPES,  # User (default role)
@@ -151,6 +153,7 @@ _DEFAULT_ROLE_SCOPES = {
         "galaxies:read",
         "taxonomies:read",
         "reports:read",
+        "analyst_data:read",
         "correlations:read",
         "notifications:read",
         "modules:read",

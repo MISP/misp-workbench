@@ -62,6 +62,72 @@ feed_new_event = {
                 "relationship_type": "",
             },
         ],
+        "Note": [
+            {
+                "uuid": "c1a11111-1111-4111-8111-111111111111",
+                "object_uuid": "988ce14e-0802-4aa3-92ca-8ca1104e0b38",
+                "object_type": "Event",
+                "note": "Feed event note: campaign attribution is tentative.",
+                "language": "en",
+                "authors": "analyst@feed.test",
+                "created": "2024-08-27 10:00:00",
+                "modified": "2024-08-27 10:00:00",
+                "distribution": "3",
+                "Note": [
+                    {
+                        "uuid": "c1a22222-2222-4222-8222-222222222222",
+                        "object_uuid": "c1a11111-1111-4111-8111-111111111111",
+                        "object_type": "Note",
+                        "note": "Nested reply on the Feed event note.",
+                        "language": "en",
+                        "authors": "reviewer@feed.test",
+                        "created": "2024-08-27 11:00:00",
+                        "modified": "2024-08-27 11:00:00",
+                        "distribution": "3",
+                    }
+                ],
+                "Opinion": [
+                    {
+                        "uuid": "c1a33333-3333-4333-8333-333333333333",
+                        "object_uuid": "c1a11111-1111-4111-8111-111111111111",
+                        "object_type": "Note",
+                        "opinion": "80",
+                        "comment": "Nested opinion on the Feed event note.",
+                        "authors": "reviewer@feed.test",
+                        "created": "2024-08-27 11:30:00",
+                        "modified": "2024-08-27 11:30:00",
+                        "distribution": "3",
+                    }
+                ],
+            }
+        ],
+        "Opinion": [
+            {
+                "uuid": "c1a44444-4444-4444-8444-444444444444",
+                "object_uuid": "988ce14e-0802-4aa3-92ca-8ca1104e0b38",
+                "object_type": "Event",
+                "opinion": "25",
+                "comment": "Feed event opinion: low confidence.",
+                "authors": "analyst@feed.test",
+                "created": "2024-08-27 12:00:00",
+                "modified": "2024-08-27 12:00:00",
+                "distribution": "3",
+            }
+        ],
+        "Relationship": [
+            {
+                "uuid": "c1a55555-5555-4555-8555-555555555555",
+                "object_uuid": "988ce14e-0802-4aa3-92ca-8ca1104e0b38",
+                "object_type": "Event",
+                "related_object_uuid": "572503da-c87f-4520-a9bc-8de08b9c92e5",
+                "related_object_type": "Event",
+                "relationship_type": "related-to",
+                "authors": "analyst@feed.test",
+                "created": "2024-08-27 12:30:00",
+                "modified": "2024-08-27 12:30:00",
+                "distribution": "3",
+            }
+        ],
         "Attribute": [
             {
                 "category": "Payload delivery",
@@ -73,6 +139,19 @@ feed_new_event = {
                 "type": "sha1",
                 "uuid": "317e63e6-b95d-4dd1-b4fd-de2f64f33fd8",
                 "value": "7edc546f741eff3e13590a62ce2856bb39d8f71d",
+                "Note": [
+                    {
+                        "uuid": "c1a66666-6666-4666-8666-666666666666",
+                        "object_uuid": "317e63e6-b95d-4dd1-b4fd-de2f64f33fd8",
+                        "object_type": "Attribute",
+                        "note": "Feed event attribute note: hash seen in unrelated sample.",
+                        "language": "en",
+                        "authors": "analyst@feed.test",
+                        "created": "2024-08-27 13:00:00",
+                        "modified": "2024-08-27 13:00:00",
+                        "distribution": "3",
+                    }
+                ],
                 "Tag": [
                     {
                         "colour": "#004646",
@@ -168,6 +247,72 @@ feed_update_event = {
                 "relationship_type": "",
             }
         ],
+        "Note": [
+            {
+                "uuid": "d2b11111-1111-4111-8111-111111111111",
+                "object_uuid": "ba4b11b6-dcce-4315-8fd0-67b69160ea76",
+                "object_type": "Event",
+                "note": "Updated feed event note: campaign attribution is tentative.",
+                "language": "en",
+                "authors": "analyst@feed.test",
+                "created": "2024-08-27 10:00:00",
+                "modified": "2024-08-27 10:00:00",
+                "distribution": "3",
+                "Note": [
+                    {
+                        "uuid": "d2b22222-2222-4222-8222-222222222222",
+                        "object_uuid": "d2b11111-1111-4111-8111-111111111111",
+                        "object_type": "Note",
+                        "note": "Nested reply on the Updated feed event note.",
+                        "language": "en",
+                        "authors": "reviewer@feed.test",
+                        "created": "2024-08-27 11:00:00",
+                        "modified": "2024-08-27 11:00:00",
+                        "distribution": "3",
+                    }
+                ],
+                "Opinion": [
+                    {
+                        "uuid": "d2b33333-3333-4333-8333-333333333333",
+                        "object_uuid": "d2b11111-1111-4111-8111-111111111111",
+                        "object_type": "Note",
+                        "opinion": "80",
+                        "comment": "Nested opinion on the Updated feed event note.",
+                        "authors": "reviewer@feed.test",
+                        "created": "2024-08-27 11:30:00",
+                        "modified": "2024-08-27 11:30:00",
+                        "distribution": "3",
+                    }
+                ],
+            }
+        ],
+        "Opinion": [
+            {
+                "uuid": "d2b44444-4444-4444-8444-444444444444",
+                "object_uuid": "ba4b11b6-dcce-4315-8fd0-67b69160ea76",
+                "object_type": "Event",
+                "opinion": "25",
+                "comment": "Updated feed event opinion: low confidence.",
+                "authors": "analyst@feed.test",
+                "created": "2024-08-27 12:00:00",
+                "modified": "2024-08-27 12:00:00",
+                "distribution": "3",
+            }
+        ],
+        "Relationship": [
+            {
+                "uuid": "d2b55555-5555-4555-8555-555555555555",
+                "object_uuid": "ba4b11b6-dcce-4315-8fd0-67b69160ea76",
+                "object_type": "Event",
+                "related_object_uuid": "572503da-c87f-4520-a9bc-8de08b9c92e5",
+                "related_object_type": "Event",
+                "relationship_type": "related-to",
+                "authors": "analyst@feed.test",
+                "created": "2024-08-27 12:30:00",
+                "modified": "2024-08-27 12:30:00",
+                "distribution": "3",
+            }
+        ],
         "Attribute": [
             {
                 "category": "Payload delivery",
@@ -179,6 +324,19 @@ feed_update_event = {
                 "type": "sha1",
                 "uuid": "7f2fd15d-3c63-47ba-8a39-2c4b0b3314b0",
                 "value": "7edc546f741eff3e13590a62ce2856bb39d8f71d",
+                "Note": [
+                    {
+                        "uuid": "d2b66666-6666-4666-8666-666666666666",
+                        "object_uuid": "317e63e6-b95d-4dd1-b4fd-de2f64f33fd8",
+                        "object_type": "Attribute",
+                        "note": "Updated feed event attribute note: hash seen in unrelated sample.",
+                        "language": "en",
+                        "authors": "analyst@feed.test",
+                        "created": "2024-08-27 13:00:00",
+                        "modified": "2024-08-27 13:00:00",
+                        "distribution": "3",
+                    }
+                ],
                 "Tag": [
                     {
                         "colour": "#004646",

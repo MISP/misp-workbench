@@ -26,6 +26,7 @@ from app.routers import (
     taxonomies,
     users,
     reports,
+    analyst_data,
     tasks,
     correlations,
     sightings,
@@ -121,6 +122,7 @@ app.include_router(attachments.router, tags=["Attachments"])
 
 # Reports resource
 app.include_router(reports.router, tags=["Event Reports"])
+app.include_router(analyst_data.router, tags=["Analyst Data"])
 
 # Tasks resource
 app.include_router(tasks.router, tags=["Tasks"])
