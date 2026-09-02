@@ -222,7 +222,7 @@ def pull_event_by_uuid(
 
     event = update_pulled_event_before_insert(db, settings, event, server, user)
 
-    if not check_if_event_is_not_empty:
+    if not check_if_event_is_not_empty(event):
         logger.info("Event %s is empty, skipping" % event_uuid)
         return False
 
@@ -364,6 +364,27 @@ _DISTRIBUTION_DOWNGRADE = {
 }
 
 
+def distribution_is(distribution, level: DistributionLevel) -> bool:
+    """
+    Whether a distribution value is `level`.
+
+    DistributionLevel is a plain Enum, so its members never compare equal to
+    the ints pymisp supplies, nor to the ints a Pydantic model holds under
+    `use_enum_values`. Comparing one directly is silently always False, which
+    is how the sharing group branch below came to be dead code.
+    """
+    if isinstance(distribution, DistributionLevel):
+        return distribution is level
+
+    if distribution is None or distribution == "":
+        return False
+
+    try:
+        return int(distribution) == level.value
+    except (TypeError, ValueError):
+        return False
+
+
 def downgrade_distribution(distribution) -> int:
     """
     Downgrade a distribution level for data pulled from an external server:
@@ -406,19 +427,32 @@ def check_if_event_is_not_empty(event: MISPEvent) -> bool:
     """
     see: app/Model/Server.php::__checkIfEventSaveAble()
     """
-    if any(attribute for attribute in event.attributes if not attribute.deleted):
+
+    def is_live(entity) -> bool:
+        return not getattr(entity, "deleted", False)
+
+    if any(attribute for attribute in event.attributes if is_live(attribute)):
         return True
 
     if any(
-        object
-        for object in event.objects
-        if not object.deleted
-        and any(attribute for attribute in object.attributes if not attribute.deleted)
+        misp_object
+        for misp_object in event.objects
+        if is_live(misp_object)
+        and any(attribute for attribute in misp_object.attributes if is_live(attribute))
     ):
         return True
 
     if any(
-        event_report for event_report in event.event_reports if not event_report.deleted
+        event_report for event_report in event.event_reports if is_live(event_report)
+    ):
+        return True
+
+    # Analyst data is content too: an event carrying only a note would
+    # otherwise be skipped and the note lost. pymisp flattens nested analyst
+    # data onto these lists, so this sees replies as well.
+    if any(
+        getattr(event, attribute_name, None)
+        for attribute_name in ("notes", "opinions", "relationships")
     ):
         return True
 
@@ -477,7 +511,11 @@ def create_or_update_pulled_event(
         # TODO: handle protected event
 
         # see app/Model/Event::_edit
-        if existing_event.distribution == DistributionLevel.SHARING_GROUP:
+        # `existing_event` is a Pydantic model with use_enum_values, so its
+        # distribution is a plain int
+        if distribution_is(
+            existing_event.distribution, DistributionLevel.SHARING_GROUP
+        ):
             if existing_event.sharing_group is None:
                 logger.error(
                     "Event could not be saved: Sharing group chosen as the distribution level, but no sharing group specified. Make sure that the event includes a valid sharing_group_id or change to a different distribution level."

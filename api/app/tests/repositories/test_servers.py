@@ -16,6 +16,7 @@ from app.repositories import analyst_data as analyst_data_repository
 from app.repositories import events as events_repository
 from app.repositories import servers as servers_repository
 from app.settings import Settings
+from pymisp import MISPEvent
 from app.tests.api_tester import ApiTester
 from app.tests.scenarios import server_pull_scenarios
 from sqlalchemy.orm import Session
@@ -220,6 +221,106 @@ class TestServersRepository(ApiTester):
             for attribute_tag in scenario["expected_result"]["attribute_tags"]:
                 for tag_name in attribute_tag["tags"]:
                     assert tag_name in all_attribute_tag_names
+
+
+class TestDistributionIs:
+    """
+    DistributionLevel is a plain Enum, so a direct == against the ints pymisp
+    and the Pydantic models supply is silently always False. This is what the
+    sharing group branch of create_or_update_pulled_event compares with.
+    """
+
+    @pytest.mark.parametrize(
+        "value",
+        [
+            DistributionLevel.SHARING_GROUP.value,
+            str(DistributionLevel.SHARING_GROUP.value),
+            DistributionLevel.SHARING_GROUP,
+        ],
+    )
+    def test_matches_an_int_a_string_and_a_member(self, value):
+        assert (
+            servers_repository.distribution_is(value, DistributionLevel.SHARING_GROUP)
+            is True
+        )
+
+    @pytest.mark.parametrize(
+        "value",
+        [
+            DistributionLevel.ALL_COMMUNITIES.value,
+            str(DistributionLevel.ALL_COMMUNITIES.value),
+            DistributionLevel.ALL_COMMUNITIES,
+            None,
+            "",
+            "not-a-level",
+        ],
+    )
+    def test_rejects_anything_else(self, value):
+        assert (
+            servers_repository.distribution_is(value, DistributionLevel.SHARING_GROUP)
+            is False
+        )
+
+
+class TestCheckIfEventIsNotEmpty:
+    """
+    This guard used to be called without its parentheses, so it never ran.
+    Now that it does, it has to survive a payload that omits `deleted` and it
+    has to count analyst data as content.
+    """
+
+    def _event(self, **raw):
+        event = MISPEvent()
+        event.load(
+            {
+                "Event": {
+                    "uuid": "11111111-1111-1111-1111-111111111111",
+                    "info": "t",
+                    "date": "2024-01-01",
+                    **raw,
+                }
+            }
+        )
+        return event
+
+    ATTRIBUTE = {
+        "uuid": "22222222-2222-2222-2222-222222222222",
+        "type": "ip-dst",
+        "category": "Network activity",
+        "value": "1.2.3.4",
+    }
+
+    NOTE = {
+        "uuid": "33333333-3333-3333-3333-333333333333",
+        "object_uuid": "11111111-1111-1111-1111-111111111111",
+        "object_type": "Event",
+        "note": "only a note",
+        "authors": "analyst@local",
+        "created": "2024-01-01 00:00:00",
+        "modified": "2024-01-01 00:00:00",
+    }
+
+    def test_a_bare_event_is_empty(self):
+        assert servers_repository.check_if_event_is_not_empty(self._event()) is False
+
+    def test_an_attribute_without_a_deleted_key_counts(self):
+        # `deleted` is optional in a MISP payload, and pymisp only sets what it
+        # was given: reading it directly raised AttributeError
+        event = self._event(Attribute=[self.ATTRIBUTE])
+
+        assert servers_repository.check_if_event_is_not_empty(event) is True
+
+    def test_only_deleted_attributes_is_empty(self):
+        event = self._event(Attribute=[{**self.ATTRIBUTE, "deleted": True}])
+
+        assert servers_repository.check_if_event_is_not_empty(event) is False
+
+    def test_analyst_data_alone_counts_as_content(self):
+        # otherwise enabling this guard would drop an event carrying only a
+        # note, losing the note with it
+        event = self._event(Note=[self.NOTE])
+
+        assert servers_repository.check_if_event_is_not_empty(event) is True
 
 
 class TestDowngradeDistribution:
