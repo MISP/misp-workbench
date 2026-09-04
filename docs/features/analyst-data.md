@@ -146,9 +146,27 @@ where the user's scopes allow:
 - **Object cards** -- a collapsible *Analyst data* section in the card footer,
   loaded on the same terms.
 
+### On an event
+
+<img src="../../screenshots/analyst-data/misp-workbench-1_analyst-data-event-thread.png#only-light">
+<img src="../../screenshots/analyst-data/misp-workbench-1_analyst-data-event-thread-dark.png#only-dark">
+
+A note with a reply and an opinion of its own, an event level opinion, and a
+relationship naming the event it points at.
+
 Threads render nested under their parent, indented up to four levels so a deep
 discussion stays readable. Opinions show their 0-100 score with the matching
 MISP band (*Strongly disagree* through *Strongly agree*).
+
+### On an attribute
+
+<img src="../../screenshots/analyst-data/misp-workbench-2_analyst-data-attribute.png#only-light">
+<img src="../../screenshots/analyst-data/misp-workbench-2_analyst-data-attribute-dark.png#only-dark">
+
+The toggle in the actions column carries a count, so it is clear which
+attributes have been discussed without expanding any of them.
+
+### Relationship targets
 
 A relationship can point at an **event**, an **attribute** or an **object**.
 The picker takes the target type first and then searches that index remotely,
