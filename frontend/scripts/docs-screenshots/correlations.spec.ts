@@ -134,12 +134,11 @@ async function stubCorrelationRoutes(page: Page) {
  * outer event card so only the "Related Events" portion is visible for
  * the event-view screenshot.
  */
-async function trimEventViewToHeader(page: Page) {
+async function trimOverviewPanel(page: Page) {
   await page.addStyleTag({
     content: `
-      /* The event view is tabbed: the header, the tab strip and the Overview
-         panel are the shot. Attachments sit at the bottom of Overview and are
-         not part of what this screenshot is about. */
+      /* Attachments sit at the bottom of the Overview panel and are not part
+         of what this screenshot is about. */
       .event-attachments { display: none !important; }
     `,
   });
@@ -207,13 +206,13 @@ test.describe("Correlations screenshots", () => {
       timeout: 10_000,
     });
 
-    await trimEventViewToHeader(page);
+    await trimOverviewPanel(page);
     await pinForCapture(page);
 
-    // Capture the outer event card (already trimmed by the styles above)
-    const eventCard = page.locator(".card").first();
+    // The event view no longer wraps itself in one outer card - the Overview
+    // panel is the region that holds the widget.
     await capture(
-      eventCard,
+      page.locator('[data-tab-panel="overview"]'),
       FEATURE,
       "misp-workbench-2_correlations-event-view",
     );

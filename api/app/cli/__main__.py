@@ -12,12 +12,16 @@ from app.models import lab as lab_models
 from app.repositories import attributes as attributes_repository
 from app.repositories import events as events_repository
 from app.repositories import hunts as hunts_repository
+from app.repositories import objects as objects_repository
 from app.repositories import organisations as organisations_repository
+from app.repositories import tags as tags_repository
 from app.repositories import users as user_repository
 from app.schemas import attribute as attribute_schemas
 from app.schemas import event as event_schemas
 from app.schemas import hunt as hunt_schemas
+from app.schemas import object as object_schemas
 from app.schemas import organisations as organisation_schemas
+from app.schemas import tag as tag_schemas
 from app.schemas import user as user_schemas
 from app.services.opensearch import get_opensearch_client
 from app.services.tech_lab.lab import nbformat_io
@@ -185,6 +189,55 @@ DOCS_USER_PASSWORD = "admin"  # noqa: S105 — local-only docs user
 DOCS_USER_ROLE_ID = 1  # admin
 
 
+def _clear_event_children(client, event_uuid: str) -> None:
+    """Drop everything hanging off a fixture event before re-creating it.
+
+    The fixtures pin every uuid, so re-seeding overwrites its own rows - but
+    anything added to a fixture event by hand keeps its generated uuid and
+    would otherwise pile up beside them, run after run. A docs fixture is
+    meant to be exactly what the fixture file says, so its children are
+    cleared first. Only these four events are touched.
+    """
+    for index, field in (
+        ("misp-attributes", "event_uuid"),
+        ("misp-objects", "event_uuid"),
+        # This index maps its uuid fields as analyzed text, so a term query
+        # on the bare field never matches a full uuid.
+        ("misp-object-references", "event_uuid.keyword"),
+    ):
+        client.delete_by_query(
+            index=index,
+            body={"query": {"term": {field: event_uuid}}},
+            refresh=True,
+            ignore=[404],
+        )
+
+
+def _ensure_tag(db, tag: dict):
+    """Create the fixture tag, or bring an existing one back to its colour.
+
+    Taxonomy loading only creates a tag it does not already find, so a tag
+    that first appeared through ad-hoc tagging keeps its hashed colour
+    forever. Docs screenshots need the real one, so it is set either way.
+    """
+    db_tag = tags_repository.get_tag_by_name(db, tag_name=tag["name"])
+    fields = {
+        "name": tag["name"],
+        "colour": tag["colour"],
+        "exportable": True,
+        "hide_tag": False,
+        "is_galaxy": tag.get("is_galaxy", False),
+        "is_custom_galaxy": False,
+        "local_only": False,
+    }
+
+    if db_tag is None:
+        tags_repository.create_tag(db, tag=tag_schemas.TagCreate(**fields))
+        return
+
+    tags_repository.update_tag(db, db_tag.id, tag_schemas.TagUpdate(**fields))
+
+
 def _ensure_docs_user(db):
     org = organisations_repository.get_organisation_by_name(
         db, organisation_name=DOCS_ORG_NAME
@@ -238,6 +291,7 @@ def seed_docs_fixtures(
 
     events_data = json.loads((fixtures_dir / "events.json").read_text())
     attrs_data = json.loads((fixtures_dir / "attributes.json").read_text())
+    objects_data = json.loads((fixtures_dir / "objects.json").read_text())
     hunts_data = json.loads((fixtures_dir / "hunts.json").read_text())
     audit_data = json.loads((fixtures_dir / "audit_logs.json").read_text())
 
@@ -268,7 +322,7 @@ def seed_docs_fixtures(
         when = now - timedelta(days=offset_days)
         event_ts_by_uuid[ev["uuid"]] = int(when.timestamp())
 
-        payload = {k: v for k, v in ev.items() if k != "date_offset_days"}
+        payload = {k: v for k, v in ev.items() if k not in ("date_offset_days", "tags")}
         payload["date"] = when
         payload["timestamp"] = int(when.timestamp())
         payload["org_id"] = org.id
@@ -276,7 +330,22 @@ def seed_docs_fixtures(
         payload["user_id"] = user.id
 
         client.delete(index="misp-events", id=ev["uuid"], ignore=[404], refresh=True)
-        events_repository.create_event(db, event=event_schemas.EventCreate(**payload))
+        _clear_event_children(client, ev["uuid"])
+        db_event = events_repository.create_event(
+            db, event=event_schemas.EventCreate(**payload)
+        )
+
+        # Tags carry their colour in the fixture. get_or_create_tag_by_name
+        # would otherwise hash the name into an arbitrary pastel, so a
+        # well-known tag like tlp:amber would not come out amber on an
+        # instance with no taxonomies loaded.
+        for tag in ev.get("tags", []):
+            _ensure_tag(db, tag)
+            tags_repository.tag_event(
+                db=db,
+                event=db_event,
+                tag=tags_repository.get_tag_by_name(db, tag_name=tag["name"]),
+            )
 
     for attr in attrs_data:
         payload = dict(attr)
@@ -291,6 +360,22 @@ def seed_docs_fixtures(
         )
         attributes_repository.create_attribute(
             db, attribute=attribute_schemas.AttributeCreate(**payload)
+        )
+
+    # Objects after their event, and after the standalone attributes: an
+    # object owns its own attributes and the references between objects, all
+    # keyed by pinned uuid so a re-run overwrites rather than duplicates.
+    for obj in objects_data:
+        payload = dict(obj)
+        payload["timestamp"] = event_ts_by_uuid.get(
+            payload.get("event_uuid"), int(now.timestamp())
+        )
+        for nested in payload.get("attributes", []):
+            nested["timestamp"] = payload["timestamp"]
+
+        client.delete(index="misp-objects", id=obj["uuid"], ignore=[404], refresh=True)
+        objects_repository.create_object(
+            db, object=object_schemas.ObjectCreate(**payload)
         )
 
     hunts_created = hunts_skipped = 0
@@ -333,6 +418,7 @@ def seed_docs_fixtures(
         f"Docs fixtures seeded: "
         f"events={len(events_data)} upserted, "
         f"attributes={len(attrs_data)} upserted, "
+        f"objects={len(objects_data)} upserted, "
         f"hunts={hunts_created} created / {hunts_skipped} skipped, "
         f"audit_logs={len(audit_data)} re-timed."
     )

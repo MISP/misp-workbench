@@ -270,11 +270,9 @@ test.describe("Analyst data screenshots", () => {
     await stubAnalystData(page);
 
     // Analyst data has its own tab on the event view, and the tab is part of
-    // the URL. The whole event card is the shot, so the tab strip shows where
-    // the thread lives.
+    // the URL, so the panel is linked to directly and is itself the shot.
     await page.goto(`/events/${EVENT_UUID}/analyst-data`);
 
-    const card = page.locator(".card").first();
     const panel = page.locator('[data-tab-panel="analyst-data"]');
     await expect(panel).toBeVisible({ timeout: 15_000 });
 
@@ -293,7 +291,7 @@ test.describe("Analyst data screenshots", () => {
     });
 
     await pinForCapture(page);
-    await capture(card, FEATURE, "misp-workbench-1_analyst-data-event-thread");
+    await capture(panel, FEATURE, "misp-workbench-1_analyst-data-event-thread");
   });
 
   test("2 — analyst data on an attribute row", async ({ page }) => {
