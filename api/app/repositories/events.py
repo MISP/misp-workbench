@@ -129,6 +129,11 @@ def get_event_from_opensearch(
             # event graph exists to show.
             refs_resp = client.search(
                 index="misp-object-references",
+                # No index is provisioned up front - each is created by its
+                # first write. An instance that has never recorded an object
+                # reference therefore has no such index, which is a legitimate
+                # empty result here, not a failure.
+                ignore_unavailable=True,
                 body={
                     "query": {
                         "bool": {
@@ -136,9 +141,7 @@ def get_event_from_opensearch(
                             # fields as analyzed text, which a full uuid never
                             # matches term-wise (unlike misp-objects, which
                             # maps event_uuid as a keyword outright).
-                            "must": [
-                                {"terms": {"source_uuid.keyword": object_uuids}}
-                            ],
+                            "must": [{"terms": {"source_uuid.keyword": object_uuids}}],
                             "must_not": [{"term": {"deleted": True}}],
                         }
                     },
