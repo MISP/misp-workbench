@@ -63,6 +63,27 @@ function handleAttributeEnriched(attribute_uuid) {
 <style scoped>
 .table {
   table-layout: fixed;
+  /* as in AttributesIndex: scroll rather than squeeze the value column away */
+  min-width: 40rem;
+}
+
+/*
+ * The action toolbar is a fixed ~195px wide, so the 20% share it used to get
+ * left it overflowing its cell and drawing over the timestamp on anything but
+ * a wide screen. These widths reserve what the content needs and leave the
+ * remainder to value, which is the column worth reading.
+ */
+.actions-col {
+  width: 14rem;
+}
+
+.type-col {
+  width: 6rem;
+}
+
+.timestamp-col {
+  width: 12rem;
+  white-space: nowrap;
 }
 
 .value {
@@ -75,67 +96,72 @@ function handleAttributeEnriched(attribute_uuid) {
 </style>
 
 <template>
-  <table class="table table-striped">
-    <thead>
-      <tr>
-        <th scope="col">value</th>
-        <th scope="col">type</th>
-        <th style="width: 250px" scope="col" class="d-none d-sm-table-cell">
-          tags
-        </th>
-        <th scope="col" class="d-none d-sm-table-cell">timestamp</th>
-        <th
-          v-if="
-            actions.view || actions.enrich || actions.update || actions.delete
-          "
-          scope="col"
-          class="text-end"
+  <div class="table-responsive">
+    <table class="table table-striped">
+      <thead>
+        <tr>
+          <th scope="col">value</th>
+          <th scope="col" class="type-col">type</th>
+          <th style="width: 22%" scope="col" class="d-none d-sm-table-cell">
+            tags
+          </th>
+          <!-- timestamp is the first column to go: below lg there is not room
+             for it and the action toolbar side by side -->
+          <th scope="col" class="timestamp-col d-none d-lg-table-cell">
+            timestamp
+          </th>
+          <th
+            v-if="
+              actions.view || actions.enrich || actions.update || actions.delete
+            "
+            scope="col"
+            class="actions-col text-end"
+          >
+            actions
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr
+          :key="attribute.uuid"
+          v-for="attribute in attributes.filter((a) => !a.deleted)"
         >
-          actions
-        </th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr
-        :key="attribute.uuid"
-        v-for="attribute in attributes.filter((a) => !a.deleted)"
-      >
-        <td class="value">
-          <CopyToClipboard :value="attribute.value" />
-          {{ attribute.value }}
-        </td>
-        <td style="width: 10%">{{ attribute.type }}</td>
-        <td style="width: 20%" class="d-none d-sm-table-cell">
-          <TagsIndex
-            v-if="!actions.tag"
-            :tags="attribute.tags || attribute.AttributeTag || []"
-          />
-          <TagsSelect
-            v-if="actions.tag"
-            :modelClass="'attribute'"
-            :model="attribute"
-            :selectedTags="attribute.tags || attribute.AttributeTag || []"
-          />
-        </td>
-        <td style="width: 10%" class="d-none d-sm-table-cell">
-          <Timestamp :timestamp="attribute.timestamp" />
-        </td>
-        <td
-          style="width: 20%"
-          class="text-end"
-          v-if="
-            actions.view || actions.enrich || actions.update || actions.delete
-          "
-        >
-          <AttributeActions
-            :attribute="attribute"
-            :default_actions="actions"
-            @attribute-deleted="handleAttributeDeleted"
-            @attribute-created="handleAttributeCreated"
-            @attribute-enriched="handleAttributeEnriched"
-          />
-        </td>
-      </tr>
-    </tbody>
-  </table>
+          <td class="value">
+            <CopyToClipboard :value="attribute.value" />
+            {{ attribute.value }}
+          </td>
+          <td class="type-col">{{ attribute.type }}</td>
+          <td class="d-none d-sm-table-cell">
+            <TagsIndex
+              v-if="!actions.tag"
+              :tags="attribute.tags || attribute.AttributeTag || []"
+            />
+            <TagsSelect
+              v-if="actions.tag"
+              :modelClass="'attribute'"
+              :model="attribute"
+              :selectedTags="attribute.tags || attribute.AttributeTag || []"
+            />
+          </td>
+          <td class="timestamp-col d-none d-lg-table-cell">
+            <Timestamp :timestamp="attribute.timestamp" />
+          </td>
+          <td
+            class="actions-col text-end"
+            v-if="
+              actions.view || actions.enrich || actions.update || actions.delete
+            "
+          >
+            <AttributeActions
+              :attribute="attribute"
+              :default_actions="actions"
+              @attribute-deleted="handleAttributeDeleted"
+              @attribute-created="handleAttributeCreated"
+              @attribute-enriched="handleAttributeEnriched"
+            />
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
 </template>

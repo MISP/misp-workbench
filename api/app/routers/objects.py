@@ -8,7 +8,7 @@ from app.repositories import objects as objects_repository
 from app.schemas import object as object_schemas
 from app.schemas import user as user_schemas
 from app.worker import tasks
-from fastapi import APIRouter, Depends, HTTPException, Security, status, Response
+from fastapi import APIRouter, Depends, HTTPException, Query, Security, status, Response
 from sqlalchemy.orm import Session
 from fastapi_pagination import Page, Params
 
@@ -36,6 +36,31 @@ def get_objects(
         params["event_uuid"],
         params["deleted"],
         params["template_uuid"],
+    )
+
+
+@router.get("/objects/search")
+async def search_objects(
+    query: str = Query(..., min_length=0),
+    page: int = Query(1, ge=1),
+    size: int = Query(10, ge=1, le=100),
+    sort_by: Optional[str] = Query("@timestamp", pattern="^(_score|@timestamp)$"),
+    sort_order: Optional[str] = Query("desc", pattern="^(asc|desc)$"),
+    include_deleted: bool = Query(False),
+    user: user_schemas.User = Security(
+        get_current_active_user, scopes=["objects:read"]
+    ),
+):
+    from_value = (page - 1) * size
+
+    return objects_repository.search_objects(
+        query,
+        page,
+        from_value,
+        size,
+        sort_by,
+        sort_order,
+        include_deleted=include_deleted,
     )
 
 

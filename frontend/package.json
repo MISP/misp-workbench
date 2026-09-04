@@ -27,6 +27,7 @@
     "docs:screenshots:notifications": "playwright test scripts/docs-screenshots/notifications.spec.ts --config=scripts/docs-screenshots/playwright.config.ts",
     "docs:screenshots:batch-import": "playwright test scripts/docs-screenshots/batch-import.spec.ts --config=scripts/docs-screenshots/playwright.config.ts",
     "docs:screenshots:retention": "playwright test scripts/docs-screenshots/retention.spec.ts --config=scripts/docs-screenshots/playwright.config.ts",
+    "docs:screenshots:analyst-data": "playwright test scripts/docs-screenshots/analyst-data.spec.ts --config=scripts/docs-screenshots/playwright.config.ts",
     "build-only": "vite build",
     "type-check": "vue-tsc --noEmit -p tsconfig.vitest.json --composite false",
     "lint": "eslint . --fix"

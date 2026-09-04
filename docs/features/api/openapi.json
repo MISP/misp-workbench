@@ -3034,6 +3034,123 @@
         }
       }
     },
+    "/objects/search": {
+      "get": {
+        "tags": [
+          "Objects"
+        ],
+        "summary": "Search Objects",
+        "operationId": "search_objects_objects_search_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "objects:read"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "query",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 0,
+              "title": "Query"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1,
+              "title": "Page"
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 10,
+              "title": "Size"
+            }
+          },
+          {
+            "name": "sort_by",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^(_score|@timestamp)$"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": "@timestamp",
+              "title": "Sort By"
+            }
+          },
+          {
+            "name": "sort_order",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^(asc|desc)$"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": "desc",
+              "title": "Sort Order"
+            }
+          },
+          {
+            "name": "include_deleted",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Include Deleted"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/objects/{object_uuid}": {
       "get": {
         "tags": [
@@ -6443,6 +6560,494 @@
             "schema": {
               "type": "string",
               "title": "Report Uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/analyst-data/events/{event_uuid}": {
+      "get": {
+        "tags": [
+          "Analyst Data"
+        ],
+        "summary": "Get Event Analyst Data",
+        "description": "Analyst data attached directly to an event, threads included.\n\nAnalyst data on the event's attributes and objects is reachable through\n`/analyst-data/objects/{object_uuid}`.",
+        "operationId": "get_event_analyst_data_analyst_data_events__event_uuid__get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "analyst_data:read"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "event_uuid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Event Uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalystDataListResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/analyst-data/events/{event_uuid}/all": {
+      "get": {
+        "tags": [
+          "Analyst Data"
+        ],
+        "summary": "Get All Event Analyst Data",
+        "description": "Every analyst data document captured for an event, flat and unthreaded,\nincluding the data attached to its attributes and objects.",
+        "operationId": "get_all_event_analyst_data_analyst_data_events__event_uuid__all_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "analyst_data:read"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "event_uuid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Event Uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": true
+                  },
+                  "title": "Response Get All Event Analyst Data Analyst Data Events  Event Uuid  All Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/analyst-data/objects/{object_uuid}": {
+      "get": {
+        "tags": [
+          "Analyst Data"
+        ],
+        "summary": "Get Object Analyst Data",
+        "description": "Analyst data attached to an attribute, object, event report or any other\nMISP object type, threads included.",
+        "operationId": "get_object_analyst_data_analyst_data_objects__object_uuid__get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "analyst_data:read"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "object_uuid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Object Uuid"
+            }
+          },
+          {
+            "name": "object_type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "Restrict to analyst data attached with this MISP object type (Attribute, Object, EventReport, ...). Omit to match any type carrying this uuid.",
+              "title": "Object Type"
+            },
+            "description": "Restrict to analyst data attached with this MISP object type (Attribute, Object, EventReport, ...). Omit to match any type carrying this uuid."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalystDataListResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/analyst-data/events/{event_uuid}/counts": {
+      "get": {
+        "tags": [
+          "Analyst Data"
+        ],
+        "summary": "Get Event Analyst Data Counts",
+        "description": "Analyst data totals for everything belonging to an event, keyed by object\nuuid, so a page can badge every attribute and object in one request.",
+        "operationId": "get_event_analyst_data_counts_analyst_data_events__event_uuid__counts_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "analyst_data:read"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "event_uuid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Event Uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "integer"
+                  },
+                  "title": "Response Get Event Analyst Data Counts Analyst Data Events  Event Uuid  Counts Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/analyst-data/relationship-types": {
+      "get": {
+        "tags": [
+          "Analyst Data"
+        ],
+        "summary": "Get Relationship Types",
+        "description": "The MISP relationship vocabulary, for the relationship type picker. A type\noutside this list is still accepted on create.",
+        "operationId": "get_relationship_types_analyst_data_relationship_types_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "analyst_data:read"
+            ]
+          }
+        ]
+      }
+    },
+    "/analyst-data/notes": {
+      "post": {
+        "tags": [
+          "Analyst Data"
+        ],
+        "summary": "Create Note",
+        "operationId": "create_note_analyst_data_notes_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NoteCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "analyst_data:create"
+            ]
+          }
+        ]
+      }
+    },
+    "/analyst-data/opinions": {
+      "post": {
+        "tags": [
+          "Analyst Data"
+        ],
+        "summary": "Create Opinion",
+        "operationId": "create_opinion_analyst_data_opinions_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OpinionCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "analyst_data:create"
+            ]
+          }
+        ]
+      }
+    },
+    "/analyst-data/relationships": {
+      "post": {
+        "tags": [
+          "Analyst Data"
+        ],
+        "summary": "Create Relationship",
+        "operationId": "create_relationship_analyst_data_relationships_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RelationshipCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "analyst_data:create"
+            ]
+          }
+        ]
+      }
+    },
+    "/analyst-data/{analyst_uuid}": {
+      "put": {
+        "tags": [
+          "Analyst Data"
+        ],
+        "summary": "Update Analyst Data",
+        "operationId": "update_analyst_data_analyst_data__analyst_uuid__put",
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "analyst_data:update"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "analyst_uuid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Analyst Uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnalystDataUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Analyst Data"
+        ],
+        "summary": "Delete Analyst Data",
+        "description": "Soft delete. Replies nested under this document are deleted with it, except\nany belonging to another organisation.",
+        "operationId": "delete_analyst_data_analyst_data__analyst_uuid__delete",
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "analyst_data:delete"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "analyst_uuid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Analyst Uuid"
             }
           }
         ],
@@ -11531,6 +12136,226 @@
         "title": "AnalysisLevel",
         "description": "Enum for the Event analysis level"
       },
+      "AnalystDataListResponse": {
+        "properties": {
+          "notes": {
+            "items": {
+              "$ref": "#/components/schemas/AnalystDataThread"
+            },
+            "type": "array",
+            "title": "Notes",
+            "default": []
+          },
+          "opinions": {
+            "items": {
+              "$ref": "#/components/schemas/AnalystDataThread"
+            },
+            "type": "array",
+            "title": "Opinions",
+            "default": []
+          },
+          "relationships": {
+            "items": {
+              "$ref": "#/components/schemas/AnalystDataThread"
+            },
+            "type": "array",
+            "title": "Relationships",
+            "default": []
+          }
+        },
+        "type": "object",
+        "title": "AnalystDataListResponse"
+      },
+      "AnalystDataThread": {
+        "properties": {
+          "uuid": {
+            "type": "string",
+            "title": "Uuid"
+          },
+          "analyst_type": {
+            "$ref": "#/components/schemas/AnalystDataType"
+          },
+          "object_uuid": {
+            "type": "string",
+            "title": "Object Uuid"
+          },
+          "object_type": {
+            "type": "string",
+            "title": "Object Type"
+          },
+          "data": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Data"
+          },
+          "notes": {
+            "items": {
+              "$ref": "#/components/schemas/AnalystDataThread"
+            },
+            "type": "array",
+            "title": "Notes",
+            "default": []
+          },
+          "opinions": {
+            "items": {
+              "$ref": "#/components/schemas/AnalystDataThread"
+            },
+            "type": "array",
+            "title": "Opinions",
+            "default": []
+          },
+          "relationships": {
+            "items": {
+              "$ref": "#/components/schemas/AnalystDataThread"
+            },
+            "type": "array",
+            "title": "Relationships",
+            "default": []
+          }
+        },
+        "type": "object",
+        "required": [
+          "uuid",
+          "analyst_type",
+          "object_uuid",
+          "object_type",
+          "data"
+        ],
+        "title": "AnalystDataThread",
+        "description": "One analyst data document plus the analyst data attached to it.\n\nMISP threads analyst data recursively -- a note can carry notes and\nopinions of its own -- so children are the same shape as their parent."
+      },
+      "AnalystDataType": {
+        "type": "string",
+        "enum": [
+          "Note",
+          "Opinion",
+          "Relationship"
+        ],
+        "title": "AnalystDataType",
+        "description": "The three MISP analyst data object types.\n\nThe value doubles as the `object_type` MISP uses when analyst data is\nattached to other analyst data, so a nested note carries\n`object_type=\"Note\"` pointing at its parent's uuid."
+      },
+      "AnalystDataUpdate": {
+        "properties": {
+          "note": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "language": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Language"
+          },
+          "note_type_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note Type Name"
+          },
+          "opinion": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 100.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Opinion"
+          },
+          "comment": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comment"
+          },
+          "related_object_uuid": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Related Object Uuid"
+          },
+          "related_object_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Related Object Type"
+          },
+          "relationship_type": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Relationship Type"
+          },
+          "distribution": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Distribution"
+          },
+          "sharing_group_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sharing Group Id"
+          }
+        },
+        "type": "object",
+        "title": "AnalystDataUpdate",
+        "description": "A partial update. Only the fields belonging to the stored object's type are\napplied; anything else is rejected rather than silently dropped."
+      },
       "ApiKey": {
         "properties": {
           "id": {
@@ -16096,6 +16921,74 @@
         "type": "object",
         "title": "ModuleSettingsUpdate"
       },
+      "NoteCreate": {
+        "properties": {
+          "object_uuid": {
+            "type": "string",
+            "title": "Object Uuid"
+          },
+          "object_type": {
+            "type": "string",
+            "title": "Object Type"
+          },
+          "distribution": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Distribution"
+          },
+          "sharing_group_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sharing Group Id"
+          },
+          "note": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Note"
+          },
+          "language": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Language"
+          },
+          "note_type_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note Type Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "object_uuid",
+          "object_type",
+          "note"
+        ],
+        "title": "NoteCreate"
+      },
       "Notification": {
         "properties": {
           "user_id": {
@@ -17064,6 +17957,59 @@
         },
         "type": "object",
         "title": "ObjectUpdate"
+      },
+      "OpinionCreate": {
+        "properties": {
+          "object_uuid": {
+            "type": "string",
+            "title": "Object Uuid"
+          },
+          "object_type": {
+            "type": "string",
+            "title": "Object Type"
+          },
+          "distribution": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Distribution"
+          },
+          "sharing_group_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sharing Group Id"
+          },
+          "opinion": {
+            "type": "integer",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Opinion"
+          },
+          "comment": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Comment"
+          }
+        },
+        "type": "object",
+        "required": [
+          "object_uuid",
+          "object_type",
+          "opinion",
+          "comment"
+        ],
+        "title": "OpinionCreate"
       },
       "Organisation": {
         "properties": {
@@ -18832,6 +19778,62 @@
           1
         ],
         "title": "ReferencedType"
+      },
+      "RelationshipCreate": {
+        "properties": {
+          "object_uuid": {
+            "type": "string",
+            "title": "Object Uuid"
+          },
+          "object_type": {
+            "type": "string",
+            "title": "Object Type"
+          },
+          "distribution": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Distribution"
+          },
+          "sharing_group_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sharing Group Id"
+          },
+          "related_object_uuid": {
+            "type": "string",
+            "title": "Related Object Uuid"
+          },
+          "related_object_type": {
+            "type": "string",
+            "title": "Related Object Type"
+          },
+          "relationship_type": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Relationship Type"
+          }
+        },
+        "type": "object",
+        "required": [
+          "object_uuid",
+          "object_type",
+          "related_object_uuid",
+          "related_object_type",
+          "relationship_type"
+        ],
+        "title": "RelationshipCreate"
       },
       "Role": {
         "properties": {

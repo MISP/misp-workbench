@@ -37,6 +37,13 @@ export const useObjectsStore = defineStore("objects", {
         .catch((error) => (this.objects = { error }))
         .finally(() => (this.status = { loading: false }));
     },
+    // Returns matches without touching the shared list state, so a picker can
+    // search while an object list is already on screen.
+    async searchLookup(params = { query: "", page: 1, size: 10 }) {
+      return await fetchWrapper.get(
+        baseUrl + "/search?" + new URLSearchParams(params).toString(),
+      );
+    },
     async getById(id) {
       this.status = { loading: true };
       fetchWrapper

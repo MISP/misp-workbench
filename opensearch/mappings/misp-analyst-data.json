@@ -1,0 +1,90 @@
+{
+    "mappings": {
+        "properties": {
+            "@timestamp": {
+                "type": "date"
+            },
+            "analyst_type": {
+                "type": "keyword"
+            },
+            "uuid": {
+                "type": "keyword"
+            },
+            "object_uuid": {
+                "type": "keyword"
+            },
+            "object_type": {
+                "type": "keyword"
+            },
+            "event_uuid": {
+                "type": "keyword"
+            },
+            "authors": {
+                "type": "text",
+                "fields": {
+                    "keyword": {
+                        "type": "keyword",
+                        "ignore_above": 256
+                    }
+                }
+            },
+            "org_uuid": {
+                "type": "keyword"
+            },
+            "orgc_uuid": {
+                "type": "keyword"
+            },
+            "created": {
+                "type": "date"
+            },
+            "modified": {
+                "type": "date"
+            },
+            "distribution": {
+                "type": "integer"
+            },
+            "sharing_group_id": {
+                "type": "integer"
+            },
+            "deleted": {
+                "type": "boolean"
+            },
+            "note": {
+                "type": "text",
+                "fields": {
+                    "keyword": {
+                        "type": "keyword",
+                        "ignore_above": 256
+                    }
+                }
+            },
+            "language": {
+                "type": "keyword"
+            },
+            "note_type_name": {
+                "type": "keyword"
+            },
+            "opinion": {
+                "type": "integer"
+            },
+            "comment": {
+                "type": "text",
+                "fields": {
+                    "keyword": {
+                        "type": "keyword",
+                        "ignore_above": 256
+                    }
+                }
+            },
+            "related_object_uuid": {
+                "type": "keyword"
+            },
+            "related_object_type": {
+                "type": "keyword"
+            },
+            "relationship_type": {
+                "type": "keyword"
+            }
+        }
+    }
+}

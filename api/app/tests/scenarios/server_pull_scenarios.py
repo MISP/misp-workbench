@@ -53,6 +53,19 @@ test_cases = {
                         "category": "Network activity",
                         "to_ids": False,
                         "uuid": "e437b43c-8b13-4599-9ccf-f31c61007dd2",
+                        "Note": [
+                            {
+                                "uuid": "a1b66666-6666-4666-8666-666666666666",
+                                "object_uuid": "e437b43c-8b13-4599-9ccf-f31c61007dd2",
+                                "object_type": "Attribute",
+                                "note": "Server pull attribute note: resolver, low value.",
+                                "language": "en",
+                                "authors": "analyst@remote.test",
+                                "created": "2022-06-09 13:00:00",
+                                "modified": "2022-06-09 13:00:00",
+                                "distribution": "2",
+                            }
+                        ],
                         "event_id": "1",
                         "distribution": "5",
                         "timestamp": "1654760393",
@@ -250,6 +263,72 @@ test_cases = {
                         ],
                     },
                 ],
+                "Note": [
+                    {
+                        "uuid": "a1b11111-1111-4111-8111-111111111111",
+                        "object_uuid": "572503da-c87f-4520-a9bc-8de08b9c92e5",
+                        "object_type": "Event",
+                        "note": "Server pull note: infrastructure overlaps a known cluster.",
+                        "language": "en",
+                        "authors": "analyst@remote.test",
+                        "created": "2022-06-09 10:00:00",
+                        "modified": "2022-06-09 10:00:00",
+                        "distribution": "2",
+                        "Note": [
+                            {
+                                "uuid": "a1b22222-2222-4222-8222-222222222222",
+                                "object_uuid": "a1b11111-1111-4111-8111-111111111111",
+                                "object_type": "Note",
+                                "note": "Nested reply on the pulled note.",
+                                "language": "en",
+                                "authors": "reviewer@remote.test",
+                                "created": "2022-06-09 11:00:00",
+                                "modified": "2022-06-09 11:00:00",
+                                "distribution": "2",
+                            }
+                        ],
+                        "Opinion": [
+                            {
+                                "uuid": "a1b33333-3333-4333-8333-333333333333",
+                                "object_uuid": "a1b11111-1111-4111-8111-111111111111",
+                                "object_type": "Note",
+                                "opinion": "90",
+                                "comment": "Nested opinion on the pulled note.",
+                                "authors": "reviewer@remote.test",
+                                "created": "2022-06-09 11:30:00",
+                                "modified": "2022-06-09 11:30:00",
+                                "distribution": "2",
+                            }
+                        ],
+                    }
+                ],
+                "Opinion": [
+                    {
+                        "uuid": "a1b44444-4444-4444-8444-444444444444",
+                        "object_uuid": "572503da-c87f-4520-a9bc-8de08b9c92e5",
+                        "object_type": "Event",
+                        "opinion": "75",
+                        "comment": "Server pull opinion: agree with the attribution.",
+                        "authors": "analyst@remote.test",
+                        "created": "2022-06-09 12:00:00",
+                        "modified": "2022-06-09 12:00:00",
+                        "distribution": "2",
+                    }
+                ],
+                "Relationship": [
+                    {
+                        "uuid": "a1b55555-5555-4555-8555-555555555555",
+                        "object_uuid": "572503da-c87f-4520-a9bc-8de08b9c92e5",
+                        "object_type": "Event",
+                        "related_object_uuid": "988ce14e-0802-4aa3-92ca-8ca1104e0b38",
+                        "related_object_type": "Event",
+                        "relationship_type": "related-to",
+                        "authors": "analyst@remote.test",
+                        "created": "2022-06-09 12:30:00",
+                        "modified": "2022-06-09 12:30:00",
+                        "distribution": "2",
+                    }
+                ],
                 "EventReport": [],
                 "CryptographicKey": [],
                 "Tag": [
@@ -271,6 +350,41 @@ test_cases = {
         },
         "expected_result": {
             "event_uuids": (["572503da-c87f-4520-a9bc-8de08b9c92e5"]),
+            # arrives as connected communities (2), downgraded on pull
+            "event_distribution": 1,
+            # analyst data, keyed by uuid -> (analyst_type, object_uuid, object_type)
+            "analyst_data": {
+                "a1b11111-1111-4111-8111-111111111111": (
+                    "Note",
+                    "572503da-c87f-4520-a9bc-8de08b9c92e5",
+                    "Event",
+                ),
+                "a1b22222-2222-4222-8222-222222222222": (
+                    "Note",
+                    "a1b11111-1111-4111-8111-111111111111",
+                    "Note",
+                ),
+                "a1b33333-3333-4333-8333-333333333333": (
+                    "Opinion",
+                    "a1b11111-1111-4111-8111-111111111111",
+                    "Note",
+                ),
+                "a1b44444-4444-4444-8444-444444444444": (
+                    "Opinion",
+                    "572503da-c87f-4520-a9bc-8de08b9c92e5",
+                    "Event",
+                ),
+                "a1b55555-5555-4555-8555-555555555555": (
+                    "Relationship",
+                    "572503da-c87f-4520-a9bc-8de08b9c92e5",
+                    "Event",
+                ),
+                "a1b66666-6666-4666-8666-666666666666": (
+                    "Note",
+                    "e437b43c-8b13-4599-9ccf-f31c61007dd2",
+                    "Attribute",
+                ),
+            },
             "attribute_uuids": (
                 [
                     "e437b43c-8b13-4599-9ccf-f31c61007dd2",
@@ -494,6 +608,9 @@ test_cases = {
             }
         },
         "expected_result": {
+            "analyst_data": {},
+            # sharing group is not one of the downgraded levels
+            "event_distribution": 4,
             "event_uuids": (["4e637837-da9c-4d3a-badd-5eb5b98ec324"]),
             "attribute_uuids": (["70b688cf-e8d7-419a-9e0e-8fa85eeabbd2"]),
             "object_uuids": ([]),

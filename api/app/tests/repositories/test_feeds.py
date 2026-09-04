@@ -6,6 +6,7 @@ from app.models import feed as feed_models
 from app.models import tag as tag_models
 from app.models import user as user_models
 from app.repositories import attributes as attributes_repository
+from app.repositories import analyst_data as analyst_data_repository
 from app.repositories import events as events_repository
 from app.repositories import feeds as feeds_repository
 from app.repositories import object_references as object_references_repository
@@ -66,9 +67,64 @@ class TestFeedsRepository(ApiTester):
             )
             assert obj is not None
 
+            # check the analyst data was captured, threads included
+            event_uuid = feed_fetch_scenarios.feed_new_event["Event"]["uuid"]
+            captured = {
+                d["uuid"]: d
+                for d in analyst_data_repository.get_all_analyst_data_for_event(
+                    event_uuid
+                )
+            }
+            assert {
+                "c1a11111-1111-4111-8111-111111111111",
+                "c1a22222-2222-4222-8222-222222222222",
+                "c1a33333-3333-4333-8333-333333333333",
+                "c1a44444-4444-4444-8444-444444444444",
+                "c1a55555-5555-4555-8555-555555555555",
+                "c1a66666-6666-4666-8666-666666666666",
+            }.issubset(captured.keys())
+
+            # a feed fetch is not a server pull, so the distribution is kept
+            assert captured["c1a11111-1111-4111-8111-111111111111"]["distribution"] == 3
+            assert captured["c1a44444-4444-4444-8444-444444444444"]["opinion"] == 25
+            assert (
+                captured["c1a55555-5555-4555-8555-555555555555"]["relationship_type"]
+                == "related-to"
+            )
+
+            threads = analyst_data_repository.get_analyst_data_by_event_uuid(event_uuid)
+            assert [n.uuid for n in threads.notes] == [
+                "c1a11111-1111-4111-8111-111111111111"
+            ]
+            assert [o.uuid for o in threads.opinions] == [
+                "c1a44444-4444-4444-8444-444444444444"
+            ]
+            assert [r.uuid for r in threads.relationships] == [
+                "c1a55555-5555-4555-8555-555555555555"
+            ]
+
+            # the nested reply and opinion hang off the event note
+            event_note = threads.notes[0]
+            assert [n.uuid for n in event_note.notes] == [
+                "c1a22222-2222-4222-8222-222222222222"
+            ]
+            assert [o.uuid for o in event_note.opinions] == [
+                "c1a33333-3333-4333-8333-333333333333"
+            ]
+
+            # analyst data on an attribute is read by the attribute uuid
+            attribute_threads = analyst_data_repository.get_analyst_data_by_object_uuid(
+                "317e63e6-b95d-4dd1-b4fd-de2f64f33fd8", "Attribute"
+            )
+            assert "c1a66666-6666-4666-8666-666666666666" in {
+                n.uuid for n in attribute_threads.notes
+            }
+
             # check the object references were created
-            object_reference = object_references_repository.get_object_reference_by_uuid(
-                db, UUID("d7e57f39-4dd5-4b87-b040-75561fa8289e")
+            object_reference = (
+                object_references_repository.get_object_reference_by_uuid(
+                    db, UUID("d7e57f39-4dd5-4b87-b040-75561fa8289e")
+                )
             )
             assert object_reference is not None
 
@@ -91,7 +147,7 @@ class TestFeedsRepository(ApiTester):
             ]:
                 attr = attributes_repository.get_attribute_from_opensearch(UUID(uuid))
                 if attr:
-                    for t in (attr.tags or []):
+                    for t in attr.tags or []:
                         all_attribute_tag_names.add(t.name)
             assert "tlp:red" in all_attribute_tag_names
 
@@ -160,8 +216,10 @@ class TestFeedsRepository(ApiTester):
             assert object_attribute.timestamp == 1577836801
 
             # check the object references were created
-            object_reference = object_references_repository.get_object_reference_by_uuid(
-                db, UUID("4d4c12b9-e514-496e-a8a6-06d5c6815b97")
+            object_reference = (
+                object_references_repository.get_object_reference_by_uuid(
+                    db, UUID("4d4c12b9-e514-496e-a8a6-06d5c6815b97")
+                )
             )
             assert (
                 str(object_reference.referenced_uuid)
@@ -183,7 +241,7 @@ class TestFeedsRepository(ApiTester):
             ]:
                 attr = attributes_repository.get_attribute_from_opensearch(UUID(uuid))
                 if attr:
-                    for t in (attr.tags or []):
+                    for t in attr.tags or []:
                         all_attribute_tag_names.add(t.name)
             assert "ATTRIBUTE_EVENT_FEED_ADDED_TAG" in all_attribute_tag_names
             assert "OBJECT_ATTRIBUTE_EVENT_FEED_ADDED_TAG" in all_attribute_tag_names

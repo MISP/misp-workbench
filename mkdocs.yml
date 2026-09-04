@@ -46,6 +46,7 @@ nav:
     - Correlations: features/correlations.md
     - Notifications: features/notifications.md
     - Enrichments: features/enrichments.md
+    - Analyst Data: features/analyst-data.md
     - MCP Server:
       - Overview: features/mcp/index.md
       - Claude Code: features/mcp/claude.md

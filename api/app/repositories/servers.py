@@ -186,6 +186,7 @@ def pull_event_by_uuid(
     data = {
         "deleted": [0, 1],
         "excludeGalaxy": 1,
+        "includeAnalystData": 1,
         "includeEventCorrelations": 0,
         "includeFeedCorrelations": 0,
         "includeWarninglistHits": 0,
@@ -221,7 +222,7 @@ def pull_event_by_uuid(
 
     event = update_pulled_event_before_insert(db, settings, event, server, user)
 
-    if not check_if_event_is_not_empty:
+    if not check_if_event_is_not_empty(event):
         logger.info("Event %s is empty, skipping" % event_uuid)
         return False
 
@@ -277,7 +278,13 @@ def update_pulled_event_before_insert(
         # process event reports
         if event.event_reports:
             # TODO handle event reports
-            pass
+            for event_report in event.event_reports:
+                downgrade_analyst_data_distribution(event_report)
+
+        # process analyst data (notes, opinions, relationships) attached to
+        # the event itself; the attribute and object ones are downgraded by
+        # update_pulled_attribute_before_insert / _object_before_insert above
+        downgrade_analyst_data_distribution(event)
 
     # these transformations come from app/Model/Event.php::_add()
     event.org_id = server.org_id
@@ -313,6 +320,8 @@ def update_pulled_attribute_before_insert(attribute: MISPAttribute) -> MISPAttri
     # remove local tags obtained via pull
     attribute.tags = [tag for tag in attribute.tags if not tag.local]
 
+    downgrade_analyst_data_distribution(attribute)
+
     return attribute
 
 
@@ -321,43 +330,121 @@ def update_pulled_object_before_insert(object: MISPObject) -> MISPObject:
 
     object.distribution = downgrade_distribution(object.distribution)
 
+    downgrade_analyst_data_distribution(object)
+
     for attribute in object.attributes:
         attribute = update_pulled_attribute_before_insert(attribute)
 
     return object
 
 
-def downgrade_distribution(distribution: DistributionLevel) -> DistributionLevel:
-    if distribution is None:
-        return DistributionLevel.COMMUNITY_ONLY
+def downgrade_analyst_data_distribution(parent) -> None:
+    """
+    Downgrade the distribution of analyst data pulled from an external server,
+    matching what is intended for the event, its attributes and its objects.
 
-    if distribution == DistributionLevel.COMMUNITY_ONLY:
-        # if community only, downgrade to organisation only after pull
-        return DistributionLevel.ORGANISATION_ONLY
-    elif distribution == DistributionLevel.CONNECTED_COMMUNITIES:
-        # if connected communities downgrade to community only
-        return DistributionLevel.COMMUNITY_ONLY
+    pymisp flattens nested analyst data onto the top level list while keeping
+    each item pointed at its real parent, so iterating the three lists reaches
+    a whole thread. The recursion is kept for payloads that stay nested.
+    """
+    for attribute_name in ("notes", "opinions", "relationships"):
+        for analyst_data in getattr(parent, attribute_name, None) or []:
+            analyst_data.distribution = downgrade_distribution(
+                getattr(analyst_data, "distribution", None)
+            )
+            downgrade_analyst_data_distribution(analyst_data)
 
-    return distribution
+
+# The only two levels a pull downgrades, keyed by the raw integer level.
+# All communities, sharing group and inherit are passed through untouched.
+# see: app/Model/Server.php::__updatePulledEventBeforeInsert()
+_DISTRIBUTION_DOWNGRADE = {
+    DistributionLevel.COMMUNITY_ONLY.value: DistributionLevel.ORGANISATION_ONLY.value,
+    DistributionLevel.CONNECTED_COMMUNITIES.value: DistributionLevel.COMMUNITY_ONLY.value,
+}
+
+
+def distribution_is(distribution, level: DistributionLevel) -> bool:
+    """
+    Whether a distribution value is `level`.
+
+    DistributionLevel is an IntEnum, so a member and an int now compare
+    equal on their own. This still exists for the strings MISP's JSON
+    carries -- "2" never equals 2 -- and to keep None and unreadable values
+    from raising.
+    """
+    if distribution is None or distribution == "":
+        return False
+
+    try:
+        return int(distribution) == level.value
+    except (TypeError, ValueError):
+        return False
+
+
+def downgrade_distribution(distribution) -> int:
+    """
+    Downgrade a distribution level for data pulled from an external server:
+    community only becomes organisation only, connected communities becomes
+    community only. Every other level is left alone.
+
+    Returns a plain int rather than a DistributionLevel member, since the
+    result is assigned back onto pymisp objects and read out again downstream.
+
+    The level is normalised first: DistributionLevel is an IntEnum, so members
+    and ints are interchangeable, but MISP's JSON carries strings ("2"), which
+    are not.
+    """
+    if distribution is None or distribution == "":
+        # A missing level is taken as community only and not downgraded
+        # further, which is the behaviour this function was written to have.
+        return DistributionLevel.COMMUNITY_ONLY.value
+
+    try:
+        level = int(distribution)
+    except (TypeError, ValueError):
+        logger.warning(
+            "unexpected distribution %r on pulled data, restricting it to %s",
+            distribution,
+            DistributionLevel.ORGANISATION_ONLY.name,
+        )
+        # Malformed input from a remote server: fail closed rather than
+        # letting an unreadable level pass through as-is.
+        return DistributionLevel.ORGANISATION_ONLY.value
+
+    return _DISTRIBUTION_DOWNGRADE.get(level, level)
 
 
 def check_if_event_is_not_empty(event: MISPEvent) -> bool:
     """
     see: app/Model/Server.php::__checkIfEventSaveAble()
     """
-    if any(attribute for attribute in event.attributes if not attribute.deleted):
+
+    def is_live(entity) -> bool:
+        return not getattr(entity, "deleted", False)
+
+    if any(attribute for attribute in event.attributes if is_live(attribute)):
         return True
 
     if any(
-        object
-        for object in event.objects
-        if not object.deleted
-        and any(attribute for attribute in object.attributes if not attribute.deleted)
+        misp_object
+        for misp_object in event.objects
+        if is_live(misp_object)
+        and any(attribute for attribute in misp_object.attributes if is_live(attribute))
     ):
         return True
 
     if any(
-        event_report for event_report in event.event_reports if not event_report.deleted
+        event_report for event_report in event.event_reports if is_live(event_report)
+    ):
+        return True
+
+    # Analyst data is content too: an event carrying only a note would
+    # otherwise be skipped and the note lost. pymisp flattens nested analyst
+    # data onto these lists, so this sees replies as well.
+    if any(
+        getattr(event, attribute_name, None)
+        for attribute_name in ("notes", "opinions", "relationships")
     ):
         return True
 
@@ -397,6 +484,9 @@ def create_or_update_pulled_event(
             sync_repository.create_pulled_event_attributes(
                 db, str(created.uuid), event.attributes, user
             )
+            # after the attributes and objects, so the analyst data captured
+            # for them lands once the objects it annotates exist locally
+            sync_repository.create_pulled_analyst_data(db, event, created.uuid, user)
 
             events_repository.sync_event_counts(str(created.uuid))
 
@@ -413,7 +503,11 @@ def create_or_update_pulled_event(
         # TODO: handle protected event
 
         # see app/Model/Event::_edit
-        if existing_event.distribution == DistributionLevel.SHARING_GROUP:
+        # `existing_event` is a Pydantic model with use_enum_values, so its
+        # distribution is a plain int
+        if distribution_is(
+            existing_event.distribution, DistributionLevel.SHARING_GROUP
+        ):
             if existing_event.sharing_group is None:
                 logger.error(
                     "Event could not be saved: Sharing group chosen as the distribution level, but no sharing group specified. Make sure that the event includes a valid sharing_group_id or change to a different distribution level."
@@ -446,6 +540,7 @@ def create_or_update_pulled_event(
             sync_repository.update_pulled_event_attributes(
                 db, str(updated.uuid), event.attributes, user
             )
+            sync_repository.create_pulled_analyst_data(db, event, updated.uuid, user)
 
             events_repository.sync_event_counts(str(updated.uuid))
 
@@ -560,7 +655,9 @@ def preview_pull_server(
         required_orgs = [required_orgs]
 
     try:
-        filtered_events = remote_misp.search_index(published=True, timestamp=timestamp, minimal=True)
+        filtered_events = remote_misp.search_index(
+            published=True, timestamp=timestamp, minimal=True
+        )
         all_events = remote_misp.search_index(published=True, minimal=True)
     except Exception as ex:
         raise HTTPException(
@@ -572,6 +669,7 @@ def preview_pull_server(
     filtered = list(filtered_events)
 
     if required_tags:
+
         def event_has_tag(event, tag_name):
             for tag_entry in event.get("EventTag", []):
                 tag = tag_entry.get("Tag", tag_entry)
@@ -580,12 +678,13 @@ def preview_pull_server(
                     return True
             return False
 
-        filtered = [e for e in filtered if any(event_has_tag(e, t) for t in required_tags)]
+        filtered = [
+            e for e in filtered if any(event_has_tag(e, t) for t in required_tags)
+        ]
 
     if required_orgs:
         filtered = [
-            e for e in filtered
-            if e.get("Orgc", {}).get("name", "") in required_orgs
+            e for e in filtered if e.get("Orgc", {}).get("name", "") in required_orgs
         ]
 
     total_filtered = len(filtered)
@@ -810,11 +909,7 @@ def push_event_by_uuid(
     try:
         event_json = db_event.to_misp_format()
 
-        if (
-            db_event.published
-            and not db_event.attributes
-            and not db_event.objects
-        ):
+        if db_event.published and not db_event.attributes and not db_event.objects:
             return {
                 "status": 400,
                 "message": "Cannot push a published event with no attributes or objects.",
@@ -873,6 +968,7 @@ def push_server_by_id_full(
 
     # get a list of the event UUIDs eligible to be pushed to the server
     from app.services.opensearch import get_opensearch_client as _get_os_client
+
     _os = _get_os_client()
     _resp = _os.search(
         index="misp-events",
@@ -881,10 +977,14 @@ def push_server_by_id_full(
                 "bool": {
                     "must": [
                         {"term": {"published": True}},
-                        {"terms": {"distribution": [
-                            DistributionLevel.CONNECTED_COMMUNITIES.value,
-                            DistributionLevel.ALL_COMMUNITIES.value,
-                        ]}},
+                        {
+                            "terms": {
+                                "distribution": [
+                                    DistributionLevel.CONNECTED_COMMUNITIES.value,
+                                    DistributionLevel.ALL_COMMUNITIES.value,
+                                ]
+                            }
+                        },
                     ]
                 }
             },

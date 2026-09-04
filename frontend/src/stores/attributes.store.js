@@ -73,6 +73,13 @@ export const useAttributesStore = defineStore({
         .catch((error) => (this.status = { error }))
         .finally(() => (this.status = { loading: false }));
     },
+    // Returns matches without touching the shared list state, so a picker can
+    // search while an attribute list is already on screen.
+    async searchLookup(params = { query: "", page: 1, size: 10 }) {
+      return await fetchWrapper.get(
+        baseUrl + "/search?" + new URLSearchParams(params).toString(),
+      );
+    },
     async search(params = { query: "", page: 1, size: 10 }) {
       this.status = { loading: true };
       fetchWrapper
