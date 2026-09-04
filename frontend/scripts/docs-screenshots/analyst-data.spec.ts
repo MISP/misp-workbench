@@ -269,22 +269,26 @@ test.describe("Analyst data screenshots", () => {
     await applyTheme(page);
     await stubAnalystData(page);
 
-    await page.goto(`/events/${EVENT_UUID}`);
+    // Analyst data has its own tab on the event view, and the tab is part of
+    // the URL. The whole event card is the shot, so the tab strip shows where
+    // the thread lives.
+    await page.goto(`/events/${EVENT_UUID}/analyst-data`);
 
-    const card = page.locator(
-      '.card:has(> .card-header:has-text("Analyst Data"))',
-    );
-    await expect(card).toBeVisible({ timeout: 15_000 });
+    const card = page.locator(".card").first();
+    const panel = page.locator('[data-tab-panel="analyst-data"]');
+    await expect(panel).toBeVisible({ timeout: 15_000 });
 
     // the note, its reply and its opinion all rendered
-    await expect(card.getByText(/share a watermark/)).toBeVisible({
+    await expect(panel.getByText(/share a watermark/)).toBeVisible({
       timeout: 10_000,
     });
-    await expect(card.getByText(/Confirmed against the sandbox/)).toBeVisible();
-    await expect(card.getByText("90/100")).toBeVisible();
+    await expect(
+      panel.getByText(/Confirmed against the sandbox/),
+    ).toBeVisible();
+    await expect(panel.getByText("90/100")).toBeVisible();
 
     // the relationship resolves its target's name against the real API
-    await expect(card.getByRole("link", { name: /WannaCry/i })).toBeVisible({
+    await expect(panel.getByRole("link", { name: /WannaCry/i })).toBeVisible({
       timeout: 10_000,
     });
 
@@ -298,7 +302,7 @@ test.describe("Analyst data screenshots", () => {
     // pinned so the timestamp column does not shift between runs
     await stubAttributes(page);
 
-    await page.goto(`/events/${EVENT_UUID}`);
+    await page.goto(`/events/${EVENT_UUID}/attributes`);
 
     // the count badge sits on the toggle before anything is expanded
     const toggle = page.getByTitle("Show analyst data").first();
@@ -314,11 +318,8 @@ test.describe("Analyst data screenshots", () => {
 
     await pinForCapture(page);
 
-    // the attributes card, so the row and its expanded panel read together
-    const card = page
-      .locator(".card")
-      .filter({ has: page.getByText("attributes", { exact: true }) })
-      .last();
+    // the attributes tab panel, so the row and its expanded panel read together
+    const card = page.locator('[data-tab-panel="attributes"]');
     await capture(card, FEATURE, "misp-workbench-2_analyst-data-attribute");
   });
 });

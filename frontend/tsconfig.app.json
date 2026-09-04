@@ -6,7 +6,13 @@
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo",
 
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "pivotick-transformer": [
+        "./submodules/pivotick-graph-transformer/packages/core/src/index.ts"
+      ],
+      "pivotick-transformer/misp": [
+        "./submodules/pivotick-graph-transformer/packages/misp/src/index.ts"
+      ]
     }
   }
 }

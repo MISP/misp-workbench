@@ -287,6 +287,70 @@ class TestEventsResource(ApiTester):
         assert data["uuid"] == str(event_1.uuid)
 
     @pytest.mark.parametrize("scopes", [["events:read"]])
+    def test_get_event_misp_json(
+        self,
+        client: TestClient,
+        event_1: object,
+        attribute_1: object,
+        object_1: object,
+        auth_token: auth.Token,
+    ):
+        response = client.get(
+            f"/events/{event_1.uuid}/misp-json",
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+
+        data = response.json()
+
+        # MISP's own event API nests under "Event" and capitalizes the
+        # collections - the shape pivotick-graph-transformer detects on.
+        assert set(data) == {"Event"}
+        event = data["Event"]
+        assert event["uuid"] == str(event_1.uuid)
+        # Other tests in this class mutate the class-scoped event, so only its
+        # identity is pinned here - membership, not equality, throughout.
+        assert event["info"]
+
+        # Full pull: the graph needs the whole event, not just its header.
+        assert str(attribute_1.uuid) in [
+            attr["uuid"] for attr in event["Attribute"]
+        ]
+
+        objects_by_uuid = {obj["uuid"]: obj for obj in event["Object"]}
+        assert str(object_1.uuid) in objects_by_uuid
+        # MISP hyphenates this one key; the importer reads it by that name.
+        assert "meta-category" in objects_by_uuid[str(object_1.uuid)]
+
+    @pytest.mark.parametrize("scopes", [["events:read"]])
+    def test_get_event_misp_json_not_found(
+        self,
+        client: TestClient,
+        auth_token: auth.Token,
+    ):
+        response = client.get(
+            "/events/00000000-0000-0000-0000-000000000000/misp-json",
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    @pytest.mark.parametrize("scopes", [[]])
+    def test_get_event_misp_json_unauthorized(
+        self,
+        client: TestClient,
+        event_1: object,
+        auth_token: auth.Token,
+    ):
+        response = client.get(
+            f"/events/{event_1.uuid}/misp-json",
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+    @pytest.mark.parametrize("scopes", [["events:read"]])
     def test_get_event_not_found(
         self,
         client: TestClient,

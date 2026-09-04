@@ -178,6 +178,33 @@ def get_event_by_uuid(
     return os_event
 
 
+@router.get("/events/{event_uuid}/misp-json")
+def get_event_misp_json(
+    event_uuid: UUID,
+    user: user_schemas.User = Security(get_current_active_user, scopes=["events:read"]),
+) -> dict:
+    """Return the event in MISP's own event API shape (``{"Event": {...}}``).
+
+    The event graph is rendered client-side by pivotick-graph-transformer,
+    which reads MISP-standard JSON. Rather than teach it a second schema, the
+    event is serialized with the same ``to_misp_format()`` used to push events
+    to remote MISP servers - one canonical format, already tested.
+
+    Unlike ``GET /events/{event_uuid}``, this pulls the event *full*: the graph
+    needs every attribute and object, not just the event header. Attachment
+    payloads are left out - the graph only draws the metadata, and inlining
+    base64 blobs would dwarf the rest of the response.
+    """
+    event = events_repository.get_event_from_opensearch(event_uuid, full=True)
+
+    if event is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Event not found"
+        )
+
+    return event.to_misp_format(include_attachments=False)
+
+
 @router.post(
     "/events/", response_model=event_schemas.Event, status_code=status.HTTP_201_CREATED
 )

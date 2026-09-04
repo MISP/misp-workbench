@@ -30,7 +30,7 @@ class Object(ObjectBase):
     object_references: list[ObjectReference] = []
     model_config = ConfigDict(from_attributes=True)
 
-    def to_misp_format(self) -> dict:
+    def to_misp_format(self, include_attachments: bool = True) -> dict:
         return {
             "id": None,
             "name": self.name,
@@ -46,7 +46,10 @@ class Object(ObjectBase):
             "deleted": self.deleted,
             "first_seen": self.first_seen,
             "last_seen": self.last_seen,
-            "Attribute": [attr.to_misp_format() for attr in self.attributes],
+            "Attribute": [
+                attr.to_misp_format(include_attachments=include_attachments)
+                for attr in self.attributes
+            ],
             "ObjectReference": [ref.to_misp_format() for ref in self.object_references],
         }
 
