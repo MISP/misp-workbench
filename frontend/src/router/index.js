@@ -68,7 +68,14 @@ export const router = createRouter({
   routes: [
     { path: "/", component: Home },
     { path: "/login", component: Login },
-    { path: "/events/:id", component: ViewEvent, props: true },
+    // The event view is tabbed and the tab is part of the URL, so it can be
+    // linked and stepped back through. Spelling the tabs out keeps the param
+    // from swallowing "/events/update/:id" and friends.
+    {
+      path: "/events/:id/:tab(attributes|objects|graph|analyst-data)?",
+      component: ViewEvent,
+      props: true,
+    },
     { path: "/events/update/:id", component: EditEvent, props: true },
     { path: "/events/add", component: AddEvent },
     { path: "/attributes/:id", component: ViewAttribute, props: true },

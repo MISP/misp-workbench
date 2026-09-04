@@ -22,6 +22,9 @@ export const EVENT_UUIDS = {
   cobaltStrike: "a1f30000-0001-4001-8000-000000000001",
   wannacry: "a1f30000-0001-4001-8000-000000000002",
   phishing: "a1f30000-0001-4001-8000-000000000003",
+  // The only fixture event with objects and object references, so the only
+  // one whose graph has a relationship to draw.
+  emotetChain: "e0f10000-0001-4001-8000-00000000000a",
 };
 
 export const HUNT_NAMES = {

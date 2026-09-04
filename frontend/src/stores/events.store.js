@@ -63,6 +63,16 @@ export const useEventsStore = defineStore({
     async summary(event_uuid) {
       return await fetchWrapper.get(`${baseUrl}/${event_uuid}`);
     },
+    /**
+     * The event in MISP's own event API shape (`{ Event: { ... } }`), with
+     * every attribute and object inlined - what the event graph converts.
+     *
+     * Returns rather than storing, and stays out of `status`: this is a whole
+     * second copy of the event, and only the graph tab wants it.
+     */
+    async mispJson(event_uuid) {
+      return await fetchWrapper.get(`${baseUrl}/${event_uuid}/misp-json`);
+    },
     async update(event) {
       this.status = { updating: true };
       fetchWrapper

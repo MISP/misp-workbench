@@ -6,3 +6,4 @@ export * from "./auth";
 export * from "./local-storage";
 export * from "./cron";
 export * from "./correlations";
+export * from "./bootstrap-theme";

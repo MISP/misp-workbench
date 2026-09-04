@@ -123,11 +123,43 @@ def get_event_from_opensearch(
                 if key:
                     attrs_by_obj.setdefault(key, []).append(src)
 
+            # Object references live in their own index, keyed by the object
+            # they point *from*. Without this join every object comes back
+            # unrelated to every other, which is exactly the structure the
+            # event graph exists to show.
+            refs_resp = client.search(
+                index="misp-object-references",
+                # No index is provisioned up front - each is created by its
+                # first write. An instance that has never recorded an object
+                # reference therefore has no such index, which is a legitimate
+                # empty result here, not a failure.
+                ignore_unavailable=True,
+                body={
+                    "query": {
+                        "bool": {
+                            # `.keyword`: the reference index maps its uuid
+                            # fields as analyzed text, which a full uuid never
+                            # matches term-wise (unlike misp-objects, which
+                            # maps event_uuid as a keyword outright).
+                            "must": [{"terms": {"source_uuid.keyword": object_uuids}}],
+                            "must_not": [{"term": {"deleted": True}}],
+                        }
+                    },
+                    "size": 10000,
+                },
+            )
+            refs_by_obj = {}
+            for h in refs_resp["hits"]["hits"]:
+                src = h["_source"]
+                key = src.get("source_uuid")
+                if key:
+                    refs_by_obj.setdefault(key, []).append(src)
+
             for hit in obj_hits:
                 obj_src = hit["_source"]
                 obj_uuid = str(obj_src.get("uuid", ""))
                 obj_src["attributes"] = attrs_by_obj.get(obj_uuid, [])
-                obj_src.setdefault("object_references", [])
+                obj_src["object_references"] = refs_by_obj.get(obj_uuid, [])
 
             source["objects"] = [h["_source"] for h in obj_hits]
         else:
