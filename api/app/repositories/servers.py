@@ -368,14 +368,11 @@ def distribution_is(distribution, level: DistributionLevel) -> bool:
     """
     Whether a distribution value is `level`.
 
-    DistributionLevel is a plain Enum, so its members never compare equal to
-    the ints pymisp supplies, nor to the ints a Pydantic model holds under
-    `use_enum_values`. Comparing one directly is silently always False, which
-    is how the sharing group branch below came to be dead code.
+    DistributionLevel is an IntEnum, so a member and an int now compare
+    equal on their own. This still exists for the strings MISP's JSON
+    carries -- "2" never equals 2 -- and to keep None and unreadable values
+    from raising.
     """
-    if isinstance(distribution, DistributionLevel):
-        return distribution is level
-
     if distribution is None or distribution == "":
         return False
 
@@ -391,34 +388,29 @@ def downgrade_distribution(distribution) -> int:
     community only becomes organisation only, connected communities becomes
     community only. Every other level is left alone.
 
-    Returns a plain int, not a DistributionLevel member. The result is assigned
-    back onto pymisp objects and the ingest then reads it with int(), which a
-    plain Enum member does not support.
+    Returns a plain int rather than a DistributionLevel member, since the
+    result is assigned back onto pymisp objects and read out again downstream.
 
-    The level is reduced to an int before the lookup because DistributionLevel
-    is a plain Enum whose members never compare equal to the ints pymisp
-    supplies -- comparing them directly is what made this a silent no-op.
+    The level is normalised first: DistributionLevel is an IntEnum, so members
+    and ints are interchangeable, but MISP's JSON carries strings ("2"), which
+    are not.
     """
     if distribution is None or distribution == "":
         # A missing level is taken as community only and not downgraded
         # further, which is the behaviour this function was written to have.
         return DistributionLevel.COMMUNITY_ONLY.value
 
-    if isinstance(distribution, DistributionLevel):
-        level = distribution.value
-    else:
-        # pymisp hands back ints, MISP's JSON carries strings.
-        try:
-            level = int(distribution)
-        except (TypeError, ValueError):
-            logger.warning(
-                "unexpected distribution %r on pulled data, restricting it to %s",
-                distribution,
-                DistributionLevel.ORGANISATION_ONLY.name,
-            )
-            # Malformed input from a remote server: fail closed rather than
-            # letting an unreadable level pass through as-is.
-            return DistributionLevel.ORGANISATION_ONLY.value
+    try:
+        level = int(distribution)
+    except (TypeError, ValueError):
+        logger.warning(
+            "unexpected distribution %r on pulled data, restricting it to %s",
+            distribution,
+            DistributionLevel.ORGANISATION_ONLY.name,
+        )
+        # Malformed input from a remote server: fail closed rather than
+        # letting an unreadable level pass through as-is.
+        return DistributionLevel.ORGANISATION_ONLY.value
 
     return _DISTRIBUTION_DOWNGRADE.get(level, level)
 

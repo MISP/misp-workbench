@@ -1,3 +1,4 @@
+import json
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -221,6 +222,49 @@ class TestServersRepository(ApiTester):
             for attribute_tag in scenario["expected_result"]["attribute_tags"]:
                 for tag_name in attribute_tag["tags"]:
                     assert tag_name in all_attribute_tag_names
+
+
+class TestDistributionLevelEnum:
+    """
+    DistributionLevel must stay an IntEnum. As a plain Enum its members did not
+    compare equal to the ints pymisp supplies or the ints the event schemas
+    hold under use_enum_values, which silently disabled the pull time
+    distribution downgrade, the sharing group capture on event update and the
+    empty event guard.
+    """
+
+    def test_members_are_ints(self):
+        assert isinstance(DistributionLevel.COMMUNITY_ONLY, int)
+
+    @pytest.mark.parametrize("level", list(DistributionLevel))
+    def test_a_member_equals_its_own_value(self, level):
+        assert level == level.value
+        assert level.value == level
+
+    @pytest.mark.parametrize("level", list(DistributionLevel))
+    def test_int_works_on_a_member(self, level):
+        # events.py reads distribution back with int(); a plain Enum raised
+        assert int(level) == level.value
+
+    def test_a_member_is_json_serialisable(self):
+        # a plain Enum raised TypeError here, which mattered for anything
+        # written straight to OpenSearch
+        assert json.dumps(DistributionLevel.SHARING_GROUP) == "4"
+
+    @pytest.mark.parametrize("level", list(DistributionLevel))
+    def test_name_and_value_are_unchanged(self, level):
+        # the MCP distribution-levels and threat-levels resources read these
+        assert isinstance(level.name, str)
+        assert isinstance(level.value, int)
+        assert DistributionLevel(level.value) is level
+
+    def test_strings_still_need_normalising(self):
+        """
+        IntEnum fixes ints, not the strings MISP's JSON carries, which is why
+        distribution_is and downgrade_distribution still normalise.
+        """
+        assert "4" != DistributionLevel.SHARING_GROUP
+        assert servers_repository.distribution_is("4", DistributionLevel.SHARING_GROUP)
 
 
 class TestDistributionIs:

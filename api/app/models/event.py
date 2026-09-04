@@ -1,7 +1,16 @@
 import enum
 
 
-class DistributionLevel(enum.Enum):
+# IntEnum, deliberately. pymisp hands back plain ints and the Pydantic event
+# schemas hold ints under `use_enum_values`, so a plain Enum member never
+# compared equal to either: comparisons against it were silently always False,
+# which left the pull time distribution downgrade, the sharing group capture on
+# event update and the empty event guard all dead code. IntEnum also makes
+# int() and json.dumps() work on a member, both of which raised before.
+#
+# It does not help with the *strings* MISP's JSON carries ("2"), which still
+# need normalising -- see servers.py::distribution_is.
+class DistributionLevel(enum.IntEnum):
     """
     Enum for the Event distribution level
     """
@@ -33,5 +42,3 @@ class AnalysisLevel(enum.Enum):
     INITIAL = 0
     ONGOING = 1
     COMPLETE = 2
-
-
