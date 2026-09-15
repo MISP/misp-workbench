@@ -69,6 +69,20 @@ run `npm run build:pivotick` once before `npm run dev` on a fresh clone. Upstrea
 type-checks with `noEmit`, so it ships no `.d.ts` — the ambient declarations live
 in `src/types/pivotick.d.ts`.
 
+`pivotick-graph-transformer` converts MISP-standard JSON into the nodes/edges
+pivotick draws, and powers the event view's Graph tab. Also a submodule
+(`frontend/submodules/pivotick-graph-transformer`), but it ships no build —
+Vite transpiles its TypeScript sources directly through the
+`pivotick-transformer` / `pivotick-transformer/misp` aliases in
+`vite.config.mts`. Initialise it **non-recursively**: its nested
+`misp-iconify` vendor submodules only exist to regenerate the (committed)
+icon set and add ~30 MB for nothing.
+
+Because it reads MISP's own event shape, the graph is fed by
+`GET /events/{uuid}/misp-json`, which serializes the event with the same
+`Event.to_misp_format()` used to push to a remote MISP server — one canonical
+format rather than a second schema for the importer to learn.
+
 ```bash
 cd frontend
 npm install

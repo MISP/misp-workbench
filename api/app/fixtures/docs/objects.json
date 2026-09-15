@@ -1,0 +1,146 @@
+[
+  {
+    "uuid": "e0f10000-0002-4001-8000-00000000000b",
+    "event_uuid": "e0f10000-0001-4001-8000-00000000000a",
+    "name": "email",
+    "meta_category": "network",
+    "description": "Phishing email carrying the loader",
+    "template_uuid": "a0c666e0-fc65-4be8-b48f-3423d788b552",
+    "template_version": 19,
+    "distribution": 5,
+    "comment": "",
+    "deleted": false,
+    "attributes": [
+      {
+        "uuid": "e0f10000-1002-4001-8000-00000000000b",
+        "category": "Payload delivery",
+        "type": "email-src",
+        "value": "billing@invoice-portal.test",
+        "object_relation": "from",
+        "to_ids": true,
+        "distribution": 5,
+        "deleted": false,
+        "disable_correlation": false
+      },
+      {
+        "uuid": "e0f10000-2002-4001-8000-00000000000b",
+        "category": "Payload delivery",
+        "type": "email-subject",
+        "value": "Outstanding invoice #48812",
+        "object_relation": "subject",
+        "to_ids": false,
+        "distribution": 5,
+        "deleted": false,
+        "disable_correlation": false
+      }
+    ],
+    "object_references": [
+      {
+        "uuid": "e0f10000-0005-4001-8000-00000000000e",
+        "source_uuid": "e0f10000-0002-4001-8000-00000000000b",
+        "object_uuid": "e0f10000-0002-4001-8000-00000000000b",
+        "referenced_uuid": "e0f10000-0003-4001-8000-00000000000c",
+        "referenced_type": 1,
+        "relationship_type": "contains",
+        "comment": "",
+        "deleted": false
+      }
+    ]
+  },
+  {
+    "uuid": "e0f10000-0003-4001-8000-00000000000c",
+    "event_uuid": "e0f10000-0001-4001-8000-00000000000a",
+    "name": "file",
+    "meta_category": "file",
+    "description": "Emotet loader dropped by the attachment",
+    "template_uuid": "688c46fb-5edb-40a3-8273-1af7923e2215",
+    "template_version": 25,
+    "distribution": 5,
+    "comment": "",
+    "deleted": false,
+    "attributes": [
+      {
+        "uuid": "e0f10000-1003-4001-8000-00000000000c",
+        "category": "Payload delivery",
+        "type": "filename",
+        "value": "invoice_48812.doc",
+        "object_relation": "filename",
+        "to_ids": false,
+        "distribution": 5,
+        "deleted": false,
+        "disable_correlation": false
+      },
+      {
+        "uuid": "e0f10000-2003-4001-8000-00000000000c",
+        "category": "Payload delivery",
+        "type": "sha256",
+        "value": "9f2b8c1d4e5a67380b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f708192a3b4c5d6",
+        "object_relation": "sha256",
+        "to_ids": true,
+        "distribution": 5,
+        "deleted": false,
+        "disable_correlation": false
+      },
+      {
+        "uuid": "e0f10000-3003-4001-8000-00000000000c",
+        "category": "Payload delivery",
+        "type": "md5",
+        "value": "5d41402abc4b2a76b9719d911017c592",
+        "object_relation": "md5",
+        "to_ids": true,
+        "distribution": 5,
+        "deleted": false,
+        "disable_correlation": false
+      }
+    ],
+    "object_references": [
+      {
+        "uuid": "e0f10000-0006-4001-8000-00000000000f",
+        "source_uuid": "e0f10000-0003-4001-8000-00000000000c",
+        "object_uuid": "e0f10000-0003-4001-8000-00000000000c",
+        "referenced_uuid": "e0f10000-0004-4001-8000-00000000000d",
+        "referenced_type": 1,
+        "relationship_type": "communicates-with",
+        "comment": "",
+        "deleted": false
+      }
+    ]
+  },
+  {
+    "uuid": "e0f10000-0004-4001-8000-00000000000d",
+    "event_uuid": "e0f10000-0001-4001-8000-00000000000a",
+    "name": "domain-ip",
+    "meta_category": "network",
+    "description": "Stage-two C2 the loader beacons to",
+    "template_uuid": "43b3b146-77eb-4931-b4cc-b66c60f28734",
+    "template_version": 11,
+    "distribution": 5,
+    "comment": "",
+    "deleted": false,
+    "attributes": [
+      {
+        "uuid": "e0f10000-1004-4001-8000-00000000000d",
+        "category": "Network activity",
+        "type": "domain",
+        "value": "cdn.update-service.test",
+        "object_relation": "domain",
+        "to_ids": true,
+        "distribution": 5,
+        "deleted": false,
+        "disable_correlation": false
+      },
+      {
+        "uuid": "e0f10000-2004-4001-8000-00000000000d",
+        "category": "Network activity",
+        "type": "ip-dst",
+        "value": "203.0.113.44",
+        "object_relation": "ip",
+        "to_ids": true,
+        "distribution": 5,
+        "deleted": false,
+        "disable_correlation": false
+      }
+    ],
+    "object_references": []
+  }
+]

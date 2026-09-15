@@ -10,3 +10,6 @@
 [submodule "frontend/submodules/pivotick"]
 	path = frontend/submodules/pivotick
 	url = https://github.com/Pivotick/Pivotick.git
+[submodule "frontend/submodules/pivotick-graph-transformer"]
+	path = frontend/submodules/pivotick-graph-transformer
+	url = https://github.com/ecrou-exact/Pivotick-graph-transformer.git

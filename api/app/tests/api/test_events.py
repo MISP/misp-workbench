@@ -10,15 +10,22 @@ from fastapi import status
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
-
 OPENSEARCH_PATCH = "app.repositories.events.get_opensearch_client"
 
 MOCK_HISTOGRAM_RESPONSE = {
     "aggregations": {
         "events_over_time": {
             "buckets": [
-                {"key_as_string": "2024-01-01T00:00:00.000Z", "key": 1704067200000, "doc_count": 5},
-                {"key_as_string": "2024-01-02T00:00:00.000Z", "key": 1704153600000, "doc_count": 2},
+                {
+                    "key_as_string": "2024-01-01T00:00:00.000Z",
+                    "key": 1704067200000,
+                    "doc_count": 5,
+                },
+                {
+                    "key_as_string": "2024-01-02T00:00:00.000Z",
+                    "key": 1704153600000,
+                    "doc_count": 2,
+                },
             ]
         }
     }
@@ -193,6 +200,7 @@ class TestEventsResource(ApiTester):
         assert response.status_code == status.HTTP_201_CREATED
 
         from app.services.opensearch import get_opensearch_client
+
         os_client = get_opensearch_client()
         os_event = os_client.get(index="misp-events", id=str(event_1.uuid))
         tag_names = [t.get("name") for t in os_event["_source"].get("tags", [])]
@@ -215,6 +223,7 @@ class TestEventsResource(ApiTester):
         assert response.status_code == status.HTTP_204_NO_CONTENT
 
         from app.services.opensearch import get_opensearch_client
+
         os_client = get_opensearch_client()
         os_event = os_client.get(index="misp-events", id=str(event_1.uuid))
         tag_names = [t.get("name") for t in os_event["_source"].get("tags", [])]
@@ -285,6 +294,78 @@ class TestEventsResource(ApiTester):
 
         assert response.status_code == status.HTTP_200_OK
         assert data["uuid"] == str(event_1.uuid)
+
+    @pytest.mark.parametrize("scopes", [["events:read"]])
+    def test_get_event_misp_json(
+        self,
+        client: TestClient,
+        event_1: object,
+        attribute_1: object,
+        object_1: object,
+        object_reference_1: object,
+        auth_token: auth.Token,
+    ):
+        response = client.get(
+            f"/events/{event_1.uuid}/misp-json",
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+
+        data = response.json()
+
+        # MISP's own event API nests under "Event" and capitalizes the
+        # collections - the shape pivotick-graph-transformer detects on.
+        assert set(data) == {"Event"}
+        event = data["Event"]
+        assert event["uuid"] == str(event_1.uuid)
+        # Other tests in this class mutate the class-scoped event, so only its
+        # identity is pinned here - membership, not equality, throughout.
+        assert event["info"]
+
+        # Full pull: the graph needs the whole event, not just its header.
+        assert str(attribute_1.uuid) in [attr["uuid"] for attr in event["Attribute"]]
+
+        objects_by_uuid = {obj["uuid"]: obj for obj in event["Object"]}
+        assert str(object_1.uuid) in objects_by_uuid
+        # MISP hyphenates this one key; the importer reads it by that name.
+        assert "meta-category" in objects_by_uuid[str(object_1.uuid)]
+
+        # References live in their own index and have to be joined back onto
+        # the object they point from - without that the graph draws every
+        # object unrelated to every other.
+        references = objects_by_uuid[str(object_1.uuid)]["ObjectReference"]
+        assert [
+            (ref["referenced_uuid"], ref["relationship_type"], ref["referenced_type"])
+            for ref in references
+        ] == [(str(attribute_1.uuid), "mentions", "0")]
+
+    @pytest.mark.parametrize("scopes", [["events:read"]])
+    def test_get_event_misp_json_not_found(
+        self,
+        client: TestClient,
+        auth_token: auth.Token,
+    ):
+        response = client.get(
+            "/events/00000000-0000-0000-0000-000000000000/misp-json",
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    @pytest.mark.parametrize("scopes", [[]])
+    def test_get_event_misp_json_unauthorized(
+        self,
+        client: TestClient,
+        event_1: object,
+        auth_token: auth.Token,
+    ):
+        response = client.get(
+            f"/events/{event_1.uuid}/misp-json",
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
     @pytest.mark.parametrize("scopes", [["events:read"]])
     def test_get_event_not_found(
@@ -412,6 +493,7 @@ class TestEventsResource(ApiTester):
         assert response.status_code == status.HTTP_204_NO_CONTENT
 
         from app.services.opensearch import get_opensearch_client
+
         os_client = get_opensearch_client()
         response_os = os_client.search(
             index="misp-events",
@@ -769,7 +851,10 @@ class TestEventsResource(ApiTester):
 
         assert response.status_code == status.HTTP_200_OK
         call_body = mock_os.search.call_args.kwargs["body"]
-        assert call_body["aggs"]["events_over_time"]["date_histogram"]["calendar_interval"] == "1d"
+        assert (
+            call_body["aggs"]["events_over_time"]["date_histogram"]["calendar_interval"]
+            == "1d"
+        )
         assert call_body["query"]["bool"]["must"]["query_string"]["query"] == "malware"
 
     @pytest.mark.parametrize("scopes", [["events:read"]])
