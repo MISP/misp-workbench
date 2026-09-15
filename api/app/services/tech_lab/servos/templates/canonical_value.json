@@ -1,0 +1,32 @@
+{
+  "slug": "canonical_value",
+  "name": "Canonical value",
+  "summary": "Trim and lowercase case-insensitive indicator types",
+  "description": "Trim whitespace and lowercase case-insensitive indicator types (domains, hashes, e-mail addresses, URLs) into expanded.canonical, so the same indicator written two ways lines up. The original value is left as ingested.",
+  "processors": [
+    {
+      "set": {
+        "field": "expanded.canonical",
+        "value": "{{{value}}}",
+        "ignore_empty_value": true
+      }
+    },
+    {
+      "trim": {
+        "field": "expanded.canonical",
+        "ignore_missing": true
+      }
+    },
+    {
+      "lowercase": {
+        "field": "expanded.canonical",
+        "ignore_missing": true,
+        "if": "['domain', 'hostname', 'url', 'uri', 'md5', 'sha1', 'sha256', 'sha512', 'email-src', 'email-dst'].contains(ctx.type)"
+      }
+    }
+  ],
+  "sample_doc": {
+    "type": "domain",
+    "value": "  EVIL.com "
+  }
+}

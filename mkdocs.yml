@@ -57,6 +57,7 @@ nav:
     - Tech Lab:
       - Reactor Scripts: features/tech-lab/reactor.md
       - Notebooks: features/tech-lab/notebooks.md
+      - Transformation Servos: features/tech-lab/servos.md
     - OpenSearch:
       - Overview: features/opensearch/index.md
       - Dashboards: features/opensearch/dashboards.md

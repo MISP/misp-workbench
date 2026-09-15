@@ -1,0 +1,88 @@
+import { defineStore } from "pinia";
+import { fetchWrapper } from "@/helpers";
+
+const baseUrl = `${import.meta.env.VITE_API_URL}/tech-lab/servos`;
+
+export const useServosStore = defineStore({
+  id: "servos",
+  state: () => ({
+    servos: null,
+    servo: null,
+    pipelines: null,
+    pipeline: null,
+    templates: null,
+    simulation: null,
+    status: {
+      loading: false,
+      loadingPipelines: false,
+      creating: false,
+      updating: false,
+      simulating: false,
+      error: false,
+    },
+  }),
+  actions: {
+    async getAll(params = {}) {
+      this.status.loading = true;
+      const queryString = new URLSearchParams({
+        page: 1,
+        size: 50,
+        ...params,
+      }).toString();
+      return fetchWrapper
+        .get(`${baseUrl}/?${queryString}`)
+        .then((servos) => (this.servos = servos))
+        .catch((error) => (this.status.error = error))
+        .finally(() => (this.status.loading = false));
+    },
+    async getById(id) {
+      this.status.loading = true;
+      return fetchWrapper
+        .get(`${baseUrl}/${id}`)
+        .then((servo) => (this.servo = servo))
+        .catch((error) => (this.status.error = error))
+        .finally(() => (this.status.loading = false));
+    },
+    async getPipelines() {
+      this.status.loadingPipelines = true;
+      return fetchWrapper
+        .get(`${baseUrl}/pipelines`)
+        .then((pipelines) => (this.pipelines = pipelines))
+        .catch((error) => (this.status.error = error))
+        .finally(() => (this.status.loadingPipelines = false));
+    },
+    async getPipeline(name) {
+      return fetchWrapper
+        .get(`${baseUrl}/pipelines/${encodeURIComponent(name)}`)
+        .then((pipeline) => (this.pipeline = pipeline));
+    },
+    async getTemplates() {
+      if (this.templates) return this.templates;
+      return fetchWrapper
+        .get(`${baseUrl}/templates`)
+        .then((templates) => (this.templates = templates));
+    },
+    async create(payload) {
+      this.status.creating = true;
+      return await fetchWrapper
+        .post(`${baseUrl}/`, payload)
+        .finally(() => (this.status.creating = false));
+    },
+    async update(id, payload) {
+      this.status.updating = true;
+      return await fetchWrapper
+        .patch(`${baseUrl}/${id}`, payload)
+        .finally(() => (this.status.updating = false));
+    },
+    async delete(id) {
+      return await fetchWrapper.delete(`${baseUrl}/${id}`);
+    },
+    async simulate(payload) {
+      this.status.simulating = true;
+      return await fetchWrapper
+        .post(`${baseUrl}/simulate`, payload)
+        .then((result) => (this.simulation = result))
+        .finally(() => (this.status.simulating = false));
+    },
+  },
+});

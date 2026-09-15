@@ -33,6 +33,9 @@ const canReadOrganisations = computed(() =>
 const canReadTaxonomies = computed(() =>
   authHelper.hasScope(scopes.value, "taxonomies:read"),
 );
+const canReadServos = computed(() =>
+  authHelper.hasScope(scopes.value, "servos:read"),
+);
 const canReadGalaxies = computed(() =>
   authHelper.hasScope(scopes.value, "galaxies:read"),
 );
@@ -201,6 +204,11 @@ function navAndClose(path) {
                 to="/tech-lab/notebooks"
                 class="dropdown-item fw-light"
                 >notebooks</RouterLink
+              >
+            </li>
+            <li v-if="canReadServos">
+              <RouterLink to="/tech-lab/servos" class="dropdown-item fw-light"
+                >transformation servos</RouterLink
               >
             </li>
           </ul>
@@ -524,6 +532,15 @@ function navAndClose(path) {
                 @click.prevent="navAndClose('/tech-lab/notebooks')"
               >
                 notebooks
+              </RouterLink>
+            </li>
+            <li v-if="canReadServos">
+              <RouterLink
+                to="/tech-lab/servos"
+                class="list-group-item list-group-item-action ps-4"
+                @click.prevent="navAndClose('/tech-lab/servos')"
+              >
+                transformation servos
               </RouterLink>
             </li>
           </ul>

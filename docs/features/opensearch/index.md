@@ -30,6 +30,7 @@ The `misp-attributes` index has an `expanded` field populated by [ingest pipelin
 | `expanded.ip2geo.continent_name` | `text` | GeoIP continent |
 | `expanded.ip2geo.region_name` | `text` | GeoIP region |
 | `expanded.ip2geo.country_iso_code` | `text` | ISO country code |
+| `expanded.servo_errors` | `keyword` | Messages from [transformation servos](../tech-lab/servos.md) that failed on this document |
 
 ## How data gets indexed
 

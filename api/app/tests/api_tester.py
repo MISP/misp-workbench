@@ -13,6 +13,7 @@ from app.models import hunt as hunt_models
 from app.models import module as module_models
 from app.models import organisation as organisation_models
 from app.models import server as server_models
+from app.models import servo as servo_models
 from app.models import sharing_groups as sharing_groups_models
 from app.models import tag as tag_models
 from app.models import notification as notification_models
@@ -87,6 +88,7 @@ class ApiTester:
         )
         db.query(sharing_groups_models.SharingGroup).delete(synchronize_session=False)
         db.query(server_models.Server).delete(synchronize_session=False)
+        db.query(servo_models.Servo).delete(synchronize_session=False)
         db.query(hunt_models.HuntRunHistory).delete(synchronize_session=False)
         db.query(hunt_models.Hunt).delete(synchronize_session=False)
         # Clear reactor children before scripts to avoid the

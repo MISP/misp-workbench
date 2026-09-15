@@ -52,6 +52,10 @@ export { default as IndexReactorScripts } from "./tech-lab/reactor/IndexScripts.
 export { default as AddReactorScript } from "./tech-lab/reactor/AddScript.vue";
 export { default as EditReactorScript } from "./tech-lab/reactor/EditScript.vue";
 export { default as ViewReactorScript } from "./tech-lab/reactor/ViewScript.vue";
+export { default as IndexServos } from "./tech-lab/servos/IndexServos.vue";
+export { default as AddServo } from "./tech-lab/servos/AddServo.vue";
+export { default as EditServo } from "./tech-lab/servos/EditServo.vue";
+export { default as ViewServo } from "./tech-lab/servos/ViewServo.vue";
 export { default as NotebooksWorkspace } from "./tech-lab/notebooks/NotebooksWorkspace.vue";
 export { default as IndexRoles } from "./roles/IndexRoles.vue";
 export { default as ViewRole } from "./roles/ViewRole.vue";
