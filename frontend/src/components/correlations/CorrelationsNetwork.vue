@@ -12,7 +12,7 @@ import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
 import { faCircleInfo, faSitemap } from "@fortawesome/free-solid-svg-icons";
 import ApiError from "@/components/misc/ApiError.vue";
 import GraphLegend from "@/components/correlations/GraphLegend.vue";
-import PivotickGraph from "@/components/correlations/PivotickGraph.vue";
+import PivotickGraph from "@/components/graph/PivotickGraph.vue";
 import { correlationHelper, tagHelper } from "@/helpers";
 import { useCorrelationsStore, useEventsStore } from "@/stores";
 
