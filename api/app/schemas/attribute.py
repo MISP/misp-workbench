@@ -39,7 +39,14 @@ class Attribute(AttributeBase):
     expanded: Optional[dict] = None
     model_config = ConfigDict(from_attributes=True)
 
-    def to_misp_format(self) -> dict:
+    def to_misp_format(self, include_attachments: bool = True) -> dict:
+        """Render this attribute the way MISP's own event API does.
+
+        ``include_attachments`` inlines the base64 payload of malware samples
+        and attachments, which is what a push or an export needs and what a
+        caller that only wants the metadata (the event graph, say) must not
+        pay for - the blobs dwarf the rest of the event.
+        """
         from app.services.attachments import get_b64_attachment
         from app.settings import get_settings
 
@@ -63,7 +70,7 @@ class Attribute(AttributeBase):
             "Tag": [tag.model_dump() for tag in self.tags],
         }
 
-        if self.type in ["malware-sample", "attachment"]:
+        if include_attachments and self.type in ["malware-sample", "attachment"]:
             try:
                 attr_json["data"] = get_b64_attachment(str(self.uuid), get_settings())
             except Exception as e:

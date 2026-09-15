@@ -7,6 +7,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { Pivotick } from "pivotick";
 import "pivotick/dist/pivotick.css";
+import { useBootstrapTheme } from "@/helpers";
 
 const props = defineProps({
   nodes: {
@@ -17,10 +18,23 @@ const props = defineProps({
     type: Array,
     default: () => [],
   },
-  /** Per node-kind styles, keyed by the `kind` on each node's data. */
+  /**
+   * Per node-kind styles, keyed by the `kind`/`type` on each node's data.
+   * Optional: a producer that resolves styling itself (an importer from
+   * pivotick-graph-transformer, say) puts the finished style on each node
+   * instead, and leaves this out.
+   */
   nodeStyleMap: {
     type: Object,
-    required: true,
+    default: () => ({}),
+  },
+  /**
+   * Pivotick notes - free-standing cards on the canvas, not graph nodes.
+   * An importer uses one to say "nothing to display" without faking a node.
+   */
+  notes: {
+    type: Array,
+    default: () => [],
   },
   edgeStyle: {
     type: Object,
@@ -75,10 +89,9 @@ const emit = defineEmits(["navigate", "expand"]);
 const DOUBLE_CLICK_GRACE = 250;
 
 const canvas = ref(null);
-const theme = ref(readTheme());
+const theme = useBootstrapTheme();
 
 let graph = null;
-let themeObserver = null;
 let clickTimer = null;
 // What the live instance currently holds, so growth can be applied in place.
 let rendered = { nodes: new Set(), edges: new Set() };
@@ -95,13 +108,11 @@ function navigate(node) {
   }
 }
 
-function readTheme() {
-  return document.documentElement.getAttribute("data-bs-theme") === "dark"
-    ? "dark"
-    : "light";
-}
-
-const data = computed(() => ({ nodes: props.nodes, edges: props.edges }));
+const data = computed(() => ({
+  nodes: props.nodes,
+  edges: props.edges,
+  ...(props.notes.length ? { notes: props.notes } : {}),
+}));
 
 function buildOptions() {
   return {
@@ -124,7 +135,9 @@ function buildOptions() {
     },
     render: {
       type: "svg",
-      nodeTypeAccessor: (node) => node.getData()?.kind,
+      // `kind` is what this app's own graphs set; `type` is what an importer
+      // from pivotick-graph-transformer sets. Either resolves a style here.
+      nodeTypeAccessor: (node) => node.getData()?.kind ?? node.getData()?.type,
       nodeStyleMap: props.nodeStyleMap,
       defaultEdgeStyle: props.edgeStyle,
     },
@@ -241,30 +254,14 @@ function destroy() {
   canvas.value?.replaceChildren();
 }
 
-onMounted(() => {
-  render();
-
-  // The app switches themes by swapping data-bs-theme on <html>, which the
-  // library reads once at construction, so the graph is rebuilt on a change.
-  themeObserver = new MutationObserver(() => {
-    const next = readTheme();
-
-    if (next !== theme.value) {
-      theme.value = next;
-    }
-  });
-  themeObserver.observe(document.documentElement, {
-    attributes: true,
-    attributeFilter: ["data-bs-theme"],
-  });
-});
+onMounted(() => render());
 
 onBeforeUnmount(() => {
-  themeObserver?.disconnect();
-  themeObserver = null;
   clearTimeout(clickTimer);
   destroy();
 });
+
+// The library reads the theme once at construction, so a change rebuilds.
 
 watch(theme, () => render());
 watch(data, () => sync());

@@ -45,7 +45,7 @@ class Event(EventBase):
     organisation: Optional[Organisation] = None
     model_config = ConfigDict(from_attributes=True)
 
-    def to_misp_format(self) -> dict:
+    def to_misp_format(self, include_attachments: bool = True) -> dict:
         event_json = {
             "uuid": str(self.uuid) if self.uuid else None,
             "info": self.info,
@@ -60,8 +60,14 @@ class Event(EventBase):
             "sighting_timestamp": self.sighting_timestamp,
             "disable_correlation": self.disable_correlation,
             "extends_uuid": str(self.extends_uuid) if self.extends_uuid else None,
-            "Attribute": [attr.to_misp_format() for attr in self.attributes],
-            "Object": [obj.to_misp_format() for obj in self.objects],
+            "Attribute": [
+                attr.to_misp_format(include_attachments=include_attachments)
+                for attr in self.attributes
+            ],
+            "Object": [
+                obj.to_misp_format(include_attachments=include_attachments)
+                for obj in self.objects
+            ],
             "Tag": [tag.model_dump() for tag in self.tags],
         }
 

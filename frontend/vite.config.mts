@@ -25,6 +25,25 @@ export default defineConfig({
       pivotick: fileURLToPath(
         new URL("./submodules/pivotick/dist/pivotick.es.js", import.meta.url),
       ),
+      // pivotick-graph-transformer turns MISP-standard JSON into the
+      // nodes/edges pivotick renders. Also a submodule, but unlike pivotick
+      // it ships no build - Vite transpiles its TypeScript sources directly,
+      // so these point at the package entries. `/misp` first, for the same
+      // prefix-matching reason as the stylesheet above; `pivotick` itself
+      // cannot swallow either, since a string alias only matches the exact
+      // key or the key followed by a slash.
+      "pivotick-transformer/misp": fileURLToPath(
+        new URL(
+          "./submodules/pivotick-graph-transformer/packages/misp/src/index.ts",
+          import.meta.url,
+        ),
+      ),
+      "pivotick-transformer": fileURLToPath(
+        new URL(
+          "./submodules/pivotick-graph-transformer/packages/core/src/index.ts",
+          import.meta.url,
+        ),
+      ),
     },
   },
   server: {

@@ -71,14 +71,20 @@ class ApiTester:
         # deletes below can run cleanly.
         db.rollback()
         db.query(galaxy_models.GalaxyElement).delete(synchronize_session=False)
-        db.query(galaxy_models.GalaxyClusterRelationTag).delete(synchronize_session=False)
+        db.query(galaxy_models.GalaxyClusterRelationTag).delete(
+            synchronize_session=False
+        )
         db.query(galaxy_models.GalaxyClusterRelation).delete(synchronize_session=False)
         db.query(galaxy_models.GalaxyCluster).delete(synchronize_session=False)
         db.query(galaxy_models.Galaxy).delete(synchronize_session=False)
         db.query(feed_models.Feed).delete(synchronize_session=False)
         db.query(tag_models.Tag).delete(synchronize_session=False)
-        db.query(sharing_groups_models.SharingGroupOrganisation).delete(synchronize_session=False)
-        db.query(sharing_groups_models.SharingGroupServer).delete(synchronize_session=False)
+        db.query(sharing_groups_models.SharingGroupOrganisation).delete(
+            synchronize_session=False
+        )
+        db.query(sharing_groups_models.SharingGroupServer).delete(
+            synchronize_session=False
+        )
         db.query(sharing_groups_models.SharingGroup).delete(synchronize_session=False)
         db.query(server_models.Server).delete(synchronize_session=False)
         db.query(hunt_models.HuntRunHistory).delete(synchronize_session=False)
@@ -99,6 +105,7 @@ class ApiTester:
         db.query(api_key_models.ApiKey).delete(synchronize_session=False)
         db.query(audit_log_models.AuditLog).delete(synchronize_session=False)
         from app.models import user_setting as user_setting_models
+
         db.query(user_setting_models.UserSetting).delete(synchronize_session=False)
         db.query(user_models.User).delete(synchronize_session=False)
         db.query(module_models.ModuleSettings).delete(synchronize_session=False)
@@ -122,6 +129,9 @@ class ApiTester:
                 "misp-events",
                 "misp-attributes",
                 "misp-objects",
+                # Object references outlived every run until this was added,
+                # so a reference written by one test showed up in the next.
+                "misp-object-references",
                 "misp-analyst-data",
             ):
                 try:
@@ -303,12 +313,39 @@ class ApiTester:
         client.index(index="misp-objects", id=obj_uuid, body=obj_doc, refresh=True)
 
         from app.schemas import object as object_schemas
+
         yield object_schemas.Object.model_validate(obj_doc)
 
     @pytest.fixture(scope="class")
-    def object_attribute_1(
-        self, db: Session, event_1, object_1
-    ):
+    def object_reference_1(self, db: Session, event_1, object_1, attribute_1):
+        """An object -> attribute reference, written through the repository.
+
+        Also the only thing in the suite that creates misp-object-references:
+        no index is provisioned up front, so without this the reference join
+        in the full event pull is never exercised against a real index.
+        """
+        from uuid import UUID
+        from app.repositories import (
+            object_references as object_references_repository,
+        )
+        from app.schemas import object_reference as object_reference_schemas
+
+        yield object_references_repository.create_object_reference(
+            db,
+            object_reference_schemas.ObjectReferenceCreate(
+                uuid=UUID("2c3f4a71-5b6c-4d8e-9f01-a2b3c4d5e6f7"),
+                event_uuid=event_1.uuid,
+                object_uuid=object_1.uuid,
+                source_uuid=object_1.uuid,
+                referenced_uuid=attribute_1.uuid,
+                referenced_type=object_reference_schemas.ReferencedType.ATTRIBUTE,
+                relationship_type="mentions",
+                timestamp=1577836800,
+            ),
+        )
+
+    @pytest.fixture(scope="class")
+    def object_attribute_1(self, db: Session, event_1, object_1):
         from uuid import UUID
         from app.repositories import attributes as attributes_repository
         from app.schemas import attribute as attribute_schemas
@@ -679,7 +716,10 @@ class ApiTester:
             entity_type="event",
             entity_uuid="ba4b11b6-dcce-4315-8fd0-67b69160ea76",
             read=False,
-            payload={"event_name": "Test Event", "event_uuid": "ba4b11b6-dcce-4315-8fd0-67b69160ea76"},
+            payload={
+                "event_name": "Test Event",
+                "event_uuid": "ba4b11b6-dcce-4315-8fd0-67b69160ea76",
+            },
             created_at=datetime(2024, 1, 1, 0, 0, 0),
         )
         db.add(notification_1)

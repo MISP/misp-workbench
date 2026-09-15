@@ -10,7 +10,7 @@
   },
   {
     "uuid": "a1f30000-0001-4001-8000-000000000002",
-    "info": "WannaCry ransomware variant — recent resurgence",
+    "info": "WannaCry ransomware variant \u2014 recent resurgence",
     "date_offset_days": 7,
     "threat_level": 1,
     "analysis": 1,
@@ -25,5 +25,26 @@
     "analysis": 2,
     "distribution": 0,
     "published": true
+  },
+  {
+    "uuid": "e0f10000-0001-4001-8000-00000000000a",
+    "info": "Emotet delivery chain \u2014 phishing to C2",
+    "date_offset_days": 3,
+    "threat_level": 2,
+    "analysis": 1,
+    "distribution": 3,
+    "published": false,
+    "tags": [
+      {
+        "name": "tlp:amber",
+        "colour": "#FFC000",
+        "is_galaxy": false
+      },
+      {
+        "name": "misp-galaxy:malpedia=\"Emotet\"",
+        "colour": "#0088cc",
+        "is_galaxy": true
+      }
+    ]
   }
 ]

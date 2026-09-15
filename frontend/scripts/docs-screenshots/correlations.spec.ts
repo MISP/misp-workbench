@@ -134,24 +134,31 @@ async function stubCorrelationRoutes(page: Page) {
  * outer event card so only the "Related Events" portion is visible for
  * the event-view screenshot.
  */
-async function trimEventViewToHeader(page: Page) {
+async function trimOverviewPanel(page: Page) {
   await page.addStyleTag({
     content: `
-      /* Hide the Reports column that sits inside the same row.m-1 */
-      .card > .row.m-1 > .col.col-sm-12 { display: none !important; }
-      /* Hide the objects + attributes row beneath */
-      .card > .row:not(.m-1) { display: none !important; }
+      /* Attachments sit at the bottom of the Overview panel and are not part
+         of what this screenshot is about. */
+      .event-attachments { display: none !important; }
     `,
   });
 }
 
 /**
- * Inner attributes card on event view. Same trick as enrichments.spec.ts —
- * `.card:has(.table-responsive-sm)` matches both the outer wrapper and
- * the inner card; the inner one is last in DOM order.
+ * The event view's Attributes tab panel. The tab strip is the section's frame
+ * now, so the table is no longer wrapped in a card of its own.
  */
 function attributesCard(page: Page) {
-  return page.locator(".card:has(.table-responsive-sm)").last();
+  return page.locator('[data-tab-panel="attributes"]');
+}
+
+/**
+ * The attributes table lives behind its own tab now, and the tab is part of
+ * the URL - so it is linked to directly rather than clicked into.
+ */
+async function gotoAttributesTab(page: Page, eventUuid: string) {
+  await page.goto(`/events/${eventUuid}/attributes`);
+  await expect(page.locator('[data-tab-panel="attributes"]')).toBeVisible();
 }
 
 async function showOnlyFirstAttributeRow(page: Page) {
@@ -199,13 +206,13 @@ test.describe("Correlations screenshots", () => {
       timeout: 10_000,
     });
 
-    await trimEventViewToHeader(page);
+    await trimOverviewPanel(page);
     await pinForCapture(page);
 
-    // Capture the outer event card (already trimmed by the styles above)
-    const eventCard = page.locator(".card").first();
+    // The event view no longer wraps itself in one outer card - the Overview
+    // panel is the region that holds the widget.
     await capture(
-      eventCard,
+      page.locator('[data-tab-panel="overview"]'),
       FEATURE,
       "misp-workbench-2_correlations-event-view",
     );
@@ -214,7 +221,7 @@ test.describe("Correlations screenshots", () => {
   test("3 — attribute row with correlations icon", async ({ page }) => {
     await applyTheme(page);
     await stubCorrelationRoutes(page);
-    await page.goto(`/events/${SOURCE_EVENT_UUID}`);
+    await gotoAttributesTab(page, SOURCE_EVENT_UUID);
 
     const card = attributesCard(page);
     await expect(card.locator("table tbody tr").first()).toBeVisible();
@@ -232,7 +239,7 @@ test.describe("Correlations screenshots", () => {
   test("4 — correlation modal", async ({ page }) => {
     await applyTheme(page);
     await stubCorrelationRoutes(page);
-    await page.goto(`/events/${SOURCE_EVENT_UUID}`);
+    await gotoAttributesTab(page, SOURCE_EVENT_UUID);
 
     const card = attributesCard(page);
     await expect(card.locator("table tbody tr").first()).toBeVisible();

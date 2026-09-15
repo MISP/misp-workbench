@@ -52,5 +52,23 @@
     "value": "support@microsoft-office365-login.com",
     "comment": "Phishing sender",
     "to_ids": true
+  },
+  {
+    "uuid": "e0f10000-0007-4002-8000-000000000010",
+    "event_uuid": "e0f10000-0001-4001-8000-00000000000a",
+    "category": "Network activity",
+    "type": "url",
+    "value": "http://invoice-portal.test/download/48812",
+    "comment": "Loader download",
+    "to_ids": true
+  },
+  {
+    "uuid": "e0f10000-0008-4002-8000-000000000011",
+    "event_uuid": "e0f10000-0001-4001-8000-00000000000a",
+    "category": "Attribution",
+    "type": "text",
+    "value": "TA542 (Mummy Spider)",
+    "comment": "Operator",
+    "to_ids": false
   }
 ]

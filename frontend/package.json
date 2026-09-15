@@ -22,6 +22,7 @@
     "docs:screenshots:feeds": "playwright test scripts/docs-screenshots/feeds.spec.ts --config=scripts/docs-screenshots/playwright.config.ts",
     "docs:screenshots:enrichments": "playwright test scripts/docs-screenshots/enrichments.spec.ts --config=scripts/docs-screenshots/playwright.config.ts",
     "docs:screenshots:correlations": "playwright test scripts/docs-screenshots/correlations.spec.ts --config=scripts/docs-screenshots/playwright.config.ts",
+    "docs:screenshots:event-graph": "playwright test scripts/docs-screenshots/event-graph.spec.ts --config=scripts/docs-screenshots/playwright.config.ts",
     "docs:screenshots:notebooks": "playwright test scripts/docs-screenshots/notebooks.spec.ts --config=scripts/docs-screenshots/playwright.config.ts",
     "docs:screenshots:reactor": "playwright test scripts/docs-screenshots/reactor.spec.ts --config=scripts/docs-screenshots/playwright.config.ts",
     "docs:screenshots:notifications": "playwright test scripts/docs-screenshots/notifications.spec.ts --config=scripts/docs-screenshots/playwright.config.ts",

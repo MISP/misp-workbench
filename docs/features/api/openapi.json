@@ -1692,6 +1692,59 @@
         }
       }
     },
+    "/events/{event_uuid}/misp-json": {
+      "get": {
+        "tags": [
+          "Events"
+        ],
+        "summary": "Get Event Misp Json",
+        "description": "Return the event in MISP's own event API shape (``{\"Event\": {...}}``).\n\nThe event graph is rendered client-side by pivotick-graph-transformer,\nwhich reads MISP-standard JSON. Rather than teach it a second schema, the\nevent is serialized with the same ``to_misp_format()`` used to push events\nto remote MISP servers - one canonical format, already tested.\n\nUnlike ``GET /events/{event_uuid}``, this pulls the event *full*: the graph\nneeds every attribute and object, not just the event header. Attachment\npayloads are left out - the graph only draws the metadata, and inlining\nbase64 blobs would dwarf the rest of the response.",
+        "operationId": "get_event_misp_json_events__event_uuid__misp_json_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "events:read"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "event_uuid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Event Uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Get Event Misp Json Events  Event Uuid  Misp Json Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/events/{event_uuid}/tag/{tag}": {
       "post": {
         "tags": [

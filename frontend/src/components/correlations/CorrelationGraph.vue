@@ -2,7 +2,7 @@
 import { computed } from "vue";
 import { ColorPaletteMapper } from "pivotick";
 import GraphLegend from "@/components/correlations/GraphLegend.vue";
-import PivotickGraph from "@/components/correlations/PivotickGraph.vue";
+import PivotickGraph from "@/components/graph/PivotickGraph.vue";
 import { correlationHelper } from "@/helpers";
 
 const props = defineProps({
