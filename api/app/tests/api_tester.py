@@ -31,9 +31,61 @@ from sqlalchemy.orm import Session, declarative_base, sessionmaker
 import sys
 
 
+# The only environment in which this suite is allowed to destroy data. CI
+# already sets it (see .github/workflows/api_test.yml), so the guard below
+# costs CI nothing and only ever stops a run pointed somewhere it shouldn't be.
+TEST_ENVIRONMENT = "test"
+
+
+def require_test_environment():
+    """Refuse to run when the target is not a throwaway instance.
+
+    `teardown_db` deletes every user, organisation, feed, server, tag,
+    taxonomy and galaxy in Postgres, and `_cleanup_opensearch` deletes every
+    event, attribute, object, object reference and analyst-data document in
+    OpenSearch. Both run unconditionally from an autouse fixture, so simply
+    running `docker compose exec api poetry run pytest` against a dev stack
+    wipes whatever was in it -- no prompt, no warning, and the data is gone
+    before the first test body executes.
+
+    Gating on ENVIRONMENT rather than the database name because CI and the dev
+    stack both use the `misp` database; the environment is what actually
+    distinguishes them.
+    """
+    environment = os.environ.get("ENVIRONMENT", "prod")
+    if environment == TEST_ENVIRONMENT:
+        return
+
+    pytest.exit(
+        "\n"
+        "Refusing to run the API test suite.\n"
+        "\n"
+        "It DELETES every row in the database and every document in the "
+        "OpenSearch indices it is pointed at, but ENVIRONMENT is "
+        f"{environment!r}, not {TEST_ENVIRONMENT!r}.\n"
+        "\n"
+        "  postgres:   {}@{}:{}/{}\n"
+        "  opensearch: {}:{}\n"
+        "\n"
+        "If that really is a throwaway instance, say so explicitly:\n"
+        "\n"
+        "  docker compose exec -e ENVIRONMENT=test api poetry run pytest\n".format(
+            os.environ.get("POSTGRES_USER", "?"),
+            os.environ.get("POSTGRES_HOSTNAME", "?"),
+            os.environ.get("POSTGRES_PORT", "?"),
+            os.environ.get("POSTGRES_DB", "?"),
+            os.environ.get("OPENSEARCH_HOSTNAME", "?"),
+            os.environ.get("OPENSEARCH_PORT", "?"),
+        ),
+        returncode=1,
+    )
+
+
 class ApiTester:
     @pytest.fixture(scope="class")
     def db(self):
+        require_test_environment()
+
         SQLALCHEMY_DATABASE_URL = "postgresql://{}:{}@{}:{}/{}".format(
             os.environ["POSTGRES_USER"],
             os.environ["POSTGRES_PASSWORD"],
@@ -68,6 +120,7 @@ class ApiTester:
         yield get_settings()
 
     def teardown_db(self, db: Session):
+        require_test_environment()
         # Roll back any aborted transaction from a previous failure so the
         # deletes below can run cleanly.
         db.rollback()
@@ -123,6 +176,7 @@ class ApiTester:
         db.commit()
 
     def _cleanup_opensearch(self):
+        require_test_environment()
         try:
             from app.services.opensearch import get_opensearch_client
 

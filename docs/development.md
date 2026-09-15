@@ -18,10 +18,10 @@
 
 ```bash
 # All tests
-docker compose exec api poetry run pytest
+docker compose exec -e ENVIRONMENT=test api poetry run pytest
 
 # Single file or test
-docker compose exec api poetry run pytest tests/path/to/test_file.py::TestClass::test_name
+docker compose exec -e ENVIRONMENT=test api poetry run pytest tests/path/to/test_file.py::TestClass::test_name
 ```
 
 ### Database migrations
