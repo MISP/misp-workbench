@@ -92,6 +92,40 @@ def delete_servo(db: Session, db_servo: servo_models.Servo) -> None:
     chain.delete_pipeline(slug)
 
 
+def reorder_servos(db: Session, servo_ids: list[int]) -> list[servo_models.Servo]:
+    """Renumber `position` to match the given order.
+
+    Done in one transaction with a single chain rebuild at the end -- PATCHing
+    each servo in turn would re-sync OpenSearch once per servo and leave the
+    chain in a half-reordered state in between.
+
+    Returns None if any id is unknown, so the caller can 404 rather than
+    silently reordering a subset.
+    """
+    servos = {s.id: s for s in db.scalars(select(servo_models.Servo)).all()}
+    if any(servo_id not in servos for servo_id in servo_ids):
+        return None
+
+    now = datetime.now(timezone.utc)
+    for position, servo_id in enumerate(servo_ids):
+        db_servo = servos[servo_id]
+        if db_servo.position != position:
+            db_servo.position = position
+            db_servo.updated_at = now
+
+    # Anything the caller left out keeps a stable relative order after them.
+    trailing = sorted(
+        (s for s in servos.values() if s.id not in set(servo_ids)),
+        key=lambda s: (s.position, s.id),
+    )
+    for offset, db_servo in enumerate(trailing):
+        db_servo.position = len(servo_ids) + offset
+
+    db.commit()
+    chain.sync(db)
+    return [servos[servo_id] for servo_id in servo_ids]
+
+
 def list_pipelines(db: Session) -> list[servo_schemas.PipelineSummary]:
     """Every ingest pipeline in the cluster, classified and annotated.
 

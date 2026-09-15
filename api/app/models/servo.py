@@ -28,3 +28,15 @@ class Servo(Base):
     created_at = Column(DateTime(timezone=True), nullable=False)
     updated_at = Column(DateTime(timezone=True), nullable=True)
     last_synced_at = Column(DateTime(timezone=True), nullable=True)
+
+    @property
+    def drops_documents(self) -> bool:
+        """Whether this servo can discard attributes at ingestion.
+
+        Derived from the processors rather than stored, so it can never drift
+        out of step with them. The import is deferred because the chain service
+        imports this module.
+        """
+        from app.services.tech_lab.servos.chain import drops_documents
+
+        return drops_documents(self.processors)

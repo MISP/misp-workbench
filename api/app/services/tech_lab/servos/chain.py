@@ -192,6 +192,36 @@ def get_cluster_pipeline(name: str) -> Optional[dict]:
     return response.get(name)
 
 
+def drops_documents(processors: list[dict]) -> bool:
+    """True if these processors can discard a document.
+
+    A `drop` makes OpenSearch answer the index request with ``result: noop``,
+    which the write path now rejects rather than reporting a create that never
+    happened (see ``AttributeNotIndexedError``). Dropping is a legitimate use
+    -- deduplication, for one -- so this flags it rather than forbidding it,
+    and the UI says so plainly before the servo goes live.
+
+    Nested processors are walked because `foreach` and `on_failure` can carry
+    a drop that a top-level scan would miss.
+    """
+    for processor in processors or []:
+        if not isinstance(processor, dict):
+            continue
+        for kind, config in processor.items():
+            if kind == "drop":
+                return True
+            if not isinstance(config, dict):
+                continue
+            if isinstance(config.get("processor"), dict):  # foreach
+                if drops_documents([config["processor"]]):
+                    return True
+            for nested_key in ("on_failure", "processors"):
+                nested = config.get(nested_key)
+                if isinstance(nested, list) and drops_documents(nested):
+                    return True
+    return False
+
+
 def processor_types(definition: dict) -> list[str]:
     """The processor type of each step, in order, deduplicated but ordered."""
     types: list[str] = []
@@ -257,6 +287,51 @@ def fetch_sample_docs(attribute_uuids: list[str]) -> list[dict]:
         for doc in response.get("docs", [])
         if doc.get("found") and doc.get("_source")
     ]
+
+
+def error_summary() -> dict[str, dict]:
+    """Per-servo failure counts and the distinct messages behind them.
+
+    The `on_failure` handler writes "<pipeline>: <message>" into
+    ``expanded.servo_errors``, so one terms aggregation over that keyword field
+    covers every servo at once. Returns ``{pipeline_name: {"count": int,
+    "messages": [{"message": str, "count": int}, ...]}}``.
+
+    Without this the failure isolation is invisible: a servo erroring on every
+    single document still shows a green "enabled" badge.
+    """
+    body = {
+        "size": 0,
+        "aggs": {
+            "servo_errors": {"terms": {"field": SERVO_ERRORS_FIELD, "size": 1000}}
+        },
+    }
+    try:
+        response = OpenSearchClient.search(index=TARGET_INDEX, body=body)
+    except (NotFoundError, RequestError):
+        # No index yet, or the field has never been written -- neither is worth
+        # failing the servo list over.
+        return {}
+
+    summary: dict[str, dict] = {}
+    buckets = (
+        response.get("aggregations", {}).get("servo_errors", {}).get("buckets", [])
+    )
+    for bucket in buckets:
+        # "servo_url_parts: field [value] not present"
+        key = str(bucket.get("key", ""))
+        name, _, message = key.partition(":")
+        name = name.strip()
+        if not name:
+            continue
+        count = bucket.get("doc_count", 0)
+        entry = summary.setdefault(name, {"count": 0, "messages": []})
+        entry["count"] += count
+        entry["messages"].append({"message": message.strip() or key, "count": count})
+
+    for entry in summary.values():
+        entry["messages"].sort(key=lambda m: m["count"], reverse=True)
+    return summary
 
 
 def load_templates() -> list[dict]:

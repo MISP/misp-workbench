@@ -10,6 +10,7 @@ export const useServosStore = defineStore({
     servo: null,
     pipelines: null,
     pipeline: null,
+    errors: {},
     templates: null,
     simulation: null,
     status: {
@@ -76,6 +77,19 @@ export const useServosStore = defineStore({
     },
     async delete(id) {
       return await fetchWrapper.delete(`${baseUrl}/${id}`);
+    },
+    async getErrors() {
+      // A servo that throws does not stop ingestion, so this aggregation is
+      // the only place those failures are visible.
+      return fetchWrapper
+        .get(`${baseUrl}/errors`)
+        .then((errors) => (this.errors = errors))
+        .catch(() => (this.errors = {}));
+    },
+    async reorder(servoIds) {
+      return await fetchWrapper.post(`${baseUrl}/reorder`, {
+        servo_ids: servoIds,
+      });
     },
     async simulate(payload) {
       this.status.simulating = true;

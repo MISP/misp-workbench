@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 from unittest.mock import MagicMock, patch
 
 import pytest
-from opensearchpy.exceptions import RequestError
+from opensearchpy.exceptions import NotFoundError, RequestError
 
 from app.models import servo as servo_models
 from app.services.tech_lab.servos import chain
@@ -221,3 +221,51 @@ class TestTemplates:
             assert template["description"], template["slug"]
             for processor in template["processors"]:
                 assert len(processor) == 1, template["slug"]
+
+
+class TestDropsDocuments:
+    @pytest.mark.parametrize(
+        "processors,expected",
+        [
+            ([{"set": {"field": "a", "value": "b"}}], False),
+            ([], False),
+            ([{"drop": {}}], True),
+            ([{"drop": {"if": "ctx.type == 'md5'"}}], True),
+            # A drop can hide inside a nested processor list.
+            ([{"foreach": {"field": "x", "processor": {"drop": {}}}}], True),
+            ([{"grok": {"field": "v", "on_failure": [{"drop": {}}]}}], True),
+            ([{"set": {"field": "a", "value": "b"}}, {"drop": {}}], True),
+        ],
+    )
+    def test_detects_a_drop_anywhere(self, processors, expected):
+        assert chain.drops_documents(processors) is expected
+
+
+class TestErrorSummary:
+    def _response(self, buckets):
+        return {"aggregations": {"servo_errors": {"buckets": buckets}}}
+
+    def test_groups_messages_under_their_servo(self):
+        with patch.object(chain, "OpenSearchClient") as client:
+            client.search.return_value = self._response(
+                [
+                    {"key": "servo_a: boom", "doc_count": 3},
+                    {"key": "servo_a: other failure", "doc_count": 1},
+                    {"key": "servo_b: nope", "doc_count": 2},
+                ]
+            )
+            summary = chain.error_summary()
+
+        assert summary["servo_a"]["count"] == 4
+        assert summary["servo_b"]["count"] == 2
+        # Most frequent message first, so the badge tooltip leads with it.
+        assert [m["message"] for m in summary["servo_a"]["messages"]] == [
+            "boom",
+            "other failure",
+        ]
+
+    def test_missing_index_is_not_an_error(self):
+        # A fresh install has no documents; the servo list must still render.
+        with patch.object(chain, "OpenSearchClient") as client:
+            client.search.side_effect = NotFoundError(404, "index_not_found", {})
+            assert chain.error_summary() == {}

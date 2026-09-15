@@ -1,5 +1,6 @@
 """Unit tests for the correlation wiring in ``app/repositories/attributes.py``."""
 
+import pytest
 from unittest.mock import MagicMock, patch
 
 from app.repositories import attributes as attributes_repository
@@ -11,6 +12,17 @@ ATTR_UUID = "22222222-2222-2222-2222-222222222222"
 
 OS_PATCH = "app.repositories.attributes.get_opensearch_client"
 TASKS_PATCH = "app.repositories.attributes.tasks"
+
+
+def _os_client():
+    """An OpenSearch client mock whose index() reports a real create.
+
+    ``create_attribute`` checks the index response, so a bare MagicMock would
+    look like a dropped document.
+    """
+    client = MagicMock()
+    client.index.return_value = {"result": "created"}
+    return client
 
 
 def _attribute_create(**overrides):
@@ -39,7 +51,7 @@ def _indexed_attribute(**overrides):
 
 class TestCreateAttributeCorrelation:
     def test_not_marked_bulk_by_default(self):
-        with patch(OS_PATCH, return_value=MagicMock()), \
+        with patch(OS_PATCH, return_value=_os_client()), \
                 patch(TASKS_PATCH) as tasks:
             attributes_repository.create_attribute(MagicMock(), _attribute_create())
 
@@ -47,7 +59,7 @@ class TestCreateAttributeCorrelation:
         assert args[3] is False
 
     def test_defers_inside_a_bulk_ingest(self):
-        with patch(OS_PATCH, return_value=MagicMock()), \
+        with patch(OS_PATCH, return_value=_os_client()), \
                 patch(TASKS_PATCH) as tasks, \
                 attributes_repository.bulk_ingest() as batch:
             created = attributes_repository.create_attribute(
@@ -62,7 +74,7 @@ class TestCreateAttributeCorrelation:
         assert batch["handled"] == [[str(created.uuid), None, EVENT_UUID]]
 
     def test_ingest_does_not_refresh_per_attribute(self):
-        client = MagicMock()
+        client = _os_client()
 
         with patch(OS_PATCH, return_value=client), patch(TASKS_PATCH), \
                 attributes_repository.bulk_ingest():
@@ -73,7 +85,7 @@ class TestCreateAttributeCorrelation:
         client.indices.refresh.assert_called_once_with(index="misp-attributes")
 
     def test_single_create_refreshes_straight_away(self):
-        client = MagicMock()
+        client = _os_client()
 
         with patch(OS_PATCH, return_value=client), patch(TASKS_PATCH):
             attributes_repository.create_attribute(MagicMock(), _attribute_create())
@@ -81,15 +93,63 @@ class TestCreateAttributeCorrelation:
         assert client.index.call_args.kwargs["refresh"] is True
 
     def test_the_context_does_not_leak(self):
-        with patch(OS_PATCH, return_value=MagicMock()), patch(TASKS_PATCH):
+        with patch(OS_PATCH, return_value=_os_client()), patch(TASKS_PATCH):
             with attributes_repository.bulk_ingest():
                 pass
 
-        with patch(OS_PATCH, return_value=MagicMock()), \
+        with patch(OS_PATCH, return_value=_os_client()), \
                 patch(TASKS_PATCH) as tasks:
             attributes_repository.create_attribute(MagicMock(), _attribute_create())
 
         assert tasks.handle_created_attribute.delay.call_args.args[3] is False
+
+
+class TestCreateAttributeVerifiesTheWrite:
+    """An ingest pipeline `drop` makes OpenSearch answer 200 with
+    ``result: noop``. Without the check, the API would report a create that
+    never happened and queue correlation / reactor / notification work for a
+    document that is not in the index."""
+
+    def test_a_dropped_document_raises(self):
+        client = MagicMock()
+        client.index.return_value = {"result": "noop", "_shards": {"total": 0}}
+
+        with patch(OS_PATCH, return_value=client), patch(TASKS_PATCH):
+            with pytest.raises(attributes_repository.AttributeNotIndexedError):
+                attributes_repository.create_attribute(MagicMock(), _attribute_create())
+
+    def test_a_dropped_document_queues_no_downstream_work(self):
+        client = MagicMock()
+        client.index.return_value = {"result": "noop"}
+
+        with patch(OS_PATCH, return_value=client), patch(TASKS_PATCH) as tasks:
+            with pytest.raises(attributes_repository.AttributeNotIndexedError):
+                attributes_repository.create_attribute(MagicMock(), _attribute_create())
+
+        tasks.handle_created_attribute.delay.assert_not_called()
+
+    def test_a_dropped_document_is_left_out_of_a_bulk_batch(self):
+        client = MagicMock()
+        client.index.return_value = {"result": "noop"}
+
+        with patch(OS_PATCH, return_value=client), patch(TASKS_PATCH):
+            with attributes_repository.bulk_ingest() as batch:
+                with pytest.raises(attributes_repository.AttributeNotIndexedError):
+                    attributes_repository.create_attribute(
+                        MagicMock(), _attribute_create()
+                    )
+
+        assert batch["created"] == []
+        assert batch["handled"] == []
+
+    def test_a_real_create_still_goes_through(self):
+        with patch(OS_PATCH, return_value=_os_client()), patch(TASKS_PATCH) as tasks:
+            created = attributes_repository.create_attribute(
+                MagicMock(), _attribute_create()
+            )
+
+        assert created.value == "1.2.3.4"
+        tasks.handle_created_attribute.delay.assert_called_once()
 
 
 class TestUpdateAttributeCorrelation:
@@ -103,7 +163,7 @@ class TestUpdateAttributeCorrelation:
     def test_value_change_triggers_recorrelation(self):
         patch_update = attribute_schemas.AttributeUpdate(value="5.6.7.8")
 
-        with patch(OS_PATCH, return_value=MagicMock()), \
+        with patch(OS_PATCH, return_value=_os_client()), \
                 patch(TASKS_PATCH) as tasks, self._patch_lookup():
             attributes_repository.update_attribute(
                 MagicMock(), ATTR_UUID, patch_update
@@ -115,7 +175,7 @@ class TestUpdateAttributeCorrelation:
     def test_unrelated_change_does_not_recorrelate(self):
         patch_update = attribute_schemas.AttributeUpdate(comment="just a note")
 
-        with patch(OS_PATCH, return_value=MagicMock()), \
+        with patch(OS_PATCH, return_value=_os_client()), \
                 patch(TASKS_PATCH) as tasks, self._patch_lookup():
             attributes_repository.update_attribute(
                 MagicMock(), ATTR_UUID, patch_update
@@ -127,7 +187,7 @@ class TestUpdateAttributeCorrelation:
     def test_defers_inside_a_bulk_ingest(self):
         patch_update = attribute_schemas.AttributeUpdate(value="5.6.7.8")
 
-        with patch(OS_PATCH, return_value=MagicMock()), \
+        with patch(OS_PATCH, return_value=_os_client()), \
                 patch(TASKS_PATCH) as tasks, self._patch_lookup(), \
                 attributes_repository.bulk_ingest() as batch:
             attributes_repository.update_attribute(

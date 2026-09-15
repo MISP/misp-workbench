@@ -7,6 +7,7 @@ import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
 import {
   faPlay,
   faTriangleExclamation,
+  faTrashCan,
   faWandMagicSparkles,
 } from "@fortawesome/free-solid-svg-icons";
 import Spinner from "@/components/misc/Spinner.vue";
@@ -76,6 +77,26 @@ const parsedSample = computed(() => {
     return null;
   }
 });
+
+// Mirrors chain.drops_documents on the API side: `foreach` and `on_failure`
+// can hide a drop that a top-level scan would miss.
+function containsDrop(processors) {
+  for (const processor of processors ?? []) {
+    if (typeof processor !== "object" || processor === null) continue;
+    for (const [kind, config] of Object.entries(processor)) {
+      if (kind === "drop") return true;
+      if (typeof config !== "object" || config === null) continue;
+      if (config.processor && containsDrop([config.processor])) return true;
+      for (const nested of ["on_failure", "processors"]) {
+        if (Array.isArray(config[nested]) && containsDrop(config[nested]))
+          return true;
+      }
+    }
+  }
+  return false;
+}
+
+const dropsDocuments = computed(() => containsDrop(parsedProcessors.value));
 
 const jsonError = computed(() => {
   if (parsedProcessors.value === null)
@@ -226,6 +247,22 @@ async function save() {
         <code>expanded.servo_errors</code> on the document rather than failing
         the write, so a mistake here degrades enrichment, it does not stop
         ingestion.
+      </div>
+    </div>
+
+    <div
+      v-if="dropsDocuments"
+      class="alert alert-danger d-flex gap-2 align-items-start py-2"
+    >
+      <FontAwesomeIcon :icon="faTrashCan" class="mt-1" />
+      <div class="small">
+        <strong>This servo discards attributes.</strong> A
+        <code>drop</code> processor stops the attribute reaching
+        <code>misp-attributes</code> entirely — it will not be searchable,
+        correlated, hunted or exported, and none of it is recoverable without
+        re-importing the source. Creating such an attribute through the API is
+        rejected with a clear error rather than silently reported as created,
+        but anything arriving through a feed is simply counted as failed.
       </div>
     </div>
 

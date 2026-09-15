@@ -353,3 +353,104 @@ class TestServosRouter(ApiTester):
         assert response.status_code == status.HTTP_200_OK
         assert response.json()["ok"] is False
         assert response.json()["error"] == "bad grok pattern"
+
+    # ── Reorder + errors ─────────────────────────────────────────────────────
+
+    @pytest.mark.parametrize("scopes", [["servos:create", "servos:update"]])
+    def test_reorder_sets_position_in_one_call(
+        self, client: TestClient, auth_token: auth.Token
+    ):
+        headers = {"Authorization": "Bearer " + auth_token}
+        created = [
+            client.post(
+                "/tech-lab/servos/",
+                json={"slug": slug, "name": slug, "processors": URL_PROCESSORS},
+                headers=headers,
+            ).json()
+            for slug in ("first", "second", "third")
+        ]
+        reversed_ids = [s["id"] for s in reversed(created)]
+
+        response = client.post(
+            "/tech-lab/servos/reorder",
+            json={"servo_ids": reversed_ids},
+            headers=headers,
+        )
+        assert response.status_code == status.HTTP_200_OK, response.text
+        assert [s["slug"] for s in response.json()] == ["third", "second", "first"]
+        assert [s["position"] for s in response.json()] == [0, 1, 2]
+
+    @pytest.mark.parametrize("scopes", [["servos:update"]])
+    def test_reorder_rejects_an_unknown_id(
+        self, client: TestClient, auth_token: auth.Token
+    ):
+        # Renumbering a subset silently would be worse than refusing.
+        response = client.post(
+            "/tech-lab/servos/reorder",
+            json={"servo_ids": [999999]},
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    @pytest.mark.parametrize("scopes", [["servos:read"]])
+    def test_reorder_requires_the_update_scope(
+        self, client: TestClient, auth_token: auth.Token
+    ):
+        response = client.post(
+            "/tech-lab/servos/reorder",
+            json={"servo_ids": [1]},
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+    @pytest.mark.parametrize("scopes", [["servos:create", "servos:read"]])
+    def test_a_drop_processor_is_flagged_on_the_servo(
+        self, client: TestClient, auth_token: auth.Token
+    ):
+        headers = {"Authorization": "Bearer " + auth_token}
+        plain = client.post(
+            "/tech-lab/servos/",
+            json={"slug": "keeps", "name": "Keeps", "processors": URL_PROCESSORS},
+            headers=headers,
+        ).json()
+        dropper = client.post(
+            "/tech-lab/servos/",
+            json={
+                "slug": "discards",
+                "name": "Discards",
+                "processors": [{"drop": {"if": "ctx.type == 'md5'"}}],
+            },
+            headers=headers,
+        ).json()
+
+        assert plain["drops_documents"] is False
+        assert dropper["drops_documents"] is True
+
+    @pytest.mark.parametrize("scopes", [["servos:read"]])
+    def test_errors_endpoint_reports_failures_per_servo(
+        self, client: TestClient, auth_token: auth.Token, _opensearch
+    ):
+        _opensearch.search.return_value = {
+            "aggregations": {
+                "servo_errors": {
+                    "buckets": [{"key": "servo_boom: boom", "doc_count": 7}]
+                }
+            }
+        }
+        response = client.get(
+            "/tech-lab/servos/errors",
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+        assert response.status_code == status.HTTP_200_OK, response.text
+        assert response.json()["servo_boom"]["count"] == 7
+        assert response.json()["servo_boom"]["messages"][0]["message"] == "boom"
+
+    @pytest.mark.parametrize("scopes", [[]])
+    def test_errors_endpoint_requires_the_read_scope(
+        self, client: TestClient, auth_token: auth.Token
+    ):
+        response = client.get(
+            "/tech-lab/servos/errors",
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED

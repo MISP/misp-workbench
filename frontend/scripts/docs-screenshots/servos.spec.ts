@@ -8,6 +8,7 @@ import {
   FINAL_PIPELINE_DETAIL,
   TEMPLATES,
   SIMULATE_RESPONSE,
+  SERVO_ERRORS,
 } from "./servos-fixtures";
 
 const FEATURE = "tech-lab/transformation-servos";
@@ -40,6 +41,19 @@ async function stubServoRoutes(page: Page) {
         status: 200,
         contentType: "application/json",
         body: JSON.stringify(FINAL_PIPELINE_DETAIL),
+      });
+    },
+  );
+
+  // GET /tech-lab/servos/errors
+  await page.route(
+    new RegExp(`:${API_PORT}/tech-lab/servos/errors$`),
+    (route) => {
+      if (route.request().method() !== "GET") return route.fallback();
+      return route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(SERVO_ERRORS),
       });
     },
   );

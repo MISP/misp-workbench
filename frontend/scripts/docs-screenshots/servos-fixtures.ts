@@ -13,6 +13,7 @@ export interface ServoDetail {
   target_index: string;
   enabled: boolean;
   position: number;
+  drops_documents: boolean;
   created_at: string;
   updated_at: string | null;
   last_synced_at: string | null;
@@ -53,6 +54,7 @@ export const SERVO: ServoDetail = {
   target_index: "misp-attributes",
   enabled: true,
   position: 0,
+  drops_documents: false,
   created_at: "2026-02-10T09:12:00Z",
   updated_at: "2026-02-11T14:03:00Z",
   last_synced_at: "2026-02-11T14:03:00Z",
@@ -78,6 +80,7 @@ export const CANONICAL_SERVO: ServoDetail = {
   target_index: "misp-attributes",
   enabled: false,
   position: 1,
+  drops_documents: false,
   created_at: "2026-02-12T08:00:00Z",
   updated_at: null,
   last_synced_at: null,
@@ -215,4 +218,16 @@ export const SIMULATE_RESPONSE = {
     },
   ],
   error: null,
+};
+
+export const SERVO_ERRORS = {
+  servo_canonical_value: {
+    count: 12,
+    messages: [
+      {
+        message: "field [value] not present as part of path [value]",
+        count: 12,
+      },
+    ],
+  },
 };

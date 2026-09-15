@@ -54,15 +54,29 @@ Because servos run last, a servo can read everything the system pipelines produc
 
 Only **enabled** servos are in the chain. Disabling a servo removes both its chain entry and its pipeline; re-enabling puts them back.
 
+### Order
+
+Servos run in the order shown in the list, and order is part of the design: a servo can read a field an earlier one produced, exactly as the shipped pipelines do. Use the arrows in the **order** column to move one earlier or later. The whole order is sent in a single call, so the chain is rebuilt once rather than once per servo.
+
 ### Failure isolation
 
 A servo that throws must never stop an attribute from being indexed. Every chain entry carries an `on_failure` handler that appends the message to `expanded.servo_errors` on the document and carries on. A mistake in a servo therefore degrades enrichment; it does not break ingestion.
 
-To find documents a servo failed on:
+Failures are counted per servo and shown as a red badge next to its status, with the distinct messages behind them in the tooltip — otherwise a servo erroring on every single document would still look healthy. To find the affected documents:
 
 ```
 expanded.servo_errors:*
 ```
+
+### Servos that discard attributes
+
+A servo may use the [`drop` processor](https://docs.opensearch.org/latest/ingest-pipelines/processors/drop/) — deduplication is a legitimate reason to. Understand what it means first:
+
+- A dropped attribute **never reaches `misp-attributes`**. It is not searchable, correlated, hunted or exported, and nothing recovers it short of re-importing the source.
+- OpenSearch reports a dropped document as a *success* (HTTP 200, `result: noop`). misp-workbench checks that result, so `POST /attributes/` answers **422** with an explanation instead of a misleading 201, and no correlation, reactor or notification work is queued for a document that does not exist. An attribute arriving through a feed is counted as a failed row and logged.
+- Any servo containing a `drop` — including one nested inside `foreach` or `on_failure` — is flagged with a **discards** badge in the list, and the editor shows a warning before you save.
+
+If your aim is to *identify* duplicates rather than throw them away, use the **Deduplication fingerprint** template instead. It marks them and keeps the data.
 
 ### Dry run
 
@@ -183,10 +197,10 @@ The feature is admin-level. Four scopes gate it:
 |---|---|
 | `servos:read` | See the pipeline inventory and servo definitions. Also gates the menu entry. |
 | `servos:create` | Create servos and run dry runs. |
-| `servos:update` | Edit, enable and disable servos. |
+| `servos:update` | Edit, enable, disable and reorder servos. |
 | `servos:delete` | Delete servos. |
 
-Every create, update and delete is written to the [audit log](../api/audit-logs.md) as `servo.created` / `servo.updated` / `servo.deleted`, with the compiled processors in the metadata.
+Every create, update and delete is written to the [audit log](../api/audit-logs.md) as `servo.created` / `servo.updated` / `servo.reordered` / `servo.deleted`, with the compiled processors in the metadata.
 
 ## Operational notes
 

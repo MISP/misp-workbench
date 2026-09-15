@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted } from "vue";
+import { computed, onMounted, ref } from "vue";
 import { storeToRefs } from "pinia";
 import { RouterLink, useRoute, useRouter } from "vue-router";
 import { useServosStore, useAuthStore } from "@/stores";
@@ -8,7 +8,14 @@ import ServoActions from "@/components/servos/ServoActions.vue";
 import PipelineViewer from "@/components/servos/PipelineViewer.vue";
 import { authHelper } from "@/helpers";
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
-import { faLock, faGears } from "@fortawesome/free-solid-svg-icons";
+import {
+  faLock,
+  faGears,
+  faArrowUp,
+  faArrowDown,
+  faTriangleExclamation,
+  faTrashCan,
+} from "@fortawesome/free-solid-svg-icons";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
 import utc from "dayjs/plugin/utc";
@@ -20,12 +27,47 @@ const route = useRoute();
 const router = useRouter();
 const servosStore = useServosStore();
 const authStore = useAuthStore();
-const { servos, pipelines, status } = storeToRefs(servosStore);
+const { servos, pipelines, errors, status } = storeToRefs(servosStore);
 const { scopes } = storeToRefs(authStore);
 
 const canCreate = computed(() =>
   authHelper.hasScope(scopes.value, "servos:create"),
 );
+const canUpdate = computed(() =>
+  authHelper.hasScope(scopes.value, "servos:update"),
+);
+
+// Failures are keyed by pipeline name, which is what the on_failure handler
+// writes; the table rows know their slug.
+function servoErrors(servo) {
+  return errors.value?.[`servo_${servo.slug}`] ?? null;
+}
+
+function errorTitle(servo) {
+  const entry = servoErrors(servo);
+  if (!entry) return "";
+  return entry.messages.map((m) => `${m.count}\u00d7 ${m.message}`).join("\n");
+}
+
+const reordering = ref(false);
+
+// Order matters as soon as one servo reads a field another produced, so this
+// swaps a servo with its neighbour and sends the whole order in one call --
+// PATCHing each would rebuild the chain twice and leave it half-sorted between.
+async function move(index, delta) {
+  const items = servos.value?.items ?? [];
+  const target = index + delta;
+  if (target < 0 || target >= items.length) return;
+  const ids = items.map((s) => s.id);
+  [ids[index], ids[target]] = [ids[target], ids[index]];
+  reordering.value = true;
+  try {
+    await servosStore.reorder(ids);
+    await servosStore.getAll();
+  } finally {
+    reordering.value = false;
+  }
+}
 
 const TABS = [
   { id: "servos", label: "Custom servos", icon: faGears },
@@ -67,6 +109,7 @@ function tabCount(id) {
 function refresh() {
   servosStore.getAll();
   servosStore.getPipelines();
+  servosStore.getErrors();
 }
 
 onMounted(refresh);
@@ -145,6 +188,7 @@ onMounted(refresh);
         <table class="table table-striped text-start align-middle mb-0">
           <thead>
             <tr>
+              <th v-if="canUpdate" style="width: 5rem">order</th>
               <th>name</th>
               <th>pipeline</th>
               <th>processors</th>
@@ -154,7 +198,27 @@ onMounted(refresh);
             </tr>
           </thead>
           <tbody>
-            <tr v-for="servo in servos.items" :key="servo.id">
+            <tr v-for="(servo, index) in servos.items" :key="servo.id">
+              <td v-if="canUpdate">
+                <div class="btn-group btn-group-sm" role="group">
+                  <button
+                    class="btn btn-outline-secondary btn-sm py-0 px-1"
+                    title="Run earlier"
+                    :disabled="index === 0 || reordering"
+                    @click="move(index, -1)"
+                  >
+                    <FontAwesomeIcon :icon="faArrowUp" />
+                  </button>
+                  <button
+                    class="btn btn-outline-secondary btn-sm py-0 px-1"
+                    title="Run later"
+                    :disabled="index === servos.items.length - 1 || reordering"
+                    @click="move(index, 1)"
+                  >
+                    <FontAwesomeIcon :icon="faArrowDown" />
+                  </button>
+                </div>
+              </td>
               <td>
                 <RouterLink
                   :to="`/tech-lab/servos/${servo.id}`"
@@ -162,6 +226,13 @@ onMounted(refresh);
                 >
                   {{ servo.name }}
                 </RouterLink>
+                <span
+                  v-if="servo.drops_documents"
+                  class="badge text-bg-warning ms-2"
+                  title="This servo contains a drop processor: attributes it drops are never indexed, and creating one is rejected rather than silently succeeding."
+                >
+                  <FontAwesomeIcon :icon="faTrashCan" class="me-1" />discards
+                </span>
                 <div v-if="servo.description" class="text-muted small">
                   {{ servo.description }}
                 </div>
@@ -182,6 +253,14 @@ onMounted(refresh);
                   :class="servo.enabled ? 'bg-success' : 'bg-secondary'"
                   >{{ servo.enabled ? "enabled" : "disabled" }}</span
                 >
+                <span
+                  v-if="servoErrors(servo)"
+                  class="badge text-bg-danger ms-1"
+                  :title="errorTitle(servo)"
+                >
+                  <FontAwesomeIcon :icon="faTriangleExclamation" class="me-1" />
+                  {{ servoErrors(servo).count }}
+                </span>
               </td>
               <td class="text-end">
                 <ServoActions

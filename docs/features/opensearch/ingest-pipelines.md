@@ -83,6 +83,11 @@ By default a failing processor fails the whole document — the write is rejecte
 
 misp-workbench uses `on_failure` on every servo so a broken servo records the error on the document instead of stopping ingestion. See [handling pipeline failures](https://docs.opensearch.org/latest/ingest-pipelines/pipeline-failures/).
 
+!!! danger "A dropped document looks like a successful write"
+    The [`drop` processor](https://docs.opensearch.org/latest/ingest-pipelines/processors/drop/) discards a document, and OpenSearch answers the index request with **HTTP 200 and `result: noop`** — indistinguishable from success unless you inspect the response. Verified on OpenSearch 3.4. Code that writes through a pipeline containing a `drop` must check `result`, or it will report creates that never happened; `app/repositories/attributes.py` does exactly that and raises `AttributeNotIndexedError`.
+
+    The update API behaves differently: a `drop` reached through `_update` raises a `class_cast_exception` rather than silently discarding, so that path fails loudly.
+
 ### Testing a pipeline before you deploy it
 
 [`_simulate`](https://docs.opensearch.org/latest/ingest-pipelines/simulate-ingest/) runs a pipeline body against sample documents and returns the result without storing anything or creating the pipeline:
@@ -287,6 +292,7 @@ The processors used by the pipelines and templates on this page:
 | `append` | <https://docs.opensearch.org/latest/ingest-pipelines/processors/append/> |
 | `convert` | <https://docs.opensearch.org/latest/ingest-pipelines/processors/convert/> |
 | `date` | <https://docs.opensearch.org/latest/ingest-pipelines/processors/date/> |
+| `drop` | <https://docs.opensearch.org/latest/ingest-pipelines/processors/drop/> |
 | `fingerprint` | <https://docs.opensearch.org/latest/ingest-pipelines/processors/fingerprint/> |
 | `grok` | <https://docs.opensearch.org/latest/ingest-pipelines/processors/grok/> |
 | `ip2geo` | <https://docs.opensearch.org/latest/ingest-pipelines/processors/ip2geo/> |

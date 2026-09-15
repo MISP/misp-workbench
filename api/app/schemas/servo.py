@@ -83,6 +83,9 @@ class Servo(ServoBase):
     slug: str
     processors: list[dict]
     target_index: str
+    # Surfaced so the list view can badge a servo that discards documents,
+    # rather than leaving it looking like any other. Derived, never stored.
+    drops_documents: bool = False
     created_at: datetime
     updated_at: Optional[datetime] = None
     last_synced_at: Optional[datetime] = None
@@ -132,6 +135,22 @@ class ServoSimulateResponse(BaseModel):
     ok: bool
     docs: list[dict] = Field(default_factory=list)
     error: Optional[str] = None
+
+
+class ServoReorder(BaseModel):
+    """The servo ids in the order they should run."""
+
+    servo_ids: list[int] = Field(min_length=1)
+
+
+class ServoErrorMessage(BaseModel):
+    message: str
+    count: int
+
+
+class ServoErrors(BaseModel):
+    count: int
+    messages: list[ServoErrorMessage] = Field(default_factory=list)
 
 
 class ServoTemplate(BaseModel):

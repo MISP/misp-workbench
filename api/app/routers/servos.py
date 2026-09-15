@@ -87,6 +87,19 @@ async def list_templates(
     return chain.load_templates()
 
 
+@router.get(
+    "/tech-lab/servos/errors",
+    response_model=dict[str, servo_schemas.ServoErrors],
+)
+async def get_servo_errors(
+    user: user_schemas.User = Security(get_current_active_user, scopes=["servos:read"]),
+):
+    """Failures recorded by each servo's on_failure handler, keyed by pipeline
+    name. A servo that throws does not stop ingestion, so this is the only
+    place those failures surface."""
+    return chain.error_summary()
+
+
 # ── Dry run ─────────────────────────────────────────────────────────────────
 
 
@@ -159,6 +172,37 @@ async def create_servo(
     )
     db.commit()
     return db_servo
+
+
+@router.post(
+    "/tech-lab/servos/reorder",
+    response_model=list[servo_schemas.Servo],
+)
+async def reorder_servos(
+    payload: servo_schemas.ServoReorder,
+    request: Request,
+    db: Session = Depends(get_db),
+    user: user_schemas.User = Security(
+        get_current_active_user, scopes=["servos:update"]
+    ),
+):
+    """Set the order servos run in. Order matters as soon as one servo reads a
+    field another produced."""
+    servos = servos_repository.reorder_servos(db, payload.servo_ids)
+    if servos is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Unknown servo id"
+        )
+    audit.record(
+        db,
+        action="servo.reordered",
+        resource_type="servo",
+        actor_user_id=user.id,
+        request=request,
+        metadata={"order": [s.slug for s in servos]},
+    )
+    db.commit()
+    return servos
 
 
 @router.get("/tech-lab/servos/{servo_id}", response_model=servo_schemas.Servo)
