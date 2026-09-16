@@ -76,8 +76,12 @@ This is the strongest visual in the product. Give it a moment.
 
 **Also on this event:** the **Overview** tab carries a written incident report
 in Markdown — summary, delivery chain, an indicator table, actions taken and
-open questions. Worth showing to anyone who asks whether the platform is only
-for machine-readable data.
+open questions. The **Analyst Data** tab has the reasoning behind it: a note on
+how the timeline was reconstructed, an opinion scoring the TA542 attribution at
+40/100, and a `related-to` relationship pointing at the Cobalt Strike event.
+Worth showing to anyone who asks whether the platform is only for
+machine-readable data — and the opinion is a good place to say that analysts
+disagreeing in public is a feature, not a defect.
 
 ---
 

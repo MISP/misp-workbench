@@ -456,8 +456,16 @@ HUNT_HISTORY_LIMIT = 90
 DEMO_MARKER = "_demo_fixture"
 
 
-def _demo_analyst_comment(entry: dict) -> str:
-    """The text an analyst-data entry is matched on when re-seeding."""
+def _demo_analyst_key(entry: dict) -> str:
+    """Identity an analyst-data entry is matched on when re-seeding.
+
+    Analyst data generates its own uuid, so entries cannot be pinned the way
+    events are and have to be recognised by content. Notes and opinions are
+    identified by their text; a relationship carries neither, so it is keyed by
+    what it points at instead.
+    """
+    if entry.get("relationship_type"):
+        return f"{entry['relationship_type']}|{entry.get('related_object_uuid', '')}"
     return entry.get("note") or entry.get("comment") or ""
 
 
@@ -537,9 +545,8 @@ def _seed_demo_feeds(db, feeds_data) -> tuple[int, int]:
 def _seed_demo_analyst_data(user, analyst_data) -> tuple[int, int]:
     """Notes and opinions on the fixture events and attributes.
 
-    Analyst data generates its own uuid, so entries cannot be pinned the way
-    events are. They are matched on their text against whatever the parent
-    already carries instead, so re-running adds nothing.
+    Re-running adds nothing: each entry is matched against whatever the parent
+    already carries (see ``_demo_analyst_key``).
     """
     created = skipped = 0
     for entry in analyst_data:
@@ -549,10 +556,14 @@ def _seed_demo_analyst_data(user, analyst_data) -> tuple[int, int]:
         existing = analyst_data_repository.get_analyst_data_by_object_uuid(
             object_uuid=entry["object_uuid"], object_type=entry["object_type"]
         )
-        wanted = _demo_analyst_comment(entry)
+        wanted = _demo_analyst_key(entry)
         already_there = any(
-            _demo_analyst_comment(thread.data) == wanted
-            for thread in (*existing.notes, *existing.opinions)
+            _demo_analyst_key(thread.data) == wanted
+            for thread in (
+                *existing.notes,
+                *existing.opinions,
+                *existing.relationships,
+            )
         )
         if already_there:
             skipped += 1
