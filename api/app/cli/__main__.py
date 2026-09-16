@@ -2,6 +2,7 @@ import json
 import random
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Optional
 
 import typer
@@ -613,6 +614,48 @@ def _seed_demo_analyst_data(user, analyst_data) -> tuple[int, int]:
     return created, skipped
 
 
+def _tag_demo_attribute(db, attr) -> None:
+    """Attach the fixture's tags to an attribute that has just been created."""
+    for tag in attr.get("tags", []):
+        _ensure_tag(db, tag)
+        tags_repository.tag_attribute(
+            db=db,
+            attribute=SimpleNamespace(uuid=attr["uuid"]),
+            tag=tags_repository.get_tag_by_name(db, tag_name=tag["name"]),
+        )
+
+
+def _seed_demo_sightings(sightings_data) -> int:
+    """Sightings spread over the last 45 days.
+
+    Written straight to the index with a pinned id: sightings_repository builds
+    a document per call and dispatches a notification task for each, which for
+    a hundred seeded rows means a hundred notifications and no way to re-seed
+    without duplicating them.
+
+    The shipped dashboard reads `observer.source`, `observer.organisation` and
+    `type`, so every row carries a sensor, an organisation and a verdict.
+    """
+    client = get_opensearch_client()
+    now = datetime.now(timezone.utc)
+
+    for sighting in sightings_data:
+        seen_at = (now - timedelta(days=sighting["days_ago"])).replace(
+            hour=sighting["hour"], minute=0, second=0, microsecond=0
+        )
+        body = {
+            k: v for k, v in sighting.items() if k not in ("id", "days_ago", "hour")
+        }
+        body["timestamp"] = int(seen_at.timestamp())
+        body["@timestamp"] = seen_at.isoformat()
+        client.index(
+            index="misp-sightings", id=sighting["id"], body=body, refresh=False
+        )
+
+    client.indices.refresh(index="misp-sightings")
+    return len(sightings_data)
+
+
 def _seed_demo_event_reports(reports_data) -> int:
     """Markdown event reports, written straight to the index with a pinned uuid.
 
@@ -972,6 +1015,7 @@ def seed_demo(
     notifications_data = json.loads((fixtures_dir / "notifications.json").read_text())
     reports_data = json.loads((fixtures_dir / "event_reports.json").read_text())
     servers_data = json.loads((fixtures_dir / "servers.json").read_text())
+    sightings_data = json.loads((fixtures_dir / "sightings.json").read_text())
 
     client = get_opensearch_client()
 
@@ -985,6 +1029,7 @@ def seed_demo(
             feeds_data,
             reports_data,
             servers_data,
+            sightings_data,
         )
 
     now = datetime.now(timezone.utc)
@@ -1021,7 +1066,7 @@ def seed_demo(
         for ev in events_data
     }
     for attr in attrs_data:
-        payload = dict(attr)
+        payload = {k: v for k, v in attr.items() if k != "tags"}
         payload["timestamp"] = event_ts.get(
             payload.get("event_uuid"), int(now.timestamp())
         )
@@ -1032,6 +1077,12 @@ def seed_demo(
             db, attribute=attribute_schemas.AttributeCreate(**payload)
         )
 
+        # create_attribute always writes an empty tag list, so tags go on
+        # afterwards. They are what the shipped OpenSearch dashboard reads: its
+        # MITRE / malware / tool / actor / sector panels each aggregate
+        # tags.name.keyword filtered by a galaxy prefix, and nothing else.
+        _tag_demo_attribute(db, attr)
+
     servos_created, servos_skipped = _seed_demo_servos(db, user, servos_data)
     scripts_created, scripts_skipped = _seed_demo_reactor_scripts(
         db, user, scripts_data
@@ -1040,6 +1091,7 @@ def seed_demo(
     servers_created, servers_skipped = _seed_demo_servers(db, org, servers_data)
     notes_created, notes_skipped = _seed_demo_analyst_data(user, analyst_data)
     reports_created = _seed_demo_event_reports(reports_data)
+    sightings_created = _seed_demo_sightings(sightings_data)
     runs_created, history_skipped = _seed_demo_hunt_history(db, user, history_data)
 
     # After the synthetic history, so the newest run is a real one with real
@@ -1093,6 +1145,7 @@ def seed_demo(
         f"  servers           {servers_created} created / {servers_skipped} already present (never reachable)"
     )
     typer.echo(f"  event reports     {reports_created} upserted")
+    typer.echo(f"  sightings         {sightings_created} upserted (45-day spread)")
     typer.echo(f"  notifications     {notifs_created} created")
     typer.echo(f"  notebooks         {notebooks_msg}")
     typer.echo(f"  correlations      {correlations_msg}")
@@ -1109,6 +1162,7 @@ def _reset_demo(
     feeds_data,
     reports_data,
     servers_data,
+    sightings_data,
 ) -> None:
     """Delete the demo's own rows, and only those.
 
@@ -1132,6 +1186,11 @@ def _reset_demo(
     for report in reports_data:
         client.delete(
             index="misp-event-reports", id=report["uuid"], ignore=[404], refresh=True
+        )
+
+    for sighting in sightings_data:
+        client.delete(
+            index="misp-sightings", id=sighting["id"], ignore=[404], refresh=True
         )
 
     script_names = {s["name"] for s in scripts_data}

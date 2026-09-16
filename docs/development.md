@@ -179,12 +179,13 @@ reach the database:
 
 | Seeded | What you get |
 |---|---|
-| Events + attributes | Two extra events whose indicators deliberately overlap the docs fixtures |
+| Events + attributes | Two extra events, 22 tagged attributes whose indicators deliberately overlap the docs fixtures |
 | Correlations | Generated from that overlap, so the correlation views and notifications populate themselves |
 | Servos | The four shipped templates, two of them enabled |
 | Reactor scripts | One active, one paused |
 | Analyst data | Notes, opinions and a relationship across the fixture events and attributes |
 | Event report | A Markdown incident write-up on the Emotet event |
+| Sightings | 107 spread over 45 days, with sensor, organisation and verdict |
 | Feeds | Three well-known OSINT feed definitions, **all disabled** |
 | Servers | Two MISP sync connections on unresolvable `.invalid` hosts |
 | Notebooks | The Tech Lab library notebooks from `api/lab_library/` |
@@ -213,6 +214,36 @@ the previous seed from cache.
     A related side effect worth knowing: seeding attributes fires the seeded
     reactor script, so demo events pick up a `workflow:state="triage"` tag on
     their own. That is the reactor genuinely working, not stray fixture data.
+
+### Tags are what the OpenSearch dashboard reads
+
+The shipped dashboard has panels for MITRE ATT&CK techniques, malware families,
+tools, threat actors, targeted sectors and kill-chain phases. Every one of them
+aggregates `tags.name.keyword` on `misp-attributes` filtered by a prefix regex,
+and reads nothing else — so the panels stay empty unless attributes carry tags
+in exactly those forms:
+
+| Panel | Tag form |
+|---|---|
+| top MITRE ATT&CK techniques | `misp-galaxy:mitre-attack-pattern="…"` |
+| top malware families | `misp-galaxy:(malpedia\|mitre-malware\|ransomware\|banker\|stealer\|rat\|backdoor\|android\|botnet)="…"` |
+| top threat actors | `misp-galaxy:threat-actor="…"` |
+| top tools | `misp-galaxy:(tool\|mitre-tool)="…"` |
+| targeted sectors | `misp-galaxy:sector="…"` |
+| kill-chain phases | `kill-chain:…` |
+| TLP distribution | `tlp:clear` / `white` / `green` / `amber` / `amber+strict` / `red` |
+
+The galaxy values in the fixture are real cluster values, checked against the
+loaded galaxies rather than invented, so the tags resolve in the UI as well as
+counting on the dashboard.
+
+`create_attribute` always writes an empty tag list, so the seeder applies tags
+after creating each attribute.
+
+Sightings populate four more panels and live in their own index; they are
+written directly with a pinned id because `create_sightings` dispatches a
+notification task per sighting, which for a hundred rows would mean a hundred
+notifications.
 
 ### Results come from a real run
 
