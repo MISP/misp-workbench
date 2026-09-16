@@ -63,6 +63,7 @@ nav:
       - Dashboards: features/opensearch/dashboards.md
       - Ingest Pipelines: features/opensearch/ingest-pipelines.md
   - Getting Started: getting-started.md
+  - Demo Tour: demo-tour.md
   - Configuration: configuration.md
   - Architecture: architecture.md
   - Development: development.md
