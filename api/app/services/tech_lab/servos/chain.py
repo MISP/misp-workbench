@@ -145,7 +145,7 @@ def sync(db: Session) -> dict:
             OpenSearchClient.ingest.delete_pipeline(id=name)
             removed.append(name)
         except NotFoundError:
-            pass
+            logger.warning("servo chain sync: pipeline %s disappeared before delete", name)
 
     now = datetime.now(timezone.utc)
     for db_servo in enabled:
@@ -168,7 +168,7 @@ def delete_pipeline(slug: str) -> None:
     try:
         OpenSearchClient.ingest.delete_pipeline(id=pipeline_name(slug))
     except NotFoundError:
-        pass
+        logger.warning("servo chain delete: pipeline %s not found", slug)
 
 
 def _cluster_pipeline_names() -> list[str]:
