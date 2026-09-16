@@ -186,6 +186,7 @@ reach the database:
 | Analyst data | Notes, opinions and a relationship across the fixture events and attributes |
 | Event report | A Markdown incident write-up on the Emotet event |
 | Feeds | Three well-known OSINT feed definitions, **all disabled** |
+| Servers | Two MISP sync connections on unresolvable `.invalid` hosts |
 | Notebooks | The Tech Lab library notebooks from `api/lab_library/` |
 | Hunt run history | ~90 days of daily runs per hunt, so the heatmap and sparkline are populated |
 | Hunt results | Each hunt is executed once, so the results table is populated too |
@@ -262,6 +263,15 @@ by hand survives even if it covers the same subject.
 Correlation generation here calls `run_correlations` directly, which writes
 with `op_type=create` and never deletes — unlike the scheduled
 `generate_correlations` task, which wipes the correlation index first.
+
+Servers never connect anywhere. The two seeded sync connections point at
+hostnames on the reserved `.invalid` TLD, which by RFC 2606 can never resolve,
+so pressing **Pull** fails at DNS with "Remote MISP instance not reachable"
+instead of reaching somebody's real server. The auth keys are placeholders that
+say so in the value itself — there is no credential in the fixture. They carry
+pull/push flags and tag-based rules so the list shows a realistic
+configuration; nothing syncs on its own, because a scheduled pull is a redbeat
+entry a user creates rather than a static schedule.
 
 Feeds are seeded **disabled**. A demo should choose when to pull, and a fetch
 reaches the network and brings back whatever is live that day, which is the

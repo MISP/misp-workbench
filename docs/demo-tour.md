@@ -176,6 +176,7 @@ Use these to answer questions, not as part of the main route.
 | Ask | Go to | Point |
 |---|---|---|
 | "Where does data come from?" | `sources` → feeds | Three OSINT feeds are configured. **They are disabled on purpose** — see the warning below |
+| "Can it sync with our MISP?" | `sync` → servers | Two connections with tag-based pull/push rules. The hosts cannot resolve by design, so **Pull** fails at DNS — show the configuration, not the sync |
 | "Can I get data out?" | `exports` | Scheduled exports in MISP JSON, CSV, STIX |
 | "Is it auditable?" | `internals` → audit logs | Every write, with actor and IP |
 | "Can analysts annotate?" | Cobalt Strike event → **Analyst Data** | Notes and opinions, with a confidence score |

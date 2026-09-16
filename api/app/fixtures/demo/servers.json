@@ -1,0 +1,50 @@
+[
+  {
+    "name": "CIRCL MISP (partner)",
+    "url": "https://misp.partner.invalid",
+    "authkey": "DEMO-NOT-A-REAL-KEY-000000000000000000",
+    "organisation": "CIRCL",
+    "remote_org_id": 1,
+    "pull": true,
+    "push": false,
+    "pull_galaxy_clusters": true,
+    "push_galaxy_clusters": false,
+    "push_sightings": false,
+    "publish_without_email": false,
+    "unpublish_event": false,
+    "self_signed": false,
+    "internal": false,
+    "skip_proxy": false,
+    "caching_enabled": true,
+    "priority": 1,
+    "pull_rules": {
+      "tags": { "OR": ["tlp:white", "tlp:green"], "NOT": ["tlp:red"] },
+      "orgs": { "OR": [], "NOT": [] }
+    },
+    "push_rules": {}
+  },
+  {
+    "name": "Internal hub",
+    "url": "https://misp-hub.internal.invalid",
+    "authkey": "DEMO-NOT-A-REAL-KEY-000000000000000001",
+    "organisation": "MISP Workbench Docs",
+    "remote_org_id": 1,
+    "pull": true,
+    "push": true,
+    "pull_galaxy_clusters": false,
+    "push_galaxy_clusters": true,
+    "push_sightings": true,
+    "publish_without_email": true,
+    "unpublish_event": false,
+    "self_signed": true,
+    "internal": true,
+    "skip_proxy": true,
+    "caching_enabled": false,
+    "priority": 2,
+    "pull_rules": {},
+    "push_rules": {
+      "tags": { "OR": [], "NOT": ["tlp:red", "tlp:amber"] },
+      "orgs": { "OR": [], "NOT": [] }
+    }
+  }
+]

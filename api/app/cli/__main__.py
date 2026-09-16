@@ -13,11 +13,13 @@ from app.models import lab as lab_models
 from app.models import notification as notification_models
 from app.models import feed as feed_models
 from app.models import reactor as reactor_models
+from app.models import server as server_models
 from app.repositories import analyst_data as analyst_data_repository
 from app.repositories import attributes as attributes_repository
 from app.repositories import correlations as correlations_repository
 from app.repositories import feeds as feeds_repository
 from app.repositories import reactor as reactor_repository
+from app.repositories import servers as servers_repository
 from app.repositories import servos as servos_repository
 from app.repositories import events as events_repository
 from app.repositories import hunts as hunts_repository
@@ -29,6 +31,7 @@ from app.schemas import analyst_data as analyst_data_schemas
 from app.schemas import attribute as attribute_schemas
 from app.schemas import feed as feed_schemas
 from app.schemas import reactor as reactor_schemas
+from app.schemas import server as server_schemas
 from app.schemas import servo as servo_schemas
 from app.schemas import event as event_schemas
 from app.schemas import hunt as hunt_schemas
@@ -524,6 +527,34 @@ def _seed_demo_reactor_scripts(db, user, scripts_data) -> tuple[int, int]:
     return created, skipped
 
 
+def _seed_demo_servers(db, org, servers_data) -> tuple[int, int]:
+    """Sync connections to remote MISP instances.
+
+    Hostnames are on the reserved `.invalid` TLD, which by RFC 2606 can never
+    resolve, so pressing Pull on a demo instance fails at DNS instead of
+    reaching somebody's real server. The keys are placeholders and say so --
+    nothing here is a credential.
+
+    Seeded with pull/push enabled so the list shows a realistic configuration,
+    including the tag-based pull and push rules. Nothing syncs on its own: a
+    scheduled pull is a redbeat entry a user creates, not a static schedule.
+    """
+    created = skipped = 0
+    existing = {row.name for row in db.query(server_models.Server).all()}
+
+    for server in servers_data:
+        if server["name"] in existing:
+            skipped += 1
+            continue
+        payload = dict(server)
+        payload["org_id"] = org.id
+        servers_repository.create_server(
+            db, server=server_schemas.ServerCreate(**payload)
+        )
+        created += 1
+    return created, skipped
+
+
 def _seed_demo_feeds(db, feeds_data) -> tuple[int, int]:
     """Feed definitions only.
 
@@ -940,12 +971,20 @@ def seed_demo(
     history_data = json.loads((fixtures_dir / "hunt_history.json").read_text())
     notifications_data = json.loads((fixtures_dir / "notifications.json").read_text())
     reports_data = json.loads((fixtures_dir / "event_reports.json").read_text())
+    servers_data = json.loads((fixtures_dir / "servers.json").read_text())
 
     client = get_opensearch_client()
 
     if reset:
         _reset_demo(
-            db, client, events_data, servos_data, scripts_data, feeds_data, reports_data
+            db,
+            client,
+            events_data,
+            servos_data,
+            scripts_data,
+            feeds_data,
+            reports_data,
+            servers_data,
         )
 
     now = datetime.now(timezone.utc)
@@ -998,6 +1037,7 @@ def seed_demo(
         db, user, scripts_data
     )
     feeds_created, feeds_skipped = _seed_demo_feeds(db, feeds_data)
+    servers_created, servers_skipped = _seed_demo_servers(db, org, servers_data)
     notes_created, notes_skipped = _seed_demo_analyst_data(user, analyst_data)
     reports_created = _seed_demo_event_reports(reports_data)
     runs_created, history_skipped = _seed_demo_hunt_history(db, user, history_data)
@@ -1049,6 +1089,9 @@ def seed_demo(
         f"  hunt results      {hunts_ran} hunts executed"
         + (f" / {hunts_failed} unavailable" if hunts_failed else "")
     )
+    typer.echo(
+        f"  servers           {servers_created} created / {servers_skipped} already present (never reachable)"
+    )
     typer.echo(f"  event reports     {reports_created} upserted")
     typer.echo(f"  notifications     {notifs_created} created")
     typer.echo(f"  notebooks         {notebooks_msg}")
@@ -1058,7 +1101,14 @@ def seed_demo(
 
 
 def _reset_demo(
-    db, client, events_data, servos_data, scripts_data, feeds_data, reports_data
+    db,
+    client,
+    events_data,
+    servos_data,
+    scripts_data,
+    feeds_data,
+    reports_data,
+    servers_data,
 ) -> None:
     """Delete the demo's own rows, and only those.
 
@@ -1087,6 +1137,11 @@ def _reset_demo(
     script_names = {s["name"] for s in scripts_data}
     db.query(reactor_models.ReactorScript).filter(
         reactor_models.ReactorScript.name.in_(script_names)
+    ).delete(synchronize_session=False)
+
+    server_names = {s["name"] for s in servers_data}
+    db.query(server_models.Server).filter(
+        server_models.Server.name.in_(server_names)
     ).delete(synchronize_session=False)
 
     feed_names = {f["name"] for f in feeds_data}
