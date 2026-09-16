@@ -222,7 +222,7 @@ async function save() {
         >
       </div>
       <div class="d-flex gap-2">
-        <button class="btn btn-outline-secondary btn-sm" @click="dryRun">
+        <button class="btn btn-outline-success btn-sm" @click="dryRun">
           <FontAwesomeIcon :icon="faPlay" class="me-1" />
           dry run
         </button>
