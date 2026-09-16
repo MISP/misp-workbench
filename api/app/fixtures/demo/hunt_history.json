@@ -1,0 +1,70 @@
+[
+  {
+    "hunt": "IP and domain indicators",
+    "days": 90,
+    "runs_per_day": 1,
+    "baseline": 22,
+    "jitter": 8,
+    "quiet_weekends": true,
+    "spikes": [
+      {
+        "days_ago": 61,
+        "match_count": 88
+      },
+      {
+        "days_ago": 34,
+        "match_count": 71
+      },
+      {
+        "days_ago": 6,
+        "match_count": 96
+      }
+    ]
+  },
+  {
+    "hunt": "Microsoft Exchange Server vulnerabilities",
+    "days": 90,
+    "runs_per_day": 1,
+    "baseline": 3,
+    "jitter": 2,
+    "quiet_weekends": false,
+    "spikes": [
+      {
+        "days_ago": 21,
+        "match_count": 27
+      }
+    ]
+  },
+  {
+    "hunt": "MITRE ATT&CK \u2014 Spearphishing Attachment (T1566.001)",
+    "days": 90,
+    "runs_per_day": 1,
+    "baseline": 8,
+    "jitter": 3,
+    "quiet_weekends": true,
+    "spikes": [
+      {
+        "days_ago": 44,
+        "match_count": 39
+      },
+      {
+        "days_ago": 2,
+        "match_count": 52
+      }
+    ]
+  },
+  {
+    "hunt": "Detection rules for CVE-2024-3400",
+    "days": 30,
+    "runs_per_day": 1,
+    "baseline": 1,
+    "jitter": 1,
+    "quiet_weekends": false,
+    "spikes": [
+      {
+        "days_ago": 9,
+        "match_count": 18
+      }
+    ]
+  }
+]

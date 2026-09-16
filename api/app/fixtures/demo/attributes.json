@@ -1,0 +1,62 @@
+[
+  {
+    "uuid": "d3110000-0002-4001-8000-000000000001",
+    "event_uuid": "d3110000-0001-4001-8000-000000000001",
+    "category": "Network activity",
+    "type": "ip-src",
+    "value": "185.220.101.42",
+    "to_ids": true,
+    "distribution": 0,
+    "comment": "Same C2 address as the EU banking campaign — drives a correlation"
+  },
+  {
+    "uuid": "d3110000-0002-4001-8000-000000000002",
+    "event_uuid": "d3110000-0001-4001-8000-000000000001",
+    "category": "Network activity",
+    "type": "domain",
+    "value": "c2.example-cobalt.net",
+    "to_ids": true,
+    "distribution": 0,
+    "comment": "Shared with the EU banking campaign"
+  },
+  {
+    "uuid": "d3110000-0002-4001-8000-000000000003",
+    "event_uuid": "d3110000-0001-4001-8000-000000000001",
+    "category": "Network activity",
+    "type": "url",
+    "value": "https://Portal.Example-Cobalt.NET:8443/load/stage2",
+    "to_ids": true,
+    "distribution": 0,
+    "comment": "Mixed case and an explicit port, so the url_parts and canonical_value servos both have something to do"
+  },
+  {
+    "uuid": "d3110000-0002-4001-8000-000000000004",
+    "event_uuid": "d3110000-0001-4001-8000-000000000002",
+    "category": "Payload delivery",
+    "type": "md5",
+    "value": "5d41402abc4b2a76b9719d911017c592",
+    "to_ids": true,
+    "distribution": 0,
+    "comment": "Hash already present in the Cobalt Strike event"
+  },
+  {
+    "uuid": "d3110000-0002-4001-8000-000000000005",
+    "event_uuid": "d3110000-0001-4001-8000-000000000002",
+    "category": "Network activity",
+    "type": "ip-dst",
+    "value": "185.220.101.42",
+    "to_ids": true,
+    "distribution": 0,
+    "comment": "Third sighting of the same address — a three-way correlation"
+  },
+  {
+    "uuid": "d3110000-0002-4001-8000-000000000006",
+    "event_uuid": "d3110000-0001-4001-8000-000000000002",
+    "category": "Network activity",
+    "type": "ip-src",
+    "value": "203.0.113.0/24",
+    "to_ids": false,
+    "distribution": 0,
+    "comment": "CIDR range, so expanded.ip_range is populated too"
+  }
+]

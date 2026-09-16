@@ -48,6 +48,12 @@ docker compose exec api poetry run alembic revision -m "description"
 
 # CLI admin tools
 docker compose exec api poetry run python -m app.cli --help
+
+# Seed a full walkthrough dataset for a live demo (additive; --reset removes
+# only its own rows). Covers what the screenshot suite stubs and so never
+# persists: servos, reactor scripts, analyst data, feeds, notebooks, plus
+# overlapping indicators that give the correlation engine something to find.
+docker compose exec api poetry run python -m app.cli seed-demo
 docker compose exec api poetry run python -m app.cli create-organisation <name>
 docker compose exec api poetry run python -m app.cli create-user <email> <password> --org-name <org_name> --role-id <role_id>
 

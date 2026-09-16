@@ -1,0 +1,34 @@
+[
+  {
+    "type": "Note",
+    "object_uuid": "a1f30000-0001-4001-8000-000000000001",
+    "object_type": "Event",
+    "note": "Infrastructure overlaps with the follow-up report filed five days ago. Both use the same staging host; the TLS certificate serial is identical, which is what tied them together rather than the IP alone.",
+    "language": "en",
+    "distribution": 0
+  },
+  {
+    "type": "Opinion",
+    "object_uuid": "a1f30000-0001-4001-8000-000000000001",
+    "object_type": "Event",
+    "opinion": 75,
+    "comment": "Confident in the infrastructure attribution, less so in the targeting assessment — the victim set is inferred from two samples only.",
+    "distribution": 0
+  },
+  {
+    "type": "Note",
+    "object_uuid": "d3110000-0002-4001-8000-000000000001",
+    "object_type": "Attribute",
+    "note": "Still responding on 443 as of this morning. Worth a sighting rather than expiry.",
+    "language": "en",
+    "distribution": 0
+  },
+  {
+    "type": "Opinion",
+    "object_uuid": "a1f30000-0001-4001-8000-000000000003",
+    "object_type": "Event",
+    "opinion": 30,
+    "comment": "The sender domain is a generic lookalike and the lure is off-the-shelf; this reads as commodity phishing rather than the actor named in the report.",
+    "distribution": 0
+  }
+]

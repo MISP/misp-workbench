@@ -1,0 +1,6 @@
+[
+  { "template": "url_parts", "enabled": true },
+  { "template": "canonical_value", "enabled": true },
+  { "template": "dedup_fingerprint", "enabled": false },
+  { "template": "timestamp_normalization", "enabled": false }
+]
