@@ -1,0 +1,63 @@
+{
+  "manifest_version": "0.3",
+  "name": "misp-workbench",
+  "display_name": "MISP Workbench",
+  "version": "0.1.0",
+  "description": "Query threat intelligence from a MISP Workbench instance — events, indicators, correlations, hunts and sightings.",
+  "long_description": "Connects Claude Desktop to a MISP Workbench instance over its MCP endpoint.\n\nOnce installed you can ask about indicators of compromise, search events and attributes with Lucene syntax, follow correlations between submissions, inspect galaxy and taxonomy tags, run and read saved hunts, and create event reports — all against your own instance.\n\nMISP Workbench's MCP endpoint is a remote HTTP server authenticated with a scoped bearer token, so this bundle runs `mcp-remote` locally to bridge Claude Desktop's stdio transport to it. Your token is passed through an environment variable rather than a command-line argument, so it does not appear in the process list.",
+  "author": {
+    "name": "MISP Project",
+    "url": "https://github.com/MISP/misp-workbench"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/MISP/misp-workbench"
+  },
+  "homepage": "https://github.com/MISP/misp-workbench",
+  "documentation": "https://github.com/MISP/misp-workbench/blob/main/docs/features/mcp/index.md",
+  "support": "https://github.com/MISP/misp-workbench/issues",
+  "icon": "icon.png",
+  "license": "AGPL-3.0",
+  "keywords": [
+    "misp",
+    "threat-intelligence",
+    "security",
+    "cti",
+    "ioc",
+    "incident-response"
+  ],
+  "server": {
+    "type": "node",
+    "entry_point": "server/index.js",
+    "mcp_config": {
+      "command": "node",
+      "args": [
+        "${__dirname}/server/index.js"
+      ],
+      "env": {
+        "MISP_WORKBENCH_URL": "${user_config.instance_url}",
+        "MISP_WORKBENCH_TOKEN": "${user_config.mcp_token}"
+      }
+    }
+  },
+  "user_config": {
+    "instance_url": {
+      "type": "string",
+      "title": "Instance URL",
+      "description": "Base URL of your MISP Workbench instance, e.g. https://workbench.example.org (no trailing /mcp).",
+      "required": true
+    },
+    "mcp_token": {
+      "type": "string",
+      "title": "MCP token",
+      "description": "Scoped MCP token. Generate one with: curl -s https://<your-instance>/mcp/config -H 'Authorization: Bearer <your-api-token>'",
+      "required": true,
+      "sensitive": true
+    }
+  },
+  "compatibility": {
+    "runtimes": {
+      "node": ">=18.0.0"
+    }
+  }
+}
