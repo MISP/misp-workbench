@@ -571,6 +571,40 @@ def _seed_demo_analyst_data(user, analyst_data) -> tuple[int, int]:
     return created, skipped
 
 
+def _seed_demo_event_reports(reports_data) -> int:
+    """Markdown event reports, written straight to the index with a pinned uuid.
+
+    reports_repository.create_event_report generates its own uuid, which would
+    stack a fresh copy on every seed. The document shape is small and stable,
+    so it is built here instead and upserted like the events are.
+
+    Reports hang off the docs-fixture events by uuid and survive a docs
+    re-seed: _clear_event_children drops attributes, objects and object
+    references, not reports.
+    """
+    client = get_opensearch_client()
+    now = datetime.now(timezone.utc)
+
+    for report in reports_data:
+        client.index(
+            index="misp-event-reports",
+            id=report["uuid"],
+            body={
+                "uuid": report["uuid"],
+                "event_uuid": report["event_uuid"],
+                "name": report["name"],
+                "content": report["content"],
+                "distribution": report.get("distribution", 0),
+                "sharing_group_id": report.get("sharing_group_id"),
+                "timestamp": int(now.timestamp()),
+                "@timestamp": now.isoformat(),
+                "deleted": False,
+            },
+            refresh=True,
+        )
+    return len(reports_data)
+
+
 def _seed_demo_hunt_history(db, user, history_data) -> tuple[int, int]:
     """Expand each hunt's run shape into individual HuntRunHistory rows.
 
@@ -894,11 +928,14 @@ def seed_demo(
     analyst_data = json.loads((fixtures_dir / "analyst_data.json").read_text())
     history_data = json.loads((fixtures_dir / "hunt_history.json").read_text())
     notifications_data = json.loads((fixtures_dir / "notifications.json").read_text())
+    reports_data = json.loads((fixtures_dir / "event_reports.json").read_text())
 
     client = get_opensearch_client()
 
     if reset:
-        _reset_demo(db, client, events_data, servos_data, scripts_data, feeds_data)
+        _reset_demo(
+            db, client, events_data, servos_data, scripts_data, feeds_data, reports_data
+        )
 
     now = datetime.now(timezone.utc)
 
@@ -951,6 +988,7 @@ def seed_demo(
     )
     feeds_created, feeds_skipped = _seed_demo_feeds(db, feeds_data)
     notes_created, notes_skipped = _seed_demo_analyst_data(user, analyst_data)
+    reports_created = _seed_demo_event_reports(reports_data)
     runs_created, history_skipped = _seed_demo_hunt_history(db, user, history_data)
 
     # After the synthetic history, so the newest run is a real one with real
@@ -1000,6 +1038,7 @@ def seed_demo(
         f"  hunt results      {hunts_ran} hunts executed"
         + (f" / {hunts_failed} unavailable" if hunts_failed else "")
     )
+    typer.echo(f"  event reports     {reports_created} upserted")
     typer.echo(f"  notifications     {notifs_created} created")
     typer.echo(f"  notebooks         {notebooks_msg}")
     typer.echo(f"  correlations      {correlations_msg}")
@@ -1007,7 +1046,9 @@ def seed_demo(
     typer.echo(f"Login: {DOCS_USER_EMAIL} / {DOCS_USER_PASSWORD}")
 
 
-def _reset_demo(db, client, events_data, servos_data, scripts_data, feeds_data) -> None:
+def _reset_demo(
+    db, client, events_data, servos_data, scripts_data, feeds_data, reports_data
+) -> None:
     """Delete the demo's own rows, and only those.
 
     Matched by pinned uuid or by the exact fixture name, so a servo, feed or
@@ -1026,6 +1067,11 @@ def _reset_demo(db, client, events_data, servos_data, scripts_data, feeds_data) 
         db_servo = servos_repository.get_servo_by_slug(db, slug)
         if db_servo is not None:
             servos_repository.delete_servo(db, db_servo)
+
+    for report in reports_data:
+        client.delete(
+            index="misp-event-reports", id=report["uuid"], ignore=[404], refresh=True
+        )
 
     script_names = {s["name"] for s in scripts_data}
     db.query(reactor_models.ReactorScript).filter(

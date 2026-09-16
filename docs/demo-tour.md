@@ -74,6 +74,11 @@ a node to open it.
 
 This is the strongest visual in the product. Give it a moment.
 
+**Also on this event:** the **Overview** tab carries a written incident report
+in Markdown — summary, delivery chain, an indicator table, actions taken and
+open questions. Worth showing to anyone who asks whether the platform is only
+for machine-readable data.
+
 ---
 
 ## 3. Correlations — "what did we already know?"

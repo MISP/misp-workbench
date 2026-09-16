@@ -184,6 +184,7 @@ reach the database:
 | Servos | The four shipped templates, two of them enabled |
 | Reactor scripts | One active, one paused |
 | Analyst data | Notes and opinions on the fixture events and attributes |
+| Event report | A Markdown incident write-up on the Emotet event |
 | Feeds | Three well-known OSINT feed definitions, **all disabled** |
 | Notebooks | The Tech Lab library notebooks from `api/lab_library/` |
 | Hunt run history | ~90 days of daily runs per hunt, so the heatmap and sparkline are populated |
