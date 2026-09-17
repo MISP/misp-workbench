@@ -105,6 +105,9 @@
                     },
                     "value_parts": {
                         "type": "keyword"
+                    },
+                    "servo_errors": {
+                        "type": "keyword"
                     }
                 }
             },

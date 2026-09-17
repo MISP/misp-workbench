@@ -1,0 +1,36 @@
+[
+  {
+    "name": "CIRCL OSINT Feed",
+    "provider": "CIRCL",
+    "url": "https://www.circl.lu/doc/misp/feed-osint",
+    "source_format": "misp",
+    "input_source": "network",
+    "enabled": false,
+    "distribution": 0,
+    "publish": false,
+    "caching_enabled": false
+  },
+  {
+    "name": "Botvrij.eu Open Data",
+    "provider": "Botvrij.eu",
+    "url": "https://www.botvrij.eu/data/feed-osint",
+    "source_format": "misp",
+    "input_source": "network",
+    "enabled": false,
+    "distribution": 0,
+    "publish": false,
+    "caching_enabled": false
+  },
+  {
+    "name": "Blocklist.de — all",
+    "provider": "Blocklist.de",
+    "url": "https://lists.blocklist.de/lists/all.txt",
+    "source_format": "freetext",
+    "input_source": "network",
+    "enabled": false,
+    "distribution": 0,
+    "fixed_event": true,
+    "publish": false,
+    "caching_enabled": false
+  }
+]

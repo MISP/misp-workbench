@@ -5,6 +5,11 @@
             "pipeline": {
                 "name": "misp-attributes_ip_geoip"
             }
+        },
+        {
+            "pipeline": {
+                "name": "misp-attributes_servos"
+            }
         }
     ]
 }

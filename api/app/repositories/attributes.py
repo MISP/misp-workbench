@@ -23,6 +23,22 @@ from contextvars import ContextVar
 
 logger = logging.getLogger(__name__)
 
+
+class AttributeNotIndexedError(Exception):
+    """OpenSearch accepted the write but did not store the document.
+
+    The only way this happens today is an ingest pipeline `drop` processor --
+    almost certainly a transformation servo. OpenSearch answers 200 with
+    ``result: noop`` in that case, so the call looks successful; without this
+    the API would return 201 for an attribute that is not in the index and
+    would queue correlation, reactor and notification work for it.
+    """
+
+
+# What `result` looks like when the document actually reached the index.
+# Anything else (notably "noop", from a dropped document) did not land.
+_INDEXED_RESULTS = frozenset({"created", "updated"})
+
 # Fields that make an attribute correlate differently, so a change to any of
 # them has to invalidate and rebuild its correlations.
 CORRELATION_RELEVANT_FIELDS = ("value", "type", "disable_correlation", "deleted")
@@ -261,12 +277,27 @@ def create_attribute(
     # ingest does to OpenSearch - a feed event can hold thousands. Updates and
     # gets by id are realtime regardless, so only search visibility waits, and
     # the bulk ingest context refreshes once when it finishes.
-    client.index(
+    response = client.index(
         index="misp-attributes",
         id=attribute_uuid,
         body=attr_doc,
         refresh=deferred is None,
     )
+
+    # Verify the write before reporting it or scheduling work that depends on
+    # it. See AttributeNotIndexedError.
+    if response.get("result") not in _INDEXED_RESULTS:
+        logger.error(
+            "attribute %s was not indexed (result=%r); an ingest pipeline "
+            "dropped it -- check the enabled transformation servos",
+            attribute_uuid,
+            response.get("result"),
+        )
+        raise AttributeNotIndexedError(
+            f"Attribute {attribute_uuid} was discarded by an ingest pipeline "
+            "and is not searchable. A transformation servo using a 'drop' "
+            "processor is the usual cause."
+        )
 
     if deferred is not None:
         deferred["created"].append(attribute_uuid)

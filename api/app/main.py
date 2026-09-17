@@ -1,4 +1,5 @@
 import logging.config
+from contextlib import asynccontextmanager
 
 from app.routers import (
     api_keys,
@@ -21,6 +22,7 @@ from app.routers import (
     reactor,
     roles,
     servers,
+    servos,
     sharing_groups,
     tags,
     taxonomies,
@@ -34,6 +36,8 @@ from app.routers import (
     user_settings,
     notifications,
 )
+from app.database import SessionLocal
+from app.services.tech_lab.servos import chain as servo_chain
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi_pagination import add_pagination
@@ -42,6 +46,7 @@ from fastapi_pagination import add_pagination
 # Import and use our custom logging setup
 import sys
 import os
+
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from setup_logging import setup_logging
 
@@ -50,8 +55,26 @@ setup_logging()
 # MCP server (mounted as ASGI sub-app)
 mcp_app = mcp.mcp.http_app(path="/")
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # `setup-opensearch` PUT-overwrites every repo-managed pipeline on each
+    # stack start, which resets the servo chain to empty. `api` only starts
+    # once that container has completed, so re-syncing here puts the enabled
+    # servos back. Failing to reach OpenSearch must not stop the API booting --
+    # ingestion simply falls back to the system pipelines.
+    db = SessionLocal()
+    try:
+        servo_chain.sync_quietly(db)
+    finally:
+        db.close()
+
+    async with mcp_app.lifespan(app):
+        yield
+
+
 # Bootstrap application
-app = FastAPI(title="misp-workbench API", version="0.1.0", lifespan=mcp_app.lifespan)
+app = FastAPI(title="misp-workbench API", version="0.1.0", lifespan=lifespan)
 
 # Add CORS
 origins = [
@@ -162,6 +185,9 @@ app.include_router(reactor.router, tags=["Tech Lab / Reactor"])
 
 # Tech Lab — Notebooks
 app.include_router(lab.router, tags=["Tech Lab / Notebooks"])
+
+# Tech Lab — Transformation Servos
+app.include_router(servos.router, tags=["Tech Lab / Servos"])
 
 # MCP config endpoint (must be registered before the /mcp mount)
 app.include_router(mcp.router, tags=["MCP"])

@@ -1,0 +1,11 @@
+{
+  "description": "Clears the servo error field before a backfill re-runs the chain. A backfill issues _update_by_query with this as its pipeline; OpenSearch runs it before the index's final pipeline, so expanded.servo_errors is emptied and then re-appended by whichever servos actually fail this time. Without it the field is an append and every backfill would stack another copy of the same error.",
+  "processors": [
+    {
+      "remove": {
+        "field": "expanded.servo_errors",
+        "ignore_missing": true
+      }
+    }
+  ]
+}

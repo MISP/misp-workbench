@@ -1,0 +1,4 @@
+{
+  "description": "Tech Lab transformation servos. Managed by the misp-workbench API -- edit servos in the UI, not here. Ships empty so it always exists (the pipeline processor has no ignore_missing_pipeline in OpenSearch 3.x); the API repopulates it on startup and after every servo change.",
+  "processors": []
+}

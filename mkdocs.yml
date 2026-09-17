@@ -57,11 +57,13 @@ nav:
     - Tech Lab:
       - Reactor Scripts: features/tech-lab/reactor.md
       - Notebooks: features/tech-lab/notebooks.md
+      - Transformation Servos: features/tech-lab/servos.md
     - OpenSearch:
       - Overview: features/opensearch/index.md
       - Dashboards: features/opensearch/dashboards.md
       - Ingest Pipelines: features/opensearch/ingest-pipelines.md
   - Getting Started: getting-started.md
+  - Demo Tour: demo-tour.md
   - Configuration: configuration.md
   - Architecture: architecture.md
   - Development: development.md

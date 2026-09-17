@@ -1,0 +1,31 @@
+{
+  "slug": "url_parts",
+  "name": "URL parts",
+  "summary": "Split url / uri into scheme, domain, port and path",
+  "description": "Split url / uri attributes into scheme, domain, port and path so infrastructure can be pivoted on without substring matching. Leaves every other attribute type untouched.",
+  "processors": [
+    {
+      "grok": {
+        "field": "value",
+        "patterns": [
+          "%{URIPROTO:expanded.url.scheme}://(?:%{USER:expanded.url.user}(?::[^@]*)?@)?%{IPORHOST:expanded.url.domain}(?::%{POSINT:expanded.url.port})?%{URIPATHPARAM:expanded.url.path}?"
+        ],
+        "if": "ctx.type == 'url' || ctx.type == 'uri'",
+        "ignore_missing": true,
+        "ignore_failure": true
+      }
+    },
+    {
+      "convert": {
+        "field": "expanded.url.port",
+        "type": "integer",
+        "ignore_missing": true,
+        "ignore_failure": true
+      }
+    }
+  ],
+  "sample_doc": {
+    "type": "url",
+    "value": "http://evil.com:8080/path?q=1"
+  }
+}
