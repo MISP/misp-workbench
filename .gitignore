@@ -155,5 +155,3 @@ yarn-error.log*
 .claude/
 
 garage.toml
-# built MCP bundles (rebuild with: cd mcpb && npx @anthropic-ai/mcpb pack .)
-mcpb/*.mcpb
