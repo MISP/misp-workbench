@@ -124,6 +124,101 @@ async def simulate(
     return servo_schemas.ServoSimulateResponse(ok=ok, docs=results, error=error)
 
 
+# ── Backfill ────────────────────────────────────────────────────────────────
+
+
+@router.get(
+    "/tech-lab/servos/backfill/preview",
+    response_model=servo_schemas.ServoBackfillPreview,
+)
+async def preview_backfill(
+    filter_query: Optional[str] = None,
+    db: Session = Depends(get_db),
+    user: user_schemas.User = Security(get_current_active_user, scopes=["servos:read"]),
+):
+    """How many attributes this filter would rewrite, and what would run.
+
+    A backfill rewrites live documents, so the count and the servo list are
+    shown before the operator confirms rather than after.
+    """
+    try:
+        matches = chain.count_backfill_matches(filter_query)
+    except Exception as error:  # noqa: BLE001 - a bad Lucene filter is user input
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"OpenSearch rejected the filter: {error}",
+        )
+    return servo_schemas.ServoBackfillPreview(
+        filter_query=filter_query,
+        matches=matches,
+        enabled_servos=[s.slug for s in chain.get_enabled_servos(db)],
+    )
+
+
+@router.post(
+    "/tech-lab/servos/backfill",
+    response_model=servo_schemas.ServoRun,
+    status_code=status.HTTP_202_ACCEPTED,
+)
+async def start_backfill(
+    payload: servo_schemas.ServoBackfillRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+    user: user_schemas.User = Security(get_current_active_user, scopes=["servos:run"]),
+):
+    """Re-run the ingest chain over attributes that are already indexed.
+
+    Chain-wide by necessity: `_update_by_query` re-runs the index's final
+    pipeline whatever pipeline is named, and on misp-attributes that is geoip
+    plus every enabled servo. There is no way to re-run one servo alone.
+    """
+    # Fail here rather than inside the worker, where a bad filter would surface
+    # as a mysteriously failed run.
+    try:
+        matches = chain.count_backfill_matches(payload.filter_query)
+    except Exception as error:  # noqa: BLE001
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"OpenSearch rejected the filter: {error}",
+        )
+
+    db_run = servos_repository.create_run(db, payload.filter_query, user_id=user.id)
+    audit.record(
+        db,
+        action="servo.backfill.started",
+        resource_type="servo_run",
+        resource_id=db_run.id,
+        actor_user_id=user.id,
+        request=request,
+        metadata={
+            "filter_query": db_run.filter_query,
+            "matches": matches,
+            "enabled_servos": [s.slug for s in chain.get_enabled_servos(db)],
+        },
+    )
+    db.commit()
+
+    from app.worker.tasks import servo_backfill as _task
+
+    async_result = _task.delay(db_run.id)
+    db_run.celery_task_id = getattr(async_result, "id", None)
+    db.commit()
+    db.refresh(db_run)
+    return db_run
+
+
+@router.get(
+    "/tech-lab/servos/runs",
+    response_model=list[servo_schemas.ServoRun],
+)
+async def list_runs(
+    db: Session = Depends(get_db),
+    user: user_schemas.User = Security(get_current_active_user, scopes=["servos:read"]),
+):
+    """Backfill history, newest first. Unfinished runs are reconciled on read."""
+    return servos_repository.get_runs(db)
+
+
 # ── Servo CRUD ──────────────────────────────────────────────────────────────
 
 

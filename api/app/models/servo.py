@@ -40,3 +40,35 @@ class Servo(Base):
         from app.services.tech_lab.servos.chain import drops_documents
 
         return drops_documents(self.processors)
+
+
+class ServoRun(Base):
+    """One backfill: re-running the ingest chain over existing attributes.
+
+    A backfill is `_update_by_query` against `misp-attributes`. OpenSearch runs
+    it asynchronously and hands back a task id, so the row carries that id and
+    is filled in as the task is polled. It records what was asked for
+    (`filter_query`) as well as what happened, because a backfill rewrites live
+    documents and "which ones did we touch, and when" is the question asked
+    afterwards.
+    """
+
+    __tablename__ = "servo_runs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(
+        Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    # Lucene filter the operator scoped the run to; empty means every attribute.
+    filter_query = Column(Text, nullable=True)
+    status = Column(String(32), nullable=False, default="queued", index=True)
+    # OpenSearch's own task id, e.g. "bqDK0KuGSnGylyPBiuetgg:14721".
+    opensearch_task_id = Column(String(128), nullable=True)
+    celery_task_id = Column(String(128), nullable=True)
+    total = Column(Integer, nullable=False, default=0)
+    updated = Column(Integer, nullable=False, default=0)
+    failure_count = Column(Integer, nullable=False, default=0)
+    error = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), nullable=False)
+    started_at = Column(DateTime(timezone=True), nullable=True)
+    finished_at = Column(DateTime(timezone=True), nullable=True)

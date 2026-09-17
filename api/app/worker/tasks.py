@@ -3,7 +3,7 @@ import os
 import smtplib
 import time
 from email.message import EmailMessage
-from datetime import datetime
+from datetime import datetime, timezone
 from uuid import UUID
 
 from app.database import SQLALCHEMY_DATABASE_URL
@@ -18,6 +18,8 @@ from app.repositories import servers as servers_repository
 from app.repositories import objects as objects_repository
 from app.repositories import users as users_repository
 from app.repositories import correlations as correlations_repository
+from app.repositories import servos as servos_repository
+from app.services.tech_lab.servos import chain as servo_chain
 from app.repositories import attributes as attributes_repository
 from app.repositories import notifications as notifications_repository
 from app.repositories import galaxies as galaxies_repository
@@ -627,6 +629,65 @@ def fetch_json_feed(feed_id: int, user_id: int):
         "message": "JSON feed=%s processed, %s items, %s attributes created, %s failed."
         % (db_feed.name, items_processed, attributes_created, failed_items),
     }
+
+
+@celery_app.task
+def servo_backfill(run_id: int):
+    """Re-run the ingest chain over attributes already indexed.
+
+    Issues the `_update_by_query` and then polls OpenSearch's task API. The
+    poll is bounded: a rewrite of a very large index can outlive any sensible
+    worker occupancy, and leaving the run marked `running` with its task id
+    stored is harmless because reading a run reconciles it against OpenSearch
+    (`servos_repository.refresh_run`). The worker polling is a convenience, not
+    the source of truth.
+    """
+    poll_seconds = 5
+    max_polls = 360  # ~30 minutes before handing over to read-time reconcile
+
+    with Session(engine) as db:
+        db_run = servos_repository.get_run(db, run_id)
+        if db_run is None:
+            logger.warning("servo_backfill: run %s is gone", run_id)
+            return False
+
+        try:
+            task_id = servo_chain.start_backfill(db_run.filter_query)
+        except Exception as e:  # noqa: BLE001
+            logger.exception("servo_backfill: could not start run %s", run_id)
+            db_run.status = "failed"
+            db_run.error = str(e)[:500]
+            db_run.finished_at = datetime.now(timezone.utc)
+            db.commit()
+            return False
+
+        db_run.opensearch_task_id = task_id
+        db_run.status = "running"
+        db_run.started_at = datetime.now(timezone.utc)
+        db.commit()
+        logger.info("servo_backfill run=%s opensearch_task=%s", run_id, task_id)
+
+    for _ in range(max_polls):
+        time.sleep(poll_seconds)
+        with Session(engine) as db:
+            db_run = servos_repository.get_run(db, run_id)
+            if db_run is None:
+                return False
+            servos_repository.refresh_run(db, db_run)
+            if db_run.status not in ("queued", "running"):
+                logger.info(
+                    "servo_backfill run=%s finished status=%s updated=%s",
+                    run_id,
+                    db_run.status,
+                    db_run.updated,
+                )
+                return db_run.status == "success"
+
+    logger.info(
+        "servo_backfill run=%s still running; leaving it to read-time reconcile",
+        run_id,
+    )
+    return True
 
 
 @celery_app.task

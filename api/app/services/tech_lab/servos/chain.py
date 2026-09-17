@@ -38,6 +38,9 @@ logger = logging.getLogger(__name__)
 
 TARGET_INDEX = "misp-attributes"
 CHAIN_PIPELINE = f"{TARGET_INDEX}_servos"
+# Runs before the index's final pipeline during a backfill, clearing the
+# append-only error field so each run reports only its own failures.
+RESET_PIPELINE = f"{TARGET_INDEX}_servos_reset"
 SERVO_ERRORS_FIELD = "expanded.servo_errors"
 
 TEMPLATES_DIR = pathlib.Path(__file__).parent / "templates"
@@ -145,7 +148,9 @@ def sync(db: Session) -> dict:
             OpenSearchClient.ingest.delete_pipeline(id=name)
             removed.append(name)
         except NotFoundError:
-            logger.warning("servo chain sync: pipeline %s disappeared before delete", name)
+            logger.warning(
+                "servo chain sync: pipeline %s disappeared before delete", name
+            )
 
     now = datetime.now(timezone.utc)
     for db_servo in enabled:
@@ -332,6 +337,93 @@ def error_summary() -> dict[str, dict]:
     for entry in summary.values():
         entry["messages"].sort(key=lambda m: m["count"], reverse=True)
     return summary
+
+
+def _backfill_query(filter_query: Optional[str]) -> dict:
+    """Translate the operator's Lucene filter into an _update_by_query body."""
+    if not filter_query or not filter_query.strip():
+        return {"query": {"match_all": {}}}
+    return {"query": {"query_string": {"query": filter_query.strip()}}}
+
+
+def count_backfill_matches(filter_query: Optional[str] = None) -> int:
+    """How many attributes a backfill with this filter would rewrite.
+
+    Shown before the operator confirms, because the alternative is asking them
+    to approve rewriting an unknown number of live documents.
+    """
+    response = OpenSearchClient.count(
+        index=TARGET_INDEX, body=_backfill_query(filter_query)
+    )
+    return response["count"]
+
+
+def start_backfill(filter_query: Optional[str] = None) -> str:
+    """Kick off the re-run and return OpenSearch's task id.
+
+    `_update_by_query` re-runs the index's *final* pipeline whatever else is
+    asked for -- verified on OpenSearch 3.4 -- and on misp-attributes that is
+    geoip plus every enabled servo. So a backfill is necessarily chain-wide;
+    there is no way to re-run one servo alone, and the UI says so.
+
+    RESET_PIPELINE is named explicitly because a named pipeline runs *before*
+    the final one: it clears expanded.servo_errors so the failures recorded
+    afterwards belong to this run rather than accumulating across runs.
+
+    `wait_for_completion=false` returns immediately with a task id; a rewrite
+    of a large index would otherwise hold the request open for minutes.
+    """
+    response = OpenSearchClient.update_by_query(
+        index=TARGET_INDEX,
+        body=_backfill_query(filter_query),
+        params={
+            "pipeline": RESET_PIPELINE,
+            "wait_for_completion": "false",
+            # Keep going past a single bad document; failures are counted and
+            # reported rather than aborting a run halfway through.
+            "conflicts": "proceed",
+        },
+    )
+    return response["task"]
+
+
+def backfill_status(task_id: str) -> dict:
+    """Poll one backfill.
+
+    Returns ``{"completed": bool, "total": int, "updated": int,
+    "failures": [...], "error": str | None}``. A task id that OpenSearch has
+    already forgotten reads as completed with nothing done, rather than
+    leaving a run polling for ever.
+    """
+    try:
+        response = OpenSearchClient.tasks.get(task_id=task_id)
+    except NotFoundError:
+        return {
+            "completed": True,
+            "total": 0,
+            "updated": 0,
+            "failures": [],
+            "error": "OpenSearch no longer knows this task; it may have been "
+            "cleaned up before the run was recorded.",
+        }
+
+    completed = bool(response.get("completed"))
+    # While running, counters live under task.status; once done they move to
+    # the top-level response.
+    status = response.get("response") or response.get("task", {}).get("status", {})
+    failures = list(status.get("failures") or [])
+
+    error = None
+    if response.get("error"):
+        error = json.dumps(response["error"])[:500]
+
+    return {
+        "completed": completed,
+        "total": status.get("total", 0),
+        "updated": status.get("updated", 0),
+        "failures": failures,
+        "error": error,
+    }
 
 
 def load_templates() -> list[dict]:

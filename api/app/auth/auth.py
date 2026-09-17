@@ -137,6 +137,7 @@ AVAILABLE_SCOPES: dict[str, str] = {
         "servos:create": "Create Tech Lab transformation servos.",
         "servos:update": "Update Tech Lab transformation servos.",
         "servos:delete": "Delete Tech Lab transformation servos.",
+        "servos:run": "Re-apply Tech Lab servos to attributes already indexed.",
         "notifications:read": "Read notifications.",
         "notifications:update": "Update notifications.",
         "user_settings:read": "Read user settings.",

@@ -153,6 +153,44 @@ class ServoErrors(BaseModel):
     messages: list[ServoErrorMessage] = Field(default_factory=list)
 
 
+ServoRunStatus = Literal["queued", "running", "success", "failed"]
+
+
+class ServoBackfillRequest(BaseModel):
+    """Re-run the ingest chain over attributes already in the index.
+
+    `filter_query` is Lucene, matching the Explore search box. Empty means
+    every attribute, which is deliberately possible but is what the confirm
+    step in the UI exists for.
+    """
+
+    filter_query: Optional[str] = None
+
+
+class ServoBackfillPreview(BaseModel):
+    """How many attributes a filter would rewrite, shown before confirming."""
+
+    filter_query: Optional[str] = None
+    matches: int
+    enabled_servos: list[str] = Field(default_factory=list)
+
+
+class ServoRun(BaseModel):
+    id: int
+    user_id: Optional[int] = None
+    filter_query: Optional[str] = None
+    status: ServoRunStatus
+    opensearch_task_id: Optional[str] = None
+    total: int
+    updated: int
+    failure_count: int
+    error: Optional[str] = None
+    created_at: datetime
+    started_at: Optional[datetime] = None
+    finished_at: Optional[datetime] = None
+    model_config = ConfigDict(from_attributes=True)
+
+
 class ServoTemplate(BaseModel):
     slug: str
     name: str
