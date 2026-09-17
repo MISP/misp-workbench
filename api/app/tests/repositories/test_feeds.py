@@ -245,3 +245,103 @@ class TestFeedsRepository(ApiTester):
                         all_attribute_tag_names.add(t.name)
             assert "ATTRIBUTE_EVENT_FEED_ADDED_TAG" in all_attribute_tag_names
             assert "OBJECT_ATTRIBUTE_EVENT_FEED_ADDED_TAG" in all_attribute_tag_names
+
+
+def _csv_settings(**csv_config) -> dict:
+    """A CSV preview request whose rows are read from a local file.
+
+    `csv_config` is merged into `csvConfig`, so a test can leave `header` out
+    entirely to cover a config written before the key existed.
+    """
+    config = {
+        "mode": "attribute",
+        "delimiter": ",",
+        "attribute": {
+            "value_column": 0,
+            "type": {"strategy": "fixed", "value": "ip-dst", "mappings": []},
+            "properties": {
+                "timestamp": {"strategy": "fixed", "value": 0},
+                "comment": None,
+                "tags": None,
+                "to_ids": None,
+                "first_seen": None,
+                "last_seen": None,
+            },
+        },
+    }
+    config.update(csv_config)
+    return {"input_source": "local", "url": "key", "settings": {"csvConfig": config}}
+
+
+class TestCsvFeedHasHeader:
+    def test_reads_the_flag(self):
+        assert feeds_repository.csv_feed_has_header({"csvConfig": {"header": True}})
+        assert not feeds_repository.csv_feed_has_header(
+            {"csvConfig": {"header": False}}
+        )
+
+    def test_a_missing_key_means_no_header(self):
+        # configs stored before the flag existed must not raise
+        assert not feeds_repository.csv_feed_has_header({"csvConfig": {}})
+
+
+class TestPreviewCsvFeed:
+    """
+    `preview` is what would be imported, so it must skip the header row the
+    same way `fetch_csv_feed` does. `rows` keeps it: the feed wizard reads
+    rows[0] to label the columns and slices it off itself.
+    """
+
+    LINES = ["value", "1.1.1.1", "2.2.2.2", "3.3.3.3", "4.4.4.4", "5.5.5.5"]
+
+    def _preview(self, settings, limit=5):
+        with patch.object(
+            feeds_repository, "fetch_csv_content_from_local", return_value=self.LINES
+        ):
+            return feeds_repository.preview_csv_feed(settings, limit=limit)
+
+    def test_header_row_is_not_previewed_as_an_attribute(self):
+        result = self._preview(_csv_settings(header=True))
+
+        assert [row["value"] for row in result["preview"]] == [
+            "1.1.1.1",
+            "2.2.2.2",
+            "3.3.3.3",
+            "4.4.4.4",
+            "5.5.5.5",
+        ]
+
+    def test_header_row_is_still_returned_in_rows(self):
+        # the wizard derives the column labels from it
+        result = self._preview(_csv_settings(header=True))
+
+        assert result["rows"][0] == ["value"]
+
+    def test_a_header_does_not_cost_a_data_row(self):
+        # the header used to eat one of the `limit` slots, so a 3-row preview
+        # showed the header plus only 2 real rows
+        result = self._preview(_csv_settings(header=True), limit=3)
+
+        assert [row["value"] for row in result["preview"]] == [
+            "1.1.1.1",
+            "2.2.2.2",
+            "3.3.3.3",
+        ]
+
+    def test_every_row_is_previewed_when_there_is_no_header(self):
+        result = self._preview(_csv_settings(header=False), limit=3)
+
+        assert [row["value"] for row in result["preview"]] == [
+            "value",
+            "1.1.1.1",
+            "2.2.2.2",
+        ]
+
+    def test_a_missing_header_key_is_treated_as_no_header(self):
+        result = self._preview(_csv_settings(), limit=3)
+
+        assert [row["value"] for row in result["preview"]] == [
+            "value",
+            "1.1.1.1",
+            "2.2.2.2",
+        ]
