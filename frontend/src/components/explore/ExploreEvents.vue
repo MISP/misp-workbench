@@ -147,6 +147,7 @@ async function searchTimeline(query) {
 }
 
 function search() {
+  autoFocusPending.value = true;
   const base = buildQuery();
   eventsStore.search({
     page: 1,
@@ -185,24 +186,51 @@ function search() {
   }
 }
 
-watch(event_docs, (docs) => {
-  if (
-    activeTab.value === "attributes" &&
-    attribute_docs.value?.total === 0 &&
-    docs?.total > 0
-  ) {
-    activeTab.value = "events";
-  }
-});
+// Tab order as rendered, which is also the order preferred when falling back.
+const TABS = ["events", "attributes", "correlations"];
 
-watch(attribute_docs, (docs) => {
-  if (
-    activeTab.value === "events" &&
-    event_docs.value?.total === 0 &&
-    docs?.total > 0
-  ) {
-    activeTab.value = "attributes";
-  }
+function tabTotal(tab) {
+  if (tab === "events") return event_docs.value?.total;
+  if (tab === "attributes") return attribute_docs.value?.total;
+  return correlation_docs.value?.total;
+}
+
+// Set for a new search, cleared once the tab has been chosen. Without it the
+// active tab would be second-guessed on every store update -- including the
+// user deliberately opening an empty tab to look at its filters.
+const autoFocusPending = ref(false);
+
+const searchSettled = computed(
+  () =>
+    !eventsStatus.value?.loading &&
+    !attributesStatus.value?.loading &&
+    !correlationsStatus.value?.loading,
+);
+
+/**
+ * After a search, land on the first tab that actually has results.
+ *
+ * Searching a bare indicator value is the common case and it matches
+ * attributes, not events -- an event does not carry the value in its own
+ * fields. Leaving the user on "Events 0" next to "Attributes 3" makes the
+ * platform look like it found nothing.
+ *
+ * Waits for all three searches to settle rather than reacting to whichever
+ * returns first: they are dispatched together, so an early responder would
+ * otherwise decide the tab while comparing against the previous search's
+ * totals.
+ */
+watch([searchSettled, event_docs, attribute_docs, correlation_docs], () => {
+  if (!autoFocusPending.value || !searchSettled.value) return;
+  autoFocusPending.value = false;
+
+  // A tab with results is never taken away from the user.
+  if (tabTotal(activeTab.value) > 0) return;
+
+  const firstWithResults = TABS.find((tab) => tabTotal(tab) > 0);
+  // Nothing matched anywhere: stay put rather than shuffling through three
+  // empty tabs.
+  if (firstWithResults) activeTab.value = firstWithResults;
 });
 
 function onEventsPageChange(page) {

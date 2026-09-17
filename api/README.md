@@ -87,7 +87,7 @@ docker compose exec api poetry run python -c "from app.main import app; import j
 $ git submodule update --init --remote --recursive
 $ docker compose -f docker-compose.yml -f docker-compose.test.yml --env-file=".env.test" up -d
 ...
-$ docker compose exec api poetry run pytest
+$ docker compose exec -e ENVIRONMENT=test api poetry run pytest
 =========================================================================================== test session starts ===========================================================================================
 platform linux -- Python 3.9.12, pytest-7.1.2, pluggy-1.0.0
 rootdir: /code
@@ -101,7 +101,7 @@ app/test_main.py .                                                              
 ### Coverage
 
 ```console
-$ docker compose exec api poetry run pytest --cov=app --cov-report=html
+$ docker compose exec -e ENVIRONMENT=test api poetry run pytest --cov=app --cov-report=html
 ========================================================= test session starts ==========================================================
 platform linux -- Python 3.11.15, pytest-8.4.2, pluggy-1.6.0
 rootdir: /code

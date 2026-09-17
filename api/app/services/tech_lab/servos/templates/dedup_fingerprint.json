@@ -1,0 +1,42 @@
+{
+  "slug": "dedup_fingerprint",
+  "name": "Deduplication fingerprint",
+  "summary": "Hash type + value so duplicates can be grouped",
+  "description": "Hash type + value into expanded.fingerprint so the same indicator arriving from several feeds can be grouped or counted as one. Flags duplicates rather than dropping them -- nothing is removed.",
+  "processors": [
+    {
+      "set": {
+        "field": "expanded._fp.type",
+        "value": "{{{type}}}",
+        "ignore_empty_value": true
+      }
+    },
+    {
+      "set": {
+        "field": "expanded._fp.value",
+        "value": "{{{value}}}",
+        "ignore_empty_value": true
+      }
+    },
+    {
+      "fingerprint": {
+        "fields": [
+          "expanded._fp"
+        ],
+        "target_field": "expanded.fingerprint",
+        "ignore_missing": true,
+        "ignore_failure": true
+      }
+    },
+    {
+      "remove": {
+        "field": "expanded._fp",
+        "ignore_missing": true
+      }
+    }
+  ],
+  "sample_doc": {
+    "type": "domain",
+    "value": "evil.com"
+  }
+}

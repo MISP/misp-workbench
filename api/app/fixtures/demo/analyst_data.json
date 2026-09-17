@@ -1,0 +1,67 @@
+[
+  {
+    "type": "Note",
+    "object_uuid": "a1f30000-0001-4001-8000-000000000001",
+    "object_type": "Event",
+    "note": "Infrastructure overlaps with the follow-up report filed five days ago. Both use the same staging host; the TLS certificate serial is identical, which is what tied them together rather than the IP alone.",
+    "language": "en",
+    "distribution": 0
+  },
+  {
+    "type": "Opinion",
+    "object_uuid": "a1f30000-0001-4001-8000-000000000001",
+    "object_type": "Event",
+    "opinion": 75,
+    "comment": "Confident in the infrastructure attribution, less so in the targeting assessment \u2014 the victim set is inferred from two samples only.",
+    "distribution": 0
+  },
+  {
+    "type": "Note",
+    "object_uuid": "d3110000-0002-4001-8000-000000000001",
+    "object_type": "Attribute",
+    "note": "Still responding on 443 as of this morning. Worth a sighting rather than expiry.",
+    "language": "en",
+    "distribution": 0
+  },
+  {
+    "type": "Opinion",
+    "object_uuid": "a1f30000-0001-4001-8000-000000000003",
+    "object_type": "Event",
+    "opinion": 30,
+    "comment": "The sender domain is a generic lookalike and the lure is off-the-shelf; this reads as commodity phishing rather than the actor named in the report.",
+    "distribution": 0
+  },
+  {
+    "type": "Note",
+    "object_uuid": "e0f10000-0001-4001-8000-00000000000a",
+    "object_type": "Event",
+    "note": "Timeline reconstructed from the mail gateway and proxy logs. The three lures landed within 90 seconds of each other, which points at a scripted send rather than hand-picked targeting \u2014 the recipients share nothing but a public contact page.",
+    "language": "en",
+    "distribution": 0
+  },
+  {
+    "type": "Opinion",
+    "object_uuid": "e0f10000-0001-4001-8000-00000000000a",
+    "object_type": "Event",
+    "opinion": 40,
+    "comment": "Low confidence in the TA542 label. The delivery chain resembles previous Emotet waves, but nothing here is infrastructure the group is known to own, and the loader host is a compromised third party. Treat the attribution as provisional until the C2 is tied to a known cluster.",
+    "distribution": 0
+  },
+  {
+    "type": "Note",
+    "object_uuid": "e0f10000-0007-4002-8000-000000000010",
+    "object_type": "Attribute",
+    "note": "Loader host is a legitimate WordPress site that was compromised, not attacker-owned. Notified the operator on the day of the incident; no response so far. Do not add to a permanent blocklist.",
+    "language": "en",
+    "distribution": 0
+  },
+  {
+    "type": "Relationship",
+    "object_uuid": "e0f10000-0001-4001-8000-00000000000a",
+    "object_type": "Event",
+    "related_object_uuid": "a1f30000-0001-4001-8000-000000000001",
+    "related_object_type": "Event",
+    "relationship_type": "related-to",
+    "distribution": 0
+  }
+]

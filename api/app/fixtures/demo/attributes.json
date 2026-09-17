@@ -1,0 +1,767 @@
+[
+  {
+    "uuid": "d3110000-0002-4001-8000-000000000001",
+    "event_uuid": "d3110000-0001-4001-8000-000000000001",
+    "category": "Network activity",
+    "type": "ip-src",
+    "value": "185.220.101.42",
+    "to_ids": true,
+    "distribution": 0,
+    "comment": "Same C2 address as the EU banking campaign \u2014 drives a correlation",
+    "tags": [
+      {
+        "name": "tlp:amber",
+        "colour": "#ffc000"
+      },
+      {
+        "name": "kill-chain:Command and Control",
+        "colour": "#7a5195"
+      },
+      {
+        "name": "misp-galaxy:mitre-attack-pattern=\"Application Layer Protocol - T1071\"",
+        "colour": "#0088cc",
+        "is_galaxy": true
+      },
+      {
+        "name": "misp-galaxy:malpedia=\"Cobalt Strike\"",
+        "colour": "#0088cc",
+        "is_galaxy": true
+      },
+      {
+        "name": "misp-galaxy:tool=\"Cobalt Strike\"",
+        "colour": "#0088cc",
+        "is_galaxy": true
+      },
+      {
+        "name": "misp-galaxy:threat-actor=\"Turla\"",
+        "colour": "#0088cc",
+        "is_galaxy": true
+      },
+      {
+        "name": "misp-galaxy:sector=\"Finance\"",
+        "colour": "#0088cc",
+        "is_galaxy": true
+      }
+    ]
+  },
+  {
+    "uuid": "d3110000-0002-4001-8000-000000000002",
+    "event_uuid": "d3110000-0001-4001-8000-000000000001",
+    "category": "Network activity",
+    "type": "domain",
+    "value": "c2.example-cobalt.net",
+    "to_ids": true,
+    "distribution": 0,
+    "comment": "Shared with the EU banking campaign",
+    "tags": [
+      {
+        "name": "tlp:amber",
+        "colour": "#ffc000"
+      },
+      {
+        "name": "kill-chain:Command and Control",
+        "colour": "#7a5195"
+      },
+      {
+        "name": "misp-galaxy:mitre-attack-pattern=\"Application Layer Protocol - T1071\"",
+        "colour": "#0088cc",
+        "is_galaxy": true
+      },
+      {
+        "name": "misp-galaxy:malpedia=\"Cobalt Strike\"",
+        "colour": "#0088cc",
+        "is_galaxy": true
+      },
+      {
+        "name": "misp-galaxy:tool=\"Cobalt Strike\"",
+        "colour": "#0088cc",
+        "is_galaxy": true
+      },
+      {
+        "name": "misp-galaxy:sector=\"Finance\"",
+        "colour": "#0088cc",
+        "is_galaxy": true
+      }
+    ]
+  },
+  {
+    "uuid": "d3110000-0002-4001-8000-000000000003",
+    "event_uuid": "d3110000-0001-4001-8000-000000000001",
+    "category": "Network activity",
+    "type": "url",
+    "value": "https://Portal.Example-Cobalt.NET:8443/load/stage2",
+    "to_ids": true,
+    "distribution": 0,
+    "comment": "Mixed case and an explicit port, so the url_parts and canonical_value servos both have something to do",
+    "tags": [
+      {
+        "name": "tlp:amber",
+        "colour": "#ffc000"
+      },
+      {
+        "name": "kill-chain:Delivery",
+        "colour": "#7a5195"
+      },
+      {
+        "name": "misp-galaxy:mitre-attack-pattern=\"Ingress Tool Transfer - T1105\"",
+        "colour": "#0088cc",
+        "is_galaxy": true
+      },
+      {
+        "name": "misp-galaxy:malpedia=\"Cobalt Strike\"",
+        "colour": "#0088cc",
+        "is_galaxy": true
+      },
+      {
+        "name": "misp-galaxy:tool=\"Cobalt Strike\"",
+        "colour": "#0088cc",
+        "is_galaxy": true
+      }
+    ]
+  },
+  {
+    "uuid": "d3110000-0002-4001-8000-000000000004",
+    "event_uuid": "d3110000-0001-4001-8000-000000000002",
+    "category": "Payload delivery",
+    "type": "md5",
+    "value": "5d41402abc4b2a76b9719d911017c592",
+    "to_ids": true,
+    "distribution": 0,
+    "comment": "Hash already present in the Cobalt Strike event",
+    "tags": [
+      {
+        "name": "tlp:green",
+        "colour": "#00a500"
+      },
+      {
+        "name": "kill-chain:Installation",
+        "colour": "#7a5195"
+      },
+      {
+        "name": "misp-galaxy:mitre-attack-pattern=\"Command and Scripting Interpreter - T1059\"",
+        "colour": "#0088cc",
+        "is_galaxy": true
+      },
+      {
+        "name": "misp-galaxy:malpedia=\"Cobalt Strike\"",
+        "colour": "#0088cc",
+        "is_galaxy": true
+      },
+      {
+        "name": "misp-galaxy:sector=\"Government, Administration\"",
+        "colour": "#0088cc",
+        "is_galaxy": true
+      }
+    ]
+  },
+  {
+    "uuid": "d3110000-0002-4001-8000-000000000005",
+    "event_uuid": "d3110000-0001-4001-8000-000000000002",
+    "category": "Network activity",
+    "type": "ip-dst",
+    "value": "185.220.101.42",
+    "to_ids": true,
+    "distribution": 0,
+    "comment": "Third sighting of the same address \u2014 a three-way correlation",
+    "tags": [
+      {
+        "name": "tlp:green",
+        "colour": "#00a500"
+      },
+      {
+        "name": "kill-chain:Command and Control",
+        "colour": "#7a5195"
+      },
+      {
+        "name": "misp-galaxy:mitre-attack-pattern=\"Application Layer Protocol - T1071\"",
+        "colour": "#0088cc",
+        "is_galaxy": true
+      },
+      {
+        "name": "misp-galaxy:threat-actor=\"Turla\"",
+        "colour": "#0088cc",
+        "is_galaxy": true
+      },
+      {
+        "name": "misp-galaxy:sector=\"Government, Administration\"",
+        "colour": "#0088cc",
+        "is_galaxy": true
+      }
+    ]
+  },
+  {
+    "uuid": "d3110000-0002-4001-8000-000000000006",
+    "event_uuid": "d3110000-0001-4001-8000-000000000002",
+    "category": "Network activity",
+    "type": "ip-src",
+    "value": "203.0.113.0/24",
+    "to_ids": false,
+    "distribution": 0,
+    "comment": "CIDR range, so expanded.ip_range is populated too",
+    "tags": [
+      {
+        "name": "tlp:green",
+        "colour": "#00a500"
+      },
+      {
+        "name": "kill-chain:Reconnaissance",
+        "colour": "#7a5195"
+      },
+      {
+        "name": "misp-galaxy:sector=\"Government, Administration\"",
+        "colour": "#0088cc",
+        "is_galaxy": true
+      }
+    ]
+  },
+  {
+    "uuid": "d3110000-0002-4001-8000-000000000007",
+    "event_uuid": "d3110000-0001-4001-8000-000000000001",
+    "category": "Payload delivery",
+    "type": "sha256",
+    "value": "b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9",
+    "to_ids": true,
+    "distribution": 0,
+    "comment": "Beacon loader dropped after exploitation",
+    "tags": [
+      {
+        "name": "tlp:amber",
+        "colour": "#ffc000"
+      },
+      {
+        "name": "kill-chain:Installation",
+        "colour": "#7a5195"
+      },
+      {
+        "name": "misp-galaxy:mitre-attack-pattern=\"Command and Scripting Interpreter - T1059\"",
+        "colour": "#0088cc",
+        "is_galaxy": true
+      },
+      {
+        "name": "misp-galaxy:malpedia=\"Cobalt Strike\"",
+        "colour": "#0088cc",
+        "is_galaxy": true
+      },
+      {
+        "name": "misp-galaxy:tool=\"Cobalt Strike\"",
+        "colour": "#0088cc",
+        "is_galaxy": true
+      },
+      {
+        "name": "misp-galaxy:sector=\"Finance\"",
+        "colour": "#0088cc",
+        "is_galaxy": true
+      }
+    ]
+  },
+  {
+    "uuid": "d3110000-0002-4001-8000-000000000008",
+    "event_uuid": "d3110000-0001-4001-8000-000000000001",
+    "category": "Payload delivery",
+    "type": "filename",
+    "value": "beacon_x64.dll",
+    "to_ids": true,
+    "distribution": 0,
+    "tags": [
+      {
+        "name": "tlp:amber",
+        "colour": "#ffc000"
+      },
+      {
+        "name": "kill-chain:Installation",
+        "colour": "#7a5195"
+      },
+      {
+        "name": "misp-galaxy:malpedia=\"Cobalt Strike\"",
+        "colour": "#0088cc",
+        "is_galaxy": true
+      },
+      {
+        "name": "misp-galaxy:tool=\"Cobalt Strike\"",
+        "colour": "#0088cc",
+        "is_galaxy": true
+      }
+    ]
+  },
+  {
+    "uuid": "d3110000-0002-4001-8000-000000000009",
+    "event_uuid": "d3110000-0001-4001-8000-000000000001",
+    "category": "Network activity",
+    "type": "hostname",
+    "value": "stage.example-cobalt.net",
+    "to_ids": true,
+    "distribution": 0,
+    "tags": [
+      {
+        "name": "tlp:amber",
+        "colour": "#ffc000"
+      },
+      {
+        "name": "kill-chain:Delivery",
+        "colour": "#7a5195"
+      },
+      {
+        "name": "misp-galaxy:mitre-attack-pattern=\"Ingress Tool Transfer - T1105\"",
+        "colour": "#0088cc",
+        "is_galaxy": true
+      },
+      {
+        "name": "misp-galaxy:tool=\"Cobalt Strike\"",
+        "colour": "#0088cc",
+        "is_galaxy": true
+      },
+      {
+        "name": "misp-galaxy:sector=\"Finance\"",
+        "colour": "#0088cc",
+        "is_galaxy": true
+      }
+    ]
+  },
+  {
+    "uuid": "d3110000-0002-4001-8000-000000000010",
+    "event_uuid": "d3110000-0001-4001-8000-000000000001",
+    "category": "Payload delivery",
+    "type": "email-src",
+    "value": "invoices@billing-notice.test",
+    "to_ids": true,
+    "distribution": 0,
+    "comment": "Sender used for the initial lure",
+    "tags": [
+      {
+        "name": "tlp:amber",
+        "colour": "#ffc000"
+      },
+      {
+        "name": "kill-chain:Delivery",
+        "colour": "#7a5195"
+      },
+      {
+        "name": "misp-galaxy:mitre-attack-pattern=\"Spearphishing Attachment - T1566.001\"",
+        "colour": "#0088cc",
+        "is_galaxy": true
+      },
+      {
+        "name": "misp-galaxy:mitre-attack-pattern=\"Phishing - T1566\"",
+        "colour": "#0088cc",
+        "is_galaxy": true
+      },
+      {
+        "name": "misp-galaxy:threat-actor=\"MUMMY SPIDER\"",
+        "colour": "#0088cc",
+        "is_galaxy": true
+      }
+    ]
+  },
+  {
+    "uuid": "d3110000-0002-4001-8000-000000000011",
+    "event_uuid": "d3110000-0001-4001-8000-000000000001",
+    "category": "Network activity",
+    "type": "ip-dst",
+    "value": "198.51.100.77",
+    "to_ids": true,
+    "distribution": 0,
+    "tags": [
+      {
+        "name": "tlp:amber",
+        "colour": "#ffc000"
+      },
+      {
+        "name": "kill-chain:Command and Control",
+        "colour": "#7a5195"
+      },
+      {
+        "name": "misp-galaxy:mitre-attack-pattern=\"Application Layer Protocol - T1071\"",
+        "colour": "#0088cc",
+        "is_galaxy": true
+      },
+      {
+        "name": "misp-galaxy:malpedia=\"Cobalt Strike\"",
+        "colour": "#0088cc",
+        "is_galaxy": true
+      },
+      {
+        "name": "misp-galaxy:sector=\"Finance\"",
+        "colour": "#0088cc",
+        "is_galaxy": true
+      }
+    ]
+  },
+  {
+    "uuid": "d3110000-0002-4001-8000-000000000012",
+    "event_uuid": "d3110000-0001-4001-8000-000000000001",
+    "category": "Network activity",
+    "type": "user-agent",
+    "value": "Mozilla/5.0 (Windows NT 10.0) beacon/4.7",
+    "to_ids": false,
+    "distribution": 0,
+    "comment": "Distinctive UA seen on the C2 channel",
+    "tags": [
+      {
+        "name": "tlp:amber",
+        "colour": "#ffc000"
+      },
+      {
+        "name": "kill-chain:Command and Control",
+        "colour": "#7a5195"
+      },
+      {
+        "name": "misp-galaxy:mitre-attack-pattern=\"Application Layer Protocol - T1071\"",
+        "colour": "#0088cc",
+        "is_galaxy": true
+      },
+      {
+        "name": "misp-galaxy:tool=\"Cobalt Strike\"",
+        "colour": "#0088cc",
+        "is_galaxy": true
+      }
+    ]
+  },
+  {
+    "uuid": "d3110000-0002-4001-8000-000000000013",
+    "event_uuid": "d3110000-0001-4001-8000-000000000002",
+    "category": "Network activity",
+    "type": "domain",
+    "value": "update-service.test",
+    "to_ids": true,
+    "distribution": 0,
+    "tags": [
+      {
+        "name": "tlp:green",
+        "colour": "#00a500"
+      },
+      {
+        "name": "kill-chain:Command and Control",
+        "colour": "#7a5195"
+      },
+      {
+        "name": "misp-galaxy:mitre-attack-pattern=\"Application Layer Protocol - T1071\"",
+        "colour": "#0088cc",
+        "is_galaxy": true
+      },
+      {
+        "name": "misp-galaxy:malpedia=\"TrickBot\"",
+        "colour": "#0088cc",
+        "is_galaxy": true
+      },
+      {
+        "name": "misp-galaxy:threat-actor=\"TA505\"",
+        "colour": "#0088cc",
+        "is_galaxy": true
+      },
+      {
+        "name": "misp-galaxy:sector=\"Health\"",
+        "colour": "#0088cc",
+        "is_galaxy": true
+      }
+    ]
+  },
+  {
+    "uuid": "d3110000-0002-4001-8000-000000000014",
+    "event_uuid": "d3110000-0001-4001-8000-000000000002",
+    "category": "Payload delivery",
+    "type": "url",
+    "value": "http://update-service.test/agent/setup.exe",
+    "to_ids": true,
+    "distribution": 0,
+    "tags": [
+      {
+        "name": "tlp:green",
+        "colour": "#00a500"
+      },
+      {
+        "name": "kill-chain:Delivery",
+        "colour": "#7a5195"
+      },
+      {
+        "name": "misp-galaxy:mitre-attack-pattern=\"Ingress Tool Transfer - T1105\"",
+        "colour": "#0088cc",
+        "is_galaxy": true
+      },
+      {
+        "name": "misp-galaxy:malpedia=\"TrickBot\"",
+        "colour": "#0088cc",
+        "is_galaxy": true
+      },
+      {
+        "name": "misp-galaxy:sector=\"Health\"",
+        "colour": "#0088cc",
+        "is_galaxy": true
+      }
+    ]
+  },
+  {
+    "uuid": "d3110000-0002-4001-8000-000000000015",
+    "event_uuid": "d3110000-0001-4001-8000-000000000002",
+    "category": "Payload delivery",
+    "type": "sha1",
+    "value": "da39a3ee5e6b4b0d3255bfef95601890afd80709",
+    "to_ids": true,
+    "distribution": 0,
+    "tags": [
+      {
+        "name": "tlp:green",
+        "colour": "#00a500"
+      },
+      {
+        "name": "kill-chain:Installation",
+        "colour": "#7a5195"
+      },
+      {
+        "name": "misp-galaxy:malpedia=\"TrickBot\"",
+        "colour": "#0088cc",
+        "is_galaxy": true
+      },
+      {
+        "name": "misp-galaxy:tool=\"Mimikatz\"",
+        "colour": "#0088cc",
+        "is_galaxy": true
+      },
+      {
+        "name": "misp-galaxy:sector=\"Health\"",
+        "colour": "#0088cc",
+        "is_galaxy": true
+      }
+    ]
+  },
+  {
+    "uuid": "d3110000-0002-4001-8000-000000000016",
+    "event_uuid": "d3110000-0001-4001-8000-000000000002",
+    "category": "Artifacts dropped",
+    "type": "filename",
+    "value": "mimikatz.exe",
+    "to_ids": true,
+    "distribution": 0,
+    "comment": "Credential dumper staged after foothold",
+    "tags": [
+      {
+        "name": "tlp:green",
+        "colour": "#00a500"
+      },
+      {
+        "name": "kill-chain:Actions on Objectives",
+        "colour": "#7a5195"
+      },
+      {
+        "name": "misp-galaxy:mitre-attack-pattern=\"Command and Scripting Interpreter - T1059\"",
+        "colour": "#0088cc",
+        "is_galaxy": true
+      },
+      {
+        "name": "misp-galaxy:tool=\"Mimikatz\"",
+        "colour": "#0088cc",
+        "is_galaxy": true
+      },
+      {
+        "name": "misp-galaxy:threat-actor=\"TA505\"",
+        "colour": "#0088cc",
+        "is_galaxy": true
+      }
+    ]
+  },
+  {
+    "uuid": "d3110000-0002-4001-8000-000000000017",
+    "event_uuid": "d3110000-0001-4001-8000-000000000002",
+    "category": "Artifacts dropped",
+    "type": "filename",
+    "value": "psexec.exe",
+    "to_ids": true,
+    "distribution": 0,
+    "tags": [
+      {
+        "name": "tlp:green",
+        "colour": "#00a500"
+      },
+      {
+        "name": "kill-chain:Actions on Objectives",
+        "colour": "#7a5195"
+      },
+      {
+        "name": "misp-galaxy:tool=\"PsExec\"",
+        "colour": "#0088cc",
+        "is_galaxy": true
+      },
+      {
+        "name": "misp-galaxy:threat-actor=\"TA505\"",
+        "colour": "#0088cc",
+        "is_galaxy": true
+      }
+    ]
+  },
+  {
+    "uuid": "d3110000-0002-4001-8000-000000000018",
+    "event_uuid": "d3110000-0001-4001-8000-000000000002",
+    "category": "Payload delivery",
+    "type": "email-src",
+    "value": "hr@benefits-update.test",
+    "to_ids": true,
+    "distribution": 0,
+    "tags": [
+      {
+        "name": "tlp:green",
+        "colour": "#00a500"
+      },
+      {
+        "name": "kill-chain:Delivery",
+        "colour": "#7a5195"
+      },
+      {
+        "name": "misp-galaxy:mitre-attack-pattern=\"Phishing - T1566\"",
+        "colour": "#0088cc",
+        "is_galaxy": true
+      },
+      {
+        "name": "misp-galaxy:mitre-attack-pattern=\"Spearphishing Attachment - T1566.001\"",
+        "colour": "#0088cc",
+        "is_galaxy": true
+      },
+      {
+        "name": "misp-galaxy:malpedia=\"Emotet\"",
+        "colour": "#0088cc",
+        "is_galaxy": true
+      },
+      {
+        "name": "misp-galaxy:threat-actor=\"MUMMY SPIDER\"",
+        "colour": "#0088cc",
+        "is_galaxy": true
+      },
+      {
+        "name": "misp-galaxy:sector=\"Health\"",
+        "colour": "#0088cc",
+        "is_galaxy": true
+      }
+    ]
+  },
+  {
+    "uuid": "d3110000-0002-4001-8000-000000000019",
+    "event_uuid": "d3110000-0001-4001-8000-000000000002",
+    "category": "Network activity",
+    "type": "domain",
+    "value": "ransom-portal.test",
+    "to_ids": true,
+    "distribution": 0,
+    "comment": "Leak-site domain referenced in the ransom note",
+    "tags": [
+      {
+        "name": "tlp:white",
+        "colour": "#ffffff"
+      },
+      {
+        "name": "kill-chain:Actions on Objectives",
+        "colour": "#7a5195"
+      },
+      {
+        "name": "misp-galaxy:mitre-attack-pattern=\"Data Encrypted for Impact - T1486\"",
+        "colour": "#0088cc",
+        "is_galaxy": true
+      },
+      {
+        "name": "misp-galaxy:sector=\"Energy\"",
+        "colour": "#0088cc",
+        "is_galaxy": true
+      }
+    ]
+  },
+  {
+    "uuid": "d3110000-0002-4001-8000-000000000020",
+    "event_uuid": "d3110000-0001-4001-8000-000000000002",
+    "category": "Network activity",
+    "type": "ip-dst",
+    "value": "203.0.113.200",
+    "to_ids": true,
+    "distribution": 0,
+    "tags": [
+      {
+        "name": "tlp:white",
+        "colour": "#ffffff"
+      },
+      {
+        "name": "kill-chain:Command and Control",
+        "colour": "#7a5195"
+      },
+      {
+        "name": "misp-galaxy:mitre-attack-pattern=\"Application Layer Protocol - T1071\"",
+        "colour": "#0088cc",
+        "is_galaxy": true
+      },
+      {
+        "name": "misp-galaxy:malpedia=\"TrickBot\"",
+        "colour": "#0088cc",
+        "is_galaxy": true
+      },
+      {
+        "name": "misp-galaxy:sector=\"Energy\"",
+        "colour": "#0088cc",
+        "is_galaxy": true
+      }
+    ]
+  },
+  {
+    "uuid": "d3110000-0002-4001-8000-000000000021",
+    "event_uuid": "d3110000-0001-4001-8000-000000000002",
+    "category": "Payload delivery",
+    "type": "md5",
+    "value": "9e107d9d372bb6826bd81d3542a419d6",
+    "to_ids": true,
+    "distribution": 0,
+    "comment": "Ransomware payload",
+    "tags": [
+      {
+        "name": "tlp:white",
+        "colour": "#ffffff"
+      },
+      {
+        "name": "kill-chain:Actions on Objectives",
+        "colour": "#7a5195"
+      },
+      {
+        "name": "misp-galaxy:mitre-attack-pattern=\"Data Encrypted for Impact - T1486\"",
+        "colour": "#0088cc",
+        "is_galaxy": true
+      },
+      {
+        "name": "misp-galaxy:sector=\"Energy\"",
+        "colour": "#0088cc",
+        "is_galaxy": true
+      }
+    ]
+  },
+  {
+    "uuid": "d3110000-0002-4001-8000-000000000022",
+    "event_uuid": "d3110000-0001-4001-8000-000000000001",
+    "category": "Payload delivery",
+    "type": "sha256",
+    "value": "3f79bb7b435b05321651daefd374cdc681dc06faa65e374e38337b88ca046dea",
+    "to_ids": true,
+    "distribution": 0,
+    "tags": [
+      {
+        "name": "tlp:amber",
+        "colour": "#ffc000"
+      },
+      {
+        "name": "kill-chain:Exploitation",
+        "colour": "#7a5195"
+      },
+      {
+        "name": "misp-galaxy:mitre-attack-pattern=\"Command and Scripting Interpreter - T1059\"",
+        "colour": "#0088cc",
+        "is_galaxy": true
+      },
+      {
+        "name": "misp-galaxy:malpedia=\"Emotet\"",
+        "colour": "#0088cc",
+        "is_galaxy": true
+      },
+      {
+        "name": "misp-galaxy:threat-actor=\"MUMMY SPIDER\"",
+        "colour": "#0088cc",
+        "is_galaxy": true
+      },
+      {
+        "name": "misp-galaxy:sector=\"Finance\"",
+        "colour": "#0088cc",
+        "is_galaxy": true
+      }
+    ]
+  }
+]

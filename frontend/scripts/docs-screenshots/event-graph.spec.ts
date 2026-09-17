@@ -55,9 +55,16 @@ test.describe("Event graph screenshots", () => {
     await expect(page.locator('[data-tab-panel="overview"]')).toBeVisible();
 
     // The tab strip with its counts, plus the title block above it.
+    // 2, not 9: the badge counts what the tab lists, and the tab lists only
+    // attributes that are not inside an object. The other 7 live under
+    // Objects. The title block above still reads "9 attributes in 3 objects",
+    // which is the whole-event total.
     await expect(
       page.getByRole("button", { name: /Attributes/ }).locator(".badge"),
-    ).toHaveText("9");
+    ).toHaveText("2");
+    await expect(
+      page.getByRole("button", { name: /Objects/ }).locator(".badge"),
+    ).toHaveText("3");
     await pinForCapture(page);
 
     await capture(page, FEATURE, "misp-workbench-1_event-graph-tabs", {

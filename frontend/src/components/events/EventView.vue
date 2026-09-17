@@ -25,8 +25,10 @@ import CorrelatedEvents from "@/components/correlations/CorrelatedEvents.vue";
 import RelatedVulnerabilities from "@/components/vulnerabilities/RelatedVulnerabilities.vue";
 import RetentionBadge from "@/components/events/RetentionBadge.vue";
 import { router } from "@/router";
+import { fetchWrapper } from "@/helpers";
 import { Modal } from "bootstrap";
 import {
+  useAttributesStore,
   useEventsStore,
   useModulesStore,
   useCorrelationsStore,
@@ -62,6 +64,8 @@ const reports_last_updated = ref(parseInt(Date.now() / 1000));
 
 const eventsStore = useEventsStore();
 const { event, status } = storeToRefs(eventsStore);
+const attributesStore = useAttributesStore();
+const { attributes: attributePage } = storeToRefs(attributesStore);
 const reportsStore = useReportsStore();
 const correlationsStore = useCorrelationsStore();
 const { correlated_events } = storeToRefs(correlationsStore);
@@ -82,6 +86,7 @@ onMounted(() => {
   createOrEditReportModal.value = new Modal(
     document.getElementById(`createOrEditReportModal_${props.event_uuid}`),
   );
+  refreshStandaloneAttributeCount();
 });
 
 /**
@@ -129,9 +134,49 @@ function selectTab(id) {
   );
 }
 
+/**
+ * Attributes that do not belong to an object.
+ *
+ * `event.attribute_count` counts every attribute on the event, those inside
+ * objects included — but the Attributes tab lists only the standalone ones
+ * (`GET /attributes/` adds `must_not: exists: object_uuid` when no object is
+ * given). Showing the all-inclusive total on that tab promises rows the tab
+ * will not show: an event with 9 attributes across 3 objects can open the tab
+ * and find 2. Object-owned attributes are reachable under Objects, which has
+ * its own count.
+ *
+ * Fetched rather than derived, because the panel is mounted lazily and the
+ * badge has to be right before anyone opens the tab.
+ */
+const standaloneAttributeCount = ref(null);
+
+async function refreshStandaloneAttributeCount() {
+  if (!props.event_uuid) return;
+  try {
+    const page = await fetchWrapper.get(
+      `${import.meta.env.VITE_API_URL}/attributes/?` +
+        new URLSearchParams({ event_uuid: props.event_uuid, size: 1 }),
+    );
+    standaloneAttributeCount.value = page?.total ?? null;
+  } catch {
+    // Fall back to the event total rather than showing an empty badge.
+    standaloneAttributeCount.value = null;
+  }
+}
+
+// Once the tab has been opened, its own page total is the same number and is
+// already kept current through creates, deletes and edits -- AttributesIndex is
+// the only writer of this store -- so track it rather than re-fetching.
+watch(
+  () => attributePage.value?.total,
+  (total) => {
+    if (typeof total === "number") standaloneAttributeCount.value = total;
+  },
+);
+
 function tabCount(id) {
   if (id === "attributes") {
-    return event.value.attribute_count;
+    return standaloneAttributeCount.value ?? event.value.attribute_count;
   }
 
   if (id === "objects") {
@@ -187,10 +232,13 @@ function handleEventDeleted() {
 
 function handleObjectCreated() {
   event.value.object_count += 1;
+  // Attributes just moved into the new object, so they leave the tab.
+  refreshStandaloneAttributeCount();
 }
 
 function handleObjectDeleted() {
   event.value.object_count -= 1;
+  refreshStandaloneAttributeCount();
 }
 
 function togglePublished() {
@@ -484,6 +532,7 @@ div.row h3 {
           :event_uuid="event.uuid"
           :page_size="10"
           @object-created="handleObjectCreated"
+          @attribute-created="refreshStandaloneAttributeCount"
         />
       </div>
 

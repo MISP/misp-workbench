@@ -31,11 +31,14 @@ Copy `.env.dev.dist` to `.env.dev` and set required secrets before first run.
 ### Backend (run inside the `api` container)
 
 ```bash
-# Run all tests
-docker compose exec api poetry run pytest
+# Run all tests. ENVIRONMENT=test is required: the suite DELETES every row in
+# the database and every document in the OpenSearch indices it points at, and
+# a guard in ApiTester refuses to run without it.
+docker compose exec -e ENVIRONMENT=test api poetry run pytest
 
-# Run a single test file or test
-docker compose exec api poetry run pytest tests/path/to/test_file.py::test_name
+# Run a single test file or test (same caveat -- a single ApiTester-based file
+# wipes just as much as the whole suite)
+docker compose exec -e ENVIRONMENT=test api poetry run pytest tests/path/to/test_file.py::test_name
 
 # Apply migrations
 docker compose exec api poetry run alembic upgrade head
@@ -45,6 +48,12 @@ docker compose exec api poetry run alembic revision -m "description"
 
 # CLI admin tools
 docker compose exec api poetry run python -m app.cli --help
+
+# Seed a full walkthrough dataset for a live demo (additive; --reset removes
+# only its own rows). Covers what the screenshot suite stubs and so never
+# persists: servos, reactor scripts, analyst data, feeds, notebooks, plus
+# overlapping indicators that give the correlation engine something to find.
+docker compose exec api poetry run python -m app.cli seed-demo
 docker compose exec api poetry run python -m app.cli create-organisation <name>
 docker compose exec api poetry run python -m app.cli create-user <email> <password> --org-name <org_name> --role-id <role_id>
 
