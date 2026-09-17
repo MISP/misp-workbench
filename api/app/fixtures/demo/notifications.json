@@ -1,0 +1,77 @@
+[
+  {
+    "type": "attribute.correlation.created",
+    "entity_type": "attribute",
+    "offset_minutes": 6,
+    "read": false,
+    "payload": {
+      "attribute_uuid": "d3110000-0002-4001-8000-000000000001",
+      "target_attribute_type": "ip-src",
+      "target_attribute_value": "185.220.101.42",
+      "event_uuid": "a1f30000-0001-4001-8000-000000000001"
+    }
+  },
+  {
+    "type": "hunt.result.changed",
+    "entity_type": "hunt",
+    "hunt": "IP and domain indicators",
+    "offset_minutes": 24,
+    "read": false,
+    "payload": { "total": 96, "previous_total": 14 }
+  },
+  {
+    "type": "attribute.sighting.created",
+    "entity_type": "attribute",
+    "offset_minutes": 95,
+    "read": false,
+    "payload": {
+      "attribute_uuid": "a1f30000-0002-4001-8000-000000000001",
+      "attribute_type": "ip-src",
+      "sighting_value": "185.220.101.42",
+      "organisation": "CIRCL",
+      "event_uuid": "a1f30000-0001-4001-8000-000000000001"
+    }
+  },
+  {
+    "type": "organisation.event.created",
+    "entity_type": "event",
+    "offset_minutes": 260,
+    "read": false,
+    "payload": {
+      "event_uuid": "d3110000-0001-4001-8000-000000000002",
+      "event_name": "Partner report — overlapping indicators from an unrelated submission",
+      "organisation_name": "MISP Workbench Docs"
+    }
+  },
+  {
+    "type": "event.attribute.created",
+    "entity_type": "attribute",
+    "offset_minutes": 420,
+    "read": true,
+    "payload": {
+      "attribute_uuid": "d3110000-0002-4001-8000-000000000003",
+      "attribute_type": "url",
+      "attribute_value": "https://Portal.Example-Cobalt.NET:8443/load/stage2",
+      "event_title": "Follow-up: same Cobalt Strike infrastructure seen against a second sector",
+      "event_uuid": "d3110000-0001-4001-8000-000000000001"
+    }
+  },
+  {
+    "type": "hunt.result.changed",
+    "entity_type": "hunt",
+    "hunt": "MITRE ATT&CK — Spearphishing Attachment (T1566.001)",
+    "offset_minutes": 1450,
+    "read": true,
+    "payload": { "total": 52, "previous_total": 8 }
+  },
+  {
+    "type": "event.updated",
+    "entity_type": "event",
+    "offset_minutes": 2880,
+    "read": true,
+    "payload": {
+      "event_uuid": "a1f30000-0001-4001-8000-000000000002",
+      "event_name": "WannaCry ransomware variant — recent resurgence"
+    }
+  }
+]

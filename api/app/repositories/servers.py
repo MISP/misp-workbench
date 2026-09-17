@@ -884,16 +884,14 @@ def push_event_by_uuid(
             }
 
     except Exception as ex:
-        logger.warning(
+        logger.exception(
             "Failed downloading the event {} from remote server {}".format(
                 event_uuid, server.id
-            ),
-            ex,
+            )
         )
         return {
-            "status": response.status_code,
-            "message": "Failed downloading the event",
-            "response": response.json(),
+            "status": 502,
+            "message": "Failed downloading the event: %s" % ex,
         }
 
     # if remote_event and remote_event.timestamp.timestamp() >= db_event.timestamp:

@@ -430,3 +430,41 @@ class TestDowngradeDistribution:
         # the ingest reads this back with int(), which a plain Enum member does
         # not support, so an enum must never be returned
         assert type(result) is int
+
+
+class TestPushEventByUuid:
+    """
+    The remote fetch handler used to read `response` in its own body, but
+    `response` is only bound by the call that raised, so a transport level
+    failure crashed the handler with UnboundLocalError instead of returning
+    the error dict.
+    """
+
+    EVENT_UUID = "572503da-c87f-4520-a9bc-8de08b9c92e5"
+
+    def test_unreachable_server_returns_an_error(self):
+        with patch(
+            "app.repositories.servers.events_repository.get_event_by_uuid"
+        ) as mock_get_event, patch(
+            "app.repositories.servers.get_remote_misp_connection"
+        ) as mock_misp_client:
+            mock_get_event.return_value = MagicMock(published=True)
+            remote_misp = MagicMock(
+                _prepare_request=MagicMock(
+                    side_effect=ConnectionError("Name or service not known")
+                )
+            )
+            mock_misp_client.return_value = remote_misp
+
+            result = servers_repository.push_event_by_uuid(
+                MagicMock(),
+                self.EVENT_UUID,
+                MagicMock(id=1, internal=False),
+                MagicMock(),
+                MagicMock(),
+            )
+
+        # the fetch was reached, so this is not an earlier early return
+        remote_misp._prepare_request.assert_called_once()
+        assert result["status"] == 502
+        assert "Name or service not known" in result["message"]

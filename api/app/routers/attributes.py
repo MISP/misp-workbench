@@ -135,7 +135,14 @@ def create_attribute(
         )
 
     attribute.event_uuid = event.uuid
-    return attributes_repository.create_attribute(db=db, attribute=attribute)
+    try:
+        return attributes_repository.create_attribute(db=db, attribute=attribute)
+    except attributes_repository.AttributeNotIndexedError as error:
+        # A servo dropped it. 201 would be a lie -- the attribute is not
+        # searchable and nothing downstream ran for it.
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(error)
+        )
 
 
 @router.patch("/attributes/{attribute_uuid}", response_model=attribute_schemas.Attribute)

@@ -1,0 +1,38 @@
+[
+  {
+    "name": "Tag high-confidence C2 addresses",
+    "description": "When an ip-src or ip-dst attribute arrives with to_ids set, tag its event so the SOC queue picks it up. Seeded paused: enabling it and adding an attribute is a better demo than finding it has already run, and an active script would otherwise tag existing events as a side effect of seeding.",
+    "entrypoint": "handle",
+    "status": "paused",
+    "timeout_seconds": 30,
+    "max_writes": 20,
+    "triggers": [
+      {
+        "resource_type": "attribute",
+        "action": "created",
+        "filters": {
+          "types": [
+            "ip-src",
+            "ip-dst"
+          ]
+        }
+      }
+    ],
+    "source": "def handle(ctx, payload, trigger):\n    \"\"\"Tag the parent event when a new IP indicator is marked to_ids.\"\"\"\n    if not payload.get(\"to_ids\"):\n        return\n\n    event_uuid = payload.get(\"event_uuid\")\n    if not event_uuid:\n        return\n\n    ctx.log(\"tagging\", event_uuid, \"for\", payload.get(\"value\"))\n    ctx.tag_event(event_uuid, \"workflow:state=\\\"triage\\\"\")\n"
+  },
+  {
+    "name": "Log newly published events",
+    "description": "A minimal read-only script: writes a line to the run log every time an event is published. Good first example because it cannot change anything.",
+    "entrypoint": "handle",
+    "status": "paused",
+    "timeout_seconds": 30,
+    "max_writes": 0,
+    "triggers": [
+      {
+        "resource_type": "event",
+        "action": "published"
+      }
+    ],
+    "source": "def handle(ctx, payload, trigger):\n    ctx.log(\n        \"event published\",\n        payload.get(\"event_uuid\"),\n        \"by\",\n        (payload.get(\"orgc\") or {}).get(\"name\"),\n    )\n"
+  }
+]

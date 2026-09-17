@@ -1,0 +1,27 @@
+{
+  "slug": "timestamp_normalization",
+  "name": "Timestamp normalization",
+  "summary": "Parse mixed first_seen formats into one date type",
+  "description": "Feeds write first_seen as an ISO string, a 'YYYY-MM-DD HH:MM:SS' string or a unix epoch. Parse all three into a single strict_date_time value in expanded.first_seen_normalized so date ranges work regardless of the source.",
+  "processors": [
+    {
+      "date": {
+        "field": "first_seen",
+        "target_field": "expanded.first_seen_normalized",
+        "formats": [
+          "ISO8601",
+          "yyyy-MM-dd HH:mm:ss",
+          "UNIX"
+        ],
+        "output_format": "strict_date_time",
+        "if": "ctx.first_seen != null",
+        "ignore_failure": true
+      }
+    }
+  ],
+  "sample_doc": {
+    "type": "ip-src",
+    "value": "1.2.3.4",
+    "first_seen": "1767322800"
+  }
+}
