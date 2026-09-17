@@ -160,6 +160,7 @@ function selectTab(id) {
 function tabCount(id) {
   if (id === "servos")
     return servos.value?.total ?? servos.value?.items?.length;
+  if (id === "backfill") return runs.value?.length || null;
   return pipelines.value ? systemPipelines.value.length : null;
 }
 
@@ -216,7 +217,7 @@ onMounted(refresh);
 
   <div class="tab-panels border border-top-0 rounded-bottom p-3">
     <!-- Custom servos -->
-    <div v-show="activeTab === 'servos'">
+    <div v-show="activeTab === 'servos'" data-tab-panel="servos">
       <Spinner v-if="status.loading" />
       <div
         v-else-if="servos && servos.items && servos.items.length === 0"
@@ -340,7 +341,7 @@ onMounted(refresh);
     </div>
 
     <!-- System pipelines -->
-    <div v-show="activeTab === 'system'">
+    <div v-show="activeTab === 'system'" data-tab-panel="system">
       <p class="text-muted small">
         Shipped with misp-workbench and managed in the repository under
         <code>opensearch/pipelines/</code>. Read-only here — OpenSearch records
@@ -376,7 +377,7 @@ onMounted(refresh);
     </div>
 
     <!-- Backfill -->
-    <div v-show="activeTab === 'backfill'">
+    <div v-show="activeTab === 'backfill'" data-tab-panel="backfill">
       <div class="alert alert-warning d-flex gap-2 align-items-start py-2">
         <FontAwesomeIcon :icon="faTriangleExclamation" class="mt-1" />
         <div class="small">
@@ -406,7 +407,7 @@ onMounted(refresh);
               @keyup.enter="previewBackfill"
             />
             <button
-              class="btn btn-outline-secondary"
+              class="btn btn-outline-warning"
               :disabled="previewing"
               @click="previewBackfill"
             >

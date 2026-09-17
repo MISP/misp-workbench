@@ -9,6 +9,8 @@ import {
   TEMPLATES,
   SIMULATE_RESPONSE,
   SERVO_ERRORS,
+  BACKFILL_PREVIEW,
+  SERVO_RUNS,
 } from "./servos-fixtures";
 
 const FEATURE = "tech-lab/transformation-servos";
@@ -41,6 +43,32 @@ async function stubServoRoutes(page: Page) {
         status: 200,
         contentType: "application/json",
         body: JSON.stringify(FINAL_PIPELINE_DETAIL),
+      });
+    },
+  );
+
+  // GET /tech-lab/servos/backfill/preview
+  await page.route(
+    new RegExp(`:${API_PORT}/tech-lab/servos/backfill/preview`),
+    (route) => {
+      if (route.request().method() !== "GET") return route.fallback();
+      return route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(BACKFILL_PREVIEW),
+      });
+    },
+  );
+
+  // GET /tech-lab/servos/runs
+  await page.route(
+    new RegExp(`:${API_PORT}/tech-lab/servos/runs$`),
+    (route) => {
+      if (route.request().method() !== "GET") return route.fallback();
+      return route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(SERVO_RUNS),
       });
     },
   );
@@ -120,7 +148,9 @@ test.describe("Transformation servos screenshots", () => {
       page.getByRole("heading", { level: 4, name: "Transformation Servos" }),
     ).toBeVisible();
     // The custom servos tab is the default landing tab.
-    await expect(page.locator("table tbody tr")).toHaveCount(2);
+    await expect(
+      page.locator('[data-tab-panel="servos"] table tbody tr'),
+    ).toHaveCount(2);
     await pinForCapture(page);
 
     await capture(
@@ -157,7 +187,41 @@ test.describe("Transformation servos screenshots", () => {
     );
   });
 
-  test("3 — servo editor with a dry run", async ({ page }) => {
+  test("3 — backfill tab", async ({ page }) => {
+    await applyTheme(page);
+    await stubServoRoutes(page);
+    await page.setViewportSize({ width: 1600, height: 1100 });
+    await page.goto("/tech-lab/servos?tab=backfill");
+
+    await expect(page.getByRole("button", { name: /Backfill/ })).toBeVisible();
+
+    // Fill the filter and preview it, so the capture shows the count and the
+    // servo list an operator sees before confirming rather than an empty form.
+    await page.locator("input.font-monospace").fill("type:url");
+    await page.getByRole("button", { name: "check" }).click();
+    await expect(page.getByText(/attributes would be rewritten/)).toBeVisible({
+      timeout: 10_000,
+    });
+    // Run history: one running, one success, one failed.
+    await expect(
+      page.locator('[data-tab-panel="backfill"] table tbody tr'),
+    ).toHaveCount(3);
+    // The tab badge counts runs, not pipelines -- it silently showed the
+    // system-pipeline count until this pinned it.
+    await expect(
+      page.getByRole("button", { name: /Backfill/ }).locator(".badge"),
+    ).toHaveText("3");
+    await pinForCapture(page);
+
+    await capture(
+      page,
+      FEATURE,
+      "misp-workbench-3_tech-lab_transformation-servos_backfill",
+      { fullPage: true },
+    );
+  });
+
+  test("4 — servo editor with a dry run", async ({ page }) => {
     await applyTheme(page);
     await stubServoRoutes(page);
     // The editor is two dense columns: form + JSON editor beside the dry-run
@@ -181,12 +245,12 @@ test.describe("Transformation servos screenshots", () => {
     await capture(
       page,
       FEATURE,
-      "misp-workbench-3_tech-lab_transformation-servos_editor",
+      "misp-workbench-4_tech-lab_transformation-servos_editor",
       { fullPage: true },
     );
   });
 
-  test("4 — servo detail", async ({ page }) => {
+  test("5 — servo detail", async ({ page }) => {
     await applyTheme(page);
     await stubServoRoutes(page);
     await page.setViewportSize({ width: 1600, height: 1200 });
@@ -199,7 +263,7 @@ test.describe("Transformation servos screenshots", () => {
     await capture(
       page,
       FEATURE,
-      "misp-workbench-4_tech-lab_transformation-servos_view",
+      "misp-workbench-5_tech-lab_transformation-servos_view",
       { fullPage: true },
     );
   });

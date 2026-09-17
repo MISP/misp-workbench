@@ -134,8 +134,8 @@ Ordering matters: epoch seconds are tried last, because a bare digit string woul
 
 The editor pairs the processor JSON with a dry run against a sample attribute document:
 
-<img src="../../../screenshots/tech-lab/transformation-servos/misp-workbench-3_tech-lab_transformation-servos_editor.png#only-light">
-<img src="../../../screenshots/tech-lab/transformation-servos/misp-workbench-3_tech-lab_transformation-servos_editor-dark.png#only-dark">
+<img src="../../../screenshots/tech-lab/transformation-servos/misp-workbench-4_tech-lab_transformation-servos_editor.png#only-light">
+<img src="../../../screenshots/tech-lab/transformation-servos/misp-workbench-4_tech-lab_transformation-servos_editor-dark.png#only-dark">
 
 
 ## Worked example
@@ -182,8 +182,8 @@ Indexing `http://EVIL.com:8080/path?q=1` then produces:
 
 A saved servo shows its compiled pipeline name, sync state and processors:
 
-<img src="../../../screenshots/tech-lab/transformation-servos/misp-workbench-4_tech-lab_transformation-servos_view.png#only-light">
-<img src="../../../screenshots/tech-lab/transformation-servos/misp-workbench-4_tech-lab_transformation-servos_view-dark.png#only-dark">
+<img src="../../../screenshots/tech-lab/transformation-servos/misp-workbench-5_tech-lab_transformation-servos_view.png#only-light">
+<img src="../../../screenshots/tech-lab/transformation-servos/misp-workbench-5_tech-lab_transformation-servos_view-dark.png#only-dark">
 
 
 !!! tip "Guard every processor"
@@ -232,6 +232,9 @@ chain over just the documents that servo failed on.
 Press **check** before running. The preview reports how many attributes match
 and which servos would run, and the confirm dialog repeats both — a backfill
 rewrites live documents and cannot be undone.
+
+<img src="../../../screenshots/tech-lab/transformation-servos/misp-workbench-3_tech-lab_transformation-servos_backfill.png#only-light">
+<img src="../../../screenshots/tech-lab/transformation-servos/misp-workbench-3_tech-lab_transformation-servos_backfill-dark.png#only-dark">
 
 ### Errors do not accumulate
 
