@@ -16,6 +16,7 @@ import {
   faTriangleExclamation,
   faTrashCan,
   faClockRotateLeft,
+  faUpRightFromSquare,
 } from "@fortawesome/free-solid-svg-icons";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
@@ -98,6 +99,16 @@ async function previewBackfill() {
     previewing.value = false;
   }
 }
+
+// The count answers "how many"; this answers "which" -- the same filter run
+// through Explore, so the documents can be inspected before they are rewritten.
+const exploreLink = computed(() => {
+  if (!backfillPreview.value) return null;
+  return {
+    path: "/explore",
+    query: { q: backfillPreview.value.filter_query || "*" },
+  };
+});
 
 async function runBackfill() {
   const scope = backfillFilter.value
@@ -437,6 +448,15 @@ onMounted(refresh);
               class="text-muted"
               >no servos (GeoIP only)</span
             >.
+            <RouterLink
+              v-if="backfillPreview.matches"
+              :to="exploreLink"
+              target="_blank"
+              class="ms-1 text-nowrap"
+            >
+              <FontAwesomeIcon :icon="faUpRightFromSquare" class="me-1" />
+              see them in Explore
+            </RouterLink>
           </div>
           <p v-else class="text-muted small fst-italic mb-0">
             Check a filter to see how many attributes it matches.

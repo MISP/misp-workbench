@@ -233,6 +233,10 @@ Press **check** before running. The preview reports how many attributes match
 and which servos would run, and the confirm dialog repeats both — a backfill
 rewrites live documents and cannot be undone.
 
+The preview answers *how many*; **see them in Explore** answers *which*. It
+opens [Explore](../explore.md) in a new tab with the same filter, so the
+documents can be inspected before they are rewritten.
+
 <img src="../../../screenshots/tech-lab/transformation-servos/misp-workbench-3_tech-lab_transformation-servos_backfill.png#only-light">
 <img src="../../../screenshots/tech-lab/transformation-servos/misp-workbench-3_tech-lab_transformation-servos_backfill-dark.png#only-dark">
 

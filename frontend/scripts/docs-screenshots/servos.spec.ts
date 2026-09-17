@@ -21,6 +21,27 @@ const FEATURE = "tech-lab/transformation-servos";
 const API_PORT = 8080;
 
 async function stubServoRoutes(page: Page) {
+  // The nav's unread-notifications badge otherwise reflects whatever the
+  // instance happens to hold, which leaked a demo-seed count into these
+  // captures once already. Pin it to zero so the page chrome is reproducible.
+  await page.route(
+    new RegExp(`:${API_PORT}/notifications\\?read=false`),
+    (route) => {
+      if (route.request().method() !== "GET") return route.fallback();
+      return route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          items: [],
+          total: 0,
+          page: 1,
+          size: 1,
+          pages: 0,
+        }),
+      });
+    },
+  );
+
   // GET /tech-lab/servos/pipelines
   await page.route(
     new RegExp(`:${API_PORT}/tech-lab/servos/pipelines$`),
@@ -202,6 +223,13 @@ test.describe("Transformation servos screenshots", () => {
     await expect(page.getByText(/attributes would be rewritten/)).toBeVisible({
       timeout: 10_000,
     });
+    // The count says how many attributes would be rewritten; the link says
+    // which, by handing the same filter to Explore.
+    await expect(
+      page
+        .locator('[data-tab-panel="backfill"]')
+        .getByRole("link", { name: /see them in Explore/ }),
+    ).toHaveAttribute("href", "/explore?q=type:url");
     // Run history: one running, one success, one failed.
     await expect(
       page.locator('[data-tab-panel="backfill"] table tbody tr'),
