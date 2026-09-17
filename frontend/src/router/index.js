@@ -59,6 +59,10 @@ import {
   AddReactorScript,
   EditReactorScript,
   ViewReactorScript,
+  IndexServos,
+  AddServo,
+  EditServo,
+  ViewServo,
   NotebooksWorkspace,
 } from "@/views";
 
@@ -145,6 +149,18 @@ export const router = createRouter({
     {
       path: "/tech-lab/reactor/:id",
       component: ViewReactorScript,
+      props: true,
+    },
+    { path: "/tech-lab/servos", component: IndexServos },
+    { path: "/tech-lab/servos/add", component: AddServo },
+    {
+      path: "/tech-lab/servos/update/:id",
+      component: EditServo,
+      props: true,
+    },
+    {
+      path: "/tech-lab/servos/:id",
+      component: ViewServo,
       props: true,
     },
     { path: "/tech-lab/notebooks", component: NotebooksWorkspace },

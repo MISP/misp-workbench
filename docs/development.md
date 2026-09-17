@@ -18,10 +18,10 @@
 
 ```bash
 # All tests
-docker compose exec api poetry run pytest
+docker compose exec -e ENVIRONMENT=test api poetry run pytest
 
 # Single file or test
-docker compose exec api poetry run pytest tests/path/to/test_file.py::TestClass::test_name
+docker compose exec -e ENVIRONMENT=test api poetry run pytest tests/path/to/test_file.py::TestClass::test_name
 ```
 
 ### Database migrations
@@ -162,3 +162,154 @@ GitHub Actions runs on every pull request (`.github/workflows/api_test.yml`):
 1. Start PostgreSQL, OpenSearch, Redis
 2. Run Alembic migrations
 3. Run `pytest` with coverage reporting to Codecov
+
+## Seeding a demo instance
+
+`seed-demo` fills an empty instance with a coherent dataset you can walk
+through live, without hand-building events mid-presentation:
+
+```bash
+docker compose exec api poetry run python -m app.cli seed-demo
+```
+
+It layers on top of `seed-docs-fixtures` (the events, attributes, objects,
+hunts and audit rows behind the documentation screenshots) and adds the parts
+the screenshot suite fakes with Playwright route stubs, which therefore never
+reach the database:
+
+| Seeded | What you get |
+|---|---|
+| Events + attributes | Two extra events, 22 tagged attributes whose indicators deliberately overlap the docs fixtures |
+| Correlations | Generated from that overlap, so the correlation views and notifications populate themselves |
+| Servos | The four shipped templates, two of them enabled |
+| Reactor scripts | One active, one paused |
+| Analyst data | Notes, opinions and a relationship across the fixture events and attributes |
+| Event report | A Markdown incident write-up on the Emotet event |
+| Sightings | 107 spread over 45 days, with sensor, organisation and verdict |
+| Feeds | Three well-known OSINT feed definitions, **all disabled** |
+| Servers | Two MISP sync connections on unresolvable `.invalid` hosts |
+| Notebooks | The Tech Lab library notebooks from `api/lab_library/` |
+| Hunt run history | ~90 days of daily runs per hunt, so the heatmap and sparkline are populated |
+| Hunt results | Each hunt is executed once, so the results table is populated too |
+| Notifications | One of every kind the notification list knows how to render |
+
+### Hunt history and the 90-row limit
+
+`hunts_repository.get_hunt_history` returns the **oldest** 90 rows
+(`order_by(run_at.asc()).limit(90)`) and caches them in Redis. So a hunt with
+more than 90 stored runs draws a heatmap of the wrong end of the window — the
+recent months come out blank.
+
+The fixtures therefore seed at most one run per day. `seed-demo` warns if a
+fixture would exceed the limit, and clears each hunt's `hunt:history:*` and
+`hunt:results:*` Redis keys as it reseeds, so a refreshed demo is not served
+the previous seed from cache.
+
+!!! warning "Do not seed the demo before capturing docs screenshots"
+    `seed-demo` is additive, and `seed-docs-fixtures` does not remove events it
+    did not create — so demo events stay in the index and turn up in the
+    documentation captures. Regenerate screenshots on an instance that has only
+    ever had `seed-docs-fixtures` run against it.
+
+    A related side effect worth knowing: seeding attributes fires the seeded
+    reactor script, so demo events pick up a `workflow:state="triage"` tag on
+    their own. That is the reactor genuinely working, not stray fixture data.
+
+### Tags are what the OpenSearch dashboard reads
+
+The shipped dashboard has panels for MITRE ATT&CK techniques, malware families,
+tools, threat actors, targeted sectors and kill-chain phases. Every one of them
+aggregates `tags.name.keyword` on `misp-attributes` filtered by a prefix regex,
+and reads nothing else — so the panels stay empty unless attributes carry tags
+in exactly those forms:
+
+| Panel | Tag form |
+|---|---|
+| top MITRE ATT&CK techniques | `misp-galaxy:mitre-attack-pattern="…"` |
+| top malware families | `misp-galaxy:(malpedia\|mitre-malware\|ransomware\|banker\|stealer\|rat\|backdoor\|android\|botnet)="…"` |
+| top threat actors | `misp-galaxy:threat-actor="…"` |
+| top tools | `misp-galaxy:(tool\|mitre-tool)="…"` |
+| targeted sectors | `misp-galaxy:sector="…"` |
+| kill-chain phases | `kill-chain:…` |
+| TLP distribution | `tlp:clear` / `white` / `green` / `amber` / `amber+strict` / `red` |
+
+The galaxy values in the fixture are real cluster values, checked against the
+loaded galaxies rather than invented, so the tags resolve in the UI as well as
+counting on the dashboard.
+
+`create_attribute` always writes an empty tag list, so the seeder applies tags
+after creating each attribute.
+
+Sightings populate four more panels and live in their own index; they are
+written directly with a pinned id because `create_sightings` dispatches a
+notification task per sighting, which for a hundred rows would mean a hundred
+notifications.
+
+### Results come from a real run
+
+Synthetic history gives the chart its shape, but the results table reads
+`hunt:results:<id>` in Redis, which only an actual run writes. So `seed-demo`
+executes each hunt once after seeding the history — the newest point on the
+chart is a real run with real hits behind it, rather than a populated chart
+sitting above an empty table.
+
+Two consequences worth knowing:
+
+- Running a hunt `rpush`es onto the history key the seeder just cleared, which
+  would leave a cache holding that single run. The seeder rebuilds the list
+  from the newest rows afterwards.
+- The `cpe` and `rulezet` hunts reach external services. Those are allowed to
+  fail and are reported as *unavailable*, so the demo still comes up on a
+  machine with no outbound network.
+
+Run counts come out lower than `days` where `quiet_weekends` is set — a hunt
+that matches nothing at the weekend reads as a real schedule rather than a
+flat block of colour. The shape (cadence, baseline, jitter, spikes) is
+described in `hunt_history.json` and expanded by the seeder from a fixed RNG
+seed, so the heatmap is identical on every machine and every run — a demo that
+looks different each time is a demo you cannot rehearse.
+
+The overlapping indicators are the point: a demo of correlations, of the event
+graph, or of a servo transforming a value needs data that actually relates to
+other data, which is exactly what a screenshot stub cannot give you.
+
+### It is additive
+
+Everything is keyed by a pinned UUID or by an exact name, so re-running
+refreshes the demo in place and leaves the rest of the instance alone. Nothing
+is deleted that the seeder did not create.
+
+`--reset` removes the demo's own rows before re-creating them — matched by
+pinned UUID or exact fixture name, so a servo, feed or reactor script you made
+by hand survives even if it covers the same subject.
+
+| Flag | Effect |
+|---|---|
+| `--reset` | Delete and re-create the demo's own rows |
+| `--skip-docs` | Do not run `seed-docs-fixtures` first |
+| `--skip-correlations` | Do not run the correlation engine afterwards |
+| `--fixtures-dir` | Read demo fixtures from elsewhere |
+| `--notebooks-dir` | Read library notebooks from elsewhere |
+
+Correlation generation here calls `run_correlations` directly, which writes
+with `op_type=create` and never deletes — unlike the scheduled
+`generate_correlations` task, which wipes the correlation index first.
+
+Servers never connect anywhere. The two seeded sync connections point at
+hostnames on the reserved `.invalid` TLD, which by RFC 2606 can never resolve,
+so pressing **Pull** fails at DNS with "Remote MISP instance not reachable"
+instead of reaching somebody's real server. The auth keys are placeholders that
+say so in the value itself — there is no credential in the fixture. They carry
+pull/push flags and tag-based rules so the list shows a realistic
+configuration; nothing syncs on its own, because a scheduled pull is a redbeat
+entry a user creates rather than a static schedule.
+
+Feeds are seeded **disabled**. A demo should choose when to pull, and a fetch
+reaches the network and brings back whatever is live that day, which is the
+opposite of what fixture data is for.
+
+Log in with `admin@admin.test` / `admin`.
+
+Fixtures live in `api/app/fixtures/demo/`. Servos reference the shipped
+templates by slug rather than copying their processors, so editing a template
+reaches the demo automatically instead of leaving two copies to drift apart.

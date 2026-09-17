@@ -625,7 +625,10 @@ async function runHunt() {
           <!-- Event results -->
           <div
             v-else-if="
-              hunt.index_target === 'events' && displayResult.hits.length
+              (hunt.hunt_type === 'opensearch' ||
+                hunt.hunt_type === 'mitre-attack-pattern') &&
+              hunt.index_target === 'events' &&
+              displayResult.hits.length
             "
             class="table-responsive"
           >

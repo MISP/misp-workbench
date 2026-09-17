@@ -12149,6 +12149,531 @@
         }
       }
     },
+    "/tech-lab/servos/pipelines": {
+      "get": {
+        "tags": [
+          "Tech Lab / Servos"
+        ],
+        "summary": "List Pipelines",
+        "description": "Every ingest pipeline in the cluster: shipped system ones, servos, and\nanything a third party put there.",
+        "operationId": "list_pipelines_tech_lab_servos_pipelines_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/PipelineSummary"
+                  },
+                  "type": "array",
+                  "title": "Response List Pipelines Tech Lab Servos Pipelines Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "servos:read"
+            ]
+          }
+        ]
+      }
+    },
+    "/tech-lab/servos/pipelines/{name}": {
+      "get": {
+        "tags": [
+          "Tech Lab / Servos"
+        ],
+        "summary": "Get Pipeline",
+        "operationId": "get_pipeline_tech_lab_servos_pipelines__name__get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "servos:read"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Name"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PipelineDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tech-lab/servos/templates": {
+      "get": {
+        "tags": [
+          "Tech Lab / Servos"
+        ],
+        "summary": "List Templates",
+        "description": "Starter processor sets for the common transformations.",
+        "operationId": "list_templates_tech_lab_servos_templates_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ServoTemplate"
+                  },
+                  "type": "array",
+                  "title": "Response List Templates Tech Lab Servos Templates Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "servos:read"
+            ]
+          }
+        ]
+      }
+    },
+    "/tech-lab/servos/errors": {
+      "get": {
+        "tags": [
+          "Tech Lab / Servos"
+        ],
+        "summary": "Get Servo Errors",
+        "description": "Failures recorded by each servo's on_failure handler, keyed by pipeline\nname. A servo that throws does not stop ingestion, so this is the only\nplace those failures surface.",
+        "operationId": "get_servo_errors_tech_lab_servos_errors_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "$ref": "#/components/schemas/ServoErrors"
+                  },
+                  "type": "object",
+                  "title": "Response Get Servo Errors Tech Lab Servos Errors Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "servos:read"
+            ]
+          }
+        ]
+      }
+    },
+    "/tech-lab/servos/simulate": {
+      "post": {
+        "tags": [
+          "Tech Lab / Servos"
+        ],
+        "summary": "Simulate",
+        "description": "Run processors against sample documents without persisting anything.",
+        "operationId": "simulate_tech_lab_servos_simulate_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ServoSimulateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServoSimulateResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "servos:create"
+            ]
+          }
+        ]
+      }
+    },
+    "/tech-lab/servos/": {
+      "get": {
+        "tags": [
+          "Tech Lab / Servos"
+        ],
+        "summary": "List Servos",
+        "operationId": "list_servos_tech_lab_servos__get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "servos:read"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "filter",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Filter"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Page number",
+              "default": 1,
+              "title": "Page"
+            },
+            "description": "Page number"
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "Page size",
+              "default": 50,
+              "title": "Size"
+            },
+            "description": "Page size"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_Servo_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Tech Lab / Servos"
+        ],
+        "summary": "Create Servo",
+        "operationId": "create_servo_tech_lab_servos__post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "servos:create"
+            ]
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ServoCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Servo"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tech-lab/servos/reorder": {
+      "post": {
+        "tags": [
+          "Tech Lab / Servos"
+        ],
+        "summary": "Reorder Servos",
+        "description": "Set the order servos run in. Order matters as soon as one servo reads a\nfield another produced.",
+        "operationId": "reorder_servos_tech_lab_servos_reorder_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ServoReorder"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/Servo"
+                  },
+                  "type": "array",
+                  "title": "Response Reorder Servos Tech Lab Servos Reorder Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "servos:update"
+            ]
+          }
+        ]
+      }
+    },
+    "/tech-lab/servos/{servo_id}": {
+      "get": {
+        "tags": [
+          "Tech Lab / Servos"
+        ],
+        "summary": "Get Servo",
+        "operationId": "get_servo_tech_lab_servos__servo_id__get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "servos:read"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "servo_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Servo Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Servo"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Tech Lab / Servos"
+        ],
+        "summary": "Update Servo",
+        "operationId": "update_servo_tech_lab_servos__servo_id__patch",
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "servos:update"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "servo_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Servo Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ServoUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Servo"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Tech Lab / Servos"
+        ],
+        "summary": "Delete Servo",
+        "operationId": "delete_servo_tech_lab_servos__servo_id__delete",
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "servos:delete"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "servo_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Servo Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/mcp/config": {
       "get": {
         "tags": [
@@ -19276,6 +19801,250 @@
         ],
         "title": "Page[ReactorScript]"
       },
+      "Page_Servo_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/Servo"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total"
+          },
+          "page": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Page"
+          },
+          "size": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Size"
+          },
+          "pages": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pages"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "page",
+          "size"
+        ],
+        "title": "Page[Servo]"
+      },
+      "PipelineDetail": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "system",
+              "servo",
+              "external"
+            ],
+            "title": "Kind"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "processor_types": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Processor Types"
+          },
+          "processor_count": {
+            "type": "integer",
+            "title": "Processor Count",
+            "default": 0
+          },
+          "read_only": {
+            "type": "boolean",
+            "title": "Read Only",
+            "default": true
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          },
+          "servo_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Servo Id"
+          },
+          "enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Enabled"
+          },
+          "definition": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Definition"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "kind",
+          "definition"
+        ],
+        "title": "PipelineDetail"
+      },
+      "PipelineSummary": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "system",
+              "servo",
+              "external"
+            ],
+            "title": "Kind"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "processor_types": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Processor Types"
+          },
+          "processor_count": {
+            "type": "integer",
+            "title": "Processor Count",
+            "default": 0
+          },
+          "read_only": {
+            "type": "boolean",
+            "title": "Read Only",
+            "default": true
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          },
+          "servo_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Servo Id"
+          },
+          "enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Enabled"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "kind"
+        ],
+        "title": "PipelineSummary",
+        "description": "One entry of the cluster-wide ingest pipeline inventory."
+      },
       "PreviewPullRequest": {
         "properties": {
           "url": {
@@ -20679,6 +21448,401 @@
         },
         "type": "object",
         "title": "ServerUpdate"
+      },
+      "Servo": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled",
+            "default": true
+          },
+          "position": {
+            "type": "integer",
+            "title": "Position",
+            "default": 0
+          },
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "user_id": {
+            "type": "integer",
+            "title": "User Id"
+          },
+          "slug": {
+            "type": "string",
+            "title": "Slug"
+          },
+          "processors": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Processors"
+          },
+          "target_index": {
+            "type": "string",
+            "title": "Target Index"
+          },
+          "drops_documents": {
+            "type": "boolean",
+            "title": "Drops Documents",
+            "default": false
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          },
+          "last_synced_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Synced At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "id",
+          "user_id",
+          "slug",
+          "processors",
+          "target_index",
+          "created_at"
+        ],
+        "title": "Servo"
+      },
+      "ServoCreate": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled",
+            "default": true
+          },
+          "position": {
+            "type": "integer",
+            "title": "Position",
+            "default": 0
+          },
+          "slug": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Slug"
+          },
+          "processors": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Processors"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "slug",
+          "processors"
+        ],
+        "title": "ServoCreate"
+      },
+      "ServoErrorMessage": {
+        "properties": {
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "count": {
+            "type": "integer",
+            "title": "Count"
+          }
+        },
+        "type": "object",
+        "required": [
+          "message",
+          "count"
+        ],
+        "title": "ServoErrorMessage"
+      },
+      "ServoErrors": {
+        "properties": {
+          "count": {
+            "type": "integer",
+            "title": "Count"
+          },
+          "messages": {
+            "items": {
+              "$ref": "#/components/schemas/ServoErrorMessage"
+            },
+            "type": "array",
+            "title": "Messages"
+          }
+        },
+        "type": "object",
+        "required": [
+          "count"
+        ],
+        "title": "ServoErrors"
+      },
+      "ServoReorder": {
+        "properties": {
+          "servo_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "minItems": 1,
+            "title": "Servo Ids"
+          }
+        },
+        "type": "object",
+        "required": [
+          "servo_ids"
+        ],
+        "title": "ServoReorder",
+        "description": "The servo ids in the order they should run."
+      },
+      "ServoSimulateRequest": {
+        "properties": {
+          "processors": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Processors"
+          },
+          "docs": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Docs"
+          },
+          "attribute_uuids": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Attribute Uuids"
+          }
+        },
+        "type": "object",
+        "required": [
+          "processors"
+        ],
+        "title": "ServoSimulateRequest"
+      },
+      "ServoSimulateResponse": {
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "title": "Ok"
+          },
+          "docs": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Docs"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ok"
+        ],
+        "title": "ServoSimulateResponse"
+      },
+      "ServoTemplate": {
+        "properties": {
+          "slug": {
+            "type": "string",
+            "title": "Slug"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "summary": {
+            "type": "string",
+            "title": "Summary"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "processors": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Processors"
+          },
+          "sample_doc": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Sample Doc"
+          }
+        },
+        "type": "object",
+        "required": [
+          "slug",
+          "name",
+          "summary",
+          "description",
+          "processors"
+        ],
+        "title": "ServoTemplate"
+      },
+      "ServoUpdate": {
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "processors": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Processors"
+          },
+          "enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Enabled"
+          },
+          "position": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Position"
+          }
+        },
+        "type": "object",
+        "title": "ServoUpdate"
       },
       "SharingGroup": {
         "properties": {

@@ -1,0 +1,47 @@
+[
+  {
+    "uuid": "d3110000-0001-4001-8000-000000000001",
+    "info": "Follow-up: same Cobalt Strike infrastructure seen against a second sector",
+    "date_offset_days": 5,
+    "threat_level": 1,
+    "analysis": 1,
+    "distribution": 0,
+    "published": true,
+    "tags": [
+      {
+        "name": "tlp:amber",
+        "colour": "#FFC000"
+      },
+      {
+        "name": "misp-galaxy:threat-actor=\"Turla Group\"",
+        "colour": "#0088cc",
+        "is_galaxy": true
+      },
+      {
+        "name": "misp-galaxy:mitre-attack-pattern=\"Spearphishing Attachment - T1566.001\"",
+        "colour": "#0088cc",
+        "is_galaxy": true
+      }
+    ]
+  },
+  {
+    "uuid": "d3110000-0001-4001-8000-000000000002",
+    "info": "Partner report \u2014 overlapping indicators from an unrelated submission",
+    "date_offset_days": 1,
+    "threat_level": 2,
+    "analysis": 0,
+    "distribution": 0,
+    "published": false,
+    "tags": [
+      {
+        "name": "tlp:green",
+        "colour": "#00A500"
+      },
+      {
+        "name": "misp-galaxy:mitre-attack-pattern=\"Spearphishing Attachment - T1566.001\"",
+        "colour": "#0088cc",
+        "is_galaxy": true
+      }
+    ]
+  }
+]

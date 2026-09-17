@@ -333,8 +333,14 @@ class TestBulkIngestDefersCorrelation:
 
     def _create_two_attributes(self):
         """Create attributes the way an ingest does, inside whatever context is active."""
-        with patch("app.repositories.attributes.get_opensearch_client"), \
-                patch("app.repositories.attributes.tasks"):
+        # create_attribute verifies the index response, so the client has to
+        # report a real create -- a bare MagicMock reads as a dropped document.
+        client = MagicMock()
+        client.index.return_value = {"result": "created"}
+
+        with patch(
+            "app.repositories.attributes.get_opensearch_client", return_value=client
+        ), patch("app.repositories.attributes.tasks"):
             for value in ("1.2.3.4", "5.6.7.8"):
                 attributes_repository.create_attribute(
                     MagicMock(),
