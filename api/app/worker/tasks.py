@@ -441,7 +441,6 @@ def fetch_feed_event(event_uuid: str, feed_id: int, user_id: int):
 def fetch_csv_feed(feed_id: int, user_id: int):
     logger.info("fetch csv feed id=%s job started", feed_id)
 
-    index = 0
     rows_parsed = 0
     attributes_created = 0
     failed_rows = 0
@@ -460,7 +459,7 @@ def fetch_csv_feed(feed_id: int, user_id: int):
             )
         rows = feeds_repository.parse_csv_feed_lines(db_feed.settings, lines)
 
-        for row in rows:
+        for index, row in enumerate(rows):
             if db_feed.settings["csvConfig"]["header"] and index == 0:
                 continue  # skip the first line if header is present
 
@@ -490,8 +489,6 @@ def fetch_csv_feed(feed_id: int, user_id: int):
             except Exception as e:
                 failed_rows += 1
                 logger.error("Error processing CSV feed row: %s", e)
-
-            index += 1
 
     events_repository.sync_event_counts(str(db_event.uuid))
 
