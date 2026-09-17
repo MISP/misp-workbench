@@ -4,6 +4,11 @@ services:
     ports:
       - "5432:5432"
   
+  redis:
+    # Loopback only: the broker must not be reachable from off-host.
+    ports:
+      - "127.0.0.1:6379:6379"
+  
   opensearch:
     environment:
       - cluster.name=opensearch-cluster
