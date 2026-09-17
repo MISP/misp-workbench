@@ -884,12 +884,19 @@ def preview_csv_feed(settings: dict = None, limit: int = 5):
             detail="Invalid input_source for CSV preview",
         )
 
-    preview_lines = [line for line in lines[:limit]]
+    has_header = csv_feed_has_header(settings["settings"])
+
+    # One extra line when there is a header, so the preview still shows `limit`
+    # data rows rather than spending one of them on the header.
+    preview_lines = lines[: limit + 1] if has_header else lines[:limit]
     parsed_preview_lines = parse_csv_feed_lines(settings["settings"], preview_lines)
 
+    # `rows` keeps the header: the feed wizard reads rows[0] to label the
+    # columns and slices it off itself. Only `preview` -- what would actually be
+    # imported -- skips it, the same way the ingestion task does.
     processed_preview = [
         process_csv_feed_row(row, settings["settings"])
-        for row in parsed_preview_lines
+        for row in (parsed_preview_lines[1:] if has_header else parsed_preview_lines)
     ]
 
     return {
@@ -897,6 +904,15 @@ def preview_csv_feed(settings: dict = None, limit: int = 5):
         "rows": parsed_preview_lines,
         "preview": processed_preview,
     }
+
+
+def csv_feed_has_header(settings: dict) -> bool:
+    """True when the CSV config marks the first parsed row as a header line.
+
+    Shared by the preview endpoint and the ingestion task so the two cannot
+    disagree about whether row 0 is data.
+    """
+    return bool(settings["csvConfig"].get("header", False))
 
 
 def parse_csv_feed_lines(settings, preview_lines):

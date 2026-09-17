@@ -80,3 +80,17 @@ class TestFetchCsvFeedTask:
             "0 rows failed."
         )
         assert process_row.call_count == 3
+
+    def test_a_missing_header_key_is_treated_as_no_header(self):
+        # a feed stored before the flag existed raised KeyError on the guard,
+        # which sits outside the per-row try/except and so killed the whole task
+        db_feed = _csv_feed(header=False)
+        del db_feed.settings["csvConfig"]["header"]
+
+        result, process_row = self._fetch(db_feed)
+
+        assert result["message"] == (
+            "CSV feed=csv-feed processed, 3 rows parsed, 3 attributes created, "
+            "0 rows failed."
+        )
+        assert process_row.call_count == 3

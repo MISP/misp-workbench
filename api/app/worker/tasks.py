@@ -458,9 +458,10 @@ def fetch_csv_feed(feed_id: int, user_id: int):
                 db_feed.url, extra_headers=db_feed.headers
             )
         rows = feeds_repository.parse_csv_feed_lines(db_feed.settings, lines)
+        has_header = feeds_repository.csv_feed_has_header(db_feed.settings)
 
         for index, row in enumerate(rows):
-            if db_feed.settings["csvConfig"]["header"] and index == 0:
+            if has_header and index == 0:
                 continue  # skip the first line if header is present
 
             try:
