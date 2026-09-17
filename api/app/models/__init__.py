@@ -8,7 +8,7 @@ from app.models.lab import LabExecution, LabFolder, LabNotebook  # noqa
 from app.models.reactor import ReactorRun, ReactorScript  # noqa
 from app.models.role import Role  # noqa
 from app.models.server import Server  # noqa
-from app.models.servo import Servo  # noqa
+from app.models.servo import Servo, ServoRun  # noqa
 from app.models.sharing_groups import (  # noqa
     SharingGroup,
     SharingGroupOrganisation,

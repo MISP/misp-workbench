@@ -1,7 +1,8 @@
 """CRUD for Tech Lab transformation servos + the cluster pipeline inventory."""
 
+import json
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from fastapi_pagination.ext.sqlalchemy import paginate
@@ -13,6 +14,10 @@ from app.schemas import servo as servo_schemas
 from app.services.tech_lab.servos import chain
 
 logger = logging.getLogger(__name__)
+
+# How long a run may sit unclaimed before it is called a failure rather
+# than left looking like it is about to start.
+QUEUED_RUN_TIMEOUT = timedelta(minutes=5)
 
 
 def get_servos(db: Session, params: Optional[servo_schemas.ServoQueryParams] = None):
@@ -124,6 +129,92 @@ def reorder_servos(db: Session, servo_ids: list[int]) -> list[servo_models.Servo
     db.commit()
     chain.sync(db)
     return [servos[servo_id] for servo_id in servo_ids]
+
+
+def create_run(
+    db: Session, filter_query: Optional[str], user_id: Optional[int]
+) -> servo_models.ServoRun:
+    db_run = servo_models.ServoRun(
+        user_id=user_id,
+        filter_query=(filter_query or "").strip() or None,
+        status="queued",
+        created_at=datetime.now(timezone.utc),
+    )
+    db.add(db_run)
+    db.commit()
+    db.refresh(db_run)
+    return db_run
+
+
+def get_run(db: Session, run_id: int) -> Optional[servo_models.ServoRun]:
+    return db.get(servo_models.ServoRun, run_id)
+
+
+def refresh_run(db: Session, db_run: servo_models.ServoRun) -> servo_models.ServoRun:
+    """Reconcile one run against OpenSearch.
+
+    The worker polls too, but it can be restarted, time out, or lose the queue,
+    and a run left saying "running" for ever is worse than a slightly stale one.
+    Reading a run therefore re-checks it, which makes OpenSearch the source of
+    truth and the worker's polling an optimisation.
+    """
+    if db_run.status not in ("queued", "running"):
+        return db_run
+
+    if not db_run.opensearch_task_id:
+        # Queued but never started: the worker is down, or was up but did not
+        # yet know the task. Without this a run sits at "queued" for ever and
+        # the operator cannot tell a slow backfill from one that will never
+        # happen.
+        queued_for = datetime.now(timezone.utc) - db_run.created_at
+        if queued_for > QUEUED_RUN_TIMEOUT:
+            db_run.status = "failed"
+            db_run.error = (
+                "No worker picked this run up within "
+                f"{int(QUEUED_RUN_TIMEOUT.total_seconds() // 60)} minutes. "
+                "Check that the Celery worker is running."
+            )
+            db_run.finished_at = datetime.now(timezone.utc)
+            db.commit()
+            db.refresh(db_run)
+        return db_run
+
+    status = chain.backfill_status(db_run.opensearch_task_id)
+    db_run.total = status["total"]
+    db_run.updated = status["updated"]
+    db_run.failure_count = len(status["failures"])
+
+    if status["completed"]:
+        db_run.finished_at = datetime.now(timezone.utc)
+        if status["error"]:
+            db_run.status = "failed"
+            db_run.error = status["error"]
+        elif status["failures"]:
+            # Partial success still counts as failed: some documents were not
+            # rewritten, and silently calling that "success" hides it.
+            db_run.status = "failed"
+            db_run.error = json.dumps(status["failures"][:3])[:500]
+        else:
+            db_run.status = "success"
+    else:
+        db_run.status = "running"
+
+    db.commit()
+    db.refresh(db_run)
+    return db_run
+
+
+def get_runs(db: Session, limit: int = 50) -> list[servo_models.ServoRun]:
+    runs = list(
+        db.scalars(
+            select(servo_models.ServoRun)
+            .order_by(servo_models.ServoRun.created_at.desc())
+            .limit(limit)
+        ).all()
+    )
+    for db_run in runs:
+        refresh_run(db, db_run)
+    return runs
 
 
 def list_pipelines(db: Session) -> list[servo_schemas.PipelineSummary]:

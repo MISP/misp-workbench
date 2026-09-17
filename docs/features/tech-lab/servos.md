@@ -134,8 +134,8 @@ Ordering matters: epoch seconds are tried last, because a bare digit string woul
 
 The editor pairs the processor JSON with a dry run against a sample attribute document:
 
-<img src="../../../screenshots/tech-lab/transformation-servos/misp-workbench-3_tech-lab_transformation-servos_editor.png#only-light">
-<img src="../../../screenshots/tech-lab/transformation-servos/misp-workbench-3_tech-lab_transformation-servos_editor-dark.png#only-dark">
+<img src="../../../screenshots/tech-lab/transformation-servos/misp-workbench-4_tech-lab_transformation-servos_editor.png#only-light">
+<img src="../../../screenshots/tech-lab/transformation-servos/misp-workbench-4_tech-lab_transformation-servos_editor-dark.png#only-dark">
 
 
 ## Worked example
@@ -182,8 +182,8 @@ Indexing `http://EVIL.com:8080/path?q=1` then produces:
 
 A saved servo shows its compiled pipeline name, sync state and processors:
 
-<img src="../../../screenshots/tech-lab/transformation-servos/misp-workbench-4_tech-lab_transformation-servos_view.png#only-light">
-<img src="../../../screenshots/tech-lab/transformation-servos/misp-workbench-4_tech-lab_transformation-servos_view-dark.png#only-dark">
+<img src="../../../screenshots/tech-lab/transformation-servos/misp-workbench-5_tech-lab_transformation-servos_view.png#only-light">
+<img src="../../../screenshots/tech-lab/transformation-servos/misp-workbench-5_tech-lab_transformation-servos_view-dark.png#only-dark">
 
 
 !!! tip "Guard every processor"
@@ -199,12 +199,73 @@ The feature is admin-level. Four scopes gate it:
 | `servos:create` | Create servos and run dry runs. |
 | `servos:update` | Edit, enable, disable and reorder servos. |
 | `servos:delete` | Delete servos. |
+| `servos:run` | Re-apply servos to attributes already indexed. |
 
-Every create, update and delete is written to the [audit log](../api/audit-logs.md) as `servo.created` / `servo.updated` / `servo.reordered` / `servo.deleted`, with the compiled processors in the metadata.
+Every create, update and delete is written to the [audit log](../api/audit-logs.md) as `servo.created` / `servo.updated` / `servo.reordered` / `servo.deleted` / `servo.backfill.started`, with the compiled processors in the metadata.
+
+## Backfill — applying servos to what is already indexed
+
+A servo only affects attributes indexed **after** it was enabled. The
+**Backfill** tab re-applies the chain to what is already in the index, by
+rewriting those documents in place.
+
+### It is chain-wide, not per-servo
+
+`_update_by_query` re-runs the index's **final** pipeline on every document it
+touches, whatever pipeline the request names — verified on OpenSearch 3.4. On
+`misp-attributes` the final pipeline is GeoIP plus the whole servo chain, so a
+backfill necessarily runs *every enabled servo*. There is no way to re-run one
+servo alone.
+
+What you can narrow is **which documents**. The filter box takes the same
+Lucene syntax as [Explore](../explore.md):
+
+| Filter | Rewrites |
+|---|---|
+| *(empty)* | every attribute in the index |
+| `type:url` | only URL attributes |
+| `expanded.servo_errors:servo_url_parts*` | only the documents that servo failed on |
+
+The last one is what a servo's red error badge links to: click it to re-run the
+chain over just the documents that servo failed on.
+
+Press **check** before running. The preview reports how many attributes match
+and which servos would run, and the confirm dialog repeats both — a backfill
+rewrites live documents and cannot be undone.
+
+The preview answers *how many*; **see them in Explore** answers *which*. It
+opens [Explore](../explore.md) in a new tab with the same filter, so the
+documents can be inspected before they are rewritten.
+
+<img src="../../../screenshots/tech-lab/transformation-servos/misp-workbench-3_tech-lab_transformation-servos_backfill.png#only-light">
+<img src="../../../screenshots/tech-lab/transformation-servos/misp-workbench-3_tech-lab_transformation-servos_backfill-dark.png#only-dark">
+
+### Errors do not accumulate
+
+`expanded.servo_errors` is an append, so re-running the chain would otherwise
+stack another copy of the same message on every failing document. The backfill
+names a repo-managed pipeline, `misp-attributes_servos_reset`, whose only job
+is to remove that field. A named pipeline runs *before* the final one, so the
+field is cleared and then re-appended by whichever servos actually fail this
+time — each run reports only its own failures.
+
+### Runs are recorded
+
+OpenSearch executes the rewrite asynchronously and returns a task id. Each run
+is stored with that id, the filter it was given, and its counts, and appears in
+the **Run history** table.
+
+A Celery task polls the run to completion, but reading a run also reconciles it
+against OpenSearch — so the engine is the source of truth and the polling is an
+optimisation. A run nothing claims within five minutes is marked failed rather
+than sitting at *queued* for ever, which is what happens when the worker is
+down.
+
+Backfills need the `servos:run` scope, deliberately separate from
+`servos:update`: being allowed to edit a servo does not imply being allowed to
+rewrite the index.
 
 ## Operational notes
-
-**Existing attributes are not reprocessed.** Enabling a servo changes what happens to documents indexed from that point on. Re-indexing what is already there is not yet available from the UI.
 
 **The chain is rebuilt at API startup.** `setup-opensearch` re-applies every repo-managed pipeline on each stack start, which resets `misp-attributes_servos` to empty. The API re-syncs the chain as it boots, so enabled servos come back on their own. This doubles as the escape hatch: if a servo is misbehaving badly, restarting the stack falls back to the system pipelines until the API syncs again.
 

@@ -231,3 +231,56 @@ export const SERVO_ERRORS = {
     ],
   },
 };
+
+export const BACKFILL_PREVIEW = {
+  filter_query: "type:url",
+  matches: 1284,
+  enabled_servos: ["url_parts", "canonical_value"],
+};
+
+// One of each state, so the capture shows what a failed run looks like rather
+// than only the happy path.
+export const SERVO_RUNS = [
+  {
+    id: 3,
+    user_id: 1,
+    filter_query: "type:url",
+    status: "running",
+    opensearch_task_id: "bqDK0KuGSnGylyPBiuetgg:17469",
+    total: 1284,
+    updated: 612,
+    failure_count: 0,
+    error: null,
+    created_at: "2026-02-12T09:41:00Z",
+    started_at: "2026-02-12T09:41:02Z",
+    finished_at: null,
+  },
+  {
+    id: 2,
+    user_id: 1,
+    filter_query: "expanded.servo_errors:servo_url_parts*",
+    status: "success",
+    opensearch_task_id: "bqDK0KuGSnGylyPBiuetgg:16623",
+    total: 37,
+    updated: 37,
+    failure_count: 0,
+    error: null,
+    created_at: "2026-02-12T08:15:00Z",
+    started_at: "2026-02-12T08:15:01Z",
+    finished_at: "2026-02-12T08:15:09Z",
+  },
+  {
+    id: 1,
+    user_id: 1,
+    filter_query: null,
+    status: "failed",
+    opensearch_task_id: "bqDK0KuGSnGylyPBiuetgg:15102",
+    total: 1284,
+    updated: 1281,
+    failure_count: 3,
+    error: '[{"cause":"mapper_parsing_exception"}]',
+    created_at: "2026-02-11T17:02:00Z",
+    started_at: "2026-02-11T17:02:01Z",
+    finished_at: "2026-02-11T17:04:44Z",
+  },
+];

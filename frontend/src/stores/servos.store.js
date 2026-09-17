@@ -11,6 +11,8 @@ export const useServosStore = defineStore({
     pipelines: null,
     pipeline: null,
     errors: {},
+    runs: [],
+    backfillPreview: null,
     templates: null,
     simulation: null,
     status: {
@@ -19,6 +21,7 @@ export const useServosStore = defineStore({
       creating: false,
       updating: false,
       simulating: false,
+      backfilling: false,
       error: false,
     },
   }),
@@ -90,6 +93,26 @@ export const useServosStore = defineStore({
       return await fetchWrapper.post(`${baseUrl}/reorder`, {
         servo_ids: servoIds,
       });
+    },
+    async previewBackfill(filterQuery) {
+      const qs = new URLSearchParams(
+        filterQuery ? { filter_query: filterQuery } : {},
+      ).toString();
+      return fetchWrapper
+        .get(`${baseUrl}/backfill/preview${qs ? `?${qs}` : ""}`)
+        .then((preview) => (this.backfillPreview = preview));
+    },
+    async startBackfill(filterQuery) {
+      this.status.backfilling = true;
+      return await fetchWrapper
+        .post(`${baseUrl}/backfill`, { filter_query: filterQuery || null })
+        .finally(() => (this.status.backfilling = false));
+    },
+    async getRuns() {
+      return fetchWrapper
+        .get(`${baseUrl}/runs`)
+        .then((runs) => (this.runs = runs))
+        .catch(() => (this.runs = []));
     },
     async simulate(payload) {
       this.status.simulating = true;
