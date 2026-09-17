@@ -141,6 +141,7 @@ class ApiTester:
         )
         db.query(sharing_groups_models.SharingGroup).delete(synchronize_session=False)
         db.query(server_models.Server).delete(synchronize_session=False)
+        db.query(servo_models.ServoRun).delete(synchronize_session=False)
         db.query(servo_models.Servo).delete(synchronize_session=False)
         db.query(hunt_models.HuntRunHistory).delete(synchronize_session=False)
         db.query(hunt_models.Hunt).delete(synchronize_session=False)

@@ -268,6 +268,7 @@ All pipeline definitions are stored in the repository and applied on startup:
 | `opensearch/pipelines/misp-attributes_ip_geoip.json` | GeoIP enrichment |
 | `opensearch/pipelines/misp-attributes_final.json` | Final exit point |
 | `opensearch/pipelines/misp-attributes_servos.json` | Servo chain (content managed by the API) |
+| `opensearch/pipelines/misp-attributes_servos_reset.json` | Clears `expanded.servo_errors` at the start of a backfill |
 | `opensearch/index-templates/misp-attributes-template.json` | Index template wiring |
 
 ## Further reading

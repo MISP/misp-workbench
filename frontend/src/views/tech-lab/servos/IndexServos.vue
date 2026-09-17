@@ -2,7 +2,7 @@
 import { computed, onMounted, ref } from "vue";
 import { storeToRefs } from "pinia";
 import { RouterLink, useRoute, useRouter } from "vue-router";
-import { useServosStore, useAuthStore } from "@/stores";
+import { useServosStore, useAuthStore, useToastsStore } from "@/stores";
 import Spinner from "@/components/misc/Spinner.vue";
 import ServoActions from "@/components/servos/ServoActions.vue";
 import PipelineViewer from "@/components/servos/PipelineViewer.vue";
@@ -15,6 +15,7 @@ import {
   faArrowDown,
   faTriangleExclamation,
   faTrashCan,
+  faClockRotateLeft,
 } from "@fortawesome/free-solid-svg-icons";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
@@ -27,7 +28,9 @@ const route = useRoute();
 const router = useRouter();
 const servosStore = useServosStore();
 const authStore = useAuthStore();
-const { servos, pipelines, errors, status } = storeToRefs(servosStore);
+const toastsStore = useToastsStore();
+const { servos, pipelines, errors, runs, backfillPreview, status } =
+  storeToRefs(servosStore);
 const { scopes } = storeToRefs(authStore);
 
 const canCreate = computed(() =>
@@ -72,7 +75,61 @@ async function move(index, delta) {
 const TABS = [
   { id: "servos", label: "Custom servos", icon: faGears },
   { id: "system", label: "System pipelines", icon: faLock },
+  { id: "backfill", label: "Backfill", icon: faClockRotateLeft },
 ];
+
+const canRunBackfill = computed(() =>
+  authHelper.hasScope(scopes.value, "servos:run"),
+);
+
+const backfillFilter = ref("");
+const previewing = ref(false);
+
+// Previewed rather than run blind: a backfill rewrites live documents, and the
+// operator should see how many before confirming.
+async function previewBackfill() {
+  previewing.value = true;
+  try {
+    await servosStore.previewBackfill(backfillFilter.value);
+  } catch (err) {
+    toastsStore.push(err || "Could not evaluate that filter.", "danger");
+    servosStore.backfillPreview = null;
+  } finally {
+    previewing.value = false;
+  }
+}
+
+async function runBackfill() {
+  const scope = backfillFilter.value
+    ? `attributes matching "${backfillFilter.value}"`
+    : "EVERY attribute in the index";
+  const servoList = (backfillPreview.value?.enabled_servos ?? []).join(", ");
+  if (
+    !confirm(
+      `Re-apply the ingest chain to ${scope}?\n\n` +
+        `This rewrites ${backfillPreview.value?.matches ?? "?"} documents in place and runs ` +
+        `every enabled servo (${servoList || "none"}) plus GeoIP enrichment. ` +
+        `It cannot be undone.`,
+    )
+  )
+    return;
+
+  try {
+    await servosStore.startBackfill(backfillFilter.value);
+    toastsStore.push("Backfill started.", "success");
+    await servosStore.getRuns();
+  } catch (err) {
+    toastsStore.push(err || "Could not start the backfill.", "danger");
+  }
+}
+
+// Jumping in from a servo's error badge: re-run just the documents that servo
+// failed on. The chain still runs whole -- only the selection is narrowed.
+function backfillServoErrors(servo) {
+  backfillFilter.value = `expanded.servo_errors:servo_${servo.slug}*`;
+  selectTab("backfill");
+  previewBackfill();
+}
 
 // Shipped with misp-workbench and managed in the repo.
 const systemPipelines = computed(
@@ -110,6 +167,7 @@ function refresh() {
   servosStore.getAll();
   servosStore.getPipelines();
   servosStore.getErrors();
+  servosStore.getRuns();
 }
 
 onMounted(refresh);
@@ -253,14 +311,20 @@ onMounted(refresh);
                   :class="servo.enabled ? 'bg-success' : 'bg-secondary'"
                   >{{ servo.enabled ? "enabled" : "disabled" }}</span
                 >
-                <span
+                <button
                   v-if="servoErrors(servo)"
-                  class="badge text-bg-danger ms-1"
-                  :title="errorTitle(servo)"
+                  class="badge text-bg-danger ms-1 border-0"
+                  :title="
+                    canRunBackfill
+                      ? `${errorTitle(servo)}\n\nClick to re-run the chain over just these documents.`
+                      : errorTitle(servo)
+                  "
+                  :disabled="!canRunBackfill"
+                  @click="backfillServoErrors(servo)"
                 >
                   <FontAwesomeIcon :icon="faTriangleExclamation" class="me-1" />
                   {{ servoErrors(servo).count }}
-                </span>
+                </button>
               </td>
               <td class="text-end">
                 <ServoActions
@@ -308,6 +372,140 @@ onMounted(refresh);
             :pipeline="pipeline"
           />
         </template>
+      </div>
+    </div>
+
+    <!-- Backfill -->
+    <div v-show="activeTab === 'backfill'">
+      <div class="alert alert-warning d-flex gap-2 align-items-start py-2">
+        <FontAwesomeIcon :icon="faTriangleExclamation" class="mt-1" />
+        <div class="small">
+          Servos only affect attributes indexed <strong>after</strong> they were
+          enabled. A backfill re-applies them to what is already in the index by
+          rewriting those documents in place — it cannot be undone.
+          <br />
+          It is <strong>chain-wide</strong>: OpenSearch re-runs the index's
+          final pipeline on every document it touches, so GeoIP and
+          <em>every enabled servo</em> run, not just one. Narrow
+          <em>which documents</em> with a filter; you cannot narrow which
+          servos.
+        </div>
+      </div>
+
+      <div class="card mb-3">
+        <div class="card-body">
+          <label class="form-label small">
+            filter
+            <span class="text-muted">(Lucene, same syntax as Explore)</span>
+          </label>
+          <div class="input-group input-group-sm mb-2">
+            <input
+              v-model="backfillFilter"
+              class="form-control font-monospace"
+              placeholder="leave empty for every attribute — e.g. type:url"
+              @keyup.enter="previewBackfill"
+            />
+            <button
+              class="btn btn-outline-secondary"
+              :disabled="previewing"
+              @click="previewBackfill"
+            >
+              {{ previewing ? "checking…" : "check" }}
+            </button>
+          </div>
+
+          <div v-if="backfillPreview" class="small">
+            <span
+              class="badge me-2"
+              :class="
+                backfillPreview.matches
+                  ? 'text-bg-primary'
+                  : 'text-bg-secondary'
+              "
+              >{{ backfillPreview.matches }}</span
+            >
+            attribute{{ backfillPreview.matches === 1 ? "" : "s" }} would be
+            rewritten, running
+            <code
+              v-for="slug in backfillPreview.enabled_servos"
+              :key="slug"
+              class="me-1"
+              >servo_{{ slug }}</code
+            ><span
+              v-if="!backfillPreview.enabled_servos.length"
+              class="text-muted"
+              >no servos (GeoIP only)</span
+            >.
+          </div>
+          <p v-else class="text-muted small fst-italic mb-0">
+            Check a filter to see how many attributes it matches.
+          </p>
+        </div>
+        <div class="card-footer text-end">
+          <button
+            v-if="canRunBackfill"
+            class="btn btn-danger btn-sm"
+            :disabled="!backfillPreview || status.backfilling"
+            @click="runBackfill"
+          >
+            {{
+              status.backfilling
+                ? "starting…"
+                : "Re-apply to matching attributes"
+            }}
+          </button>
+          <span v-else class="text-muted small fst-italic">
+            Running a backfill needs the <code>servos:run</code> scope.
+          </span>
+        </div>
+      </div>
+
+      <h6 class="text-uppercase text-muted small mt-4">Run history</h6>
+      <p v-if="!runs.length" class="text-muted small">No backfills yet.</p>
+      <div v-else class="table-responsive">
+        <table class="table table-sm table-striped align-middle">
+          <thead>
+            <tr>
+              <th>started</th>
+              <th>filter</th>
+              <th>status</th>
+              <th class="text-end">rewritten</th>
+              <th class="text-end">failures</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="run in runs" :key="run.id">
+              <td class="text-muted small">
+                {{ dayjs.utc(run.created_at).local().fromNow() }}
+              </td>
+              <td class="font-monospace small">
+                {{ run.filter_query || "every attribute" }}
+              </td>
+              <td>
+                <span
+                  class="badge"
+                  :class="{
+                    'bg-success': run.status === 'success',
+                    'bg-danger': run.status === 'failed',
+                    'bg-secondary': run.status === 'queued',
+                    'bg-info text-dark': run.status === 'running',
+                  }"
+                  :title="run.error || ''"
+                  >{{ run.status }}</span
+                >
+              </td>
+              <td class="text-end small">
+                {{ run.updated }} / {{ run.total }}
+              </td>
+              <td class="text-end small">
+                <span v-if="run.failure_count" class="text-danger">{{
+                  run.failure_count
+                }}</span>
+                <span v-else class="text-muted">—</span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </div>
   </div>

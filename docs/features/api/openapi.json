@@ -8737,7 +8737,7 @@
           "Health"
         ],
         "summary": "Health",
-        "description": "Unauthenticated liveness/readiness probe.\n\nWithout `?full=true` returns immediately with `{\"status\": \"ok\"}` \u2014 suitable\nfor fast liveness checks (load balancer, container restart policy).\n\nWith `?full=true` probes every dependent service and returns per-service\nstatus. Returns HTTP 503 if any service is unreachable.",
+        "description": "Unauthenticated liveness/readiness probe.\n\nWithout `?full=true` returns immediately with `{\"status\": \"ok\"}` — suitable\nfor fast liveness checks (load balancer, container restart policy).\n\nWith `?full=true` probes every dependent service and returns per-service\nstatus. Returns HTTP 503 if any service is unreachable.",
         "operationId": "health_health_get",
         "parameters": [
           {
@@ -8909,7 +8909,7 @@
           "Diagnostics"
         ],
         "summary": "Get Lab Diagnostics",
-        "description": "Lab-worker connectivity and running jupyter kernels.\n\nWorker presence is derived from Celery inspect \u2014 we look for a worker\nsubscribed to the ``lab_kernel`` queue. The kernel registry lives inside\nthe lab-worker process, so we round-trip a short task to fetch a snapshot.",
+        "description": "Lab-worker connectivity and running jupyter kernels.\n\nWorker presence is derived from Celery inspect — we look for a worker\nsubscribed to the ``lab_kernel`` queue. The kernel registry lives inside\nthe lab-worker process, so we round-trip a short task to fetch a snapshot.",
         "operationId": "get_lab_diagnostics_diagnostics_lab_get",
         "responses": {
           "200": {
@@ -11133,7 +11133,7 @@
           "Tech Lab / Reactor"
         ],
         "summary": "Test Run",
-        "description": "Run the script synchronously against a user-supplied payload.\n\nUseful while iterating. Runs in the API process, **not** the sandbox\nworker \u2014 admins should keep ``reactor:run`` to trusted users for now.\n\nPass ``?profile=true`` to attach cProfile around the handler. The\ntop-20 functions by cumulative time are appended to the run log under\na ``=== profile ===`` section, viewable via ``GET /runs/{id}/log``.",
+        "description": "Run the script synchronously against a user-supplied payload.\n\nUseful while iterating. Runs in the API process, **not** the sandbox\nworker — admins should keep ``reactor:run`` to trusted users for now.\n\nPass ``?profile=true`` to attach cProfile around the handler. The\ntop-20 functions by cumulative time are appended to the run log under\na ``=== profile ===`` section, viewable via ``GET /runs/{id}/log``.",
         "operationId": "test_run_tech_lab_reactor_scripts__script_id__test_post",
         "security": [
           {
@@ -12088,7 +12088,7 @@
           "Tech Lab / Notebooks"
         ],
         "summary": "Import Notebook",
-        "description": "Import an .ipynb. Always creates a *personal* notebook owned by the\ncurrent user \u2014 analysts can promote to global later by re-creating in a\nGlobal folder if they want to share.",
+        "description": "Import an .ipynb. Always creates a *personal* notebook owned by the\ncurrent user — analysts can promote to global later by re-creating in a\nGlobal folder if they want to share.",
         "operationId": "import_notebook_tech_lab_notebooks_import_post",
         "security": [
           {
@@ -12341,6 +12341,145 @@
           {
             "OAuth2PasswordBearer": [
               "servos:create"
+            ]
+          }
+        ]
+      }
+    },
+    "/tech-lab/servos/backfill/preview": {
+      "get": {
+        "tags": [
+          "Tech Lab / Servos"
+        ],
+        "summary": "Preview Backfill",
+        "description": "How many attributes this filter would rewrite, and what would run.\n\nA backfill rewrites live documents, so the count and the servo list are\nshown before the operator confirms rather than after.",
+        "operationId": "preview_backfill_tech_lab_servos_backfill_preview_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "servos:read"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "filter_query",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Filter Query"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServoBackfillPreview"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tech-lab/servos/backfill": {
+      "post": {
+        "tags": [
+          "Tech Lab / Servos"
+        ],
+        "summary": "Start Backfill",
+        "description": "Re-run the ingest chain over attributes that are already indexed.\n\nChain-wide by necessity: `_update_by_query` re-runs the index's final\npipeline whatever pipeline is named, and on misp-attributes that is geoip\nplus every enabled servo. There is no way to re-run one servo alone.",
+        "operationId": "start_backfill_tech_lab_servos_backfill_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ServoBackfillRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServoRun"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "servos:run"
+            ]
+          }
+        ]
+      }
+    },
+    "/tech-lab/servos/runs": {
+      "get": {
+        "tags": [
+          "Tech Lab / Servos"
+        ],
+        "summary": "List Runs",
+        "description": "Backfill history, newest first. Unfinished runs are reconciled on read.",
+        "operationId": "list_runs_tech_lab_servos_runs_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ServoRun"
+                  },
+                  "type": "array",
+                  "title": "Response List Runs Tech Lab Servos Runs Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "servos:read"
             ]
           }
         ]
@@ -17191,7 +17330,7 @@
           "created_at"
         ],
         "title": "LabNotebookSummary",
-        "description": "Tree-view payload \u2014 omits source/cell_outputs to keep the tree fetch small."
+        "description": "Tree-view payload — omits source/cell_outputs to keep the tree fetch small."
       },
       "LabNotebookUpdate": {
         "properties": {
@@ -21549,6 +21688,56 @@
         ],
         "title": "Servo"
       },
+      "ServoBackfillPreview": {
+        "properties": {
+          "filter_query": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Filter Query"
+          },
+          "matches": {
+            "type": "integer",
+            "title": "Matches"
+          },
+          "enabled_servos": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Enabled Servos"
+          }
+        },
+        "type": "object",
+        "required": [
+          "matches"
+        ],
+        "title": "ServoBackfillPreview",
+        "description": "How many attributes a filter would rewrite, shown before confirming."
+      },
+      "ServoBackfillRequest": {
+        "properties": {
+          "filter_query": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Filter Query"
+          }
+        },
+        "type": "object",
+        "title": "ServoBackfillRequest",
+        "description": "Re-run the ingest chain over attributes already in the index.\n\n`filter_query` is Lucene, matching the Explore search box. Empty means\nevery attribute, which is deliberately possible but is what the confirm\nstep in the UI exists for."
+      },
       "ServoCreate": {
         "properties": {
           "name": {
@@ -21656,6 +21845,119 @@
         ],
         "title": "ServoReorder",
         "description": "The servo ids in the order they should run."
+      },
+      "ServoRun": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "user_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Id"
+          },
+          "filter_query": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Filter Query"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "queued",
+              "running",
+              "success",
+              "failed"
+            ],
+            "title": "Status"
+          },
+          "opensearch_task_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Opensearch Task Id"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "updated": {
+            "type": "integer",
+            "title": "Updated"
+          },
+          "failure_count": {
+            "type": "integer",
+            "title": "Failure Count"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "status",
+          "total",
+          "updated",
+          "failure_count",
+          "created_at"
+        ],
+        "title": "ServoRun"
       },
       "ServoSimulateRequest": {
         "properties": {

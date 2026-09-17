@@ -269,3 +269,74 @@ class TestErrorSummary:
         with patch.object(chain, "OpenSearchClient") as client:
             client.search.side_effect = NotFoundError(404, "index_not_found", {})
             assert chain.error_summary() == {}
+
+
+class TestBackfill:
+    def test_no_filter_means_every_attribute(self):
+        assert chain._backfill_query(None) == {"query": {"match_all": {}}}
+        assert chain._backfill_query("   ") == {"query": {"match_all": {}}}
+
+    def test_a_filter_becomes_a_query_string(self):
+        assert chain._backfill_query("type:url") == {
+            "query": {"query_string": {"query": "type:url"}}
+        }
+
+    def test_start_names_the_reset_pipeline_and_does_not_block(self):
+        with patch.object(chain, "OpenSearchClient") as client:
+            client.update_by_query.return_value = {"task": "node:42"}
+            task_id = chain.start_backfill("type:url")
+
+        assert task_id == "node:42"
+        params = client.update_by_query.call_args.kwargs["params"]
+        # The reset pipeline runs before the index's final pipeline and clears
+        # the append-only error field, so a run reports only its own failures.
+        assert params["pipeline"] == chain.RESET_PIPELINE
+        # A rewrite of a large index must not hold the request open.
+        assert params["wait_for_completion"] == "false"
+        # One bad document must not abort the rest of the run.
+        assert params["conflicts"] == "proceed"
+
+    def test_status_while_running_reads_the_task_counters(self):
+        with patch.object(chain, "OpenSearchClient") as client:
+            client.tasks.get.return_value = {
+                "completed": False,
+                "task": {"status": {"total": 100, "updated": 40}},
+            }
+            status = chain.backfill_status("node:42")
+
+        assert status["completed"] is False
+        assert (status["total"], status["updated"]) == (100, 40)
+
+    def test_status_when_done_reads_the_response(self):
+        with patch.object(chain, "OpenSearchClient") as client:
+            client.tasks.get.return_value = {
+                "completed": True,
+                "response": {"total": 100, "updated": 100, "failures": []},
+            }
+            status = chain.backfill_status("node:42")
+
+        assert status["completed"] is True
+        assert status["updated"] == 100
+        assert status["failures"] == []
+
+    def test_status_surfaces_failures(self):
+        with patch.object(chain, "OpenSearchClient") as client:
+            client.tasks.get.return_value = {
+                "completed": True,
+                "response": {
+                    "total": 5,
+                    "updated": 3,
+                    "failures": [{"cause": "mapper_parsing_exception"}],
+                },
+            }
+            status = chain.backfill_status("node:42")
+
+        assert len(status["failures"]) == 1
+
+    def test_a_forgotten_task_completes_rather_than_polling_for_ever(self):
+        with patch.object(chain, "OpenSearchClient") as client:
+            client.tasks.get.side_effect = NotFoundError(404, "not_found", {})
+            status = chain.backfill_status("node:42")
+
+        assert status["completed"] is True
+        assert "no longer knows this task" in status["error"]

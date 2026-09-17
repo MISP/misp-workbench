@@ -59,6 +59,12 @@ def _opensearch():
     client.ingest.simulate.return_value = {
         "docs": [{"doc": {"_source": {"value": "1.2.3.4", "expanded": {}}}}]
     }
+    client.count.return_value = {"count": 7}
+    client.update_by_query.return_value = {"task": "node:42"}
+    client.tasks.get.return_value = {
+        "completed": True,
+        "response": {"total": 7, "updated": 7, "failures": []},
+    }
 
     with patch(
         "app.services.tech_lab.servos.chain.OpenSearchClient", client
@@ -451,6 +457,108 @@ class TestServosRouter(ApiTester):
     ):
         response = client.get(
             "/tech-lab/servos/errors",
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+    # ── Backfill ─────────────────────────────────────────────────────────────
+
+    @pytest.mark.parametrize("scopes", [["servos:read"]])
+    def test_backfill_preview_reports_what_would_be_rewritten(
+        self, client: TestClient, auth_token: auth.Token
+    ):
+        response = client.get(
+            "/tech-lab/servos/backfill/preview?filter_query=type:url",
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+        assert response.status_code == status.HTTP_200_OK, response.text
+        assert response.json()["matches"] == 7
+        assert response.json()["filter_query"] == "type:url"
+
+    @pytest.mark.parametrize("scopes", [["servos:read"]])
+    def test_backfill_preview_rejects_a_bad_filter(
+        self, client: TestClient, auth_token: auth.Token, _opensearch
+    ):
+        # A malformed Lucene filter is user input, so it must come back as a
+        # 422 rather than a 500 -- or worse, a run that fails in the worker.
+        _opensearch.count.side_effect = RequestError(
+            400, "parse_exception", {"error": {"reason": "Cannot parse"}}
+        )
+        response = client.get(
+            "/tech-lab/servos/backfill/preview?filter_query=type:[[unclosed",
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+
+    @pytest.mark.parametrize("scopes", [["servos:run"]])
+    def test_backfill_creates_a_run_and_queues_it(
+        self, client: TestClient, auth_token: auth.Token
+    ):
+        with patch("app.worker.tasks.servo_backfill") as task:
+            task.delay.return_value = MagicMock(id="celery-1")
+            response = client.post(
+                "/tech-lab/servos/backfill",
+                json={"filter_query": "type:url"},
+                headers={"Authorization": "Bearer " + auth_token},
+            )
+
+        assert response.status_code == status.HTTP_202_ACCEPTED, response.text
+        body = response.json()
+        assert body["status"] == "queued"
+        assert body["filter_query"] == "type:url"
+        task.delay.assert_called_once_with(body["id"])
+
+    @pytest.mark.parametrize("scopes", [["servos:run"]])
+    def test_backfill_refuses_a_filter_opensearch_cannot_parse(
+        self, client: TestClient, auth_token: auth.Token, _opensearch
+    ):
+        _opensearch.count.side_effect = RequestError(
+            400, "parse_exception", {"error": {"reason": "Cannot parse"}}
+        )
+        with patch("app.worker.tasks.servo_backfill") as task:
+            response = client.post(
+                "/tech-lab/servos/backfill",
+                json={"filter_query": "type:[[unclosed"},
+                headers={"Authorization": "Bearer " + auth_token},
+            )
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        # Nothing queued: the run would only have failed inside the worker.
+        task.delay.assert_not_called()
+
+    @pytest.mark.parametrize("scopes", [["servos:update"]])
+    def test_backfill_needs_its_own_scope(
+        self, client: TestClient, auth_token: auth.Token
+    ):
+        # Being allowed to edit a servo must not imply being allowed to rewrite
+        # every attribute in the index.
+        response = client.post(
+            "/tech-lab/servos/backfill",
+            json={"filter_query": None},
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+    @pytest.mark.parametrize("scopes", [["servos:run", "servos:read"]])
+    def test_runs_are_listed_newest_first_and_reconciled(
+        self, client: TestClient, auth_token: auth.Token
+    ):
+        headers = {"Authorization": "Bearer " + auth_token}
+        with patch("app.worker.tasks.servo_backfill") as task:
+            task.delay.return_value = MagicMock(id="celery-1")
+            created = client.post(
+                "/tech-lab/servos/backfill", json={"filter_query": "a"}, headers=headers
+            ).json()
+
+        response = client.get("/tech-lab/servos/runs", headers=headers)
+        assert response.status_code == status.HTTP_200_OK, response.text
+        assert response.json()[0]["id"] == created["id"]
+
+    @pytest.mark.parametrize("scopes", [[]])
+    def test_runs_require_the_read_scope(
+        self, client: TestClient, auth_token: auth.Token
+    ):
+        response = client.get(
+            "/tech-lab/servos/runs",
             headers={"Authorization": "Bearer " + auth_token},
         )
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
