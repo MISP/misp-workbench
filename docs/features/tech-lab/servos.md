@@ -50,7 +50,7 @@ misp-attributes_servos       ← rebuilt by the API from your servos
         └ servo_<slug>
 ```
 
-Because servos run last, a servo can read everything the system pipelines produced: `expanded.ip`, `expanded.ip_range`, `expanded.value_parts`, `expanded.ip2geo`.
+Because servos run last, a servo can read everything the system pipelines produced: `expanded.ip`, `expanded.ip_range`, `expanded.value_parts`, `expanded.ja4`, `expanded.ip2geo`.
 
 Only **enabled** servos are in the chain. Disabling a servo removes both its chain entry and its pipeline; re-enabling puts them back.
 

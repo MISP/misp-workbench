@@ -1,0 +1,12 @@
+{
+    "description": "Recognise JA4+ fingerprints and store them lowercased in expanded.ja4.value, with the variant in expanded.ja4.variant when the value's shape gives it away. A value under the ja4-plus object's ja4-fingerprint relation always counts; a bare text attribute only when it is shaped like a distinctive variant. Kept in step with app/services/ja4.py.",
+    "processors": [
+        {
+            "script": {
+                "lang": "painless",
+                "source": "if (ctx.expanded != null) { ctx.expanded.remove('ja4'); } if (ctx.value == null) { return; } String v = ctx.value.toString().trim().toLowerCase(); if (v.length() == 0) { return; } String variant = null; if (v ==~ /^[tqd][0-9a-z]{2}[di][0-9]{4}[0-9a-z]{2}_[0-9a-f]{12}_[0-9a-f]{12}$/) { variant = 'JA4'; } else if (v ==~ /^[tqd][0-9a-z]{2}[0-9]{2}[0-9a-z]{2}_[0-9a-f]{4}_[0-9a-f]{12}$/) { variant = 'JA4S'; } else if (v ==~ /^[a-z]{2}[0-9]{2}[cn][rn][0-9]{2}[0-9a-z]{4}_[0-9a-f]{12}_[0-9a-f]{12}_[0-9a-f]{12}$/) { variant = 'JA4H'; } else if (v ==~ /^[0-9a-f]{12}_[0-9a-f]{12}_[0-9a-f]{12}$/) { variant = 'JA4X'; } else if (v ==~ /^c[0-9]+s[0-9]+_c[0-9]+s[0-9]+_c[0-9]+s[0-9]+$/) { variant = 'JA4SSH'; } boolean byRelation = ctx.object_relation == 'ja4-fingerprint'; boolean byShape = ctx.type == 'text' && variant != null; if (!byRelation && !byShape) { return; } if (ctx.expanded == null) { ctx.expanded = new HashMap(); } Map ja4 = new HashMap(); ja4.value = v; if (variant != null) { ja4.variant = variant; } ctx.expanded.ja4 = ja4;",
+                "ignore_failure": true
+            }
+        }
+    ]
+}

@@ -10,6 +10,11 @@
             "pipeline": {
                 "name": "misp-attributes_value_parts"
             }
+        },
+        {
+            "pipeline": {
+                "name": "misp-attributes_ja4"
+            }
         }
     ]
 }
