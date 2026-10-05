@@ -5,7 +5,7 @@ from opensearchpy import helpers as opensearch_helpers
 from opensearchpy.exceptions import NotFoundError
 from app.services.runtime_settings import RuntimeSettings
 from app.worker import tasks
-from app.services.ja4 import normalize_ja4
+from app.services.ja4 import JA4_OBJECT_RELATION, normalize_ja4
 import datetime
 import json
 import logging
@@ -634,6 +634,7 @@ def correlate_attributes(
     docs,
     bidirectional: bool = True,
     known_correlation_ids=None,
+    notify: bool = True,
 ):
     """Correlate a batch of indexed attributes with as few round trips as possible.
 
@@ -646,6 +647,9 @@ def correlate_attributes(
     the attributes that were already indexed have to expose the incoming ones as
     well, and every consumer looks correlations up by ``source_attribute_uuid``.
     A full run visits every attribute anyway, so it can skip the reverse writes.
+
+    ``notify`` off stores the correlations without telling anyone, for a
+    rebuild of ones that existed before under another id.
     """
     known = known_correlation_ids or set()
     chunk_size = runtimeSettings.get_value(
@@ -666,9 +670,10 @@ def correlate_attributes(
 
         created = index_correlation_docs(pending)
         stored += len(created)
-        dispatch_correlation_notifications(
-            [doc for doc in created if doc["_id"] not in known]
-        )
+        if notify:
+            dispatch_correlation_notifications(
+                [doc for doc in created if doc["_id"] not in known]
+            )
         pending = []
 
     for chunk in chunked(docs, chunk_size):
@@ -774,7 +779,10 @@ def correlate_attribute(runtimeSettings: RuntimeSettings, attribute_uuid: str):
 
 
 def correlate_attribute_uuids(
-    runtimeSettings: RuntimeSettings, attribute_uuids, rebuild: bool = False
+    runtimeSettings: RuntimeSettings,
+    attribute_uuids,
+    rebuild: bool = False,
+    notify: bool = True,
 ):
     """Correlate the batch of attributes a bulk ingest produced.
 
@@ -791,7 +799,7 @@ def correlate_attribute_uuids(
 
     docs = skip_uncorrelated_events(get_attributes_by_uuid(attribute_uuids))
 
-    return correlate_attributes(runtimeSettings, docs)
+    return correlate_attributes(runtimeSettings, docs, notify=notify)
 
 
 def search_correlations(
@@ -1138,3 +1146,95 @@ def correlate_event(runtimeSettings: RuntimeSettings, event_uuid: str):
     run_correlations(runtimeSettings, filters={"event_uuid": event_uuid})
 
     return {"message": f"Correlations for event {event_uuid} created successfully."}
+
+
+# ── JA4+ backfill ─────────────────────────────────────────────────────────────
+
+JA4_PIPELINE = "misp-attributes_ja4"
+
+
+def ja4_candidates_query():
+    """The attributes the misp-attributes_ja4 pipeline may recognise.
+
+    Anything else it would rewrite unchanged, so a backfill leaves it alone.
+    """
+    return {
+        "query": {
+            "bool": {
+                "should": [
+                    {"term": {"type.keyword": "text"}},
+                    {"term": {"object_relation.keyword": JA4_OBJECT_RELATION}},
+                ],
+                "minimum_should_match": 1,
+            }
+        }
+    }
+
+
+def count_ja4_candidates() -> int:
+    return get_opensearch_client().count(
+        index="misp-attributes", body=ja4_candidates_query()
+    )["count"]
+
+
+def start_ja4_reindex() -> str:
+    """Run the candidates through misp-attributes_ja4 and return the task id.
+
+    Naming the pipeline replaces the index's default one, so only the JA4+
+    step runs again. The final pipeline cannot be skipped: geoip and every
+    enabled servo run over these attributes too, as in a servo backfill.
+    """
+    response = get_opensearch_client().update_by_query(
+        index="misp-attributes",
+        body=ja4_candidates_query(),
+        params={
+            "pipeline": JA4_PIPELINE,
+            "wait_for_completion": "false",
+            "conflicts": "proceed",
+            "refresh": "true",
+        },
+    )
+    return response["task"]
+
+
+def ja4_reindex_status(task_id: str) -> dict:
+    """``{"completed", "total", "updated", "failures"}`` of a running reindex."""
+    response = get_opensearch_client().tasks.get(task_id=task_id)
+    # counters live under task.status while running, under response once done
+    status = response.get("response") or response.get("task", {}).get("status", {})
+    return {
+        "completed": bool(response.get("completed")),
+        "total": status.get("total", 0),
+        "updated": status.get("updated", 0),
+        "failures": list(status.get("failures") or []),
+    }
+
+
+def ja4_attribute_uuids():
+    """Yield the uuid of every attribute indexed as a JA4+ fingerprint."""
+    scroll = opensearch_helpers.scan(
+        client=get_opensearch_client(),
+        index="misp-attributes",
+        query={
+            "query": {"exists": {"field": "expanded.ja4.value"}},
+            "_source": False,
+        },
+        scroll="2m",
+        size=500,
+    )
+    for doc in scroll:
+        yield doc["_id"]
+
+
+def recorrelate_ja4_attributes(runtimeSettings: RuntimeSettings):
+    """Rebuild the correlations of every JA4+ fingerprint.
+
+    Dropping them first also drops the ``term`` correlations other attributes
+    held with a fingerprint, which the ja4 match now replaces. Nobody is
+    notified: these are correlations that existed already, under another id.
+    """
+    uuids = list(ja4_attribute_uuids())
+    result = correlate_attribute_uuids(
+        runtimeSettings, uuids, rebuild=True, notify=False
+    )
+    return {"attributes": len(uuids), "stored": result["stored"]}

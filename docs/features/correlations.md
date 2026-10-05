@@ -74,7 +74,16 @@ With `ja4` enabled, a fingerprint correlates **only** with other fingerprints, t
 
 With `ja4` disabled, fingerprints correlate through `term` like any other value. Deployments that saved their correlation settings before `ja4` existed keep their saved `matchTypes` and need `ja4` ticked under ***Internals*** → ***Runtime Settings*** → ***correlations***.
 
-Attributes indexed before the pipeline existed have no `expanded.ja4` until they are reprocessed.
+Attributes indexed before the pipeline existed have no `expanded.ja4` until they are reprocessed. The `backfill-ja4` command does that, then rebuilds the correlations of every fingerprint it finds:
+
+```bash
+docker compose exec api poetry run python -m app.cli backfill-ja4 --dry-run  # count only
+docker compose exec api poetry run python -m app.cli backfill-ja4
+```
+
+- Only `text` attributes and those under the `ja4-fingerprint` relation are reprocessed. The index's final pipeline runs for them too, so GeoIP and any enabled [servos](tech-lab/servos.md) are re-applied, as in a servo backfill.
+- Rebuilt correlations notify nobody: they existed before, under the `term` match.
+- With `ja4` off, it reindexes and leaves correlations alone. `--skip-correlations` does the same on purpose.
 
 ## Running correlations via the API
 

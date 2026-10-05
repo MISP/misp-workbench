@@ -1278,5 +1278,72 @@ def sync_event_counts(
     )
 
 
+@app.command()
+def backfill_ja4(
+    dry_run: bool = typer.Option(
+        False, "--dry-run", help="Report how many attributes would be reprocessed"
+    ),
+    skip_correlations: bool = typer.Option(
+        False,
+        "--skip-correlations",
+        help="Only reindex; leave correlations to the next full run",
+    ),
+):
+    """Recognise JA4+ fingerprints among attributes indexed before it existed.
+
+    Runs the text attributes and the ja4-fingerprint object attributes through
+    the misp-attributes_ja4 ingest pipeline, then rebuilds the correlations of
+    every fingerprint found so they match through the ja4 match type. The
+    index's final pipeline runs too, so geoip and any enabled servos are
+    re-applied to those attributes. Rebuilt correlations notify nobody.
+    """
+    import time
+
+    candidates = correlations_repository.count_ja4_candidates()
+    if dry_run:
+        typer.echo(f"{candidates} attribute(s) would be reprocessed (dry run).")
+        return
+
+    typer.echo(f"Reprocessing {candidates} attribute(s)...")
+    task_id = correlations_repository.start_ja4_reindex()
+    while True:
+        status = correlations_repository.ja4_reindex_status(task_id)
+        if status["completed"]:
+            break
+        if status["total"]:
+            typer.echo(f"  {status['updated']}/{status['total']}")
+        time.sleep(2)
+
+    for failure in status["failures"][:10]:
+        typer.echo(f"  failed: {failure}", err=True)
+    typer.echo(
+        f"{status['updated']} attribute(s) reprocessed, "
+        f"{len(status['failures'])} failure(s)."
+    )
+
+    if skip_correlations:
+        return
+
+    db = SessionLocal()
+    try:
+        runtime_settings = get_runtime_settings(db)
+    finally:
+        db.close()
+
+    if not correlations_repository.ja4_matching_enabled(runtime_settings):
+        typer.echo(
+            "The ja4 correlation match type is off, so fingerprints keep "
+            "correlating through term; correlations left as they are. Enable it "
+            "under correlations.matchTypes and run this again."
+        )
+        return
+
+    result = correlations_repository.recorrelate_ja4_attributes(runtime_settings)
+    typer.echo(
+        f"{result['attributes']} fingerprint(s) re-correlated, "
+        f"{result['stored']} correlation(s) stored."
+    )
+
+
 if __name__ == "__main__":
     app()
