@@ -268,6 +268,17 @@ class TestGetCorrelations:
         call_body = mock_os.search.call_args.kwargs["body"]
         assert {"term": {"match_type.keyword": "term"}} in call_body["query"]["bool"]["must"]
 
+    def test_ja4_variant_filter(self):
+        mock_os = self._mock_os()
+        with patch(PATCH, return_value=mock_os):
+            get_correlations(
+                CorrelationQueryParams(ja4_variant="JA4H"),
+                page=1, from_value=0, size=10,
+            )
+
+        call_body = mock_os.search.call_args.kwargs["body"]
+        assert {"term": {"ja4_variant": "JA4H"}} in call_body["query"]["bool"]["must"]
+
     def test_multiple_filters_combined(self):
         mock_os = self._mock_os()
         with patch(PATCH, return_value=mock_os):

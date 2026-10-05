@@ -112,6 +112,7 @@ Supports optional filters:
 | `target_attribute_uuid` | Filter by target attribute |
 | `target_event_uuid` | Filter by target event |
 | `match_type` | Filter by match strategy |
+| `ja4_variant` | Filter `ja4` matches by JA4+ variant (`JA4`, `JA4S`, …) |
 | `page` | Page number (default 1) |
 | `size` | Page size (default 10, max 100) |
 

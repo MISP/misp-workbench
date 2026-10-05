@@ -80,6 +80,10 @@ def get_correlations(params: correlation_schemas.CorrelationQueryParams, page: i
         query["query"]["bool"]["must"].append(
             {"term": {"match_type.keyword": params.match_type}}
         )
+    if params.ja4_variant:
+        query["query"]["bool"]["must"].append(
+            {"term": {"ja4_variant": params.ja4_variant}}
+        )
     if not query["query"]["bool"]["must"]:
         query = {"query": {"match_all": {}}, "from": from_value, "size": size}
 

@@ -19,6 +19,7 @@ async def get_correlations_parameters(
     target_attribute_uuid: Optional[str] = None,
     target_event_uuid: Optional[str] = None,
     match_type: Optional[str] = None,
+    ja4_variant: Optional[str] = None,
 ) -> correlation_schemas.CorrelationQueryParams:
     return correlation_schemas.CorrelationQueryParams(
         source_attribute_uuid=source_attribute_uuid,
@@ -26,6 +27,7 @@ async def get_correlations_parameters(
         target_attribute_uuid=target_attribute_uuid,
         target_event_uuid=target_event_uuid,
         match_type=match_type,
+        ja4_variant=ja4_variant,
     )
 
 
