@@ -489,7 +489,8 @@ def get_correlations(
       - source_attribute_value, target_attribute_value
       - source_attribute_type, target_attribute_type
       - source_event_uuid, target_event_uuid
-      - match_type: "term" (exact), "prefix", "fuzzy", "cidr"
+      - match_type: "term" (exact), "prefix", "fuzzy", "cidr", "ja4" (JA4+ fingerprint)
+      - ja4_variant: JA4+ variant (JA4, JA4S, ...) on "ja4" matches, when known
       - score (float)
     """
     _check_scope("mcp:get_correlations")

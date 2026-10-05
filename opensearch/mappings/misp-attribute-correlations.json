@@ -4,6 +4,9 @@
             "@timestamp": {
                 "type": "date"
             },
+            "ja4_variant": {
+                "type": "keyword"
+            },
             "match_type": {
                 "type": "text",
                 "fields": {

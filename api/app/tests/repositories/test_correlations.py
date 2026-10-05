@@ -625,6 +625,159 @@ class TestBuildChunkCorrelationDocs:
             assert build_chunk_correlation_docs(docs, _settings(), True) == []
 
 
+JA4 = "t13d1516h2_8daaf6152771_b186095e22b6"
+
+
+def _ja4_attribute(uuid, value=JA4, variant="JA4", **overrides):
+    ja4 = {"value": value.strip().lower()}
+    if variant:
+        ja4["variant"] = variant
+    return _attribute(
+        uuid, value=value, type="text", expanded={"ja4": ja4}, **overrides
+    )
+
+
+# ── ja4 match type ────────────────────────────────────────────────────────────
+
+class TestJa4Correlations:
+    def _mock_os(self, responses):
+        mock = MagicMock()
+        mock.msearch.return_value = {
+            "responses": [{"hits": {"hits": hits}} for hits in responses]
+        }
+        return mock
+
+    def _searches(self, mock_os):
+        # every other line of a multi-search body is a header
+        return mock_os.msearch.call_args.kwargs["body"][1::2]
+
+    def test_ja4_query_matches_the_normalized_value(self):
+        query = build_query(
+            "uuid-1", "event-1", f" {JA4.upper()} ", "ja4", _settings(["ja4"])
+        )
+
+        assert query["query"]["bool"]["must"] == [
+            {"term": {"expanded.ja4.value": JA4}}
+        ]
+        assert {"term": {"uuid.keyword": "uuid-1"}} in query["query"]["bool"]["must_not"]
+        assert {"term": {"event_uuid": "event-1"}} in query["query"]["bool"]["must_not"]
+
+    @pytest.mark.parametrize("match_type", ["term", "prefix", "fuzzy"])
+    def test_value_matches_leave_fingerprints_out(self, match_type):
+        query = build_query(
+            "uuid-1", "event-1", "4289_64", match_type, _settings(["term", "ja4"])
+        )
+
+        assert {"exists": {"field": "expanded.ja4.value"}} in query["query"]["bool"][
+            "must_not"
+        ]
+
+    def test_value_matches_keep_fingerprints_without_the_ja4_match(self):
+        query = build_query("uuid-1", "event-1", JA4, "term", _settings(["term"]))
+
+        assert {"exists": {"field": "expanded.ja4.value"}} not in query["query"][
+            "bool"
+        ]["must_not"]
+
+    def test_fingerprint_runs_only_the_ja4_match(self):
+        mock_os = self._mock_os([[]])
+
+        with patch(PATCH, return_value=mock_os):
+            build_chunk_correlation_docs(
+                [_ja4_attribute("attr-1")],
+                _settings(["term", "cidr", "fuzzy", "ja4"]),
+                bidirectional=True,
+            )
+
+        [search] = self._searches(mock_os)
+        assert search["query"]["bool"]["must"] == [
+            {"term": {"expanded.ja4.value": JA4}}
+        ]
+
+    def test_other_attributes_skip_the_ja4_match(self):
+        mock_os = self._mock_os([[]])
+
+        with patch(PATCH, return_value=mock_os):
+            build_chunk_correlation_docs(
+                [_attribute("attr-1")], _settings(["term", "ja4"]), bidirectional=True
+            )
+
+        [search] = self._searches(mock_os)
+        assert "expanded.ja4.value" not in str(search["query"]["bool"]["must"])
+
+    def test_fingerprint_falls_back_to_term_when_ja4_is_off(self):
+        mock_os = self._mock_os([[]])
+
+        with patch(PATCH, return_value=mock_os):
+            build_chunk_correlation_docs(
+                [_ja4_attribute("attr-1")], _settings(["term"]), bidirectional=True
+            )
+
+        [search] = self._searches(mock_os)
+        assert {"term": {"value.keyword": JA4}} in search["query"]["bool"]["must"][0][
+            "bool"
+        ]["should"]
+
+    def test_one_correlation_per_pair_with_the_variant(self):
+        target = _ja4_attribute("attr-old", event_uuid="event-2", score=1.0)
+        mock_os = self._mock_os([[target]])
+
+        with patch(PATCH, return_value=mock_os):
+            correlation_docs = build_chunk_correlation_docs(
+                [_ja4_attribute("attr-1", value=JA4.upper())],
+                _settings(["term", "ja4"]),
+                bidirectional=True,
+            )
+
+        assert {doc["_id"] for doc in correlation_docs} == {
+            "attr-1|attr-old|ja4",
+            "attr-old|attr-1|ja4",
+        }
+        for doc in correlation_docs:
+            assert doc["_source"]["match_type"] == "ja4"
+            assert doc["_source"]["ja4_variant"] == "JA4"
+
+    def test_variant_comes_from_whichever_side_knows_it(self):
+        # under the ja4-fingerprint relation a fingerprint may have no variant
+        target = _ja4_attribute(
+            "attr-old", variant=None, event_uuid="event-2", score=1.0
+        )
+        mock_os = self._mock_os([[target]])
+
+        with patch(PATCH, return_value=mock_os):
+            correlation_docs = build_chunk_correlation_docs(
+                [_ja4_attribute("attr-1")], _settings(["ja4"]), bidirectional=True
+            )
+
+        assert {doc["_source"]["ja4_variant"] for doc in correlation_docs} == {"JA4"}
+
+    def test_no_variant_when_neither_side_knows_it(self):
+        target = _ja4_attribute(
+            "attr-old", value="4289_64", variant=None, event_uuid="event-2", score=1.0
+        )
+        mock_os = self._mock_os([[target]])
+
+        with patch(PATCH, return_value=mock_os):
+            [correlation_doc] = build_chunk_correlation_docs(
+                [_ja4_attribute("attr-1", value="4289_64", variant=None)],
+                _settings(["ja4"]),
+                bidirectional=False,
+            )
+
+        assert "ja4_variant" not in correlation_doc["_source"]
+
+    def test_other_match_types_carry_no_variant(self):
+        target = _attribute("attr-old", event_uuid="event-2", score=1.0)
+        mock_os = self._mock_os([[target]])
+
+        with patch(PATCH, return_value=mock_os):
+            [correlation_doc] = build_chunk_correlation_docs(
+                [_attribute("attr-1")], _settings(["term", "ja4"]), bidirectional=False
+            )
+
+        assert "ja4_variant" not in correlation_doc["_source"]
+
+
 # ── index_correlation_docs ────────────────────────────────────────────────────
 
 class TestIndexCorrelationDocs:

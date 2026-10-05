@@ -20,7 +20,8 @@ Each correlation document records:
 | `target_attribute_type` | MISP type of the target attribute |
 | `target_attribute_value` | Value of the target attribute |
 | `target_event_uuid` | Event the target attribute belongs to |
-| `match_type` | How the match was found (`term`, `prefix`, `fuzzy`, `cidr`) |
+| `match_type` | How the match was found (`term`, `prefix`, `fuzzy`, `cidr`, `ja4`) |
+| `ja4_variant` | JA4+ variant of a `ja4` match (`JA4`, `JA4S`, …), when known |
 | `score` | OpenSearch relevance score |
 
 
@@ -49,16 +50,31 @@ Clicking the <span style="color: rgb(255, 193, 7);">:fontawesome-solid-sitemap:<
 | `prefix` | Shared value prefix (configurable length, default 10 characters) |
 | `fuzzy` | Approximate match using edit distance (default `AUTO` fuzziness) |
 | `cidr` | IP-in-CIDR containment for IP attribute types |
+| `ja4` | Exact, case-insensitive match between [JA4+ fingerprints](#ja4-fingerprints) |
 
 Active match types and tuning parameters are controlled by runtime settings:
 
 | Setting key | Default | Description |
 |---|---|---|
-| `correlations.matchTypes` | `["term", "cidr"]` | Which match strategies to apply |
+| `correlations.matchTypes` | `["term", "cidr", "ja4"]` | Which match strategies to apply |
 | `correlations.prefixLength` | `10` | Characters compared for prefix matches |
 | `correlations.fuzzynessAlgo` | `"AUTO"` | OpenSearch fuzziness value |
 | `correlations.maxCorrelationsPerDoc` | `1000` | Max matches stored per attribute |
 | `correlations.opensearchFlushBulkSize` | `100` | Bulk write buffer size |
+
+### JA4+ fingerprints
+
+MISP has no JA4+ attribute type, so a [JA4+](https://github.com/FoxIO-LLC/ja4/blob/main/technical_details/README.md) fingerprint is a `text` attribute, normally in a `ja4-plus` object under the `ja4-fingerprint` relation. The [`misp-attributes_ja4` ingest pipeline](opensearch/ingest-pipelines.md#misp-attributes_ja4) recognises fingerprints as they are indexed and stores them lowercased in `expanded.ja4.value`.
+
+With `ja4` enabled, a fingerprint correlates **only** with other fingerprints, through the `ja4` match:
+
+- it matches exactly, but regardless of case, so `T13D…` and `t13d…` correlate
+- `term`, `prefix` and `fuzzy` are not run for it, and leave fingerprints out of their own hits. A JA4L like `4289_64` therefore does not pair with an unrelated text that happens to share its value, and each pair of fingerprints gives one correlation, not one per match type
+- the correlation records the variant in `ja4_variant` when either side's shape gives it away
+
+With `ja4` disabled, fingerprints correlate through `term` like any other value. Deployments that saved their correlation settings before `ja4` existed keep their saved `matchTypes` and need `ja4` ticked under ***Internals*** → ***Runtime Settings*** → ***correlations***.
+
+Attributes indexed before the pipeline existed have no `expanded.ja4` until they are reprocessed.
 
 ## Running correlations via the API
 

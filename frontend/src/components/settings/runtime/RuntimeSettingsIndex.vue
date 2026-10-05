@@ -116,7 +116,7 @@ function removeCidrType(type) {
   ).filter((t) => t !== type);
 }
 
-const MATCH_TYPE_OPTIONS = ["term", "cidr"];
+const MATCH_TYPE_OPTIONS = ["term", "cidr", "ja4"];
 const KNOWN_NAMESPACES = ["correlations", "notifications", "retention"];
 
 // Retention: bridge string[] ↔ tag objects for TagsSelect

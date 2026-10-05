@@ -5,6 +5,7 @@ from opensearchpy import helpers as opensearch_helpers
 from opensearchpy.exceptions import NotFoundError
 from app.services.runtime_settings import RuntimeSettings
 from app.worker import tasks
+from app.services.ja4 import normalize_ja4
 import datetime
 import json
 import logging
@@ -14,6 +15,9 @@ logger = logging.getLogger(__name__)
 MAX_CORRELATIONS_PER_DOC = 1000
 # Match types that find a value without matching it exactly.
 APPROXIMATE_MATCH_TYPES = ("fuzzy", "prefix")
+# JA4+ fingerprints, matched exactly on the normalized value the
+# misp-attributes_ja4 ingest pipeline stores in expanded.ja4.value.
+JA4_MATCH_TYPE = "ja4"
 CORRELATION_PREFIX_LENGTH = 10
 CORRELATION_MIN_SCORE = 2
 CORRELATION_FUZZYNESS = "AUTO"
@@ -39,6 +43,7 @@ CORRELATION_SOURCE_FIELDS = [
     "event_uuid",
     "disable_correlation",
     "deleted",
+    "expanded.ja4",
 ]
 
 
@@ -168,6 +173,18 @@ def build_term_match(value, attribute_type=None):
     }
 
 
+def ja4_of(doc):
+    """The ``expanded.ja4`` fields of an indexed attribute, or None."""
+    ja4 = (doc["_source"].get("expanded") or {}).get("ja4")
+    return ja4 if ja4 and ja4.get("value") else None
+
+
+def ja4_matching_enabled(runtimeSettings: RuntimeSettings) -> bool:
+    return JA4_MATCH_TYPE in runtimeSettings.get_value(
+        "correlations.matchTypes", ["term", "cidr"]
+    )
+
+
 def build_query(
     uuid,
     event_uuid,
@@ -223,8 +240,20 @@ def build_query(
                 }
             }
         ]
+    elif match_type == JA4_MATCH_TYPE:
+        query["query"]["bool"]["must"] = [
+            {"term": {"expanded.ja4.value": normalize_ja4(value)}}
+        ]
     else:
         raise ValueError(f"Unsupported match_type: {match_type}")
+
+    # JA4+ fingerprints correlate only with each other, through the ja4 match.
+    # Left to the value matches they would also pair with any text that
+    # happens to share a short fingerprint like a JA4L ``4289_64``.
+    if match_type != JA4_MATCH_TYPE and ja4_matching_enabled(runtimeSettings):
+        query["query"]["bool"]["must_not"].append(
+            {"exists": {"field": "expanded.ja4.value"}}
+        )
 
     return query
 
@@ -283,6 +312,7 @@ def attribute_ref(doc):
         "type": doc["_source"].get("type"),
         "value": doc["_source"].get("value"),
         "event_uuid": doc["_source"].get("event_uuid"),
+        "ja4_variant": (ja4_of(doc) or {}).get("variant"),
     }
 
 
@@ -335,7 +365,7 @@ def event_correlation_disabled(event_uuid):
 
 def build_correlation_doc(source, target, match_type, score):
     """Build the bulk action for a single directed source -> target correlation."""
-    return {
+    correlation = {
         "_index": "misp-attribute-correlations",
         "_id": f"{source['uuid']}|{target['uuid']}|{match_type}",
         "_source": {
@@ -351,6 +381,15 @@ def build_correlation_doc(source, target, match_type, score):
             "@timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
         },
     }
+
+    if match_type == JA4_MATCH_TYPE:
+        # Either side may lack a variant: one under the ja4-fingerprint
+        # relation is only known when its shape gives it away.
+        variant = target.get("ja4_variant") or source.get("ja4_variant")
+        if variant:
+            correlation["_source"]["ja4_variant"] = variant
+
+    return correlation
 
 
 def correlation_notification_payload(correlation_source):
@@ -399,8 +438,18 @@ def build_correlation_queries(doc, runtimeSettings: RuntimeSettings):
     queries = []
     value = doc["_source"].get("value")
     match_types = runtimeSettings.get_value("correlations.matchTypes", ["term", "cidr"])
+    ja4 = ja4_of(doc)
 
     for match_type in match_types:
+        if match_type == JA4_MATCH_TYPE:
+            if not ja4:
+                continue
+        elif ja4 and JA4_MATCH_TYPE in match_types:
+            # A fingerprint matches exactly, and only other fingerprints: the
+            # value matches exclude fingerprints from their hits, so running
+            # them for one would only find what the ja4 match already does.
+            continue
+
         if match_type == "cidr":
             if (
                 doc["_source"]["type"]

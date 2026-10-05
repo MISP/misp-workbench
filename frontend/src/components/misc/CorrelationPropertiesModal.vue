@@ -110,7 +110,15 @@ pre {
                   <td>
                     How the correlation was found:
                     <code>term</code>, <code>prefix</code>, <code>fuzzy</code>,
-                    <code>cidr</code>
+                    <code>cidr</code>, <code>ja4</code>
+                  </td>
+                </tr>
+                <tr>
+                  <td><code>ja4_variant</code></td>
+                  <td class="text-muted">keyword</td>
+                  <td>
+                    JA4+ variant of a <code>ja4</code> match (JA4, JA4S, JA4H,
+                    JA4X, JA4SSH), when the fingerprint's shape gives it away
                   </td>
                 </tr>
                 <tr>
