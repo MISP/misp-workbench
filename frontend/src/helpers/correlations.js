@@ -3,6 +3,8 @@ export const correlationHelper = {
   groupByEvent,
   isApproximateMatch,
   matchesQuery,
+  matchLabel,
+  ja4PivotQuery,
 };
 
 // Match types that found a value without matching it exactly, so a reader has
@@ -11,6 +13,28 @@ const APPROXIMATE_MATCH_TYPES = ["fuzzy", "prefix"];
 
 function isApproximateMatch(matchType) {
   return APPROXIMATE_MATCH_TYPES.includes(matchType);
+}
+
+/**
+ * How a match reads in the UI: its type, plus the JA4+ variant a ja4 match
+ * found when it is known.
+ */
+function matchLabel(match) {
+  return match.variant ? `${match.type} · ${match.variant}` : match.type;
+}
+
+/**
+ * The Explore query finding every attribute indexed with the same JA4+
+ * fingerprint, or null when the attribute is not one. The indexed value is
+ * already lower cased, which is what makes the pivot ignore case.
+ */
+function ja4PivotQuery(attribute) {
+  const value = attribute?.expanded?.ja4?.value;
+  if (!value) {
+    return null;
+  }
+
+  return `expanded.ja4.value:"${value.replace(/["\\]/g, "\\$&")}"`;
 }
 
 /**
@@ -27,6 +51,7 @@ function matchesQuery(source, needle) {
     source.target_attribute_type,
     source.target_event_uuid,
     source.match_type,
+    source.ja4_variant,
   ].some((field) =>
     String(field ?? "")
       .toLowerCase()
@@ -64,6 +89,7 @@ function mergeCorrelatedAttributes(correlations) {
     attribute.matches.push({
       type: source.match_type,
       score: source.score,
+      variant: source.ja4_variant,
     });
 
     const seenAt = source["@timestamp"];

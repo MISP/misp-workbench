@@ -1,5 +1,5 @@
 <script setup>
-import { authHelper } from "@/helpers";
+import { authHelper, correlationHelper } from "@/helpers";
 import { ref, onMounted, computed } from "vue";
 import { Modal } from "bootstrap";
 import { storeToRefs } from "pinia";
@@ -15,6 +15,7 @@ import {
   faMagicWandSparkles,
   faSitemap,
   faStar,
+  faFingerprint,
 } from "@fortawesome/free-solid-svg-icons";
 import { toggleFollowEntity, isFollowingEntity } from "@/helpers/follow";
 
@@ -48,6 +49,21 @@ const actions = computed(() => ({
     props.default_actions.tag ??
     authHelper.hasScope(scopes.value, "attributes:tag"),
 }));
+
+// Every attribute holding the same JA4+ fingerprint, whatever its case and
+// whether or not it correlated (a disabled correlation flag, say).
+const ja4Pivot = computed(() => {
+  const query = correlationHelper.ja4PivotQuery(props.attribute);
+  if (!query) {
+    return null;
+  }
+
+  const variant = props.attribute.expanded.ja4.variant;
+  return {
+    to: { path: "/explore", query: { q: query } },
+    title: `Pivot on this ${variant || "JA4+"} fingerprint`,
+  };
+});
 
 const emit = defineEmits([
   "attribute-created",
@@ -139,11 +155,12 @@ function followAttribute() {
     role="toolbar"
   >
     <div
-      v-if="Object(attribute.correlations).length > 0"
+      v-if="Object(attribute.correlations).length > 0 || ja4Pivot"
       class="btn-group me-2"
       role="group"
     >
       <button
+        v-if="Object(attribute.correlations).length > 0"
         type="button"
         class="btn btn-sm"
         @click="openCorrelationsModal"
@@ -151,6 +168,18 @@ function followAttribute() {
       >
         <FontAwesomeIcon :icon="faSitemap" class="text-warning" />
       </button>
+
+      <!-- The pivot leads to /explore, so it must not read as active there. -->
+      <RouterLink
+        v-if="ja4Pivot"
+        :to="ja4Pivot.to"
+        class="btn btn-sm"
+        active-class=""
+        exact-active-class=""
+        :title="ja4Pivot.title"
+      >
+        <FontAwesomeIcon :icon="faFingerprint" class="text-info" />
+      </RouterLink>
     </div>
 
     <div class="btn-group me-2" role="group">
@@ -225,6 +254,18 @@ function followAttribute() {
           <FontAwesomeIcon :icon="faSitemap" class="me-2 text-warning" />
           Correlations
         </button>
+      </li>
+
+      <li v-if="ja4Pivot">
+        <RouterLink
+          class="dropdown-item"
+          :to="ja4Pivot.to"
+          active-class=""
+          exact-active-class=""
+        >
+          <FontAwesomeIcon :icon="faFingerprint" class="me-2 text-info" />
+          {{ ja4Pivot.title }}
+        </RouterLink>
       </li>
 
       <li v-if="actions.view">

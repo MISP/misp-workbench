@@ -72,6 +72,8 @@ With `ja4` enabled, a fingerprint correlates **only** with other fingerprints, t
 - `term`, `prefix` and `fuzzy` are not run for it, and leave fingerprints out of their own hits. A JA4L like `4289_64` therefore does not pair with an unrelated text that happens to share its value, and each pair of fingerprints gives one correlation, not one per match type
 - the correlation records the variant in `ja4_variant` when either side's shape gives it away
 
+A fingerprint attribute also gets a <span style="color: rgb(13, 202, 240);">:fontawesome-solid-fingerprint:</span> action. It opens ***Explore*** on `expanded.ja4.value:"<fingerprint>"`, which lists every attribute holding that fingerprint whatever its case, including ones that do not correlate, for example because correlation is disabled on them. Correlation rows show the variant next to the match type, e.g. `ja4 · JA4S`.
+
 With `ja4` disabled, fingerprints correlate through `term` like any other value. Deployments that saved their correlation settings before `ja4` existed keep their saved `matchTypes` and need `ja4` ticked under ***Internals*** → ***Runtime Settings*** → ***correlations***.
 
 Attributes indexed before the pipeline existed have no `expanded.ja4` until they are reprocessed. The `backfill-ja4` command does that, then rebuilds the correlations of every fingerprint it finds:

@@ -121,6 +121,10 @@ function isApproximate(matchType) {
   return correlationHelper.isApproximateMatch(matchType);
 }
 
+function matchLabel(match) {
+  return correlationHelper.matchLabel(match);
+}
+
 function formatSeenAt(timestamp) {
   if (!timestamp) {
     return "";
@@ -222,7 +226,7 @@ function navigate(route) {
                   type="search"
                   class="form-control"
                   aria-label="Filter correlations"
-                  placeholder="Filter by value, type or event"
+                  placeholder="Filter by value, type, match or event"
                 />
                 <button
                   v-if="filtering"
@@ -348,7 +352,7 @@ function navigate(route) {
                     }"
                     :title="`Match score ${match.score}`"
                   >
-                    {{ match.type }}
+                    {{ matchLabel(match) }}
                   </span>
 
                   <button

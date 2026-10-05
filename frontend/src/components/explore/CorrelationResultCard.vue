@@ -17,6 +17,9 @@ const src = computed(() => props.correlation._source);
       class="card-header py-2 px-3 bg-body-secondary d-flex align-items-center gap-2"
     >
       <Badge :value="src.match_type" />
+      <span v-if="src.ja4_variant" class="badge bg-info text-dark">
+        {{ src.ja4_variant }}
+      </span>
       <span class="text-muted small">match</span>
       <span
         v-if="src.source_attribute_type"
