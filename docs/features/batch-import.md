@@ -40,6 +40,9 @@ Each line is matched against a set of built-in patterns:
 | `ip-dst` | `8.8.8.8` |
 | `url` | `https://evil.example.com/payload` |
 | `domain` | `evil.example.com` |
+| `text` (JA4+) | `t13d1516h2_8daaf6152771_b186095e22b6` |
+
+JA4, JA4S, JA4H, JA4X and JA4SSH fingerprints are imported as `text`, the type MISP and the [JA4+ correlation](correlations.md#ja4-fingerprints) expect them in.
 
 Lines that don't match any pattern are flagged as **invalid** and skipped during import.
 

@@ -18,7 +18,9 @@ const editMode = ref(false);
 const attributeCopy = ref({ ...props.attribute });
 const errors = ref(null);
 
-const AttributeTypeSchema = ref(getAttributeTypeValidationSchema("text"));
+const AttributeTypeSchema = ref(
+  getAttributeTypeValidationSchema("text", props.attribute.object_relation),
+);
 const selectedTemplateAttribute = ref({});
 
 function deleteObjectAttribute() {
@@ -56,6 +58,7 @@ function handleAttributeObjecRelationChanged(relation) {
   });
   AttributeTypeSchema.value = getAttributeTypeValidationSchema(
     attributeCopy.value.type,
+    relation,
   );
 }
 
@@ -63,6 +66,7 @@ function handleAttributeTypeChanged(type) {
   attributeCopy.value.type = type;
   AttributeTypeSchema.value = getAttributeTypeValidationSchema(
     attributeCopy.value.type,
+    attributeCopy.value.object_relation,
   );
 }
 </script>

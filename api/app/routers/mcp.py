@@ -550,7 +550,9 @@ def detect_indicator_type(values: list[str]) -> list[dict]:
     """Classify freetext values into MISP attribute types.
 
     Automatically detects: IPv4/IPv6 addresses, MD5/SHA1/SHA256/SHA512 hashes,
-    URLs, domains, email addresses, CVE identifiers, and more.
+    URLs, domains, email addresses, CVE identifiers, and more. JA4+ fingerprints
+    (JA4, JA4S, JA4H, JA4X, JA4SSH) come back as ``text``, the type MISP and the
+    JA4+ correlation expect them in.
     Accepts up to 100 values at a time.
     """
     _check_scope("mcp:detect_indicator_type")

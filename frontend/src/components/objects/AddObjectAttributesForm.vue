@@ -99,11 +99,15 @@ function handleAttributeObjectRelationChanged(object_relation) {
 
   AttributeTypeSchema.value = getAttributeTypeValidationSchema(
     newAttribute.value.type,
+    object_relation,
   );
 }
 
 function handleAttributeTypeChanged(type) {
-  AttributeTypeSchema.value = getAttributeTypeValidationSchema(type);
+  AttributeTypeSchema.value = getAttributeTypeValidationSchema(
+    type,
+    newAttribute.value.object_relation,
+  );
 }
 
 const validateAttributeValue = (object, schema) => {

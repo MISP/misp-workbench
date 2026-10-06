@@ -21,6 +21,7 @@ When set to **Automatic**, each line is classified in order:
 | `sha1` | 40 hex characters |
 | `md5` | 32 hex characters |
 | `domain` | Valid domain name |
+| `text` | A JA4, JA4S, JA4H, JA4X or JA4SSH fingerprint (case-insensitive), so it [correlates as one](../correlations.md#ja4-fingerprints) |
 | `other` | Fallback — does not match any of the above |
 
 ## Configuration
