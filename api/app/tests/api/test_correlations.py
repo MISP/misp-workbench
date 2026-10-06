@@ -181,6 +181,23 @@ class TestCorrelationsResource(ApiTester):
         assert {"term": {"match_type.keyword": "term"}} in call_body["query"]["bool"]["must"]
 
     @pytest.mark.parametrize("scopes", [["correlations:read"]])
+    def test_get_correlations_filter_by_ja4_variant(
+        self, client: TestClient, auth_token: auth.Token
+    ):
+        mock_os = make_opensearch_mock()
+        with patch(OPENSEARCH_PATCH, return_value=mock_os):
+            response = client.get(
+                "/correlations/",
+                params={"match_type": "ja4", "ja4_variant": "JA4S"},
+                headers={"Authorization": "Bearer " + auth_token},
+            )
+
+        assert response.status_code == status.HTTP_200_OK
+        must = mock_os.search.call_args.kwargs["body"]["query"]["bool"]["must"]
+        assert {"term": {"match_type.keyword": "ja4"}} in must
+        assert {"term": {"ja4_variant": "JA4S"}} in must
+
+    @pytest.mark.parametrize("scopes", [["correlations:read"]])
     def test_get_correlations_no_filters_uses_match_all(
         self, client: TestClient, auth_token: auth.Token
     ):

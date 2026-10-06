@@ -121,6 +121,14 @@ misp-attributes_ip_extraction
    Extracts IP from ip-src / ip-dst attributes
    → expanded.ip (single IP)
    → expanded.ip_range (CIDR notation)
+        │  then calls ▼
+misp-attributes_value_parts
+   Splits composite values (domain|ip, filename|sha256, …)
+   → expanded.value_parts
+        │  then calls ▼
+misp-attributes_ja4
+   Recognises JA4+ fingerprints
+   → expanded.ja4.value (lowercased), expanded.ja4.variant
         │
         ▼
 misp-attributes_final (final pipeline)
@@ -138,13 +146,15 @@ misp-attributes_servos
 
 ### misp-attributes_default
 
-Entry point. Delegates to the IP extraction pipeline.
+Entry point. Delegates to the IP extraction, value parts and JA4+ pipelines, in that order.
 
 ```json
 {
   "description": "Normalization pipeline wrapper",
   "processors": [
-    { "pipeline": { "name": "misp-attributes_ip_extraction" } }
+    { "pipeline": { "name": "misp-attributes_ip_extraction" } },
+    { "pipeline": { "name": "misp-attributes_value_parts" } },
+    { "pipeline": { "name": "misp-attributes_ja4" } }
   ]
 }
 ```
@@ -172,6 +182,17 @@ This enables native IP range queries and aggregations in OpenSearch.
   ]
 }
 ```
+
+### misp-attributes_ja4
+
+MISP core has no JA4+ attribute type: a [JA4+](https://github.com/FoxIO-LLC/ja4/blob/main/technical_details/README.md) fingerprint is a `text` attribute, normally inside a `ja4-plus` object under the `ja4-fingerprint` relation. This pipeline recognises fingerprints so they can be matched on their own field rather than as arbitrary text:
+
+- `expanded.ja4.value` — the fingerprint, trimmed and lowercased, as a `keyword`
+- `expanded.ja4.variant` — `JA4`, `JA4S`, `JA4H`, `JA4X` or `JA4SSH`, when the value's shape gives it away
+
+An attribute under the `ja4-fingerprint` relation always counts, whatever its shape. A bare `text` attribute counts only when it is shaped like one of the variants above. JA4L, JA4T, JA4TS and JA4TScan are short runs of digits, too generic to tell from other text, so they are only recognised from the relation, and without a variant.
+
+The script removes `expanded.ja4` before deciding, so an attribute edited away from a fingerprint does not keep a stale one. The same rules live in `api/app/services/ja4.py`; `api/app/tests/services/test_ja4.py` runs both against the same cases, through the pipeline installed in the cluster.
 
 ### misp-attributes_ip_geoip
 
@@ -265,6 +286,8 @@ All pipeline definitions are stored in the repository and applied on startup:
 |---|---|
 | `opensearch/pipelines/misp-attributes_default.json` | Default entry point |
 | `opensearch/pipelines/misp-attributes_ip_extraction.json` | IP extraction script |
+| `opensearch/pipelines/misp-attributes_value_parts.json` | Composite value splitting |
+| `opensearch/pipelines/misp-attributes_ja4.json` | JA4+ fingerprint recognition |
 | `opensearch/pipelines/misp-attributes_ip_geoip.json` | GeoIP enrichment |
 | `opensearch/pipelines/misp-attributes_final.json` | Final exit point |
 | `opensearch/pipelines/misp-attributes_servos.json` | Servo chain (content managed by the API) |

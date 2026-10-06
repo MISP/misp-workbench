@@ -3,6 +3,9 @@ export const correlationHelper = {
   groupByEvent,
   isApproximateMatch,
   matchesQuery,
+  matchLabel,
+  typeLabel,
+  ja4PivotQuery,
 };
 
 // Match types that found a value without matching it exactly, so a reader has
@@ -11,6 +14,40 @@ const APPROXIMATE_MATCH_TYPES = ["fuzzy", "prefix"];
 
 function isApproximateMatch(matchType) {
   return APPROXIMATE_MATCH_TYPES.includes(matchType);
+}
+
+/**
+ * How a match reads in the UI: its type, plus the JA4+ variant a ja4 match
+ * found when it is known.
+ */
+function matchLabel(match) {
+  return match.variant ? `${match.type} · ${match.variant}` : match.type;
+}
+
+/**
+ * How an attribute's type reads next to a correlation. MISP has no JA4+ type,
+ * so a fingerprint is a plain text attribute; a ja4 match says what it really
+ * is, its variant when known.
+ */
+function typeLabel(type, correlation) {
+  if (correlation?.match_type === "ja4") {
+    return correlation.ja4_variant || "JA4+";
+  }
+  return type;
+}
+
+/**
+ * The Explore query finding every attribute indexed with the same JA4+
+ * fingerprint, or null when the attribute is not one. The indexed value is
+ * already lower cased, which is what makes the pivot ignore case.
+ */
+function ja4PivotQuery(attribute) {
+  const value = attribute?.expanded?.ja4?.value;
+  if (!value) {
+    return null;
+  }
+
+  return `expanded.ja4.value:"${value.replace(/["\\]/g, "\\$&")}"`;
 }
 
 /**
@@ -27,6 +64,7 @@ function matchesQuery(source, needle) {
     source.target_attribute_type,
     source.target_event_uuid,
     source.match_type,
+    source.ja4_variant,
   ].some((field) =>
     String(field ?? "")
       .toLowerCase()
@@ -53,6 +91,7 @@ function mergeCorrelatedAttributes(correlations) {
       attribute = {
         uuid: source.target_attribute_uuid,
         type: source.target_attribute_type,
+        typeLabel: source.target_attribute_type,
         value: source.target_attribute_value,
         eventUuid: source.target_event_uuid,
         matches: [],
@@ -61,9 +100,14 @@ function mergeCorrelatedAttributes(correlations) {
       merged.set(attribute.uuid, attribute);
     }
 
+    if (source.match_type === "ja4") {
+      attribute.typeLabel = typeLabel(attribute.type, source);
+    }
+
     attribute.matches.push({
       type: source.match_type,
       score: source.score,
+      variant: source.ja4_variant,
     });
 
     const seenAt = source["@timestamp"];

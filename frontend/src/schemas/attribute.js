@@ -1,5 +1,6 @@
 import * as Yup from "yup";
 import ipRegex from "ip-regex";
+import { JA4_OBJECT_RELATION, couldBeJa4 } from "@/helpers/ja4";
 
 export const AttributeSchema = Yup.object().shape({
   attribute: Yup.object().shape({
@@ -14,7 +15,23 @@ export const AttributeSchema = Yup.object().shape({
   }),
 });
 
-export const getAttributeTypeValidationSchema = (type) => {
+export const getAttributeTypeValidationSchema = (type, objectRelation) => {
+  if (objectRelation === JA4_OBJECT_RELATION) {
+    return AttributeSchema.concat(
+      Yup.object().shape({
+        attribute: Yup.object().shape({
+          value: Yup.string()
+            .test(
+              "ja4",
+              "Invalid JA4+ fingerprint: only letters, digits, '_' and '-' are allowed.",
+              couldBeJa4,
+            )
+            .required(),
+        }),
+      }),
+    );
+  }
+
   if (type === "ip-src" || type === "ip-dst") {
     return AttributeSchema.concat(
       Yup.object().shape({

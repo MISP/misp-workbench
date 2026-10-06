@@ -3,12 +3,19 @@ import { computed } from "vue";
 import Badge from "@/components/misc/Badge.vue";
 import Timestamp from "@/components/misc/Timestamp.vue";
 import UUID from "@/components/misc/UUID.vue";
+import { correlationHelper } from "@/helpers";
 
 const props = defineProps({
   correlation: { type: Object, required: true },
 });
 
 const src = computed(() => props.correlation._source);
+const sourceType = computed(() =>
+  correlationHelper.typeLabel(src.value.source_attribute_type, src.value),
+);
+const targetType = computed(() =>
+  correlationHelper.typeLabel(src.value.target_attribute_type, src.value),
+);
 </script>
 
 <template>
@@ -21,8 +28,9 @@ const src = computed(() => props.correlation._source);
       <span
         v-if="src.source_attribute_type"
         class="badge bg-primary-subtle text-primary"
+        :title="`${src.source_attribute_type} attribute`"
       >
-        {{ src.source_attribute_type }}
+        {{ sourceType }}
       </span>
     </div>
 
@@ -64,7 +72,11 @@ const src = computed(() => props.correlation._source);
             <span v-else>{{ src.target_attribute_value }}</span>
           </div>
           <div class="small">
-            <Badge :value="src.target_attribute_type" /> in
+            <Badge
+              :value="targetType"
+              :title="`${src.target_attribute_type} attribute`"
+            />
+            in
             <RouterLink
               v-if="src.target_event_uuid"
               :to="`/events/${src.target_event_uuid}`"

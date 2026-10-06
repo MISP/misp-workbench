@@ -5,6 +5,7 @@ from opensearchpy import helpers as opensearch_helpers
 from opensearchpy.exceptions import NotFoundError
 from app.services.runtime_settings import RuntimeSettings
 from app.worker import tasks
+from app.services.ja4 import JA4_OBJECT_RELATION, normalize_ja4
 import datetime
 import json
 import logging
@@ -14,6 +15,9 @@ logger = logging.getLogger(__name__)
 MAX_CORRELATIONS_PER_DOC = 1000
 # Match types that find a value without matching it exactly.
 APPROXIMATE_MATCH_TYPES = ("fuzzy", "prefix")
+# JA4+ fingerprints, matched exactly on the normalized value the
+# misp-attributes_ja4 ingest pipeline stores in expanded.ja4.value.
+JA4_MATCH_TYPE = "ja4"
 CORRELATION_PREFIX_LENGTH = 10
 CORRELATION_MIN_SCORE = 2
 CORRELATION_FUZZYNESS = "AUTO"
@@ -39,6 +43,7 @@ CORRELATION_SOURCE_FIELDS = [
     "event_uuid",
     "disable_correlation",
     "deleted",
+    "expanded.ja4",
 ]
 
 
@@ -74,6 +79,10 @@ def get_correlations(params: correlation_schemas.CorrelationQueryParams, page: i
     if params.match_type:
         query["query"]["bool"]["must"].append(
             {"term": {"match_type.keyword": params.match_type}}
+        )
+    if params.ja4_variant:
+        query["query"]["bool"]["must"].append(
+            {"term": {"ja4_variant": params.ja4_variant}}
         )
     if not query["query"]["bool"]["must"]:
         query = {"query": {"match_all": {}}, "from": from_value, "size": size}
@@ -168,6 +177,18 @@ def build_term_match(value, attribute_type=None):
     }
 
 
+def ja4_of(doc):
+    """The ``expanded.ja4`` fields of an indexed attribute, or None."""
+    ja4 = (doc["_source"].get("expanded") or {}).get("ja4")
+    return ja4 if ja4 and ja4.get("value") else None
+
+
+def ja4_matching_enabled(runtimeSettings: RuntimeSettings) -> bool:
+    return JA4_MATCH_TYPE in runtimeSettings.get_value(
+        "correlations.matchTypes", ["term", "cidr"]
+    )
+
+
 def build_query(
     uuid,
     event_uuid,
@@ -223,8 +244,20 @@ def build_query(
                 }
             }
         ]
+    elif match_type == JA4_MATCH_TYPE:
+        query["query"]["bool"]["must"] = [
+            {"term": {"expanded.ja4.value": normalize_ja4(value)}}
+        ]
     else:
         raise ValueError(f"Unsupported match_type: {match_type}")
+
+    # JA4+ fingerprints correlate only with each other, through the ja4 match.
+    # Left to the value matches they would also pair with any text that
+    # happens to share a short fingerprint like a JA4L ``4289_64``.
+    if match_type != JA4_MATCH_TYPE and ja4_matching_enabled(runtimeSettings):
+        query["query"]["bool"]["must_not"].append(
+            {"exists": {"field": "expanded.ja4.value"}}
+        )
 
     return query
 
@@ -283,6 +316,7 @@ def attribute_ref(doc):
         "type": doc["_source"].get("type"),
         "value": doc["_source"].get("value"),
         "event_uuid": doc["_source"].get("event_uuid"),
+        "ja4_variant": (ja4_of(doc) or {}).get("variant"),
     }
 
 
@@ -335,7 +369,7 @@ def event_correlation_disabled(event_uuid):
 
 def build_correlation_doc(source, target, match_type, score):
     """Build the bulk action for a single directed source -> target correlation."""
-    return {
+    correlation = {
         "_index": "misp-attribute-correlations",
         "_id": f"{source['uuid']}|{target['uuid']}|{match_type}",
         "_source": {
@@ -351,6 +385,15 @@ def build_correlation_doc(source, target, match_type, score):
             "@timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
         },
     }
+
+    if match_type == JA4_MATCH_TYPE:
+        # Either side may lack a variant: one under the ja4-fingerprint
+        # relation is only known when its shape gives it away.
+        variant = target.get("ja4_variant") or source.get("ja4_variant")
+        if variant:
+            correlation["_source"]["ja4_variant"] = variant
+
+    return correlation
 
 
 def correlation_notification_payload(correlation_source):
@@ -399,8 +442,18 @@ def build_correlation_queries(doc, runtimeSettings: RuntimeSettings):
     queries = []
     value = doc["_source"].get("value")
     match_types = runtimeSettings.get_value("correlations.matchTypes", ["term", "cidr"])
+    ja4 = ja4_of(doc)
 
     for match_type in match_types:
+        if match_type == JA4_MATCH_TYPE:
+            if not ja4:
+                continue
+        elif ja4 and JA4_MATCH_TYPE in match_types:
+            # A fingerprint matches exactly, and only other fingerprints: the
+            # value matches exclude fingerprints from their hits, so running
+            # them for one would only find what the ja4 match already does.
+            continue
+
         if match_type == "cidr":
             if (
                 doc["_source"]["type"]
@@ -585,6 +638,7 @@ def correlate_attributes(
     docs,
     bidirectional: bool = True,
     known_correlation_ids=None,
+    notify: bool = True,
 ):
     """Correlate a batch of indexed attributes with as few round trips as possible.
 
@@ -597,6 +651,9 @@ def correlate_attributes(
     the attributes that were already indexed have to expose the incoming ones as
     well, and every consumer looks correlations up by ``source_attribute_uuid``.
     A full run visits every attribute anyway, so it can skip the reverse writes.
+
+    ``notify`` off stores the correlations without telling anyone, for a
+    rebuild of ones that existed before under another id.
     """
     known = known_correlation_ids or set()
     chunk_size = runtimeSettings.get_value(
@@ -617,9 +674,10 @@ def correlate_attributes(
 
         created = index_correlation_docs(pending)
         stored += len(created)
-        dispatch_correlation_notifications(
-            [doc for doc in created if doc["_id"] not in known]
-        )
+        if notify:
+            dispatch_correlation_notifications(
+                [doc for doc in created if doc["_id"] not in known]
+            )
         pending = []
 
     for chunk in chunked(docs, chunk_size):
@@ -725,7 +783,10 @@ def correlate_attribute(runtimeSettings: RuntimeSettings, attribute_uuid: str):
 
 
 def correlate_attribute_uuids(
-    runtimeSettings: RuntimeSettings, attribute_uuids, rebuild: bool = False
+    runtimeSettings: RuntimeSettings,
+    attribute_uuids,
+    rebuild: bool = False,
+    notify: bool = True,
 ):
     """Correlate the batch of attributes a bulk ingest produced.
 
@@ -742,7 +803,7 @@ def correlate_attribute_uuids(
 
     docs = skip_uncorrelated_events(get_attributes_by_uuid(attribute_uuids))
 
-    return correlate_attributes(runtimeSettings, docs)
+    return correlate_attributes(runtimeSettings, docs, notify=notify)
 
 
 def search_correlations(
@@ -903,6 +964,8 @@ def get_top_correlating_attributes():
                                     "target_attribute_type",
                                     "target_attribute_value",
                                     "target_event_uuid",
+                                    "match_type",
+                                    "ja4_variant",
                                 ]
                             },
                         }
@@ -1089,3 +1152,95 @@ def correlate_event(runtimeSettings: RuntimeSettings, event_uuid: str):
     run_correlations(runtimeSettings, filters={"event_uuid": event_uuid})
 
     return {"message": f"Correlations for event {event_uuid} created successfully."}
+
+
+# ── JA4+ backfill ─────────────────────────────────────────────────────────────
+
+JA4_PIPELINE = "misp-attributes_ja4"
+
+
+def ja4_candidates_query():
+    """The attributes the misp-attributes_ja4 pipeline may recognise.
+
+    Anything else it would rewrite unchanged, so a backfill leaves it alone.
+    """
+    return {
+        "query": {
+            "bool": {
+                "should": [
+                    {"term": {"type.keyword": "text"}},
+                    {"term": {"object_relation.keyword": JA4_OBJECT_RELATION}},
+                ],
+                "minimum_should_match": 1,
+            }
+        }
+    }
+
+
+def count_ja4_candidates() -> int:
+    return get_opensearch_client().count(
+        index="misp-attributes", body=ja4_candidates_query()
+    )["count"]
+
+
+def start_ja4_reindex() -> str:
+    """Run the candidates through misp-attributes_ja4 and return the task id.
+
+    Naming the pipeline replaces the index's default one, so only the JA4+
+    step runs again. The final pipeline cannot be skipped: geoip and every
+    enabled servo run over these attributes too, as in a servo backfill.
+    """
+    response = get_opensearch_client().update_by_query(
+        index="misp-attributes",
+        body=ja4_candidates_query(),
+        params={
+            "pipeline": JA4_PIPELINE,
+            "wait_for_completion": "false",
+            "conflicts": "proceed",
+            "refresh": "true",
+        },
+    )
+    return response["task"]
+
+
+def ja4_reindex_status(task_id: str) -> dict:
+    """``{"completed", "total", "updated", "failures"}`` of a running reindex."""
+    response = get_opensearch_client().tasks.get(task_id=task_id)
+    # counters live under task.status while running, under response once done
+    status = response.get("response") or response.get("task", {}).get("status", {})
+    return {
+        "completed": bool(response.get("completed")),
+        "total": status.get("total", 0),
+        "updated": status.get("updated", 0),
+        "failures": list(status.get("failures") or []),
+    }
+
+
+def ja4_attribute_uuids():
+    """Yield the uuid of every attribute indexed as a JA4+ fingerprint."""
+    scroll = opensearch_helpers.scan(
+        client=get_opensearch_client(),
+        index="misp-attributes",
+        query={
+            "query": {"exists": {"field": "expanded.ja4.value"}},
+            "_source": False,
+        },
+        scroll="2m",
+        size=500,
+    )
+    for doc in scroll:
+        yield doc["_id"]
+
+
+def recorrelate_ja4_attributes(runtimeSettings: RuntimeSettings):
+    """Rebuild the correlations of every JA4+ fingerprint.
+
+    Dropping them first also drops the ``term`` correlations other attributes
+    held with a fingerprint, which the ja4 match now replaces. Nobody is
+    notified: these are correlations that existed already, under another id.
+    """
+    uuids = list(ja4_attribute_uuids())
+    result = correlate_attribute_uuids(
+        runtimeSettings, uuids, rebuild=True, notify=False
+    )
+    return {"attributes": len(uuids), "stored": result["stored"]}

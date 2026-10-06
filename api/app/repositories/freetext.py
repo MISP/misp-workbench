@@ -3,6 +3,7 @@ import re
 from typing import Optional
 
 from app.repositories import feeds as feeds_repository
+from app.services.ja4 import detect_ja4_variant
 from fastapi import HTTPException, status
 
 # Ordered most-specific first to avoid false matches
@@ -46,6 +47,10 @@ def detect_type(value: str) -> Optional[str]:
     for type_name, pattern in _PATTERNS:
         if pattern.match(value):
             return type_name
+    # MISP has no JA4+ type; fingerprints travel as text, which is what the
+    # misp-attributes_ja4 pipeline recognises them in
+    if detect_ja4_variant(value):
+        return "text"
     return "other"
 
 

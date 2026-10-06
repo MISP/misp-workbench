@@ -57,6 +57,7 @@ class TestGetLocalObjectTemplates:
             "meta_category",
             "version",
             "attributes",
+            "required",
             "requiredOneOf",
         }
         assert template["attributes"]
@@ -81,3 +82,15 @@ class TestGetLocalObjectTemplates:
 
         loaded = next(t for t in templates if t["uuid"] == raw["uuid"])
         assert loaded["name"] == raw["name"]
+
+    def test_keeps_both_kinds_of_requirement(self):
+        templates = {
+            t["name"]: t for t in object_templates_service.get_local_object_templates()
+        }
+
+        # every relation in required must be present ...
+        assert templates["ja4-plus"]["required"] == ["ja4-fingerprint", "ja4-type"]
+        assert templates["ja4-plus"]["requiredOneOf"] == []
+        # ... and at least one of those in requiredOneOf
+        assert templates["domain-ip"]["requiredOneOf"]
+        assert templates["domain-ip"]["required"] == []

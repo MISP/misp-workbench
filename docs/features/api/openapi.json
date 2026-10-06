@@ -7758,6 +7758,22 @@
               ],
               "title": "Match Type"
             }
+          },
+          {
+            "name": "ja4_variant",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Ja4 Variant"
+            }
           }
         ],
         "responses": {
@@ -18384,6 +18400,21 @@
             },
             "type": "array",
             "title": "Attributes",
+            "default": []
+          },
+          "required": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Required",
             "default": []
           },
           "requiredOneOf": {

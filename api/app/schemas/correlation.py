@@ -10,6 +10,7 @@ class CorrelationQueryParams(BaseModel):
     target_attribute_uuid: Optional[str] = None
     target_event_uuid: Optional[str] = None
     match_type: Optional[str] = None
+    ja4_variant: Optional[str] = None
 
 
 # ── Response schemas ──────────────────────────────────────────────────────────

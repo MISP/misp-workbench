@@ -5,6 +5,7 @@ import { Modal } from "bootstrap";
 import { useEventsStore, useToastsStore } from "@/stores";
 import { storeToRefs } from "pinia";
 import { ATTRIBUTE_CATEGORIES, ATTRIBUTE_TYPES } from "@/helpers/constants";
+import { JA4_PATTERNS } from "@/helpers/ja4";
 
 const toastsStore = useToastsStore();
 const eventsStore = useEventsStore();
@@ -109,6 +110,13 @@ const DETECTORS = [
     category: "Network activity",
     regex: /^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/,
   },
+  // MISP has no JA4+ type; fingerprints travel as text, which is what the
+  // JA4+ correlation recognises them in
+  ...JA4_PATTERNS.map(([, pattern]) => ({
+    type: "text",
+    category: "Network activity",
+    regex: new RegExp(pattern.source, "i"),
+  })),
 ];
 
 function detectLine(raw) {

@@ -99,6 +99,24 @@ class TestDetectType:
     def test_email_not_detected_as_domain(self):
         assert detect_type("user@example.com") != "domain"
 
+    # ── JA4+ fingerprints ─────────────────────────────────────────────────────
+
+    def test_ja4(self):
+        assert detect_type("t13d1516h2_8daaf6152771_b186095e22b6") == "text"
+
+    def test_ja4_uppercase(self):
+        assert detect_type("T13D1516H2_8DAAF6152771_B186095E22B6") == "text"
+
+    def test_ja4x_not_detected_as_hash(self):
+        assert detect_type("a373a9f83c6b_2bab15409345_7bf9a7bf7029") == "text"
+
+    def test_ja4ssh(self):
+        assert detect_type("c76s76_c71s59_c0s70") == "text"
+
+    # too generic to tell from other text without the ja4-plus object
+    def test_ja4l_returns_other(self):
+        assert detect_type("4289_64") == "other"
+
     # ── Fallback ──────────────────────────────────────────────────────────────
 
     def test_unknown_returns_other(self):

@@ -47,6 +47,7 @@ def get_local_object_templates():
                 "meta_category": raw_template["meta-category"],
                 "version": raw_template["version"],
                 "attributes": attributes,
+                "required": raw_template.get("required", []),
                 "requiredOneOf": raw_template.get("requiredOneOf", []),
             }
         )

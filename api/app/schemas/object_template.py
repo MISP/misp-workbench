@@ -21,6 +21,9 @@ class ObjectTemplateBase(BaseModel):
     description: str
     meta_category: str
     attributes: list[ObjectTemplateAttribute] = []
+    # MISP's two kinds of requirement: every relation in required, and at
+    # least one of those in requiredOneOf
+    required: Optional[list[str]] = []
     requiredOneOf: Optional[list[str]] = []
 
 

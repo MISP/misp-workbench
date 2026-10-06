@@ -4,7 +4,8 @@ DEFAULT_SETTINGS = {
         # its value/type/correlation flag changes, instead of waiting for the
         # next full ``generate_correlations`` run.
         "correlateOnChange": True,
-        "matchTypes": ["term", "cidr"],
+        # ``ja4`` matches JA4+ fingerprints exactly, and only with each other.
+        "matchTypes": ["term", "cidr", "ja4"],
         "maxCorrelationsPerDoc": 1000,
         "prefixLength": 10,
         "minScore": 2,

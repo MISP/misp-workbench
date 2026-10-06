@@ -106,6 +106,16 @@
                     "value_parts": {
                         "type": "keyword"
                     },
+                    "ja4": {
+                        "properties": {
+                            "value": {
+                                "type": "keyword"
+                            },
+                            "variant": {
+                                "type": "keyword"
+                            }
+                        }
+                    },
                     "servo_errors": {
                         "type": "keyword"
                     }

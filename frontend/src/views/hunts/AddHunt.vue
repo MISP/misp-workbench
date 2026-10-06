@@ -135,7 +135,7 @@ function cancel() {
             <code>target_attribute_type</code>, <code>source_event_uuid</code>,
             <code>target_event_uuid</code>, <code>source_attribute_uuid</code>,
             <code>target_attribute_uuid</code>, <code>match_type</code> (term |
-            prefix | fuzzy | cidr),
+            prefix | fuzzy | cidr | ja4),
             <code>score</code>
           </div>
         </div>

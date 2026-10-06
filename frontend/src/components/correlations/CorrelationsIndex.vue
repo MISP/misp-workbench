@@ -13,6 +13,7 @@ import {
 import ApiError from "@/components/misc/ApiError.vue";
 import Spinner from "@/components/misc/Spinner.vue";
 import { useCorrelationsStore, useToastsStore } from "@/stores";
+import { correlationHelper } from "@/helpers";
 
 // The network pulls in the pivotick bundle, so it is only fetched once someone
 // actually switches to it.
@@ -59,7 +60,11 @@ const topAttributes = computed(() =>
       return {
         id: bucket.key,
         count: bucket.doc_count,
-        type: attribute.target_attribute_type,
+        type: correlationHelper.typeLabel(
+          attribute.target_attribute_type,
+          attribute,
+        ),
+        rawType: attribute.target_attribute_type,
         label: attribute.target_attribute_value ?? bucket.key,
         to: `/attributes/${bucket.key}`,
         eventUuid: attribute.target_event_uuid,
@@ -204,6 +209,7 @@ function confirmRebuild() {
             <span
               v-if="item.type"
               class="badge bg-info text-dark flex-shrink-0"
+              :title="item.rawType && `${item.rawType} attribute`"
             >
               {{ item.type }}
             </span>

@@ -34,6 +34,7 @@ function createEmptyTemplate() {
     uuid: "",
     name: "",
     version: "",
+    required: [],
     requiredOneOf: [],
   };
 }
