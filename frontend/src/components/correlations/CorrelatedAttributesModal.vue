@@ -329,9 +329,11 @@ function navigate(route) {
                 :key="correlated.uuid"
                 class="correlation-row d-flex align-items-center gap-2 px-3 py-2"
               >
-                <span class="badge bg-info text-dark flex-shrink-0">{{
-                  correlated.type
-                }}</span>
+                <span
+                  class="badge bg-info text-dark flex-shrink-0"
+                  :title="`${correlated.type} attribute`"
+                  >{{ correlated.typeLabel }}</span
+                >
 
                 <RouterLink
                   :to="`/attributes/${correlated.uuid}`"

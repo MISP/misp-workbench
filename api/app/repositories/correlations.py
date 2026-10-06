@@ -964,6 +964,8 @@ def get_top_correlating_attributes():
                                     "target_attribute_type",
                                     "target_attribute_value",
                                     "target_event_uuid",
+                                    "match_type",
+                                    "ja4_variant",
                                 ]
                             },
                         }

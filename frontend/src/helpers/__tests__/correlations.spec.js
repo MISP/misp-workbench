@@ -41,6 +41,49 @@ describe("mergeCorrelatedAttributes", () => {
 
     expect(merged.matches).toEqual([{ type: "ja4", score: 1, variant: "JA4" }]);
   });
+
+  it("labels a fingerprint by its variant rather than its text type", () => {
+    const [fingerprint, domain] = correlationHelper.mergeCorrelatedAttributes([
+      correlation(),
+      correlation({
+        target_attribute_uuid: "attr-3",
+        target_attribute_type: "domain",
+        target_attribute_value: "evil.com",
+        match_type: "term",
+        ja4_variant: undefined,
+        score: 0.5,
+      }),
+    ]);
+
+    expect(fingerprint).toMatchObject({ type: "text", typeLabel: "JA4" });
+    expect(domain).toMatchObject({ type: "domain", typeLabel: "domain" });
+  });
+});
+
+describe("typeLabel", () => {
+  it("is the JA4+ variant of a ja4 match", () => {
+    expect(correlationHelper.typeLabel("text", correlation()._source)).toBe(
+      "JA4",
+    );
+  });
+
+  it("falls back to JA4+ when the variant is unknown", () => {
+    expect(
+      correlationHelper.typeLabel(
+        "text",
+        correlation({ ja4_variant: undefined })._source,
+      ),
+    ).toBe("JA4+");
+  });
+
+  it("is the attribute type for any other match", () => {
+    expect(
+      correlationHelper.typeLabel(
+        "text",
+        correlation({ match_type: "term" })._source,
+      ),
+    ).toBe("text");
+  });
 });
 
 describe("matchesQuery", () => {

@@ -4,6 +4,7 @@ export const correlationHelper = {
   isApproximateMatch,
   matchesQuery,
   matchLabel,
+  typeLabel,
   ja4PivotQuery,
 };
 
@@ -21,6 +22,18 @@ function isApproximateMatch(matchType) {
  */
 function matchLabel(match) {
   return match.variant ? `${match.type} · ${match.variant}` : match.type;
+}
+
+/**
+ * How an attribute's type reads next to a correlation. MISP has no JA4+ type,
+ * so a fingerprint is a plain text attribute; a ja4 match says what it really
+ * is, its variant when known.
+ */
+function typeLabel(type, correlation) {
+  if (correlation?.match_type === "ja4") {
+    return correlation.ja4_variant || "JA4+";
+  }
+  return type;
 }
 
 /**
@@ -78,12 +91,17 @@ function mergeCorrelatedAttributes(correlations) {
       attribute = {
         uuid: source.target_attribute_uuid,
         type: source.target_attribute_type,
+        typeLabel: source.target_attribute_type,
         value: source.target_attribute_value,
         eventUuid: source.target_event_uuid,
         matches: [],
         seenAt: null,
       };
       merged.set(attribute.uuid, attribute);
+    }
+
+    if (source.match_type === "ja4") {
+      attribute.typeLabel = typeLabel(attribute.type, source);
     }
 
     attribute.matches.push({
