@@ -295,9 +295,9 @@ class TestGalaxiesImport(ApiTester):
                 ("APT2", {}),
             ],
         )
-        # ships APT1 too: it must stay with the galaxy imported first and not
-        # make this one fail
-        _write_galaxy(tmp_path, "test-actor-dup", 1, [("APT1", {}), ("APT3", {})])
+        # ships APT1 too: it must stay with the galaxy imported first (files
+        # are imported in sorted order) and not make this one fail
+        _write_galaxy(tmp_path, "test-mirror", 1, [("APT1", {}), ("APT3", {})])
 
         imported = galaxies_repository.update_galaxies(db, api_tester_user, *dirs)
         assert len(imported) == 2
@@ -316,7 +316,7 @@ class TestGalaxiesImport(ApiTester):
         ]
         assert self._elements(clusters["APT2"]) == []
 
-        assert sorted(self._clusters(self._load(db, "test-actor-dup"))) == ["APT3"]
+        assert sorted(self._clusters(self._load(db, "test-mirror"))) == ["APT3"]
 
         # same version: nothing to do
         assert galaxies_repository.update_galaxies(db, api_tester_user, *dirs) == []
@@ -344,10 +344,10 @@ class TestGalaxiesImport(ApiTester):
         assert self._elements(updated_clusters["APT2"]) == [("country", "RU")]
 
         # new galaxy version: picked up as well
-        _write_galaxy(tmp_path, "test-actor-dup", 1, [("APT3", {})], galaxy_version=2)
+        _write_galaxy(tmp_path, "test-mirror", 1, [("APT3", {})], galaxy_version=2)
         imported = galaxies_repository.update_galaxies(db, api_tester_user, *dirs)
         assert len(imported) == 1
-        assert self._load(db, "test-actor-dup").version == 2
+        assert self._load(db, "test-mirror").version == 2
 
         # the tags of the clusters added to an enabled galaxy are created
         galaxy.enabled = True
@@ -370,14 +370,15 @@ class TestGalaxiesImport(ApiTester):
     def test_enable_and_disable_galaxy_tags(
         self, db: Session, api_tester_user: user_models.User, tmp_path
     ):
-        # own type so it does not see clusters left by the import test
-        dirs = _write_galaxy(tmp_path, "tag-actor", 1, [("APT1", {}), ("APT2", {})])
+        # own type and cluster uuids (derived from the value) so it does not
+        # see clusters left by the import test
+        dirs = _write_galaxy(tmp_path, "tag-actor", 1, [("TAG1", {}), ("TAG2", {})])
         galaxies_repository.update_galaxies(db, api_tester_user, *dirs)
         galaxy = self._load(db, "tag-actor")
 
         # a pre-existing tag must not be duplicated, and tags of a galaxy whose
         # type shares the prefix must not be touched
-        for name in ['misp-galaxy:tag-actor="APT1"', 'misp-galaxy:tag-actor-x="X"']:
+        for name in ['misp-galaxy:tag-actor="TAG1"', 'misp-galaxy:tag-actor-x="X"']:
             db.add(
                 tags_models.Tag(
                     name=name, colour="#BBBBBB", exportable=True, hide_tag=False
@@ -399,23 +400,23 @@ class TestGalaxiesImport(ApiTester):
 
         assert sorted(tags()) == [
             'misp-galaxy:tag-actor-x="X"',
-            'misp-galaxy:tag-actor="APT1"',
-            'misp-galaxy:tag-actor="APT2"',
+            'misp-galaxy:tag-actor="TAG1"',
+            'misp-galaxy:tag-actor="TAG2"',
         ]
-        new_tag = tags()['misp-galaxy:tag-actor="APT2"']
+        new_tag = tags()['misp-galaxy:tag-actor="TAG2"']
         assert new_tag.is_galaxy and new_tag.exportable and not new_tag.hide_tag
 
         galaxies_repository.disable_galaxy_tags(db, galaxy)
         assert {name: tag.hide_tag for name, tag in tags().items()} == {
             'misp-galaxy:tag-actor-x="X"': False,
-            'misp-galaxy:tag-actor="APT1"': True,
-            'misp-galaxy:tag-actor="APT2"': True,
+            'misp-galaxy:tag-actor="TAG1"': True,
+            'misp-galaxy:tag-actor="TAG2"': True,
         }
 
         # re-enabling shows the galaxy tags again, without duplicating them
         galaxies_repository.enable_galaxy_tags(db, galaxy)
         assert {name: tag.hide_tag for name, tag in tags().items()} == {
             'misp-galaxy:tag-actor-x="X"': False,
-            'misp-galaxy:tag-actor="APT1"': False,
-            'misp-galaxy:tag-actor="APT2"': False,
+            'misp-galaxy:tag-actor="TAG1"': False,
+            'misp-galaxy:tag-actor="TAG2"': False,
         }
