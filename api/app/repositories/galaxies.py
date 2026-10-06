@@ -5,7 +5,6 @@ from datetime import datetime
 
 from fastapi import HTTPException, Query, status
 from fastapi_pagination.ext.sqlalchemy import paginate
-from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session, noload
 from sqlalchemy.sql import delete, func, insert, select, update
 
@@ -120,7 +119,8 @@ def _cluster_row(galaxy, clusters_data: dict, cluster: dict) -> dict:
     cluster_type = clusters_data.get("type", galaxy.type)
     return {
         "galaxy_id": galaxy.id,
-        "uuid": cluster["uuid"],
+        # lowercase, as the database returns it
+        "uuid": str(cluster["uuid"]).lower(),
         "value": cluster["value"],
         "type": cluster_type,
         "description": cluster.get("description", ""),
@@ -153,13 +153,14 @@ def import_galaxy_clusters(db: Session, galaxy, clusters_data: dict) -> None:
 
     Clusters are matched by uuid: new ones are bulk inserted and the ones
     already in this galaxy are bulk updated, with their elements replaced.
-    Cluster uuids are unique, but some (MITRE) clusters are shipped in more than
-    one galaxy; those stay with the galaxy that imported them first."""
+    Some (MITRE) clusters are shipped in more than one galaxy; those stay with
+    the galaxy that imported them first."""
     Cluster = galaxies_models.GalaxyCluster
     Element = galaxies_models.GalaxyElement
 
     raw_clusters = {
-        str(cluster["uuid"]): cluster for cluster in clusters_data.get("values", [])
+        str(cluster["uuid"]).lower(): cluster
+        for cluster in clusters_data.get("values", [])
     }
 
     existing_ids = {
@@ -189,19 +190,30 @@ def import_galaxy_clusters(db: Session, galaxy, clusters_data: dict) -> None:
         cluster_ids.update({c["uuid"]: c["id"] for c in updated_clusters})
 
     if new_clusters:
+        # the schema has no unique constraint on the cluster uuid, so look up
+        # the ones already imported by another galaxy instead of relying on
+        # ON CONFLICT
+        taken = {
+            str(cluster_uuid)
+            for cluster_uuid in db.scalars(
+                select(Cluster.uuid).where(
+                    Cluster.uuid.in_([c["uuid"] for c in new_clusters])
+                )
+            ).all()
+        }
+        if taken:
+            logger.debug(
+                f"Galaxy {galaxy.name}: skipped {len(taken)} clusters already imported by another galaxy"
+            )
+            new_clusters = [c for c in new_clusters if c["uuid"] not in taken]
+
+    if new_clusters:
         inserted = db.execute(
-            pg_insert(Cluster)
-            .on_conflict_do_nothing(index_elements=[Cluster.uuid])
-            .returning(Cluster.uuid, Cluster.id),
-            new_clusters,
+            insert(Cluster).returning(Cluster.uuid, Cluster.id), new_clusters
         ).all()
         cluster_ids.update(
             {str(cluster_uuid): cluster_id for cluster_uuid, cluster_id in inserted}
         )
-        if len(inserted) < len(new_clusters):
-            logger.debug(
-                f"Galaxy {galaxy.name}: skipped {len(new_clusters) - len(inserted)} clusters already imported by another galaxy"
-            )
 
     elements = [
         element
