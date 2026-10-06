@@ -147,12 +147,22 @@ function handleAttributeValueChanged(value) {
         <div>
           <span>{{ template.description }}</span>
         </div>
-        <span class="fw-bold">requires one of:</span>
-        <ul>
-          <li v-for="attribute in template.requiredOneOf" :key="attribute.id">
-            {{ attribute }}
-          </li>
-        </ul>
+        <template v-if="template.required?.length">
+          <span class="fw-bold">requires all of:</span>
+          <ul>
+            <li v-for="attribute in template.required" :key="attribute">
+              {{ attribute }}
+            </li>
+          </ul>
+        </template>
+        <template v-if="template.requiredOneOf?.length">
+          <span class="fw-bold">requires one of:</span>
+          <ul>
+            <li v-for="attribute in template.requiredOneOf" :key="attribute">
+              {{ attribute }}
+            </li>
+          </ul>
+        </template>
       </div>
     </div>
     <Form

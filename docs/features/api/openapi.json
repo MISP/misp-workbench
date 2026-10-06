@@ -18402,6 +18402,21 @@
             "title": "Attributes",
             "default": []
           },
+          "required": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Required",
+            "default": []
+          },
           "requiredOneOf": {
             "anyOf": [
               {
