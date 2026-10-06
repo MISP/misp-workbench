@@ -213,13 +213,18 @@ def update_taxonomies(db: Session, taxonomies_dir: str = TAXONOMIES_DIR):
             db.commit()
             taxonomies.append(db_taxonomy)
 
+            # create the tags of the entries added to an enabled taxonomy
+            if db_taxonomy.enabled:
+                enable_taxonomy_tags(db, db_taxonomy)
+
     return taxonomies
 
 
 def enable_taxonomy_tags(db: Session, db_taxonomy):
-    existing_tags = set(
-        db.scalars(
-            select(tags_models.Tag.name).where(
+    # name -> hide_tag
+    existing_tags = dict(
+        db.execute(
+            select(tags_models.Tag.name, tags_models.Tag.hide_tag).where(
                 tags_models.Tag.name.startswith(
                     f"{db_taxonomy.namespace}:", autoescape=True
                 )
@@ -227,17 +232,21 @@ def enable_taxonomy_tags(db: Session, db_taxonomy):
         ).all()
     )
 
-    new_tags = {}
+    new_tags, hidden_tags = {}, set()
     for db_predicate in db_taxonomy.predicates:
         predicate_tag = f"{db_taxonomy.namespace}:{db_predicate.value}"
-        if predicate_tag not in existing_tags:
+        if existing_tags.get(predicate_tag):
+            hidden_tags.add(predicate_tag)
+        elif predicate_tag not in existing_tags:
             new_tags.setdefault(
                 predicate_tag, _tag_row(predicate_tag, db_predicate.colour)
             )
 
         for db_predicate_entry in db_predicate.entries:
             entry_tag = f"{predicate_tag}:{db_predicate_entry.value}"
-            if entry_tag not in existing_tags:
+            if existing_tags.get(entry_tag):
+                hidden_tags.add(entry_tag)
+            elif entry_tag not in existing_tags:
                 new_tags.setdefault(
                     entry_tag,
                     _tag_row(
@@ -247,6 +256,15 @@ def enable_taxonomy_tags(db: Session, db_taxonomy):
 
     if new_tags:
         db.execute(insert(tags_models.Tag), list(new_tags.values()))
+
+    # show again the tags hidden when the taxonomy was disabled
+    if hidden_tags:
+        db.execute(
+            update(tags_models.Tag)
+            .where(tags_models.Tag.name.in_(hidden_tags))
+            .values(hide_tag=False)
+            .execution_options(synchronize_session=False)
+        )
 
     db.commit()
 

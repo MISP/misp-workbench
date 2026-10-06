@@ -294,3 +294,27 @@ class TestTaxonomiesImport(ApiTester):
             db.refresh(tag)
         assert len(tags) == 4
         assert all(tag.hide_tag for tag in tags)
+
+        # re-enabling shows the taxonomy tags again, without duplicating them
+        taxonomies_repository.enable_taxonomy_tags(db, db_taxonomy)
+        for tag in tags:
+            db.refresh(tag)
+        assert (
+            db.query(tags_models.Tag)
+            .filter(tags_models.Tag.name.startswith("tag-taxonomy:"))
+            .count()
+            == 4
+        )
+        assert not any(tag.hide_tag for tag in tags)
+
+        # the tags of the entries added to an enabled taxonomy are created
+        db_taxonomy.enabled = True
+        db.commit()
+        _write_taxonomy(tmp_path, 2, [RED, GREEN, BLUE], namespace="tag-taxonomy")
+        taxonomies_repository.update_taxonomies(db, str(tmp_path))
+        assert (
+            db.query(tags_models.Tag)
+            .filter(tags_models.Tag.name == "tag-taxonomy:colour:blue")
+            .count()
+            == 1
+        )

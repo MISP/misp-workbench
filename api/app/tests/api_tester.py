@@ -738,7 +738,7 @@ class ApiTester:
         cluster = galaxy_models.GalaxyCluster(
             type="mitre-attack-pattern",
             value="Choose pre-compromised mobile app developer account credentials or signing keys - T1391",
-            tag_name="misp-galaxy:mitre-attack-pattern=7a265bf0-6acc-4f43-8b22-2e58b443e62e",
+            tag_name='misp-galaxy:mitre-attack-pattern="Choose pre-compromised mobile app developer account credentials or signing keys - T1391"',
             description="Sample technique description.",
             galaxy_id=mitre_attack_galaxy.id,
             source="MITRE",
