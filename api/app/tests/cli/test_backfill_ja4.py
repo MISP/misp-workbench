@@ -64,3 +64,15 @@ def test_leaves_correlations_alone_when_ja4_is_off(repo):
     assert result.exit_code == 0, result.output
     assert "ja4 correlation match type is off" in result.output
     repo.recorrelate_ja4_attributes.assert_not_called()
+
+
+def test_reports_reindex_failures(repo):
+    repo.ja4_reindex_status.side_effect = [
+        {"completed": True, "total": 5, "updated": 4, "failures": ["doc-1: boom"]},
+    ]
+
+    result = CliRunner().invoke(app, ["backfill-ja4", "--skip-correlations"])
+
+    assert result.exit_code == 0, result.output
+    assert "failed: doc-1: boom" in result.output
+    assert "4 attribute(s) reprocessed, 1 failure(s)" in result.output

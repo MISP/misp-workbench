@@ -22,8 +22,18 @@ ATTRIBUTES = {
     "a0000000-0000-0000-0000-000000000001": ("event-a", "text", JA4, "ja4-fingerprint"),
     "a0000000-0000-0000-0000-000000000002": ("event-b", "text", JA4.upper(), None),
     # a JA4L in two events: too generic to recognise outside the object ...
-    "a0000000-0000-0000-0000-000000000003": ("event-a", "text", "4289_64", "ja4-fingerprint"),
-    "a0000000-0000-0000-0000-000000000004": ("event-b", "text", "4289_64", "ja4-fingerprint"),
+    "a0000000-0000-0000-0000-000000000003": (
+        "event-a",
+        "text",
+        "4289_64",
+        "ja4-fingerprint",
+    ),
+    "a0000000-0000-0000-0000-000000000004": (
+        "event-b",
+        "text",
+        "4289_64",
+        "ja4-fingerprint",
+    ),
     # ... so this plain text sharing its value must not correlate with it
     "a0000000-0000-0000-0000-000000000005": ("event-c", "text", "4289_64", None),
     # an ordinary attribute still correlates the ordinary way
@@ -68,7 +78,10 @@ def stored_correlations():
     """The stored correlations of ATTRIBUTES, keyed by (source, target) suffix."""
     response = get_opensearch_client().search(
         index="misp-attribute-correlations",
-        body={"size": 100, "query": {"terms": {"source_attribute_uuid.keyword": UUIDS}}},
+        body={
+            "size": 100,
+            "query": {"terms": {"source_attribute_uuid.keyword": UUIDS}},
+        },
     )
     return {
         (
@@ -130,24 +143,26 @@ class TestJa4Backfill(ApiTester):
         for _ in range(100):
             status = correlations_repository.ja4_reindex_status(task_id)
             if status["completed"]:
-                return status
+                break
             time.sleep(0.1)
-        pytest.fail("the JA4+ reindex did not complete")
+        assert status["completed"], "the JA4+ reindex did not complete"
+        return status
 
     def test_backfill(self, attributes):
         client = get_opensearch_client()
-        assert "expanded" not in client.get(index="misp-attributes", id=UUIDS[1])[
-            "_source"
-        ]
+        assert (
+            "expanded"
+            not in client.get(index="misp-attributes", id=UUIDS[1])["_source"]
+        )
         # text attributes and ja4-fingerprint ones; the domains are left alone
         assert correlations_repository.count_ja4_candidates() == 5
 
         status = self.reindex()
         assert status["updated"] == 5
         assert status["failures"] == []
-        assert client.get(index="misp-attributes", id=UUIDS[1])["_source"][
-            "expanded"
-        ]["ja4"] == {"value": JA4, "variant": "JA4"}
+        assert client.get(index="misp-attributes", id=UUIDS[1])["_source"]["expanded"][
+            "ja4"
+        ] == {"value": JA4, "variant": "JA4"}
         assert set(correlations_repository.ja4_attribute_uuids()) == set(UUIDS[:4])
 
         with patch.object(
