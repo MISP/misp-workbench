@@ -1,8 +1,10 @@
 """Streaming, incremental exports of attributes and events.
 
 Backs ``GET /attributes/export`` and ``GET /events/export``. Results are paged
-out of OpenSearch with ``search_after`` and written to the response as they
-arrive, so memory stays flat however many documents match.
+out of an OpenSearch point-in-time (PIT) snapshot with ``search_after`` and
+written to the response as they arrive, so memory stays flat however many
+documents match, and a long export sees one consistent view of the index:
+writes landing mid-export can't shift pages, duplicating or skipping documents.
 
 Incremental pulls (``since=``) key off ``updated_at``, which the attributes'
 final ingest pipeline stamps on every write, partial updates included, so
@@ -18,6 +20,7 @@ count + newest ``updated_at``) that both answers conditional requests with a
 
 import hashlib
 import json
+import logging
 import time
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -28,12 +31,18 @@ from fastapi import Response
 from fastapi.responses import StreamingResponse
 
 from app.repositories.rest_search import (
+    PAGE_SIZE,
     RestSearchError,
     csv_line,
-    iter_pages,
     parse_timestamp,
 )
 from app.services.opensearch import get_opensearch_client
+
+logger = logging.getLogger(__name__)
+
+# How long the snapshot outlives the last page request. Renewed on every page,
+# so it only has to cover the time the client takes to read one page.
+PIT_KEEP_ALIVE = "5m"
 
 ATTRIBUTES_INDEX = "misp-attributes"
 EVENTS_INDEX = "misp-events"
@@ -266,10 +275,55 @@ def _csv_row(source: dict) -> list:
     ]
 
 
+def iter_pit_pages(
+    client, index: str, query: dict, source: Any = True
+) -> Iterator[list[dict]]:
+    """Yield pages of hits from a point-in-time snapshot of ``index``.
+
+    The snapshot is opened on the first page, not before, so a request
+    answered with a 304 never creates one, and is always closed: on
+    exhaustion, on error, and when the client disconnects mid-stream (closing
+    the generator runs the ``finally``).
+    """
+    pit_id = client.create_pit(index=index, params={"keep_alive": PIT_KEEP_ALIVE})[
+        "pit_id"
+    ]
+    try:
+        search_after = None
+        while True:
+            body = {
+                "query": query,
+                "_source": source,
+                "size": PAGE_SIZE,
+                # uuid is unique per document, so it alone orders pages.
+                "sort": [{"uuid.keyword": "asc"}],
+                "pit": {"id": pit_id, "keep_alive": PIT_KEEP_ALIVE},
+            }
+            if search_after:
+                body["search_after"] = search_after
+            # A PIT search names no index: the snapshot already pins it.
+            response = client.search(body=body)
+            # The id can change between requests; always continue with the latest.
+            pit_id = response.get("pit_id", pit_id)
+            hits = response["hits"]["hits"]
+            if not hits:
+                return
+            yield hits
+            if len(hits) < PAGE_SIZE:
+                return
+            search_after = hits[-1]["sort"]
+    finally:
+        try:
+            client.delete_pit(body={"pit_id": [pit_id]})
+        except Exception:
+            # It expires on its own after PIT_KEEP_ALIVE; not worth failing for.
+            logger.warning("could not delete export PIT on %s", index, exc_info=True)
+
+
 def stream(export: PreparedExport) -> Iterator[str]:
     fmt = export.format
     source: Any = ["value", "type"] if fmt in ("text", "cdb") else True
-    pages = iter_pages(export.client, export.index, export.query, source=source)
+    pages = iter_pit_pages(export.client, export.index, export.query, source=source)
 
     if fmt == "json":
         yield "["

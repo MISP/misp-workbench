@@ -3,6 +3,7 @@
 `GET /attributes/export` and `GET /events/export` dump everything that matches a search query. They are designed for SIEMs and scripts that pull indicator sets on a schedule:
 
 - **Streamed.** Results are paged out of OpenSearch and written as they arrive, so memory stays flat however much matches.
+- **Consistent.** Each export reads from a point-in-time snapshot of the index, so writes landing while a long export runs can't shift its pages and duplicate or skip documents. They show up in the next pull.
 - **Incremental.** `since=` returns only what changed, deletions included.
 - **Cheap to poll.** Each response carries an `ETag` and `Last-Modified`. An unchanged poll is answered with `304 Not Modified` after a single aggregation query.
 

@@ -237,3 +237,46 @@ class TestStreamExports(ApiTester):
             self._get(client, auth_token, path="/events/export").status_code
             == status.HTTP_401_UNAUTHORIZED
         )
+
+    def test_export_reads_a_consistent_snapshot(self, monkeypatch):
+        # Small pages so the export spans several PIT searches.
+        monkeypatch.setattr(stream_exports_repository, "PAGE_SIZE", 2)
+        os_client = get_opensearch_client()
+
+        export = stream_exports_repository.prepare_attribute_export(
+            "", "ndjson", include_deleted=True
+        )
+        chunks = stream_exports_repository.stream(export)
+        first = next(chunks)
+
+        # Sorts after every seeded uuid, so without a snapshot a later page
+        # would pick it up.
+        late = "ffffffff-0000-4000-8000-000000000099"
+        os_client.index(
+            index="misp-attributes",
+            id=late,
+            body=_attribute(late, "domain", "late.example.com"),
+            refresh=True,
+        )
+        try:
+            body = first + "".join(chunks)
+        finally:
+            os_client.delete(index="misp-attributes", id=late, refresh=True)
+
+        uuids = [json.loads(line)["uuid"] for line in body.splitlines()]
+        assert late not in uuids
+        assert len(uuids) == len(set(uuids)) == 6
+        assert os_client.get_all_pits().get("pits", []) == []
+
+    def test_abandoned_export_releases_its_snapshot(self, monkeypatch):
+        monkeypatch.setattr(stream_exports_repository, "PAGE_SIZE", 2)
+        os_client = get_opensearch_client()
+
+        export = stream_exports_repository.prepare_attribute_export("", "ndjson")
+        chunks = stream_exports_repository.stream(export)
+        next(chunks)
+        assert len(os_client.get_all_pits().get("pits", [])) == 1
+
+        # What Starlette does when the client disconnects mid-stream.
+        chunks.close()
+        assert os_client.get_all_pits().get("pits", []) == []
