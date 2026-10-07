@@ -25,7 +25,7 @@ jobs:
           - 5432:5432
 
       opensearch:
-        image: opensearchproject/opensearch:1.3.16
+        image: opensearchproject/opensearch:3.4.0
         ports:
           - 9200:9200
           - 9300:9300
@@ -36,9 +36,10 @@ jobs:
           cluster.name: opensearch-cluster
           node.name: opensearch-misp1
           discovery.type: single-node
-          bootstrap.memory_lock: true
           OPENSEARCH_JAVA_OPTS: "-Xms512m -Xmx512m"
-          plugins.security.disabled: true
+          DISABLE_SECURITY_PLUGIN: "true"
+          DISABLE_INSTALL_DEMO_CONFIG: "true"
+          OPENSEARCH_PERFORMANCE_ANALYZER_ENABLED: "false"
 
       redis:
         image: redis:7-alpine
@@ -96,9 +97,10 @@ jobs:
           OPENSEARCH_URL="http://localhost:9200"
 
           echo "Waiting for OpenSearch..."
-          for i in $(seq 1 30); do
-            curl -s "${OPENSEARCH_URL}" >/dev/null 2>&1 && break
-            echo "Not ready yet ($i/30), retrying in 3s..."
+          for i in $(seq 1 60); do
+            curl -sf "${OPENSEARCH_URL}/_cluster/health?wait_for_status=yellow&timeout=3s" >/dev/null 2>&1 && break
+            if [ "$i" -eq 60 ]; then echo "OpenSearch did not become ready" >&2; exit 1; fi
+            echo "Not ready yet ($i/60), retrying in 3s..."
             sleep 3
           done
 
