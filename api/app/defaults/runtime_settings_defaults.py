@@ -37,6 +37,12 @@ DEFAULT_SETTINGS = {
         # than the oldest one has to download the full artifact again.
         "delta_retention": 96,
     },
+    "sightings": {
+        # Turn to_ids off on every attribute holding a value once this many
+        # distinct organisations have reported it as a false positive (MISP
+        # sighting type 1), so SIEMs stop alerting on it. 0 disables it.
+        "false_positive_threshold": 0,
+    },
     "retention": {
         "enabled": False,
         "period_days": 365,

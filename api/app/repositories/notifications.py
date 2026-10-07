@@ -432,6 +432,46 @@ def create_sighting_notifications(
     return notifications
 
 
+def create_sighting_notifications_bulk(
+    db: Session, type: str, pairs: list[tuple[dict, dict]]
+):
+    """Notifications for a batch of (attribute hit, sighting) pairs, one flush.
+
+    A SIEM reporting thousands of hits would otherwise mean a commit per
+    sighting. Followers come from the per-attribute Redis cache.
+    """
+    notifications = []
+    for attribute, sighting in pairs:
+        source = attribute["_source"]
+        for follower in get_followers_for(db, "attributes", source["uuid"]):
+            notifications.append(
+                notification_models.Notification(
+                    user_id=follower,
+                    type=f"attribute.sighting.{type}",
+                    entity_type="attribute",
+                    entity_uuid=source["uuid"],
+                    read=False,
+                    payload={
+                        "sighting_value": sighting["value"],
+                        "sighting_type": sighting.get("type", "positive"),
+                        "organisation": sighting["observer"]["organisation"],
+                        "timestamp": sighting.get("timestamp")
+                        or datetime.now().timestamp(),
+                        "attribute_type": source["type"],
+                        "attribute_uuid": source["uuid"],
+                    },
+                    created_at=datetime.now(),
+                )
+            )
+
+    if notifications:
+        db.add_all(notifications)
+        db.commit()
+        _enqueue_notification_emails(db, notifications)
+
+    return notifications
+
+
 def create_correlation_notifications(db: Session, type: str, correlation: dict):
     """Create correlation notifications for users following an attribute."""
     if not correlation:

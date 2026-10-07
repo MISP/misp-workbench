@@ -829,47 +829,50 @@ def enforce_retention():
 
 
 @celery_app.task
+def handle_created_sightings(items: list):
+    """Post-process a batch of sightings: notifications, reactor, FP feedback.
+
+    One task per batch (see sightings_repository.TASK_BATCH_SIZE): attributes
+    are looked up for all values in one paged query instead of one search per
+    sighting.
+    """
+    from app.repositories import sightings as sightings_repository
+
+    logger.info("handling %s created sightings job started", len(items))
+    with Session(engine) as db:
+        result = sightings_repository.process_created_sightings(db, items)
+
+    if reactor_repository.has_active_subscriber("sighting", "created"):
+        for item in items:
+            _dispatch_if_subscribed(
+                "sighting",
+                "created",
+                {
+                    "value": item["value"],
+                    "type": item["type"],
+                    "organisation": item.get("organisation"),
+                    "timestamp": item.get("timestamp"),
+                },
+            )
+    logger.info("handling %s created sightings job finished: %s", len(items), result)
+    return result
+
+
+@celery_app.task
 def handle_created_sighting(
     value: str, organisation: str, sighting_type: str, timestamp: float = None
 ):
-    logger.info("handling created sighting value=%s job started", value)
-
-    attributes = events_repository.search_events(
-        page=0,
-        from_value=0,
-        size=1000,
-        query="value: %s" % value,
-        searchAttributes=True,
-    )
-
-    if attributes["total"] > 1000:
-        logger.warning(
-            "Too many attributes found for value=%s, only the first 1000 will be processed.",
-            value,
-        )
-
-    sighting = {
-        "value": value,
-        "type": sighting_type,
-        "observer": {"organisation": organisation},
-        "timestamp": timestamp or datetime.now().timestamp(),
-    }
-
-    with Session(engine) as db:
-        for attribute in attributes["results"]:
-            notifications_repository.create_sighting_notifications(
-                db, "created", attribute=attribute, sighting=sighting
-            )
-        _dispatch_if_subscribed(
-            "sighting",
-            "created",
+    """Single-sighting form, kept for messages queued before the batch task."""
+    return handle_created_sightings(
+        [
             {
                 "value": value,
                 "type": sighting_type,
                 "organisation": organisation,
-                "timestamp": sighting["timestamp"],
-            },
-        )
+                "timestamp": timestamp or datetime.now().timestamp(),
+            }
+        ]
+    )
 
 
 @celery_app.task

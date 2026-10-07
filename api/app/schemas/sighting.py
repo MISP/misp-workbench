@@ -1,5 +1,5 @@
 from typing import Any, Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 # ── Query parameter schemas ───────────────────────────────────────────────────
@@ -23,6 +23,32 @@ class SightingCreate(BaseModel):
     timestamp: Optional[float] = None
     attribute_uuid: Optional[str] = None
     observer: Optional[dict[str, Any]] = None
+
+
+class MispSightingAdd(BaseModel):
+    """MISP's ``/sightings/add`` body: what PyMISP and SIEM connectors send.
+
+    Sightings target a value (``value``/``values``) or an attribute
+    (``uuid``/``id``, or the URL's attribute id). ``type`` is MISP's 0
+    (sighting), 1 (false positive) or 2 (expiration); names are accepted too.
+    """
+
+    value: Optional[str] = None
+    values: Optional[list[str]] = None
+    uuid: Optional[str] = None
+    id: Optional[str] = None
+    type: Optional[Any] = 0
+    source: Optional[str] = None
+    timestamp: Optional[float] = None
+    model_config = ConfigDict(extra="allow")
+
+
+class MispSightingAddResponse(BaseModel):
+    saved: bool
+    success: bool
+    name: str
+    message: str
+    url: str
 
 
 # ── Response schemas ──────────────────────────────────────────────────────────
