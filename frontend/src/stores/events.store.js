@@ -75,10 +75,9 @@ export const useEventsStore = defineStore({
     },
     async update(event) {
       this.status = { updating: true };
-      fetchWrapper
-        .patch(`${baseUrl}/${event.id}`, event)
+      return await fetchWrapper
+        .patch(`${baseUrl}/${event.uuid}`, event)
         .then((response) => (this.event = response))
-        .catch((error) => (this.error = error))
         .finally(() => (this.status = { updating: false }));
     },
     async create(user) {

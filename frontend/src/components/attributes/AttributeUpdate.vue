@@ -112,6 +112,29 @@ function handleDistributionLevelUpdated(distributionLevelId) {
           </div>
         </div>
         <div class="mb-3">
+          <label for="attribute.to_ids"
+            >for intrusion detection system (IDS)</label
+          >
+          <Field
+            class="form-control"
+            id="attribute.to_ids"
+            name="attribute.to_ids"
+            v-model="attribute.to_ids"
+            :class="{ 'is-invalid': errors['attribute.to_ids'] }"
+          >
+            <div class="form-check">
+              <input
+                class="form-check-input"
+                type="checkbox"
+                v-model="attribute.to_ids"
+              />
+            </div>
+          </Field>
+          <div class="invalid-feedback">
+            {{ errors["attribute.to_ids"] }}
+          </div>
+        </div>
+        <div class="mb-3">
           <label for="attribute.type" class="form-label">type</label>
           <AttributeTypeSelect
             name="attribute.type"
