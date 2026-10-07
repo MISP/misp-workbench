@@ -27,7 +27,8 @@ from datetime import datetime, timezone
 from email.utils import format_datetime, parsedate_to_datetime
 from typing import Any, Iterator, Optional
 
-from fastapi import Response
+from fastapi import HTTPException, Response
+from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import StreamingResponse
 
 from app.repositories.rest_search import (
@@ -275,19 +276,44 @@ def _csv_row(source: dict) -> list:
     ]
 
 
+class SnapshotUnavailable(Exception):
+    """OpenSearch refused a PIT, typically because too many are open."""
+
+
+def open_snapshot(client, index: str) -> str:
+    """Open the PIT an export will read from.
+
+    Done before the response starts, so a refusal (the cluster caps open PITs,
+    ``point_in_time.max_open_contexts``) becomes a 503 rather than a 200 whose
+    body stops before the first byte.
+    """
+    try:
+        return client.create_pit(index=index, params={"keep_alive": PIT_KEEP_ALIVE})[
+            "pit_id"
+        ]
+    except Exception as error:
+        logger.warning("could not open export PIT on %s: %s", index, error)
+        raise SnapshotUnavailable(str(error)) from error
+
+
 def iter_pit_pages(
-    client, index: str, query: dict, source: Any = True
+    client,
+    index: str,
+    query: dict,
+    source: Any = True,
+    pit_id: Optional[str] = None,
 ) -> Iterator[list[dict]]:
     """Yield pages of hits from a point-in-time snapshot of ``index``.
 
-    The snapshot is opened on the first page, not before, so a request
-    answered with a 304 never creates one, and is always closed: on
-    exhaustion, on error, and when the client disconnects mid-stream (closing
-    the generator runs the ``finally``).
+    Takes ownership of ``pit_id`` (opening one if not given) and always closes
+    it: on exhaustion, on error, and when the client disconnects mid-stream
+    (closing the generator runs the ``finally``). A stream that never starts
+    leaves its PIT to expire after ``PIT_KEEP_ALIVE``; a reader stalling longer
+    than that between pages loses the snapshot and the stream ends early, which
+    bounds how long one slow client can hold a context.
     """
-    pit_id = client.create_pit(index=index, params={"keep_alive": PIT_KEEP_ALIVE})[
-        "pit_id"
-    ]
+    if pit_id is None:
+        pit_id = open_snapshot(client, index)
     try:
         search_after = None
         while True:
@@ -320,10 +346,12 @@ def iter_pit_pages(
             logger.warning("could not delete export PIT on %s", index, exc_info=True)
 
 
-def stream(export: PreparedExport) -> Iterator[str]:
+def stream(export: PreparedExport, pit_id: Optional[str] = None) -> Iterator[str]:
     fmt = export.format
     source: Any = ["value", "type"] if fmt in ("text", "cdb") else True
-    pages = iter_pit_pages(export.client, export.index, export.query, source=source)
+    pages = iter_pit_pages(
+        export.client, export.index, export.query, source=source, pit_id=pit_id
+    )
 
     if fmt == "json":
         yield "["
@@ -360,14 +388,26 @@ def stream(export: PreparedExport) -> Iterator[str]:
         yield "]"
 
 
-def to_response(export: PreparedExport, request) -> Response:
-    """304 when the client's copy is current, else the streamed export."""
+async def to_response(export: PreparedExport, request) -> Response:
+    """304 when the client's copy is current, else the streamed export.
+
+    A 304 never opens a snapshot; when one can't be opened the client gets a
+    503 with Retry-After instead of a broken 200.
+    """
     headers = export.headers()
     if export.not_modified(
         request.headers.get("if-none-match"),
         request.headers.get("if-modified-since"),
     ):
         return Response(status_code=304, headers=headers)
+    try:
+        pit_id = await run_in_threadpool(open_snapshot, export.client, export.index)
+    except SnapshotUnavailable:
+        raise HTTPException(
+            status_code=503,
+            detail="Too many exports in progress, retry shortly",
+            headers={"Retry-After": "30"},
+        )
     return StreamingResponse(
-        stream(export), media_type=export.media_type, headers=headers
+        stream(export, pit_id), media_type=export.media_type, headers=headers
     )

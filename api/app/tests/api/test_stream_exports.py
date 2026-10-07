@@ -280,3 +280,24 @@ class TestStreamExports(ApiTester):
         # What Starlette does when the client disconnects mid-stream.
         chunks.close()
         assert os_client.get_all_pits().get("pits", []) == []
+
+    @pytest.mark.parametrize("scopes", [["attributes:read"]])
+    def test_snapshot_refused_is_a_503(
+        self, client: TestClient, auth_token: auth.Token, monkeypatch
+    ):
+        # A 304 is answered without opening a snapshot.
+        etag = self._get(client, auth_token, format="ndjson").headers["etag"]
+        assert get_opensearch_client().get_all_pits().get("pits", []) == []
+
+        def refuse(*args, **kwargs):
+            raise stream_exports_repository.SnapshotUnavailable("too many PITs")
+
+        monkeypatch.setattr(stream_exports_repository, "open_snapshot", refuse)
+        not_modified = self._get(
+            client, auth_token, headers={"If-None-Match": etag}, format="ndjson"
+        )
+        assert not_modified.status_code == status.HTTP_304_NOT_MODIFIED
+
+        response = self._get(client, auth_token, format="ndjson")
+        assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
+        assert response.headers["retry-after"] == "30"

@@ -110,7 +110,7 @@ async def export_events(
     except stream_exports_repository.RestSearchError as error:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(error))
 
-    return stream_exports_repository.to_response(export, request)
+    return await stream_exports_repository.to_response(export, request)
 
 
 @router.post("/events/force-index", status_code=status.HTTP_202_ACCEPTED)
