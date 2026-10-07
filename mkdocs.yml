@@ -70,6 +70,7 @@ nav:
   - API:
     - Reference: features/api/index.md
     - API keys: features/api/api-keys.md
+    - MISP restSearch: features/api/rest-search.md
     - Audit logs: features/api/audit-logs.md
 
 plugins:

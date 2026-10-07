@@ -28,6 +28,7 @@ from app.routers import (
     taxonomies,
     users,
     reports,
+    rest_search,
     analyst_data,
     tasks,
     correlations,
@@ -106,6 +107,10 @@ app.include_router(organisations.router, tags=["Organisations"])
 
 # Roles resource
 app.include_router(roles.router, tags=["Roles"])
+
+# MISP-compatible restSearch. Registered before the events and attributes
+# routers so `/{uuid}` routes there don't capture `restSearch`.
+app.include_router(rest_search.router, tags=["restSearch"])
 
 # Events resource
 app.include_router(events.router, tags=["Events"])
