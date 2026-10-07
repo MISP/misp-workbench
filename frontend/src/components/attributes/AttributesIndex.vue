@@ -11,7 +11,11 @@ import CopyToClipboard from "@/components/misc/CopyToClipboard.vue";
 import Timestamp from "@/components/misc/Timestamp.vue";
 import { Modal } from "bootstrap";
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
-import { faSpinner, faCommentDots } from "@fortawesome/free-solid-svg-icons";
+import {
+  faSpinner,
+  faCommentDots,
+  faShield,
+} from "@fortawesome/free-solid-svg-icons";
 
 const props = defineProps(["event_uuid", "page_size"]);
 
@@ -53,6 +57,31 @@ function handleAttributesUpdated() {
 
 function handleObjectCreated(object) {
   emit("object-created", object);
+}
+
+// Toggled in place, optimistically: the switch flips at once and flips back if
+// the PATCH fails, rather than reloading the page of attributes.
+const pendingToIds = ref(new Set());
+const toIdsError = ref(null);
+
+async function toggleToIds(attribute) {
+  if (pendingToIds.value.has(attribute.uuid)) return;
+
+  const previous = attribute.to_ids;
+  attribute.to_ids = !previous;
+  toIdsError.value = null;
+  pendingToIds.value = new Set(pendingToIds.value).add(attribute.uuid);
+
+  try {
+    await attributesStore.setToIds(attribute.uuid, attribute.to_ids);
+  } catch (error) {
+    attribute.to_ids = previous;
+    toIdsError.value = `Could not update the IDS flag of ${attribute.value}: ${error}`;
+  } finally {
+    const done = new Set(pendingToIds.value);
+    done.delete(attribute.uuid);
+    pendingToIds.value = done;
+  }
 }
 
 // Analyst data is loaded per attribute only when its row is expanded: mounting
@@ -160,6 +189,30 @@ async function toggleAnalystData(uuid) {
   white-space: nowrap;
 }
 
+.ids-col {
+  width: 3.5rem;
+}
+
+/* Attributes flagged for IDS export get a red bar down their left edge, so
+   they stand out while scanning the list without reading the IDS column. */
+tr.to-ids > td:first-child {
+  box-shadow: inset 3px 0 0 var(--bs-danger);
+}
+
+.ids-toggle {
+  line-height: 1;
+}
+
+.ids-toggle:not(.is-ids) {
+  color: var(--bs-secondary-color);
+  opacity: 0.6;
+}
+
+.ids-toggle:not(.is-ids):hover,
+.ids-toggle:not(.is-ids):focus-visible {
+  opacity: 1;
+}
+
 .value {
   white-space: nowrap;
   overflow: hidden;
@@ -174,10 +227,30 @@ async function toggleAnalystData(uuid) {
     <div v-if="status.error" class="text-danger">
       Error loading attributes: {{ status.error }}
     </div>
+    <div
+      v-if="toIdsError"
+      class="alert alert-danger alert-dismissible py-2 small"
+      role="alert"
+    >
+      {{ toIdsError }}
+      <button
+        type="button"
+        class="btn-close"
+        aria-label="Close"
+        @click="toIdsError = null"
+      ></button>
+    </div>
     <table class="table table-striped">
       <thead>
         <tr>
           <th scope="col">value</th>
+          <th
+            scope="col"
+            class="ids-col text-center"
+            title="Flagged for intrusion detection systems (to_ids)"
+          >
+            IDS
+          </th>
           <th scope="col" class="type-col">type</th>
           <th style="width: 22%" scope="col" class="d-none d-sm-table-cell">
             tags
@@ -192,10 +265,40 @@ async function toggleAnalystData(uuid) {
       </thead>
       <tbody>
         <template :key="attribute.uuid" v-for="attribute in attributes.items">
-          <tr>
+          <tr :class="{ 'to-ids': attribute.to_ids }">
             <td class="value">
               <CopyToClipboard :value="attribute.value" />
               {{ attribute.value }}
+            </td>
+            <td class="ids-col text-center">
+              <button
+                type="button"
+                class="btn btn-sm ids-toggle"
+                :class="
+                  attribute.to_ids
+                    ? 'is-ids bg-danger-subtle text-danger border-danger-subtle'
+                    : 'border-0'
+                "
+                :aria-pressed="attribute.to_ids ? 'true' : 'false'"
+                :disabled="pendingToIds.has(attribute.uuid)"
+                :title="
+                  attribute.to_ids
+                    ? 'Flagged for IDS - click to unflag'
+                    : 'Not flagged for IDS - click to flag'
+                "
+                @click="toggleToIds(attribute)"
+              >
+                <span
+                  v-if="pendingToIds.has(attribute.uuid)"
+                  class="spinner-border spinner-border-sm"
+                  role="status"
+                  aria-hidden="true"
+                ></span>
+                <FontAwesomeIcon v-else :icon="faShield" />
+                <span class="visually-hidden">
+                  {{ attribute.to_ids ? "Unflag for IDS" : "Flag for IDS" }}
+                </span>
+              </button>
             </td>
             <td>{{ attribute.type }}</td>
             <td class="d-none d-sm-table-cell">
@@ -251,7 +354,7 @@ async function toggleAnalystData(uuid) {
             </td>
           </tr>
           <tr v-if="expandedAnalystData.has(attribute.uuid)">
-            <td colspan="5" class="bg-body-tertiary">
+            <td colspan="6" class="bg-body-tertiary">
               <AnalystDataIndex
                 :object_uuid="attribute.uuid"
                 :object_type="'Attribute'"
