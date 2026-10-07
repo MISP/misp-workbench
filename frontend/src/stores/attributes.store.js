@@ -54,6 +54,14 @@ export const useAttributesStore = defineStore({
         .catch((error) => (this.error = error))
         .finally(() => (this.status = { updating: false }));
     },
+    /**
+     * Flip only the IDS flag. Sends just `to_ids` so a toggle from the list
+     * can't overwrite fields edited elsewhere, and leaves `status` alone so the
+     * list doesn't show its loading state for a one-row change.
+     */
+    async setToIds(uuid, toIds) {
+      return await fetchWrapper.patch(`${baseUrl}/${uuid}`, { to_ids: toIds });
+    },
     async delete(id) {
       this.status = { loading: true };
       return await fetchWrapper
