@@ -8,6 +8,7 @@ from app.repositories import events as events_repository
 from app.repositories import tags as tags_repository
 from app.repositories import attachments as attachments_repository
 from app.repositories import objects as objects_repository
+from app.repositories import stream_exports as stream_exports_repository
 from app.schemas import event as event_schemas
 from app.schemas import user as user_schemas
 from app.schemas import object as object_schemas
@@ -16,6 +17,7 @@ from fastapi import (
     APIRouter,
     Depends,
     HTTPException,
+    Request,
     Response,
     Security,
     UploadFile,
@@ -25,6 +27,7 @@ from fastapi import (
 from fastapi_pagination import Page, Params
 from sqlalchemy.orm import Session
 from starlette import status
+from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import JSONResponse
 from app.services.runtime_settings import RuntimeSettings
 from app.services.runtime_settings_provider import get_runtime_settings
@@ -91,18 +94,23 @@ async def get_events_histogram(
 
 @router.get("/events/export")
 async def export_events(
-    query: str = Query(..., min_length=0),
+    request: Request,
+    query: str = Query("", min_length=0),
     format: Optional[str] = Query("json"),
+    include_deleted: bool = Query(False),
     user: user_schemas.User = Security(get_current_active_user, scopes=["events:read"]),
 ):
-    results = events_repository.export_events(query, format=format)
+    try:
+        export = await run_in_threadpool(
+            stream_exports_repository.prepare_event_export,
+            query,
+            format,
+            include_deleted,
+        )
+    except stream_exports_repository.RestSearchError as error:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(error))
 
-    if format == "json":
-        return JSONResponse(list(results))
-
-    raise HTTPException(
-        status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid format specified"
-    )
+    return stream_exports_repository.to_response(export, request)
 
 
 @router.post("/events/force-index", status_code=status.HTTP_202_ACCEPTED)

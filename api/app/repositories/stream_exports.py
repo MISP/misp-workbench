@@ -1,0 +1,319 @@
+"""Streaming, incremental exports of attributes and events.
+
+Backs ``GET /attributes/export`` and ``GET /events/export``. Results are paged
+out of OpenSearch with ``search_after`` and written to the response as they
+arrive, so memory stays flat however many documents match.
+
+Incremental pulls (``since=``) key off ``updated_at``, which the attributes'
+final ingest pipeline stamps on every write, partial updates included, so
+edits, tag changes and soft deletes all move it. In a delta, soft-deleted
+attributes are kept as tombstones (``deleted: true``) so consumers can prune
+them. Hard deletes (force-deleting an event, retention) remove the document
+and cannot show up in a delta; consumers should still do a periodic full pull.
+
+``prepare_*`` validates the request and runs one cheap aggregation (match
+count + newest ``updated_at``) that both answers conditional requests with a
+304 and is reused as the ETag, all before the stream starts.
+"""
+
+import hashlib
+import json
+import time
+from dataclasses import dataclass, field
+from datetime import datetime, timezone
+from email.utils import format_datetime, parsedate_to_datetime
+from typing import Any, Iterator, Optional
+
+from fastapi import Response
+from fastapi.responses import StreamingResponse
+
+from app.repositories.rest_search import (
+    RestSearchError,
+    csv_line,
+    iter_pages,
+    parse_timestamp,
+)
+from app.services.opensearch import get_opensearch_client
+
+ATTRIBUTES_INDEX = "misp-attributes"
+EVENTS_INDEX = "misp-events"
+
+ATTRIBUTE_FORMATS = ("json", "ndjson", "csv", "text", "cdb")
+EVENT_FORMATS = ("json", "ndjson")
+# Formats that can express a deletion, and so can carry a delta.
+DELTA_FORMATS = ("json", "ndjson", "csv")
+
+MEDIA_TYPES = {
+    "json": "application/json",
+    "ndjson": "application/x-ndjson",
+    "csv": "text/csv",
+    "text": "text/plain",
+    "cdb": "text/plain",
+}
+
+CSV_COLUMNS = [
+    "uuid",
+    "event_uuid",
+    "object_uuid",
+    "category",
+    "type",
+    "value",
+    "comment",
+    "to_ids",
+    "deleted",
+    "timestamp",
+    "updated_at",
+    "tags",
+]
+
+
+class ExportError(RestSearchError):
+    """Invalid export parameters; surfaced to the client as a 400."""
+
+
+@dataclass
+class PreparedExport:
+    index: str
+    format: str
+    query: dict
+    # Unix time the export was taken at: the `since` to send next time.
+    # Taken before the first page is read, so a write landing mid-export is
+    # picked up again by the next delta rather than lost.
+    export_timestamp: int
+    etag: str
+    last_modified: Optional[datetime]
+    client: Any = field(default=None, repr=False)
+
+    @property
+    def media_type(self) -> str:
+        return MEDIA_TYPES[self.format]
+
+    def headers(self) -> dict:
+        headers = {
+            "ETag": self.etag,
+            "X-Export-Timestamp": str(self.export_timestamp),
+            "Cache-Control": "no-cache",
+        }
+        if self.last_modified is not None:
+            headers["Last-Modified"] = format_datetime(self.last_modified, usegmt=True)
+        return headers
+
+    def not_modified(
+        self, if_none_match: Optional[str], if_modified_since: Optional[str]
+    ) -> bool:
+        # If-None-Match wins over If-Modified-Since when both are sent (RFC 9110).
+        if if_none_match:
+            tags = {t.strip() for t in if_none_match.split(",")}
+            return self.etag in tags or "*" in tags
+        if if_modified_since and self.last_modified is not None:
+            try:
+                since = parsedate_to_datetime(if_modified_since)
+            except (TypeError, ValueError):
+                return False
+            # HTTP dates have second precision.
+            return self.last_modified.replace(microsecond=0) <= since
+        return False
+
+
+def _validate_format(fmt: str, allowed: tuple) -> str:
+    fmt = (fmt or "json").lower()
+    if fmt not in allowed:
+        raise ExportError(
+            f"Unsupported format {fmt!r}; supported: {', '.join(allowed)}"
+        )
+    return fmt
+
+
+def _base_query(query: Optional[str], default_field: str) -> dict:
+    return {
+        "query_string": {
+            "query": query or "*",
+            "default_field": default_field,
+        }
+    }
+
+
+def _fingerprint(client, index: str, query: dict, request_key: str):
+    """ETag and Last-Modified from the match count and newest write.
+
+    Any write to a matching document moves ``updated_at``; a hard delete
+    lowers the count. Either changes the ETag.
+    """
+    response = client.search(
+        index=index,
+        body={
+            "size": 0,
+            "track_total_hits": True,
+            "query": query,
+            "aggs": {"newest": {"max": {"field": "updated_at"}}},
+        },
+    )
+    total = response["hits"]["total"]["value"]
+    newest = (response.get("aggregations") or {}).get("newest", {}).get("value")
+    last_modified = (
+        datetime.fromtimestamp(newest / 1000, tz=timezone.utc)
+        if newest is not None
+        else None
+    )
+    digest = hashlib.sha256(
+        f"{request_key}|{total}|{newest}".encode("utf-8")
+    ).hexdigest()[:32]
+    return f'"{digest}"', last_modified
+
+
+def prepare_attribute_export(
+    query: Optional[str],
+    fmt: str,
+    since: Optional[str] = None,
+    include_deleted: bool = False,
+) -> PreparedExport:
+    fmt = _validate_format(fmt, ATTRIBUTE_FORMATS)
+    export_timestamp = int(time.time())
+
+    filters: list = []
+    if since not in (None, ""):
+        if fmt not in DELTA_FORMATS:
+            raise ExportError(
+                f"since= needs a format that can carry deletions "
+                f"({', '.join(DELTA_FORMATS)}); {fmt!r} cannot"
+            )
+        since_ts = parse_timestamp(since, "since", now=export_timestamp)
+        filters.append(
+            {"range": {"updated_at": {"gte": since_ts, "format": "epoch_second"}}}
+        )
+        # Tombstones are the point of a delta.
+        include_deleted = True
+    if not include_deleted:
+        filters.append({"term": {"deleted": False}})
+
+    os_query = {"bool": {"must": [_base_query(query, "value")], "filter": filters}}
+
+    client = get_opensearch_client()
+    request_key = json.dumps([ATTRIBUTES_INDEX, query, fmt, since, include_deleted])
+    etag, last_modified = _fingerprint(client, ATTRIBUTES_INDEX, os_query, request_key)
+    return PreparedExport(
+        index=ATTRIBUTES_INDEX,
+        format=fmt,
+        query=os_query,
+        export_timestamp=export_timestamp,
+        etag=etag,
+        last_modified=last_modified,
+        client=client,
+    )
+
+
+def prepare_event_export(
+    query: Optional[str],
+    fmt: str,
+    include_deleted: bool = False,
+) -> PreparedExport:
+    fmt = _validate_format(fmt, EVENT_FORMATS)
+    filters = [] if include_deleted else [{"term": {"deleted": False}}]
+    os_query = {"bool": {"must": [_base_query(query, "info")], "filter": filters}}
+
+    client = get_opensearch_client()
+    request_key = json.dumps([EVENTS_INDEX, query, fmt, include_deleted])
+    etag, last_modified = _fingerprint(client, EVENTS_INDEX, os_query, request_key)
+    return PreparedExport(
+        index=EVENTS_INDEX,
+        format=fmt,
+        query=os_query,
+        export_timestamp=int(time.time()),
+        etag=etag,
+        last_modified=last_modified,
+        client=client,
+    )
+
+
+def _single_line(value: Any) -> Optional[str]:
+    """Line formats can't hold a newline; such values (text attributes) are skipped."""
+    if value is None:
+        return None
+    value = str(value)
+    if "\n" in value or "\r" in value:
+        return None
+    return value
+
+
+def _cdb_line(source: dict) -> Optional[str]:
+    """Wazuh CDB list entry, ``key:value``, with the attribute type as value.
+
+    Keys containing ``:`` (IPv6, URLs) must be double-quoted; a key that itself
+    contains a quote can't be represented and is skipped.
+    """
+    key = _single_line(source.get("value"))
+    if not key or '"' in key:
+        return None
+    if ":" in key:
+        key = f'"{key}"'
+    return f"{key}:{source.get('type') or ''}\n"
+
+
+def _csv_row(source: dict) -> list:
+    return [
+        source.get("uuid"),
+        source.get("event_uuid"),
+        source.get("object_uuid") or "",
+        source.get("category"),
+        source.get("type"),
+        source.get("value"),
+        source.get("comment") or "",
+        1 if source.get("to_ids") else 0,
+        1 if source.get("deleted") else 0,
+        source.get("timestamp"),
+        source.get("updated_at") or "",
+        ",".join(t.get("name", "") for t in source.get("tags") or []),
+    ]
+
+
+def stream(export: PreparedExport) -> Iterator[str]:
+    fmt = export.format
+    source: Any = ["value", "type"] if fmt in ("text", "cdb") else True
+    pages = iter_pages(export.client, export.index, export.query, source=source)
+
+    if fmt == "json":
+        yield "["
+    elif fmt == "csv":
+        yield csv_line(CSV_COLUMNS)
+
+    first = True
+    for hits in pages:
+        if fmt == "json":
+            chunk = []
+            for hit in hits:
+                doc = {
+                    "_index": hit["_index"],
+                    "_id": hit["_id"],
+                    "_source": hit["_source"],
+                }
+                chunk.append(("" if first else ",") + json.dumps(doc, default=str))
+                first = False
+            yield "".join(chunk)
+        elif fmt == "ndjson":
+            yield "".join(
+                json.dumps(hit["_source"], default=str) + "\n" for hit in hits
+            )
+        elif fmt == "csv":
+            yield "".join(csv_line(_csv_row(hit["_source"])) for hit in hits)
+        elif fmt == "text":
+            lines = (_single_line(hit["_source"].get("value")) for hit in hits)
+            yield "".join(f"{line}\n" for line in lines if line)
+        elif fmt == "cdb":
+            lines = (_cdb_line(hit["_source"]) for hit in hits)
+            yield "".join(line for line in lines if line)
+
+    if fmt == "json":
+        yield "]"
+
+
+def to_response(export: PreparedExport, request) -> Response:
+    """304 when the client's copy is current, else the streamed export."""
+    headers = export.headers()
+    if export.not_modified(
+        request.headers.get("if-none-match"),
+        request.headers.get("if-modified-since"),
+    ):
+        return Response(status_code=304, headers=headers)
+    return StreamingResponse(
+        stream(export), media_type=export.media_type, headers=headers
+    )
