@@ -8,6 +8,7 @@ export const AttributeSchema = Yup.object().shape({
     timestamp: Yup.number(),
     distribution: Yup.number().required(),
     disable_correlation: Yup.boolean().required(),
+    to_ids: Yup.boolean(),
     category: Yup.string().required(),
     type: Yup.string().required(),
     first_seen: Yup.string().nullable(),
