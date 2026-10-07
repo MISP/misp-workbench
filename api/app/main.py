@@ -14,6 +14,7 @@ from app.routers import (
     galaxies,
     hunts,
     lab,
+    lookup,
     mcp,
     modules,
     object_templates,
@@ -173,6 +174,9 @@ app.include_router(diagnostics.router, tags=["Diagnostics"])
 
 # Hunts resource
 app.include_router(hunts.router, tags=["Hunts"])
+
+# Bulk indicator lookup
+app.include_router(lookup.router, tags=["Lookup"])
 
 # Exports resource
 app.include_router(exports.router, tags=["Exports"])

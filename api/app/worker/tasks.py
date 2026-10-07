@@ -50,6 +50,18 @@ celery_app.conf.update(
     task_soft_time_limit=None,
     beat_scheduler="redbeat.RedBeatScheduler",
     redbeat_redis_url=os.environ.get("CELERY_BROKER_URL"),
+    beat_schedule={
+        # Keep the lookup prefilter in step with OpenSearch: add new indicator
+        # values every few seconds, rebuild (dropping stale ones) hourly.
+        "lookup-cache-sync": {
+            "task": "app.worker.tasks.sync_lookup_cache",
+            "schedule": 15.0,
+        },
+        "lookup-cache-rebuild": {
+            "task": "app.worker.tasks.rebuild_lookup_cache",
+            "schedule": 3600.0,
+        },
+    },
 )
 
 logger = logging.getLogger(__name__)
@@ -1400,3 +1412,24 @@ def deliver_to_sink(self, sink_id: int, event_uuid: str):
         sinks_repository.record_success(db, sink_id, sent)
         logger.info("sink %s delivered %s attributes of event %s", sink_id, sent, event_uuid)
         return sent
+
+
+# ──────────────────────────────────────────────────────────────────────────
+# Lookup — Redis prefilter of indicator values
+# ──────────────────────────────────────────────────────────────────────────
+
+
+@celery_app.task(ignore_result=True, expires=15)
+def sync_lookup_cache():
+    """Add values of indicators written since the last sync to the prefilter."""
+    from app.repositories import lookup as lookup_repository
+
+    return lookup_repository.sync_cache()
+
+
+@celery_app.task(ignore_result=True, time_limit=1800, soft_time_limit=1700)
+def rebuild_lookup_cache():
+    """Rebuild the lookup prefilter from OpenSearch, dropping stale values."""
+    from app.repositories import lookup as lookup_repository
+
+    return lookup_repository.rebuild_cache()
