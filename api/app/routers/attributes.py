@@ -4,13 +4,16 @@ from app.auth.security import get_current_active_user
 from app.db.session import get_db
 from app.repositories import attributes as attributes_repository
 from app.repositories import events as events_repository
+from app.repositories import stream_exports as stream_exports_repository
 from app.repositories import tags as tags_repository
 from app.schemas import attribute as attribute_schemas
 from app.schemas import user as user_schemas
+from app.services.runtime_settings import RuntimeSettings
+from app.services.runtime_settings_provider import get_runtime_settings
 from app.worker import tasks
-from fastapi import APIRouter, Depends, HTTPException, Response, Security, status, Query
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, Security, status, Query
+from fastapi.concurrency import run_in_threadpool
 from fastapi_pagination import Page, Params
-from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
 router = APIRouter()
@@ -81,18 +84,39 @@ async def get_attributes_histogram(
 
 @router.get("/attributes/export")
 async def export_attributes(
-    query: str = Query(..., min_length=0),
+    request: Request,
+    query: str = Query("", min_length=0),
     format: Optional[str] = Query("json"),
+    since: Optional[str] = Query(
+        None,
+        description=(
+            "Only attributes written since this time (epoch seconds, ISO date or "
+            "relative age like 7d), soft-deleted ones included as tombstones. "
+            "Use the X-Export-Timestamp header of the previous export."
+        ),
+    ),
+    include_deleted: bool = Query(False),
+    runtime_settings: RuntimeSettings = Depends(get_runtime_settings),
     user: user_schemas.User = Security(get_current_active_user, scopes=["attributes:read"]),
 ):
-    results = attributes_repository.export_attributes(query, format=format)
+    try:
+        export = await run_in_threadpool(
+            stream_exports_repository.prepare_attribute_export,
+            query,
+            format,
+            since,
+            include_deleted,
+        )
+    except stream_exports_repository.RestSearchError as error:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(error))
 
-    if format == "json":
-        return JSONResponse(list(results))
-
-    raise HTTPException(
-        status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid format specified"
+    max_concurrent = await run_in_threadpool(
+        runtime_settings.get_value, "exports.max_concurrent_per_user", 3
     )
+    return await stream_exports_repository.to_response(
+        export, request, user_id=user.id, max_concurrent=max_concurrent
+    )
+
 
 @router.get("/attributes/{attribute_uuid}", response_model=attribute_schemas.Attribute)
 def get_attribute_by_uuid(

@@ -415,7 +415,7 @@ class TestRestSearchParsing:
         assert split(None) == ([], [], [])
 
     def test_parse_timestamp(self):
-        parse = rest_search_repository._parse_timestamp
+        parse = rest_search_repository.parse_timestamp
         assert parse("1700000000", "t") == 1700000000
         assert parse("7d", "t", now=1_000_000) == 1_000_000 - 7 * 86400
         assert parse("30m", "t", now=1_000_000) == 1_000_000 - 1800

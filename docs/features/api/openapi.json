@@ -1450,10 +1450,11 @@
           {
             "name": "query",
             "in": "query",
-            "required": true,
+            "required": false,
             "schema": {
               "type": "string",
               "minLength": 0,
+              "default": "",
               "title": "Query"
             }
           },
@@ -1472,6 +1473,16 @@
               ],
               "default": "json",
               "title": "Format"
+            }
+          },
+          {
+            "name": "include_deleted",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Include Deleted"
             }
           }
         ],
@@ -2738,10 +2749,11 @@
           {
             "name": "query",
             "in": "query",
-            "required": true,
+            "required": false,
             "schema": {
               "type": "string",
               "minLength": 0,
+              "default": "",
               "title": "Query"
             }
           },
@@ -2760,6 +2772,34 @@
               ],
               "default": "json",
               "title": "Format"
+            }
+          },
+          {
+            "name": "since",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Only attributes written since this time (epoch seconds, ISO date or relative age like 7d), soft-deleted ones included as tombstones. Use the X-Export-Timestamp header of the previous export.",
+              "title": "Since"
+            },
+            "description": "Only attributes written since this time (epoch seconds, ISO date or relative age like 7d), soft-deleted ones included as tombstones. Use the X-Export-Timestamp header of the previous export."
+          },
+          {
+            "name": "include_deleted",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Include Deleted"
             }
           }
         ],
