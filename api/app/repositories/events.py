@@ -591,6 +591,10 @@ def update_event(db: Session, event_uuid: UUID, event: event_schemas.EventUpdate
         if hasattr(v, "value"):
             patch[k] = v.value
 
+    # An edit takes a published event back to unpublished (as in MISP), unless
+    # the edit sets the published state itself.
+    patch.setdefault("published", False)
+
     client.update(index="misp-events", id=str(os_event.uuid), body={"doc": patch}, refresh=True)
     tasks.handle_updated_event.delay(str(os_event.uuid))
 
@@ -732,6 +736,37 @@ def publish_event(event: event_schemas.Event) -> event_schemas.Event:
     tasks.handle_published_event.delay(str(event.uuid))
 
     return get_event_from_opensearch(event.uuid)
+
+
+def mark_event_modified(event_uuid) -> None:
+    """Take an event back to unpublished after a user changed its content.
+
+    As in MISP: adding, editing, deleting or tagging an event's attributes or
+    objects, or editing the event, leaves the change unshared (no push, no
+    sinks) until someone publishes the event again. Called from the API's
+    edit endpoints only; pulls and feeds keep the published state they bring.
+
+    Unlike ``unpublish_event`` this is a side effect of an edit, not an
+    unpublish action, so it fires no "unpublished" notifications or reactor
+    triggers. One scripted update, and a no-op when already unpublished.
+    """
+    if event_uuid is None:
+        return
+    get_opensearch_client().update(
+        index="misp-events",
+        id=str(event_uuid),
+        body={
+            "script": {
+                "lang": "painless",
+                "source": (
+                    "if (ctx._source.published == true) "
+                    "{ ctx._source.published = false } else { ctx.op = 'noop' }"
+                ),
+            }
+        },
+        refresh=True,
+        ignore=[404],
+    )
 
 
 def unpublish_event(event: event_schemas.Event) -> event_schemas.Event:

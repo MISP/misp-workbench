@@ -286,6 +286,7 @@ def tag_event(
     tag = tags_repository.get_or_create_tag_by_name(db, tag_name=tag)
 
     tags_repository.tag_event(db=db, event=event, tag=tag)
+    events_repository.mark_event_modified(event.uuid)
 
     return Response(status_code=status.HTTP_201_CREATED)
 
@@ -315,6 +316,7 @@ def untag_event(
         )
 
     tags_repository.untag_event(db=db, event=event, tag=tag)
+    events_repository.mark_event_modified(event.uuid)
 
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
@@ -349,6 +351,7 @@ async def upload_attachments(
         attachments=attachments,
         attachments_meta=attachments_meta,
     )
+    events_repository.mark_event_modified(db_event.uuid)
 
     return objects
 
@@ -464,6 +467,7 @@ def import_data(
 
     try:
         result = events_repository.import_data(db, event=os_event, data=data)
+        events_repository.mark_event_modified(os_event.uuid)
         return JSONResponse(
             content=result,
             status_code=status.HTTP_202_ACCEPTED,
