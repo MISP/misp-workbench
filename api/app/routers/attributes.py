@@ -160,13 +160,15 @@ def create_attribute(
 
     attribute.event_uuid = event.uuid
     try:
-        return attributes_repository.create_attribute(db=db, attribute=attribute)
+        created = attributes_repository.create_attribute(db=db, attribute=attribute)
     except attributes_repository.AttributeNotIndexedError as error:
         # A servo dropped it. 201 would be a lie -- the attribute is not
         # searchable and nothing downstream ran for it.
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(error)
         )
+    events_repository.mark_event_modified(event.uuid)
+    return created
 
 
 @router.patch("/attributes/{attribute_uuid}", response_model=attribute_schemas.Attribute)
@@ -178,9 +180,11 @@ def update_attribute(
         get_current_active_user, scopes=["attributes:update"]
     ),
 ) -> attribute_schemas.Attribute:
-    return attributes_repository.update_attribute(
+    updated = attributes_repository.update_attribute(
         db=db, attribute_uuid=attribute_uuid, attribute=attribute
     )
+    events_repository.mark_event_modified(updated.event_uuid)
+    return updated
 
 
 @router.delete("/attributes/{attribute_uuid}", status_code=status.HTTP_204_NO_CONTENT)
@@ -191,7 +195,9 @@ def delete_attribute(
         get_current_active_user, scopes=["attributes:delete"]
     ),
 ):
+    attribute = attributes_repository.get_attribute_from_opensearch(attribute_uuid)
     attributes_repository.delete_attribute(db=db, attribute_uuid=attribute_uuid)
+    events_repository.mark_event_modified(attribute.event_uuid)
 
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
@@ -217,6 +223,7 @@ def tag_attribute(
     tag = tags_repository.get_or_create_tag_by_name(db, tag_name=tag)
 
     tags_repository.tag_attribute(db=db, attribute=attribute, tag=tag)
+    events_repository.mark_event_modified(attribute.event_uuid)
 
     return Response(status_code=status.HTTP_201_CREATED)
 
@@ -246,5 +253,6 @@ def untag_attribute(
         )
 
     tags_repository.untag_attribute(db=db, attribute=attribute, tag=tag)
+    events_repository.mark_event_modified(attribute.event_uuid)
 
     return Response(status_code=status.HTTP_204_NO_CONTENT)
