@@ -201,6 +201,27 @@ class TestSinks(ApiTester):
         )
         assert moved.status_code == 422
         assert "re-enter token" in moved.json()["detail"]
+
+        # Same for weakening how the connection is authenticated.
+        url = "https://splunk.internal:8088/services/collector"
+        for weakened in (
+            {"verify_tls": False},
+            {"ca_cert": "-----BEGIN CERTIFICATE-----"},
+        ):
+            response = client.patch(
+                f"/sinks/{sink.id}",
+                json={"config": {"url": url, **masked, **weakened}},
+                headers=self._headers(auth_token),
+            )
+            assert response.status_code == 422, weakened
+
+        # Omitted settings count as their defaults, not as a change.
+        kept = client.patch(
+            f"/sinks/{sink.id}",
+            json={"config": {"url": url, "index": "intel", **masked}},
+            headers=self._headers(auth_token),
+        )
+        assert kept.status_code == 200, kept.text
         db.expire_all()
         assert (
             sinks_repository.get_sink(db, sink.id)

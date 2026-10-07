@@ -61,30 +61,42 @@ def create_sink(db: Session, sink: sink_schemas.SinkCreate) -> sink_models.Sink:
     return db_sink
 
 
-# Where a sink's secret is sent. A stored secret only stays valid for it.
-DESTINATION_FIELDS = ("url", "host", "port")
+# Everything that decides who can read a secret in transit: where it goes,
+# and how that connection is authenticated. A stored secret is only reused
+# while all of these stay as they were; turning verification off or swapping
+# the CA would expose it as surely as a new host.
+SECRET_BINDING_FIELDS = ("url", "host", "port", "tls", "verify_tls", "ca_cert")
 
 
 class SecretRequired(ValueError):
-    """The destination changed but the secret was not re-entered."""
+    """The connection settings changed but the secret was not re-entered."""
+
+
+def _binding(sink_type: str, config: dict) -> dict:
+    """The secret-binding settings, with model defaults for omitted ones."""
+    fields = sink_schemas.CONFIG_MODELS[sink_type].model_fields
+    return {
+        name: config.get(name, fields[name].default)
+        for name in SECRET_BINDING_FIELDS
+        if name in fields
+    }
 
 
 def _merge_secrets(sink_type: str, stored: dict, incoming: dict) -> dict:
     """Keep stored secrets the client sent back masked (or left out).
 
-    Only while the destination stays the same: otherwise anyone allowed to
-    edit a sink could point it at their own server, send the mask back and
-    receive the stored token. A new destination needs the secret re-entered.
+    Only while the connection settings stay the same: otherwise anyone allowed
+    to edit a sink could point it at their own server (or drop TLS
+    verification, or swap in their own CA), send the mask back and receive the
+    stored token. Changing them needs the secret re-entered.
     """
     merged = dict(incoming)
-    same_destination = all(
-        merged.get(field) == stored.get(field) for field in DESTINATION_FIELDS
-    )
+    unchanged = _binding(sink_type, merged) == _binding(sink_type, stored)
     for field in sink_schemas.SECRET_FIELDS.get(sink_type, ()):
         if merged.get(field) in (None, sink_schemas.SECRET_MASK) and stored.get(field):
-            if not same_destination:
+            if not unchanged:
                 raise SecretRequired(
-                    f"the destination changed: re-enter {field} to keep using it"
+                    f"the connection settings changed: re-enter {field} to keep using it"
                 )
             merged[field] = stored[field]
     return merged

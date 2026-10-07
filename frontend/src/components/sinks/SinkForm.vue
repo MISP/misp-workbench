@@ -209,7 +209,8 @@ async function submit() {
             autocomplete="off"
           />
           <div v-if="isEdit" class="form-text">
-            Leave as is to keep the current token, unless you change the URL.
+            Leave as is to keep the current token, unless you change the
+            connection settings.
           </div>
         </div>
         <div class="col-4">
@@ -253,7 +254,7 @@ async function submit() {
           in <code>X-Misp-Workbench-Signature</code>.
           <span v-if="isEdit"
             >Leave as is to keep the current secret, unless you change the
-            URL.</span
+            connection settings.</span
           >
         </div>
       </div>
