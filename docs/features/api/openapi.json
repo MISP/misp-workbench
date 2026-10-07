@@ -18396,12 +18396,17 @@
           "values": {
             "type": "integer",
             "title": "Values"
+          },
+          "intact": {
+            "type": "boolean",
+            "title": "Intact"
           }
         },
         "type": "object",
         "required": [
           "built",
-          "values"
+          "values",
+          "intact"
         ],
         "title": "LookupCacheStatus"
       },

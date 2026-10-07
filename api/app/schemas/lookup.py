@@ -66,3 +66,4 @@ class LookupCacheStatus(BaseModel):
     built_at: Optional[int] = None
     synced_at: Optional[int] = None
     values: int
+    intact: bool

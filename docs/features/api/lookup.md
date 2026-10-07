@@ -79,8 +79,13 @@ OpenSearch verifies them.
 - **Before the first build** (a fresh install, or after Redis was flushed),
   every lookup goes to OpenSearch (`"source": "opensearch"`) and a rebuild is
   queued.
-- **If Redis is unreachable**, lookups fall back to OpenSearch rather than
-  fail.
+- **If Redis is unreachable, or the set has vanished** (for example evicted
+  while its markers survived), lookups fall back to OpenSearch rather than
+  answer "no match". A sentinel member is checked with every batch to detect
+  the second case, and a rebuild is queued.
+- **A sync overlapping a rebuild** never moves the sync cursor past the
+  rebuild's. Values the swap might have dropped are read again by the next
+  sync.
 
 `to_ids_only: false` bypasses the prefilter, since it only holds IDS values,
 and asks OpenSearch about every value.

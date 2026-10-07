@@ -34,6 +34,23 @@ BUILT_AT_KEY = "lookup:ids_values:built_at"
 CURSOR_KEY = "lookup:ids_values:cursor"
 REBUILD_LOCK_KEY = "lookup:ids_values:rebuild_lock"
 SYNC_LOCK_KEY = "lookup:ids_values:sync_lock"
+GENERATION_KEY = "lookup:ids_values:generation"
+# Always a member of a built set (never a real value: attribute values don't
+# start with a NUL byte). A lookup checks it in the same SMISMEMBER call, so a
+# set that Redis evicted or someone deleted is noticed instead of answering
+# every value with "no match".
+SENTINEL = "\x00lookup:ids_values:built"
+
+# Store a sync's cursor only if no rebuild started or finished while it ran:
+# a rebuild's swap may have dropped what that sync added to the old set, and
+# the rebuild's own (earlier) cursor makes the next sync read it again.
+_SET_CURSOR_IF_GENERATION = """
+if redis.call('GET', KEYS[1]) == ARGV[1] then
+    redis.call('SET', KEYS[2], ARGV[2])
+    return 1
+end
+return 0
+"""
 
 MAX_VALUES_PER_REQUEST = 10_000
 DEFAULT_MAX_ATTRIBUTES = 10
@@ -99,19 +116,20 @@ def rebuild_cache() -> Optional[int]:
     if not redis.set(REBUILD_LOCK_KEY, "1", nx=True, ex=REBUILD_LOCK_SECONDS):
         return None
     try:
+        redis.incr(GENERATION_KEY)
         started = int(time.time())
         staging = f"{VALUES_KEY}:staging"
         redis.delete(staging)
+        redis.sadd(staging, SENTINEL)
         _add_values(redis, staging, _scan_values({"bool": _indicator_filter()}))
-        size = redis.scard(staging)
+        size = redis.scard(staging) - 1
         pipe = redis.pipeline()
-        if size:
-            pipe.rename(staging, VALUES_KEY)
-        else:
-            pipe.delete(VALUES_KEY)
+        pipe.rename(staging, VALUES_KEY)
         pipe.set(BUILT_AT_KEY, started)
-        # Writes during the rebuild are picked up by the next delta sync.
+        # Everything written since the scan began is read again by the next
+        # sync, including what syncs during the rebuild added to the old set.
         pipe.set(CURSOR_KEY, started)
+        pipe.incr(GENERATION_KEY)
         pipe.execute()
         logger.info("lookup cache rebuilt: %s values", size)
         return size
@@ -132,6 +150,7 @@ def sync_cache() -> Optional[int]:
     if not redis.set(SYNC_LOCK_KEY, "1", nx=True, ex=SYNC_LOCK_SECONDS):
         return None
     try:
+        generation = redis.get(GENERATION_KEY) or "0"
         started = int(time.time())
         cursor = int(redis.get(CURSOR_KEY) or started) - SYNC_OVERLAP_SECONDS
         query = {"bool": _indicator_filter()}
@@ -139,7 +158,14 @@ def sync_cache() -> Optional[int]:
             {"range": {"updated_at": {"gte": cursor, "format": "epoch_second"}}}
         )
         added = _add_values(redis, VALUES_KEY, _scan_values(query))
-        redis.set(CURSOR_KEY, started)
+        redis.eval(
+            _SET_CURSOR_IF_GENERATION,
+            2,
+            GENERATION_KEY,
+            CURSOR_KEY,
+            generation,
+            started,
+        )
         if added:
             logger.info("lookup cache sync: %s new values", added)
         return added
@@ -163,7 +189,9 @@ def cache_status() -> dict:
         "built": built_at is not None,
         "built_at": int(built_at) if built_at else None,
         "synced_at": int(redis.get(CURSOR_KEY) or 0) or None,
-        "values": redis.scard(VALUES_KEY),
+        "values": max(redis.scard(VALUES_KEY) - 1, 0),
+        # False when the set vanished (evicted, flushed) behind the markers.
+        "intact": bool(redis.sismember(VALUES_KEY, SENTINEL)),
     }
 
 
@@ -180,11 +208,14 @@ def _candidates(values: list[str]) -> tuple[list[str], str]:
         hits: list[str] = []
         for start in range(0, len(values), REDIS_CHUNK):
             chunk = values[start : start + REDIS_CHUNK]
-            hits.extend(
-                v
-                for v, member in zip(chunk, redis.smismember(VALUES_KEY, chunk))
-                if member
-            )
+            # The sentinel rides along with every chunk: a set missing it was
+            # lost, and its silence would read as "no match" for everything.
+            built, *members = redis.smismember(VALUES_KEY, [SENTINEL, *chunk])
+            if not built:
+                logger.warning("lookup cache set is gone; falling back and rebuilding")
+                request_rebuild()
+                return values, "opensearch"
+            hits.extend(v for v, member in zip(chunk, members) if member)
         return hits, "cache"
     except Exception:
         # The cache is an optimisation: without Redis, ask OpenSearch directly.

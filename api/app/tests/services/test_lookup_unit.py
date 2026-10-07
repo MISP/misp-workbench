@@ -30,6 +30,22 @@ class FakeRedis:
     def scard(self, key):
         return len(self.sets.get(key, set()))
 
+    def sismember(self, key, value):
+        return int(value in self.sets.get(key, set()))
+
+    def incr(self, key):
+        self.strings[key] = str(int(self.strings.get(key, 0)) + 1)
+        return int(self.strings[key])
+
+    def eval(self, script, numkeys, *args):
+        # Only the compare-and-set the cache uses.
+        assert script == lookup_repository._SET_CURSOR_IF_GENERATION
+        generation_key, cursor_key, expected, value = args
+        if self.strings.get(generation_key, "0") == str(expected):
+            self.strings[cursor_key] = str(value)
+            return 1
+        return 0
+
     def set(self, key, value, nx=False, ex=None):
         if nx and key in self.strings:
             return None
@@ -73,7 +89,11 @@ def redis():
 class TestCandidates:
     def test_cache_filters_misses(self, redis):
         redis.strings[lookup_repository.BUILT_AT_KEY] = "1"
-        redis.sets[lookup_repository.VALUES_KEY] = {"1.2.3.4", "evil.example"}
+        redis.sets[lookup_repository.VALUES_KEY] = {
+            lookup_repository.SENTINEL,
+            "1.2.3.4",
+            "evil.example",
+        }
         candidates, source = lookup_repository._candidates(
             ["8.8.8.8", "1.2.3.4", "evil.example", "benign.example"]
         )
@@ -84,6 +104,14 @@ class TestCandidates:
         with patch.object(lookup_repository, "request_rebuild") as rebuild:
             candidates, source = lookup_repository._candidates(["a", "b"])
         assert (candidates, source) == (["a", "b"], "opensearch")
+        rebuild.assert_called_once()
+
+    def test_vanished_set_falls_back_instead_of_missing_everything(self, redis):
+        # Markers survive but the set itself was evicted or deleted.
+        redis.strings[lookup_repository.BUILT_AT_KEY] = "1"
+        with patch.object(lookup_repository, "request_rebuild") as rebuild:
+            candidates, source = lookup_repository._candidates(["1.2.3.4"])
+        assert (candidates, source) == (["1.2.3.4"], "opensearch")
         rebuild.assert_called_once()
 
     def test_redis_down_falls_back(self):
@@ -100,7 +128,11 @@ class TestMaintenance:
             lookup_repository, "_scan_values", return_value=iter(["a", "b", "a", None])
         ):
             assert lookup_repository.rebuild_cache() == 2
-        assert redis.sets[lookup_repository.VALUES_KEY] == {"a", "b"}
+        assert redis.sets[lookup_repository.VALUES_KEY] == {
+            lookup_repository.SENTINEL,
+            "a",
+            "b",
+        }
         assert lookup_repository.BUILT_AT_KEY in redis.strings
         assert lookup_repository.CURSOR_KEY in redis.strings
         # The lock is released for the next run.
@@ -126,6 +158,36 @@ class TestMaintenance:
         )
         assert redis.sets[lookup_repository.VALUES_KEY] == {"a", "new"}
 
+    def test_empty_rebuild_still_marks_the_set_built(self, redis):
+        with patch.object(lookup_repository, "_scan_values", return_value=iter([])):
+            assert lookup_repository.rebuild_cache() == 0
+        assert redis.sets[lookup_repository.VALUES_KEY] == {lookup_repository.SENTINEL}
+
+    def test_sync_spanning_a_rebuild_keeps_the_rebuild_cursor(self, redis):
+        """A rebuild swapping sets mid-sync may drop what the sync added.
+
+        The sync must not advance the cursor past the rebuild's, or the next
+        sync would never read those values again.
+        """
+        redis.strings[lookup_repository.BUILT_AT_KEY] = "1"
+        redis.strings[lookup_repository.CURSOR_KEY] = "1000"
+
+        def values_then_rebuild(query):
+            yield "written-during-rebuild"
+            # A rebuild starts and finishes while the sync is still running.
+            with patch.object(
+                lookup_repository, "_scan_values", return_value=iter([])
+            ), patch.object(lookup_repository.time, "time", return_value=2000):
+                lookup_repository.rebuild_cache()
+
+        with patch.object(
+            lookup_repository, "_scan_values", side_effect=values_then_rebuild
+        ), patch.object(lookup_repository.time, "time", return_value=3000):
+            lookup_repository.sync_cache()
+
+        # The rebuild's cursor stands, so the next sync re-reads from 2000.
+        assert redis.strings[lookup_repository.CURSOR_KEY] == "2000"
+
     def test_sync_before_first_build_queues_rebuild(self, redis):
         with patch.object(lookup_repository, "request_rebuild") as rebuild:
             assert lookup_repository.sync_cache() is None
@@ -140,6 +202,7 @@ class TestLookup:
 
     def test_dedupes_and_skips_opensearch_on_all_misses(self, redis):
         redis.strings[lookup_repository.BUILT_AT_KEY] = "1"
+        redis.sets[lookup_repository.VALUES_KEY] = {lookup_repository.SENTINEL}
         with patch.object(lookup_repository, "get_opensearch_client") as os_client:
             result = lookup_repository.lookup(["x", "x", "y", ""])
         assert result["checked"] == 2

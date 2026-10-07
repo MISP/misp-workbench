@@ -201,4 +201,5 @@ class TestLookup(ApiTester):
             "/lookup/cache", headers={"Authorization": "Bearer " + auth_token}
         ).json()
         assert status_response["built"] is True
+        assert status_response["intact"] is True
         assert status_response["values"] >= 3
