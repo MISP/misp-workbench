@@ -542,6 +542,24 @@ async function deleteRetentionSchedule() {
                           requests get a 429. Set to 0 to disable the limit.
                         </div>
                       </div>
+                      <div class="col-md-4">
+                        <label
+                          class="form-label fw-semibold"
+                          for="exportsDeltaRetention"
+                          >Deltas Kept per Incremental Feed</label
+                        >
+                        <input
+                          id="exportsDeltaRetention"
+                          type="number"
+                          min="1"
+                          class="form-control"
+                          v-model.number="formValues.exports.delta_retention"
+                        />
+                        <div class="form-text">
+                          A consumer further behind than the oldest kept delta
+                          has to download the full feed again.
+                        </div>
+                      </div>
                     </div>
 
                     <div class="d-flex justify-content-end mt-3">
