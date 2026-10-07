@@ -2,6 +2,7 @@
 import { reactive, ref, computed } from "vue";
 import { router } from "@/router";
 import { useSinksStore, useToastsStore } from "@/stores";
+import TagsSelect from "@/components/tags/TagsSelect.vue";
 
 // With `sink` the form edits it; without, it creates a new one.
 const props = defineProps({ sink: { type: Object, default: null } });
@@ -62,11 +63,19 @@ const joinList = (list) => (list || []).join(", ");
 const filters = reactive({
   to_ids_only: props.sink?.filters?.to_ids_only ?? true,
   types: joinList(props.sink?.filters?.types),
-  tags: joinList(props.sink?.filters?.tags),
+  // Tag names (or patterns such as tlp:*), edited with the tag selector.
+  tags: [...(props.sink?.filters?.tags || [])],
   exclude_tags: props.sink
-    ? joinList(props.sink.filters?.exclude_tags)
-    : "tlp:red",
+    ? [...(props.sink.filters?.exclude_tags || [])]
+    : ["tlp:red"],
 });
+
+// TagsSelect works on tag objects; the sink stores plain names. Unknown names
+// and patterns get a neutral colour, as in the retention settings.
+const asTagObjects = (names) =>
+  names.map((name) => ({ id: null, name, colour: "#6c757d" }));
+const includeTagObjects = computed(() => asTagObjects(filters.tags));
+const excludeTagObjects = computed(() => asTagObjects(filters.exclude_tags));
 
 const apiError = ref(null);
 const usesTls = computed(
@@ -102,8 +111,8 @@ async function submit() {
     filters: {
       to_ids_only: filters.to_ids_only,
       types: splitList(filters.types),
-      tags: splitList(filters.tags),
-      exclude_tags: splitList(filters.exclude_tags),
+      tags: filters.tags,
+      exclude_tags: filters.exclude_tags,
     },
   };
   try {
@@ -354,26 +363,27 @@ async function submit() {
         />
       </div>
       <div class="mb-3">
-        <label class="form-label" for="sink-tags">Only with tags</label>
-        <input
-          id="sink-tags"
-          class="form-control font-monospace"
-          v-model="filters.tags"
-          placeholder="any — or e.g. tlp:green, tlp:clear"
+        <label class="form-label">Only with tags</label>
+        <!-- persist=false: only edits this list, never tags an event -->
+        <TagsSelect
+          modelClass="event"
+          :persist="false"
+          :selectedTags="includeTagObjects"
+          @update:selectedTags="filters.tags = $event"
         />
+        <div class="form-text">Empty sends attributes with any tags.</div>
       </div>
       <div class="mb-3">
-        <label class="form-label" for="sink-exclude-tags"
-          >Never with tags</label
-        >
-        <input
-          id="sink-exclude-tags"
-          class="form-control font-monospace"
-          v-model="filters.exclude_tags"
+        <label class="form-label">Never with tags</label>
+        <TagsSelect
+          modelClass="event"
+          :persist="false"
+          :selectedTags="excludeTagObjects"
+          @update:selectedTags="filters.exclude_tags = $event"
         />
         <div class="form-text">
-          Comma-separated. Tag lists match attribute and event tags alike, and
-          accept patterns such as <code>tlp:*</code>.
+          Both lists match attribute and event tags alike. Type a pattern such
+          as <code>tlp:*</code> to match a whole namespace.
         </div>
       </div>
 

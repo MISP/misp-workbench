@@ -144,23 +144,15 @@ async function remove(sink) {
           <tbody>
             <tr v-for="sink in sinks" :key="sink.id">
               <td>
-                <div class="form-check form-switch d-inline-block me-1">
-                  <input
-                    class="form-check-input"
-                    type="checkbox"
-                    :checked="sink.enabled"
-                    :disabled="!canUpdate || togglingId === sink.id"
-                    :title="sink.enabled ? 'Enabled' : 'Disabled'"
-                    :aria-label="`${sink.enabled ? 'Disable' : 'Enable'} ${sink.name}`"
-                    @change="toggleEnabled(sink)"
-                  />
-                </div>
                 <span :class="{ 'text-muted': !sink.enabled }">{{
                   sink.name
                 }}</span>
                 <span class="badge bg-light text-dark ms-1">{{
                   TYPE_LABELS[sink.type] || sink.type
                 }}</span>
+                <span v-if="!sink.enabled" class="badge bg-secondary ms-1"
+                  >disabled</span
+                >
               </td>
               <td
                 v-if="!$isMobile"
@@ -196,6 +188,25 @@ async function remove(sink) {
                 </div>
               </td>
               <td class="text-end text-nowrap">
+                <div
+                  v-if="canUpdate"
+                  class="form-check form-switch d-inline-block align-middle me-2 mb-0"
+                >
+                  <input
+                    class="form-check-input"
+                    type="checkbox"
+                    role="switch"
+                    :checked="sink.enabled"
+                    :disabled="togglingId === sink.id"
+                    :title="
+                      sink.enabled
+                        ? 'Enabled: click to disable'
+                        : 'Disabled: click to enable'
+                    "
+                    :aria-label="`${sink.enabled ? 'Disable' : 'Enable'} ${sink.name}`"
+                    @change="toggleEnabled(sink)"
+                  />
+                </div>
                 <button
                   v-if="canTest"
                   class="btn btn-outline-success btn-sm me-1"
