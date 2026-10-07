@@ -83,16 +83,21 @@ flagging them for detection on its own:
 
 | Runtime setting | Default | Effect |
 |---|---|---|
-| `sightings.false_positive_threshold` | `0` (off) | Once a value has this many false-positive sightings, `to_ids` is turned off on every attribute holding it |
+| `sightings.false_positive_threshold` | `0` (off) | Once this many **distinct organisations** have reported a value as a false positive, `to_ids` is turned off on every attribute holding it |
 
 Turning `to_ids` off removes the value from IDS-only exports, feeds and
 [sinks](sinks.md), so SIEMs stop alerting on it. Attributes and their history
 are kept; only the flag changes. Set `to_ids` back by hand if the value becomes
-relevant again. Further false-positive sightings will turn it off again while
-the count stays over the threshold.
+relevant again; further reports will turn it off again while the threshold is
+still met.
 
-!!! note
-    The threshold counts every false-positive sighting ever reported for the
-    value, from any organisation. Pick it with the number of reporting
-    sensors in mind: with ten SIEMs each reporting once, `3` reacts fast,
-    `10` needs all of them to agree.
+The threshold counts organisations, not sightings, and the reporting
+organisation is always the authenticated caller's (a client can name its
+`source`, not report on another organisation's behalf). One reporter, or one
+compromised sensor, can't switch off detection on its own by repeating
+itself.
+
+!!! warning "Single-organisation instances"
+    With one organisation, only a threshold of `1` can ever be met, which means
+    any user allowed to report sightings can switch off detection for a value.
+    Leave the feedback off unless that is acceptable.

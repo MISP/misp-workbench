@@ -39,8 +39,8 @@ DEFAULT_SETTINGS = {
     },
     "sightings": {
         # Turn to_ids off on every attribute holding a value once this many
-        # false-positive sightings (MISP type 1) have been reported for it,
-        # so SIEMs stop alerting on it. 0 disables the feedback.
+        # distinct organisations have reported it as a false positive (MISP
+        # sighting type 1), so SIEMs stop alerting on it. 0 disables it.
         "false_positive_threshold": 0,
     },
     "retention": {

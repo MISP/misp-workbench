@@ -59,10 +59,11 @@ def create_sighting_doc(user, sighting: dict):
         else datetime.datetime.now().isoformat()
     )
     sighting["type"] = sighting.get("type", "positive")
-    # The reporting organisation is the caller's unless stated; a bare
-    # observer (e.g. just a MISP ``source``) still gets it.
+    # The reporting organisation is always the caller's: a client can name its
+    # sensor (``source``) but not report on another organisation's behalf,
+    # which false-positive feedback counts on.
     observer = dict(sighting.get("observer") or {})
-    observer.setdefault("organisation", user.organisation.name)
+    observer["organisation"] = user.organisation.name
     sighting["observer"] = observer
 
     return sighting
@@ -249,12 +250,14 @@ def find_sighted_attributes(values: list[str]) -> dict[str, list[dict]]:
 
 
 def apply_false_positive_feedback(values: list[str], threshold: int) -> list[str]:
-    """Stop flagging values for IDS once enough false positives are reported.
+    """Stop flagging values for IDS once enough organisations report them benign.
 
-    Counts every false-positive sighting ever recorded for each value; those
-    at or past ``threshold`` get ``to_ids`` turned off on all their live
-    attributes. Returns the values that crossed it. ``threshold <= 0`` turns
-    the feedback off.
+    Counts the **distinct organisations** that reported a false-positive
+    sighting for each value, not the sightings: one reporter repeating
+    itself (or a compromised sensor flooding reports) can't suppress an
+    indicator on its own. Values reaching ``threshold`` organisations get
+    ``to_ids`` turned off on all their live attributes; returns them.
+    ``threshold <= 0`` turns the feedback off.
     """
     if threshold <= 0 or not values:
         return []
@@ -275,14 +278,21 @@ def apply_false_positive_feedback(values: list[str], threshold: int) -> list[str
                 }
             },
             "aggs": {
-                "values": {"terms": {"field": "value.keyword", "size": len(unique)}}
+                "values": {
+                    "terms": {"field": "value.keyword", "size": len(unique)},
+                    "aggs": {
+                        "organisations": {
+                            "cardinality": {"field": "observer.organisation"}
+                        }
+                    },
+                }
             },
         },
     )
     crossed = [
         bucket["key"]
         for bucket in response["aggregations"]["values"]["buckets"]
-        if bucket["doc_count"] >= threshold
+        if bucket["organisations"]["value"] >= threshold
     ]
     if not crossed:
         return []

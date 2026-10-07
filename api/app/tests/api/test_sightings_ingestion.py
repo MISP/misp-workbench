@@ -1,3 +1,4 @@
+from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
@@ -165,38 +166,49 @@ class TestSightingsIngestion(ApiTester):
         assert [h["_source"]["uuid"] for h in found[LONG_VALUE]] == [LONG]
         assert "192.0.2.200" not in found
 
-    def test_false_positive_feedback(self, db: Session, api_tester_user):
+    def test_false_positive_feedback(self, db: Session):
         client = get_opensearch_client()
 
         def to_ids(uuid):
             return client.get(index="misp-attributes", id=uuid)["_source"]["to_ids"]
 
-        def report_false_positive(value):
+        def reporter(org):
+            return SimpleNamespace(organisation=SimpleNamespace(name=org))
+
+        def report_false_positive(org, value="198.51.100.66"):
             sightings_repository.create_sightings(
-                api_tester_user, {"value": value, "type": "false-positive"}
+                reporter(org),
+                {
+                    "value": value,
+                    "type": "false-positive",
+                    # Ignored: the reporting organisation is the caller's.
+                    "observer": {"organisation": "org-spoofed", "source": "siem"},
+                },
             )
 
-        def process(value):
+        def process(value="198.51.100.66"):
             return sightings_repository.process_created_sightings(
-                db,
-                [{"value": value, "type": "false-positive", "organisation": "x"}],
+                db, [{"value": value, "type": "false-positive", "organisation": "x"}]
             )
 
         with patch.object(tasks.handle_created_sightings, "delay"):
             # Off by default: reports alone change nothing.
-            report_false_positive("198.51.100.66")
-            assert process("198.51.100.66")["to_ids_disabled"] == []
+            report_false_positive("org-a")
+            assert process()["to_ids_disabled"] == []
 
             runtime_settings_repository.set_setting(
-                db, "sightings", {"false_positive_threshold": 3}
+                db, "sightings", {"false_positive_threshold": 2}
             )
             try:
-                report_false_positive("198.51.100.66")
-                assert process("198.51.100.66")["to_ids_disabled"] == []
+                # One organisation repeating itself never reaches the threshold.
+                for _ in range(5):
+                    report_false_positive("org-a")
+                assert process()["to_ids_disabled"] == []
                 assert to_ids(NOISY) is True
 
-                report_false_positive("198.51.100.66")
-                result = process("198.51.100.66")
+                # A second organisation does.
+                report_false_positive("org-b")
+                result = process()
             finally:
                 runtime_settings_repository.delete_setting(db, "sightings")
 
@@ -206,3 +218,13 @@ class TestSightingsIngestion(ApiTester):
         assert to_ids(NOISY_TWIN) is False
         # ...and only those.
         assert to_ids(QUIET) is True
+
+        client.indices.refresh(index="misp-sightings")
+        orgs = {
+            hit["_source"]["observer"]["organisation"]
+            for hit in client.search(
+                index="misp-sightings",
+                body={"query": {"term": {"type": "false-positive"}}, "size": 50},
+            )["hits"]["hits"]
+        }
+        assert "org-spoofed" not in orgs
