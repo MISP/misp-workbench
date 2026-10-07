@@ -21,12 +21,12 @@ LONG = "eeeeeeee-0000-4000-8000-000000000004"
 LONG_VALUE = "https://example.com/" + "p" * 300
 
 
-def _attribute(uuid, value, attribute_id=None):
+def _attribute(uuid, value, attribute_id=None, type_="ip-dst"):
     return {
         "uuid": uuid,
         "id": attribute_id,
         "event_uuid": EVENT,
-        "type": "ip-dst",
+        "type": type_,
         "category": "Network activity",
         "value": value,
         "to_ids": True,
@@ -44,7 +44,7 @@ class TestSightingsIngestion(ApiTester):
             _attribute(NOISY, "198.51.100.66", attribute_id=4242),
             _attribute(NOISY_TWIN, "198.51.100.66"),
             _attribute(QUIET, "198.51.100.77"),
-            _attribute(LONG, LONG_VALUE),
+            _attribute(LONG, LONG_VALUE, type_="url"),
         ):
             client.index(index="misp-attributes", id=doc["uuid"], body=doc)
         client.indices.refresh(index="misp-attributes")

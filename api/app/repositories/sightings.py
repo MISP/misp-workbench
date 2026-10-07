@@ -117,7 +117,7 @@ def create_sightings(user, sightings: Union[list, dict]):
     try:
         response = opensearch_helpers.bulk(
             get_opensearch_client(),
-            ({"_index": "misp-sightings", "_source": doc} for doc in docs),
+            [{"_index": "misp-sightings", "_source": doc} for doc in docs],
         )
     except Exception as e:
         raise HTTPException(
