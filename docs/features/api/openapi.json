@@ -8388,6 +8388,122 @@
         }
       }
     },
+    "/sightings/add": {
+      "post": {
+        "tags": [
+          "Sightings"
+        ],
+        "summary": "Misp Add Sightings",
+        "description": "MISP-compatible: sight ``value``/``values``, or an attribute by ``uuid``/``id``.",
+        "operationId": "misp_add_sightings_sightings_add_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MispSightingAdd"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MispSightingAddResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "sightings:create"
+            ]
+          }
+        ]
+      }
+    },
+    "/sightings/add/{attribute_ref}": {
+      "post": {
+        "tags": [
+          "Sightings"
+        ],
+        "summary": "Misp Add Attribute Sighting",
+        "description": "MISP-compatible: sight one attribute by uuid (or MISP numeric id).",
+        "operationId": "misp_add_attribute_sighting_sightings_add__attribute_ref__post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "sightings:create"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "attribute_ref",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Attribute Ref"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/MispSightingAdd"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Payload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MispSightingAddResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/sightings/histogram": {
       "get": {
         "tags": [
@@ -18008,6 +18124,126 @@
         ],
         "title": "LabTree",
         "description": "Single response that returns Personal + Global + Library trees so the\nleft panel renders in one round trip. Library notebooks are read-only\nprebuilt content (seeded via CLI); users fork them to a personal copy\nbefore running."
+      },
+      "MispSightingAdd": {
+        "properties": {
+          "value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          },
+          "values": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Values"
+          },
+          "uuid": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Uuid"
+          },
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "type": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Type",
+            "default": 0
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          },
+          "timestamp": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp"
+          }
+        },
+        "additionalProperties": true,
+        "type": "object",
+        "title": "MispSightingAdd",
+        "description": "MISP's ``/sightings/add`` body: what PyMISP and SIEM connectors send.\n\nSightings target a value (``value``/``values``) or an attribute\n(``uuid``/``id``, or the URL's attribute id). ``type`` is MISP's 0\n(sighting), 1 (false positive) or 2 (expiration); names are accepted too."
+      },
+      "MispSightingAddResponse": {
+        "properties": {
+          "saved": {
+            "type": "boolean",
+            "title": "Saved"
+          },
+          "success": {
+            "type": "boolean",
+            "title": "Success"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "url": {
+            "type": "string",
+            "title": "Url"
+          }
+        },
+        "type": "object",
+        "required": [
+          "saved",
+          "success",
+          "name",
+          "message",
+          "url"
+        ],
+        "title": "MispSightingAddResponse"
       },
       "Module": {
         "properties": {
