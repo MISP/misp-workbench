@@ -165,18 +165,12 @@ class TestSinks(ApiTester):
         listed = client.get("/sinks/", headers=self._headers(auth_token)).json()
         assert [s["name"] for s in listed] == ["splunk prod"]
 
-        assert (
-            client.delete(
-                f"/sinks/{sink['id']}", headers=self._headers(auth_token)
-            ).status_code
-            == status.HTTP_204_NO_CONTENT
+        deleted = client.delete(
+            f"/sinks/{sink['id']}", headers=self._headers(auth_token)
         )
-        assert (
-            client.get(
-                f"/sinks/{sink['id']}", headers=self._headers(auth_token)
-            ).status_code
-            == status.HTTP_404_NOT_FOUND
-        )
+        assert deleted.status_code == status.HTTP_204_NO_CONTENT
+        gone = client.get(f"/sinks/{sink['id']}", headers=self._headers(auth_token))
+        assert gone.status_code == status.HTTP_404_NOT_FOUND
 
     @pytest.mark.parametrize("scopes", [["sinks:update"]])
     def test_secret_stays_with_its_destination(
@@ -259,18 +253,20 @@ class TestSinks(ApiTester):
     def test_config_validation(
         self, client: TestClient, auth_token: auth.Token, db: Session
     ):
-        def create(sink_type, config):
-            return client.post(
+        invalid = [
+            ("webhook", {"url": "ftp://nope"}),
+            ("splunk_hec", {"url": "https://s"}),  # no token
+            ("syslog", {"host": "h", "protocol": "udp", "tls": True}),
+            ("gelf", {"host": "h", "port": 70000}),
+            ("carrier_pigeon", {}),
+        ]
+        for sink_type, config in invalid:
+            response = client.post(
                 "/sinks/",
                 json={"name": "x", "type": sink_type, "config": config},
                 headers=self._headers(auth_token),
-            ).status_code
-
-        assert create("webhook", {"url": "ftp://nope"}) == 422
-        assert create("splunk_hec", {"url": "https://s"}) == 422  # no token
-        assert create("syslog", {"host": "h", "protocol": "udp", "tls": True}) == 422
-        assert create("gelf", {"host": "h", "port": 70000}) == 422
-        assert create("carrier_pigeon", {}) == 422
+            )
+            assert response.status_code == 422, sink_type
 
         sink = self._create(db)
         response = client.patch(
@@ -315,7 +311,8 @@ class TestSinks(ApiTester):
     def test_delivery_applies_filters(self, db: Session, receiver):
         url, received = receiver
         sink = self._create(db, config={"url": url})
-        assert tasks.deliver_to_sink.run(sink.id, EVENT) == 2
+        sent = tasks.deliver_to_sink.run(sink.id, EVENT)
+        assert sent == 2
 
         sent = sorted(a["uuid"] for batch in received for a in batch["attributes"])
         # Not sent: not to_ids, tlp:red, soft-deleted.
@@ -352,7 +349,8 @@ class TestSinks(ApiTester):
         # The last attempt records the failure for good instead of retrying.
         tasks.deliver_to_sink.push_request(retries=tasks.SINK_MAX_RETRIES)
         try:
-            assert tasks.deliver_to_sink.run(sink.id, EVENT) == 0
+            sent = tasks.deliver_to_sink.run(sink.id, EVENT)
+            assert sent == 0
         finally:
             tasks.deliver_to_sink.pop_request()
         db.expire_all()
@@ -361,14 +359,16 @@ class TestSinks(ApiTester):
     def test_disabled_sink_is_skipped(self, db: Session, receiver):
         url, received = receiver
         sink = self._create(db, config={"url": url}, enabled=False)
-        assert tasks.deliver_to_sink.run(sink.id, EVENT) == 0
+        sent = tasks.deliver_to_sink.run(sink.id, EVENT)
+        assert sent == 0
         assert received == []
 
     def test_publish_dispatches_to_enabled_sinks(self, db: Session):
         enabled = self._create(db, name="on")
         self._create(db, name="off", enabled=False)
         with patch.object(tasks.deliver_to_sink, "apply_async") as apply_async:
-            assert sinks_repository.dispatch_published_event(db, EVENT) == 1
+            queued = sinks_repository.dispatch_published_event(db, EVENT)
+        assert queued == 1
         apply_async.assert_called_once_with((enabled.id, EVENT), queue="sinks")
 
     @pytest.mark.parametrize("scopes", [["sinks:test"]])
