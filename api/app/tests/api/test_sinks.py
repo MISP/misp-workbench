@@ -178,6 +178,62 @@ class TestSinks(ApiTester):
             == status.HTTP_404_NOT_FOUND
         )
 
+    @pytest.mark.parametrize("scopes", [["sinks:update"]])
+    def test_secret_stays_with_its_destination(
+        self, client: TestClient, auth_token: auth.Token, db: Session
+    ):
+        sink = self._create(
+            db,
+            type="splunk_hec",
+            config={
+                "url": "https://splunk.internal:8088/services/collector",
+                "token": "t0k",
+            },
+        )
+        masked = {"token": sink_schemas.SECRET_MASK}
+
+        # Repointing with the masked token would hand the stored one to the
+        # new host: the token has to be re-entered.
+        moved = client.patch(
+            f"/sinks/{sink.id}",
+            json={"config": {"url": "https://attacker.example/collect", **masked}},
+            headers=self._headers(auth_token),
+        )
+        assert moved.status_code == 422
+        assert "re-enter token" in moved.json()["detail"]
+        db.expire_all()
+        assert (
+            sinks_repository.get_sink(db, sink.id)
+            .config["url"]
+            .startswith("https://splunk.internal")
+        )
+
+        # An invalid config never echoes the merged-in secret.
+        invalid = client.patch(
+            f"/sinks/{sink.id}",
+            json={
+                "config": {
+                    "url": "https://splunk.internal:8088/services/collector",
+                    "index": {"not": "a string"},
+                    **masked,
+                }
+            },
+            headers=self._headers(auth_token),
+        )
+        assert invalid.status_code == 422
+        assert "t0k" not in invalid.text
+
+        reentered = client.patch(
+            f"/sinks/{sink.id}",
+            json={
+                "config": {"url": "https://splunk2.internal/collector", "token": "n3w"}
+            },
+            headers=self._headers(auth_token),
+        )
+        assert reentered.status_code == 200
+        db.expire_all()
+        assert sinks_repository.get_sink(db, sink.id).config["token"] == "n3w"
+
     @pytest.mark.parametrize("scopes", [["sinks:create", "sinks:update"]])
     def test_config_validation(
         self, client: TestClient, auth_token: auth.Token, db: Session

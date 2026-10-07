@@ -1,7 +1,14 @@
 from datetime import datetime
 from typing import Literal, Optional
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    ValidationError,
+    field_validator,
+    model_validator,
+)
 
 SinkType = Literal["splunk_hec", "gelf", "syslog", "webhook"]
 
@@ -100,8 +107,24 @@ class SinkFilters(BaseModel):
     exclude_tags: list[str] = ["tlp:red"]
 
 
+class InvalidSinkConfig(ValueError):
+    pass
+
+
 def validate_config(sink_type: str, config: dict) -> dict:
-    return CONFIG_MODELS[sink_type].model_validate(config).model_dump()
+    """Validate a sink's config, reporting fields and reasons only.
+
+    Pydantic's own message embeds the input, which on update already holds
+    the stored secret merged back in; it must never reach a response.
+    """
+    try:
+        return CONFIG_MODELS[sink_type].model_validate(config).model_dump()
+    except ValidationError as error:
+        problems = "; ".join(
+            f"{'.'.join(str(p) for p in e['loc']) or 'config'}: {e['msg']}"
+            for e in error.errors(include_input=False, include_url=False)
+        )
+        raise InvalidSinkConfig(f"invalid {sink_type} config: {problems}") from None
 
 
 class SinkBase(BaseModel):

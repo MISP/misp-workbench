@@ -90,13 +90,16 @@ def _post(
             headers={"User-Agent": USER_AGENT, **headers},
             timeout=(CONNECT_TIMEOUT, READ_TIMEOUT),
             verify=verify,
+            # A redirect would re-send the payload (and for HEC, the token) to
+            # wherever the endpoint points; a sink delivers to its URL only.
+            allow_redirects=False,
         )
     except requests.RequestException as error:
         raise SinkDeliveryError(f"request to {url} failed: {error}") from error
     if response.status_code >= 300:
-        raise SinkDeliveryError(
-            f"{url} answered {response.status_code}: {response.text[:300]}"
-        )
+        # Status only: the body is the endpoint's, and echoing it through the
+        # test endpoint would let a sink be used to read internal services.
+        raise SinkDeliveryError(f"{url} answered HTTP {response.status_code}")
     return response
 
 

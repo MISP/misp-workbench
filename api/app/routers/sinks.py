@@ -67,7 +67,8 @@ def update_sink(
     try:
         return sinks_repository.update_sink(db, db_sink, payload)
     except ValueError as error:
-        # An invalid config for the sink's type.
+        # An invalid config for the sink's type, or a new destination without
+        # its secret. Neither message carries config values.
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(error)
         )

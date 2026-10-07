@@ -142,6 +142,8 @@ def http_sink():
                 {"path": self.path, "headers": dict(self.headers), "body": body}
             )
             self.send_response(Handler.status)
+            if Handler.status in (301, 302, 307, 308):
+                self.send_header("Location", "/elsewhere")
             self.end_headers()
             self.wfile.write(b'{"text":"Success","code":0}')
 
@@ -204,12 +206,25 @@ class TestTransports:
             == second["headers"]["X-Misp-Workbench-Delivery"]
         )
 
-    def test_http_error_is_a_delivery_error(self, http_sink):
+    def test_http_error_reports_status_only(self, http_sink):
         url, _, handler = http_sink
         handler.status = 503
         transport = open_transport("webhook", {"url": url})
-        with pytest.raises(SinkDeliveryError, match="503"):
+        with pytest.raises(SinkDeliveryError) as error:
             transport.send([record()])
+        assert "HTTP 503" in str(error.value)
+        # The endpoint's body is not echoed back.
+        assert "Success" not in str(error.value)
+
+    def test_redirects_are_not_followed(self, http_sink):
+        url, received, handler = http_sink
+        handler.status = 302
+        transport = open_transport(
+            "splunk_hec", {"url": f"{url}/services/collector", "token": "tok"}
+        )
+        with pytest.raises(SinkDeliveryError, match="HTTP 302"):
+            transport.send([record()])
+        assert len(received) == 1
 
     def test_unreachable_is_a_delivery_error(self):
         # Port 9 on localhost: nothing listens, the connection is refused.

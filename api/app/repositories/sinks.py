@@ -61,11 +61,31 @@ def create_sink(db: Session, sink: sink_schemas.SinkCreate) -> sink_models.Sink:
     return db_sink
 
 
+# Where a sink's secret is sent. A stored secret only stays valid for it.
+DESTINATION_FIELDS = ("url", "host", "port")
+
+
+class SecretRequired(ValueError):
+    """The destination changed but the secret was not re-entered."""
+
+
 def _merge_secrets(sink_type: str, stored: dict, incoming: dict) -> dict:
-    """Keep stored secrets the client sent back masked (or left out)."""
+    """Keep stored secrets the client sent back masked (or left out).
+
+    Only while the destination stays the same: otherwise anyone allowed to
+    edit a sink could point it at their own server, send the mask back and
+    receive the stored token. A new destination needs the secret re-entered.
+    """
     merged = dict(incoming)
+    same_destination = all(
+        merged.get(field) == stored.get(field) for field in DESTINATION_FIELDS
+    )
     for field in sink_schemas.SECRET_FIELDS.get(sink_type, ()):
         if merged.get(field) in (None, sink_schemas.SECRET_MASK) and stored.get(field):
+            if not same_destination:
+                raise SecretRequired(
+                    f"the destination changed: re-enter {field} to keep using it"
+                )
             merged[field] = stored[field]
     return merged
 

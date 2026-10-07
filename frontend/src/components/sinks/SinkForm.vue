@@ -209,7 +209,7 @@ async function submit() {
             autocomplete="off"
           />
           <div v-if="isEdit" class="form-text">
-            Leave as is to keep the current token.
+            Leave as is to keep the current token, unless you change the URL.
           </div>
         </div>
         <div class="col-4">
@@ -251,7 +251,10 @@ async function submit() {
         <div class="form-text">
           Optional. Each request is then signed with an HMAC-SHA256 of its body
           in <code>X-Misp-Workbench-Signature</code>.
-          <span v-if="isEdit">Leave as is to keep the current secret.</span>
+          <span v-if="isEdit"
+            >Leave as is to keep the current secret, unless you change the
+            URL.</span
+          >
         </div>
       </div>
 

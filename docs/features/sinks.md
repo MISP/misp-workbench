@@ -92,7 +92,12 @@ certificate** can be disabled per sink as a last resort.
 
 Secrets (the HEC token, the webhook signing secret) are never returned by the
 API; they read back as `********`. Sending that value back on an update keeps
-the stored secret.
+the stored secret, but only while the destination (URL, or host and port)
+stays the same. Pointing a sink somewhere else requires re-entering its
+secret, so a stored token can't be redirected to a new host.
+
+HTTP sinks don't follow redirects: they deliver to their configured URL only.
+Errors report the HTTP status, never the endpoint's response body.
 
 ## API reference
 
