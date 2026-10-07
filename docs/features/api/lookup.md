@@ -53,7 +53,7 @@ as in MISP.
 | `values` | — | Values to check (`POST`), duplicates ignored, at most 10,000 (`413` above) |
 | `value` | — | The value to check (`GET`) |
 | `to_ids_only` | `true` | Only attributes flagged for IDS count as matches. `false` matches any live attribute |
-| `max_attributes` | `10` | Attributes returned per matched value, newest first (up to 100). `attribute_count` always has the total |
+| `max_attributes` | `10` | Attributes returned per matched value, newest first (up to 100). `attribute_count` always has the total. A response carries at most 50,000 attributes overall, so large batches get fewer per value (5 for 10,000 candidates) |
 
 ## How it stays fast
 

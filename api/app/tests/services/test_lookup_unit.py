@@ -146,3 +146,30 @@ class TestLookup:
         assert result["candidates"] == 0
         assert result["matches"] == []
         os_client.assert_not_called()
+
+    def test_response_size_is_bounded(self):
+        values = [f"v{i}" for i in range(lookup_repository.MAX_VALUES_PER_REQUEST)]
+        with patch.object(
+            lookup_repository, "_candidates", return_value=(values, "cache")
+        ), patch.object(
+            lookup_repository, "_find_attributes", return_value={}
+        ) as find, patch.object(
+            lookup_repository, "_events", return_value={}
+        ):
+            lookup_repository.lookup(values, max_attributes=100)
+        # 10,000 candidates x 100 would be a million attributes: capped.
+        assert find.call_args.args[2] == (
+            lookup_repository.MAX_ATTRIBUTES_PER_RESPONSE
+            // lookup_repository.MAX_VALUES_PER_REQUEST
+        )
+
+    def test_opensearch_returns_at_most_max_attributes_per_value(self):
+        client = MagicMock()
+        client.search.return_value = {"aggregations": {"values": {"buckets": []}}}
+        with patch.object(
+            lookup_repository, "get_opensearch_client", return_value=client
+        ):
+            lookup_repository._find_attributes(["1.2.3.4"], True, 7)
+        aggs = client.search.call_args.kwargs["body"]["aggs"]
+        assert client.search.call_args.kwargs["body"]["size"] == 0
+        assert aggs["values"]["aggs"]["newest"]["top_hits"]["size"] == 7

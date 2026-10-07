@@ -38,6 +38,11 @@ SYNC_LOCK_KEY = "lookup:ids_values:sync_lock"
 MAX_VALUES_PER_REQUEST = 10_000
 DEFAULT_MAX_ATTRIBUTES = 10
 MAX_ATTRIBUTES = 100
+# Attributes one response may carry in total: a 10,000-value batch gets at
+# most 5 per value, however high max_attributes is set.
+MAX_ATTRIBUTES_PER_RESPONSE = 50_000
+# Values per terms aggregation / msearch request.
+TERMS_CHUNK = 1000
 # keyword sub-fields are mapped with ignore_above: 256.
 KEYWORD_IGNORE_ABOVE = 256
 REDIS_CHUNK = 10_000
@@ -187,45 +192,6 @@ def _candidates(values: list[str]) -> tuple[list[str], str]:
         return values, "opensearch"
 
 
-def _matches_query(values: list[str], to_ids_only: bool) -> dict:
-    short = [v for v in values if len(v) <= KEYWORD_IGNORE_ABOVE]
-    should: list = [
-        {"terms": {"value.keyword": short[i : i + 1000]}}
-        for i in range(0, len(short), 1000)
-    ]
-    should.extend(
-        {"match_phrase": {"value": v}} for v in values if len(v) > KEYWORD_IGNORE_ABOVE
-    )
-    query = _indicator_filter(to_ids_only)
-    query["should"] = should or [{"match_none": {}}]
-    query["minimum_should_match"] = 1
-    return {"bool": query}
-
-
-def _find_attributes(
-    values: list[str], to_ids_only: bool, max_attributes: int
-) -> dict[str, dict]:
-    """Per value: total matching attributes and the newest ``max_attributes``."""
-    found: dict[str, dict] = {}
-    if not values:
-        return found
-    wanted = set(values)
-    for hits in _attribute_pages(_matches_query(values, to_ids_only)):
-        for hit in hits:
-            source = hit["_source"]
-            value = source.get("value")
-            # match_phrase (long values) is looser than equality.
-            if value not in wanted:
-                continue
-            entry = found.setdefault(value, {"count": 0, "attributes": []})
-            entry["count"] += 1
-            entry["attributes"].append(source)
-    for entry in found.values():
-        entry["attributes"].sort(key=lambda a: a.get("timestamp") or 0, reverse=True)
-        del entry["attributes"][max_attributes:]
-    return found
-
-
 ATTRIBUTE_FIELDS = [
     "uuid",
     "type",
@@ -239,28 +205,95 @@ ATTRIBUTE_FIELDS = [
     "event_uuid",
     "tags",
 ]
-# One plain search answers lookups matching up to this many attributes, the
-# common case; past it, pages come from a point-in-time snapshot instead.
-SINGLE_SEARCH_SIZE = 10_000
+NEWEST_FIRST = [{"timestamp": {"order": "desc", "unmapped_type": "long"}}]
 
 
-def _attribute_pages(query: dict):
+def _find_attributes(
+    values: list[str], to_ids_only: bool, max_attributes: int
+) -> dict[str, dict]:
+    """Per value: total matching attributes and the newest ``max_attributes``.
+
+    Bounded by construction: OpenSearch returns at most ``max_attributes``
+    documents per value (a top_hits per terms bucket, or a sized search for
+    long values) and a total count, however many attributes share the value.
+    """
+    found: dict[str, dict] = {}
+    if not values:
+        return found
     client = get_opensearch_client()
-    response = client.search(
-        index="misp-attributes",
-        body={
-            "query": query,
-            "_source": ATTRIBUTE_FIELDS,
-            "size": SINGLE_SEARCH_SIZE,
-            "track_total_hits": True,
-        },
-    )
-    if response["hits"]["total"]["value"] <= SINGLE_SEARCH_SIZE:
-        yield response["hits"]["hits"]
-        return
-    yield from stream_exports.iter_pit_pages(
-        client, "misp-attributes", query, source=ATTRIBUTE_FIELDS
-    )
+    base = _indicator_filter(to_ids_only)
+
+    short = [v for v in values if len(v) <= KEYWORD_IGNORE_ABOVE]
+    for start in range(0, len(short), TERMS_CHUNK):
+        chunk = short[start : start + TERMS_CHUNK]
+        query = {
+            "bool": {
+                **base,
+                "filter": base.get("filter", [])
+                + [{"terms": {"value.keyword": chunk}}],
+            }
+        }
+        response = client.search(
+            index="misp-attributes",
+            body={
+                "size": 0,
+                "query": query,
+                "aggs": {
+                    "values": {
+                        "terms": {"field": "value.keyword", "size": len(chunk)},
+                        "aggs": {
+                            "newest": {
+                                "top_hits": {
+                                    "size": max_attributes,
+                                    "sort": NEWEST_FIRST,
+                                    "_source": ATTRIBUTE_FIELDS,
+                                }
+                            }
+                        },
+                    }
+                },
+            },
+        )
+        for bucket in response["aggregations"]["values"]["buckets"]:
+            found[bucket["key"]] = {
+                "count": bucket["doc_count"],
+                "attributes": [
+                    hit["_source"] for hit in bucket["newest"]["hits"]["hits"]
+                ],
+            }
+
+    # Values past the keyword's ignore_above aren't in value.keyword: one sized
+    # phrase search each, sent together.
+    long_values = [v for v in values if len(v) > KEYWORD_IGNORE_ABOVE]
+    for start in range(0, len(long_values), TERMS_CHUNK):
+        chunk = long_values[start : start + TERMS_CHUNK]
+        lines: list = []
+        for value in chunk:
+            lines.append({"index": "misp-attributes"})
+            lines.append(
+                {
+                    "size": max_attributes,
+                    "track_total_hits": True,
+                    "sort": NEWEST_FIRST,
+                    "_source": ATTRIBUTE_FIELDS,
+                    "query": {
+                        "bool": {**base, "must": [{"match_phrase": {"value": value}}]}
+                    },
+                }
+            )
+        for value, response in zip(chunk, client.msearch(body=lines)["responses"]):
+            # match_phrase is looser than equality; keep exact matches only.
+            hits = [
+                hit["_source"]
+                for hit in response["hits"]["hits"]
+                if hit["_source"].get("value") == value
+            ]
+            if hits:
+                found[value] = {
+                    "count": response["hits"]["total"]["value"],
+                    "attributes": hits,
+                }
+    return found
 
 
 def _events(event_uuids: set) -> dict[str, dict]:
@@ -327,12 +360,20 @@ def lookup(
         raise TooManyValues(
             f"at most {MAX_VALUES_PER_REQUEST} values per request, got {len(unique)}"
         )
-    max_attributes = max(1, min(int(max_attributes), MAX_ATTRIBUTES))
-
     if to_ids_only:
         candidates, source = _candidates(unique)
     else:
         candidates, source = unique, "opensearch"
+
+    # Bounded per value and per response, whatever the request asks for.
+    max_attributes = max(
+        1,
+        min(
+            int(max_attributes),
+            MAX_ATTRIBUTES,
+            MAX_ATTRIBUTES_PER_RESPONSE // max(len(candidates), 1),
+        ),
+    )
 
     found = _find_attributes(candidates, to_ids_only, max_attributes)
     events = _events(
