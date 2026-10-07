@@ -22,6 +22,7 @@ import hashlib
 import json
 import logging
 import time
+import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from email.utils import format_datetime, parsedate_to_datetime
@@ -38,12 +39,20 @@ from app.repositories.rest_search import (
     parse_timestamp,
 )
 from app.services.opensearch import get_opensearch_client
+from app.services.redis import get_redis_client
 
 logger = logging.getLogger(__name__)
 
 # How long the snapshot outlives the last page request. Renewed on every page,
 # so it only has to cover the time the client takes to read one page.
 PIT_KEEP_ALIVE = "5m"
+
+# A running export's claim on one of its user's slots, renewed on every page.
+# Outlasts PIT_KEEP_ALIVE: a stream stalled past that has lost its snapshot
+# anyway, and a slot whose stream never ran its cleanup (worker killed, client
+# gone before the body started) frees itself once the lease runs out.
+SLOT_LEASE_SECONDS = 6 * 60
+RETRY_AFTER_SECONDS = "30"
 
 ATTRIBUTES_INDEX = "misp-attributes"
 EVENTS_INDEX = "misp-events"
@@ -296,6 +305,82 @@ def open_snapshot(client, index: str) -> str:
         raise SnapshotUnavailable(str(error)) from error
 
 
+# Drop expired leases, then claim a slot if one is free, atomically, so
+# concurrent requests from the same user on different workers can't both take
+# the last slot.
+_ACQUIRE_SLOT = """
+redis.call('ZREMRANGEBYSCORE', KEYS[1], '-inf', ARGV[1])
+if redis.call('ZCARD', KEYS[1]) >= tonumber(ARGV[3]) then
+    return 0
+end
+redis.call('ZADD', KEYS[1], ARGV[2], ARGV[4])
+redis.call('EXPIRE', KEYS[1], ARGV[5])
+return 1
+"""
+
+
+def _slots_key(user_id) -> str:
+    return f"exports:active:{user_id}"
+
+
+@dataclass
+class ExportSlot:
+    """One of a user's concurrent-export slots, held while a stream runs."""
+
+    user_id: Any
+    token: str
+
+    def renew(self) -> None:
+        try:
+            get_redis_client().zadd(
+                _slots_key(self.user_id),
+                {self.token: time.time() + SLOT_LEASE_SECONDS},
+                xx=True,
+            )
+        except Exception:
+            logger.warning("could not renew export slot", exc_info=True)
+
+    def release(self) -> None:
+        try:
+            get_redis_client().zrem(_slots_key(self.user_id), self.token)
+        except Exception:
+            # The lease runs out on its own.
+            logger.warning("could not release export slot", exc_info=True)
+
+
+class TooManyExports(Exception):
+    """The user already runs as many exports as allowed."""
+
+
+def acquire_slot(user_id, limit: int) -> Optional[ExportSlot]:
+    """Claim a concurrent-export slot for ``user_id``.
+
+    Returns None when the limit is disabled (``limit <= 0``) or Redis is
+    unreachable: an outage of the limiter shouldn't take exports down with it.
+    """
+    if not limit or limit <= 0:
+        return None
+    token = uuid.uuid4().hex
+    now = time.time()
+    try:
+        acquired = get_redis_client().eval(
+            _ACQUIRE_SLOT,
+            1,
+            _slots_key(user_id),
+            now,
+            now + SLOT_LEASE_SECONDS,
+            int(limit),
+            token,
+            SLOT_LEASE_SECONDS,
+        )
+    except Exception:
+        logger.exception("export slot limiter unavailable; allowing the export")
+        return None
+    if not acquired:
+        raise TooManyExports()
+    return ExportSlot(user_id=user_id, token=token)
+
+
 def iter_pit_pages(
     client,
     index: str,
@@ -346,7 +431,21 @@ def iter_pit_pages(
             logger.warning("could not delete export PIT on %s", index, exc_info=True)
 
 
-def stream(export: PreparedExport, pit_id: Optional[str] = None) -> Iterator[str]:
+def stream(
+    export: PreparedExport,
+    pit_id: Optional[str] = None,
+    slot: Optional[ExportSlot] = None,
+) -> Iterator[str]:
+    try:
+        yield from _stream(export, pit_id, slot)
+    finally:
+        if slot is not None:
+            slot.release()
+
+
+def _stream(
+    export: PreparedExport, pit_id: Optional[str], slot: Optional[ExportSlot]
+) -> Iterator[str]:
     fmt = export.format
     source: Any = ["value", "type"] if fmt in ("text", "cdb") else True
     pages = iter_pit_pages(
@@ -360,6 +459,8 @@ def stream(export: PreparedExport, pit_id: Optional[str] = None) -> Iterator[str
 
     first = True
     for hits in pages:
+        if slot is not None:
+            slot.renew()
         if fmt == "json":
             chunk = []
             for hit in hits:
@@ -388,11 +489,15 @@ def stream(export: PreparedExport, pit_id: Optional[str] = None) -> Iterator[str
         yield "]"
 
 
-async def to_response(export: PreparedExport, request) -> Response:
+async def to_response(
+    export: PreparedExport, request, user_id=None, max_concurrent: int = 0
+) -> Response:
     """304 when the client's copy is current, else the streamed export.
 
-    A 304 never opens a snapshot; when one can't be opened the client gets a
-    503 with Retry-After instead of a broken 200.
+    A 304 costs neither a slot nor a snapshot. Past ``max_concurrent``
+    running exports for this user the answer is a 429; when OpenSearch won't
+    open a snapshot, a 503. Both carry Retry-After and are decided before the
+    response starts, so a client never gets a broken 200.
     """
     headers = export.headers()
     if export.not_modified(
@@ -400,14 +505,29 @@ async def to_response(export: PreparedExport, request) -> Response:
         request.headers.get("if-modified-since"),
     ):
         return Response(status_code=304, headers=headers)
+
+    try:
+        slot = await run_in_threadpool(acquire_slot, user_id, max_concurrent)
+    except TooManyExports:
+        raise HTTPException(
+            status_code=429,
+            detail=(
+                f"You already have {max_concurrent} exports running; "
+                "wait for one to finish"
+            ),
+            headers={"Retry-After": RETRY_AFTER_SECONDS},
+        )
+
     try:
         pit_id = await run_in_threadpool(open_snapshot, export.client, export.index)
     except SnapshotUnavailable:
+        if slot is not None:
+            slot.release()
         raise HTTPException(
             status_code=503,
             detail="Too many exports in progress, retry shortly",
-            headers={"Retry-After": "30"},
+            headers={"Retry-After": RETRY_AFTER_SECONDS},
         )
     return StreamingResponse(
-        stream(export, pit_id), media_type=export.media_type, headers=headers
+        stream(export, pit_id, slot), media_type=export.media_type, headers=headers
     )

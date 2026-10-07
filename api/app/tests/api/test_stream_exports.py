@@ -8,8 +8,10 @@ from fastapi import status
 from fastapi.testclient import TestClient
 
 from app.auth import auth
+from app.repositories import runtime_settings as runtime_settings_repository
 from app.repositories import stream_exports as stream_exports_repository
 from app.services.opensearch import get_opensearch_client
+from app.services.redis import get_redis_client
 from app.tests.api_tester import ApiTester
 
 EVENT_A = "44444444-4444-4444-8444-444444444444"
@@ -301,3 +303,60 @@ class TestStreamExports(ApiTester):
         response = self._get(client, auth_token, format="ndjson")
         assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
         assert response.headers["retry-after"] == "30"
+
+    def test_export_slots(self):
+        user_id = "slots-test"
+        redis = get_redis_client()
+        key = f"exports:active:{user_id}"
+        redis.delete(key)
+        try:
+            first = stream_exports_repository.acquire_slot(user_id, 2)
+            stream_exports_repository.acquire_slot(user_id, 2)
+            with pytest.raises(stream_exports_repository.TooManyExports):
+                stream_exports_repository.acquire_slot(user_id, 2)
+
+            first.release()
+            stream_exports_repository.acquire_slot(user_id, 2)
+
+            # A lease nobody renewed (worker killed mid-export) frees itself.
+            redis.zadd(
+                key, {member: time.time() - 1 for member in redis.zrange(key, 0, -1)}
+            )
+            stream_exports_repository.acquire_slot(user_id, 2)
+
+            # 0 disables the limit.
+            assert stream_exports_repository.acquire_slot(user_id, 0) is None
+        finally:
+            redis.delete(key)
+
+    @pytest.mark.parametrize("scopes", [["attributes:read"]])
+    def test_concurrent_export_limit(
+        self, client: TestClient, auth_token: auth.Token, db, api_tester_user
+    ):
+        key = f"exports:active:{api_tester_user.id}"
+        redis = get_redis_client()
+        redis.delete(key)
+        runtime_settings_repository.set_setting(
+            db, "exports", {"max_concurrent_per_user": 1}
+        )
+        try:
+            etag = self._get(client, auth_token, format="ndjson").headers["etag"]
+            # Finished exports give their slot back.
+            assert redis.zcard(key) == 0
+
+            running = stream_exports_repository.acquire_slot(api_tester_user.id, 1)
+            response = self._get(client, auth_token, format="ndjson")
+            assert response.status_code == status.HTTP_429_TOO_MANY_REQUESTS
+            assert response.headers["retry-after"] == "30"
+
+            # A 304 doesn't need a slot.
+            not_modified = self._get(
+                client, auth_token, headers={"If-None-Match": etag}, format="ndjson"
+            )
+            assert not_modified.status_code == status.HTTP_304_NOT_MODIFIED
+
+            running.release()
+            assert self._get(client, auth_token, format="ndjson").status_code == 200
+        finally:
+            runtime_settings_repository.delete_setting(db, "exports")
+            redis.delete(key)

@@ -98,6 +98,7 @@ async def export_events(
     query: str = Query("", min_length=0),
     format: Optional[str] = Query("json"),
     include_deleted: bool = Query(False),
+    runtime_settings: RuntimeSettings = Depends(get_runtime_settings),
     user: user_schemas.User = Security(get_current_active_user, scopes=["events:read"]),
 ):
     try:
@@ -110,7 +111,12 @@ async def export_events(
     except stream_exports_repository.RestSearchError as error:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(error))
 
-    return await stream_exports_repository.to_response(export, request)
+    max_concurrent = await run_in_threadpool(
+        runtime_settings.get_value, "exports.max_concurrent_per_user", 3
+    )
+    return await stream_exports_repository.to_response(
+        export, request, user_id=user.id, max_concurrent=max_concurrent
+    )
 
 
 @router.post("/events/force-index", status_code=status.HTTP_202_ACCEPTED)

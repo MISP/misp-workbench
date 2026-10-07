@@ -117,7 +117,12 @@ function removeCidrType(type) {
 }
 
 const MATCH_TYPE_OPTIONS = ["term", "cidr", "ja4"];
-const KNOWN_NAMESPACES = ["correlations", "notifications", "retention"];
+const KNOWN_NAMESPACES = [
+  "correlations",
+  "exports",
+  "notifications",
+  "retention",
+];
 
 // Retention: bridge string[] ↔ tag objects for TagsSelect
 const exemptTagObjects = computed(() =>
@@ -502,6 +507,47 @@ async function deleteRetentionSchedule() {
                       <button
                         class="btn btn-primary btn-sm"
                         @click="saveFormNamespace('notifications')"
+                      >
+                        Save
+                      </button>
+                    </div>
+                  </template>
+
+                  <!-- ── exports form ── -->
+                  <template
+                    v-else-if="
+                      namespace === 'exports' &&
+                      !jsonMode[namespace] &&
+                      formValues.exports
+                    "
+                  >
+                    <div class="row g-3">
+                      <div class="col-md-4">
+                        <label
+                          class="form-label fw-semibold"
+                          for="exportsMaxConcurrentPerUser"
+                          >Max Concurrent Exports per User</label
+                        >
+                        <input
+                          id="exportsMaxConcurrentPerUser"
+                          type="number"
+                          min="0"
+                          class="form-control"
+                          v-model.number="
+                            formValues.exports.max_concurrent_per_user
+                          "
+                        />
+                        <div class="form-text">
+                          Streaming exports a user can run at once; further
+                          requests get a 429. Set to 0 to disable the limit.
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="d-flex justify-content-end mt-3">
+                      <button
+                        class="btn btn-primary btn-sm"
+                        @click="saveFormNamespace('exports')"
                       >
                         Save
                       </button>

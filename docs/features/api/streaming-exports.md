@@ -74,3 +74,16 @@ curl -s -o /dev/null -w '%{http_code}\n' -H "Authorization: $API_KEY" \
 ```
 
 The ETag covers the request (query, format, filters), the number of matching documents and their newest `updated_at`. Any write to a matching attribute, or a hard delete, therefore changes it. Event exports don't carry a write stamp, so their ETag only changes when the number of matching events does.
+
+## Limits
+
+Each running export holds an OpenSearch point-in-time context while it streams, so concurrency is capped:
+
+| Response | When |
+|---|---|
+| `429 Too Many Requests` | The user already has `exports.max_concurrent_per_user` exports running (runtime setting, default `3`, `0` disables it). |
+| `503 Service Unavailable` | OpenSearch refused a new point-in-time context because the cluster-wide limit (`point_in_time.max_open_contexts`) was reached. |
+
+Both carry `Retry-After: 30` and are returned before any data is sent, so a client never receives a truncated export. A conditional request answered with `304` counts against neither limit.
+
+An export gives its slot back when it finishes, fails or the client disconnects. A client that stops reading for more than about 5 minutes loses its snapshot and its slot, and the stream ends early.

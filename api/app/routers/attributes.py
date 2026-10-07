@@ -8,6 +8,8 @@ from app.repositories import stream_exports as stream_exports_repository
 from app.repositories import tags as tags_repository
 from app.schemas import attribute as attribute_schemas
 from app.schemas import user as user_schemas
+from app.services.runtime_settings import RuntimeSettings
+from app.services.runtime_settings_provider import get_runtime_settings
 from app.worker import tasks
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, Security, status, Query
 from fastapi.concurrency import run_in_threadpool
@@ -94,6 +96,7 @@ async def export_attributes(
         ),
     ),
     include_deleted: bool = Query(False),
+    runtime_settings: RuntimeSettings = Depends(get_runtime_settings),
     user: user_schemas.User = Security(get_current_active_user, scopes=["attributes:read"]),
 ):
     try:
@@ -107,7 +110,12 @@ async def export_attributes(
     except stream_exports_repository.RestSearchError as error:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(error))
 
-    return await stream_exports_repository.to_response(export, request)
+    max_concurrent = await run_in_threadpool(
+        runtime_settings.get_value, "exports.max_concurrent_per_user", 3
+    )
+    return await stream_exports_repository.to_response(
+        export, request, user_id=user.id, max_concurrent=max_concurrent
+    )
 
 
 @router.get("/attributes/{attribute_uuid}", response_model=attribute_schemas.Attribute)

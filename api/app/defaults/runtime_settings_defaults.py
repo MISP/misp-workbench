@@ -28,6 +28,12 @@ DEFAULT_SETTINGS = {
         # Set to 0 to disable the limit.
         "email_max_per_hour": 10,
     },
+    "exports": {
+        # Streaming exports (/attributes/export, /events/export) one user can
+        # run at once; each holds an OpenSearch point-in-time context while it
+        # streams. Further requests get a 429. Set to 0 to disable the limit.
+        "max_concurrent_per_user": 3,
+    },
     "retention": {
         "enabled": False,
         "period_days": 365,
