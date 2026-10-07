@@ -94,20 +94,23 @@ def store_export_file(
 
 
 def open_export(key: str, settings: Settings = None) -> Iterator[bytes]:
-    """Open a stored artifact and return an iterator over its chunks.
+    """Return an iterator over a stored artifact's chunks.
 
-    The object is opened here, eagerly, so a missing artifact raises before a
-    caller has started a response; only the reading is deferred.
+    The artifact's existence is checked here, eagerly, so a missing one raises
+    before a caller has started a response. Opening and reading are deferred
+    to the iterator, which closes what it opened however it ends, so nothing
+    is left open when the iterator is never consumed.
     """
     settings = settings or get_settings()
     stored_key = _namespaced_key(key)
 
     if settings.Storage.engine == "s3":
-        body = get_s3_client().get_object(
-            Bucket=settings.Storage.s3.bucket, Key=stored_key
-        )["Body"]
+        client = get_s3_client()
+        bucket = settings.Storage.s3.bucket
+        client.head_object(Bucket=bucket, Key=stored_key)
 
         def read_s3():
+            body = client.get_object(Bucket=bucket, Key=stored_key)["Body"]
             try:
                 yield from body.iter_chunks(READ_CHUNK_SIZE)
             finally:
@@ -115,10 +118,11 @@ def open_export(key: str, settings: Settings = None) -> Iterator[bytes]:
 
         return read_s3()
 
-    f = open(_local_path(stored_key), "rb")
+    path = _local_path(stored_key)
+    os.stat(path)
 
     def read_local():
-        with f:
+        with open(path, "rb") as f:
             while chunk := f.read(READ_CHUNK_SIZE):
                 yield chunk
 
