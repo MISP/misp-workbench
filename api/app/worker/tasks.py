@@ -932,6 +932,9 @@ def handle_published_event(event_uuid: str):
     if os_event is not None:
         with Session(engine) as db:
             notifications_repository.create_event_notifications(db, "published", event=os_event)
+            from app.repositories import sinks as sinks_repository
+
+            sinks_repository.dispatch_published_event(db, event_uuid)
         _dispatch_if_subscribed("event", "published", _reactor_event_payload(os_event, event_uuid))
 
     logger.info("handling published event uuid=%s job finished", event_uuid)
@@ -1345,3 +1348,52 @@ def run_export(export_id: int, **kwargs):
         exports_repository.run_export(db, export_id)
     logger.info("run_export export_id=%s finished", export_id)
     return True
+
+
+# ──────────────────────────────────────────────────────────────────────────
+# Sinks — push published indicators to SIEMs
+# ──────────────────────────────────────────────────────────────────────────
+
+# Retry delays: 30s, 1m, 2m, 4m, 8m, 16m (plus jitter), then give up.
+SINK_MAX_RETRIES = 6
+SINK_RETRY_BASE_SECONDS = 30
+
+
+@celery_app.task(bind=True, queue="sinks", max_retries=SINK_MAX_RETRIES)
+def deliver_to_sink(self, sink_id: int, event_uuid: str):
+    """Push one published event's selected attributes to one sink.
+
+    Runs on the dedicated ``sinks`` queue. A failed delivery is retried with
+    exponential backoff; the error is recorded on the sink after every
+    attempt, and the delivery counted as failed once retries run out.
+    """
+    import random
+
+    from app.repositories import sinks as sinks_repository
+    from app.services.sinks.transports import SinkDeliveryError
+
+    with Session(engine) as db:
+        sink = sinks_repository.get_sink(db, sink_id)
+        if sink is None or not sink.enabled:
+            return 0
+        try:
+            sent = sinks_repository.deliver_event(sink, event_uuid)
+        except SinkDeliveryError as error:
+            final = self.request.retries >= self.max_retries
+            sinks_repository.record_failure(db, sink_id, str(error), final=final)
+            logger.warning(
+                "sink %s delivery of event %s failed (attempt %s): %s",
+                sink_id,
+                event_uuid,
+                self.request.retries + 1,
+                error,
+            )
+            if final:
+                return 0
+            countdown = SINK_RETRY_BASE_SECONDS * 2 ** self.request.retries
+            raise self.retry(
+                exc=error, countdown=countdown + random.uniform(0, countdown / 4)
+            )
+        sinks_repository.record_success(db, sink_id, sent)
+        logger.info("sink %s delivered %s attributes of event %s", sink_id, sent, event_uuid)
+        return sent

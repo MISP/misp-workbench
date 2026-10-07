@@ -9992,6 +9992,340 @@
         }
       }
     },
+    "/sinks/": {
+      "get": {
+        "tags": [
+          "Sinks"
+        ],
+        "summary": "Get Sinks",
+        "operationId": "get_sinks_sinks__get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/Sink"
+                  },
+                  "type": "array",
+                  "title": "Response Get Sinks Sinks  Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "sinks:read"
+            ]
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "Sinks"
+        ],
+        "summary": "Create Sink",
+        "operationId": "create_sink_sinks__post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SinkCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Sink"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "sinks:create"
+            ]
+          }
+        ]
+      }
+    },
+    "/sinks/{sink_id}": {
+      "get": {
+        "tags": [
+          "Sinks"
+        ],
+        "summary": "Get Sink",
+        "operationId": "get_sink_sinks__sink_id__get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "sinks:read"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "sink_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Sink Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Sink"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Sinks"
+        ],
+        "summary": "Update Sink",
+        "operationId": "update_sink_sinks__sink_id__patch",
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "sinks:update"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "sink_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Sink Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SinkUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Sink"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Sinks"
+        ],
+        "summary": "Delete Sink",
+        "operationId": "delete_sink_sinks__sink_id__delete",
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "sinks:delete"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "sink_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Sink Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sinks/{sink_id}/test": {
+      "post": {
+        "tags": [
+          "Sinks"
+        ],
+        "summary": "Test Sink",
+        "description": "Send one synthetic indicator now and report whether the sink took it.",
+        "operationId": "test_sink_sinks__sink_id__test_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "sinks:test"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "sink_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Sink Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SinkTestResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sinks/{sink_id}/deliver/{event_uuid}": {
+      "post": {
+        "tags": [
+          "Sinks"
+        ],
+        "summary": "Deliver Event",
+        "description": "Queue a delivery of one event to the sink, published or not.\n\nFor backfilling a new sink or replaying an event a SIEM missed.",
+        "operationId": "deliver_event_sinks__sink_id__deliver__event_uuid__post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "sinks:test"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "sink_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Sink Id"
+            }
+          },
+          {
+            "name": "event_uuid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Event Uuid"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SinkDeliveryQueued"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/notifications": {
       "get": {
         "tags": [
@@ -23051,6 +23385,309 @@
           "previous_total"
         ],
         "title": "SightingStatsResponse"
+      },
+      "Sink": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "splunk_hec",
+              "gelf",
+              "syslog",
+              "webhook"
+            ],
+            "title": "Type"
+          },
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled",
+            "default": true
+          },
+          "config": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Config"
+          },
+          "filters": {
+            "$ref": "#/components/schemas/SinkFilters",
+            "default": {
+              "to_ids_only": true,
+              "types": [],
+              "tags": [],
+              "exclude_tags": [
+                "tlp:red"
+              ]
+            }
+          },
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          },
+          "last_attempt_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Attempt At"
+          },
+          "last_success_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Success At"
+          },
+          "last_error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Error"
+          },
+          "last_error_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Error At"
+          },
+          "delivered_count": {
+            "type": "integer",
+            "title": "Delivered Count",
+            "default": 0
+          },
+          "failed_count": {
+            "type": "integer",
+            "title": "Failed Count",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "type",
+          "config",
+          "id",
+          "created_at"
+        ],
+        "title": "Sink"
+      },
+      "SinkCreate": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "splunk_hec",
+              "gelf",
+              "syslog",
+              "webhook"
+            ],
+            "title": "Type"
+          },
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled",
+            "default": true
+          },
+          "config": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Config"
+          },
+          "filters": {
+            "$ref": "#/components/schemas/SinkFilters",
+            "default": {
+              "to_ids_only": true,
+              "types": [],
+              "tags": [],
+              "exclude_tags": [
+                "tlp:red"
+              ]
+            }
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "type",
+          "config"
+        ],
+        "title": "SinkCreate"
+      },
+      "SinkDeliveryQueued": {
+        "properties": {
+          "task_id": {
+            "type": "string",
+            "title": "Task Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "task_id"
+        ],
+        "title": "SinkDeliveryQueued"
+      },
+      "SinkFilters": {
+        "properties": {
+          "to_ids_only": {
+            "type": "boolean",
+            "title": "To Ids Only",
+            "default": true
+          },
+          "types": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Types",
+            "default": []
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Tags",
+            "default": []
+          },
+          "exclude_tags": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Exclude Tags",
+            "default": [
+              "tlp:red"
+            ]
+          }
+        },
+        "type": "object",
+        "title": "SinkFilters",
+        "description": "Which attributes of a published event are sent.\n\nTag patterns are shell-style (``tlp:*``) and match attribute tags and the\nevent's tags alike."
+      },
+      "SinkTestResult": {
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "title": "Ok"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ok"
+        ],
+        "title": "SinkTestResult"
+      },
+      "SinkUpdate": {
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Enabled"
+          },
+          "config": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Config"
+          },
+          "filters": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SinkFilters"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "title": "SinkUpdate"
       },
       "StatusResponse": {
         "properties": {
