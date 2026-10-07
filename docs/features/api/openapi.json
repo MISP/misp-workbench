@@ -968,6 +968,106 @@
         }
       }
     },
+    "/attributes/restSearch": {
+      "get": {
+        "tags": [
+          "restSearch"
+        ],
+        "summary": "Attributes Rest Search Get",
+        "operationId": "attributes_rest_search_get_attributes_restSearch_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "attributes:read"
+            ]
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "restSearch"
+        ],
+        "summary": "Attributes Rest Search",
+        "operationId": "attributes_rest_search_attributes_restSearch_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "attributes:read"
+            ]
+          }
+        ]
+      }
+    },
+    "/events/restSearch": {
+      "get": {
+        "tags": [
+          "restSearch"
+        ],
+        "summary": "Events Rest Search Get",
+        "operationId": "events_rest_search_get_events_restSearch_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "events:read"
+            ]
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "restSearch"
+        ],
+        "summary": "Events Rest Search",
+        "operationId": "events_rest_search_events_restSearch_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "events:read"
+            ]
+          }
+        ]
+      }
+    },
     "/events/": {
       "get": {
         "tags": [

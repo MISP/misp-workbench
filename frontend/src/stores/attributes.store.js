@@ -48,10 +48,9 @@ export const useAttributesStore = defineStore({
     },
     async update(attribute) {
       this.status = { updating: true };
-      fetchWrapper
-        .patch(`${baseUrl}/${attribute.id}`, attribute)
+      return await fetchWrapper
+        .patch(`${baseUrl}/${attribute.uuid}`, attribute)
         .then((response) => (this.attribute = response))
-        .catch((error) => (this.error = error))
         .finally(() => (this.status = { updating: false }));
     },
     /**
