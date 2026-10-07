@@ -33,6 +33,9 @@ DEFAULT_SETTINGS = {
         # run at once; each holds an OpenSearch point-in-time context while it
         # streams. Further requests get a 429. Set to 0 to disable the limit.
         "max_concurrent_per_user": 3,
+        # Deltas kept per incremental export feed; a consumer further behind
+        # than the oldest one has to download the full artifact again.
+        "delta_retention": 96,
     },
     "retention": {
         "enabled": False,

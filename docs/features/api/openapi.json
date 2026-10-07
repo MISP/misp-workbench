@@ -9925,6 +9925,73 @@
         }
       }
     },
+    "/exports/{export_id}/feed": {
+      "get": {
+        "tags": [
+          "Exports"
+        ],
+        "summary": "Get Export Feed",
+        "description": "Serve an incremental export: the full artifact, or deltas since a cursor.\n\nBoth come from storage, so polling consumers never query OpenSearch; it is\nread once per scheduled run, however many of them there are.",
+        "operationId": "get_export_feed_exports__export_id__feed_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "exports:read"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "export_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Export Id"
+            }
+          },
+          {
+            "name": "since",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The X-Feed-Cursor of the last response. Omit for the full feed; with it, only the deltas written after that cursor.",
+              "title": "Since"
+            },
+            "description": "The X-Feed-Cursor of the last response. Omit for the full feed; with it, only the deltas written after that cursor."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/notifications": {
       "get": {
         "tags": [
@@ -15080,7 +15147,10 @@
               "json",
               "csv",
               "stix",
-              "misp"
+              "misp",
+              "ndjson",
+              "text",
+              "cdb"
             ],
             "title": "Format",
             "default": "json"
@@ -15095,6 +15165,11 @@
               }
             ],
             "title": "Distribution"
+          },
+          "incremental": {
+            "type": "boolean",
+            "title": "Incremental",
+            "default": false
           },
           "id": {
             "type": "integer",
@@ -15207,6 +15282,28 @@
             ],
             "title": "Last Run At"
           },
+          "checksum": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Checksum"
+          },
+          "cursor": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cursor"
+          },
           "created_at": {
             "type": "string",
             "format": "date-time",
@@ -15273,7 +15370,10 @@
               "json",
               "csv",
               "stix",
-              "misp"
+              "misp",
+              "ndjson",
+              "text",
+              "cdb"
             ],
             "title": "Format",
             "default": "json"
@@ -15288,6 +15388,11 @@
               }
             ],
             "title": "Distribution"
+          },
+          "incremental": {
+            "type": "boolean",
+            "title": "Incremental",
+            "default": false
           },
           "schedule": {
             "anyOf": [
