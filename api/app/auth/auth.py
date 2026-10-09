@@ -130,6 +130,7 @@ AVAILABLE_SCOPES: dict[str, str] = {
         "sinks:update": "Update outbound sinks.",
         "sinks:delete": "Delete outbound sinks.",
         "sinks:test": "Send test messages and replay events to outbound sinks.",
+        "sinks:send": "Send to outbound sinks from notebooks and reactor scripts (without seeing their configuration).",
         "reactor:create": "Create Tech Lab reactor scripts.",
         "reactor:read": "Read Tech Lab reactor scripts and runs.",
         "reactor:update": "Update Tech Lab reactor scripts.",
