@@ -98,14 +98,27 @@ export const useEventsStore = defineStore({
     async tag(id, tag) {
       return await fetchWrapper
         .post(`${baseUrl}/${id}/tag/${tag}`)
+        .then(() => this.markUnpublished(id))
         .catch((error) => (this.status = { error }))
         .finally(() => (this.status = { loading: false }));
     },
     async untag(id, tag) {
       return await fetchWrapper
         .delete(`${baseUrl}/${id}/tag/${tag}`)
+        .then(() => this.markUnpublished(id))
         .catch((error) => (this.status = { error }))
         .finally(() => (this.status = { loading: false }));
+    },
+    /**
+     * Reflect that the API took the event back to unpublished after an edit
+     * to it or its attributes/objects (as MISP does), so the open event page
+     * shows it without a reload. Without a uuid, applies to the event on
+     * screen: the edits that call it this way are made from its page.
+     */
+    markUnpublished(eventUuid = null) {
+      if (this.event && (!eventUuid || this.event.uuid === eventUuid)) {
+        this.event.published = false;
+      }
     },
     async forceIndex(uuid) {
       this.status = { indexing: true };
@@ -179,6 +192,10 @@ export const useEventsStore = defineStore({
       this.status = { importing: true };
       return await fetchWrapper
         .post(`${baseUrl}/${uuid}/import`, data)
+        .then((result) => {
+          this.markUnpublished(uuid);
+          return result;
+        })
         .catch((error) => (this.error = error))
         .finally(() => (this.status = { importing: false }));
     },

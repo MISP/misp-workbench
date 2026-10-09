@@ -16,7 +16,8 @@ can always fetch the same URL for the latest results.
 |---|---|
 | **Query** | Lucene query run against the selected index |
 | **Index target** | Which index to export: `attributes` or `events` |
-| **Format** | `json`, `misp` (MISP JSON), `csv`, or `stix` (STIX 2.1) |
+| **Format** | `json`, `misp` (MISP JSON), `csv`, `stix` (STIX 2.1), `ndjson`, `text` or `cdb` (Wazuh CDB list) |
+| **Incremental** | `ndjson` attribute exports only: every run also stores a delta of what changed since the previous run (see [Incremental feeds](#incremental-feeds)) |
 | **Status** | `queued`, `running`, `completed`, or `failed` |
 | **Schedule** | Optional recurring cadence (crontab). When set, the export re-runs automatically and overwrites its previous file |
 | **Schedule enabled** | Whether the schedule is active (`enabled`) or paused |
@@ -29,6 +30,15 @@ can always fetch the same URL for the latest results.
 | `csv` | Flattened rows of the most useful fields | Tags joined with `|` |
 | `misp` | A single [MISP-schema](https://github.com/MISP/misp-rfc) event | All matches are merged into one event named after the export |
 | `stix` | A STIX 2.1 bundle | Attributes are grouped into events and converted via the [misp-stix](https://github.com/MISP/misp-stix) library |
+| `ndjson` | One `_source` document per line | Streamed; no record cap. Can be [incremental](#incremental-feeds) |
+| `text` | One value per line | Attributes only. Streamed; no record cap. Multi-line values are skipped |
+| `cdb` | A [Wazuh CDB list](https://documentation.wazuh.com/current/user-manual/ruleset/cdb-list.html), `value:type` per line | Attributes only. Streamed; no record cap. Keys containing `:` are quoted |
+
+`ndjson`, `text` and `cdb` are streamed out of OpenSearch straight into storage, so they have no record cap and use constant memory however much matches. The other formats are built in memory and capped at 100,000 records.
+
+!!! tip "Splunk lookups"
+    The `csv` export has a header row and one indicator per row, so it can be
+    used directly as a Splunk lookup table file.
 
 !!! note "MISP format"
     The `misp` format collects every matching attribute into a **single MISP
@@ -147,7 +157,60 @@ GET /exports/{export_id}/download
 Streams the stored artifact. Only `completed` exports can be downloaded;
 otherwise the endpoint returns `409 Conflict`.
 
+The response carries an `ETag` (the artifact's SHA-256) and `Last-Modified`
+(the run that produced it). Send them back as `If-None-Match` /
+`If-Modified-Since` to get a `304 Not Modified` when nothing changed. A
+re-run that produces identical bytes keeps the same ETag.
+
 Required scopes: `exports:read`
+
+## Incremental feeds
+
+A scheduled export is how to hand a curated indicator set to many SIEMs,
+sensors or scripts. OpenSearch is queried once per run, and every consumer
+downloads the stored file, so polling load on OpenSearch doesn't grow with the
+number of consumers.
+
+With **Incremental feed** enabled (`"incremental": true`; `ndjson` attribute
+exports only), each run also stores a **delta**. It contains every matching
+attribute written since the previous run, with soft-deleted ones included as
+tombstones (`"deleted": true`). Consumers then download the full file once and
+only the changes after that:
+
+```
+GET /exports/{export_id}/feed              # full feed
+GET /exports/{export_id}/feed?since=CURSOR # changes since CURSOR
+```
+
+1. Fetch the full feed and keep its `X-Feed-Cursor` response header.
+2. Poll with `?since=<cursor>`:
+    - `200` (`X-Feed-Type: delta`): apply the records, upserting by `uuid` and removing those with `"deleted": true`. Then keep the new `X-Feed-Cursor`.
+    - `304 Not Modified`: nothing new since the cursor.
+    - `410 Gone`: the cursor is older than the oldest delta kept. Fetch the full feed again (step 1).
+
+```bash
+curl -s -D h.txt -H "Authorization: $API_KEY" "$API/exports/42/feed" > feed.ndjson
+CURSOR=$(grep -i '^x-feed-cursor' h.txt | cut -d' ' -f2 | tr -d '\r')
+
+curl -s -D h.txt -H "Authorization: $API_KEY" "$API/exports/42/feed?since=$CURSOR" > changes.ndjson
+```
+
+A record can appear in two consecutive deltas when it was written during a run.
+Applying deltas is an upsert, so that is harmless.
+
+Each export keeps the newest **96** deltas by default (runtime setting
+`exports.delta_retention`). With an hourly schedule, a consumer can therefore
+be offline for four days and still catch up from deltas.
+
+!!! warning "What deltas can't see"
+    Deltas track attribute writes. Hard deletes (force-deleting an event,
+    retention purges) remove documents outright, and soft-deleting an *event*
+    doesn't touch its attributes. Re-download the full feed periodically to
+    resynchronise. The [streaming exports](api/streaming-exports.md#incremental-pulls)
+    API has the same caveat.
+
+The **Exports** list shows a copy button with the feed URL for incremental
+exports that have run at least once.
 
 ## Managing a schedule
 
@@ -174,4 +237,5 @@ Required scopes: `exports:create`
 | `GET` | `/exports/{id}` | Get an export | `exports:read` |
 | `PATCH` | `/exports/{id}/schedule` | Set, pause/resume, or clear the schedule | `exports:create` |
 | `GET` | `/exports/{id}/download` | Download the stored artifact | `exports:read` |
+| `GET` | `/exports/{id}/feed` | Full feed or, with `?since=`, the deltas after a cursor (incremental exports) | `exports:read` |
 | `DELETE` | `/exports/{id}` | Delete the export (removes its schedule and file) | `exports:delete` |

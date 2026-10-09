@@ -1,5 +1,11 @@
 import { defineStore } from "pinia";
 import { fetchWrapper } from "@/helpers";
+import { useEventsStore } from "./events.store";
+
+// Editing an object takes its event back to unpublished on the API side.
+function markEventUnpublished(eventUuid = null) {
+  useEventsStore().markUnpublished(eventUuid);
+}
 
 const baseUrl = `${import.meta.env.VITE_API_URL}/objects`;
 
@@ -69,20 +75,27 @@ export const useObjectsStore = defineStore("objects", {
       this.status = { loading: true };
       return await fetchWrapper
         .post(baseUrl, object)
-        .then((object) => (this.object = object))
+        .then((object) => {
+          markEventUnpublished(object.event_uuid);
+          return (this.object = object);
+        })
         .finally(() => (this.status = { loading: false }));
     },
     async update(object) {
       this.status = { loading: true };
       return await fetchWrapper
         .patch(`${baseUrl}/${object.id}`, object)
-        .then((object) => (this.object = object))
+        .then((object) => {
+          markEventUnpublished(object.event_uuid);
+          return (this.object = object);
+        })
         .finally(() => (this.status = { loading: false }));
     },
     async delete(id) {
       this.status = { loading: true };
       return await fetchWrapper
         .delete(`${baseUrl}/${id}`)
+        .then(() => markEventUnpublished())
         .catch((error) => (this.status = { error }))
         .finally(() => (this.status = { loading: false }));
     },

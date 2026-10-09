@@ -28,6 +28,21 @@ DEFAULT_SETTINGS = {
         # Set to 0 to disable the limit.
         "email_max_per_hour": 10,
     },
+    "exports": {
+        # Streaming exports (/attributes/export, /events/export) one user can
+        # run at once; each holds an OpenSearch point-in-time context while it
+        # streams. Further requests get a 429. Set to 0 to disable the limit.
+        "max_concurrent_per_user": 3,
+        # Deltas kept per incremental export feed; a consumer further behind
+        # than the oldest one has to download the full artifact again.
+        "delta_retention": 96,
+    },
+    "sightings": {
+        # Turn to_ids off on every attribute holding a value once this many
+        # distinct organisations have reported it as a false positive (MISP
+        # sighting type 1), so SIEMs stop alerting on it. 0 disables it.
+        "false_positive_threshold": 0,
+    },
     "retention": {
         "enabled": False,
         "period_days": 365,

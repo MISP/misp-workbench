@@ -1,6 +1,7 @@
 import { defineStore } from "pinia";
 
 import { fetchWrapper } from "@/helpers";
+import { useEventsStore } from "./events.store";
 
 const baseUrl = `${import.meta.env.VITE_API_URL}`;
 
@@ -24,10 +25,13 @@ export const useAttachmentsStore = defineStore({
   actions: {
     async uploadAttachments(uuid, files) {
       this.status = { uploading: true };
-      return await fetchWrapper.postFormData(
+      const objects = await fetchWrapper.postFormData(
         `${baseUrl}/events/${uuid}/upload_attachments`,
         files,
       );
+      // New attachments take the event back to unpublished on the API side.
+      useEventsStore().markUnpublished(uuid);
+      return objects;
     },
     async getEventAttachments(uuid, { page = 1, size = 10 } = {}) {
       this.status = { loading: true };
