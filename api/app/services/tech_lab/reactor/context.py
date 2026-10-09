@@ -190,6 +190,51 @@ class ReactorContext:
             )
         return out
 
+    # ---- outbound sinks ----
+
+    def sinks(self) -> list[dict]:
+        """Sinks the script's owner can send to: id, name, type, enabled.
+
+        Read-only; needs the owner's role to have ``sinks:send``.
+        """
+        from app.services.sinks import send
+
+        return send.visible_sinks(self._db, self._script.user_id)
+
+    def send_to_sink(
+        self,
+        sink,
+        *,
+        attributes: Optional[list] = None,
+        event_uuid: Optional[str] = None,
+        records: Optional[list] = None,
+        apply_filters: bool = True,
+    ) -> dict:
+        """Queue a delivery to a sink, by id or name (see ``mwlab.send_to_sink``).
+
+        Counts against ``max_writes``. Delivery runs on the sinks worker, not
+        in this sandbox; the script never sees the sink's configuration.
+        """
+        from app.services.sinks import send
+
+        self._account_write()
+        return send.send_to_sink(
+            self._db,
+            user_id=self._script.user_id,
+            sink=sink,
+            attributes=attributes,
+            event_uuid=event_uuid,
+            records=records,
+            apply_filters=apply_filters,
+            actor_type="reactor_script",
+            actor_credential_id=self._script.id,
+            audit_metadata={
+                "run_id": self._run.id,
+                "script_id": self._script.id,
+                "script_name": self._script.name,
+            },
+        )
+
     def log(self, *args: Any) -> None:
         """Convenience: like print, but also goes to the worker log."""
         msg = " ".join(str(a) for a in args)

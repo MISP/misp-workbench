@@ -114,6 +114,39 @@ Each write counts against `max_writes`. Tags that don't yet exist are auto-creat
 
 Pass the canonical module name to `enrich` (e.g. `"mmdb_lookup"`, `"whois"`, `"virustotal"`) — there are no aliases.
 
+### Sinks
+
+| Method | Description |
+|---|---|
+| `ctx.sinks()` | The [sinks](../sinks.md) the script's owner can send to: `id`, `name`, `type`, `enabled`. Read-only. |
+| `ctx.send_to_sink(sink, *, attributes=None, event_uuid=None, records=None, apply_filters=True)` | Queue a delivery to a sink. **Counts against `max_writes`.** |
+
+`sink` is a sink id or name. Pass exactly one of:
+
+- `attributes`: attribute uuids, or dicts with a `uuid` (search results work as-is). They're sent with their event context.
+- `event_uuid`: the event's attributes, as a publish would send them.
+- `records`: your own indicators, dicts with `value` and `type`, plus optional `category`, `comment`, `to_ids` and `tags`.
+
+The sink's filters apply by default. `apply_filters=False` skips its *selection* (IDS-only, types, include tags), but never its *exclusions*: excluded tags such as `tlp:red`, and warninglisted values.
+
+Delivery is queued on the sinks worker, with the usual retries. Its outcome shows on the sink under ***internals*** → ***sinks***. The call returns `{"sink", "mode", "queued", "task_ids"}` right away.
+
+Requirements and limits:
+
+- The owner's role needs the **`sinks:send`** scope. Admins have it. Grant it to other roles to allow sending without access to sink configuration.
+- At most 10,000 attributes or records per call.
+- At most `sinks.sends_per_minute` calls per user and minute (runtime setting, default 30).
+- Every send is written to the audit log (`sink.send`), naming the user, the notebook or script, the sink and the item count.
+- Code only names a sink. The SDK never returns a sink's configuration or credentials.
+
+For example, forward fresh high-confidence IPs to the SIEM as soon as they're created, rather than at publish time:
+
+```python
+def handle(ctx, payload, trigger):
+    if payload.get("type") in ("ip-src", "ip-dst") and payload.get("to_ids"):
+        ctx.send_to_sink("Splunk prod", attributes=[payload["uuid"]])
+```
+
 ### Logging
 
 | Method | Description |

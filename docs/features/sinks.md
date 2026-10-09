@@ -57,6 +57,10 @@ address) right away and reports whether the sink accepted it.
     automatically. Use the replay endpoint below to push one on demand, or
     give SIEMs an [incremental feed](exports.md#incremental-feeds).
 
+## Sending from code
+
+Notebooks (`mwlab.send_to_sink`) and reactor scripts (`ctx.send_to_sink`) can send attributes, whole events or their own records to a sink by name. That's useful for hunt results, enrichment output, or triggers other than publish. Sends need the **`sinks:send`** scope, are queued on the same sinks worker, are rate-limited and audited, and never expose the sink's configuration. See [Notebooks](tech-lab/notebooks.md#sinks) and [Reactor scripts](tech-lab/reactor.md#sinks).
+
 ## Payloads
 
 Every indicator carries the attribute (`uuid`, `type`, `category`, `value`,

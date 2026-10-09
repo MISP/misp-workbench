@@ -70,6 +70,43 @@ Every `mwlab.enrich(...)` call records an audit row under the notebook owner's i
 | `mwlab.modules(enabled_only=True)` | List available [misp-modules](https://github.com/MISP/misp-modules) with their input/output types. |
 | `mwlab.enrich(value, type, module, config=None)` | Run a module against one indicator. Audited under `actor_type=lab_notebook`. Returns the module's raw response dict. |
 
+### Sinks
+
+| Method | Description |
+|---|---|
+| `mwlab.sinks()` | The [sinks](../sinks.md) you can send to: `id`, `name`, `type`, `enabled`. |
+| `mwlab.send_to_sink(sink, *, attributes=None, event_uuid=None, records=None, apply_filters=True)` | Queue a delivery to a sink. Audited under `actor_type=lab_notebook`. |
+
+`sink` is a sink id or name. Pass exactly one of:
+
+- `attributes`: attribute uuids, or dicts with a `uuid` (search results work as-is). They're sent with their event context.
+- `event_uuid`: the event's attributes, as a publish would send them.
+- `records`: your own indicators, dicts with `value` and `type`, plus optional `category`, `comment`, `to_ids` and `tags`.
+
+The sink's filters apply by default. `apply_filters=False` skips its *selection* (IDS-only, types, include tags), but never its *exclusions*: excluded tags such as `tlp:red`, and warninglisted values.
+
+Delivery is queued on the sinks worker, with the usual retries. Its outcome shows on the sink under ***internals*** → ***sinks***. The call returns `{"sink", "mode", "queued", "task_ids"}` right away.
+
+Requirements and limits:
+
+- The owner's role needs the **`sinks:send`** scope. Admins have it. Grant it to other roles to allow sending without access to sink configuration.
+- At most 10,000 attributes or records per call.
+- At most `sinks.sends_per_minute` calls per user and minute (runtime setting, default 30).
+- Every send is written to the audit log (`sink.send`), naming the user, the notebook or script, the sink and the item count.
+- Code only names a sink. The SDK never returns a sink's configuration or credentials.
+
+```python
+hits = mwlab.search_attributes(type="ip-dst", size=500)
+mwlab.send_to_sink("Splunk prod", attributes=hits)
+
+# Your own records, e.g. from an enrichment you ran in the notebook:
+mwlab.send_to_sink("SOC webhook", records=[
+    {"value": "evil.example", "type": "domain", "comment": "pivot from passive DNS", "tags": ["tlp:amber"]},
+])
+```
+
+`mwlab` is otherwise read-only. `enrich` and `send_to_sink` are its only calls that reach outside misp-workbench, and both are audited.
+
 ### Convenience
 
 | Method | Description |

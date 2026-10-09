@@ -28,6 +28,11 @@ DEFAULT_SETTINGS = {
         # Set to 0 to disable the limit.
         "email_max_per_hour": 10,
     },
+    "sinks": {
+        # Sends from notebooks and reactor scripts one user may make per
+        # minute (each up to 10,000 attributes or records). 0 disables it.
+        "sends_per_minute": 30,
+    },
     "exports": {
         # Streaming exports (/attributes/export, /events/export) one user can
         # run at once; each holds an OpenSearch point-in-time context while it

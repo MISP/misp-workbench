@@ -1380,13 +1380,11 @@ SINK_MAX_RETRIES = 6
 SINK_RETRY_BASE_SECONDS = 30
 
 
-@celery_app.task(bind=True, queue="sinks", max_retries=SINK_MAX_RETRIES)
-def deliver_to_sink(self, sink_id: int, event_uuid: str):
-    """Push one published event's selected attributes to one sink.
+def _deliver_with_retries(task, sink_id: int, label: str, deliver):
+    """Run ``deliver(sink)`` for an enabled sink, retrying on transport errors.
 
-    Runs on the dedicated ``sinks`` queue. A failed delivery is retried with
-    exponential backoff; the error is recorded on the sink after every
-    attempt, and the delivery counted as failed once retries run out.
+    The error is recorded on the sink after every attempt, and the delivery
+    counted as failed once retries run out.
     """
     import random
 
@@ -1398,26 +1396,67 @@ def deliver_to_sink(self, sink_id: int, event_uuid: str):
         if sink is None or not sink.enabled:
             return 0
         try:
-            sent = sinks_repository.deliver_event(sink, event_uuid)
+            sent = deliver(sink)
         except SinkDeliveryError as error:
-            final = self.request.retries >= self.max_retries
+            final = task.request.retries >= task.max_retries
             sinks_repository.record_failure(db, sink_id, str(error), final=final)
             logger.warning(
-                "sink %s delivery of event %s failed (attempt %s): %s",
+                "sink %s delivery of %s failed (attempt %s): %s",
                 sink_id,
-                event_uuid,
-                self.request.retries + 1,
+                label,
+                task.request.retries + 1,
                 error,
             )
             if final:
                 return 0
-            countdown = SINK_RETRY_BASE_SECONDS * 2 ** self.request.retries
-            raise self.retry(
+            countdown = SINK_RETRY_BASE_SECONDS * 2 ** task.request.retries
+            raise task.retry(
                 exc=error, countdown=countdown + random.uniform(0, countdown / 4)
             )
         sinks_repository.record_success(db, sink_id, sent)
-        logger.info("sink %s delivered %s attributes of event %s", sink_id, sent, event_uuid)
+        logger.info("sink %s delivered %s attributes of %s", sink_id, sent, label)
         return sent
+
+
+@celery_app.task(bind=True, queue="sinks", max_retries=SINK_MAX_RETRIES)
+def deliver_to_sink(self, sink_id: int, event_uuid: str, apply_filters: bool = True):
+    """Push one event's selected attributes to one sink.
+
+    Runs on the dedicated ``sinks`` queue, retried with exponential backoff.
+    ``apply_filters=False`` (sends from code) skips the sink's selection
+    filters but never its exclusions.
+    """
+    from app.repositories import sinks as sinks_repository
+
+    return _deliver_with_retries(
+        self,
+        sink_id,
+        f"event {event_uuid}",
+        lambda sink: sinks_repository.deliver_event(sink, event_uuid, apply_filters),
+    )
+
+
+@celery_app.task(bind=True, queue="sinks", max_retries=SINK_MAX_RETRIES)
+def deliver_items_to_sink(
+    self, sink_id: int, mode: str, items: list, apply_filters: bool = True
+):
+    """Push attributes (by uuid) or caller-built records to one sink.
+
+    Queued by sends from notebooks and reactor scripts
+    (``app.services.sinks.send``), at most a thousand items per task.
+    """
+    from app.repositories import sinks as sinks_repository
+
+    deliver = {
+        "attributes": sinks_repository.deliver_attributes,
+        "records": sinks_repository.deliver_records,
+    }[mode]
+    return _deliver_with_retries(
+        self,
+        sink_id,
+        f"{len(items)} {mode}",
+        lambda sink: deliver(sink, items, apply_filters),
+    )
 
 
 # ──────────────────────────────────────────────────────────────────────────

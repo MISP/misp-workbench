@@ -197,30 +197,34 @@ def _get_event(event_uuid: str) -> Optional[dict]:
     return response.get("_source") if response.get("found") else None
 
 
-def deliver_event(sink: sink_models.Sink, event_uuid: str) -> int:
-    """Send the attributes of ``event_uuid`` that ``sink`` selects.
+def effective_filters(sink: sink_models.Sink, apply_filters: bool = True) -> dict:
+    """The filters a delivery applies.
 
-    Returns how many were sent; raises SinkDeliveryError when the sink
-    can't be reached or rejects a batch.
+    ``apply_filters=False`` (sends from notebooks and reactor scripts) skips
+    the sink's *selection*: IDS-only, types, include tags. Its *exclusions*
+    (``exclude_tags``, e.g. ``tlp:red``, and warninglisted values) always
+    apply: code can choose what to send, not override what must never leave.
     """
-    event = _get_event(event_uuid)
-    if event is None or event.get("deleted"):
-        logger.info("sink %s: event %s is gone, nothing to send", sink.id, event_uuid)
-        return 0
+    filters = dict(sink.filters or {})
+    if apply_filters:
+        return filters
+    return {
+        "to_ids_only": False,
+        "types": [],
+        "tags": [],
+        "exclude_tags": filters.get("exclude_tags") or [],
+        "exclude_warninglisted": filters.get("exclude_warninglisted", True),
+    }
 
-    filters = sink.filters or {}
-    # Event tags apply to every attribute, so an excluded event is skipped
-    # without reading any.
-    event_tags = formatters.tag_names(event.get("tags"))
-    if filters.get("exclude_tags") and _matches(filters["exclude_tags"], event_tags):
-        return 0
 
+def _send_in_batches(sink: sink_models.Sink, batches: Iterator[list[dict]]) -> int:
+    """Send records over one transport, BATCH_SIZE at a time."""
     transport = open_transport(sink.type, sink.config)
     sent = 0
     try:
         pending: list[dict] = []
-        for attributes in _iter_attribute_batches(event_uuid, filters):
-            pending.extend(select_records(attributes, event, filters))
+        for records in batches:
+            pending.extend(records)
             while len(pending) >= BATCH_SIZE:
                 transport.send(pending[:BATCH_SIZE])
                 sent += BATCH_SIZE
@@ -231,6 +235,101 @@ def deliver_event(sink: sink_models.Sink, event_uuid: str) -> int:
     finally:
         transport.close()
     return sent
+
+
+def deliver_event(
+    sink: sink_models.Sink, event_uuid: str, apply_filters: bool = True
+) -> int:
+    """Send the attributes of ``event_uuid`` that ``sink`` selects.
+
+    Returns how many were sent; raises SinkDeliveryError when the sink
+    can't be reached or rejects a batch.
+    """
+    event = _get_event(event_uuid)
+    if event is None or event.get("deleted"):
+        logger.info("sink %s: event %s is gone, nothing to send", sink.id, event_uuid)
+        return 0
+
+    filters = effective_filters(sink, apply_filters)
+    # Event tags apply to every attribute, so an excluded event is skipped
+    # without reading any.
+    event_tags = formatters.tag_names(event.get("tags"))
+    if filters.get("exclude_tags") and _matches(filters["exclude_tags"], event_tags):
+        return 0
+
+    return _send_in_batches(
+        sink,
+        (
+            select_records(attributes, event, filters)
+            for attributes in _iter_attribute_batches(event_uuid, filters)
+        ),
+    )
+
+
+def _uuids_query(uuids: list[str], filters: dict) -> dict:
+    """Live attributes among ``uuids`` that pass the query-side filters."""
+    query = _attribute_query("", filters)
+    query["bool"]["filter"][0] = {"terms": {"uuid.keyword": uuids}}
+    return query
+
+
+def deliver_attributes(
+    sink: sink_models.Sink, attribute_uuids: list[str], apply_filters: bool = True
+) -> int:
+    """Send the given attributes, with their events' context."""
+    filters = effective_filters(sink, apply_filters)
+
+    def batches():
+        client = get_opensearch_client()
+        for hits in stream_exports.iter_pit_pages(
+            client, "misp-attributes", _uuids_query(attribute_uuids, filters)
+        ):
+            attributes = [hit["_source"] for hit in hits]
+            event_ids = {a["event_uuid"] for a in attributes if a.get("event_uuid")}
+            events = {}
+            if event_ids:
+                response = client.mget(
+                    index="misp-events", body={"ids": list(event_ids)}
+                )
+                events = {
+                    d["_id"]: d["_source"] for d in response["docs"] if d.get("found")
+                }
+            for event_uuid, group in _group_by_event(attributes).items():
+                yield select_records(group, events.get(event_uuid, {}), filters)
+
+    return _send_in_batches(sink, batches())
+
+
+def _group_by_event(attributes: list[dict]) -> dict:
+    groups: dict = {}
+    for attribute in attributes:
+        groups.setdefault(attribute.get("event_uuid"), []).append(attribute)
+    return groups
+
+
+def deliver_records(
+    sink: sink_models.Sink, records: list[dict], apply_filters: bool = True
+) -> int:
+    """Send caller-built records (validated by the send service).
+
+    Records have no attribute behind them, so ``to_ids_only`` doesn't apply;
+    types and tag filters, and tag exclusions, do.
+    """
+    filters = effective_filters(sink, apply_filters)
+    include = filters.get("tags") or []
+    exclude = filters.get("exclude_tags") or []
+    types = set(filters.get("types") or [])
+    selected = []
+    for record in records:
+        tags = formatters.all_tags(record)
+        if types and record["type"] not in types:
+            continue
+        if include and not _matches(include, tags):
+            continue
+        if exclude and _matches(exclude, tags):
+            continue
+        selected.append(record)
+    return _send_in_batches(sink, iter([selected]))
 
 
 def record_success(db: Session, sink_id: int, delivered: int) -> None:

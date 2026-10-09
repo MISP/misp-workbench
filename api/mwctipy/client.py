@@ -35,7 +35,11 @@ def _session() -> Iterator[Session]:
 
 
 class MwLab:
-    """Read-only analyst SDK bound to a single ``(user_id, notebook_id)``."""
+    """Analyst SDK bound to a single ``(user_id, notebook_id)``.
+
+    Read-only, with two audited exceptions that reach outside: ``enrich``
+    (third-party module APIs) and ``send_to_sink`` (outbound sinks).
+    """
 
     def __init__(self, *, user_id: int, notebook_id: int):
         self.user_id = int(user_id)
@@ -193,6 +197,61 @@ class MwLab:
             )
             db.commit()
             return result
+
+    # ── outbound sinks ─────────────────────────────────────────────────────
+
+    def sinks(self) -> list[dict]:
+        """The sinks you can send to: id, name, type, enabled.
+
+        Needs the ``sinks:send`` scope. Configuration and credentials are
+        never exposed.
+        """
+        from app.services.sinks import send
+
+        with _session() as db:
+            return send.visible_sinks(db, self.user_id)
+
+    def send_to_sink(
+        self,
+        sink,
+        *,
+        attributes: Optional[list] = None,
+        event_uuid: Optional[str] = None,
+        records: Optional[list] = None,
+        apply_filters: bool = True,
+    ) -> dict:
+        """Queue a delivery to a sink (by id or name). Needs ``sinks:send``.
+
+        Pass exactly one of:
+
+        - ``attributes``: attribute uuids, or dicts with a ``uuid`` (e.g. the
+          results of ``search_attributes``), sent with their event context;
+        - ``event_uuid``: the event's attributes, as a publish would send them;
+        - ``records``: your own indicators, dicts with ``value`` and ``type``
+          (plus optional ``category``, ``comment``, ``to_ids``, ``tags``).
+
+        The sink's filters apply by default. ``apply_filters=False`` skips its
+        selection (IDS-only, types, include tags), but never its exclusions
+        (excluded tags such as ``tlp:red``, warninglisted values).
+
+        Returns ``{"sink", "mode", "queued", "task_ids"}``. Delivery runs on
+        the sinks worker; its outcome shows on the sink in the UI.
+        """
+        from app.services.sinks import send
+
+        with _session() as db:
+            return send.send_to_sink(
+                db,
+                user_id=self.user_id,
+                sink=sink,
+                attributes=attributes,
+                event_uuid=event_uuid,
+                records=records,
+                apply_filters=apply_filters,
+                actor_type="lab_notebook",
+                actor_credential_id=self.notebook_id,
+                audit_metadata={"notebook_id": self.notebook_id},
+            )
 
     # ── convenience ────────────────────────────────────────────────────────
 
