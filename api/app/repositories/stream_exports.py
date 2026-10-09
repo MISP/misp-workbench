@@ -185,6 +185,7 @@ def prepare_attribute_export(
     fmt: str,
     since: Optional[str] = None,
     include_deleted: bool = False,
+    enforce_warninglist: bool = False,
 ) -> PreparedExport:
     fmt = _validate_format(fmt, ATTRIBUTE_FORMATS)
     export_timestamp = int(time.time())
@@ -206,9 +207,17 @@ def prepare_attribute_export(
         filters.append({"term": {"deleted": False}})
 
     os_query = {"bool": {"must": [_base_query(query, "value")], "filter": filters}}
+    # A full export leaves warninglisted attributes out. A delta keeps them, with
+    # their warninglist_hits, so a consumer drops a value that became listed.
+    if enforce_warninglist and since in (None, ""):
+        from app.repositories.warninglists import WARNINGLISTED
+
+        os_query["bool"]["must_not"] = [WARNINGLISTED]
 
     client = get_opensearch_client()
-    request_key = json.dumps([ATTRIBUTES_INDEX, query, fmt, since, include_deleted])
+    request_key = json.dumps(
+        [ATTRIBUTES_INDEX, query, fmt, since, include_deleted, enforce_warninglist]
+    )
     etag, last_modified = _fingerprint(client, ATTRIBUTES_INDEX, os_query, request_key)
     return PreparedExport(
         index=ATTRIBUTES_INDEX,

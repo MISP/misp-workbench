@@ -62,6 +62,7 @@ const config = computed(() => configs[form.type]);
 const joinList = (list) => (list || []).join(", ");
 const filters = reactive({
   to_ids_only: props.sink?.filters?.to_ids_only ?? true,
+  exclude_warninglisted: props.sink?.filters?.exclude_warninglisted ?? true,
   types: joinList(props.sink?.filters?.types),
   // Tag names (or patterns such as tlp:*), edited with the tag selector.
   tags: [...(props.sink?.filters?.tags || [])],
@@ -110,6 +111,7 @@ async function submit() {
     config: cleanConfig(),
     filters: {
       to_ids_only: filters.to_ids_only,
+      exclude_warninglisted: filters.exclude_warninglisted,
       types: splitList(filters.types),
       tags: filters.tags,
       exclude_tags: filters.exclude_tags,
@@ -351,6 +353,17 @@ async function submit() {
         />
         <label class="form-check-label" for="sink-to-ids"
           >Only attributes flagged for IDS</label
+        >
+      </div>
+      <div class="form-check form-switch mb-3">
+        <input
+          id="sink-warninglisted"
+          class="form-check-input"
+          type="checkbox"
+          v-model="filters.exclude_warninglisted"
+        />
+        <label class="form-check-label" for="sink-warninglisted"
+          >Leave out values on an enabled warninglist</label
         >
       </div>
       <div class="mb-3">

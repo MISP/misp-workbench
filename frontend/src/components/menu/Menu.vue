@@ -60,6 +60,9 @@ const canReadApiKeys = computed(() =>
 const canAdminApiKeys = computed(() =>
   authHelper.hasScope(scopes.value, "api_keys:admin"),
 );
+const canReadWarninglists = computed(() =>
+  authHelper.hasScope(scopes.value, "warninglists:read"),
+);
 const canReadSinks = computed(() =>
   authHelper.hasScope(scopes.value, "sinks:read"),
 );
@@ -286,6 +289,13 @@ function navAndClose(path) {
             <li v-if="canReadGalaxies">
               <RouterLink to="/settings/galaxies" class="dropdown-item fw-light"
                 >galaxies</RouterLink
+              >
+            </li>
+            <li v-if="canReadWarninglists">
+              <RouterLink
+                to="/settings/warninglists"
+                class="dropdown-item fw-light"
+                >warninglists</RouterLink
               >
             </li>
             <li><hr class="dropdown-divider" /></li>
@@ -625,6 +635,15 @@ function navAndClose(path) {
                 @click.prevent="navAndClose('/settings/taxonomies')"
               >
                 taxonomies
+              </RouterLink>
+            </li>
+            <li v-if="canReadWarninglists">
+              <RouterLink
+                to="/settings/warninglists"
+                class="list-group-item list-group-item-action ps-4"
+                @click.prevent="navAndClose('/settings/warninglists')"
+              >
+                warninglists
               </RouterLink>
             </li>
             <li v-if="canReadGalaxies">

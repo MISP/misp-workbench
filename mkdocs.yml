@@ -45,6 +45,7 @@ nav:
     - Exports: features/exports.md
     - Sinks: features/sinks.md
     - Sightings: features/sightings.md
+    - Warninglists: features/warninglists.md
     - Correlations: features/correlations.md
     - Event Graph: features/event-graph.md
     - Notifications: features/notifications.md

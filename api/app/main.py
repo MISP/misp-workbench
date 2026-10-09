@@ -29,6 +29,7 @@ from app.routers import (
     tags,
     taxonomies,
     users,
+    warninglists,
     reports,
     rest_search,
     analyst_data,
@@ -134,6 +135,9 @@ app.include_router(sharing_groups.router, tags=["Sharing Groups"])
 
 # Tags resource
 app.include_router(tags.router, tags=["Tags"])
+
+# Warninglists resource
+app.include_router(warninglists.router, tags=["Warninglists"])
 
 # Taxonomies resource
 app.include_router(taxonomies.router, tags=["Taxonomies"])

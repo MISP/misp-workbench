@@ -37,6 +37,13 @@ DEFAULT_SETTINGS = {
         # than the oldest one has to download the full artifact again.
         "delta_retention": 96,
     },
+    "warninglists": {
+        # Leave attributes on an enabled warninglist out of exports, feeds and
+        # lookup by default (each can still ask for them). restSearch follows
+        # MISP and only filters when enforceWarninglist is passed; sinks have
+        # their own per-sink switch.
+        "enforce_on_outputs": True,
+    },
     "sightings": {
         # Turn to_ids off on every attribute holding a value once this many
         # distinct organisations have reported it as a false positive (MISP

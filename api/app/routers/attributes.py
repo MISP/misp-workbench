@@ -96,9 +96,22 @@ async def export_attributes(
         ),
     ),
     include_deleted: bool = Query(False),
+    enforce_warninglist: Optional[bool] = Query(
+        None,
+        description=(
+            "Leave out attributes on an enabled warninglist (full exports only). "
+            "Defaults to the warninglists.enforce_on_outputs runtime setting."
+        ),
+    ),
     runtime_settings: RuntimeSettings = Depends(get_runtime_settings),
     user: user_schemas.User = Security(get_current_active_user, scopes=["attributes:read"]),
 ):
+    if enforce_warninglist is None:
+        enforce_warninglist = bool(
+            await run_in_threadpool(
+                runtime_settings.get_value, "warninglists.enforce_on_outputs", True
+            )
+        )
     try:
         export = await run_in_threadpool(
             stream_exports_repository.prepare_attribute_export,
@@ -106,6 +119,7 @@ async def export_attributes(
             format,
             since,
             include_deleted,
+            enforce_warninglist,
         )
     except stream_exports_repository.RestSearchError as error:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(error))

@@ -19,7 +19,25 @@ const toastsStore = useToastsStore();
 
 const { apiKeys, status } = storeToRefs(apiKeysStore);
 
-const SELECTABLE_SCOPES = ["events:read", "attributes:read", "objects:read"];
+const SELECTABLE_SCOPES = [
+  "events:read",
+  "attributes:read",
+  "objects:read",
+  "exports:read",
+  "sightings:create",
+  "warninglists:read",
+];
+
+// Everything a SIEM integration needs, and nothing more: restSearch, lookup
+// and streaming exports (read), incremental feeds (exports:read), reporting
+// hits back (sightings:create), checking values against warninglists.
+const SIEM_PRESET = [
+  "events:read",
+  "attributes:read",
+  "exports:read",
+  "sightings:create",
+  "warninglists:read",
+];
 
 const showCreate = ref(false);
 const form = ref(newForm());
@@ -52,6 +70,11 @@ function scopeAllowed(scope) {
 const allowedScopes = computed(() =>
   SELECTABLE_SCOPES.filter((s) => scopeAllowed(s)),
 );
+
+function applySiemPreset() {
+  form.value.scopes = SIEM_PRESET.filter((s) => scopeAllowed(s));
+  if (!form.value.name.trim()) form.value.name = "SIEM integration";
+}
 
 function toggleScope(scope) {
   const idx = form.value.scopes.indexOf(scope);
@@ -349,6 +372,14 @@ function isExpired(d) {
               Your role does not permit any of the API-key scopes.
             </div>
             <div v-else>
+              <button
+                type="button"
+                class="btn btn-outline-secondary btn-sm mb-2"
+                title="Read events, attributes, exports and warninglists; report sightings"
+                @click="applySiemPreset"
+              >
+                SIEM integration preset
+              </button>
               <label
                 v-for="scope in allowedScopes"
                 :key="scope"

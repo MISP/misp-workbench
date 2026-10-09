@@ -2801,6 +2801,24 @@
               "default": false,
               "title": "Include Deleted"
             }
+          },
+          {
+            "name": "enforce_warninglist",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Leave out attributes on an enabled warninglist (full exports only). Defaults to the warninglists.enforce_on_outputs runtime setting.",
+              "title": "Enforce Warninglist"
+            },
+            "description": "Leave out attributes on an enabled warninglist (full exports only). Defaults to the warninglists.enforce_on_outputs runtime setting."
           }
         ],
         "responses": {
@@ -5100,6 +5118,176 @@
         "responses": {
           "204": {
             "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/warninglists/": {
+      "get": {
+        "tags": [
+          "Warninglists"
+        ],
+        "summary": "Get Warninglists",
+        "operationId": "get_warninglists_warninglists__get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/Warninglist"
+                  },
+                  "type": "array",
+                  "title": "Response Get Warninglists Warninglists  Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "warninglists:read"
+            ]
+          }
+        ]
+      }
+    },
+    "/warninglists/check": {
+      "post": {
+        "tags": [
+          "Warninglists"
+        ],
+        "summary": "Check Values",
+        "description": "Which enabled warninglists each value hits.",
+        "operationId": "check_values_warninglists_check_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WarninglistCheckRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WarninglistCheckResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "warninglists:read"
+            ]
+          }
+        ]
+      }
+    },
+    "/warninglists/update": {
+      "post": {
+        "tags": [
+          "Warninglists"
+        ],
+        "summary": "Update Warninglists",
+        "description": "Load new and updated lists from the submodule, then re-flag attributes.",
+        "operationId": "update_warninglists_warninglists_update_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Task"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "warninglists:update"
+            ]
+          }
+        ]
+      }
+    },
+    "/warninglists/{warninglist_id}": {
+      "patch": {
+        "tags": [
+          "Warninglists"
+        ],
+        "summary": "Update Warninglist",
+        "description": "Enable or disable a list; attributes are re-flagged in the background.",
+        "operationId": "update_warninglist_warninglists__warninglist_id__patch",
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "warninglists:update"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "warninglist_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Warninglist Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WarninglistUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Warninglist"
+                }
+              }
+            }
           },
           "422": {
             "description": "Validation Error",
@@ -9762,6 +9950,16 @@
               "default": 10,
               "title": "Max Attributes"
             }
+          },
+          {
+            "name": "include_warninglisted",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Include Warninglisted"
+            }
           }
         ],
         "responses": {
@@ -14326,6 +14524,20 @@
               }
             ],
             "title": "Expanded"
+          },
+          "warninglist_hits": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Warninglist Hits"
           }
         },
         "type": "object",
@@ -18355,6 +18567,14 @@
             "title": "Tags",
             "default": []
           },
+          "warninglist_hits": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Warninglist Hits",
+            "default": []
+          },
           "event": {
             "$ref": "#/components/schemas/LookupEvent"
           }
@@ -18528,6 +18748,12 @@
             "title": "Max Attributes",
             "description": "Attributes returned per matched value",
             "default": 10
+          },
+          "include_warninglisted": {
+            "type": "boolean",
+            "title": "Include Warninglisted",
+            "description": "Also match attributes on an enabled warninglist (left out by default)",
+            "default": false
           }
         },
         "type": "object",
@@ -24141,7 +24367,8 @@
               "tags": [],
               "exclude_tags": [
                 "tlp:red"
-              ]
+              ],
+              "exclude_warninglisted": true
             }
           },
           "id": {
@@ -24269,7 +24496,8 @@
               "tags": [],
               "exclude_tags": [
                 "tlp:red"
-              ]
+              ],
+              "exclude_warninglisted": true
             }
           }
         },
@@ -24326,6 +24554,11 @@
             "default": [
               "tlp:red"
             ]
+          },
+          "exclude_warninglisted": {
+            "type": "boolean",
+            "title": "Exclude Warninglisted",
+            "default": true
           }
         },
         "type": "object",
@@ -25368,6 +25601,146 @@
           "attribute_uuid"
         ],
         "title": "Vulnerability"
+      },
+      "Warninglist": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "type": {
+            "type": "string",
+            "title": "Type"
+          },
+          "category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          },
+          "version": {
+            "type": "integer",
+            "title": "Version"
+          },
+          "matching_attributes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Matching Attributes",
+            "default": []
+          },
+          "entry_count": {
+            "type": "integer",
+            "title": "Entry Count"
+          },
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "type",
+          "version",
+          "entry_count",
+          "enabled"
+        ],
+        "title": "Warninglist"
+      },
+      "WarninglistCheckRequest": {
+        "properties": {
+          "values": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 10000,
+            "title": "Values"
+          },
+          "type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Type"
+          }
+        },
+        "type": "object",
+        "required": [
+          "values"
+        ],
+        "title": "WarninglistCheckRequest"
+      },
+      "WarninglistCheckResponse": {
+        "properties": {
+          "hits": {
+            "additionalProperties": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "type": "object",
+            "title": "Hits"
+          }
+        },
+        "type": "object",
+        "required": [
+          "hits"
+        ],
+        "title": "WarninglistCheckResponse"
+      },
+      "WarninglistUpdate": {
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled"
+          }
+        },
+        "type": "object",
+        "required": [
+          "enabled"
+        ],
+        "title": "WarninglistUpdate"
       }
     },
     "securitySchemes": {

@@ -105,6 +105,8 @@ class SinkFilters(BaseModel):
     tags: list[str] = []
     # Never send attributes carrying any of these tags.
     exclude_tags: list[str] = ["tlp:red"]
+    # Never send attributes on an enabled warninglist.
+    exclude_warninglisted: bool = True
 
 
 class InvalidSinkConfig(ValueError):
