@@ -2,7 +2,7 @@ import logging
 import math
 import time
 from datetime import datetime
-from typing import Iterable, Optional
+from typing import Optional
 from uuid import UUID, uuid4
 from app.models.event import DistributionLevel
 from app.services.opensearch import get_opensearch_client
@@ -613,43 +613,3 @@ def search_attributes_histogram(query: str = None, interval: str = "1d", include
 
     response = OpenSearchClient.search(index="misp-attributes", body=search_body)
     return {"buckets": response["aggregations"]["attributes_over_time"]["buckets"]}
-
-
-def export_attributes(
-    query: str = None,
-    format: str = "json",
-    page_size: int = 1000,
-) -> Iterable:
-    client = get_opensearch_client()
-
-    index = "misp-attributes"
-    default_field = "value"
-
-    search_body = {
-        "query": {
-            "query_string": {
-                "query": query or "*",
-                "default_field": default_field,
-            }
-        },
-        "size": page_size,
-        "sort": [{"_id": "asc"}],
-    }
-
-    search_after = None
-
-    while True:
-        if search_after:
-            search_body["search_after"] = search_after
-
-        response = client.search(index=index, body=search_body)
-        hits = response["hits"]["hits"]
-
-        if not hits:
-            break
-
-        for hit in hits:
-            if format == "json":
-                yield hit
-
-        search_after = hits[-1].get("sort")

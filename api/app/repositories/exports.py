@@ -1,5 +1,9 @@
+import hashlib
 import logging
+import tempfile
+import time
 from datetime import datetime, timezone
+from typing import Optional
 from uuid import uuid4
 
 from fastapi_pagination.ext.sqlalchemy import paginate
@@ -12,8 +16,9 @@ from app.schemas import export as export_schemas
 from app.services.exports import converters
 from app.services.exports_storage import \
     delete_export as delete_export_artifact
-from app.services.exports_storage import store_export
+from app.services.exports_storage import store_export, store_export_file
 from app.services.opensearch import get_opensearch_client
+from app.services.runtime_settings import RuntimeSettings
 
 logger = logging.getLogger(__name__)
 
@@ -81,6 +86,12 @@ INDEX_MAP = {
 
 # Safety cap so a broad query can't exhaust worker memory.
 MAX_EXPORT_RECORDS = 100_000
+
+# Streamed formats are written to a temporary file that stays in memory up to
+# this size and spills to disk beyond it.
+SPOOL_MAX_BYTES = 16 * 1024 * 1024
+# Deltas kept per incremental export when the runtime setting is unset.
+DEFAULT_DELTA_RETENTION = 96
 
 
 def get_exports(
@@ -192,6 +203,8 @@ def delete_export(db: Session, export_id: int, user_id: int):
         _unregister_export_schedule(db_export.scheduled_task_name)
     if db_export.storage_key:
         delete_export_artifact(db_export.storage_key)
+    for delta in _deltas(db, db_export.id):
+        delete_export_artifact(delta.storage_key)
     db.delete(db_export)
     db.commit()
     return {"status": "success"}
@@ -328,6 +341,155 @@ def _to_misp_json(
     return content, "json", "application/json", len(attributes)
 
 
+def _deltas(db: Session, export_id: int) -> list[export_models.ExportDelta]:
+    return (
+        db.query(export_models.ExportDelta)
+        .filter(export_models.ExportDelta.export_id == export_id)
+        .order_by(export_models.ExportDelta.seq.asc())
+        .all()
+    )
+
+
+def get_feed_deltas(
+    db: Session, db_export: export_models.Export, since: int
+) -> Optional[list[export_models.ExportDelta]]:
+    """The deltas a consumer at cursor ``since`` needs to catch up, oldest first.
+
+    An empty list means it is current. None means it is further behind than
+    the retained deltas reach and has to start over from the full artifact.
+    """
+    pending = [d for d in _deltas(db, db_export.id) if d.until > since]
+    if pending and pending[0].since > since:
+        return None
+    return pending
+
+
+def _feed_query(query: str, since: Optional[int] = None) -> dict:
+    """The export's query_string, as a full snapshot or as a delta.
+
+    A full artifact holds live documents only. A delta holds every attribute
+    written at or after ``since`` (``updated_at`` is stamped by the ingest
+    pipeline on every write), soft-deleted ones included as tombstones.
+    """
+    base = {"query_string": {"query": query}}
+    if since is None:
+        return {"bool": {"must": [base], "must_not": [{"term": {"deleted": True}}]}}
+    return {
+        "bool": {
+            "must": [base],
+            "filter": [
+                {"range": {"updated_at": {"gte": since, "format": "epoch_second"}}}
+            ],
+        }
+    }
+
+
+def _stream_to_storage(index: str, query: dict, fmt: str, key: str):
+    """Stream matching documents in ``fmt`` straight into storage.
+
+    Reuses the streaming exporter (point-in-time paging, no record cap), so
+    memory stays flat however large the artifact. Returns
+    ``(stored_key, size, record_count, sha256)``.
+    """
+    from app.repositories import stream_exports
+
+    export = stream_exports.PreparedExport(
+        index=index,
+        format=fmt,
+        query=query,
+        export_timestamp=int(time.time()),
+        etag="",
+        last_modified=None,
+        client=get_opensearch_client(),
+    )
+    digest = hashlib.sha256()
+    size = 0
+    records = 0
+    with tempfile.SpooledTemporaryFile(max_size=SPOOL_MAX_BYTES) as tmp:
+        for chunk in stream_exports.stream(export):
+            data = chunk.encode("utf-8")
+            digest.update(data)
+            size += len(data)
+            # ndjson, text and cdb are one record per line.
+            records += data.count(b"\n")
+            tmp.write(data)
+        stored_key = store_export_file(key, tmp)
+    return stored_key, size, records, digest.hexdigest()
+
+
+def _prune_deltas(db: Session, export_id: int, keep: int) -> None:
+    """Drop all but the newest ``keep`` deltas, artifacts included."""
+    deltas = _deltas(db, export_id)
+    for delta in deltas[: max(len(deltas) - keep, 0)]:
+        delete_export_artifact(delta.storage_key)
+        db.delete(delta)
+
+
+def _run_streamed(db: Session, db_export: export_models.Export) -> None:
+    """Materialize a streamed-format export, plus its delta when incremental."""
+    index = INDEX_MAP.get(db_export.index_target, "misp-attributes")
+    # Taken before reading: a write landing during the run is in the next delta
+    # too, rather than in neither.
+    cursor = int(time.time())
+
+    stored_key, size, records, checksum = _stream_to_storage(
+        index,
+        _feed_query(db_export.query),
+        db_export.format,
+        f"export-{db_export.id}.{db_export.format}",
+    )
+    db_export.storage_key = stored_key
+    db_export.file_size = size
+    db_export.record_count = records
+    db_export.checksum = checksum
+
+    if not db_export.incremental:
+        return
+
+    # The first run has nothing to diff against: its full artifact is the base.
+    if db_export.cursor is not None:
+        previous = _deltas(db, db_export.id)
+        seq = previous[-1].seq + 1 if previous else 1
+        delta_key, delta_size, delta_records, _ = _stream_to_storage(
+            index,
+            _feed_query(db_export.query, since=db_export.cursor),
+            db_export.format,
+            f"export-{db_export.id}-delta-{seq}.{db_export.format}",
+        )
+        db.add(
+            export_models.ExportDelta(
+                export_id=db_export.id,
+                seq=seq,
+                since=db_export.cursor,
+                until=cursor,
+                storage_key=delta_key,
+                record_count=delta_records,
+                file_size=delta_size,
+                created_at=datetime.now(timezone.utc),
+            )
+        )
+        db.flush()
+        keep = RuntimeSettings(db).get_value(
+            "exports.delta_retention", default=DEFAULT_DELTA_RETENTION
+        )
+        _prune_deltas(db, db_export.id, max(int(keep), 1))
+
+    db_export.cursor = cursor
+
+
+def _mark_completed(db: Session, db_export: export_models.Export) -> None:
+    db_export.status = "completed"
+    db_export.finished_at = datetime.now(timezone.utc)
+    db_export.last_run_at = db_export.finished_at
+    db.commit()
+    logger.info(
+        "Export %s completed: %s records, %s bytes",
+        db_export.id,
+        db_export.record_count,
+        db_export.file_size,
+    )
+
+
 def run_export(db: Session, export_id: int) -> None:
     """Execute an export job: query OpenSearch, convert, store the artifact.
 
@@ -349,6 +511,11 @@ def run_export(db: Session, export_id: int) -> None:
     db.commit()
 
     try:
+        if db_export.format in export_schemas.STREAMED_FORMATS:
+            _run_streamed(db, db_export)
+            _mark_completed(db, db_export)
+            return
+
         index = INDEX_MAP.get(db_export.index_target, "misp-attributes")
         hits = _fetch_hits(index, db_export.query)
 
@@ -374,16 +541,8 @@ def run_export(db: Session, export_id: int) -> None:
         db_export.storage_key = stored_key
         db_export.file_size = len(content)
         db_export.record_count = record_count
-        db_export.status = "completed"
-        db_export.finished_at = datetime.now(timezone.utc)
-        db_export.last_run_at = db_export.finished_at
-        db.commit()
-        logger.info(
-            "Export %s completed: %s records, %s bytes",
-            export_id,
-            record_count,
-            len(content),
-        )
+        db_export.checksum = hashlib.sha256(content).hexdigest()
+        _mark_completed(db, db_export)
     except Exception as e:
         logger.exception("Export %s failed", export_id)
         db.rollback()

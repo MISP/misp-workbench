@@ -14,6 +14,7 @@ const exportJob = reactive({
   index_target: "attributes",
   format: "json",
   distribution: null,
+  incremental: false,
 });
 
 const scheduleModel = ref({ schedule: null, schedule_enabled: false });
@@ -38,11 +39,28 @@ const canSubmit = computed(
 );
 
 const stixDisabled = computed(() => exportJob.index_target === "events");
+// One value per line, so only attributes have something to put there.
+const lineFormatsDisabled = computed(() => exportJob.index_target === "events");
+// Deltas carry deletions (ndjson tombstones) and key off attribute write times.
+const canBeIncremental = computed(
+  () =>
+    exportJob.format === "ndjson" && exportJob.index_target === "attributes",
+);
 
 function onIndexTargetChange() {
   // STIX export of bare events carries no indicators; steer back to JSON.
   if (stixDisabled.value && exportJob.format === "stix") {
     exportJob.format = "json";
+  }
+  if (lineFormatsDisabled.value && ["text", "cdb"].includes(exportJob.format)) {
+    exportJob.format = "json";
+  }
+  onFormatChange();
+}
+
+function onFormatChange() {
+  if (!canBeIncremental.value) {
+    exportJob.incremental = false;
   }
 }
 
@@ -122,6 +140,7 @@ function cancel() {
           id="export-format"
           class="form-select"
           v-model="exportJob.format"
+          @change="onFormatChange"
         >
           <option value="json">JSON</option>
           <option value="misp">JSON (MISP)</option>
@@ -129,10 +148,39 @@ function cancel() {
           <option value="stix" :disabled="stixDisabled">
             STIX 2.1{{ stixDisabled ? " (attributes only)" : "" }}
           </option>
+          <option value="ndjson">NDJSON (one record per line)</option>
+          <option value="text" :disabled="lineFormatsDisabled">
+            Plain text, one value per line{{
+              lineFormatsDisabled ? " (attributes only)" : ""
+            }}
+          </option>
+          <option value="cdb" :disabled="lineFormatsDisabled">
+            Wazuh CDB list{{ lineFormatsDisabled ? " (attributes only)" : "" }}
+          </option>
         </select>
         <div class="form-text">
           STIX 2.1 groups matching attributes into events and converts them via
-          the misp-stix library.
+          the misp-stix library. NDJSON, plain text and Wazuh CDB are streamed
+          straight into storage, with no record limit.
+        </div>
+      </div>
+
+      <div v-if="canBeIncremental" class="mb-4">
+        <div class="form-check form-switch">
+          <input
+            id="export-incremental"
+            class="form-check-input"
+            type="checkbox"
+            v-model="exportJob.incremental"
+          />
+          <label class="form-check-label" for="export-incremental">
+            Incremental feed
+          </label>
+        </div>
+        <div class="form-text">
+          Each run also stores what changed since the previous one, deletions
+          included. Consumers poll the export's feed URL and only download those
+          changes. Pair it with a schedule.
         </div>
       </div>
 

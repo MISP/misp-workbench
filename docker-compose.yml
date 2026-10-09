@@ -209,6 +209,26 @@ services:
     networks:
       - backend
 
+  sinks-worker:
+    build:
+      context: ./api
+    # Delivers published indicators to outbound sinks (SIEMs, webhooks) on the
+    # dedicated ``sinks`` queue, so a slow or unreachable destination never
+    # ties up the workers that ingest and correlate. Network-bound, so threads.
+    command: poetry run celery -A app.worker.tasks worker --loglevel=info --hostname sinks@%h --queues=sinks --pool=threads --concurrency=4 -E
+    restart: unless-stopped
+    environment:
+      <<: *default-env
+    depends_on:
+      - api
+      - redis
+      - postgres
+    volumes:
+      - garage-creds:/var/lib/misp-workbench/secrets
+      - oauth-creds:/var/lib/misp-workbench/oauth-creds
+    networks:
+      - backend
+
   lab-worker:
     build:
       context: ./api
