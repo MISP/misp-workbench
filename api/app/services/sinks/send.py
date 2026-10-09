@@ -214,15 +214,31 @@ def send_to_sink(
     if sum(given) != 1:
         raise SinkSendError("pass exactly one of attributes, event_uuid or records")
 
+    # Validate the whole request first: a rejected one mustn't use up the
+    # caller's rate budget, nor make us clean 10,000 records to refuse them.
     if event_uuid is not None:
-        event_uuid = _canonical_uuid(event_uuid, "event_uuid")
+        mode, event_uuid = "event", _canonical_uuid(event_uuid, "event_uuid")
+        payload: list = []
+        items = 1
+    else:
+        mode = "attributes" if attributes is not None else "records"
+        raw = list(attributes if attributes is not None else records)
+        if len(raw) > MAX_ITEMS_PER_SEND:
+            raise SinkSendError(
+                f"at most {MAX_ITEMS_PER_SEND} {mode} per send, got {len(raw)}"
+            )
+        payload = (
+            _attribute_uuids(raw)
+            if mode == "attributes"
+            else [_clean_record(r) for r in raw]
+        )
+        items = len(payload)
 
     _require_scope(db, user_id)
     db_sink = _resolve_sink(db, sink)
     _check_rate(db, user_id)
 
-    if event_uuid is not None:
-        mode, items = "event", 1
+    if mode == "event":
         result = tasks.deliver_to_sink.apply_async(
             (db_sink.id, event_uuid),
             {"apply_filters": apply_filters},
@@ -230,15 +246,6 @@ def send_to_sink(
         )
         task_ids = [result.id]
     else:
-        if attributes is not None:
-            mode, payload = "attributes", _attribute_uuids(list(attributes))
-        else:
-            mode, payload = "records", [_clean_record(r) for r in records]
-        items = len(payload)
-        if items > MAX_ITEMS_PER_SEND:
-            raise SinkSendError(
-                f"at most {MAX_ITEMS_PER_SEND} {mode} per send, got {items}"
-            )
         task_ids = []
         for start in range(0, items, ITEMS_PER_TASK):
             result = tasks.deliver_items_to_sink.apply_async(
