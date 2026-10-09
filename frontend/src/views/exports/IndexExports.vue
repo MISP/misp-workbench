@@ -3,6 +3,7 @@ import { ref, computed, onUnmounted } from "vue";
 import { storeToRefs } from "pinia";
 import { useExportsStore, useAuthStore, useToastsStore } from "@/stores";
 import Spinner from "@/components/misc/Spinner.vue";
+import CopyToClipboard from "@/components/misc/CopyToClipboard.vue";
 import ExportScheduleModal from "@/components/exports/ExportScheduleModal.vue";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
@@ -24,6 +25,11 @@ const canCreate = computed(() =>
 const canDelete = computed(() =>
   authHelper.hasScope(scopes.value, "exports:delete"),
 );
+
+// What an incremental export's consumers poll. Relative to the API, not the UI.
+function feedUrl(item) {
+  return `${import.meta.env.VITE_API_URL}/exports/${item.id}/feed`;
+}
 
 const STATUS_BADGE = {
   queued: "bg-secondary",
@@ -218,6 +224,19 @@ onUnmounted(() => clearTimeout(pollTimer));
             <span class="badge bg-light text-dark text-uppercase">{{
               item.format
             }}</span>
+            <span
+              v-if="item.incremental"
+              class="badge bg-info-subtle text-info-emphasis ms-1"
+              title="Each run also stores a delta since the previous run"
+              >incremental</span
+            >
+            <div
+              v-if="item.incremental && item.cursor"
+              class="small text-muted text-nowrap"
+              title="Feed URL: full feed, or ?since=<X-Feed-Cursor> for changes"
+            >
+              feed URL <CopyToClipboard :value="feedUrl(item)" />
+            </div>
           </td>
           <td v-if="!$isMobile" class="text-muted small">
             {{ item.record_count ?? "—" }}

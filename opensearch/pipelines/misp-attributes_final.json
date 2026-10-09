@@ -10,6 +10,13 @@
             "pipeline": {
                 "name": "misp-attributes_servos"
             }
+        },
+        {
+            "set": {
+                "description": "Write time of every index/update, the cursor for incremental exports (since=)",
+                "field": "updated_at",
+                "value": "{{_ingest.timestamp}}"
+            }
         }
     ]
 }
