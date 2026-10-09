@@ -8,6 +8,9 @@ namespaced under ``exports/`` so they never collide with attachment keys.
 
 import logging
 import os
+import shutil
+import tempfile
+from typing import BinaryIO, Iterator
 
 from app.services.s3 import get_s3_client
 from app.settings import Settings, get_settings
@@ -16,6 +19,8 @@ logger = logging.getLogger(__name__)
 
 LOCAL_BASE_PATH = "/tmp/exports"
 KEY_PREFIX = "exports/"
+# Chunk size when streaming a stored artifact back out.
+READ_CHUNK_SIZE = 1024 * 1024
 
 
 def _namespaced_key(key: str) -> str:
@@ -51,6 +56,77 @@ def store_export(
             f.write(content)
 
     return stored_key
+
+
+def store_export_file(
+    key: str,
+    fileobj: BinaryIO,
+    settings: Settings = None,
+) -> str:
+    """Persist an export from a file object, without reading it into memory.
+
+    The local backend writes beside the target and renames over it, so a
+    consumer downloading the previous version never sees a half-written file;
+    an S3 upload only becomes visible once complete.
+    """
+    settings = settings or get_settings()
+    stored_key = _namespaced_key(key)
+    fileobj.seek(0)
+
+    if settings.Storage.engine == "s3":
+        # Multipart for large files, so no single request holds the artifact.
+        get_s3_client().upload_fileobj(fileobj, settings.Storage.s3.bucket, stored_key)
+    else:
+        fullpath = _local_path(stored_key)
+        directory = os.path.dirname(fullpath)
+        os.makedirs(directory, exist_ok=True)
+        fd, tmp_path = tempfile.mkstemp(dir=directory, prefix=".tmp-")
+        try:
+            with os.fdopen(fd, "wb") as f:
+                shutil.copyfileobj(fileobj, f)
+            os.replace(tmp_path, fullpath)
+        except BaseException:
+            if os.path.exists(tmp_path):
+                os.remove(tmp_path)
+            raise
+
+    return stored_key
+
+
+def open_export(key: str, settings: Settings = None) -> Iterator[bytes]:
+    """Return an iterator over a stored artifact's chunks.
+
+    The artifact's existence is checked here, eagerly, so a missing one raises
+    before a caller has started a response. Opening and reading are deferred
+    to the iterator, which closes what it opened however it ends, so nothing
+    is left open when the iterator is never consumed.
+    """
+    settings = settings or get_settings()
+    stored_key = _namespaced_key(key)
+
+    if settings.Storage.engine == "s3":
+        client = get_s3_client()
+        bucket = settings.Storage.s3.bucket
+        client.head_object(Bucket=bucket, Key=stored_key)
+
+        def read_s3():
+            body = client.get_object(Bucket=bucket, Key=stored_key)["Body"]
+            try:
+                yield from body.iter_chunks(READ_CHUNK_SIZE)
+            finally:
+                body.close()
+
+        return read_s3()
+
+    path = _local_path(stored_key)
+    os.stat(path)
+
+    def read_local():
+        with open(path, "rb") as f:
+            while chunk := f.read(READ_CHUNK_SIZE):
+                yield chunk
+
+    return read_local()
 
 
 def get_export(key: str, settings: Settings = None) -> bytes:

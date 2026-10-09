@@ -1345,5 +1345,21 @@ def backfill_ja4(
     )
 
 
+
+@app.command()
+def rebuild_lookup_cache():
+    """Rebuild the Redis prefilter behind /lookup from OpenSearch now.
+
+    Runs hourly on its own; use this after restoring data or flushing Redis
+    rather than waiting for the next run.
+    """
+    from app.repositories import lookup as lookup_repository
+
+    size = lookup_repository.rebuild_cache()
+    if size is None:
+        typer.echo("A rebuild is already running.")
+        raise typer.Exit(1)
+    typer.echo(f"Lookup cache rebuilt: {size} indicator values.")
+
 if __name__ == "__main__":
     app()
