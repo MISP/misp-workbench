@@ -10,8 +10,8 @@ setup("authenticate as docs user", async ({ page }) => {
   await page.fill('input[name="password"]', DOCS_USER.password);
   await page.click('button[type="submit"]');
 
-  // Auth store redirects to /events on success; wait for that
-  await expect(page).toHaveURL(/\/events/, { timeout: 15_000 });
+  // Auth store redirects to /explore on success; wait for that
+  await expect(page).toHaveURL(/\/explore/, { timeout: 15_000 });
 
   await page.context().storageState({ path: STORAGE_STATE });
 });

@@ -35,7 +35,7 @@ export const useAuthStore = defineStore({
       localStorage.setItem("access_token", this.access_token);
       localStorage.setItem("refresh_token", this.refresh_token);
 
-      router.push("/events");
+      router.push("/explore");
     },
     isAuthenticated() {
       return (
