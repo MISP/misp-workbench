@@ -69,9 +69,15 @@ def _index_value(list_type: str, entry: str) -> Optional[dict]:
     if list_type == "cidr":
         try:
             # ip_range takes CIDR notation; a bare address is its own /32 or /128.
-            return {"range": str(ipaddress.ip_network(entry, strict=False))}
+            network = ipaddress.ip_network(entry, strict=False)
         except ValueError:
             return None
+        mapped = network.version == 6 and network.network_address.ipv4_mapped
+        if mapped:
+            # OpenSearch rejects CIDR notation on IPv4-mapped IPv6 (::ffff:a.b.c.d)
+            # and stores those addresses as IPv4 anyway: index the IPv4 range.
+            network = ipaddress.ip_network(f"{mapped}/{max(network.prefixlen - 96, 0)}")
+        return {"range": str(network)}
     if list_type == "hostname":
         return {"value": entry.strip(".").lower()}
     return {"value": entry}
@@ -98,9 +104,21 @@ def _index_entries(client, warninglist_id: int, list_type: str, entries: list) -
                     },
                 }
 
-    indexed, _ = opensearch_helpers.bulk(
-        client, actions(), chunk_size=BULK_CHUNK, request_timeout=120
+    # One entry OpenSearch won't take must not abort loading the other lists.
+    indexed, errors = opensearch_helpers.bulk(
+        client,
+        actions(),
+        chunk_size=BULK_CHUNK,
+        request_timeout=120,
+        raise_on_error=False,
     )
+    if errors:
+        logger.warning(
+            "warninglist %s: %s entries rejected, e.g. %s",
+            warninglist_id,
+            len(errors),
+            errors[0],
+        )
     return indexed
 
 
@@ -157,7 +175,14 @@ def update_warninglists(db: Session, lists_dir: str = WARNINGLISTS_DIR) -> dict:
             "warninglist %r loaded: %s entries", db_list.name, db_list.entry_count
         )
 
-    client.indices.refresh(index=ENTRIES_INDEX)
+    # Entries of no list: left by a load that failed before committing its row.
+    known = [w.id for w in db.query(warninglist_models.Warninglist.id).all()]
+    client.delete_by_query(
+        index=ENTRIES_INDEX,
+        body={"query": {"bool": {"must_not": [{"terms": {"warninglist_id": known}}]}}},
+        conflicts="proceed",
+        refresh=True,
+    )
     counts["changed"] = bool(counts["created"] or counts["updated"])
     return counts
 

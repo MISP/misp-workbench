@@ -144,6 +144,14 @@ def test_index_values():
         "range": "2001:db8::/32"
     }
     assert warninglists_repository._index_value("cidr", "nonsense") is None
+    # IPv4-mapped IPv6 ranges (seen in public-dns-v6, bunny-net, umbrella lists)
+    # are rejected by ip_range in CIDR form: indexed as their IPv4 range.
+    assert warninglists_repository._index_value(
+        "cidr", "::ffff:146.112.61.110/128"
+    ) == {"range": "146.112.61.110/32"}
+    assert warninglists_repository._index_value("cidr", "::ffff:10.0.0.0/104") == {
+        "range": "10.0.0.0/8"
+    }
     assert warninglists_repository._index_value("hostname", ".Example.COM.") == {
         "value": "example.com"
     }
