@@ -175,6 +175,10 @@ def update_warninglists(db: Session, lists_dir: str = WARNINGLISTS_DIR) -> dict:
             "warninglist %r loaded: %s entries", db_list.name, db_list.entry_count
         )
 
+    # Make what was just bulk-indexed searchable: the evaluation that usually
+    # follows a load (and the cleanup below) must see every entry.
+    client.indices.refresh(index=ENTRIES_INDEX)
+
     # Entries of no list: left by a load that failed before committing its row.
     known = [w.id for w in db.query(warninglist_models.Warninglist.id).all()]
     client.delete_by_query(
