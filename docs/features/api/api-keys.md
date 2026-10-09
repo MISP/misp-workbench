@@ -26,6 +26,16 @@ Navigate to ***internals*** → ***API keys*** and click **New API key**.
 | **Expires at** | Optional. After this timestamp the key stops authenticating. Leave empty for a non-expiring key. |
 | **Scopes** | The permissions the key carries. Only scopes your role allows are selectable. |
 
+For a SIEM, **SIEM integration preset** selects exactly what one needs, and
+nothing more: `events:read` and `attributes:read` ([restSearch](rest-search.md),
+[lookup](lookup.md), [streaming exports](streaming-exports.md)), `exports:read`
+([incremental feeds](../exports.md#incremental-feeds)), `sightings:create`
+(reporting hits back, see [Sightings](../sightings.md)) and `warninglists:read`.
+Scopes your role doesn't have are left out.
+
+<img src="../../../screenshots/api-keys/misp-workbench-1_api-keys_siem-preset.png#only-light" alt="New API key with the SIEM integration preset" style="height: 600px;">
+<img src="../../../screenshots/api-keys/misp-workbench-1_api-keys_siem-preset-dark.png#only-dark" alt="New API key with the SIEM integration preset" style="height: 600px;">
+
 After you click **Create**, the raw token is displayed in a banner. **Copy it immediately** — once dismissed, it is gone forever. If lost, delete the key and create a new one.
 
 ### Creating via the API

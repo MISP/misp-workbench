@@ -9,6 +9,7 @@ import typer
 
 from app.database import SessionLocal
 from app.models import audit_log as audit_log_models
+from app.models import export as export_models
 from app.models import hunt as hunt_models
 from app.models import lab as lab_models
 from app.models import notification as notification_models
@@ -23,6 +24,9 @@ from app.repositories import reactor as reactor_repository
 from app.repositories import servers as servers_repository
 from app.repositories import servos as servos_repository
 from app.repositories import events as events_repository
+from app.repositories import exports as exports_repository
+from app.repositories import sinks as sinks_repository
+from app.repositories import warninglists as warninglists_repository
 from app.repositories import hunts as hunts_repository
 from app.repositories import objects as objects_repository
 from app.repositories import organisations as organisations_repository
@@ -35,6 +39,8 @@ from app.schemas import reactor as reactor_schemas
 from app.schemas import server as server_schemas
 from app.schemas import servo as servo_schemas
 from app.schemas import event as event_schemas
+from app.schemas import export as export_schemas
+from app.schemas import sink as sink_schemas
 from app.schemas import hunt as hunt_schemas
 from app.schemas import object as object_schemas
 from app.schemas import organisations as organisation_schemas
@@ -471,6 +477,96 @@ def _demo_analyst_key(entry: dict) -> str:
     if entry.get("relationship_type"):
         return f"{entry['relationship_type']}|{entry.get('related_object_uuid', '')}"
     return entry.get("note") or entry.get("comment") or ""
+
+
+def _seed_demo_sinks(db, sinks_data) -> tuple[int, int]:
+    """Upsert the demo sinks by name, with a believable delivery history.
+
+    Disabled and pointed at example.org, like the demo feeds and servers: a
+    demo publish must never try to reach a real SIEM. The status fields are
+    set directly so the sinks list shows what a working setup looks like.
+    """
+    now = datetime.now(timezone.utc)
+    created = updated = 0
+    existing = {s.name: s for s in sinks_repository.get_sinks(db)}
+    for entry in sinks_data:
+        db_sink = existing.get(entry["name"])
+        if db_sink is None:
+            db_sink = sinks_repository.create_sink(
+                db,
+                sink_schemas.SinkCreate(
+                    name=entry["name"],
+                    type=entry["type"],
+                    enabled=entry.get("enabled", False),
+                    config=entry["config"],
+                    filters=entry.get("filters", {}),
+                ),
+            )
+            created += 1
+        else:
+            db_sink.enabled = entry.get("enabled", False)
+            db_sink.config = sink_schemas.validate_config(entry["type"], entry["config"])
+            db_sink.filters = sink_schemas.SinkFilters(**entry.get("filters", {})).model_dump()
+            updated += 1
+
+        status = entry.get("status", {})
+
+        def ago(minutes):
+            return now - timedelta(minutes=minutes) if minutes is not None else None
+
+        db_sink.last_success_at = ago(status.get("last_success_minutes_ago"))
+        db_sink.last_error_at = ago(status.get("last_error_minutes_ago"))
+        db_sink.last_error = status.get("last_error")
+        attempts = [t for t in (db_sink.last_success_at, db_sink.last_error_at) if t]
+        db_sink.last_attempt_at = max(attempts) if attempts else None
+        db_sink.delivered_count = status.get("delivered_count", 0)
+        db_sink.failed_count = status.get("failed_count", 0)
+        db.commit()
+    return created, updated
+
+
+def _seed_demo_exports(db, user, exports_data) -> tuple[int, int]:
+    """Create the demo exports by name and run each once, synchronously.
+
+    Running them here (rather than leaving it to the worker) means the files,
+    record counts and an incremental feed's cursor (its feed URL) exist as
+    soon as the seed finishes, with or without a Celery worker.
+    """
+    created = skipped = 0
+    existing = {
+        e.name
+        for e in db.query(export_models.Export)
+        .filter(export_models.Export.user_id == user.id)
+        .all()
+    }
+    for entry in exports_data:
+        if entry["name"] in existing:
+            skipped += 1
+            continue
+        db_export = exports_repository.create_export(
+            db,
+            export_schemas.ExportCreate(**entry, schedule_enabled=True),
+            user_id=user.id,
+        )
+        exports_repository.run_export(db, db_export.id)
+        created += 1
+    return created, skipped
+
+
+def _reset_demo_integrations(db, user, sinks_data, exports_data) -> None:
+    """Remove the demo's sinks and exports (by fixture name, nothing else)."""
+    names = {s["name"] for s in sinks_data}
+    for db_sink in sinks_repository.get_sinks(db):
+        if db_sink.name in names:
+            sinks_repository.delete_sink(db, db_sink)
+    export_names = {e["name"] for e in exports_data}
+    for db_export in (
+        db.query(export_models.Export)
+        .filter(export_models.Export.user_id == user.id)
+        .all()
+    ):
+        if db_export.name in export_names:
+            exports_repository.delete_export(db, db_export.id, user.id)
 
 
 def _seed_demo_servos(db, user, servos_data) -> tuple[int, int]:
@@ -978,6 +1074,11 @@ def seed_demo(
         "--reset",
         help="Remove the demo's own rows before re-creating them. Never touches anything it did not create.",
     ),
+    skip_warninglists: bool = typer.Option(
+        False,
+        "--skip-warninglists",
+        help="Do not load the MISP warninglists (all 225 lists take a couple of minutes)",
+    ),
 ):
     """Seed a full walkthrough dataset for a live demo.
 
@@ -1016,6 +1117,8 @@ def seed_demo(
     reports_data = json.loads((fixtures_dir / "event_reports.json").read_text())
     servers_data = json.loads((fixtures_dir / "servers.json").read_text())
     sightings_data = json.loads((fixtures_dir / "sightings.json").read_text())
+    sinks_data = json.loads((fixtures_dir / "sinks.json").read_text())
+    exports_data = json.loads((fixtures_dir / "exports.json").read_text())
 
     client = get_opensearch_client()
 
@@ -1031,6 +1134,7 @@ def seed_demo(
             servers_data,
             sightings_data,
         )
+        _reset_demo_integrations(db, user, sinks_data, exports_data)
 
     now = datetime.now(timezone.utc)
 
@@ -1103,6 +1207,22 @@ def seed_demo(
     # Last, so the fixture notifications sit above any the hunt runs raised.
     notifs_created, _ = _seed_demo_notifications(db, user, notifications_data)
 
+    sinks_created, sinks_updated = _seed_demo_sinks(db, sinks_data)
+
+    # Before the exports, so their artifacts already leave warninglisted
+    # values out.
+    warninglists_msg = "skipped"
+    if not skip_warninglists:
+        typer.echo("Loading warninglists (all lists, this takes a couple of minutes)...")
+        counts = warninglists_repository.update_warninglists(db)
+        flagged = warninglists_repository.evaluate_all(db) or {}
+        warninglists_msg = (
+            f"{counts['created']} new / {counts['updated']} updated / "
+            f"{counts['unchanged']} unchanged; {flagged.get('changed', 0)} attributes flagged"
+        )
+
+    exports_created, exports_skipped = _seed_demo_exports(db, user, exports_data)
+
     notebooks_msg = "skipped (directory not found)"
     if notebooks_dir.is_dir():
         seed_lab_library(owner_email=DOCS_USER_EMAIL, directory=notebooks_dir)
@@ -1147,6 +1267,13 @@ def seed_demo(
     typer.echo(f"  event reports     {reports_created} upserted")
     typer.echo(f"  sightings         {sightings_created} upserted (45-day spread)")
     typer.echo(f"  notifications     {notifs_created} created")
+    typer.echo(
+        f"  sinks             {sinks_created} created / {sinks_updated} refreshed (disabled, never reachable)"
+    )
+    typer.echo(
+        f"  exports           {exports_created} created and run / {exports_skipped} already present"
+    )
+    typer.echo(f"  warninglists      {warninglists_msg}")
     typer.echo(f"  notebooks         {notebooks_msg}")
     typer.echo(f"  correlations      {correlations_msg}")
     typer.echo("")

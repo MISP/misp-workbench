@@ -1,0 +1,32 @@
+[
+  {
+    "name": "SIEM IOC feed (incremental)",
+    "query": "to_ids:true",
+    "index_target": "attributes",
+    "format": "ndjson",
+    "incremental": true,
+    "schedule": {
+      "type": "crontab",
+      "minute": "0",
+      "hour": "*",
+      "day_of_week": "*",
+      "day_of_month": "*",
+      "month_of_year": "*"
+    }
+  },
+  {
+    "name": "Wazuh CDB list: network IOCs",
+    "query": "to_ids:true AND (type:ip-src OR type:ip-dst OR type:domain)",
+    "index_target": "attributes",
+    "format": "cdb",
+    "incremental": false,
+    "schedule": {
+      "type": "crontab",
+      "minute": "30",
+      "hour": "*/6",
+      "day_of_week": "*",
+      "day_of_month": "*",
+      "month_of_year": "*"
+    }
+  }
+]

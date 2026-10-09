@@ -22,6 +22,9 @@ Under ***settings*** → ***warninglists***:
   background whenever lists change.
 - **Check values** tells you which enabled lists a set of values is on.
 
+<img src="../../screenshots/warninglists/misp-workbench-1_warninglists_page.png#only-light" alt="Warninglists page with a value check" style="max-width: 100%; height: auto;">
+<img src="../../screenshots/warninglists/misp-workbench-1_warninglists_page-dark.png#only-dark" alt="Warninglists page with a value check" style="max-width: 100%; height: auto;">
+
 Reading lists and checking values needs `warninglists:read`, which every
 built-in role has. Updating and enabling or disabling lists needs
 `warninglists:update`, which only admins have by default.
@@ -31,6 +34,9 @@ built-in role has. Updating and enabling or disabling lists needs
 Each attribute carries `warninglist_hits`: the names of the enabled lists its
 value is on. In the event's attribute list, flagged values show a
 **warninglist** badge whose tooltip names the lists.
+
+<img src="../../screenshots/warninglists/misp-workbench-2_warninglists_flagged-attributes.png#only-light" alt="Warninglisted attributes in an event" style="max-width: 100%; height: auto;">
+<img src="../../screenshots/warninglists/misp-workbench-2_warninglists_flagged-attributes-dark.png#only-dark" alt="Warninglisted attributes in an event" style="max-width: 100%; height: auto;">
 
 A list applies to the attribute types it declares (`matching_attributes`).
 Matching follows the list type:

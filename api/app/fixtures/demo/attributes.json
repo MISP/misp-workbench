@@ -763,5 +763,53 @@
         "is_galaxy": true
       }
     ]
+  },
+  {
+    "uuid": "d3110000-0002-4001-8000-000000000023",
+    "event_uuid": "d3110000-0001-4001-8000-000000000002",
+    "category": "Network activity",
+    "type": "ip-dst",
+    "value": "8.8.8.8",
+    "to_ids": true,
+    "distribution": 0,
+    "comment": "Resolver the sample queries before beaconing: benign, and on a warninglist",
+    "tags": [
+      {
+        "name": "tlp:green",
+        "colour": "#00a500"
+      }
+    ]
+  },
+  {
+    "uuid": "d3110000-0002-4001-8000-000000000024",
+    "event_uuid": "d3110000-0001-4001-8000-000000000002",
+    "category": "Network activity",
+    "type": "domain",
+    "value": "www.google.com",
+    "to_ids": true,
+    "distribution": 0,
+    "comment": "Connectivity check made by the dropper: benign, and on several warninglists",
+    "tags": [
+      {
+        "name": "tlp:green",
+        "colour": "#00a500"
+      }
+    ]
+  },
+  {
+    "uuid": "d3110000-0002-4001-8000-000000000025",
+    "event_uuid": "d3110000-0001-4001-8000-000000000002",
+    "category": "Network activity",
+    "type": "ip-src",
+    "value": "192.168.56.101",
+    "to_ids": true,
+    "distribution": 0,
+    "comment": "Sandbox VM address copied from the partner's analysis report",
+    "tags": [
+      {
+        "name": "tlp:green",
+        "colour": "#00a500"
+      }
+    ]
   }
 ]
