@@ -60,6 +60,9 @@ const canReadApiKeys = computed(() =>
 const canAdminApiKeys = computed(() =>
   authHelper.hasScope(scopes.value, "api_keys:admin"),
 );
+const canReadSinks = computed(() =>
+  authHelper.hasScope(scopes.value, "sinks:read"),
+);
 const canAdminAuditLogs = computed(() =>
   authHelper.hasScope(scopes.value, "audit_logs:admin"),
 );
@@ -294,6 +297,11 @@ function navAndClose(path) {
             <li>
               <RouterLink to="/exports" class="dropdown-item fw-light"
                 >exports</RouterLink
+              >
+            </li>
+            <li v-if="canReadSinks">
+              <RouterLink to="/sinks" class="dropdown-item fw-light"
+                >sinks</RouterLink
               >
             </li>
             <li><hr class="dropdown-divider" /></li>
@@ -644,6 +652,15 @@ function navAndClose(path) {
                 @click.prevent="navAndClose('/exports')"
               >
                 exports
+              </RouterLink>
+            </li>
+            <li v-if="canReadSinks">
+              <RouterLink
+                to="/sinks"
+                class="list-group-item list-group-item-action ps-4"
+                @click.prevent="navAndClose('/sinks')"
+              >
+                sinks
               </RouterLink>
             </li>
             <li v-if="canReadTasks">

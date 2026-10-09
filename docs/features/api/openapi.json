@@ -1450,10 +1450,11 @@
           {
             "name": "query",
             "in": "query",
-            "required": true,
+            "required": false,
             "schema": {
               "type": "string",
               "minLength": 0,
+              "default": "",
               "title": "Query"
             }
           },
@@ -1472,6 +1473,16 @@
               ],
               "default": "json",
               "title": "Format"
+            }
+          },
+          {
+            "name": "include_deleted",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Include Deleted"
             }
           }
         ],
@@ -2738,10 +2749,11 @@
           {
             "name": "query",
             "in": "query",
-            "required": true,
+            "required": false,
             "schema": {
               "type": "string",
               "minLength": 0,
+              "default": "",
               "title": "Query"
             }
           },
@@ -2760,6 +2772,34 @@
               ],
               "default": "json",
               "title": "Format"
+            }
+          },
+          {
+            "name": "since",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Only attributes written since this time (epoch seconds, ISO date or relative age like 7d), soft-deleted ones included as tombstones. Use the X-Export-Timestamp header of the previous export.",
+              "title": "Since"
+            },
+            "description": "Only attributes written since this time (epoch seconds, ISO date or relative age like 7d), soft-deleted ones included as tombstones. Use the X-Export-Timestamp header of the previous export."
+          },
+          {
+            "name": "include_deleted",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Include Deleted"
             }
           }
         ],
@@ -8348,6 +8388,122 @@
         }
       }
     },
+    "/sightings/add": {
+      "post": {
+        "tags": [
+          "Sightings"
+        ],
+        "summary": "Misp Add Sightings",
+        "description": "MISP-compatible: sight ``value``/``values``, or an attribute by ``uuid``/``id``.",
+        "operationId": "misp_add_sightings_sightings_add_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MispSightingAdd"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MispSightingAddResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "sightings:create"
+            ]
+          }
+        ]
+      }
+    },
+    "/sightings/add/{attribute_ref}": {
+      "post": {
+        "tags": [
+          "Sightings"
+        ],
+        "summary": "Misp Add Attribute Sighting",
+        "description": "MISP-compatible: sight one attribute by uuid (or MISP numeric id).",
+        "operationId": "misp_add_attribute_sighting_sightings_add__attribute_ref__post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "sightings:create"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "attribute_ref",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Attribute Ref"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/MispSightingAdd"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Payload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MispSightingAddResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/sightings/histogram": {
       "get": {
         "tags": [
@@ -9512,6 +9668,154 @@
         }
       }
     },
+    "/lookup": {
+      "post": {
+        "tags": [
+          "Lookup"
+        ],
+        "summary": "Bulk Lookup",
+        "description": "Which of these values are known indicators, with their context.",
+        "operationId": "bulk_lookup_lookup_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "attributes:read"
+            ]
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LookupRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LookupResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Lookup"
+        ],
+        "summary": "Single Lookup",
+        "description": "One value per request, for per-key lookup adapters (e.g. Graylog's HTTP JSONPath).",
+        "operationId": "single_lookup_lookup_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "attributes:read"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "value",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "title": "Value"
+            }
+          },
+          {
+            "name": "to_ids_only",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": true,
+              "title": "To Ids Only"
+            }
+          },
+          {
+            "name": "max_attributes",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 10,
+              "title": "Max Attributes"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SingleLookupResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/lookup/cache": {
+      "get": {
+        "tags": [
+          "Lookup"
+        ],
+        "summary": "Lookup Cache Status",
+        "operationId": "lookup_cache_status_lookup_cache_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LookupCacheStatus"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "attributes:read"
+            ]
+          }
+        ]
+      }
+    },
     "/exports/": {
       "get": {
         "tags": [
@@ -9869,6 +10173,407 @@
             "content": {
               "application/json": {
                 "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/exports/{export_id}/feed": {
+      "get": {
+        "tags": [
+          "Exports"
+        ],
+        "summary": "Get Export Feed",
+        "description": "Serve an incremental export: the full artifact, or deltas since a cursor.\n\nBoth come from storage, so polling consumers never query OpenSearch; it is\nread once per scheduled run, however many of them there are.",
+        "operationId": "get_export_feed_exports__export_id__feed_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "exports:read"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "export_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Export Id"
+            }
+          },
+          {
+            "name": "since",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The X-Feed-Cursor of the last response. Omit for the full feed; with it, only the deltas written after that cursor.",
+              "title": "Since"
+            },
+            "description": "The X-Feed-Cursor of the last response. Omit for the full feed; with it, only the deltas written after that cursor."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sinks/": {
+      "get": {
+        "tags": [
+          "Sinks"
+        ],
+        "summary": "Get Sinks",
+        "operationId": "get_sinks_sinks__get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/Sink"
+                  },
+                  "type": "array",
+                  "title": "Response Get Sinks Sinks  Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "sinks:read"
+            ]
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "Sinks"
+        ],
+        "summary": "Create Sink",
+        "operationId": "create_sink_sinks__post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SinkCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Sink"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "sinks:create"
+            ]
+          }
+        ]
+      }
+    },
+    "/sinks/{sink_id}": {
+      "get": {
+        "tags": [
+          "Sinks"
+        ],
+        "summary": "Get Sink",
+        "operationId": "get_sink_sinks__sink_id__get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "sinks:read"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "sink_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Sink Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Sink"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Sinks"
+        ],
+        "summary": "Update Sink",
+        "operationId": "update_sink_sinks__sink_id__patch",
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "sinks:update"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "sink_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Sink Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SinkUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Sink"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Sinks"
+        ],
+        "summary": "Delete Sink",
+        "operationId": "delete_sink_sinks__sink_id__delete",
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "sinks:delete"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "sink_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Sink Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sinks/{sink_id}/test": {
+      "post": {
+        "tags": [
+          "Sinks"
+        ],
+        "summary": "Test Sink",
+        "description": "Send one synthetic indicator now and report whether the sink took it.",
+        "operationId": "test_sink_sinks__sink_id__test_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "sinks:test"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "sink_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Sink Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SinkTestResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sinks/{sink_id}/deliver/{event_uuid}": {
+      "post": {
+        "tags": [
+          "Sinks"
+        ],
+        "summary": "Deliver Event",
+        "description": "Queue a delivery of one event to the sink, published or not.\n\nFor backfilling a new sink or replaying an event a SIEM missed.",
+        "operationId": "deliver_event_sinks__sink_id__deliver__event_uuid__post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "sinks:test"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "sink_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Sink Id"
+            }
+          },
+          {
+            "name": "event_uuid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Event Uuid"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SinkDeliveryQueued"
+                }
               }
             }
           },
@@ -15040,7 +15745,10 @@
               "json",
               "csv",
               "stix",
-              "misp"
+              "misp",
+              "ndjson",
+              "text",
+              "cdb"
             ],
             "title": "Format",
             "default": "json"
@@ -15055,6 +15763,11 @@
               }
             ],
             "title": "Distribution"
+          },
+          "incremental": {
+            "type": "boolean",
+            "title": "Incremental",
+            "default": false
           },
           "id": {
             "type": "integer",
@@ -15167,6 +15880,28 @@
             ],
             "title": "Last Run At"
           },
+          "checksum": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Checksum"
+          },
+          "cursor": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cursor"
+          },
           "created_at": {
             "type": "string",
             "format": "date-time",
@@ -15233,7 +15968,10 @@
               "json",
               "csv",
               "stix",
-              "misp"
+              "misp",
+              "ndjson",
+              "text",
+              "cdb"
             ],
             "title": "Format",
             "default": "json"
@@ -15248,6 +15986,11 @@
               }
             ],
             "title": "Distribution"
+          },
+          "incremental": {
+            "type": "boolean",
+            "title": "Incremental",
+            "default": false
           },
           "schedule": {
             "anyOf": [
@@ -17529,6 +18272,430 @@
         ],
         "title": "LabTree",
         "description": "Single response that returns Personal + Global + Library trees so the\nleft panel renders in one round trip. Library notebooks are read-only\nprebuilt content (seeded via CLI); users fork them to a personal copy\nbefore running."
+      },
+      "LookupAttribute": {
+        "properties": {
+          "uuid": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Uuid"
+          },
+          "type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Type"
+          },
+          "category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          },
+          "to_ids": {
+            "type": "boolean",
+            "title": "To Ids",
+            "default": false
+          },
+          "comment": {
+            "type": "string",
+            "title": "Comment",
+            "default": ""
+          },
+          "timestamp": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp"
+          },
+          "first_seen": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Seen"
+          },
+          "last_seen": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Seen"
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Tags",
+            "default": []
+          },
+          "event": {
+            "$ref": "#/components/schemas/LookupEvent"
+          }
+        },
+        "type": "object",
+        "required": [
+          "event"
+        ],
+        "title": "LookupAttribute"
+      },
+      "LookupCacheStatus": {
+        "properties": {
+          "built": {
+            "type": "boolean",
+            "title": "Built"
+          },
+          "built_at": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Built At"
+          },
+          "synced_at": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Synced At"
+          },
+          "values": {
+            "type": "integer",
+            "title": "Values"
+          },
+          "intact": {
+            "type": "boolean",
+            "title": "Intact"
+          }
+        },
+        "type": "object",
+        "required": [
+          "built",
+          "values",
+          "intact"
+        ],
+        "title": "LookupCacheStatus"
+      },
+      "LookupEvent": {
+        "properties": {
+          "uuid": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Uuid"
+          },
+          "info": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Info"
+          },
+          "threat_level_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Threat Level Id"
+          },
+          "published": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Published"
+          },
+          "org": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Org"
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Tags",
+            "default": []
+          }
+        },
+        "type": "object",
+        "title": "LookupEvent"
+      },
+      "LookupMatch": {
+        "properties": {
+          "value": {
+            "type": "string",
+            "title": "Value"
+          },
+          "attribute_count": {
+            "type": "integer",
+            "title": "Attribute Count"
+          },
+          "attributes": {
+            "items": {
+              "$ref": "#/components/schemas/LookupAttribute"
+            },
+            "type": "array",
+            "title": "Attributes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "value",
+          "attribute_count",
+          "attributes"
+        ],
+        "title": "LookupMatch"
+      },
+      "LookupRequest": {
+        "properties": {
+          "values": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Values",
+            "description": "Values to check, up to 10,000"
+          },
+          "to_ids_only": {
+            "type": "boolean",
+            "title": "To Ids Only",
+            "description": "Only IDS attributes count as matches (uses the Redis prefilter). False matches any live attribute and asks OpenSearch about every value.",
+            "default": true
+          },
+          "max_attributes": {
+            "type": "integer",
+            "maximum": 100.0,
+            "minimum": 1.0,
+            "title": "Max Attributes",
+            "description": "Attributes returned per matched value",
+            "default": 10
+          }
+        },
+        "type": "object",
+        "required": [
+          "values"
+        ],
+        "title": "LookupRequest"
+      },
+      "LookupResponse": {
+        "properties": {
+          "checked": {
+            "type": "integer",
+            "title": "Checked"
+          },
+          "matched": {
+            "type": "integer",
+            "title": "Matched"
+          },
+          "candidates": {
+            "type": "integer",
+            "title": "Candidates"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source"
+          },
+          "took_ms": {
+            "type": "number",
+            "title": "Took Ms"
+          },
+          "matches": {
+            "items": {
+              "$ref": "#/components/schemas/LookupMatch"
+            },
+            "type": "array",
+            "title": "Matches"
+          }
+        },
+        "type": "object",
+        "required": [
+          "checked",
+          "matched",
+          "candidates",
+          "source",
+          "took_ms",
+          "matches"
+        ],
+        "title": "LookupResponse"
+      },
+      "MispSightingAdd": {
+        "properties": {
+          "value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          },
+          "values": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Values"
+          },
+          "uuid": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Uuid"
+          },
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "type": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Type",
+            "default": 0
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          },
+          "timestamp": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp"
+          }
+        },
+        "additionalProperties": true,
+        "type": "object",
+        "title": "MispSightingAdd",
+        "description": "MISP's ``/sightings/add`` body: what PyMISP and SIEM connectors send.\n\nSightings target a value (``value``/``values``) or an attribute\n(``uuid``/``id``, or the URL's attribute id). ``type`` is MISP's 0\n(sighting), 1 (false positive) or 2 (expiration); names are accepted too."
+      },
+      "MispSightingAddResponse": {
+        "properties": {
+          "saved": {
+            "type": "boolean",
+            "title": "Saved"
+          },
+          "success": {
+            "type": "boolean",
+            "title": "Success"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "url": {
+            "type": "string",
+            "title": "Url"
+          }
+        },
+        "type": "object",
+        "required": [
+          "saved",
+          "success",
+          "name",
+          "message",
+          "url"
+        ],
+        "title": "MispSightingAddResponse"
       },
       "Module": {
         "properties": {
@@ -22906,6 +24073,340 @@
           "previous_total"
         ],
         "title": "SightingStatsResponse"
+      },
+      "SingleLookupResponse": {
+        "properties": {
+          "value": {
+            "type": "string",
+            "title": "Value"
+          },
+          "match": {
+            "type": "boolean",
+            "title": "Match"
+          },
+          "attribute_count": {
+            "type": "integer",
+            "title": "Attribute Count",
+            "default": 0
+          },
+          "attributes": {
+            "items": {
+              "$ref": "#/components/schemas/LookupAttribute"
+            },
+            "type": "array",
+            "title": "Attributes",
+            "default": []
+          }
+        },
+        "type": "object",
+        "required": [
+          "value",
+          "match"
+        ],
+        "title": "SingleLookupResponse"
+      },
+      "Sink": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "splunk_hec",
+              "gelf",
+              "syslog",
+              "webhook"
+            ],
+            "title": "Type"
+          },
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled",
+            "default": true
+          },
+          "config": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Config"
+          },
+          "filters": {
+            "$ref": "#/components/schemas/SinkFilters",
+            "default": {
+              "to_ids_only": true,
+              "types": [],
+              "tags": [],
+              "exclude_tags": [
+                "tlp:red"
+              ]
+            }
+          },
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          },
+          "last_attempt_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Attempt At"
+          },
+          "last_success_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Success At"
+          },
+          "last_error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Error"
+          },
+          "last_error_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Error At"
+          },
+          "delivered_count": {
+            "type": "integer",
+            "title": "Delivered Count",
+            "default": 0
+          },
+          "failed_count": {
+            "type": "integer",
+            "title": "Failed Count",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "type",
+          "config",
+          "id",
+          "created_at"
+        ],
+        "title": "Sink"
+      },
+      "SinkCreate": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "splunk_hec",
+              "gelf",
+              "syslog",
+              "webhook"
+            ],
+            "title": "Type"
+          },
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled",
+            "default": true
+          },
+          "config": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Config"
+          },
+          "filters": {
+            "$ref": "#/components/schemas/SinkFilters",
+            "default": {
+              "to_ids_only": true,
+              "types": [],
+              "tags": [],
+              "exclude_tags": [
+                "tlp:red"
+              ]
+            }
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "type",
+          "config"
+        ],
+        "title": "SinkCreate"
+      },
+      "SinkDeliveryQueued": {
+        "properties": {
+          "task_id": {
+            "type": "string",
+            "title": "Task Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "task_id"
+        ],
+        "title": "SinkDeliveryQueued"
+      },
+      "SinkFilters": {
+        "properties": {
+          "to_ids_only": {
+            "type": "boolean",
+            "title": "To Ids Only",
+            "default": true
+          },
+          "types": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Types",
+            "default": []
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Tags",
+            "default": []
+          },
+          "exclude_tags": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Exclude Tags",
+            "default": [
+              "tlp:red"
+            ]
+          }
+        },
+        "type": "object",
+        "title": "SinkFilters",
+        "description": "Which attributes of a published event are sent.\n\nTag patterns are shell-style (``tlp:*``) and match attribute tags and the\nevent's tags alike."
+      },
+      "SinkTestResult": {
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "title": "Ok"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ok"
+        ],
+        "title": "SinkTestResult"
+      },
+      "SinkUpdate": {
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Enabled"
+          },
+          "config": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Config"
+          },
+          "filters": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SinkFilters"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "title": "SinkUpdate"
       },
       "StatusResponse": {
         "properties": {

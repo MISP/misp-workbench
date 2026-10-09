@@ -4,13 +4,16 @@ from app.auth.security import get_current_active_user
 from app.db.session import get_db
 from app.repositories import attributes as attributes_repository
 from app.repositories import events as events_repository
+from app.repositories import stream_exports as stream_exports_repository
 from app.repositories import tags as tags_repository
 from app.schemas import attribute as attribute_schemas
 from app.schemas import user as user_schemas
+from app.services.runtime_settings import RuntimeSettings
+from app.services.runtime_settings_provider import get_runtime_settings
 from app.worker import tasks
-from fastapi import APIRouter, Depends, HTTPException, Response, Security, status, Query
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, Security, status, Query
+from fastapi.concurrency import run_in_threadpool
 from fastapi_pagination import Page, Params
-from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
 router = APIRouter()
@@ -81,18 +84,39 @@ async def get_attributes_histogram(
 
 @router.get("/attributes/export")
 async def export_attributes(
-    query: str = Query(..., min_length=0),
+    request: Request,
+    query: str = Query("", min_length=0),
     format: Optional[str] = Query("json"),
+    since: Optional[str] = Query(
+        None,
+        description=(
+            "Only attributes written since this time (epoch seconds, ISO date or "
+            "relative age like 7d), soft-deleted ones included as tombstones. "
+            "Use the X-Export-Timestamp header of the previous export."
+        ),
+    ),
+    include_deleted: bool = Query(False),
+    runtime_settings: RuntimeSettings = Depends(get_runtime_settings),
     user: user_schemas.User = Security(get_current_active_user, scopes=["attributes:read"]),
 ):
-    results = attributes_repository.export_attributes(query, format=format)
+    try:
+        export = await run_in_threadpool(
+            stream_exports_repository.prepare_attribute_export,
+            query,
+            format,
+            since,
+            include_deleted,
+        )
+    except stream_exports_repository.RestSearchError as error:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(error))
 
-    if format == "json":
-        return JSONResponse(list(results))
-
-    raise HTTPException(
-        status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid format specified"
+    max_concurrent = await run_in_threadpool(
+        runtime_settings.get_value, "exports.max_concurrent_per_user", 3
     )
+    return await stream_exports_repository.to_response(
+        export, request, user_id=user.id, max_concurrent=max_concurrent
+    )
+
 
 @router.get("/attributes/{attribute_uuid}", response_model=attribute_schemas.Attribute)
 def get_attribute_by_uuid(
@@ -136,13 +160,15 @@ def create_attribute(
 
     attribute.event_uuid = event.uuid
     try:
-        return attributes_repository.create_attribute(db=db, attribute=attribute)
+        created = attributes_repository.create_attribute(db=db, attribute=attribute)
     except attributes_repository.AttributeNotIndexedError as error:
         # A servo dropped it. 201 would be a lie -- the attribute is not
         # searchable and nothing downstream ran for it.
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(error)
         )
+    events_repository.mark_event_modified(event.uuid)
+    return created
 
 
 @router.patch("/attributes/{attribute_uuid}", response_model=attribute_schemas.Attribute)
@@ -154,9 +180,11 @@ def update_attribute(
         get_current_active_user, scopes=["attributes:update"]
     ),
 ) -> attribute_schemas.Attribute:
-    return attributes_repository.update_attribute(
+    updated = attributes_repository.update_attribute(
         db=db, attribute_uuid=attribute_uuid, attribute=attribute
     )
+    events_repository.mark_event_modified(updated.event_uuid)
+    return updated
 
 
 @router.delete("/attributes/{attribute_uuid}", status_code=status.HTTP_204_NO_CONTENT)
@@ -167,7 +195,9 @@ def delete_attribute(
         get_current_active_user, scopes=["attributes:delete"]
     ),
 ):
+    attribute = attributes_repository.get_attribute_from_opensearch(attribute_uuid)
     attributes_repository.delete_attribute(db=db, attribute_uuid=attribute_uuid)
+    events_repository.mark_event_modified(attribute.event_uuid)
 
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
@@ -193,6 +223,7 @@ def tag_attribute(
     tag = tags_repository.get_or_create_tag_by_name(db, tag_name=tag)
 
     tags_repository.tag_attribute(db=db, attribute=attribute, tag=tag)
+    events_repository.mark_event_modified(attribute.event_uuid)
 
     return Response(status_code=status.HTTP_201_CREATED)
 
@@ -222,5 +253,6 @@ def untag_attribute(
         )
 
     tags_repository.untag_attribute(db=db, attribute=attribute, tag=tag)
+    events_repository.mark_event_modified(attribute.event_uuid)
 
     return Response(status_code=status.HTTP_204_NO_CONTENT)

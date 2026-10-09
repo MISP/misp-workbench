@@ -1,5 +1,6 @@
 from sqlalchemy import (
     JSON,
+    BigInteger,
     Boolean,
     Column,
     DateTime,
@@ -7,6 +8,7 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
+    UniqueConstraint,
 )
 
 from app.database import Base
@@ -45,6 +47,38 @@ class Export(Base):
     scheduled_task_name = Column(String(128), nullable=True)
     schedule_enabled = Column(Boolean, nullable=False, default=False)
     last_run_at = Column(DateTime(timezone=True), nullable=True)
+    # sha256 of the stored artifact, served as its ETag: a re-run that produces
+    # the same bytes keeps answering conditional requests with a 304.
+    checksum = Column(String(64), nullable=True)
+    # Incremental feeds: every run also writes a delta of what changed since the
+    # previous run. ``cursor`` is the unix time the latest run read the index
+    # at; the full artifact is current as of it.
+    incremental = Column(Boolean, nullable=False, default=False, server_default="false")
+    cursor = Column(BigInteger, nullable=True)
     created_at = Column(DateTime(timezone=True), nullable=False)
     started_at = Column(DateTime(timezone=True), nullable=True)
     finished_at = Column(DateTime(timezone=True), nullable=True)
+
+
+class ExportDelta(Base):
+    """What changed between two runs of an incremental export.
+
+    Covers attributes written at or after ``since`` and up to ``until`` (the
+    run's cursor), soft-deleted ones included as tombstones. Consecutive deltas
+    chain: each one's ``since`` is the previous one's ``until``.
+    """
+
+    __tablename__ = "export_deltas"
+    __table_args__ = (UniqueConstraint("export_id", "seq"),)
+
+    id = Column(Integer, primary_key=True, index=True)
+    export_id = Column(
+        Integer, ForeignKey("exports.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    seq = Column(Integer, nullable=False)
+    since = Column(BigInteger, nullable=False)
+    until = Column(BigInteger, nullable=False)
+    storage_key = Column(String(512), nullable=False)
+    record_count = Column(Integer, nullable=False, default=0)
+    file_size = Column(Integer, nullable=False, default=0)
+    created_at = Column(DateTime(timezone=True), nullable=False)
