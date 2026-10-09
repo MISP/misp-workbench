@@ -29,6 +29,7 @@ export * from "./userSettings.store";
 export * from "./notifications.store";
 export * from "./hunts.store";
 export * from "./exports.store";
+export * from "./sinks.store";
 export * from "./reactor.store";
 export * from "./servos.store";
 export * from "./notebooks.store";

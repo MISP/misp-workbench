@@ -329,7 +329,11 @@ function onAttributesFilterChange(filters) {
 
 async function downloadAllResults(type, format = "json") {
   try {
-    const params = { query: searchQuery.value || "", format };
+    const params = {
+      query: searchQuery.value || "",
+      format,
+      include_deleted: includeDeleted.value,
+    };
     let data;
     if (type === "attributes") {
       data = await attributesStore.export(params);

@@ -148,7 +148,8 @@ class TestExportsResource(ApiTester):
         auth_token: auth.Token,
     ):
         with patch(
-            "app.routers.exports.get_export", return_value=b'[{"value": "1.2.3.4"}]'
+            "app.routers.exports.open_export",
+            return_value=iter([b'[{"value": "1.2.3.4"}]']),
         ) as mock_get:
             response = client.get(
                 f"/exports/{export_1.id}/download",

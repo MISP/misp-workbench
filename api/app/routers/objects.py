@@ -104,7 +104,9 @@ def create_object(
         )
 
     object.event_uuid = event.uuid
-    return objects_repository.create_object(db=db, object=object)
+    created = objects_repository.create_object(db=db, object=object)
+    events_repository.mark_event_modified(event.uuid)
+    return created
 
 
 @router.patch("/objects/{object_uuid}", response_model=object_schemas.Object)
@@ -116,7 +118,11 @@ def update_object(
         get_current_active_user, scopes=["objects:update"]
     ),
 ):
-    return objects_repository.update_object(db=db, object_uuid=object_uuid, object=object)
+    updated = objects_repository.update_object(
+        db=db, object_uuid=object_uuid, object=object
+    )
+    events_repository.mark_event_modified(updated.event_uuid)
+    return updated
 
 
 @router.delete("/objects/{object_uuid}", status_code=status.HTTP_204_NO_CONTENT)
@@ -127,6 +133,8 @@ def delete_object(
         get_current_active_user, scopes=["objects:delete"]
     ),
 ):
+    os_object = objects_repository.get_object_from_opensearch(object_uuid)
     objects_repository.delete_object(db=db, object_uuid=object_uuid)
+    events_repository.mark_event_modified(os_object.event_uuid)
 
     return Response(status_code=status.HTTP_204_NO_CONTENT)

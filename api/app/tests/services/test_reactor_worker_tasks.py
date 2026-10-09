@@ -359,15 +359,20 @@ class TestObjectHandlerWiring:
 
 
 class TestSightingHandlerWiring:
+    def _patch_processing(self):
+        # Attribute lookup, notifications and false-positive feedback have
+        # their own tests; stub them so only the reactor wiring is exercised.
+        from app.repositories import sightings as sightings_repository
+
+        return patch.object(
+            sightings_repository, "process_created_sightings", return_value={}
+        )
+
     def test_handle_created_sighting_dispatches(self):
-        # search_events drives the surrounding loop; force an empty result so
-        # we don't need full attribute fixtures.
+        # The single-sighting task survives for messages queued before the
+        # batch task existed, and goes through it.
         with patch.object(worker_tasks.reactor_dispatch, "delay") as delay, \
-                patch.object(
-                    worker_tasks.events_repository,
-                    "search_events",
-                    return_value={"total": 0, "results": []},
-                ):
+                self._patch_processing():
             worker_tasks.handle_created_sighting(
                 value="1.2.3.4",
                 organisation="ACME",
@@ -383,6 +388,29 @@ class TestSightingHandlerWiring:
             "organisation": "ACME",
             "timestamp": 1234567890.0,
         }
+
+    def test_handle_created_sightings_dispatches_each(self):
+        items = [
+            {"value": "1.2.3.4", "type": "positive", "organisation": "A", "timestamp": 1.0},
+            {"value": "5.6.7.8", "type": "false-positive", "organisation": "B", "timestamp": 2.0},
+        ]
+        with patch.object(worker_tasks.reactor_dispatch, "delay") as delay, \
+                self._patch_processing() as process:
+            worker_tasks.handle_created_sightings(items)
+        process.assert_called_once()
+        assert [c.args[2]["value"] for c in delay.call_args_list] == ["1.2.3.4", "5.6.7.8"]
+
+    def test_no_subscriber_no_dispatch(self):
+        with patch.object(worker_tasks.reactor_dispatch, "delay") as delay, \
+                self._patch_processing(), patch.object(
+                    worker_tasks.reactor_repository,
+                    "has_active_subscriber",
+                    return_value=False,
+                ):
+            worker_tasks.handle_created_sightings(
+                [{"value": "1.2.3.4", "type": "positive", "organisation": "A"}]
+            )
+        delay.assert_not_called()
 
 
 class TestCorrelationHandlerWiring:

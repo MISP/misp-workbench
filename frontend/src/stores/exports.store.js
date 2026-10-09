@@ -62,7 +62,10 @@ export const useExportsStore = defineStore({
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      const extension = exportItem.format === "csv" ? "csv" : "json";
+      const extension =
+        { csv: "csv", ndjson: "ndjson", text: "txt", cdb: "cdb" }[
+          exportItem.format
+        ] || "json";
       link.download = `${exportItem.name || `export-${exportItem.id}`}.${extension}`;
       document.body.appendChild(link);
       link.click();
