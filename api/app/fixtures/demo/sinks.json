@@ -1,0 +1,107 @@
+[
+  {
+    "name": "Splunk production",
+    "type": "splunk_hec",
+    "enabled": false,
+    "config": {
+      "url": "https://splunk.example.org:8088/services/collector/event",
+      "token": "00000000-0000-0000-0000-000000000000",
+      "index": "threat_intel",
+      "sourcetype": "misp:attribute"
+    },
+    "filters": {
+      "to_ids_only": true,
+      "types": [
+        "ip-src",
+        "ip-dst",
+        "domain",
+        "url",
+        "sha256"
+      ],
+      "tags": [],
+      "exclude_tags": [
+        "tlp:red"
+      ],
+      "exclude_warninglisted": true
+    },
+    "status": {
+      "last_success_minutes_ago": 12,
+      "delivered_count": 18342
+    }
+  },
+  {
+    "name": "Graylog SOC",
+    "type": "gelf",
+    "enabled": false,
+    "config": {
+      "host": "graylog.example.org",
+      "port": 12201,
+      "tls": true
+    },
+    "filters": {
+      "to_ids_only": true,
+      "types": [],
+      "tags": [
+        "tlp:green",
+        "tlp:clear"
+      ],
+      "exclude_tags": [
+        "tlp:red"
+      ],
+      "exclude_warninglisted": true
+    },
+    "status": {
+      "last_success_minutes_ago": 95,
+      "delivered_count": 4210
+    }
+  },
+  {
+    "name": "Wazuh syslog",
+    "type": "syslog",
+    "enabled": false,
+    "config": {
+      "host": "wazuh.example.org",
+      "port": 514,
+      "protocol": "tcp"
+    },
+    "filters": {
+      "to_ids_only": true,
+      "types": [
+        "ip-src",
+        "ip-dst",
+        "domain"
+      ],
+      "tags": [],
+      "exclude_tags": [
+        "tlp:red"
+      ],
+      "exclude_warninglisted": true
+    },
+    "status": {
+      "last_success_minutes_ago": 1440,
+      "last_error_minutes_ago": 30,
+      "last_error": "cannot connect to wazuh.example.org:514: [Errno 111] Connection refused",
+      "delivered_count": 962,
+      "failed_count": 2
+    }
+  },
+  {
+    "name": "SOAR webhook",
+    "type": "webhook",
+    "enabled": false,
+    "config": {
+      "url": "https://soar.example.org/hooks/misp",
+      "secret": "demo-signing-secret"
+    },
+    "filters": {
+      "to_ids_only": false,
+      "types": [],
+      "tags": [],
+      "exclude_tags": [
+        "tlp:red"
+      ],
+      "exclude_warninglisted": true
+    },
+    "status": {}
+  }
+]

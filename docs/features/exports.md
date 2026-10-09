@@ -209,8 +209,17 @@ be offline for four days and still catch up from deltas.
     resynchronise. The [streaming exports](api/streaming-exports.md#incremental-pulls)
     API has the same caveat.
 
+To create one, pick the **NDJSON** format, switch on **Incremental feed** and
+give it a schedule:
+
+<img src="../../screenshots/exports/misp-workbench-6_exports_new-incremental-feed.png#only-light" alt="New incremental NDJSON feed" style="height: 600px;">
+<img src="../../screenshots/exports/misp-workbench-6_exports_new-incremental-feed-dark.png#only-dark" alt="New incremental NDJSON feed" style="height: 600px;">
+
 The **Exports** list shows a copy button with the feed URL for incremental
-exports that have run at least once.
+exports that have run at least once:
+
+<img src="../../screenshots/exports/misp-workbench-7_exports_incremental-feed-list.png#only-light" alt="Exports list with an incremental feed and its feed URL" style="max-width: 100%; height: auto;">
+<img src="../../screenshots/exports/misp-workbench-7_exports_incremental-feed-list-dark.png#only-dark" alt="Exports list with an incremental feed and its feed URL" style="max-width: 100%; height: auto;">
 
 ## Managing a schedule
 

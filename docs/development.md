@@ -179,7 +179,7 @@ reach the database:
 
 | Seeded | What you get |
 |---|---|
-| Events + attributes | Two extra events, 22 tagged attributes whose indicators deliberately overlap the docs fixtures |
+| Events + attributes | Two extra events, 25 tagged attributes whose indicators deliberately overlap the docs fixtures. Three (`8.8.8.8`, `www.google.com`, a sandbox `192.168.56.101`) are on warninglists, as partner submissions often are |
 | Correlations | Generated from that overlap, so the correlation views and notifications populate themselves |
 | Servos | The four shipped templates, two of them enabled |
 | Reactor scripts | One active, one paused |
@@ -192,6 +192,9 @@ reach the database:
 | Hunt run history | ~90 days of daily runs per hunt, so the heatmap and sparkline are populated |
 | Hunt results | Each hunt is executed once, so the results table is populated too |
 | Notifications | One of every kind the notification list knows how to render |
+| Sinks | Splunk HEC, Graylog GELF, syslog/CEF and webhook sinks on `example.org` hosts, **all disabled**, with a delivery history (successes, counts, one failing) so the sinks list looks lived-in |
+| Exports | An hourly incremental NDJSON feed (with its feed URL) and a Wazuh CDB list, both run once during the seed so their files and counts exist without a worker |
+| Warninglists | All 225 MISP warninglists loaded and every attribute flagged, which takes a couple of minutes. Skip with `--skip-warninglists` |
 
 ### Hunt history and the 90-row limit
 

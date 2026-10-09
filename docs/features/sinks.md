@@ -16,6 +16,18 @@ Sinks are managed under ***internals*** → ***sinks***. Because they send data
 off the instance, they need the `sinks:*` scopes, which only the admin role has
 by default.
 
+The list shows each sink's destination, what it sends, and how its last
+delivery went:
+
+<img src="../../screenshots/sinks/misp-workbench-1_sinks_list.png#only-light" alt="Sinks list with delivery status" style="max-width: 100%; height: auto;">
+<img src="../../screenshots/sinks/misp-workbench-1_sinks_list-dark.png#only-dark" alt="Sinks list with delivery status" style="max-width: 100%; height: auto;">
+
+**New Sink** opens a form with the destination fields for the chosen type,
+followed by the filters:
+
+<img src="../../screenshots/sinks/misp-workbench-2_sinks_new-splunk-hec.png#only-light" alt="New Splunk HEC sink form" style="height: 900px;">
+<img src="../../screenshots/sinks/misp-workbench-2_sinks_new-splunk-hec-dark.png#only-dark" alt="New Splunk HEC sink form" style="height: 900px;">
+
 ## Filters
 
 | Filter | Default | Effect |
@@ -56,6 +68,13 @@ address) right away and reports whether the sink accepted it.
     Events pulled from MISP servers or ingested from feeds are not pushed
     automatically. Use the replay endpoint below to push one on demand, or
     give SIEMs an [incremental feed](exports.md#incremental-feeds).
+
+When editing a sink, secrets read back masked: leave them as they are to keep
+them (see [TLS](#tls)). The tag filters accept existing tags or patterns such
+as `tlp:*`:
+
+<img src="../../screenshots/sinks/misp-workbench-3_sinks_edit-syslog.png#only-light" alt="Editing a syslog/CEF sink" style="height: 900px;">
+<img src="../../screenshots/sinks/misp-workbench-3_sinks_edit-syslog-dark.png#only-dark" alt="Editing a syslog/CEF sink" style="height: 900px;">
 
 ## Sending from code
 

@@ -196,4 +196,104 @@ test.describe("Exports screenshots", () => {
 
     await capture(modal, FEATURE, "misp-workbench-5_exports_edit-schedule");
   });
+
+  test("6 — new incremental NDJSON feed", async ({ page }) => {
+    await page.setViewportSize({ width: 1200, height: 1700 });
+    await page.goto("/exports/add");
+
+    await page.fill("#export-name", "SIEM IOC feed (incremental)");
+    await page.fill("#export-query", "to_ids:true");
+    await page.selectOption("#export-format", "ndjson");
+    await page.locator("#export-incremental").check();
+    await page.locator("#export-schedule-enabled").check();
+    await expect(page.getByText(/incremental feed/i).first()).toBeVisible();
+    await pinForCapture(page);
+
+    await capture(
+      page.locator(".card").first(),
+      FEATURE,
+      "misp-workbench-6_exports_new-incremental-feed",
+    );
+  });
+
+  test("7 — exports list with an incremental feed", async ({ page }) => {
+    // A feed URL only shows once the export has run (it needs a cursor), and
+    // the screenshot environment has no worker to run it: serve the list.
+    const hourly = {
+      type: "crontab",
+      minute: "0",
+      hour: "*",
+      day_of_week: "*",
+      day_of_month: "*",
+      month_of_year: "*",
+    };
+    const minutesAgo = (n: number) =>
+      new Date(Date.now() - n * 60_000).toISOString();
+    const base = {
+      user_id: 1,
+      status: "completed",
+      error: null,
+      celery_task_id: null,
+      distribution: null,
+      schedule_enabled: true,
+      scheduled_task_name: "demo",
+      created_at: minutesAgo(60 * 24 * 7),
+      started_at: minutesAgo(21),
+      finished_at: minutesAgo(20),
+      last_run_at: minutesAgo(20),
+      checksum: "0".repeat(64),
+    };
+    const items = [
+      {
+        ...base,
+        id: 31,
+        name: "SIEM IOC feed (incremental)",
+        query: "to_ids:true",
+        index_target: "attributes",
+        format: "ndjson",
+        incremental: true,
+        cursor: Math.floor(Date.now() / 1000) - 20 * 60,
+        record_count: 18342,
+        file_size: 9_437_184,
+        schedule: hourly,
+      },
+      {
+        ...base,
+        id: 32,
+        name: "Wazuh CDB list: network IOCs",
+        query: "to_ids:true AND (type:ip-src OR type:ip-dst OR type:domain)",
+        index_target: "attributes",
+        format: "cdb",
+        incremental: false,
+        cursor: null,
+        record_count: 11207,
+        file_size: 412_330,
+        schedule: { ...hourly, minute: "30", hour: "*/6" },
+      },
+    ];
+    await page.route(/:8080\/exports\/\?/, (route) => {
+      if (route.request().method() !== "GET") return route.fallback();
+      return route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          items,
+          total: items.length,
+          page: 1,
+          size: 50,
+          pages: 1,
+        }),
+      });
+    });
+
+    await page.goto("/exports");
+    await expect(page.getByText("feed URL")).toBeVisible();
+    await pinForCapture(page);
+
+    await capture(
+      page.locator(".table-responsive").first(),
+      FEATURE,
+      "misp-workbench-7_exports_incremental-feed-list",
+    );
+  });
 });

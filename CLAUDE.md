@@ -51,7 +51,8 @@ docker compose exec api poetry run python -m app.cli --help
 
 # Seed a full walkthrough dataset for a live demo (additive; --reset removes
 # only its own rows). Covers what the screenshot suite stubs and so never
-# persists: servos, reactor scripts, analyst data, feeds, notebooks, plus
+# persists: servos, reactor scripts, analyst data, feeds, notebooks, sinks,
+# exports/feeds and warninglists (--skip-warninglists to save ~2 min), plus
 # overlapping indicators that give the correlation engine something to find.
 docker compose exec api poetry run python -m app.cli seed-demo
 docker compose exec api poetry run python -m app.cli create-organisation <name>
