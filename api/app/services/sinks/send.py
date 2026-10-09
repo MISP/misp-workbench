@@ -9,6 +9,7 @@ in size and rate, and written to the audit log.
 
 import logging
 import time
+import uuid
 from dataclasses import dataclass
 from typing import Optional, Union
 
@@ -120,13 +121,26 @@ def _check_rate(db: Session, user_id: int) -> None:
         )
 
 
+def _canonical_uuid(value, what: str) -> str:
+    """A UUID in canonical form, or SinkSendError.
+
+    Caller-supplied identifiers end up in task arguments, worker log lines and
+    the audit log: only well-formed UUIDs get that far, so a crafted string
+    (newlines included) can't forge log entries or reach OpenSearch as an id.
+    """
+    try:
+        return str(uuid.UUID(str(value)))
+    except (ValueError, AttributeError, TypeError):
+        raise SinkSendError(f"{what} must be a UUID") from None
+
+
 def _attribute_uuids(attributes: list) -> list[str]:
     uuids = []
     for item in attributes:
-        uuid = item.get("uuid") if isinstance(item, dict) else item
-        if not uuid:
+        value = item.get("uuid") if isinstance(item, dict) else item
+        if not value:
             raise SinkSendError("attributes must be uuids or dicts with a uuid")
-        uuids.append(str(uuid))
+        uuids.append(_canonical_uuid(value, "attribute uuid"))
     return list(dict.fromkeys(uuids))
 
 
@@ -200,6 +214,9 @@ def send_to_sink(
     if sum(given) != 1:
         raise SinkSendError("pass exactly one of attributes, event_uuid or records")
 
+    if event_uuid is not None:
+        event_uuid = _canonical_uuid(event_uuid, "event_uuid")
+
     _require_scope(db, user_id)
     db_sink = _resolve_sink(db, sink)
     _check_rate(db, user_id)
@@ -207,7 +224,7 @@ def send_to_sink(
     if event_uuid is not None:
         mode, items = "event", 1
         result = tasks.deliver_to_sink.apply_async(
-            (db_sink.id, str(event_uuid)),
+            (db_sink.id, event_uuid),
             {"apply_filters": apply_filters},
             queue=sinks_repository.SINKS_QUEUE,
         )
@@ -243,7 +260,7 @@ def send_to_sink(
             "sink": db_sink.name,
             "mode": mode,
             "items": items,
-            "event_uuid": str(event_uuid) if event_uuid else None,
+            "event_uuid": event_uuid,
             "apply_filters": apply_filters,
             **(audit_metadata or {}),
         },

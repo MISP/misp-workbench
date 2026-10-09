@@ -104,7 +104,19 @@ class TestRecords:
             assert sent == ["a", "b"]
 
 
+U1 = "11111111-1111-4111-8111-111111111111"
+U2 = "22222222-2222-4222-8222-222222222222"
+
+
 def test_attribute_uuids_accepts_dicts_and_dedupes():
-    assert send._attribute_uuids(["u1", {"uuid": "u2"}, "u1"]) == ["u1", "u2"]
+    upper = U1.upper()
+    assert send._attribute_uuids([U1, {"uuid": U2}, upper]) == [U1, U2]
     with pytest.raises(send.SinkSendError):
         send._attribute_uuids([{"value": "no uuid"}])
+
+
+@pytest.mark.parametrize("bad", ["not-a-uuid", U1 + "\nFORGED log line", "", None, 42])
+def test_identifiers_must_be_uuids(bad):
+    # Caller strings reach task args, worker logs and the audit log.
+    with pytest.raises(send.SinkSendError, match="UUID"):
+        send._canonical_uuid(bad, "event_uuid")
