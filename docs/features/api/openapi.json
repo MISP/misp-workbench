@@ -9668,6 +9668,154 @@
         }
       }
     },
+    "/lookup": {
+      "post": {
+        "tags": [
+          "Lookup"
+        ],
+        "summary": "Bulk Lookup",
+        "description": "Which of these values are known indicators, with their context.",
+        "operationId": "bulk_lookup_lookup_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "attributes:read"
+            ]
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LookupRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LookupResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Lookup"
+        ],
+        "summary": "Single Lookup",
+        "description": "One value per request, for per-key lookup adapters (e.g. Graylog's HTTP JSONPath).",
+        "operationId": "single_lookup_lookup_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "attributes:read"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "value",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "title": "Value"
+            }
+          },
+          {
+            "name": "to_ids_only",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": true,
+              "title": "To Ids Only"
+            }
+          },
+          {
+            "name": "max_attributes",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 10,
+              "title": "Max Attributes"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SingleLookupResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/lookup/cache": {
+      "get": {
+        "tags": [
+          "Lookup"
+        ],
+        "summary": "Lookup Cache Status",
+        "operationId": "lookup_cache_status_lookup_cache_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LookupCacheStatus"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "attributes:read"
+            ]
+          }
+        ]
+      }
+    },
     "/exports/": {
       "get": {
         "tags": [
@@ -18125,6 +18273,310 @@
         "title": "LabTree",
         "description": "Single response that returns Personal + Global + Library trees so the\nleft panel renders in one round trip. Library notebooks are read-only\nprebuilt content (seeded via CLI); users fork them to a personal copy\nbefore running."
       },
+      "LookupAttribute": {
+        "properties": {
+          "uuid": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Uuid"
+          },
+          "type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Type"
+          },
+          "category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          },
+          "to_ids": {
+            "type": "boolean",
+            "title": "To Ids",
+            "default": false
+          },
+          "comment": {
+            "type": "string",
+            "title": "Comment",
+            "default": ""
+          },
+          "timestamp": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp"
+          },
+          "first_seen": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Seen"
+          },
+          "last_seen": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Seen"
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Tags",
+            "default": []
+          },
+          "event": {
+            "$ref": "#/components/schemas/LookupEvent"
+          }
+        },
+        "type": "object",
+        "required": [
+          "event"
+        ],
+        "title": "LookupAttribute"
+      },
+      "LookupCacheStatus": {
+        "properties": {
+          "built": {
+            "type": "boolean",
+            "title": "Built"
+          },
+          "built_at": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Built At"
+          },
+          "synced_at": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Synced At"
+          },
+          "values": {
+            "type": "integer",
+            "title": "Values"
+          },
+          "intact": {
+            "type": "boolean",
+            "title": "Intact"
+          }
+        },
+        "type": "object",
+        "required": [
+          "built",
+          "values",
+          "intact"
+        ],
+        "title": "LookupCacheStatus"
+      },
+      "LookupEvent": {
+        "properties": {
+          "uuid": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Uuid"
+          },
+          "info": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Info"
+          },
+          "threat_level_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Threat Level Id"
+          },
+          "published": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Published"
+          },
+          "org": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Org"
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Tags",
+            "default": []
+          }
+        },
+        "type": "object",
+        "title": "LookupEvent"
+      },
+      "LookupMatch": {
+        "properties": {
+          "value": {
+            "type": "string",
+            "title": "Value"
+          },
+          "attribute_count": {
+            "type": "integer",
+            "title": "Attribute Count"
+          },
+          "attributes": {
+            "items": {
+              "$ref": "#/components/schemas/LookupAttribute"
+            },
+            "type": "array",
+            "title": "Attributes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "value",
+          "attribute_count",
+          "attributes"
+        ],
+        "title": "LookupMatch"
+      },
+      "LookupRequest": {
+        "properties": {
+          "values": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Values",
+            "description": "Values to check, up to 10,000"
+          },
+          "to_ids_only": {
+            "type": "boolean",
+            "title": "To Ids Only",
+            "description": "Only IDS attributes count as matches (uses the Redis prefilter). False matches any live attribute and asks OpenSearch about every value.",
+            "default": true
+          },
+          "max_attributes": {
+            "type": "integer",
+            "maximum": 100.0,
+            "minimum": 1.0,
+            "title": "Max Attributes",
+            "description": "Attributes returned per matched value",
+            "default": 10
+          }
+        },
+        "type": "object",
+        "required": [
+          "values"
+        ],
+        "title": "LookupRequest"
+      },
+      "LookupResponse": {
+        "properties": {
+          "checked": {
+            "type": "integer",
+            "title": "Checked"
+          },
+          "matched": {
+            "type": "integer",
+            "title": "Matched"
+          },
+          "candidates": {
+            "type": "integer",
+            "title": "Candidates"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source"
+          },
+          "took_ms": {
+            "type": "number",
+            "title": "Took Ms"
+          },
+          "matches": {
+            "items": {
+              "$ref": "#/components/schemas/LookupMatch"
+            },
+            "type": "array",
+            "title": "Matches"
+          }
+        },
+        "type": "object",
+        "required": [
+          "checked",
+          "matched",
+          "candidates",
+          "source",
+          "took_ms",
+          "matches"
+        ],
+        "title": "LookupResponse"
+      },
       "MispSightingAdd": {
         "properties": {
           "value": {
@@ -23621,6 +24073,37 @@
           "previous_total"
         ],
         "title": "SightingStatsResponse"
+      },
+      "SingleLookupResponse": {
+        "properties": {
+          "value": {
+            "type": "string",
+            "title": "Value"
+          },
+          "match": {
+            "type": "boolean",
+            "title": "Match"
+          },
+          "attribute_count": {
+            "type": "integer",
+            "title": "Attribute Count",
+            "default": 0
+          },
+          "attributes": {
+            "items": {
+              "$ref": "#/components/schemas/LookupAttribute"
+            },
+            "type": "array",
+            "title": "Attributes",
+            "default": []
+          }
+        },
+        "type": "object",
+        "required": [
+          "value",
+          "match"
+        ],
+        "title": "SingleLookupResponse"
       },
       "Sink": {
         "properties": {

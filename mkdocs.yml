@@ -74,6 +74,7 @@ nav:
     - API keys: features/api/api-keys.md
     - MISP restSearch: features/api/rest-search.md
     - Streaming exports: features/api/streaming-exports.md
+    - Bulk lookup: features/api/lookup.md
     - Audit logs: features/api/audit-logs.md
 
 plugins:
