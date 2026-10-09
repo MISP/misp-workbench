@@ -235,12 +235,16 @@ ATTRIBUTE_FIELDS = [
     "last_seen",
     "event_uuid",
     "tags",
+    "warninglist_hits",
 ]
 NEWEST_FIRST = [{"timestamp": {"order": "desc", "unmapped_type": "long"}}]
 
 
 def _find_attributes(
-    values: list[str], to_ids_only: bool, max_attributes: int
+    values: list[str],
+    to_ids_only: bool,
+    max_attributes: int,
+    include_warninglisted: bool = False,
 ) -> dict[str, dict]:
     """Per value: total matching attributes and the newest ``max_attributes``.
 
@@ -253,6 +257,10 @@ def _find_attributes(
         return found
     client = get_opensearch_client()
     base = _indicator_filter(to_ids_only)
+    if not include_warninglisted:
+        from app.repositories.warninglists import WARNINGLISTED
+
+        base["must_not"] = base["must_not"] + [WARNINGLISTED]
 
     short = [v for v in values if len(v) <= KEYWORD_IGNORE_ABOVE]
     for start in range(0, len(short), TERMS_CHUNK):
@@ -361,6 +369,7 @@ def _context(attribute: dict, event: Optional[dict]) -> dict:
         "first_seen": attribute.get("first_seen"),
         "last_seen": attribute.get("last_seen"),
         "tags": _tag_names(attribute.get("tags")),
+        "warninglist_hits": list(attribute.get("warninglist_hits") or []),
         "event": {
             "uuid": attribute.get("event_uuid"),
             "info": event.get("info"),
@@ -376,6 +385,7 @@ def lookup(
     values: list,
     to_ids_only: bool = True,
     max_attributes: int = DEFAULT_MAX_ATTRIBUTES,
+    include_warninglisted: bool = False,
 ) -> dict:
     """Which of ``values`` are known indicators, with their context.
 
@@ -406,7 +416,9 @@ def lookup(
         ),
     )
 
-    found = _find_attributes(candidates, to_ids_only, max_attributes)
+    found = _find_attributes(
+        candidates, to_ids_only, max_attributes, include_warninglisted
+    )
     events = _events(
         {
             a.get("event_uuid")

@@ -229,6 +229,9 @@
             },
             "updated_at": {
                 "type": "date"
+            },
+            "warninglist_hits": {
+                "type": "keyword"
             }
         }
     }

@@ -1,0 +1,18 @@
+{
+    "mappings": {
+        "properties": {
+            "warninglist_id": {
+                "type": "integer"
+            },
+            "type": {
+                "type": "keyword"
+            },
+            "value": {
+                "type": "keyword"
+            },
+            "range": {
+                "type": "ip_range"
+            }
+        }
+    }
+}

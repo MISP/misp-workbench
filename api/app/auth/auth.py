@@ -76,6 +76,8 @@ AVAILABLE_SCOPES: dict[str, str] = {
         "taxonomies:read": "Read taxonomies.",
         "taxonomies:update": "Update taxonomies.",
         "taxonomies:delete": "Delete taxonomies.",
+        "warninglists:read": "Read warninglists and check values against them.",
+        "warninglists:update": "Enable or disable warninglists and update them.",
         "modules:read": "Read misp-modules.",
         "modules:update": "Update misp-modules.",
         "modules:query": "Query misp-modules.",

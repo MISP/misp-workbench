@@ -364,16 +364,25 @@ def get_feed_deltas(
     return pending
 
 
-def _feed_query(query: str, since: Optional[int] = None) -> dict:
+def _feed_query(
+    query: str, since: Optional[int] = None, enforce_warninglist: bool = False
+) -> dict:
     """The export's query_string, as a full snapshot or as a delta.
 
-    A full artifact holds live documents only. A delta holds every attribute
-    written at or after ``since`` (``updated_at`` is stamped by the ingest
-    pipeline on every write), soft-deleted ones included as tombstones.
+    A full artifact holds live documents only, without warninglisted ones when
+    enforced. A delta holds every attribute written at or after ``since``
+    (``updated_at`` is stamped by the ingest pipeline on every write),
+    soft-deleted ones included as tombstones and warninglisted ones with their
+    ``warninglist_hits``, so consumers can drop both.
     """
     base = {"query_string": {"query": query}}
     if since is None:
-        return {"bool": {"must": [base], "must_not": [{"term": {"deleted": True}}]}}
+        must_not: list = [{"term": {"deleted": True}}]
+        if enforce_warninglist:
+            from app.repositories.warninglists import WARNINGLISTED
+
+            must_not.append(WARNINGLISTED)
+        return {"bool": {"must": [base], "must_not": must_not}}
     return {
         "bool": {
             "must": [base],
@@ -432,9 +441,12 @@ def _run_streamed(db: Session, db_export: export_models.Export) -> None:
     # too, rather than in neither.
     cursor = int(time.time())
 
+    enforce = db_export.index_target == "attributes" and bool(
+        RuntimeSettings(db).get_value("warninglists.enforce_on_outputs", default=True)
+    )
     stored_key, size, records, checksum = _stream_to_storage(
         index,
-        _feed_query(db_export.query),
+        _feed_query(db_export.query, enforce_warninglist=enforce),
         db_export.format,
         f"export-{db_export.id}.{db_export.format}",
     )

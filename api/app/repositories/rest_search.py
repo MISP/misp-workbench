@@ -481,6 +481,12 @@ def build_attribute_query(params: dict, client=None) -> dict:
     if deleted:
         must.append(deleted)
 
+    # MISP's enforceWarninglist: leave out attributes on an enabled warninglist.
+    if _parse_bool(params.get("enforcewarninglist"), "enforceWarninglist"):
+        from app.repositories.warninglists import WARNINGLISTED
+
+        must_not.append(WARNINGLISTED)
+
     _keyword_filter(must, must_not, params.get("value"), "value")
     _keyword_filter(must, must_not, params.get("type"), "type")
     _keyword_filter(must, must_not, params.get("category"), "category")
@@ -726,6 +732,7 @@ def _attribute_to_misp(
     event: Optional[dict],
     include_event_tags: bool,
     include_context: bool,
+    include_warninglist_hits: bool = False,
 ) -> dict:
     event_uuid = source.get("event_uuid")
     tags = [_misp_tag(t) for t in source.get("tags") or []]
@@ -755,6 +762,8 @@ def _attribute_to_misp(
     }
     if not tags:
         del attribute["Tag"]
+    if include_warninglist_hits and source.get("warninglist_hits"):
+        attribute["warninglist_hits"] = list(source["warninglist_hits"])
     return attribute
 
 
@@ -892,6 +901,7 @@ def stream_attributes(search: PreparedSearch) -> Iterator[str]:
     fmt = search.return_format
     include_event_tags = _parse_flag(params, "includeeventtags")
     include_context = _parse_flag(params, "includecontext")
+    include_warninglist_hits = _parse_flag(params, "includewarninglisthits")
     needs_events = fmt in ("json", "csv")
 
     pages = iter_pages(
@@ -953,6 +963,7 @@ def stream_attributes(search: PreparedSearch) -> Iterator[str]:
                 events.get(s.get("event_uuid")),
                 include_event_tags,
                 include_context,
+                include_warninglist_hits,
             )
             chunk.append(("" if first else ",") + json.dumps(attribute, default=str))
             first = False

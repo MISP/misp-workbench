@@ -15,6 +15,10 @@ class LookupRequest(BaseModel):
     max_attributes: int = Field(
         10, ge=1, le=100, description="Attributes returned per matched value"
     )
+    include_warninglisted: bool = Field(
+        False,
+        description="Also match attributes on an enabled warninglist (left out by default)",
+    )
 
 
 class LookupEvent(BaseModel):
@@ -36,6 +40,7 @@ class LookupAttribute(BaseModel):
     first_seen: Optional[Any] = None
     last_seen: Optional[Any] = None
     tags: list[str] = []
+    warninglist_hits: list[str] = []
     event: LookupEvent
 
 

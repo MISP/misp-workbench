@@ -24,6 +24,7 @@ by default.
 | **Attribute types** | all | Send only these types (e.g. `ip-src, ip-dst, domain, url`) |
 | **Only with tags** | any | Send only attributes carrying at least one of these tags |
 | **Never with tags** | `tlp:red` | Never send attributes carrying any of these tags |
+| **Leave out values on an enabled warninglist** | on | Never send attributes on an enabled [warninglist](warninglists.md) |
 
 Tag lists match the attribute's own tags **and** its event's tags, and accept
 shell-style patterns (`tlp:*`, `misp-galaxy:threat-actor=*`). Soft-deleted

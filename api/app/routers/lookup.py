@@ -25,6 +25,7 @@ async def bulk_lookup(
             request.values,
             request.to_ids_only,
             request.max_attributes,
+            request.include_warninglisted,
         )
     except lookup_repository.TooManyValues as error:
         raise HTTPException(
@@ -37,13 +38,18 @@ async def single_lookup(
     value: str = Query(..., min_length=1),
     to_ids_only: bool = Query(True),
     max_attributes: int = Query(10, ge=1, le=100),
+    include_warninglisted: bool = Query(False),
     user: user_schemas.User = Security(
         get_current_active_user, scopes=["attributes:read"]
     ),
 ):
     """One value per request, for per-key lookup adapters (e.g. Graylog's HTTP JSONPath)."""
     result = await run_in_threadpool(
-        lookup_repository.lookup, [value], to_ids_only, max_attributes
+        lookup_repository.lookup,
+        [value],
+        to_ids_only,
+        max_attributes,
+        include_warninglisted,
     )
     if not result["matches"]:
         return lookup_schemas.SingleLookupResponse(value=value, match=False)

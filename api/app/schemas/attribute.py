@@ -37,6 +37,8 @@ class Attribute(AttributeBase):
     # number attached above. See enrich_attributes_page_with_correlations.
     correlation_count: Optional[int] = None
     expanded: Optional[dict] = None
+    # Names of the enabled warninglists the value is on.
+    warninglist_hits: Optional[list[str]] = None
     model_config = ConfigDict(from_attributes=True)
 
     def to_misp_format(self, include_attachments: bool = True) -> dict:

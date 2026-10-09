@@ -15,6 +15,7 @@ import {
   faSpinner,
   faCommentDots,
   faShield,
+  faTriangleExclamation,
 } from "@fortawesome/free-solid-svg-icons";
 
 const props = defineProps(["event_uuid", "page_size"]);
@@ -269,6 +270,14 @@ tr.to-ids > td:first-child {
             <td class="value">
               <CopyToClipboard :value="attribute.value" />
               {{ attribute.value }}
+              <span
+                v-if="attribute.warninglist_hits?.length"
+                class="badge bg-warning-subtle text-warning-emphasis ms-1"
+                :title="`On warninglists: ${attribute.warninglist_hits.join(', ')}`"
+              >
+                <FontAwesomeIcon :icon="faTriangleExclamation" />
+                warninglist
+              </span>
             </td>
             <td class="ids-col text-center">
               <button

@@ -21,6 +21,7 @@ For MISP-style filtering (tags, `to_ids`, published, ...) and MISP's response sh
 | `query` | all | Lucene query, as in Explore (e.g. `type:ip-dst AND to_ids:true`) |
 | `format` | `json` | See below |
 | `include_deleted` | `false` | Include soft-deleted records |
+| `enforce_warninglist` | runtime setting (`true`) | Attributes only. Leave out attributes on an enabled [warninglist](../warninglists.md). Deltas (`since`) keep them, with their `warninglist_hits`, so consumers can drop them |
 | `since` | — | Attributes only. Return only attributes written at or after this time, soft-deleted ones included (see [Incremental pulls](#incremental-pulls)) |
 
 ## Formats

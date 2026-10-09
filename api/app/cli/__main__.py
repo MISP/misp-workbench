@@ -1347,6 +1347,21 @@ def backfill_ja4(
 
 
 @app.command()
+def load_warninglists(evaluate: bool = typer.Option(True, help="Re-flag attributes afterwards")):
+    """Load (or update) the MISP warninglists shipped in the submodule."""
+    from app.repositories import warninglists as warninglists_repository
+
+    with SessionLocal() as db:
+        counts = warninglists_repository.update_warninglists(db)
+        typer.echo(
+            f"Warninglists: {counts['created']} new, {counts['updated']} updated, "
+            f"{counts['unchanged']} unchanged."
+        )
+        if evaluate and counts["changed"]:
+            result = warninglists_repository.evaluate_all(db)
+            typer.echo(f"Attributes re-evaluated: {result}")
+
+@app.command()
 def rebuild_lookup_cache():
     """Rebuild the Redis prefilter behind /lookup from OpenSearch now.
 

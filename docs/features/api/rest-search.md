@@ -75,6 +75,7 @@ Only `returnFormat: json` is supported for events.
 ## Differences from MISP
 
 - **Identifiers.** Events and attributes created in misp-workbench have no numeric MISP id; `id` and `event_id` then carry the uuid instead. MISP accepts uuids wherever an id is expected, so links back to the event still resolve. Data pulled from a MISP server keeps its original ids.
-- **Unsupported parameters are ignored.** These include `enforceWarninglist`, `includeDecayScore`, `includeCorrelations`, `requested_attributes` and `searchall`. Warninglist filtering is tracked in [#413](https://github.com/MISP/misp-workbench/issues/413).
+- **Warninglists.** `enforceWarninglist: 1` leaves out attributes on an enabled [warninglist](../warninglists.md), and `includeWarninglistHits: 1` adds `warninglist_hits` to each attribute. Both apply to `/attributes/restSearch`; `enforceWarninglist` doesn't filter the attributes inside `/events/restSearch` results.
+- **Unsupported parameters are ignored.** These include `includeDecayScore`, `includeCorrelations`, `requested_attributes` and `searchall`.
 - **Return formats.** Formats other than `json`, `csv` and `text` (STIX, OpenIOC, Suricata, ...) return `400 Bad Request`. Use [Exports](../exports.md) for STIX.
 - **No row-level filtering.** Results are not filtered by distribution or sharing group. Any key with the read scope sees all data.

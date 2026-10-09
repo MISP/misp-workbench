@@ -61,6 +61,12 @@ celery_app.conf.update(
             "task": "app.worker.tasks.rebuild_lookup_cache",
             "schedule": 3600.0,
         },
+        # Flag attributes written since the last run with the warninglists
+        # they hit (a full re-evaluation runs whenever the lists change).
+        "warninglists-evaluate-recent": {
+            "task": "app.worker.tasks.evaluate_recent_warninglist_hits",
+            "schedule": 60.0,
+        },
     },
 )
 
@@ -1433,3 +1439,38 @@ def rebuild_lookup_cache():
     from app.repositories import lookup as lookup_repository
 
     return lookup_repository.rebuild_cache()
+
+
+# ──────────────────────────────────────────────────────────────────────────
+# Warninglists
+# ──────────────────────────────────────────────────────────────────────────
+
+
+@celery_app.task(time_limit=3600, soft_time_limit=3500)
+def load_warninglists():
+    """Load the misp-warninglists submodule, then re-flag attributes if needed."""
+    from app.repositories import warninglists as warninglists_repository
+
+    with Session(engine) as db:
+        counts = warninglists_repository.update_warninglists(db)
+    if counts["changed"]:
+        evaluate_all_warninglist_hits.delay()
+    return counts
+
+
+@celery_app.task(time_limit=4 * 3600, soft_time_limit=4 * 3600 - 60)
+def evaluate_all_warninglist_hits():
+    """Re-evaluate every live attribute against the enabled warninglists."""
+    from app.repositories import warninglists as warninglists_repository
+
+    with Session(engine) as db:
+        return warninglists_repository.evaluate_all(db)
+
+
+@celery_app.task(ignore_result=True, expires=60)
+def evaluate_recent_warninglist_hits():
+    """Flag attributes written since the last run."""
+    from app.repositories import warninglists as warninglists_repository
+
+    with Session(engine) as db:
+        return warninglists_repository.evaluate_recent(db)

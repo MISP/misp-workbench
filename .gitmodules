@@ -13,3 +13,6 @@
 [submodule "frontend/submodules/pivotick-graph-transformer"]
 	path = frontend/submodules/pivotick-graph-transformer
 	url = https://github.com/ecrou-exact/Pivotick-graph-transformer.git
+[submodule "api/app/submodules/misp-warninglists"]
+	path = api/app/submodules/misp-warninglists
+	url = https://github.com/MISP/misp-warninglists

@@ -174,7 +174,12 @@ def _attribute_query(event_uuid: str, filters: dict) -> dict:
         query.append({"term": {"to_ids": True}})
     if filters.get("types"):
         query.append({"terms": {"type.keyword": filters["types"]}})
-    return {"bool": {"filter": query, "must_not": [{"term": {"deleted": True}}]}}
+    must_not: list = [{"term": {"deleted": True}}]
+    if filters.get("exclude_warninglisted", True):
+        from app.repositories.warninglists import WARNINGLISTED
+
+        must_not.append(WARNINGLISTED)
+    return {"bool": {"filter": query, "must_not": must_not}}
 
 
 def _iter_attribute_batches(event_uuid: str, filters: dict) -> Iterator[list[dict]]:
