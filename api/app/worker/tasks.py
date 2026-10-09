@@ -50,6 +50,18 @@ celery_app.conf.update(
     task_soft_time_limit=None,
     beat_scheduler="redbeat.RedBeatScheduler",
     redbeat_redis_url=os.environ.get("CELERY_BROKER_URL"),
+    beat_schedule={
+        # Keep the lookup prefilter in step with OpenSearch: add new indicator
+        # values every few seconds, rebuild (dropping stale ones) hourly.
+        "lookup-cache-sync": {
+            "task": "app.worker.tasks.sync_lookup_cache",
+            "schedule": 15.0,
+        },
+        "lookup-cache-rebuild": {
+            "task": "app.worker.tasks.rebuild_lookup_cache",
+            "schedule": 3600.0,
+        },
+    },
 )
 
 logger = logging.getLogger(__name__)
@@ -829,47 +841,50 @@ def enforce_retention():
 
 
 @celery_app.task
+def handle_created_sightings(items: list):
+    """Post-process a batch of sightings: notifications, reactor, FP feedback.
+
+    One task per batch (see sightings_repository.TASK_BATCH_SIZE): attributes
+    are looked up for all values in one paged query instead of one search per
+    sighting.
+    """
+    from app.repositories import sightings as sightings_repository
+
+    logger.info("handling %s created sightings job started", len(items))
+    with Session(engine) as db:
+        result = sightings_repository.process_created_sightings(db, items)
+
+    if reactor_repository.has_active_subscriber("sighting", "created"):
+        for item in items:
+            _dispatch_if_subscribed(
+                "sighting",
+                "created",
+                {
+                    "value": item["value"],
+                    "type": item["type"],
+                    "organisation": item.get("organisation"),
+                    "timestamp": item.get("timestamp"),
+                },
+            )
+    logger.info("handling %s created sightings job finished: %s", len(items), result)
+    return result
+
+
+@celery_app.task
 def handle_created_sighting(
     value: str, organisation: str, sighting_type: str, timestamp: float = None
 ):
-    logger.info("handling created sighting value=%s job started", value)
-
-    attributes = events_repository.search_events(
-        page=0,
-        from_value=0,
-        size=1000,
-        query="value: %s" % value,
-        searchAttributes=True,
-    )
-
-    if attributes["total"] > 1000:
-        logger.warning(
-            "Too many attributes found for value=%s, only the first 1000 will be processed.",
-            value,
-        )
-
-    sighting = {
-        "value": value,
-        "type": sighting_type,
-        "observer": {"organisation": organisation},
-        "timestamp": timestamp or datetime.now().timestamp(),
-    }
-
-    with Session(engine) as db:
-        for attribute in attributes["results"]:
-            notifications_repository.create_sighting_notifications(
-                db, "created", attribute=attribute, sighting=sighting
-            )
-        _dispatch_if_subscribed(
-            "sighting",
-            "created",
+    """Single-sighting form, kept for messages queued before the batch task."""
+    return handle_created_sightings(
+        [
             {
                 "value": value,
                 "type": sighting_type,
                 "organisation": organisation,
-                "timestamp": sighting["timestamp"],
-            },
-        )
+                "timestamp": timestamp or datetime.now().timestamp(),
+            }
+        ]
+    )
 
 
 @celery_app.task
@@ -932,6 +947,9 @@ def handle_published_event(event_uuid: str):
     if os_event is not None:
         with Session(engine) as db:
             notifications_repository.create_event_notifications(db, "published", event=os_event)
+            from app.repositories import sinks as sinks_repository
+
+            sinks_repository.dispatch_published_event(db, event_uuid)
         _dispatch_if_subscribed("event", "published", _reactor_event_payload(os_event, event_uuid))
 
     logger.info("handling published event uuid=%s job finished", event_uuid)
@@ -1345,3 +1363,73 @@ def run_export(export_id: int, **kwargs):
         exports_repository.run_export(db, export_id)
     logger.info("run_export export_id=%s finished", export_id)
     return True
+
+
+# ──────────────────────────────────────────────────────────────────────────
+# Sinks — push published indicators to SIEMs
+# ──────────────────────────────────────────────────────────────────────────
+
+# Retry delays: 30s, 1m, 2m, 4m, 8m, 16m (plus jitter), then give up.
+SINK_MAX_RETRIES = 6
+SINK_RETRY_BASE_SECONDS = 30
+
+
+@celery_app.task(bind=True, queue="sinks", max_retries=SINK_MAX_RETRIES)
+def deliver_to_sink(self, sink_id: int, event_uuid: str):
+    """Push one published event's selected attributes to one sink.
+
+    Runs on the dedicated ``sinks`` queue. A failed delivery is retried with
+    exponential backoff; the error is recorded on the sink after every
+    attempt, and the delivery counted as failed once retries run out.
+    """
+    import random
+
+    from app.repositories import sinks as sinks_repository
+    from app.services.sinks.transports import SinkDeliveryError
+
+    with Session(engine) as db:
+        sink = sinks_repository.get_sink(db, sink_id)
+        if sink is None or not sink.enabled:
+            return 0
+        try:
+            sent = sinks_repository.deliver_event(sink, event_uuid)
+        except SinkDeliveryError as error:
+            final = self.request.retries >= self.max_retries
+            sinks_repository.record_failure(db, sink_id, str(error), final=final)
+            logger.warning(
+                "sink %s delivery of event %s failed (attempt %s): %s",
+                sink_id,
+                event_uuid,
+                self.request.retries + 1,
+                error,
+            )
+            if final:
+                return 0
+            countdown = SINK_RETRY_BASE_SECONDS * 2 ** self.request.retries
+            raise self.retry(
+                exc=error, countdown=countdown + random.uniform(0, countdown / 4)
+            )
+        sinks_repository.record_success(db, sink_id, sent)
+        logger.info("sink %s delivered %s attributes of event %s", sink_id, sent, event_uuid)
+        return sent
+
+
+# ──────────────────────────────────────────────────────────────────────────
+# Lookup — Redis prefilter of indicator values
+# ──────────────────────────────────────────────────────────────────────────
+
+
+@celery_app.task(ignore_result=True, expires=15)
+def sync_lookup_cache():
+    """Add values of indicators written since the last sync to the prefilter."""
+    from app.repositories import lookup as lookup_repository
+
+    return lookup_repository.sync_cache()
+
+
+@celery_app.task(ignore_result=True, time_limit=1800, soft_time_limit=1700)
+def rebuild_lookup_cache():
+    """Rebuild the lookup prefilter from OpenSearch, dropping stale values."""
+    from app.repositories import lookup as lookup_repository
+
+    return lookup_repository.rebuild_cache()

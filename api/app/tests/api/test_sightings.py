@@ -8,7 +8,14 @@ from fastapi.testclient import TestClient
 
 
 OPENSEARCH_PATCH = "app.repositories.sightings.get_opensearch_client"
-TASKS_PATCH = "app.repositories.sightings.tasks.handle_created_sighting"
+# Post-processing is queued per batch of sightings, not per sighting.
+TASKS_PATCH = "app.repositories.sightings.tasks.handle_created_sightings"
+BULK_PATCH = "app.repositories.sightings.opensearch_helpers.bulk"
+
+
+def bulked_docs(mock_bulk) -> list[dict]:
+    """The sighting documents handed to the bulk helper."""
+    return [action["_source"] for action in mock_bulk.call_args.args[1]]
 
 MOCK_SEARCH_RESPONSE = {
     "hits": {
@@ -130,7 +137,8 @@ class TestSightingsResource(ApiTester):
     ):
         mock_os = make_opensearch_mock()
         with patch(OPENSEARCH_PATCH, return_value=mock_os), \
-             patch(TASKS_PATCH) as mock_task:
+             patch(TASKS_PATCH) as mock_task, \
+             patch(BULK_PATCH, side_effect=lambda client, actions: (len(list(actions)), [])) as mock_bulk:
             response = client.post(
                 "/sightings/",
                 json={"value": "1.2.3.4", "type": "positive"},
@@ -140,8 +148,10 @@ class TestSightingsResource(ApiTester):
 
         assert response.status_code == status.HTTP_201_CREATED
         assert data["result"] == "Sighting created successfully"
-        mock_os.index.assert_called_once()
+        mock_bulk.assert_called_once()
         mock_task.delay.assert_called_once()
+        [batch] = mock_task.delay.call_args.args
+        assert [item["value"] for item in batch] == ["1.2.3.4"]
 
     @pytest.mark.parametrize("scopes", [["sightings:create"]])
     def test_create_sighting_sets_default_type(
@@ -149,15 +159,16 @@ class TestSightingsResource(ApiTester):
     ):
         mock_os = make_opensearch_mock()
         with patch(OPENSEARCH_PATCH, return_value=mock_os), \
-             patch(TASKS_PATCH):
+             patch(TASKS_PATCH), \
+             patch(BULK_PATCH, return_value=(1, [])) as mock_bulk:
             response = client.post(
                 "/sightings/",
                 json={"value": "evil.com"},
                 headers={"Authorization": "Bearer " + auth_token},
             )
+            [indexed_body] = bulked_docs(mock_bulk)
 
         assert response.status_code == status.HTTP_201_CREATED
-        indexed_body = mock_os.index.call_args.kwargs["body"]
         assert indexed_body["type"] == "positive"
 
     @pytest.mark.parametrize("scopes", [["sightings:create"]])
@@ -180,7 +191,10 @@ class TestSightingsResource(ApiTester):
 
         assert response.status_code == status.HTTP_201_CREATED
         assert data["result"] == "Sightings created successfully"
-        assert mock_task.delay.call_count == 2
+        # Both sightings go to one post-processing task.
+        mock_task.delay.assert_called_once()
+        [batch] = mock_task.delay.call_args.args
+        assert [item["value"] for item in batch] == ["1.2.3.4", "5.6.7.8"]
 
     @pytest.mark.parametrize("scopes", [["sightings:create"]])
     def test_create_sighting_missing_value(

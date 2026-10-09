@@ -14,6 +14,7 @@ from app.routers import (
     galaxies,
     hunts,
     lab,
+    lookup,
     mcp,
     modules,
     object_templates,
@@ -23,6 +24,7 @@ from app.routers import (
     roles,
     servers,
     servos,
+    sinks,
     sharing_groups,
     tags,
     taxonomies,
@@ -173,8 +175,14 @@ app.include_router(diagnostics.router, tags=["Diagnostics"])
 # Hunts resource
 app.include_router(hunts.router, tags=["Hunts"])
 
+# Bulk indicator lookup
+app.include_router(lookup.router, tags=["Lookup"])
+
 # Exports resource
 app.include_router(exports.router, tags=["Exports"])
+
+# Outbound sinks resource
+app.include_router(sinks.router, tags=["Sinks"])
 
 # Notifications resource
 app.include_router(notifications.router, tags=["Notifications"])

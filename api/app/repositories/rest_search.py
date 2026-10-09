@@ -210,7 +210,7 @@ def _parse_int(value: Any, name: str, minimum: int = 0) -> Optional[int]:
     return parsed
 
 
-def _parse_timestamp(value: Any, name: str, now: Optional[int] = None) -> int:
+def parse_timestamp(value: Any, name: str, now: Optional[int] = None) -> int:
     """Epoch seconds, a relative age (``30m``, ``7d``, ``2w``) or a date."""
     if isinstance(value, bool):
         raise RestSearchError(f"Invalid timestamp {value!r} for {name}")
@@ -241,11 +241,11 @@ def _timestamp_range(value: Any, name: str, field_name: str) -> Optional[dict]:
             raise RestSearchError(f"{name} range must be [from, to]")
         bounds = {}
         if not _is_empty(value[0]):
-            bounds["gte"] = _parse_timestamp(value[0], name)
+            bounds["gte"] = parse_timestamp(value[0], name)
         if not _is_empty(value[1]):
-            bounds["lte"] = _parse_timestamp(value[1], name)
+            bounds["lte"] = parse_timestamp(value[1], name)
         return {"range": {field_name: bounds}} if bounds else None
-    return {"range": {field_name: {"gte": _parse_timestamp(value, name)}}}
+    return {"range": {field_name: {"gte": parse_timestamp(value, name)}}}
 
 
 def _parse_date(value: Any, name: str) -> str:
@@ -604,7 +604,7 @@ def _collect_event_uuids(client, attribute_query: dict) -> list[str]:
 # --------------------------------------------------------------------------
 
 
-def _iter_pages(
+def iter_pages(
     client,
     index: str,
     query: dict,
@@ -791,7 +791,7 @@ def _event_context(
     return context
 
 
-def _csv_line(row: list) -> str:
+def csv_line(row: list) -> str:
     buffer = io.StringIO()
     csv.writer(buffer, lineterminator="\n").writerow(row)
     return buffer.getvalue()
@@ -894,7 +894,7 @@ def stream_attributes(search: PreparedSearch) -> Iterator[str]:
     include_context = _parse_flag(params, "includecontext")
     needs_events = fmt in ("json", "csv")
 
-    pages = _iter_pages(
+    pages = iter_pages(
         client,
         ATTRIBUTES_INDEX,
         search.query,
@@ -906,7 +906,7 @@ def stream_attributes(search: PreparedSearch) -> Iterator[str]:
     if fmt == "json":
         yield '{"response": {"Attribute": ['
     elif fmt == "csv":
-        yield _csv_line(CSV_COLUMNS)
+        yield csv_line(CSV_COLUMNS)
 
     first = True
     for hits in pages:
@@ -935,7 +935,7 @@ def stream_attributes(search: PreparedSearch) -> Iterator[str]:
                 ["name", "meta_category"],
             )
             yield "".join(
-                _csv_line(
+                csv_line(
                     _attribute_csv_row(
                         s,
                         events.get(s.get("event_uuid")),
@@ -968,7 +968,7 @@ def stream_events(search: PreparedSearch) -> Iterator[str]:
     metadata = _parse_flag(params, "metadata")
     with_attachments = _parse_flag(params, "withattachments")
 
-    pages = _iter_pages(
+    pages = iter_pages(
         client,
         EVENTS_INDEX,
         search.query,

@@ -81,6 +81,18 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
+  sinks-worker:
+    command:
+      [
+        "sh",
+        "-c",
+        "poetry run celery -A app.worker.tasks worker --loglevel=debug --hostname=sinks1@%h --queues=sinks --pool=threads --concurrency=2",
+      ]
+    volumes:
+      - ./api:/code
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
   lab-worker:
     ports:
       - "5681:5681"

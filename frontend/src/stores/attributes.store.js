@@ -1,5 +1,11 @@
 import { defineStore } from "pinia";
 import { fetchWrapper } from "@/helpers";
+import { useEventsStore } from "./events.store";
+
+// Editing an attribute takes its event back to unpublished on the API side.
+function markEventUnpublished(eventUuid = null) {
+  useEventsStore().markUnpublished(eventUuid);
+}
 
 const baseUrl = `${import.meta.env.VITE_API_URL}/attributes`;
 
@@ -43,14 +49,20 @@ export const useAttributesStore = defineStore({
       this.status = { loading: true };
       return await fetchWrapper
         .post(baseUrl, attribute)
-        .then((attribute) => (this.attribute = attribute))
+        .then((attribute) => {
+          markEventUnpublished(attribute.event_uuid);
+          return (this.attribute = attribute);
+        })
         .finally(() => (this.status = { loading: false }));
     },
     async update(attribute) {
       this.status = { updating: true };
       return await fetchWrapper
         .patch(`${baseUrl}/${attribute.uuid}`, attribute)
-        .then((response) => (this.attribute = response))
+        .then((response) => {
+          markEventUnpublished(response.event_uuid);
+          return (this.attribute = response);
+        })
         .finally(() => (this.status = { updating: false }));
     },
     /**
@@ -59,24 +71,31 @@ export const useAttributesStore = defineStore({
      * list doesn't show its loading state for a one-row change.
      */
     async setToIds(uuid, toIds) {
-      return await fetchWrapper.patch(`${baseUrl}/${uuid}`, { to_ids: toIds });
+      const response = await fetchWrapper.patch(`${baseUrl}/${uuid}`, {
+        to_ids: toIds,
+      });
+      markEventUnpublished(response?.event_uuid);
+      return response;
     },
     async delete(id) {
       this.status = { loading: true };
       return await fetchWrapper
         .delete(`${baseUrl}/${id}`)
+        .then(() => markEventUnpublished())
         .catch((error) => (this.status = { error }))
         .finally(() => (this.status = { loading: false }));
     },
     async tag(id, tag) {
       return await fetchWrapper
         .post(`${baseUrl}/${id}/tag/${tag}`)
+        .then(() => markEventUnpublished())
         .catch((error) => (this.status = { error }))
         .finally(() => (this.status = { loading: false }));
     },
     async untag(id, tag) {
       return await fetchWrapper
         .delete(`${baseUrl}/${id}/tag/${tag}`)
+        .then(() => markEventUnpublished())
         .catch((error) => (this.status = { error }))
         .finally(() => (this.status = { loading: false }));
     },

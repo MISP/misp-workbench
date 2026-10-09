@@ -43,6 +43,8 @@ nav:
     - Explore: features/explore.md
     - Hunts: features/hunts.md
     - Exports: features/exports.md
+    - Sinks: features/sinks.md
+    - Sightings: features/sightings.md
     - Correlations: features/correlations.md
     - Event Graph: features/event-graph.md
     - Notifications: features/notifications.md
@@ -71,6 +73,8 @@ nav:
     - Reference: features/api/index.md
     - API keys: features/api/api-keys.md
     - MISP restSearch: features/api/rest-search.md
+    - Streaming exports: features/api/streaming-exports.md
+    - Bulk lookup: features/api/lookup.md
     - Audit logs: features/api/audit-logs.md
 
 plugins:
