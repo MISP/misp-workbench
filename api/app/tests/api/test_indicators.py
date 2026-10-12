@@ -188,10 +188,22 @@ class TestIndicators(ApiTester):
         ):
             client.index(
                 index="misp-sightings",
-                body={"value": IP, "type": type_, "@timestamp": at},
+                body={
+                    "value": IP,
+                    "type": type_,
+                    "@timestamp": at,
+                    "observer": {"organisation": "indicators-test"},
+                },
             )
         _refresh("misp-events", "misp-attributes", "misp-sightings")
         yield
+        # Not wiped between test classes; the sightings tests count them.
+        client.delete_by_query(
+            index="misp-sightings",
+            body={"query": {"terms": {"value.keyword": [IP, DOMAIN]}}},
+            refresh=True,
+            ignore=[404],
+        )
         _reset_redis()
 
     @pytest.fixture(autouse=True)
@@ -256,6 +268,7 @@ class TestIndicators(ApiTester):
                 "value": IP,
                 "type": "expiration",
                 "@timestamp": "2025-02-01T00:00:00",
+                "observer": {"organisation": "indicators-test"},
             },
         )
         _refresh("misp-attributes", "misp-sightings")
@@ -413,7 +426,8 @@ class TestIndicatorTags:
         names = [f"custom:{i:04d}" for i in range(500)] + ["tlp:amber", "TLP:RED"]
         tags, tlp, _ = indicators.merge_tags(names)
         assert tlp == "tlp:red"
-        assert set(tags) == set(names)
+        # Nothing dropped, and TLP in the case exclusions are written in.
+        assert set(tags) == set(names) | {"tlp:red"}
 
     def test_record_keeps_its_own_tags(self):
         from app.services.sinks import formatters

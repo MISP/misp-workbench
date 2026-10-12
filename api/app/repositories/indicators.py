@@ -136,10 +136,12 @@ def merge_tags(names: Iterable[str]) -> tuple[list[str], Optional[str], list[str
     An indicator that is amber in one event and red in another has ``tlp``
     red. Its tags keep both, and every other tag, untruncated: outputs exclude
     by tag (``tlp:amber``, ``PAP:RED``, ...), and a tag dropped here would be
-    a value sent where it must not go.
+    a value sent where it must not go. A TLP tag in another case (``TLP:RED``)
+    is also kept lowercased, so the usual ``tlp:red`` exclusion matches it.
     """
-    tags = sorted(set(names))
-    tlps = [n for n in tags if n.lower() in TLP_ORDER]
+    names = set(names)
+    tlps = [n for n in names if n.lower() in TLP_ORDER]
+    tags = sorted(names | {n.lower() for n in tlps})
     tlp = max(tlps, key=lambda n: TLP_ORDER[n.lower()]).lower() if tlps else None
     galaxies = [n for n in tags if n.startswith(GALAXY_PREFIX)]
     return tags, tlp, galaxies
