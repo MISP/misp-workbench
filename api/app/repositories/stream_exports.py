@@ -351,12 +351,16 @@ def _indicator_csv_row(source: dict) -> list:
 LINE_FORMATS = ("text", "cdb")
 # Value order puts a value's repeats next to each other, so they merge without
 # remembering every value seen. Values past the keyword's ignore_above have no
-# value.keyword: they come last, in uuid order, and are merged in memory.
+# value.keyword: they come last, in uuid order.
 VALUE_ORDER = [
     {"value.keyword": {"order": "asc", "missing": "_last"}},
     {"uuid.keyword": "asc"},
 ]
 KEYWORD_IGNORE_ABOVE = 256
+# Long values are de-duplicated by digest (32 bytes each, never the value),
+# and only up to this many: past it they are written as they come, so
+# however many long values an export holds, its memory stays bounded.
+MAX_LONG_DIGESTS = 100_000
 
 
 def _line(fmt: str, value: str, types: list) -> Optional[str]:
@@ -370,13 +374,14 @@ def _line(fmt: str, value: str, types: list) -> Optional[str]:
 def _unique_lines(
     pages: Iterator[list[dict]], fmt: str, slot: Optional["ExportSlot"]
 ) -> Iterator[str]:
-    """Each value once, read from pages in ``VALUE_ORDER``."""
+    """Each value once, read from pages in ``VALUE_ORDER``.
+
+    A long value (no value.keyword, so not in value order) is written when
+    first seen, with that record's type; later records of it are skipped.
+    """
     current: Optional[str] = None
     current_types: list = []
-    long_values: dict[str, list] = {}
-
-    def flush():
-        return _line(fmt, current, current_types) if current is not None else None
+    long_digests: set = set()
 
     for hits in pages:
         if slot is not None:
@@ -389,23 +394,27 @@ def _unique_lines(
                 continue
             value = str(value)
             if len(value) > KEYWORD_IGNORE_ABOVE:
-                types = long_values.setdefault(value, [])
-                if type_ not in types:
-                    types.append(type_)
-                continue
-            if value == current:
+                digest = hashlib.sha256(value.encode("utf-8")).digest()
+                if digest in long_digests:
+                    continue
+                if len(long_digests) < MAX_LONG_DIGESTS:
+                    long_digests.add(digest)
+                line = _line(fmt, value, [type_])
+            elif value == current:
                 if type_ not in current_types:
                     current_types.append(type_)
                 continue
-            line = flush()
+            else:
+                line = _line(fmt, current, current_types) if current else None
+                current, current_types = value, [type_]
             if line:
                 out.append(line)
-            current, current_types = value, [type_]
         if out:
             yield "".join(out)
-    tail = [flush()] + [_line(fmt, v, t) for v, t in long_values.items()]
-    if any(tail):
-        yield "".join(line for line in tail if line)
+    if current is not None:
+        line = _line(fmt, current, current_types)
+        if line:
+            yield line
 
 
 class SnapshotUnavailable(Exception):

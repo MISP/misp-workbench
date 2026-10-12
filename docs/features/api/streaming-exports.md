@@ -35,7 +35,7 @@ For MISP-style filtering (tags, `to_ids`, published, ...) and MISP's response sh
 | `text` | One value per line |
 | `cdb` | A [Wazuh CDB list](https://documentation.wazuh.com/current/user-manual/ruleset/cdb-list.html): `value:type` per line, with keys containing `:` (IPv6, URLs) quoted |
 
-`text` and `cdb` list each value once, however many records share it; in `cdb` a value with several types lists them all (`203.0.113.5:ip-dst,ip-src`). They skip values that span several lines (`text` attributes); `cdb` also skips values containing `"`.
+`text` and `cdb` list each value once, however many records share it; in `cdb` a value with several types lists them all (`203.0.113.5:ip-dst,ip-src`; values over 256 characters list the first one found). They skip values that span several lines (`text` attributes); `cdb` also skips values containing `"`.
 
 ## Incremental pulls
 

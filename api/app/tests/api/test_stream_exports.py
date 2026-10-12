@@ -379,7 +379,8 @@ class TestLineFormatsDeduplicate(ApiTester):
             _attribute("dddddddd-0000-4000-8000-000000000004", "domain", "a.example"),
             _attribute("dddddddd-0000-4000-8000-000000000005", "domain", "b.example"),
             _attribute("dddddddd-0000-4000-8000-000000000006", "domain", "b.example"),
-            # Past the keyword's ignore_above: merged without value order.
+            # Past the keyword's ignore_above: not in value order, so written
+            # once, with the type of the record first seen.
             _attribute("dddddddd-0000-4000-8000-000000000007", "url", LONG_VALUE),
             _attribute("dddddddd-0000-4000-8000-000000000008", "uri", LONG_VALUE),
         ]
@@ -398,17 +399,23 @@ class TestLineFormatsDeduplicate(ApiTester):
         export = stream_exports_repository.prepare_attribute_export("", fmt)
         return "".join(stream_exports_repository.stream(export)).splitlines()
 
+    def test_long_value_digests_are_bounded(self, page_size, monkeypatch):
+        # Past the cap, long values are no longer remembered (nor de-duplicated).
+        monkeypatch.setattr(stream_exports_repository, "MAX_LONG_DIGESTS", 0)
+        assert self._export("text").count(LONG_VALUE) == 2
+
     def test_text(self, page_size):
         assert sorted(self._export("text")) == sorted(
             ["203.0.113.5", "a.example", "b.example", LONG_VALUE]
         )
 
     def test_cdb_lists_every_type(self, page_size):
-        assert sorted(self._export("cdb")) == sorted(
+        lines = self._export("cdb")
+        assert sorted(line for line in lines if LONG_VALUE not in line) == sorted(
             [
                 "203.0.113.5:ip-dst,ip-src",
                 "a.example:domain",
                 "b.example:domain",
-                f'"{LONG_VALUE}":uri,url',
             ]
         )
+        assert sum(LONG_VALUE in line for line in lines) == 1
