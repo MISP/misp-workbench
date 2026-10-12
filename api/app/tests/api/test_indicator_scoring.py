@@ -463,11 +463,13 @@ class TestIndicatorScoring(ApiTester):
         )
 
     # Last: it lowers every score, which the tests above don't expect.
-    def test_organisation_trust(self, db: Session):
+    def test_organisation_trust(self, db: Session, api_tester_user):
         get_redis_client().delete(indicators.REBUILD_QUEUED_KEY)
         organisation = organisations_repository.create_organisation(
             db,
-            organisation_schemas.OrganisationCreate(name=TRUST_ORG, local=True),
+            organisation_schemas.OrganisationCreate(
+                name=TRUST_ORG, local=True, created_by=api_tester_user.id
+            ),
         )
         with patch.object(tasks.rebuild_indicators, "delay") as delay:
             organisations_repository.update_organisation(
@@ -492,7 +494,9 @@ class TestIndicatorScoring(ApiTester):
         # the trust: organisations are identified by id.
         impostor = organisations_repository.create_organisation(
             db,
-            organisation_schemas.OrganisationCreate(name=TRUST_ORG, local=False),
+            organisation_schemas.OrganisationCreate(
+                name=TRUST_ORG, local=False, created_by=api_tester_user.id
+            ),
         )
         self._set_event_org(LOCAL_EVENT, impostor.id)
         indicators.rebuild()
