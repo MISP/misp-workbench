@@ -31,8 +31,8 @@ can always fetch the same URL for the latest results.
 | `misp` | A single [MISP-schema](https://github.com/MISP/misp-rfc) event | All matches are merged into one event named after the export |
 | `stix` | A STIX 2.1 bundle | Attributes are grouped into events and converted via the [misp-stix](https://github.com/MISP/misp-stix) library |
 | `ndjson` | One `_source` document per line | Streamed; no record cap. Can be [incremental](#incremental-feeds) |
-| `text` | One value per line | Attributes and indicators. Streamed; no record cap. Multi-line values are skipped |
-| `cdb` | A [Wazuh CDB list](https://documentation.wazuh.com/current/user-manual/ruleset/cdb-list.html), `value:type` per line | Attributes and indicators. Streamed; no record cap. Keys containing `:` are quoted |
+| `text` | One value per line | Attributes and indicators. Streamed; no record cap. Each value once, however many attributes or types share it. Multi-line values are skipped |
+| `cdb` | A [Wazuh CDB list](https://documentation.wazuh.com/current/user-manual/ruleset/cdb-list.html), `value:type` per line | Attributes and indicators. Streamed; no record cap. Each value once; a value with several types lists them all (`203.0.113.5:ip-dst,ip-src`). Keys containing `:` are quoted |
 
 `ndjson`, `text` and `cdb` are streamed out of OpenSearch straight into storage, so they have no record cap and use constant memory however much matches. The other formats are built in memory and capped at 100,000 records.
 

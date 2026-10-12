@@ -13,6 +13,7 @@ from app.models import tag as tag_models
 from app.models import organisation as org_models
 from app.repositories import tags as tags_repository
 from app.repositories import attributes as attributes_repository
+from app.repositories import indicators as indicators_repository
 from app.schemas import event as event_schemas
 from app.schemas import user as user_schemas
 from app.schemas import organisations as org_schemas
@@ -459,6 +460,7 @@ def update_event_from_pulled_event(
         patch["source"] = source
 
     client.update(index="misp-events", id=event_uuid, body={"doc": patch}, refresh=True)
+    indicators_repository.mark_event_changed(event_uuid)
     tasks.handle_updated_event.delay(event_uuid)
 
     return get_event_from_opensearch(UUID(event_uuid))
@@ -580,6 +582,7 @@ def update_event_from_fetched_event(
     }
 
     client.update(index="misp-events", id=event_uuid, body={"doc": patch}, refresh=True)
+    indicators_repository.mark_event_changed(event_uuid)
 
     # process tags
     for tag in fetched_event.tags:
@@ -616,6 +619,7 @@ def update_event(db: Session, event_uuid: UUID, event: event_schemas.EventUpdate
     patch.setdefault("published", False)
 
     client.update(index="misp-events", id=str(os_event.uuid), body={"doc": patch}, refresh=True)
+    indicators_repository.mark_event_changed(os_event.uuid)
     tasks.handle_updated_event.delay(str(os_event.uuid))
 
     return get_event_from_opensearch(os_event.uuid)

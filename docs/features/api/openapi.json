@@ -18584,6 +18584,11 @@
           "pending_sighted_values": {
             "type": "integer",
             "title": "Pending Sighted Values"
+          },
+          "pending_events": {
+            "type": "integer",
+            "title": "Pending Events",
+            "default": 0
           }
         },
         "type": "object",

@@ -5,6 +5,7 @@ import threading
 import time
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from types import SimpleNamespace
 
 import pytest
 from fastapi import status
@@ -14,10 +15,12 @@ from sqlalchemy.orm import Session
 from app.auth import auth
 from app.models import export as export_models
 from app.models import sink as sink_models
+from app.models import tag as tag_models
 from app.repositories import exports as exports_repository
 from app.repositories import indicators
 from app.repositories import sinks as sinks_repository
 from app.repositories import stream_exports
+from app.repositories import tags as tags_repository
 from app.schemas import export as export_schemas
 from app.schemas import sink as sink_schemas
 from app.services import exports_storage
@@ -100,6 +103,7 @@ def _reset_redis():
         indicators.BUILT_AT_KEY,
         indicators.REBUILD_QUEUED_KEY,
         indicators.DIRTY_KEY,
+        indicators.DIRTY_EVENTS_KEY,
     )
 
 
@@ -419,6 +423,21 @@ class TestIndicators(ApiTester):
         db.commit()
         assert sinks_repository.deliver_event(sink, FEED_EVENT) == 3
         assert all("indicator" not in r for r in received[1]["attributes"])
+
+    # Last: it makes the feed event tlp:red, which the tests above don't expect.
+    def test_event_tags_reach_indicators_at_next_sync(self, db: Session):
+        tag = tag_models.Tag(name="tlp:red", colour="#cc0033", exportable=True)
+        db.add(tag)
+        db.commit()
+        db.refresh(tag)
+        tags_repository.tag_event(db, SimpleNamespace(uuid=FEED_EVENT), tag)
+        assert get_redis_client().sismember(indicators.DIRTY_EVENTS_KEY, FEED_EVENT)
+
+        indicators.sync()
+        assert _indicator("url", LONG_URL)["tlp"] == "tlp:red"
+        # Red through the feed event, though the local event is amber.
+        assert _indicator("ip-dst", IP)["tlp"] == "tlp:red"
+        assert get_redis_client().scard(indicators.DIRTY_EVENTS_KEY) == 0
 
 
 class TestIndicatorTags:

@@ -360,3 +360,55 @@ class TestStreamExports(ApiTester):
         finally:
             runtime_settings_repository.delete_setting(db, "exports")
             redis.delete(key)
+
+
+LONG_VALUE = "https://dedup.example.com/" + "x" * 300
+
+
+class TestLineFormatsDeduplicate(ApiTester):
+    """text and cdb list each value once, however many attributes share it."""
+
+    @pytest.fixture(scope="class", autouse=True)
+    def dataset(self, cleanup):
+        client = get_opensearch_client()
+        docs = [
+            # The same value as ip-src and ip-dst, and repeated within a type.
+            _attribute("dddddddd-0000-4000-8000-000000000001", "ip-dst", "203.0.113.5"),
+            _attribute("dddddddd-0000-4000-8000-000000000002", "ip-src", "203.0.113.5"),
+            _attribute("dddddddd-0000-4000-8000-000000000003", "ip-dst", "203.0.113.5"),
+            _attribute("dddddddd-0000-4000-8000-000000000004", "domain", "a.example"),
+            _attribute("dddddddd-0000-4000-8000-000000000005", "domain", "b.example"),
+            _attribute("dddddddd-0000-4000-8000-000000000006", "domain", "b.example"),
+            # Past the keyword's ignore_above: merged without value order.
+            _attribute("dddddddd-0000-4000-8000-000000000007", "url", LONG_VALUE),
+            _attribute("dddddddd-0000-4000-8000-000000000008", "uri", LONG_VALUE),
+        ]
+        for doc in docs:
+            client.index(index="misp-attributes", id=doc["uuid"], body=doc)
+        client.indices.refresh(index="misp-attributes")
+        yield
+
+    @pytest.fixture(params=[1000, 2], ids=["one-page", "tiny-pages"])
+    def page_size(self, request, monkeypatch):
+        # Tiny pages put a value's repeats on different pages.
+        monkeypatch.setattr(stream_exports_repository, "PAGE_SIZE", request.param)
+        return request.param
+
+    def _export(self, fmt):
+        export = stream_exports_repository.prepare_attribute_export("", fmt)
+        return "".join(stream_exports_repository.stream(export)).splitlines()
+
+    def test_text(self, page_size):
+        assert sorted(self._export("text")) == sorted(
+            ["203.0.113.5", "a.example", "b.example", LONG_VALUE]
+        )
+
+    def test_cdb_lists_every_type(self, page_size):
+        assert sorted(self._export("cdb")) == sorted(
+            [
+                "203.0.113.5:ip-dst,ip-src",
+                "a.example:domain",
+                "b.example:domain",
+                f'"{LONG_VALUE}":uri,url',
+            ]
+        )

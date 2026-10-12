@@ -65,3 +65,4 @@ class IndicatorsStatus(BaseModel):
     indicators: int
     tombstones: int
     pending_sighted_values: int
+    pending_events: int = 0

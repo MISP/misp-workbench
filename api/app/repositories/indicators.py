@@ -82,6 +82,9 @@ BUILT_AT_KEY = "indicators:built_at"
 REBUILD_QUEUED_KEY = "indicators:rebuild_queued"
 # Values whose sightings changed, refreshed by the next sync.
 DIRTY_KEY = "indicators:dirty_values"
+# Events whose own data (tags, organisation, source) changed: their values are
+# refreshed by the next sync, rather than waiting for the hourly rebuild.
+DIRTY_EVENTS_KEY = "indicators:dirty_events"
 
 VALUES_PER_BATCH = 500
 TERMS_CHUNK = 1000
@@ -679,6 +682,12 @@ def sync() -> Optional[dict]:
             if not sighted:
                 break
             refresh_values(sighted, run)
+        while True:
+            events = redis.spop(DIRTY_EVENTS_KEY, TERMS_CHUNK)
+            if not events:
+                break
+            for values in _event_values(run.client, events):
+                refresh_values(values, run)
         redis.set(CURSOR_KEY, started)
         result = {"written": run.written, "removed": run.removed}
         if run.written or run.removed:
@@ -686,6 +695,25 @@ def sync() -> Optional[dict]:
         return result
     finally:
         redis.delete(LOCK_KEY)
+
+
+def _event_values(client, event_uuids: list[str]) -> Iterator[list[str]]:
+    """Values of the attributes of ``event_uuids``, in batches."""
+    query = {"bool": {"filter": [{"terms": {"event_uuid": list(event_uuids)}}]}}
+    batch: set = set()
+    for hits in stream_exports.iter_pit_pages(
+        client, ATTRIBUTES_INDEX, query, source=["value"]
+    ):
+        batch.update(
+            str(h["_source"]["value"])
+            for h in hits
+            if h["_source"].get("value") not in (None, "")
+        )
+        if len(batch) >= VALUES_PER_BATCH:
+            yield sorted(batch)
+            batch = set()
+    if batch:
+        yield sorted(batch)
 
 
 def request_rebuild() -> None:
@@ -709,6 +737,20 @@ def mark_sighted(values: Iterable[str]) -> None:
         logger.exception("could not queue sighted values for the indicators sync")
 
 
+def mark_event_changed(event_uuid) -> None:
+    """Queue an event whose tags, organisation or source changed. Best-effort.
+
+    Its indicators carry its tags (a tlp:red on the event makes them red) and
+    count its source and organisation, so they are refreshed at the next sync.
+    """
+    if not event_uuid:
+        return
+    try:
+        get_redis_client().sadd(DIRTY_EVENTS_KEY, str(event_uuid))
+    except Exception:
+        logger.exception("could not queue a changed event for the indicators sync")
+
+
 def status() -> dict:
     redis = get_redis_client()
     client = get_opensearch_client()
@@ -727,6 +769,7 @@ def status() -> dict:
         "indicators": count(False),
         "tombstones": count(True),
         "pending_sighted_values": redis.scard(DIRTY_KEY),
+        "pending_events": redis.scard(DIRTY_EVENTS_KEY),
     }
 
 

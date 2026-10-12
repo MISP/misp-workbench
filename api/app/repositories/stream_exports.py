@@ -346,6 +346,68 @@ def _indicator_csv_row(source: dict) -> list:
     ]
 
 
+# One value per line: blocklists and lookup tables, where a value that several
+# attributes (or an indicator's several types) share must appear once.
+LINE_FORMATS = ("text", "cdb")
+# Value order puts a value's repeats next to each other, so they merge without
+# remembering every value seen. Values past the keyword's ignore_above have no
+# value.keyword: they come last, in uuid order, and are merged in memory.
+VALUE_ORDER = [
+    {"value.keyword": {"order": "asc", "missing": "_last"}},
+    {"uuid.keyword": "asc"},
+]
+KEYWORD_IGNORE_ABOVE = 256
+
+
+def _line(fmt: str, value: str, types: list) -> Optional[str]:
+    if fmt == "text":
+        line = _single_line(value)
+        return f"{line}\n" if line else None
+    # A CDB key holds one value: a value with several types lists them all.
+    return _cdb_line({"value": value, "type": ",".join(sorted(types))})
+
+
+def _unique_lines(
+    pages: Iterator[list[dict]], fmt: str, slot: Optional["ExportSlot"]
+) -> Iterator[str]:
+    """Each value once, read from pages in ``VALUE_ORDER``."""
+    current: Optional[str] = None
+    current_types: list = []
+    long_values: dict[str, list] = {}
+
+    def flush():
+        return _line(fmt, current, current_types) if current is not None else None
+
+    for hits in pages:
+        if slot is not None:
+            slot.renew()
+        out = []
+        for hit in hits:
+            value = hit["_source"].get("value")
+            type_ = hit["_source"].get("type") or ""
+            if value is None:
+                continue
+            value = str(value)
+            if len(value) > KEYWORD_IGNORE_ABOVE:
+                types = long_values.setdefault(value, [])
+                if type_ not in types:
+                    types.append(type_)
+                continue
+            if value == current:
+                if type_ not in current_types:
+                    current_types.append(type_)
+                continue
+            line = flush()
+            if line:
+                out.append(line)
+            current, current_types = value, [type_]
+        if out:
+            yield "".join(out)
+    tail = [flush()] + [_line(fmt, v, t) for v, t in long_values.items()]
+    if any(tail):
+        yield "".join(line for line in tail if line)
+
+
 class SnapshotUnavailable(Exception):
     """OpenSearch refused a PIT, typically because too many are open."""
 
@@ -448,6 +510,7 @@ def iter_pit_pages(
     query: dict,
     source: Any = True,
     pit_id: Optional[str] = None,
+    sort: Optional[list] = None,
 ) -> Iterator[list[dict]]:
     """Yield pages of hits from a point-in-time snapshot of ``index``.
 
@@ -467,8 +530,9 @@ def iter_pit_pages(
                 "query": query,
                 "_source": source,
                 "size": PAGE_SIZE,
-                # uuid is unique per document, so it alone orders pages.
-                "sort": [{"uuid.keyword": "asc"}],
+                # uuid is unique per document, so it alone orders pages; a
+                # caller's sort must end with it too.
+                "sort": sort or [{"uuid.keyword": "asc"}],
                 "pit": {"id": pit_id, "keep_alive": PIT_KEEP_ALIVE},
             }
             if search_after:
@@ -517,6 +581,18 @@ def _stream(
         if indicators
         else (CSV_COLUMNS, _csv_row)
     )
+    if fmt in LINE_FORMATS:
+        pages = iter_pit_pages(
+            export.client,
+            export.index,
+            export.query,
+            source=source,
+            pit_id=pit_id,
+            sort=VALUE_ORDER,
+        )
+        yield from _unique_lines(pages, fmt, slot)
+        return
+
     pages = iter_pit_pages(
         export.client, export.index, export.query, source=source, pit_id=pit_id
     )
@@ -547,12 +623,6 @@ def _stream(
             )
         elif fmt == "csv":
             yield "".join(csv_line(row(hit["_source"])) for hit in hits)
-        elif fmt == "text":
-            lines = (_single_line(hit["_source"].get("value")) for hit in hits)
-            yield "".join(f"{line}\n" for line in lines if line)
-        elif fmt == "cdb":
-            lines = (_cdb_line(hit["_source"]) for hit in hits)
-            yield "".join(line for line in lines if line)
 
     if fmt == "json":
         yield "]"

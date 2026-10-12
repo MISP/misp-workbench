@@ -1,6 +1,7 @@
 from app.auth.utils import role_has_scope
 from app.models import tag as tag_models
 from app.models import user as user_models
+from app.repositories import indicators as indicators_repository
 from app.schemas import tag as tag_schemas
 from app.services.opensearch import get_opensearch_client
 from fastapi import HTTPException, Query, status
@@ -212,6 +213,7 @@ def tag_event(
         body={"doc": {"tags": current_tags}},
         refresh=True,
     )
+    indicators_repository.mark_event_changed(event_uuid)
     return current_tags
 
 
@@ -239,6 +241,7 @@ def untag_event(
         body={"doc": {"tags": new_tags}},
         refresh=True,
     )
+    indicators_repository.mark_event_changed(event_uuid)
 
 
 def capture_tag(db: Session, tag: MISPTag, user: user_models.User) -> tag_models.Tag:
