@@ -26,6 +26,22 @@ export const useIndicatorsStore = defineStore({
         .catch((error) => (this.status.error = error))
         .finally(() => (this.status.loading = false));
     },
+    /**
+     * Scores of the indicators behind attributes (type + value), keyed by
+     * attribute uuid; attributes without an indicator are left out.
+     */
+    async scoresFor(attributes) {
+      const items = (attributes || []).filter((a) => a.type && a.value);
+      if (!items.length) return {};
+      const response = await fetchWrapper.post(`${baseUrl}/scores`, {
+        attributes: items.map((a) => ({ type: a.type, value: a.value })),
+      });
+      const scores = {};
+      items.forEach((a, i) => {
+        if (response.scores[i]) scores[a.uuid] = response.scores[i];
+      });
+      return scores;
+    },
     async getStatus() {
       return fetchWrapper
         .get(`${baseUrl}/status`)

@@ -91,7 +91,13 @@ async function saveNamespace(namespace) {
 }
 
 async function saveFormNamespace(namespace) {
-  await runtimeSettingsStore.update(namespace, formValues[namespace]);
+  try {
+    await runtimeSettingsStore.update(namespace, formValues[namespace]);
+  } catch (error) {
+    // e.g. a scoring value the server refuses, which it names.
+    toastsStore.push(`Could not save "${namespace}": ${error}`, "danger");
+    return;
+  }
   await runtimeSettingsStore.getAll();
   editableSettings[namespace] = JSON.stringify(formValues[namespace], null, 4);
   toastsStore.push(
@@ -122,7 +128,78 @@ const KNOWN_NAMESPACES = [
   "exports",
   "notifications",
   "retention",
+  "scoring",
 ];
+
+// Scoring: per-type half-lives, edited as rows.
+const SCORE_SOURCES = ["local", "server", "feed", "unknown"];
+const SCORE_NUMBERS = [
+  [
+    "default_half_life_days",
+    "Default half-life (days)",
+    "Types not listed below. 0 never decays.",
+  ],
+  [
+    "corroboration_per_source",
+    "Per further source",
+    "Added for each further independent source.",
+  ],
+  [
+    "corroboration_max",
+    "Corroboration cap",
+    "At most this much from further sources.",
+  ],
+  [
+    "sighting_boost_max",
+    "Sightings boost cap",
+    "Positive sightings add 5, 10, 15... up to this.",
+  ],
+  [
+    "false_positive_penalty",
+    "Per false positive",
+    "Taken off per false-positive sighting.",
+  ],
+  [
+    "false_positive_penalty_max",
+    "False-positive cap",
+    "At most this much from false positives.",
+  ],
+  [
+    "warninglist_penalty",
+    "Warninglist penalty",
+    "Taken off when on an enabled warninglist.",
+  ],
+  [
+    "expiration_cap",
+    "Expired score cap",
+    "An expiration sighting newer than any positive one caps the score here.",
+  ],
+  [
+    "decayed_below",
+    "Decayed below",
+    "Below this an indicator counts as decayed (restSearch excludeDecayed).",
+  ],
+  [
+    "refresh_step",
+    "Refresh step",
+    "A stored score is rewritten when it moves this much (or crosses Decayed below).",
+  ],
+];
+const newHalfLifeType = ref("");
+const newHalfLifeDays = ref(30);
+function addHalfLife(type) {
+  if (!type) return;
+  formValues.scoring.half_life_days = {
+    ...(formValues.scoring.half_life_days || {}),
+    [type]: Number(newHalfLifeDays.value) || 0,
+  };
+  newHalfLifeType.value = "";
+}
+function removeHalfLife(type) {
+  const rest = { ...formValues.scoring.half_life_days };
+  delete rest[type];
+  formValues.scoring.half_life_days = rest;
+}
 
 // Retention: bridge string[] ↔ tag objects for TagsSelect
 const exemptTagObjects = computed(() =>
@@ -507,6 +584,147 @@ async function deleteRetentionSchedule() {
                       <button
                         class="btn btn-primary btn-sm"
                         @click="saveFormNamespace('notifications')"
+                      >
+                        Save
+                      </button>
+                    </div>
+                  </template>
+
+                  <!-- ── scoring form ── -->
+                  <template
+                    v-else-if="
+                      namespace === 'scoring' &&
+                      !jsonMode[namespace] &&
+                      formValues.scoring
+                    "
+                  >
+                    <p class="text-muted small">
+                      Every consolidated indicator gets a confidence score from
+                      0 to 100: its best source's base, minus decay since it was
+                      last seen, plus sightings, minus false positives and
+                      warninglist hits. Saving re-scores all indicators.
+                    </p>
+                    <div class="form-check form-switch mb-3">
+                      <input
+                        id="scoringEnabled"
+                        class="form-check-input"
+                        type="checkbox"
+                        v-model="formValues.scoring.enabled"
+                      />
+                      <label class="form-check-label" for="scoringEnabled"
+                        >Score indicators</label
+                      >
+                    </div>
+
+                    <h6 class="fw-semibold">Base score by source</h6>
+                    <div class="row g-3 mb-3">
+                      <div
+                        v-for="source in SCORE_SOURCES"
+                        :key="source"
+                        class="col-6 col-md-3"
+                      >
+                        <label
+                          class="form-label"
+                          :for="`scoringBase-${source}`"
+                          >{{ source }}</label
+                        >
+                        <input
+                          :id="`scoringBase-${source}`"
+                          type="number"
+                          min="0"
+                          max="100"
+                          class="form-control"
+                          v-model.number="
+                            formValues.scoring.base_by_source[source]
+                          "
+                        />
+                      </div>
+                    </div>
+
+                    <h6 class="fw-semibold">Half-life by attribute type</h6>
+                    <div class="form-text mb-2">
+                      Days for the score to halve, counted from last seen (which
+                      positive sightings move). 0 never decays.
+                    </div>
+                    <table class="table table-sm align-middle mb-2">
+                      <tbody>
+                        <tr
+                          v-for="(days, type) in formValues.scoring
+                            .half_life_days"
+                          :key="type"
+                        >
+                          <td>
+                            <code class="small">{{ type }}</code>
+                          </td>
+                          <td style="width: 10em">
+                            <input
+                              type="number"
+                              min="0"
+                              class="form-control form-control-sm"
+                              :aria-label="`Half-life of ${type} in days`"
+                              v-model.number="
+                                formValues.scoring.half_life_days[type]
+                              "
+                            />
+                          </td>
+                          <td class="text-end" style="width: 3em">
+                            <button
+                              type="button"
+                              class="btn btn-outline-danger btn-sm"
+                              title="Remove"
+                              @click="removeHalfLife(type)"
+                            >
+                              <FontAwesomeIcon :icon="faTrash" />
+                            </button>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                    <div class="row g-2 align-items-center mb-3">
+                      <div class="col-md-3">
+                        <input
+                          type="number"
+                          min="0"
+                          class="form-control"
+                          v-model.number="newHalfLifeDays"
+                          aria-label="Half-life in days for the type to add"
+                          title="Days, for the type picked next"
+                        />
+                      </div>
+                      <div class="col-md-9">
+                        <AttributeTypeSelect
+                          name="newHalfLifeType"
+                          :selected="newHalfLifeType"
+                          @attribute-type-updated="addHalfLife"
+                        />
+                      </div>
+                    </div>
+
+                    <h6 class="fw-semibold">Adjustments and thresholds</h6>
+                    <div class="row g-3">
+                      <div
+                        v-for="[key, label, help] in SCORE_NUMBERS"
+                        :key="key"
+                        class="col-md-4"
+                      >
+                        <label class="form-label" :for="`scoring-${key}`">{{
+                          label
+                        }}</label>
+                        <input
+                          :id="`scoring-${key}`"
+                          type="number"
+                          min="0"
+                          class="form-control"
+                          v-model.number="formValues.scoring[key]"
+                        />
+                        <div class="form-text">{{ help }}</div>
+                      </div>
+                    </div>
+
+                    <div class="d-flex justify-content-end mt-3">
+                      <button
+                        class="btn btn-primary btn-sm"
+                        @click="saveFormNamespace('scoring')"
                       >
                         Save
                       </button>

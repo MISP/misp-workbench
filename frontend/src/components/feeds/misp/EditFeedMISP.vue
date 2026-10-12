@@ -24,6 +24,8 @@ const config = ref({
   headers: feed.value.headers ?? {},
   rules: feed.value.rules ?? {},
   settings: feed.value.settings ?? {},
+  score_modifier: feed.value.score_modifier ?? 0,
+  score_cap: feed.value.score_cap ?? null,
 });
 
 // preview modal state
@@ -45,6 +47,8 @@ function submit() {
     headers: config.value.headers ?? {},
     rules: config.value.rules ?? {},
     settings: config.value.settings ?? {},
+    score_modifier: config.value.score_modifier ?? 0,
+    score_cap: config.value.score_cap ?? null,
   };
 
   return feedsStore

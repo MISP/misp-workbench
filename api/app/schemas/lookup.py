@@ -21,6 +21,15 @@ class LookupRequest(BaseModel):
         False,
         description="Also match attributes on an enabled warninglist (left out by default)",
     )
+    min_score: Optional[int] = Field(
+        None,
+        ge=0,
+        le=100,
+        description=(
+            "Leave out values whose consolidated indicator scores below this "
+            "(0-100). Values too new to have an indicator are kept"
+        ),
+    )
     include_indicators: bool = Field(
         False,
         description=(
@@ -57,6 +66,8 @@ class LookupMatch(BaseModel):
     value: str
     attribute_count: int
     attributes: list[LookupAttribute]
+    # The best confidence among the value's indicators, when asked for.
+    score: Optional[int] = None
     indicators: list[Indicator] = []
 
 
@@ -74,6 +85,7 @@ class SingleLookupResponse(BaseModel):
     match: bool
     attribute_count: int = 0
     attributes: list[LookupAttribute] = []
+    score: Optional[int] = None
     indicators: list[Indicator] = []
 
 

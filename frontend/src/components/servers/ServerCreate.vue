@@ -7,6 +7,7 @@ import { router } from "@/router";
 import { ServerSchema } from "@/schemas/server";
 import OrganisationsSelect from "@/components/organisations/OrganisationsSelect.vue";
 import PullRulesEditor from "@/components/servers/PullRulesEditor.vue";
+import SourceTrustFields from "@/components/indicators/SourceTrustFields.vue";
 import PreviewPullModal from "@/components/servers/PreviewPullModal.vue";
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
 import { faLink } from "@fortawesome/free-solid-svg-icons";
@@ -27,6 +28,8 @@ const server = reactive({
   skip_proxy: false,
   caching_enabled: false,
   priority: 0,
+  score_modifier: 0,
+  score_cap: null,
 });
 
 const previewResult = ref(null);
@@ -335,6 +338,11 @@ function cancel() {
             </div>
           </div>
         </div>
+        <SourceTrustFields
+          id-prefix="server"
+          v-model:modifier="server.score_modifier"
+          v-model:cap="server.score_cap"
+        />
         <div v-if="errors.apiError" class="w-100 alert alert-danger mt-3 mb-3">
           {{ errors.apiError }}
         </div>

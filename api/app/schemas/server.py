@@ -1,6 +1,6 @@
 from typing import Optional
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class ServerBase(BaseModel):
@@ -28,6 +28,10 @@ class ServerBase(BaseModel):
     skip_proxy: bool
     caching_enabled: bool
     priority: int
+    # Indicator scoring: points added to (or taken off) the score of what
+    # this source reports, and an optional ceiling for it.
+    score_modifier: int = Field(0, ge=-100, le=100)
+    score_cap: Optional[int] = Field(None, ge=0, le=100)
 
 
 class Server(ServerBase):
@@ -64,6 +68,8 @@ class ServerUpdate(BaseModel):
     skip_proxy: Optional[bool] = None
     caching_enabled: Optional[bool] = None
     priority: Optional[int] = None
+    score_modifier: Optional[int] = Field(None, ge=-100, le=100)
+    score_cap: Optional[int] = Field(None, ge=0, le=100)
 
 
 class TestServerConnectionResponse(BaseModel):

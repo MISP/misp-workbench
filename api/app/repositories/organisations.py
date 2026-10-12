@@ -68,6 +68,8 @@ def create_organisation(
         local=organisation.local,
         restricted_to_domain=organisation.restricted_to_domain,
         landing_page=organisation.landing_page,
+        score_modifier=organisation.score_modifier,
+        score_cap=organisation.score_cap,
     )
 
     db.add(db_organisation)
@@ -91,11 +93,17 @@ def update_organisation(
         )
 
     organisation_patch = organisation.model_dump(exclude_unset=True)
+    trust_before = (db_organisation.score_modifier, db_organisation.score_cap)
     for key, value in organisation_patch.items():
         setattr(db_organisation, key, value)
 
     db.add(db_organisation)
     db.commit()
+    # A source's trust is part of the score of everything it reports.
+    if (db_organisation.score_modifier, db_organisation.score_cap) != trust_before:
+        from app.repositories import indicators as indicators_repository
+
+        indicators_repository.request_rebuild()
     db.refresh(db_organisation)
 
     return db_organisation

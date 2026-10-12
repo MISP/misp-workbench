@@ -23,6 +23,8 @@ const config = ref({
   input_source: feed.value.input_source,
   headers: feed.value.headers ?? {},
   settings: feed.value.settings ?? {},
+  score_modifier: feed.value.score_modifier ?? 0,
+  score_cap: feed.value.score_cap ?? null,
 });
 
 // test modal state
@@ -42,6 +44,8 @@ function buildPayload() {
     input_source: config.value.input_source,
     headers: config.value.headers ?? {},
     settings: config.value.settings ?? {},
+    score_modifier: config.value.score_modifier ?? 0,
+    score_cap: config.value.score_cap ?? null,
   };
 }
 

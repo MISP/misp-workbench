@@ -112,6 +112,9 @@ class SinkFilters(BaseModel):
     # filters then see the merged tags: a value that is tlp:red in any event
     # is excluded by a tlp:red exclusion.
     indicator_mode: bool = False
+    # Leave out values whose consolidated indicator scores below this (0-100;
+    # 0 sends regardless). Values too new to have an indicator are sent.
+    min_score: int = Field(0, ge=0, le=100)
 
 
 class InvalidSinkConfig(ValueError):

@@ -1,16 +1,20 @@
 <script setup>
+import { reactive } from "vue";
 import { Form, Field } from "vee-validate";
 import { storeToRefs } from "pinia";
 import { useOrganisationsStore } from "@/stores";
 import { router } from "@/router";
 import { OrganisationSchema } from "@/schemas/organisation";
+import SourceTrustFields from "@/components/indicators/SourceTrustFields.vue";
 
 const organisationsStore = useOrganisationsStore();
 const { status } = storeToRefs(organisationsStore);
 
-const organisation = {
+const organisation = reactive({
   local: true,
-};
+  score_modifier: 0,
+  score_cap: null,
+});
 
 function onSubmit(values, { setErrors }) {
   return organisationsStore
@@ -153,6 +157,11 @@ function onSubmit(values, { setErrors }) {
             {{ errors["organisation.restricted_to_domain"] }}
           </div>
         </div>
+        <SourceTrustFields
+          id-prefix="organisation"
+          v-model:modifier="organisation.score_modifier"
+          v-model:cap="organisation.score_cap"
+        />
         <div v-if="errors.apiError" class="w-100 alert alert-danger mt-3 mb-3">
           {{ errors.apiError }}
         </div>

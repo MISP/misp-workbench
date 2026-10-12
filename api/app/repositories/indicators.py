@@ -38,6 +38,7 @@ from typing import Iterable, Iterator, Optional
 from opensearchpy import helpers as opensearch_helpers
 
 from app.repositories import stream_exports
+from app.services import scoring
 from app.services.opensearch import get_opensearch_client
 from app.services.redis import get_redis_client
 
@@ -207,7 +208,7 @@ def _existing_indicators(client, values: set) -> dict[str, dict]:
             "bool": {"filter": [clause], "must_not": [{"term": {"deleted": True}}]}
         }
         for hits in stream_exports.iter_pit_pages(
-            client, INDEX, query, source=["value", "checksum"]
+            client, INDEX, query, source=["value", "checksum", "score"]
         ):
             for hit in hits:
                 if hit["_source"].get("value") in values:
@@ -295,7 +296,10 @@ def _sightings(client, values: set) -> dict[str, dict]:
                     "values": {
                         "terms": {"field": "value.keyword", "size": len(chunk)},
                         "aggs": {
-                            "types": {"terms": {"field": "type", "size": 10}},
+                            "types": {
+                                "terms": {"field": "type", "size": 10},
+                                "aggs": {"last": {"max": {"field": "@timestamp"}}},
+                            },
                             "first": {"min": {"field": "@timestamp"}},
                             "last": {"max": {"field": "@timestamp"}},
                         },
@@ -307,13 +311,25 @@ def _sightings(client, values: set) -> dict[str, dict]:
         for bucket in (
             (response.get("aggregations") or {}).get("values", {}).get("buckets", [])
         ):
-            types = {b["key"]: b["doc_count"] for b in bucket["types"]["buckets"]}
+            types = {b["key"]: b for b in bucket["types"]["buckets"]}
+
+            def count(type_):
+                return types[type_]["doc_count"] if type_ in types else 0
+
+            def last(type_):
+                if type_ not in types:
+                    return None
+                return _millis_to_seconds(types[type_]["last"].get("value"))
+
             counters[bucket["key"]] = {
-                "positive": types.get("positive", 0),
-                "false_positive": types.get("false-positive", 0),
-                "expiration": types.get("expiration", 0),
+                "positive": count("positive"),
+                "false_positive": count("false-positive"),
+                "expiration": count("expiration"),
                 "first_at": _millis_to_seconds(bucket["first"].get("value")),
                 "last_at": _millis_to_seconds(bucket["last"].get("value")),
+                # An expiration only counts when no positive sighting followed.
+                "last_positive_at": last("positive"),
+                "last_expiration_at": last("expiration"),
             }
     return counters
 
@@ -337,9 +353,15 @@ def build_indicator(
     attributes: list[dict],
     events: dict[str, dict],
     sightings: Optional[dict] = None,
+    scoring_config: Optional[dict] = None,
+    now: Optional[int] = None,
 ) -> Optional[dict]:
     """The consolidated record of one type and value, or None if it has no
-    live attribute (all in deleted events)."""
+    live attribute (all in deleted events).
+
+    Carries its confidence score (see ``app.services.scoring``), which is
+    left out of ``checksum``: a score moves with time alone.
+    """
     live = [
         a
         for a in attributes
@@ -408,6 +430,8 @@ def build_indicator(
             "expiration": sightings.get("expiration", 0),
             "first_at": sightings.get("first_at"),
             "last_at": sightings.get("last_at"),
+            "last_positive_at": sightings.get("last_positive_at"),
+            "last_expiration_at": sightings.get("last_expiration_at"),
         },
         "warninglist_hits": sorted(
             {hit for a in live for hit in a.get("warninglist_hits") or []}
@@ -416,6 +440,11 @@ def build_indicator(
     doc["checksum"] = hashlib.sha256(
         json.dumps(doc, sort_keys=True, default=str).encode("utf-8")
     ).hexdigest()
+    now = int(time.time()) if now is None else now
+    doc["score"], doc["score_breakdown"] = scoring.score(
+        doc, scoring_config or scoring.config(), now
+    )
+    doc["scored_at"] = now
     return doc
 
 
@@ -425,6 +454,7 @@ class _Run:
     def __init__(self):
         self.client = get_opensearch_client()
         self.events = _Events(self.client, _organisation_names())
+        self.scoring = scoring.load_config()
         self.written = 0
         self.removed = 0
 
@@ -458,20 +488,25 @@ def _refresh_batch(run: _Run, values: set) -> None:
         }
     )
     sightings = _sightings(client, values)
+    now = int(time.time())
 
     docs = {}
     for (type_, value), attributes in groups.items():
         if not type_:
             continue
-        doc = build_indicator(type_, value, attributes, events, sightings.get(value))
+        doc = build_indicator(
+            type_, value, attributes, events, sightings.get(value), run.scoring, now
+        )
         if doc is not None:
             docs[doc["uuid"]] = doc
 
     existing = _existing_indicators(client, values)
-    now = int(time.time())
     actions = []
     for doc_id, doc in docs.items():
-        if existing.get(doc_id, {}).get("checksum") == doc["checksum"]:
+        stored = existing.get(doc_id, {})
+        if stored.get("checksum") == doc["checksum"] and not scoring.needs_rewrite(
+            stored.get("score"), doc["score"], run.scoring
+        ):
             continue
         actions.append(
             {
@@ -801,7 +836,34 @@ def get_indicators(ids: Iterable[str]) -> dict[str, dict]:
     return found
 
 
+MAX_SCORE_KEYS = 1000
+
+
+def scores_for(keys: list[tuple[str, str]]) -> list[Optional[dict]]:
+    """Score and breakdown of the indicator of each ``(type, value)``, in order.
+
+    None where there is no live indicator (a context type, or one not built
+    yet).
+    """
+    ids = [indicator_uuid(t, v) for t, v in keys]
+    found = get_indicators(ids)
+    return [
+        (
+            {
+                "uuid": i,
+                "score": found[i].get("score"),
+                "score_breakdown": found[i].get("score_breakdown") or [],
+                "scored_at": found[i].get("scored_at"),
+            }
+            if i in found
+            else None
+        )
+        for i in ids
+    ]
+
+
 SORTS = {
+    "score": [{"score": {"order": "desc", "missing": "_last"}}],
     "last_seen": [{"last_seen": {"order": "desc", "missing": "_last"}}],
     "first_seen": [{"first_seen": {"order": "desc", "missing": "_last"}}],
     "event_count": [{"event_count": {"order": "desc"}}],
@@ -817,8 +879,11 @@ def search(
     sort: str = "last_seen",
     page: int = 1,
     size: int = 50,
+    min_score: Optional[int] = None,
 ) -> dict:
     filters: list = []
+    if min_score:
+        filters.append({"range": {"score": {"gte": min_score}}})
     if type_:
         filters.append({"term": {"type.keyword": type_}})
     if to_ids is not None:

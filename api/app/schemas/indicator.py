@@ -1,6 +1,6 @@
 from typing import Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class IndicatorSource(BaseModel):
@@ -22,6 +22,16 @@ class IndicatorSightings(BaseModel):
     expiration: int = 0
     first_at: Optional[int] = None
     last_at: Optional[int] = None
+    last_positive_at: Optional[int] = None
+    last_expiration_at: Optional[int] = None
+
+
+class ScoreComponent(BaseModel):
+    """One step of a score: base, corroboration, decay, sightings, ..."""
+
+    factor: str
+    points: int
+    detail: str
 
 
 class Indicator(BaseModel):
@@ -48,7 +58,32 @@ class Indicator(BaseModel):
     galaxies: list[str] = []
     sightings: IndicatorSightings = IndicatorSightings()
     warninglist_hits: list[str] = []
+    # Confidence, 0-100 (None when scoring is off), and how it was reached.
+    score: Optional[int] = None
+    score_breakdown: list[ScoreComponent] = []
+    scored_at: Optional[int] = None
     updated_at: Optional[int] = None
+
+
+class IndicatorKey(BaseModel):
+    type: str
+    value: str
+
+
+class ScoresRequest(BaseModel):
+    attributes: list[IndicatorKey] = Field(..., max_length=1000)
+
+
+class IndicatorScore(BaseModel):
+    uuid: str
+    score: Optional[int] = None
+    score_breakdown: list[ScoreComponent] = []
+    scored_at: Optional[int] = None
+
+
+class ScoresResponse(BaseModel):
+    # In request order; null where the type + value has no live indicator.
+    scores: list[Optional[IndicatorScore]]
 
 
 class IndicatorPage(BaseModel):

@@ -66,6 +66,68 @@ To rebuild now, after restoring data or upgrading:
 docker compose exec api poetry run python -m app.cli rebuild-indicators
 ```
 
+## Confidence scores
+
+Every indicator carries a **confidence score** from 0 to 100, and the steps
+that produced it (`score_breakdown`), so "why is this 42?" has an answer.
+Indicators don't expire on their own in MISP. The score is what lets an IP
+that was a C2 node two years ago fade out of block lists, while a malware
+hash keeps its value.
+
+The score is an indicator's, never an attribute's: attributes are left as
+they are. An event's attribute list shows each attribute's indicator score
+next to its value, and hovering over the badge shows the breakdown.
+
+<img src="../../screenshots/indicators/misp-workbench-3_indicators_attribute-scores.png#only-light" alt="Scores in an event's attributes" style="max-width: 100%; height: auto;">
+<img src="../../screenshots/indicators/misp-workbench-3_indicators_attribute-scores-dark.png#only-dark" alt="Scores in an event's attributes" style="max-width: 100%; height: auto;">
+
+| Step | Default |
+|---|---|
+| **Base**: the best source it comes from | `local` 70, `server` 60, `feed` 50, `unknown` 50 |
+| **Source trust**: that source's score modifier (see below) | 0 |
+| **Organisation trust**: the most favourable modifier among the organisations that reported it | 0 |
+| **Corroboration**: per further independent source | +5, up to +15 |
+| **Decay**: halved every half-life of its type, counted from `last_seen` (which positive sightings move) | IPs and URLs 30 days, domains, hostnames and email addresses 90 days, hashes never, other types 180 days |
+| **Sightings**: positive ones | +5 for one, +10 for three, +15 for seven or more |
+| **False positives**: per false-positive sighting | −20, up to −60 |
+| **Warninglist**: on an enabled [warninglist](warninglists.md) | −50 |
+| **Cap**: when every source reporting it is capped (see below) | none |
+| **Expiration**: an expiration sighting newer than any positive one | caps the score at 10 |
+
+Below **30** an indicator counts as *decayed*, the threshold restSearch's
+`excludeDecayed` uses. To keep only confident values in an output, use
+`score:>=60` in an Indicators export's query, a sink's **Minimum score**,
+or `min_score` in `/lookup` and `/indicators`.
+
+Scores are computed whenever an indicator is, and the hourly rebuild applies
+decay. A stored score is only rewritten when it moves by 5 points or more, or
+crosses the decayed threshold. Hourly decay doesn't rewrite every indicator,
+so incremental exports carry real changes.
+
+### Settings
+
+Under ***internals*** → ***runtime settings*** → ***scoring***, every
+number above can be changed, including the half-life of each attribute type.
+Scoring can also be turned off. Saving re-scores every indicator.
+
+<img src="../../screenshots/indicators/misp-workbench-4_indicators_scoring-settings.png#only-light" alt="Scoring settings" style="max-width: 100%; height: auto;">
+<img src="../../screenshots/indicators/misp-workbench-4_indicators_scoring-settings-dark.png#only-dark" alt="Scoring settings" style="max-width: 100%; height: auto;">
+
+### Source trust
+
+Feeds, MISP servers and organisations each have a **score modifier**
+(−100 to +100) and an optional **score cap**, in their edit forms under
+*Indicator scoring*. A noisy OSINT feed can be lowered and capped at 40, and
+a trusted partner's MISP server raised.
+
+An indicator is as trustworthy as its most trusted source:
+
+- **Base.** The source with the highest base plus modifier sets it.
+- **Organisations.** The most favourable organisation modifier applies. An organisation with no modifier counts as 0, so a negative modifier only matters when no other organisation reports the value.
+- **Caps.** A cap holds only when every feed, server or local source reporting the value is capped. Organisation caps are combined separately: a feed capped at 40 stays capped whatever the organisations are, unless another uncapped source reports the value too.
+
+Changing a source's trust re-scores every indicator.
+
 ## Using them
 
 Every output can work with indicators instead of raw attributes:
@@ -74,8 +136,9 @@ Every output can work with indicators instead of raw attributes:
 |---|---|
 | [Exports](exports.md) | Index target **Indicators**, in `ndjson`, `text` or `cdb`. `ndjson` can be an [incremental feed](exports.md#incremental-feeds), tombstones included |
 | [Streaming exports](api/streaming-exports.md) | `GET /indicators/export`, same parameters and formats as `/attributes/export` |
-| [Sinks](sinks.md) | **Send consolidated indicators**: one record per value, carrying an `indicator` block |
-| [Bulk lookup](api/lookup.md) | `include_indicators: true` adds each matched value's indicators |
+| [Sinks](sinks.md) | **Send consolidated indicators**: one record per value, carrying an `indicator` block (with its `score`). **Minimum score** leaves out low-confidence values |
+| [Bulk lookup](api/lookup.md) | `include_indicators: true` adds each matched value's indicators; `min_score` leaves out low-confidence ones |
+| [restSearch](api/rest-search.md) | MISP's `includeDecayScore`, `excludeDecayed` and `score` |
 | API | `GET /indicators` searches them, `GET /indicators/{uuid}` gets one |
 
 ## API
@@ -84,7 +147,8 @@ All endpoints need `attributes:read`.
 
 | Endpoint | Use |
 |---|---|
-| `GET /indicators` | Search: `q` (Lucene; bare terms match the value), `type`, `to_ids`, `include_deleted`, `sort` (`last_seen`, `first_seen`, `event_count`, `updated_at`), `page`, `size` (up to 1,000; the first 10,000 results can be paged to) |
+| `GET /indicators` | Search: `q` (Lucene; bare terms match the value), `type`, `to_ids`, `min_score`, `include_deleted`, `sort` (`score`, `last_seen`, `first_seen`, `event_count`, `updated_at`), `page`, `size` (up to 1,000; the first 10,000 results can be paged to) |
+| `POST /indicators/scores` | The score of the indicator behind each of up to 1,000 attributes (`{"attributes": [{"type", "value"}]}`), in order |
 | `GET /indicators/{uuid}` | One indicator |
 | `GET /indicators/export` | Everything matching, streamed (see [Streaming exports](api/streaming-exports.md)) |
 | `GET /indicators/status` | Built, last sync, number of indicators and tombstones |

@@ -30,6 +30,7 @@ from typing import Any, Iterator, Optional
 
 from app.repositories import events as events_repository
 from app.schemas import event as event_schemas
+from app.services import scoring
 from app.services.opensearch import get_opensearch_client
 
 logger = logging.getLogger(__name__)
@@ -866,6 +867,10 @@ def _return_format(params: dict, allowed: tuple) -> str:
 def prepare_attribute_search(params: dict) -> PreparedSearch:
     params = normalize_params(params)
     fmt = _return_format(params, ATTRIBUTE_RETURN_FORMATS)
+    # Checked before the response starts, which a bad value would break.
+    _parse_flag(params, "includedecayscore")
+    _parse_flag(params, "excludedecayed")
+    _parse_int(params.get("score"), "score")
     limit, offset = _parse_pagination(params)
     client = get_opensearch_client()
     return PreparedSearch(
@@ -895,6 +900,81 @@ def prepare_event_search(params: dict) -> PreparedSearch:
     )
 
 
+# The "model" decay scores are reported under, in MISP's decay_score shape.
+DECAYING_MODEL = {"id": "0", "name": "misp-workbench confidence"}
+
+
+class _Decay:
+    """MISP's decaying-model parameters, answered from indicator scores.
+
+    ``includeDecayScore`` adds ``decay_score`` to each attribute,
+    ``excludeDecayed`` leaves out attributes whose indicator scores below the
+    threshold (``scoring.decayed_below``, or ``score`` when given). As in
+    MISP, the exclusion applies after paging, so a page can hold fewer than
+    ``limit`` attributes. An attribute without an indicator yet is fresh and
+    kept, with no ``decay_score``.
+    """
+
+    def __init__(self, params: dict):
+        self.include = _parse_flag(params, "includedecayscore")
+        self.exclude = _parse_flag(params, "excludedecayed")
+        self.threshold = (
+            None
+            if _is_empty(params.get("score"))
+            else _parse_int(params.get("score"), "score")
+        )
+        self.active = self.include or self.exclude
+        self.config = scoring.load_config() if self.active else None
+
+    def scores(self, sources: list[dict]) -> dict:
+        if not self.active:
+            return {}
+        from app.repositories import indicators as indicators_repository
+
+        return indicators_repository.get_indicators(
+            indicators_repository.indicator_uuid(s.get("type"), s.get("value"))
+            for s in sources
+        )
+
+    @staticmethod
+    def indicator(scores: dict, source: dict) -> Optional[dict]:
+        if not scores:
+            return None
+        from app.repositories import indicators as indicators_repository
+
+        return scores.get(
+            indicators_repository.indicator_uuid(source.get("type"), source.get("value"))
+        )
+
+    def is_decayed(self, indicator: Optional[dict]) -> bool:
+        return bool(indicator) and scoring.decayed(
+            indicator.get("score"), self.config, self.threshold
+        )
+
+    def keep(self, scores: dict, source: dict) -> bool:
+        return not (self.exclude and self.is_decayed(self.indicator(scores, source)))
+
+    def decay_score(self, indicator: Optional[dict]) -> Optional[list]:
+        if not self.include or not indicator or indicator.get("score") is None:
+            return None
+        base = next(
+            (
+                c["points"]
+                for c in indicator.get("score_breakdown") or []
+                if c.get("factor") == "base"
+            ),
+            None,
+        )
+        return [
+            {
+                "score": float(indicator["score"]),
+                "base_score": float(base) if base is not None else None,
+                "decayed": self.is_decayed(indicator),
+                "DecayingModel": DECAYING_MODEL,
+            }
+        ]
+
+
 def stream_attributes(search: PreparedSearch) -> Iterator[str]:
     client = search.client
     params = search.params
@@ -902,13 +982,15 @@ def stream_attributes(search: PreparedSearch) -> Iterator[str]:
     include_event_tags = _parse_flag(params, "includeeventtags")
     include_context = _parse_flag(params, "includecontext")
     include_warninglist_hits = _parse_flag(params, "includewarninglisthits")
+    decay = _Decay(params)
     needs_events = fmt in ("json", "csv")
 
     pages = iter_pages(
         client,
         ATTRIBUTES_INDEX,
         search.query,
-        source=True if fmt != "text" else ["value"],
+        # Scores are keyed on type + value.
+        source=True if fmt != "text" else ["value", "type"],
         limit=search.limit,
         offset=search.offset,
     )
@@ -921,6 +1003,8 @@ def stream_attributes(search: PreparedSearch) -> Iterator[str]:
     first = True
     for hits in pages:
         sources = [h["_source"] for h in hits]
+        scores = decay.scores(sources)
+        sources = [s for s in sources if decay.keep(scores, s)]
 
         if fmt == "text":
             yield "".join(f"{s.get('value')}\n" for s in sources)
@@ -965,6 +1049,9 @@ def stream_attributes(search: PreparedSearch) -> Iterator[str]:
                 include_context,
                 include_warninglist_hits,
             )
+            decay_score = decay.decay_score(decay.indicator(scores, s))
+            if decay_score is not None:
+                attribute["decay_score"] = decay_score
             chunk.append(("" if first else ",") + json.dumps(attribute, default=str))
             first = False
         yield "".join(chunk)
