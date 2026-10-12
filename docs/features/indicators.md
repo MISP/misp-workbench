@@ -9,6 +9,12 @@ misp-workbench keeps one **consolidated indicator** per type and value.
 Under ***internals*** → ***indicators*** you can search them. Click a row to
 see its organisations, sources, tags and events.
 
+<img src="../../screenshots/indicators/misp-workbench-1_indicators_list.png#only-light" alt="Indicators list" style="max-width: 100%; height: auto;">
+<img src="../../screenshots/indicators/misp-workbench-1_indicators_list-dark.png#only-dark" alt="Indicators list" style="max-width: 100%; height: auto;">
+
+<img src="../../screenshots/indicators/misp-workbench-2_indicators_detail.png#only-light" alt="An indicator's consolidated context" style="max-width: 100%; height: auto;">
+<img src="../../screenshots/indicators/misp-workbench-2_indicators_detail-dark.png#only-dark" alt="An indicator's consolidated context" style="max-width: 100%; height: auto;">
+
 ## What an indicator holds
 
 An indicator is built from every live attribute with its type and value.
