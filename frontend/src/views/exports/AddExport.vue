@@ -11,8 +11,10 @@ const toastsStore = useToastsStore();
 const exportJob = reactive({
   name: "",
   query: "",
-  index_target: "attributes",
-  format: "json",
+  // Consolidated indicators by default: each value once, with its context,
+  // which is what security controls want.
+  index_target: "indicators",
+  format: "ndjson",
   distribution: null,
   incremental: false,
 });
@@ -124,11 +126,11 @@ function cancel() {
           v-model="exportJob.index_target"
           @change="onIndexTargetChange"
         >
-          <option value="attributes">Attributes</option>
-          <option value="events">Events</option>
           <option value="indicators">
             Indicators (one per type and value)
           </option>
+          <option value="attributes">Attributes</option>
+          <option value="events">Events</option>
         </select>
         <div v-if="isIndicators" class="form-text">
           Consolidated indicators: each value once, with its sources, first and

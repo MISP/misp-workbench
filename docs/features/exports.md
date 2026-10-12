@@ -61,7 +61,10 @@ can always fetch the same URL for the latest results.
 
 1. Go to ***internals*** → ***exports*** and click the ***+ New Export*** button.
 2. Give the export a name, pick the search index and format, and enter the
-   Lucene query. (Optional) Toggle ***Run on a schedule*** to make the export
+   Lucene query. New exports default to **Indicators** in NDJSON: each value
+   once, with its [consolidated context](indicators.md), which is what
+   security controls usually want. Switch to *Attributes* or *Events* for
+   raw records. (Optional) Toggle ***Run on a schedule*** to make the export
    recurring — see [Scheduling](#scheduling) below.
 
     <img src="../../screenshots/exports/misp-workbench-1_exports_new-export.png#only-light" style="height: 500px;">
