@@ -85,9 +85,9 @@ load();
     <div class="card-body">
       <p class="text-muted">
         One record per type and value, merged from every event it appears in:
-        sources, first and last seen, tags with the most restrictive TLP, and
-        sightings. Exports, feeds, sinks and lookups can send these instead of
-        raw attributes.
+        sources, first and last seen, every tag and the most restrictive TLP,
+        and sightings. Exports, feeds, sinks and lookups can send these instead
+        of raw attributes.
       </p>
 
       <form class="row g-2 align-items-center mb-3" @submit.prevent="apply">
