@@ -61,6 +61,16 @@ celery_app.conf.update(
             "task": "app.worker.tasks.rebuild_lookup_cache",
             "schedule": 3600.0,
         },
+        # Consolidated indicators (one per type + value): refresh what changed
+        # every few seconds, walk everything hourly.
+        "indicators-sync": {
+            "task": "app.worker.tasks.sync_indicators",
+            "schedule": 15.0,
+        },
+        "indicators-rebuild": {
+            "task": "app.worker.tasks.rebuild_indicators",
+            "schedule": 3600.0,
+        },
         # Flag attributes written since the last run with the warninglists
         # they hit (a full re-evaluation runs whenever the lists change).
         "warninglists-evaluate-recent": {
@@ -1478,6 +1488,27 @@ def rebuild_lookup_cache():
     from app.repositories import lookup as lookup_repository
 
     return lookup_repository.rebuild_cache()
+
+
+# ──────────────────────────────────────────────────────────────────────────
+# Consolidated indicators
+# ──────────────────────────────────────────────────────────────────────────
+
+
+@celery_app.task(ignore_result=True, expires=15, time_limit=2 * 3600)
+def sync_indicators():
+    """Refresh the indicators of values written or sighted since the last sync."""
+    from app.repositories import indicators as indicators_repository
+
+    return indicators_repository.sync()
+
+
+@celery_app.task(ignore_result=True, time_limit=4 * 3600, soft_time_limit=4 * 3600 - 60)
+def rebuild_indicators():
+    """Recompute every indicator; tombstone those without live attributes."""
+    from app.repositories import indicators as indicators_repository
+
+    return indicators_repository.rebuild()
 
 
 # ──────────────────────────────────────────────────────────────────────────

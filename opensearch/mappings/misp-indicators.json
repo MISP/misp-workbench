@@ -1,0 +1,126 @@
+{
+    "mappings": {
+        "dynamic": false,
+        "properties": {
+            "uuid": {
+                "type": "text",
+                "fields": {
+                    "keyword": {
+                        "type": "keyword",
+                        "ignore_above": 256
+                    }
+                }
+            },
+            "type": {
+                "type": "text",
+                "fields": {
+                    "keyword": {
+                        "type": "keyword",
+                        "ignore_above": 256
+                    }
+                }
+            },
+            "value": {
+                "type": "text",
+                "fields": {
+                    "keyword": {
+                        "type": "keyword",
+                        "ignore_above": 256
+                    }
+                }
+            },
+            "categories": {
+                "type": "keyword"
+            },
+            "to_ids": {
+                "type": "boolean"
+            },
+            "deleted": {
+                "type": "boolean"
+            },
+            "attribute_count": {
+                "type": "integer"
+            },
+            "ids_attribute_count": {
+                "type": "integer"
+            },
+            "event_count": {
+                "type": "integer"
+            },
+            "events": {
+                "type": "keyword"
+            },
+            "first_seen": {
+                "type": "long"
+            },
+            "last_seen": {
+                "type": "long"
+            },
+            "sources": {
+                "properties": {
+                    "type": {
+                        "type": "keyword"
+                    },
+                    "id": {
+                        "type": "long"
+                    },
+                    "name": {
+                        "type": "keyword"
+                    },
+                    "event_count": {
+                        "type": "integer"
+                    }
+                }
+            },
+            "organisations": {
+                "properties": {
+                    "name": {
+                        "type": "keyword"
+                    },
+                    "event_count": {
+                        "type": "integer"
+                    }
+                }
+            },
+            "tags": {
+                "type": "keyword"
+            },
+            "tlp": {
+                "type": "keyword"
+            },
+            "galaxies": {
+                "type": "keyword"
+            },
+            "sightings": {
+                "properties": {
+                    "positive": {
+                        "type": "integer"
+                    },
+                    "false_positive": {
+                        "type": "integer"
+                    },
+                    "expiration": {
+                        "type": "integer"
+                    },
+                    "first_at": {
+                        "type": "long"
+                    },
+                    "last_at": {
+                        "type": "long"
+                    }
+                }
+            },
+            "warninglist_hits": {
+                "type": "keyword"
+            },
+            "checksum": {
+                "type": "keyword",
+                "index": false
+            },
+            "updated_at": {
+                "type": "date",
+                "format": "epoch_second"
+            }
+        }
+    }
+}

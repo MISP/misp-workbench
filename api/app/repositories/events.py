@@ -328,7 +328,17 @@ def get_events_by_uuids_from_opensearch(uuids) -> list[event_schemas.Event]:
     return events
 
 
-def create_event(db: Session, event: event_schemas.EventCreate) -> event_schemas.Event:
+def event_source(kind: str, id: Optional[int] = None, name: Optional[str] = None) -> dict:
+    """Where an event came from: ``local``, a ``feed`` or a MISP ``server``.
+
+    Consolidated indicators count their sources from it.
+    """
+    return {"type": kind, "id": id, "name": name}
+
+
+def create_event(
+    db: Session, event: event_schemas.EventCreate, source: Optional[dict] = None
+) -> event_schemas.Event:
     client = get_opensearch_client()
     event_uuid = str(event.uuid or uuid4())
     now = int(time.time())
@@ -365,6 +375,7 @@ def create_event(db: Session, event: event_schemas.EventCreate) -> event_schemas
         "attributes": [],
         "objects": [],
         "organisation": org_dict,
+        "source": source or event_source("local"),
         "@timestamp": datetime.fromtimestamp(ts).isoformat(),
     }
 
@@ -374,7 +385,9 @@ def create_event(db: Session, event: event_schemas.EventCreate) -> event_schemas
     return event_schemas.Event.model_validate(event_doc)
 
 
-def create_event_from_pulled_event(pulled_event: MISPEvent) -> event_schemas.Event:
+def create_event_from_pulled_event(
+    pulled_event: MISPEvent, source: Optional[dict] = None
+) -> event_schemas.Event:
     client = get_opensearch_client()
     event_uuid = str(pulled_event.uuid)
     ts = int(pulled_event.timestamp.timestamp())
@@ -408,6 +421,7 @@ def create_event_from_pulled_event(pulled_event: MISPEvent) -> event_schemas.Eve
         "objects": [],
         "organisation": None,
         "sharing_group": None,
+        "source": source,
         "@timestamp": datetime.fromtimestamp(ts).isoformat(),
     }
 
@@ -418,7 +432,9 @@ def create_event_from_pulled_event(pulled_event: MISPEvent) -> event_schemas.Eve
 
 
 def update_event_from_pulled_event(
-    existing_event: event_schemas.Event, pulled_event: MISPEvent
+    existing_event: event_schemas.Event,
+    pulled_event: MISPEvent,
+    source: Optional[dict] = None,
 ) -> event_schemas.Event:
     client = get_opensearch_client()
     event_uuid = str(existing_event.uuid)
@@ -439,6 +455,8 @@ def update_event_from_pulled_event(
         "extends_uuid": str(pulled_event.extends_uuid) if getattr(pulled_event, "extends_uuid", None) else None,
         "@timestamp": datetime.fromtimestamp(ts).isoformat(),
     }
+    if source:
+        patch["source"] = source
 
     client.update(index="misp-events", id=event_uuid, body={"doc": patch}, refresh=True)
     tasks.handle_updated_event.delay(event_uuid)
@@ -493,6 +511,7 @@ def create_event_from_fetched_event(
         "objects": [],
         "organisation": None,
         "sharing_group": None,
+        "source": event_source("feed", feed.id, feed.name),
         "@timestamp": datetime.fromtimestamp(ts).isoformat(),
     }
 
@@ -556,6 +575,7 @@ def update_event_from_fetched_event(
             if hasattr(fetched_event, "extends_uuid") and fetched_event.extends_uuid != ""
             else None
         ),
+        "source": event_source("feed", feed.id, feed.name),
         "@timestamp": datetime.fromtimestamp(ts).isoformat(),
     }
 

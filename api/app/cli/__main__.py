@@ -1221,6 +1221,19 @@ def seed_demo(
             f"{counts['unchanged']} unchanged; {flagged.get('changed', 0)} attributes flagged"
         )
 
+    # After the warninglists (their hits are part of an indicator) and before
+    # the exports, so the indicators page and lookups have them right away
+    # rather than at the next hourly rebuild.
+    from app.repositories import indicators as indicators_repository
+
+    get_opensearch_client().indices.refresh(index="misp-attributes,misp-sightings")
+    indicators_result = indicators_repository.rebuild(wait_seconds=300)
+    indicators_msg = (
+        f"{indicators_result['written']} written"
+        if indicators_result is not None
+        else "skipped (a sync or rebuild is running; the hourly rebuild catches up)"
+    )
+
     exports_created, exports_skipped = _seed_demo_exports(db, user, exports_data)
 
     notebooks_msg = "skipped (directory not found)"
@@ -1270,6 +1283,7 @@ def seed_demo(
     typer.echo(
         f"  sinks             {sinks_created} created / {sinks_updated} refreshed (disabled, never reachable)"
     )
+    typer.echo(f"  indicators        {indicators_msg}")
     typer.echo(
         f"  exports           {exports_created} created and run / {exports_skipped} already present"
     )
@@ -1502,6 +1516,29 @@ def rebuild_lookup_cache():
         typer.echo("A rebuild is already running.")
         raise typer.Exit(1)
     typer.echo(f"Lookup cache rebuilt: {size} indicator values.")
+
+
+@app.command()
+def rebuild_indicators(
+    wait: int = typer.Option(
+        600, help="Seconds to wait for a running sync or rebuild to finish"
+    ),
+):
+    """Recompute the consolidated indicators (one per type + value) now.
+
+    Runs hourly on its own, and a sync keeps them current every few seconds;
+    use this after restoring data or upgrading rather than waiting.
+    """
+    from app.repositories import indicators as indicators_repository
+
+    result = indicators_repository.rebuild(wait_seconds=wait)
+    if result is None:
+        typer.echo("Another sync or rebuild is still running.")
+        raise typer.Exit(1)
+    typer.echo(
+        f"Indicators rebuilt: {result['written']} written, "
+        f"{result['removed']} removed, {result['purged']} old tombstones purged."
+    )
 
 if __name__ == "__main__":
     app()

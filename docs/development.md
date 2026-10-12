@@ -195,6 +195,7 @@ reach the database:
 | Sinks | Splunk HEC, Graylog GELF, syslog/CEF and webhook sinks on `example.org` hosts, **all disabled**, with a delivery history (successes, counts, one failing) so the sinks list looks lived-in |
 | Exports | An hourly incremental NDJSON feed (with its feed URL) and a Wazuh CDB list, both run once during the seed so their files and counts exist without a worker |
 | Warninglists | All 225 MISP warninglists loaded and every attribute flagged, which takes a couple of minutes. Skip with `--skip-warninglists` |
+| Indicators | The [consolidated indicators](features/indicators.md) rebuilt from everything above, so the indicators page and lookups have them without waiting for the hourly rebuild |
 
 ### Hunt history and the 90-row limit
 

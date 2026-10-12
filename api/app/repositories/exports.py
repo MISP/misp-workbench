@@ -82,6 +82,8 @@ def _unregister_export_schedule(name: str) -> None:
 INDEX_MAP = {
     "attributes": "misp-attributes",
     "events": "misp-events",
+    # One record per type + value (see app.repositories.indicators).
+    "indicators": "misp-indicators",
 }
 
 # Safety cap so a broad query can't exhaust worker memory.
@@ -441,7 +443,7 @@ def _run_streamed(db: Session, db_export: export_models.Export) -> None:
     # too, rather than in neither.
     cursor = int(time.time())
 
-    enforce = db_export.index_target == "attributes" and bool(
+    enforce = db_export.index_target in ("attributes", "indicators") and bool(
         RuntimeSettings(db).get_value("warninglists.enforce_on_outputs", default=True)
     )
     stored_key, size, records, checksum = _stream_to_storage(

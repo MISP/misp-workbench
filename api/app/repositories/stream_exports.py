@@ -56,6 +56,7 @@ RETRY_AFTER_SECONDS = "30"
 
 ATTRIBUTES_INDEX = "misp-attributes"
 EVENTS_INDEX = "misp-events"
+INDICATORS_INDEX = "misp-indicators"
 
 ATTRIBUTE_FORMATS = ("json", "ndjson", "csv", "text", "cdb")
 EVENT_FORMATS = ("json", "ndjson")
@@ -83,6 +84,25 @@ CSV_COLUMNS = [
     "timestamp",
     "updated_at",
     "tags",
+]
+
+INDICATOR_CSV_COLUMNS = [
+    "uuid",
+    "type",
+    "value",
+    "to_ids",
+    "deleted",
+    "first_seen",
+    "last_seen",
+    "attribute_count",
+    "event_count",
+    "sources",
+    "organisations",
+    "tlp",
+    "tags",
+    "sightings_positive",
+    "sightings_false_positive",
+    "updated_at",
 ]
 
 
@@ -186,7 +206,13 @@ def prepare_attribute_export(
     since: Optional[str] = None,
     include_deleted: bool = False,
     enforce_warninglist: bool = False,
+    index: str = ATTRIBUTES_INDEX,
 ) -> PreparedExport:
+    """An attribute export, or with ``index=INDICATORS_INDEX`` an indicator one.
+
+    Both are stamped with ``updated_at``, keep tombstones (``deleted``) and
+    carry ``warninglist_hits``, so they share filtering, deltas and formats.
+    """
     fmt = _validate_format(fmt, ATTRIBUTE_FORMATS)
     export_timestamp = int(time.time())
 
@@ -216,11 +242,11 @@ def prepare_attribute_export(
 
     client = get_opensearch_client()
     request_key = json.dumps(
-        [ATTRIBUTES_INDEX, query, fmt, since, include_deleted, enforce_warninglist]
+        [index, query, fmt, since, include_deleted, enforce_warninglist]
     )
-    etag, last_modified = _fingerprint(client, ATTRIBUTES_INDEX, os_query, request_key)
+    etag, last_modified = _fingerprint(client, index, os_query, request_key)
     return PreparedExport(
-        index=ATTRIBUTES_INDEX,
+        index=index,
         format=fmt,
         query=os_query,
         export_timestamp=export_timestamp,
@@ -291,6 +317,32 @@ def _csv_row(source: dict) -> list:
         source.get("timestamp"),
         source.get("updated_at") or "",
         ",".join(t.get("name", "") for t in source.get("tags") or []),
+    ]
+
+
+def _names(entries) -> str:
+    return ",".join(str(e.get("name") or "") for e in entries or [])
+
+
+def _indicator_csv_row(source: dict) -> list:
+    sightings = source.get("sightings") or {}
+    return [
+        source.get("uuid"),
+        source.get("type"),
+        source.get("value"),
+        1 if source.get("to_ids") else 0,
+        1 if source.get("deleted") else 0,
+        source.get("first_seen") or "",
+        source.get("last_seen") or "",
+        source.get("attribute_count") or 0,
+        source.get("event_count") or 0,
+        _names(source.get("sources")),
+        _names(source.get("organisations")),
+        source.get("tlp") or "",
+        ",".join(source.get("tags") or []),
+        sightings.get("positive") or 0,
+        sightings.get("false_positive") or 0,
+        source.get("updated_at") or "",
     ]
 
 
@@ -456,7 +508,15 @@ def _stream(
     export: PreparedExport, pit_id: Optional[str], slot: Optional[ExportSlot]
 ) -> Iterator[str]:
     fmt = export.format
+    indicators = export.index == INDICATORS_INDEX
     source: Any = ["value", "type"] if fmt in ("text", "cdb") else True
+    if indicators and source is True:
+        source = {"excludes": ["checksum"]}
+    columns, row = (
+        (INDICATOR_CSV_COLUMNS, _indicator_csv_row)
+        if indicators
+        else (CSV_COLUMNS, _csv_row)
+    )
     pages = iter_pit_pages(
         export.client, export.index, export.query, source=source, pit_id=pit_id
     )
@@ -464,7 +524,7 @@ def _stream(
     if fmt == "json":
         yield "["
     elif fmt == "csv":
-        yield csv_line(CSV_COLUMNS)
+        yield csv_line(columns)
 
     first = True
     for hits in pages:
@@ -486,7 +546,7 @@ def _stream(
                 json.dumps(hit["_source"], default=str) + "\n" for hit in hits
             )
         elif fmt == "csv":
-            yield "".join(csv_line(_csv_row(hit["_source"])) for hit in hits)
+            yield "".join(csv_line(row(hit["_source"])) for hit in hits)
         elif fmt == "text":
             lines = (_single_line(hit["_source"].get("value")) for hit in hits)
             yield "".join(f"{line}\n" for line in lines if line)

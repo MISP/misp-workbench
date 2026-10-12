@@ -26,6 +26,7 @@ async def bulk_lookup(
             request.to_ids_only,
             request.max_attributes,
             request.include_warninglisted,
+            request.include_indicators,
         )
     except lookup_repository.TooManyValues as error:
         raise HTTPException(
@@ -39,6 +40,7 @@ async def single_lookup(
     to_ids_only: bool = Query(True),
     max_attributes: int = Query(10, ge=1, le=100),
     include_warninglisted: bool = Query(False),
+    include_indicators: bool = Query(False),
     user: user_schemas.User = Security(
         get_current_active_user, scopes=["attributes:read"]
     ),
@@ -50,6 +52,7 @@ async def single_lookup(
         to_ids_only,
         max_attributes,
         include_warninglisted,
+        include_indicators,
     )
     if not result["matches"]:
         return lookup_schemas.SingleLookupResponse(value=value, match=False)
@@ -59,6 +62,7 @@ async def single_lookup(
         match=True,
         attribute_count=match["attribute_count"],
         attributes=match["attributes"],
+        indicators=match.get("indicators", []),
     )
 
 

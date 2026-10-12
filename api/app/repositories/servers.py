@@ -471,7 +471,10 @@ def create_or_update_pulled_event(
         else:
             event.sharing_group_id = None
 
-        created = events_repository.create_event_from_pulled_event(event)
+        created = events_repository.create_event_from_pulled_event(
+            event,
+            source=events_repository.event_source("server", server.id, server.name),
+        )
         if created:
             sync_repository.create_pulled_event_tags(db, created, event.tags, user)
 
@@ -527,7 +530,9 @@ def create_or_update_pulled_event(
             return
 
         updated = events_repository.update_event_from_pulled_event(
-            db, existing_event, event
+            existing_event,
+            event,
+            source=events_repository.event_source("server", server.id, server.name),
         )
         if updated:
             sync_repository.create_pulled_event_tags(db, updated, event.tags, user)

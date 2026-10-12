@@ -15,9 +15,9 @@ can always fetch the same URL for the latest results.
 | Term | Description |
 |---|---|
 | **Query** | Lucene query run against the selected index |
-| **Index target** | Which index to export: `attributes` or `events` |
+| **Index target** | Which index to export: `attributes`, `events` or `indicators` ([consolidated](indicators.md): one record per type and value; `ndjson`, `text` and `cdb` only) |
 | **Format** | `json`, `misp` (MISP JSON), `csv`, `stix` (STIX 2.1), `ndjson`, `text` or `cdb` (Wazuh CDB list) |
-| **Incremental** | `ndjson` attribute exports only: every run also stores a delta of what changed since the previous run (see [Incremental feeds](#incremental-feeds)) |
+| **Incremental** | `ndjson` attribute and indicator exports only: every run also stores a delta of what changed since the previous run (see [Incremental feeds](#incremental-feeds)) |
 | **Status** | `queued`, `running`, `completed`, or `failed` |
 | **Schedule** | Optional recurring cadence (crontab). When set, the export re-runs automatically and overwrites its previous file |
 | **Schedule enabled** | Whether the schedule is active (`enabled`) or paused |
@@ -31,8 +31,8 @@ can always fetch the same URL for the latest results.
 | `misp` | A single [MISP-schema](https://github.com/MISP/misp-rfc) event | All matches are merged into one event named after the export |
 | `stix` | A STIX 2.1 bundle | Attributes are grouped into events and converted via the [misp-stix](https://github.com/MISP/misp-stix) library |
 | `ndjson` | One `_source` document per line | Streamed; no record cap. Can be [incremental](#incremental-feeds) |
-| `text` | One value per line | Attributes only. Streamed; no record cap. Multi-line values are skipped |
-| `cdb` | A [Wazuh CDB list](https://documentation.wazuh.com/current/user-manual/ruleset/cdb-list.html), `value:type` per line | Attributes only. Streamed; no record cap. Keys containing `:` are quoted |
+| `text` | One value per line | Attributes and indicators. Streamed; no record cap. Multi-line values are skipped |
+| `cdb` | A [Wazuh CDB list](https://documentation.wazuh.com/current/user-manual/ruleset/cdb-list.html), `value:type` per line | Attributes and indicators. Streamed; no record cap. Keys containing `:` are quoted |
 
 `ndjson`, `text` and `cdb` are streamed out of OpenSearch straight into storage, so they have no record cap and use constant memory however much matches. The other formats are built in memory and capped at 100,000 records.
 

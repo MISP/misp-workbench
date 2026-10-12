@@ -190,6 +190,7 @@ class ApiTester:
                 # so a reference written by one test showed up in the next.
                 "misp-object-references",
                 "misp-analyst-data",
+                "misp-indicators",
             ):
                 try:
                     os_client.delete_by_query(
