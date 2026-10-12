@@ -46,8 +46,9 @@ attributes are never sent.
 With **Send consolidated indicators**, a delivery sends one record per type
 and value, however many of the event's attributes carry it. Each record gets
 an `indicator` block (its uuid, first and last seen, event count, TLP,
-galaxies, sources, organisations and sighting counts), and its `tags` become
-the indicator's merged tags. Tag filters then judge the value rather than the
+galaxies, sources, organisations and sighting counts), and its `tags` gain
+the indicator's merged tags: those of every attribute and event carrying the
+value. Tag filters then judge the value rather than the
 one attribute: with `tlp:red` excluded, a value that is `tlp:red` in any event
 is not sent, even from a `tlp:green` event. Text and comment attributes are
 not indicators and are left out. GELF adds `_misp_indicator_uuid`,

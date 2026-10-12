@@ -64,8 +64,8 @@ NON_INDICATOR_TYPES = [
     "text",
 ]
 
-# Least to most restrictive; an indicator keeps the most restrictive TLP any
-# of its attributes or events carries.
+# Least to most restrictive; an indicator's ``tlp`` is the most restrictive
+# TLP any of its attributes or events carries.
 TLP_ORDER = {
     "tlp:clear": 0,
     "tlp:white": 0,
@@ -90,7 +90,6 @@ LONG_VALUES_CHUNK = 100
 KEYWORD_IGNORE_ABOVE = 256
 # Event uuids listed on an indicator (newest first); event_count has them all.
 MAX_EVENTS_LISTED = 50
-MAX_TAGS = 200
 # Event summaries cached during one sync or rebuild.
 EVENT_CACHE_SIZE = 100_000
 SYNC_OVERLAP_SECONDS = 30
@@ -132,18 +131,18 @@ def _tag_names(tags) -> list[str]:
 
 
 def merge_tags(names: Iterable[str]) -> tuple[list[str], Optional[str], list[str]]:
-    """Merged tags, the most restrictive TLP, and the galaxy tags.
+    """Every tag, the most restrictive TLP, and the galaxy tags.
 
-    Only the most restrictive TLP survives: an indicator that is amber in one
-    event and red in another is red.
+    An indicator that is amber in one event and red in another has ``tlp``
+    red. Its tags keep both, and every other tag, untruncated: outputs exclude
+    by tag (``tlp:amber``, ``PAP:RED``, ...), and a tag dropped here would be
+    a value sent where it must not go.
     """
-    names = set(names)
-    tlps = [n for n in names if n.lower() in TLP_ORDER]
+    tags = sorted(set(names))
+    tlps = [n for n in tags if n.lower() in TLP_ORDER]
     tlp = max(tlps, key=lambda n: TLP_ORDER[n.lower()]).lower() if tlps else None
-    others = sorted(n for n in names if n.lower() not in TLP_ORDER)
-    galaxies = [n for n in others if n.startswith(GALAXY_PREFIX)]
-    tags = ([tlp] if tlp else []) + others
-    return tags[:MAX_TAGS], tlp, galaxies
+    galaxies = [n for n in tags if n.startswith(GALAXY_PREFIX)]
+    return tags, tlp, galaxies
 
 
 # ── Value queries ─────────────────────────────────────────────────────────

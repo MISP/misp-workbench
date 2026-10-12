@@ -24,7 +24,8 @@ Attributes in deleted events don't count.
 | `event_count`, `events` | How many events it is in, and the 50 newest |
 | `sources` | Where those events came from (a `feed`, a MISP `server`, `local`), with how many events each |
 | `organisations` | The events' creator organisations, with how many events each |
-| `tags` | Tags of its attributes and their events, merged. Only the **most restrictive TLP** is kept (`tlp:red` over `tlp:amber+strict` over `tlp:amber` over `tlp:green` over `tlp:clear`), and is also in `tlp` |
+| `tags` | Every tag of its attributes and their events, merged. Nothing is dropped, so an output that excludes any of them excludes the value |
+| `tlp` | The **most restrictive TLP** among them (`tlp:red` over `tlp:amber+strict` over `tlp:amber` over `tlp:green` over `tlp:clear`) |
 | `galaxies` | The `misp-galaxy:` tags among them |
 | `sightings` | `positive`, `false_positive` and `expiration` counts, with the first and last sighting time |
 | `warninglist_hits` | The enabled [warninglists](warninglists.md) any of its attributes is on |

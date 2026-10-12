@@ -70,13 +70,16 @@ def build_record(attribute: dict, event: dict) -> dict:
 def with_indicator(record: dict, indicator: dict) -> dict:
     """The record of an attribute, carrying its consolidated indicator.
 
-    Its tags become the indicator's merged tags (every event's, with the most
-    restrictive TLP), so tag filters judge the value, not the one attribute.
+    Its tags become the indicator's merged tags (those of every attribute and
+    event carrying the value) on top of its own, so tag filters judge the
+    value, not the one attribute. Its own are kept: the indicator may predate
+    a tag just added to the attribute, and a filter must still see that tag.
     """
     sightings = indicator.get("sightings") or {}
+    tags = list(dict.fromkeys([*record["tags"], *(indicator.get("tags") or [])]))
     return {
         **record,
-        "tags": list(indicator.get("tags") or []),
+        "tags": tags,
         "indicator": {
             "uuid": indicator.get("uuid"),
             "first_seen": indicator.get("first_seen"),

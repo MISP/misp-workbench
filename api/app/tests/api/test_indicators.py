@@ -222,7 +222,9 @@ class TestIndicators(ApiTester):
         assert {o["name"] for o in ip["organisations"]} == {"Feed Org", "Local Org"}
         # The most restrictive TLP wins; the deleted event's tlp:red doesn't count.
         assert ip["tlp"] == "tlp:amber"
-        assert "tlp:green" not in ip["tags"]
+        # Every tag is kept, so an exclusion of any of them still applies.
+        assert {"tlp:green", "tlp:amber", GALAXY} <= set(ip["tags"])
+        assert "tlp:red" not in ip["tags"]
         assert ip["galaxies"] == [GALAXY]
         assert ip["sightings"]["positive"] == 2
         assert ip["sightings"]["false_positive"] == 1
@@ -404,3 +406,21 @@ class TestIndicators(ApiTester):
         db.commit()
         assert sinks_repository.deliver_event(sink, FEED_EVENT) == 3
         assert all("indicator" not in r for r in received[1]["attributes"])
+
+
+class TestIndicatorTags:
+    def test_merge_keeps_every_tag(self):
+        names = [f"custom:{i:04d}" for i in range(500)] + ["tlp:amber", "TLP:RED"]
+        tags, tlp, _ = indicators.merge_tags(names)
+        assert tlp == "tlp:red"
+        assert set(tags) == set(names)
+
+    def test_record_keeps_its_own_tags(self):
+        from app.services.sinks import formatters
+
+        record = formatters.build_record(
+            {"type": "ip-dst", "value": IP, "tags": _tags("tlp:red")}, {}
+        )
+        # An indicator built before the attribute was tagged tlp:red.
+        merged = formatters.with_indicator(record, {"uuid": "x", "tags": ["tlp:green"]})
+        assert set(merged["tags"]) == {"tlp:red", "tlp:green"}
