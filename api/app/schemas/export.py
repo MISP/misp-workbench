@@ -14,7 +14,9 @@ STREAMED_FORMATS = ("ndjson", "text", "cdb")
 ATTRIBUTE_ONLY_FORMATS = ("text", "cdb")
 # Deltas carry deletions as tombstones, which needs a structured record.
 INCREMENTAL_FORMATS = ("ndjson",)
-ExportIndexTarget = Literal["attributes", "events"]
+ExportIndexTarget = Literal["attributes", "events", "indicators"]
+# Indicators are written by the streamed exporter only.
+INDICATOR_FORMATS = STREAMED_FORMATS
 ExportStatus = Literal["queued", "running", "completed", "failed"]
 
 
@@ -45,17 +47,25 @@ class ExportCreate(ExportBase):
 
     @model_validator(mode="after")
     def _check_format_target(self):
-        if self.format in ATTRIBUTE_ONLY_FORMATS and self.index_target != "attributes":
-            raise ValueError(f"{self.format} exports are only available for attributes")
+        if self.format in ATTRIBUTE_ONLY_FORMATS and self.index_target == "events":
+            raise ValueError(
+                f"{self.format} exports are only available for attributes and indicators"
+            )
+        if self.index_target == "indicators" and self.format not in INDICATOR_FORMATS:
+            raise ValueError(
+                "indicator exports are available as " + ", ".join(INDICATOR_FORMATS)
+            )
         if self.incremental:
             if self.format not in INCREMENTAL_FORMATS:
                 raise ValueError(
                     "incremental exports need a format that can carry deletions: "
                     + ", ".join(INCREMENTAL_FORMATS)
                 )
-            # Deltas key off updated_at, which only attributes are stamped with.
-            if self.index_target != "attributes":
-                raise ValueError("incremental exports are only available for attributes")
+            # Deltas key off updated_at, which events aren't stamped with.
+            if self.index_target == "events":
+                raise ValueError(
+                    "incremental exports are only available for attributes and indicators"
+                )
         return self
 
 

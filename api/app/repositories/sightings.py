@@ -1,6 +1,7 @@
 import logging
 import datetime
 from typing import Optional, Union
+from app.repositories import indicators as indicators_repository
 from app.schemas import sighting as sighting_schemas
 from app.services.opensearch import get_opensearch_client
 from fastapi import HTTPException, status
@@ -125,6 +126,7 @@ def create_sightings(user, sightings: Union[list, dict]):
             detail=str(e),
         )
 
+    indicators_repository.mark_sighted({doc["value"] for doc in docs})
     for start in range(0, len(docs), TASK_BATCH_SIZE):
         tasks.handle_created_sightings.delay(
             [_task_item(doc) for doc in docs[start : start + TASK_BATCH_SIZE]]

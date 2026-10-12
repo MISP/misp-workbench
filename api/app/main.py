@@ -13,6 +13,7 @@ from app.routers import (
     feeds,
     galaxies,
     hunts,
+    indicators,
     lab,
     lookup,
     mcp,
@@ -181,6 +182,9 @@ app.include_router(hunts.router, tags=["Hunts"])
 
 # Bulk indicator lookup
 app.include_router(lookup.router, tags=["Lookup"])
+
+# Consolidated indicators (one per type + value)
+app.include_router(indicators.router, tags=["Indicators"])
 
 # Exports resource
 app.include_router(exports.router, tags=["Exports"])

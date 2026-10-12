@@ -63,6 +63,7 @@ const joinList = (list) => (list || []).join(", ");
 const filters = reactive({
   to_ids_only: props.sink?.filters?.to_ids_only ?? true,
   exclude_warninglisted: props.sink?.filters?.exclude_warninglisted ?? true,
+  indicator_mode: props.sink?.filters?.indicator_mode ?? false,
   types: joinList(props.sink?.filters?.types),
   // Tag names (or patterns such as tlp:*), edited with the tag selector.
   tags: [...(props.sink?.filters?.tags || [])],
@@ -112,6 +113,7 @@ async function submit() {
     filters: {
       to_ids_only: filters.to_ids_only,
       exclude_warninglisted: filters.exclude_warninglisted,
+      indicator_mode: filters.indicator_mode,
       types: splitList(filters.types),
       tags: filters.tags,
       exclude_tags: filters.exclude_tags,
@@ -365,6 +367,22 @@ async function submit() {
         <label class="form-check-label" for="sink-warninglisted"
           >Leave out values on an enabled warninglist</label
         >
+      </div>
+      <div class="form-check form-switch mb-3">
+        <input
+          id="sink-indicator-mode"
+          class="form-check-input"
+          type="checkbox"
+          v-model="filters.indicator_mode"
+        />
+        <label class="form-check-label" for="sink-indicator-mode"
+          >Send consolidated indicators</label
+        >
+        <div class="form-text">
+          One record per value, with its sources, first and last seen, sightings
+          and the tags of every event it is in. Tag exclusions then judge the
+          value: one that is <code>tlp:red</code> anywhere is left out.
+        </div>
       </div>
       <div class="mb-3">
         <label class="form-label" for="sink-types">Attribute types</label>

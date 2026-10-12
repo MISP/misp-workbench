@@ -67,6 +67,40 @@ def build_record(attribute: dict, event: dict) -> dict:
     }
 
 
+def with_indicator(record: dict, indicator: dict) -> dict:
+    """The record of an attribute, carrying its consolidated indicator.
+
+    Its tags become the indicator's merged tags (those of every attribute and
+    event carrying the value) on top of its own, so tag filters judge the
+    value, not the one attribute. Its own are kept: the indicator may predate
+    a tag just added to the attribute, and a filter must still see that tag.
+    """
+    sightings = indicator.get("sightings") or {}
+    tags = list(dict.fromkeys([*record["tags"], *(indicator.get("tags") or [])]))
+    return {
+        **record,
+        "tags": tags,
+        "indicator": {
+            "uuid": indicator.get("uuid"),
+            "first_seen": indicator.get("first_seen"),
+            "last_seen": indicator.get("last_seen"),
+            "attribute_count": indicator.get("attribute_count"),
+            "event_count": indicator.get("event_count"),
+            "tlp": indicator.get("tlp"),
+            "galaxies": list(indicator.get("galaxies") or []),
+            "sources": [s.get("name") for s in indicator.get("sources") or []],
+            "organisations": [
+                o.get("name") for o in indicator.get("organisations") or []
+            ],
+            "sightings": {
+                "positive": sightings.get("positive", 0),
+                "false_positive": sightings.get("false_positive", 0),
+                "expiration": sightings.get("expiration", 0),
+            },
+        },
+    }
+
+
 def all_tags(record: dict) -> list[str]:
     return record["tags"] + record["event"]["tags"]
 
@@ -119,6 +153,20 @@ def gelf_message(record: dict) -> dict:
         "_misp_event_org": event["org"],
         "_misp_threat_level_id": event["threat_level_id"],
     }
+    indicator = record.get("indicator")
+    if indicator:
+        message.update(
+            {
+                "_misp_indicator_uuid": indicator["uuid"],
+                "_misp_first_seen": indicator["first_seen"],
+                "_misp_last_seen": indicator["last_seen"],
+                "_misp_event_count": indicator["event_count"],
+                "_misp_tlp": indicator["tlp"],
+                "_misp_sources": ",".join(str(s) for s in indicator["sources"]),
+                "_misp_sightings": indicator["sightings"]["positive"],
+                "_misp_false_positives": indicator["sightings"]["false_positive"],
+            }
+        )
     # GELF drops null additional fields at best and rejects them at worst.
     return {k: v for k, v in message.items() if v is not None and v != ""}
 
@@ -169,6 +217,16 @@ def cef_message(record: dict) -> str:
         "cn1Label": "mispToIds",
         "cn1": int(record["to_ids"]),
     }
+    indicator = record.get("indicator")
+    if indicator:
+        extension.update(
+            {
+                "cn2Label": "mispEventCount",
+                "cn2": indicator["event_count"],
+                "cn3Label": "mispSightings",
+                "cn3": indicator["sightings"]["positive"],
+            }
+        )
     value_key = CEF_VALUE_KEYS.get(record["type"])
     if value_key:
         extension[value_key] = record["value"]

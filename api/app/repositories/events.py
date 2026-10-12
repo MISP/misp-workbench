@@ -13,6 +13,7 @@ from app.models import tag as tag_models
 from app.models import organisation as org_models
 from app.repositories import tags as tags_repository
 from app.repositories import attributes as attributes_repository
+from app.repositories import indicators as indicators_repository
 from app.schemas import event as event_schemas
 from app.schemas import user as user_schemas
 from app.schemas import organisations as org_schemas
@@ -328,7 +329,17 @@ def get_events_by_uuids_from_opensearch(uuids) -> list[event_schemas.Event]:
     return events
 
 
-def create_event(db: Session, event: event_schemas.EventCreate) -> event_schemas.Event:
+def event_source(kind: str, id: Optional[int] = None, name: Optional[str] = None) -> dict:
+    """Where an event came from: ``local``, a ``feed`` or a MISP ``server``.
+
+    Consolidated indicators count their sources from it.
+    """
+    return {"type": kind, "id": id, "name": name}
+
+
+def create_event(
+    db: Session, event: event_schemas.EventCreate, source: Optional[dict] = None
+) -> event_schemas.Event:
     client = get_opensearch_client()
     event_uuid = str(event.uuid or uuid4())
     now = int(time.time())
@@ -365,6 +376,7 @@ def create_event(db: Session, event: event_schemas.EventCreate) -> event_schemas
         "attributes": [],
         "objects": [],
         "organisation": org_dict,
+        "source": source or event_source("local"),
         "@timestamp": datetime.fromtimestamp(ts).isoformat(),
     }
 
@@ -374,7 +386,9 @@ def create_event(db: Session, event: event_schemas.EventCreate) -> event_schemas
     return event_schemas.Event.model_validate(event_doc)
 
 
-def create_event_from_pulled_event(pulled_event: MISPEvent) -> event_schemas.Event:
+def create_event_from_pulled_event(
+    pulled_event: MISPEvent, source: Optional[dict] = None
+) -> event_schemas.Event:
     client = get_opensearch_client()
     event_uuid = str(pulled_event.uuid)
     ts = int(pulled_event.timestamp.timestamp())
@@ -408,6 +422,7 @@ def create_event_from_pulled_event(pulled_event: MISPEvent) -> event_schemas.Eve
         "objects": [],
         "organisation": None,
         "sharing_group": None,
+        "source": source,
         "@timestamp": datetime.fromtimestamp(ts).isoformat(),
     }
 
@@ -418,7 +433,9 @@ def create_event_from_pulled_event(pulled_event: MISPEvent) -> event_schemas.Eve
 
 
 def update_event_from_pulled_event(
-    existing_event: event_schemas.Event, pulled_event: MISPEvent
+    existing_event: event_schemas.Event,
+    pulled_event: MISPEvent,
+    source: Optional[dict] = None,
 ) -> event_schemas.Event:
     client = get_opensearch_client()
     event_uuid = str(existing_event.uuid)
@@ -439,8 +456,11 @@ def update_event_from_pulled_event(
         "extends_uuid": str(pulled_event.extends_uuid) if getattr(pulled_event, "extends_uuid", None) else None,
         "@timestamp": datetime.fromtimestamp(ts).isoformat(),
     }
+    if source:
+        patch["source"] = source
 
     client.update(index="misp-events", id=event_uuid, body={"doc": patch}, refresh=True)
+    indicators_repository.mark_event_changed(event_uuid)
     tasks.handle_updated_event.delay(event_uuid)
 
     return get_event_from_opensearch(UUID(event_uuid))
@@ -493,6 +513,7 @@ def create_event_from_fetched_event(
         "objects": [],
         "organisation": None,
         "sharing_group": None,
+        "source": event_source("feed", feed.id, feed.name),
         "@timestamp": datetime.fromtimestamp(ts).isoformat(),
     }
 
@@ -556,10 +577,12 @@ def update_event_from_fetched_event(
             if hasattr(fetched_event, "extends_uuid") and fetched_event.extends_uuid != ""
             else None
         ),
+        "source": event_source("feed", feed.id, feed.name),
         "@timestamp": datetime.fromtimestamp(ts).isoformat(),
     }
 
     client.update(index="misp-events", id=event_uuid, body={"doc": patch}, refresh=True)
+    indicators_repository.mark_event_changed(event_uuid)
 
     # process tags
     for tag in fetched_event.tags:
@@ -596,6 +619,7 @@ def update_event(db: Session, event_uuid: UUID, event: event_schemas.EventUpdate
     patch.setdefault("published", False)
 
     client.update(index="misp-events", id=str(os_event.uuid), body={"doc": patch}, refresh=True)
+    indicators_repository.mark_event_changed(os_event.uuid)
     tasks.handle_updated_event.delay(str(os_event.uuid))
 
     return get_event_from_opensearch(os_event.uuid)

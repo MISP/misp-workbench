@@ -107,6 +107,11 @@ class SinkFilters(BaseModel):
     exclude_tags: list[str] = ["tlp:red"]
     # Never send attributes on an enabled warninglist.
     exclude_warninglisted: bool = True
+    # Send one record per type + value with its consolidated context (sources,
+    # seen dates, sightings, merged tags) instead of one per attribute. Tag
+    # filters then see the merged tags: a value that is tlp:red in any event
+    # is excluded by a tlp:red exclusion.
+    indicator_mode: bool = False
 
 
 class InvalidSinkConfig(ValueError):

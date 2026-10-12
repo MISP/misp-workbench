@@ -957,6 +957,7 @@ def get_or_create_feed_event(
                 user_id=user.id,
                 org_id=user.org_id,
             ),
+            source=events_repository.event_source("feed", db_feed.id, db_feed.name),
         )
 
     return os_event
@@ -973,6 +974,7 @@ def _create_feed_event(db, db_feed, user, label: str):
             user_id=user.id,
             org_id=user.org_id,
         ),
+        source=events_repository.event_source("feed", db_feed.id, db_feed.name),
     )
 
 

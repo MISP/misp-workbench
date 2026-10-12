@@ -43,11 +43,23 @@ const canSubmit = computed(
     (!isMisp.value || exportJob.distribution !== null),
 );
 
-const stixDisabled = computed(() => exportJob.index_target === "events");
+const isIndicators = computed(() => exportJob.index_target === "indicators");
+// Indicators are only written by the streamed exporter.
+const STREAMED_FORMATS = ["ndjson", "text", "cdb"];
+const stixDisabled = computed(() => exportJob.index_target !== "attributes");
+const recordFormatsDisabled = computed(() => isIndicators.value);
+// One value per line, so events have nothing to put there.
+const lineFormatsDisabled = computed(() => exportJob.index_target === "events");
 
 function onIndexTargetChange() {
+  if (isIndicators.value && !STREAMED_FORMATS.includes(exportJob.format)) {
+    exportJob.format = "ndjson";
+  }
   // STIX export of bare events carries no indicators; steer back to JSON.
   if (stixDisabled.value && exportJob.format === "stix") {
+    exportJob.format = "json";
+  }
+  if (lineFormatsDisabled.value && ["text", "cdb"].includes(exportJob.format)) {
     exportJob.format = "json";
   }
 }
@@ -57,6 +69,7 @@ function reset() {
   exportJob.query = props.initialQuery;
   exportJob.index_target = props.initialIndexTarget;
   exportJob.format = "json";
+  onIndexTargetChange();
   exportJob.distribution = null;
   scheduleModel.value = { schedule: null, schedule_enabled: false };
   apiError.value = null;
@@ -155,6 +168,9 @@ function close() {
               v-model="exportJob.index_target"
               @change="onIndexTargetChange"
             >
+              <option value="indicators">
+                Indicators (one per type and value)
+              </option>
               <option value="attributes">Attributes</option>
               <option value="events">Events</option>
             </select>
@@ -181,11 +197,22 @@ function close() {
               class="form-select"
               v-model="exportJob.format"
             >
-              <option value="json">JSON</option>
-              <option value="misp">JSON (MISP)</option>
-              <option value="csv">CSV</option>
+              <option value="json" :disabled="recordFormatsDisabled">
+                JSON
+              </option>
+              <option value="misp" :disabled="recordFormatsDisabled">
+                JSON (MISP)
+              </option>
+              <option value="csv" :disabled="recordFormatsDisabled">CSV</option>
               <option value="stix" :disabled="stixDisabled">
                 STIX 2.1{{ stixDisabled ? " (attributes only)" : "" }}
+              </option>
+              <option value="ndjson">NDJSON (one record per line)</option>
+              <option value="text" :disabled="lineFormatsDisabled">
+                Plain text, one value per line
+              </option>
+              <option value="cdb" :disabled="lineFormatsDisabled">
+                Wazuh CDB list
               </option>
             </select>
             <div class="form-text">

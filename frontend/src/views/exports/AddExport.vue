@@ -11,8 +11,10 @@ const toastsStore = useToastsStore();
 const exportJob = reactive({
   name: "",
   query: "",
-  index_target: "attributes",
-  format: "json",
+  // Consolidated indicators by default: each value once, with its context,
+  // which is what security controls want.
+  index_target: "indicators",
+  format: "ndjson",
   distribution: null,
   incremental: false,
 });
@@ -38,16 +40,23 @@ const canSubmit = computed(
     (!isMisp.value || exportJob.distribution !== null),
 );
 
-const stixDisabled = computed(() => exportJob.index_target === "events");
-// One value per line, so only attributes have something to put there.
+const isIndicators = computed(() => exportJob.index_target === "indicators");
+// Indicators are only written by the streamed exporter.
+const STREAMED_FORMATS = ["ndjson", "text", "cdb"];
+const stixDisabled = computed(() => exportJob.index_target !== "attributes");
+const recordFormatsDisabled = computed(() => isIndicators.value);
+// One value per line, so events have nothing to put there.
 const lineFormatsDisabled = computed(() => exportJob.index_target === "events");
-// Deltas carry deletions (ndjson tombstones) and key off attribute write times.
+// Deltas carry deletions (ndjson tombstones) and key off write times, which
+// attributes and indicators have.
 const canBeIncremental = computed(
-  () =>
-    exportJob.format === "ndjson" && exportJob.index_target === "attributes",
+  () => exportJob.format === "ndjson" && exportJob.index_target !== "events",
 );
 
 function onIndexTargetChange() {
+  if (isIndicators.value && !STREAMED_FORMATS.includes(exportJob.format)) {
+    exportJob.format = "ndjson";
+  }
   // STIX export of bare events carries no indicators; steer back to JSON.
   if (stixDisabled.value && exportJob.format === "stix") {
     exportJob.format = "json";
@@ -117,9 +126,16 @@ function cancel() {
           v-model="exportJob.index_target"
           @change="onIndexTargetChange"
         >
+          <option value="indicators">
+            Indicators (one per type and value)
+          </option>
           <option value="attributes">Attributes</option>
           <option value="events">Events</option>
         </select>
+        <div v-if="isIndicators" class="form-text">
+          Consolidated indicators: each value once, with its sources, first and
+          last seen, merged tags and sightings across every event.
+        </div>
       </div>
 
       <div class="mb-3">
@@ -142,20 +158,22 @@ function cancel() {
           v-model="exportJob.format"
           @change="onFormatChange"
         >
-          <option value="json">JSON</option>
-          <option value="misp">JSON (MISP)</option>
-          <option value="csv">CSV</option>
+          <option value="json" :disabled="recordFormatsDisabled">JSON</option>
+          <option value="misp" :disabled="recordFormatsDisabled">
+            JSON (MISP)
+          </option>
+          <option value="csv" :disabled="recordFormatsDisabled">CSV</option>
           <option value="stix" :disabled="stixDisabled">
             STIX 2.1{{ stixDisabled ? " (attributes only)" : "" }}
           </option>
           <option value="ndjson">NDJSON (one record per line)</option>
           <option value="text" :disabled="lineFormatsDisabled">
             Plain text, one value per line{{
-              lineFormatsDisabled ? " (attributes only)" : ""
+              lineFormatsDisabled ? " (not for events)" : ""
             }}
           </option>
           <option value="cdb" :disabled="lineFormatsDisabled">
-            Wazuh CDB list{{ lineFormatsDisabled ? " (attributes only)" : "" }}
+            Wazuh CDB list{{ lineFormatsDisabled ? " (not for events)" : "" }}
           </option>
         </select>
         <div class="form-text">

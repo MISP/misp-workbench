@@ -305,6 +305,11 @@ function navAndClose(path) {
               >
             </li>
             <li>
+              <RouterLink to="/indicators" class="dropdown-item fw-light"
+                >indicators</RouterLink
+              >
+            </li>
+            <li>
               <RouterLink to="/exports" class="dropdown-item fw-light"
                 >exports</RouterLink
               >
@@ -662,6 +667,15 @@ function navAndClose(path) {
                 @click.prevent="navAndClose('/correlations')"
               >
                 correlations
+              </RouterLink>
+            </li>
+            <li>
+              <RouterLink
+                to="/indicators"
+                class="list-group-item list-group-item-action ps-4"
+                @click.prevent="navAndClose('/indicators')"
+              >
+                indicators
               </RouterLink>
             </li>
             <li>

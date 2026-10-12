@@ -37,10 +37,25 @@ followed by the filters:
 | **Only with tags** | any | Send only attributes carrying at least one of these tags |
 | **Never with tags** | `tlp:red` | Never send attributes carrying any of these tags |
 | **Leave out values on an enabled warninglist** | on | Never send attributes on an enabled [warninglist](warninglists.md) |
+| **Send consolidated indicators** | off | Send each value once, as its [consolidated indicator](indicators.md) (see below) |
 
 Tag lists match the attribute's own tags **and** its event's tags, and accept
 shell-style patterns (`tlp:*`, `misp-galaxy:threat-actor=*`). Soft-deleted
 attributes are never sent.
+
+With **Send consolidated indicators**, a delivery sends one record per type
+and value, however many of the event's attributes carry it. Each record gets
+an `indicator` block (its uuid, first and last seen, event count, TLP,
+galaxies, sources, organisations and sighting counts), and its `tags` gain
+the indicator's merged tags: those of every attribute and event carrying the
+value. Tag filters then judge the value rather than the
+one attribute: with `tlp:red` excluded, a value that is `tlp:red` in any event
+is not sent, even from a `tlp:green` event. Text and comment attributes are
+not indicators and are left out. GELF adds `_misp_indicator_uuid`,
+`_misp_first_seen`, `_misp_last_seen`, `_misp_event_count`, `_misp_tlp`,
+`_misp_sources`, `_misp_sightings` and `_misp_false_positives`, and CEF adds
+`cn2` (event count) and `cn3` (sightings). A value indexed in the last few
+seconds may not have its indicator yet; it goes out as its attribute's record.
 
 ## Delivery
 

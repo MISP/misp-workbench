@@ -31,6 +31,7 @@
     "docs:screenshots:analyst-data": "playwright test scripts/docs-screenshots/analyst-data.spec.ts --config=scripts/docs-screenshots/playwright.config.ts",
     "docs:screenshots:sinks": "playwright test scripts/docs-screenshots/sinks.spec.ts --config=scripts/docs-screenshots/playwright.config.ts",
     "docs:screenshots:warninglists": "playwright test scripts/docs-screenshots/warninglists.spec.ts --config=scripts/docs-screenshots/playwright.config.ts",
+    "docs:screenshots:indicators": "playwright test scripts/docs-screenshots/indicators.spec.ts --config=scripts/docs-screenshots/playwright.config.ts",
     "docs:screenshots:api-keys": "playwright test scripts/docs-screenshots/api-keys.spec.ts --config=scripts/docs-screenshots/playwright.config.ts",
     "build-only": "vite build",
     "type-check": "vue-tsc --noEmit -p tsconfig.vitest.json --composite false",

@@ -56,6 +56,7 @@ RETRY_AFTER_SECONDS = "30"
 
 ATTRIBUTES_INDEX = "misp-attributes"
 EVENTS_INDEX = "misp-events"
+INDICATORS_INDEX = "misp-indicators"
 
 ATTRIBUTE_FORMATS = ("json", "ndjson", "csv", "text", "cdb")
 EVENT_FORMATS = ("json", "ndjson")
@@ -83,6 +84,25 @@ CSV_COLUMNS = [
     "timestamp",
     "updated_at",
     "tags",
+]
+
+INDICATOR_CSV_COLUMNS = [
+    "uuid",
+    "type",
+    "value",
+    "to_ids",
+    "deleted",
+    "first_seen",
+    "last_seen",
+    "attribute_count",
+    "event_count",
+    "sources",
+    "organisations",
+    "tlp",
+    "tags",
+    "sightings_positive",
+    "sightings_false_positive",
+    "updated_at",
 ]
 
 
@@ -186,7 +206,13 @@ def prepare_attribute_export(
     since: Optional[str] = None,
     include_deleted: bool = False,
     enforce_warninglist: bool = False,
+    index: str = ATTRIBUTES_INDEX,
 ) -> PreparedExport:
+    """An attribute export, or with ``index=INDICATORS_INDEX`` an indicator one.
+
+    Both are stamped with ``updated_at``, keep tombstones (``deleted``) and
+    carry ``warninglist_hits``, so they share filtering, deltas and formats.
+    """
     fmt = _validate_format(fmt, ATTRIBUTE_FORMATS)
     export_timestamp = int(time.time())
 
@@ -216,11 +242,11 @@ def prepare_attribute_export(
 
     client = get_opensearch_client()
     request_key = json.dumps(
-        [ATTRIBUTES_INDEX, query, fmt, since, include_deleted, enforce_warninglist]
+        [index, query, fmt, since, include_deleted, enforce_warninglist]
     )
-    etag, last_modified = _fingerprint(client, ATTRIBUTES_INDEX, os_query, request_key)
+    etag, last_modified = _fingerprint(client, index, os_query, request_key)
     return PreparedExport(
-        index=ATTRIBUTES_INDEX,
+        index=index,
         format=fmt,
         query=os_query,
         export_timestamp=export_timestamp,
@@ -292,6 +318,103 @@ def _csv_row(source: dict) -> list:
         source.get("updated_at") or "",
         ",".join(t.get("name", "") for t in source.get("tags") or []),
     ]
+
+
+def _names(entries) -> str:
+    return ",".join(str(e.get("name") or "") for e in entries or [])
+
+
+def _indicator_csv_row(source: dict) -> list:
+    sightings = source.get("sightings") or {}
+    return [
+        source.get("uuid"),
+        source.get("type"),
+        source.get("value"),
+        1 if source.get("to_ids") else 0,
+        1 if source.get("deleted") else 0,
+        source.get("first_seen") or "",
+        source.get("last_seen") or "",
+        source.get("attribute_count") or 0,
+        source.get("event_count") or 0,
+        _names(source.get("sources")),
+        _names(source.get("organisations")),
+        source.get("tlp") or "",
+        ",".join(source.get("tags") or []),
+        sightings.get("positive") or 0,
+        sightings.get("false_positive") or 0,
+        source.get("updated_at") or "",
+    ]
+
+
+# One value per line: blocklists and lookup tables, where a value that several
+# attributes (or an indicator's several types) share must appear once.
+LINE_FORMATS = ("text", "cdb")
+# Value order puts a value's repeats next to each other, so they merge without
+# remembering every value seen. Values past the keyword's ignore_above have no
+# value.keyword: they come last, in uuid order.
+VALUE_ORDER = [
+    {"value.keyword": {"order": "asc", "missing": "_last"}},
+    {"uuid.keyword": "asc"},
+]
+KEYWORD_IGNORE_ABOVE = 256
+# Long values are de-duplicated by digest (32 bytes each, never the value),
+# and only up to this many: past it they are written as they come, so
+# however many long values an export holds, its memory stays bounded.
+MAX_LONG_DIGESTS = 100_000
+
+
+def _line(fmt: str, value: str, types: list) -> Optional[str]:
+    if fmt == "text":
+        line = _single_line(value)
+        return f"{line}\n" if line else None
+    # A CDB key holds one value: a value with several types lists them all.
+    return _cdb_line({"value": value, "type": ",".join(sorted(types))})
+
+
+def _unique_lines(
+    pages: Iterator[list[dict]], fmt: str, slot: Optional["ExportSlot"]
+) -> Iterator[str]:
+    """Each value once, read from pages in ``VALUE_ORDER``.
+
+    A long value (no value.keyword, so not in value order) is written when
+    first seen, with that record's type; later records of it are skipped.
+    """
+    current: Optional[str] = None
+    current_types: list = []
+    long_digests: set = set()
+
+    for hits in pages:
+        if slot is not None:
+            slot.renew()
+        out = []
+        for hit in hits:
+            value = hit["_source"].get("value")
+            type_ = hit["_source"].get("type") or ""
+            if value is None:
+                continue
+            value = str(value)
+            if len(value) > KEYWORD_IGNORE_ABOVE:
+                digest = hashlib.sha256(value.encode("utf-8")).digest()
+                if digest in long_digests:
+                    continue
+                if len(long_digests) < MAX_LONG_DIGESTS:
+                    long_digests.add(digest)
+                line = _line(fmt, value, [type_])
+            elif value == current:
+                if type_ not in current_types:
+                    current_types.append(type_)
+                continue
+            else:
+                line = _line(fmt, current, current_types) if current else None
+                current, current_types = value, [type_]
+            if line:
+                out.append(line)
+        if out:
+            yield "".join(out)
+    if current is not None:
+        line = _line(fmt, current, current_types)
+        if line:
+            yield line
 
 
 class SnapshotUnavailable(Exception):
@@ -396,6 +519,7 @@ def iter_pit_pages(
     query: dict,
     source: Any = True,
     pit_id: Optional[str] = None,
+    sort: Optional[list] = None,
 ) -> Iterator[list[dict]]:
     """Yield pages of hits from a point-in-time snapshot of ``index``.
 
@@ -415,8 +539,9 @@ def iter_pit_pages(
                 "query": query,
                 "_source": source,
                 "size": PAGE_SIZE,
-                # uuid is unique per document, so it alone orders pages.
-                "sort": [{"uuid.keyword": "asc"}],
+                # uuid is unique per document, so it alone orders pages; a
+                # caller's sort must end with it too.
+                "sort": sort or [{"uuid.keyword": "asc"}],
                 "pit": {"id": pit_id, "keep_alive": PIT_KEEP_ALIVE},
             }
             if search_after:
@@ -456,7 +581,27 @@ def _stream(
     export: PreparedExport, pit_id: Optional[str], slot: Optional[ExportSlot]
 ) -> Iterator[str]:
     fmt = export.format
+    indicators = export.index == INDICATORS_INDEX
     source: Any = ["value", "type"] if fmt in ("text", "cdb") else True
+    if indicators and source is True:
+        source = {"excludes": ["checksum"]}
+    columns, row = (
+        (INDICATOR_CSV_COLUMNS, _indicator_csv_row)
+        if indicators
+        else (CSV_COLUMNS, _csv_row)
+    )
+    if fmt in LINE_FORMATS:
+        pages = iter_pit_pages(
+            export.client,
+            export.index,
+            export.query,
+            source=source,
+            pit_id=pit_id,
+            sort=VALUE_ORDER,
+        )
+        yield from _unique_lines(pages, fmt, slot)
+        return
+
     pages = iter_pit_pages(
         export.client, export.index, export.query, source=source, pit_id=pit_id
     )
@@ -464,7 +609,7 @@ def _stream(
     if fmt == "json":
         yield "["
     elif fmt == "csv":
-        yield csv_line(CSV_COLUMNS)
+        yield csv_line(columns)
 
     first = True
     for hits in pages:
@@ -486,13 +631,7 @@ def _stream(
                 json.dumps(hit["_source"], default=str) + "\n" for hit in hits
             )
         elif fmt == "csv":
-            yield "".join(csv_line(_csv_row(hit["_source"])) for hit in hits)
-        elif fmt == "text":
-            lines = (_single_line(hit["_source"].get("value")) for hit in hits)
-            yield "".join(f"{line}\n" for line in lines if line)
-        elif fmt == "cdb":
-            lines = (_cdb_line(hit["_source"]) for hit in hits)
-            yield "".join(line for line in lines if line)
+            yield "".join(csv_line(row(hit["_source"])) for hit in hits)
 
     if fmt == "json":
         yield "]"

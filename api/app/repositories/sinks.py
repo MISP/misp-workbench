@@ -152,13 +152,42 @@ def _matches(patterns: list[str], tags: list[str]) -> bool:
     return any(fnmatch.fnmatchcase(tag, p) for p in patterns for tag in tags)
 
 
-def select_records(attributes: list[dict], event: dict, filters: dict) -> list[dict]:
+def _consolidate(records: list[dict], seen: set) -> list[dict]:
+    """One record per type + value, carrying its consolidated indicator.
+
+    Context types (text, comments) are left out. ``seen`` spans the whole delivery, so a value in several batches is sent
+    once. A value whose indicator isn't built yet (the sync runs every few
+    seconds) goes out as its attribute's record.
+    """
+    from app.repositories import indicators as indicators_repository
+
+    keyed = []
+    for record in records:
+        # Context (comments, text) is not an indicator.
+        if record["type"] in indicators_repository.NON_INDICATOR_TYPES:
+            continue
+        key = indicators_repository.indicator_uuid(record["type"], record["value"])
+        if key not in seen:
+            seen.add(key)
+            keyed.append((key, record))
+    found = indicators_repository.get_indicators(key for key, _ in keyed)
+    return [
+        formatters.with_indicator(record, found[key]) if key in found else record
+        for key, record in keyed
+    ]
+
+
+def select_records(
+    attributes: list[dict], event: dict, filters: dict, seen: Optional[set] = None
+) -> list[dict]:
     """The records a sink's tag filters keep (type/to_ids are done in the query)."""
     include = filters.get("tags") or []
     exclude = filters.get("exclude_tags") or []
+    built = [formatters.build_record(attribute, event) for attribute in attributes]
+    if filters.get("indicator_mode"):
+        built = _consolidate(built, seen if seen is not None else set())
     records = []
-    for attribute in attributes:
-        record = formatters.build_record(attribute, event)
+    for record in built:
         tags = formatters.all_tags(record)
         if include and not _matches(include, tags):
             continue
@@ -214,6 +243,8 @@ def effective_filters(sink: sink_models.Sink, apply_filters: bool = True) -> dic
         "tags": [],
         "exclude_tags": filters.get("exclude_tags") or [],
         "exclude_warninglisted": filters.get("exclude_warninglisted", True),
+        # The shape of what is sent, not a selection.
+        "indicator_mode": filters.get("indicator_mode", False),
     }
 
 
@@ -257,10 +288,11 @@ def deliver_event(
     if filters.get("exclude_tags") and _matches(filters["exclude_tags"], event_tags):
         return 0
 
+    seen: set = set()
     return _send_in_batches(
         sink,
         (
-            select_records(attributes, event, filters)
+            select_records(attributes, event, filters, seen)
             for attributes in _iter_attribute_batches(event_uuid, filters)
         ),
     )
@@ -279,6 +311,8 @@ def deliver_attributes(
     """Send the given attributes, with their events' context."""
     filters = effective_filters(sink, apply_filters)
 
+    seen: set = set()
+
     def batches():
         client = get_opensearch_client()
         for hits in stream_exports.iter_pit_pages(
@@ -295,7 +329,7 @@ def deliver_attributes(
                     d["_id"]: d["_source"] for d in response["docs"] if d.get("found")
                 }
             for event_uuid, group in _group_by_event(attributes).items():
-                yield select_records(group, events.get(event_uuid, {}), filters)
+                yield select_records(group, events.get(event_uuid, {}), filters, seen)
 
     return _send_in_batches(sink, batches())
 

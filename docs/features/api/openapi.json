@@ -9960,6 +9960,16 @@
               "default": false,
               "title": "Include Warninglisted"
             }
+          },
+          {
+            "name": "include_indicators",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Include Indicators"
+            }
           }
         ],
         "responses": {
@@ -10012,6 +10022,338 @@
             ]
           }
         ]
+      }
+    },
+    "/indicators": {
+      "get": {
+        "tags": [
+          "Indicators"
+        ],
+        "summary": "Search Indicators",
+        "operationId": "search_indicators_indicators_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "attributes:read"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Lucene query; bare terms match the value",
+              "title": "Q"
+            },
+            "description": "Lucene query; bare terms match the value"
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Type"
+            }
+          },
+          {
+            "name": "to_ids",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "To Ids"
+            }
+          },
+          {
+            "name": "include_deleted",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "Include tombstones of removed indicators",
+              "default": false,
+              "title": "Include Deleted"
+            },
+            "description": "Include tombstones of removed indicators"
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "last_seen",
+                "first_seen",
+                "event_count",
+                "updated_at"
+              ],
+              "type": "string",
+              "default": "last_seen",
+              "title": "Sort"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1,
+              "title": "Page"
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 1000,
+              "minimum": 1,
+              "default": 50,
+              "title": "Size"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IndicatorPage"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/indicators/export": {
+      "get": {
+        "tags": [
+          "Indicators"
+        ],
+        "summary": "Export Indicators",
+        "description": "Every indicator matching ``query``, streamed (formats as /attributes/export).",
+        "operationId": "export_indicators_indicators_export_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "attributes:read"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "query",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 0,
+              "default": "",
+              "title": "Query"
+            }
+          },
+          {
+            "name": "format",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": "json",
+              "title": "Format"
+            }
+          },
+          {
+            "name": "since",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Only indicators that changed since this time (epoch seconds, ISO date or relative age like 7d), removed ones included as tombstones. Use the X-Export-Timestamp header of the previous export.",
+              "title": "Since"
+            },
+            "description": "Only indicators that changed since this time (epoch seconds, ISO date or relative age like 7d), removed ones included as tombstones. Use the X-Export-Timestamp header of the previous export."
+          },
+          {
+            "name": "include_deleted",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Include Deleted"
+            }
+          },
+          {
+            "name": "enforce_warninglist",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Leave out indicators on an enabled warninglist (full exports only). Defaults to the warninglists.enforce_on_outputs runtime setting.",
+              "title": "Enforce Warninglist"
+            },
+            "description": "Leave out indicators on an enabled warninglist (full exports only). Defaults to the warninglists.enforce_on_outputs runtime setting."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/indicators/status": {
+      "get": {
+        "tags": [
+          "Indicators"
+        ],
+        "summary": "Indicators Status",
+        "operationId": "indicators_status_indicators_status_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IndicatorsStatus"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "attributes:read"
+            ]
+          }
+        ]
+      }
+    },
+    "/indicators/{indicator_uuid}": {
+      "get": {
+        "tags": [
+          "Indicators"
+        ],
+        "summary": "Get Indicator",
+        "operationId": "get_indicator_indicators__indicator_uuid__get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "attributes:read"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "indicator_uuid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Indicator Uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Indicator"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/exports/": {
@@ -15946,7 +16288,8 @@
             "type": "string",
             "enum": [
               "attributes",
-              "events"
+              "events",
+              "indicators"
             ],
             "title": "Index Target",
             "default": "attributes"
@@ -16169,7 +16512,8 @@
             "type": "string",
             "enum": [
               "attributes",
-              "events"
+              "events",
+              "indicators"
             ],
             "title": "Index Target",
             "default": "attributes"
@@ -17908,6 +18252,354 @@
         "type": "object",
         "title": "HuntUpdate"
       },
+      "Indicator": {
+        "properties": {
+          "uuid": {
+            "type": "string",
+            "title": "Uuid"
+          },
+          "type": {
+            "type": "string",
+            "title": "Type"
+          },
+          "value": {
+            "type": "string",
+            "title": "Value"
+          },
+          "categories": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Categories",
+            "default": []
+          },
+          "to_ids": {
+            "type": "boolean",
+            "title": "To Ids",
+            "default": false
+          },
+          "deleted": {
+            "type": "boolean",
+            "title": "Deleted",
+            "default": false
+          },
+          "attribute_count": {
+            "type": "integer",
+            "title": "Attribute Count",
+            "default": 0
+          },
+          "ids_attribute_count": {
+            "type": "integer",
+            "title": "Ids Attribute Count",
+            "default": 0
+          },
+          "event_count": {
+            "type": "integer",
+            "title": "Event Count",
+            "default": 0
+          },
+          "events": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Events",
+            "default": []
+          },
+          "first_seen": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Seen"
+          },
+          "last_seen": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Seen"
+          },
+          "sources": {
+            "items": {
+              "$ref": "#/components/schemas/IndicatorSource"
+            },
+            "type": "array",
+            "title": "Sources",
+            "default": []
+          },
+          "organisations": {
+            "items": {
+              "$ref": "#/components/schemas/IndicatorOrganisation"
+            },
+            "type": "array",
+            "title": "Organisations",
+            "default": []
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Tags",
+            "default": []
+          },
+          "tlp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tlp"
+          },
+          "galaxies": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Galaxies",
+            "default": []
+          },
+          "sightings": {
+            "$ref": "#/components/schemas/IndicatorSightings",
+            "default": {
+              "positive": 0,
+              "false_positive": 0,
+              "expiration": 0
+            }
+          },
+          "warninglist_hits": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Warninglist Hits",
+            "default": []
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "uuid",
+          "type",
+          "value"
+        ],
+        "title": "Indicator",
+        "description": "One type + value, merged from every live attribute carrying it."
+      },
+      "IndicatorOrganisation": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "event_count": {
+            "type": "integer",
+            "title": "Event Count",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "IndicatorOrganisation"
+      },
+      "IndicatorPage": {
+        "properties": {
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "page": {
+            "type": "integer",
+            "title": "Page"
+          },
+          "size": {
+            "type": "integer",
+            "title": "Size"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/Indicator"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "type": "object",
+        "required": [
+          "total",
+          "page",
+          "size",
+          "items"
+        ],
+        "title": "IndicatorPage"
+      },
+      "IndicatorSightings": {
+        "properties": {
+          "positive": {
+            "type": "integer",
+            "title": "Positive",
+            "default": 0
+          },
+          "false_positive": {
+            "type": "integer",
+            "title": "False Positive",
+            "default": 0
+          },
+          "expiration": {
+            "type": "integer",
+            "title": "Expiration",
+            "default": 0
+          },
+          "first_at": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First At"
+          },
+          "last_at": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last At"
+          }
+        },
+        "type": "object",
+        "title": "IndicatorSightings"
+      },
+      "IndicatorSource": {
+        "properties": {
+          "type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Type"
+          },
+          "id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "event_count": {
+            "type": "integer",
+            "title": "Event Count",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "title": "IndicatorSource"
+      },
+      "IndicatorsStatus": {
+        "properties": {
+          "built": {
+            "type": "boolean",
+            "title": "Built"
+          },
+          "built_at": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Built At"
+          },
+          "synced_at": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Synced At"
+          },
+          "indicators": {
+            "type": "integer",
+            "title": "Indicators"
+          },
+          "tombstones": {
+            "type": "integer",
+            "title": "Tombstones"
+          },
+          "pending_sighted_values": {
+            "type": "integer",
+            "title": "Pending Sighted Values"
+          },
+          "pending_events": {
+            "type": "integer",
+            "title": "Pending Events",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "required": [
+          "built",
+          "indicators",
+          "tombstones",
+          "pending_sighted_values"
+        ],
+        "title": "IndicatorsStatus"
+      },
       "LabExecuteRequest": {
         "properties": {
           "cell_id": {
@@ -18715,6 +19407,14 @@
             },
             "type": "array",
             "title": "Attributes"
+          },
+          "indicators": {
+            "items": {
+              "$ref": "#/components/schemas/Indicator"
+            },
+            "type": "array",
+            "title": "Indicators",
+            "default": []
           }
         },
         "type": "object",
@@ -18753,6 +19453,12 @@
             "type": "boolean",
             "title": "Include Warninglisted",
             "description": "Also match attributes on an enabled warninglist (left out by default)",
+            "default": false
+          },
+          "include_indicators": {
+            "type": "boolean",
+            "title": "Include Indicators",
+            "description": "Add each matched value's consolidated indicators: one per type, with sources, seen dates, merged tags and sightings across events",
             "default": false
           }
         },
@@ -24322,6 +25028,14 @@
             "type": "array",
             "title": "Attributes",
             "default": []
+          },
+          "indicators": {
+            "items": {
+              "$ref": "#/components/schemas/Indicator"
+            },
+            "type": "array",
+            "title": "Indicators",
+            "default": []
           }
         },
         "type": "object",
@@ -24368,7 +25082,8 @@
               "exclude_tags": [
                 "tlp:red"
               ],
-              "exclude_warninglisted": true
+              "exclude_warninglisted": true,
+              "indicator_mode": false
             }
           },
           "id": {
@@ -24497,7 +25212,8 @@
               "exclude_tags": [
                 "tlp:red"
               ],
-              "exclude_warninglisted": true
+              "exclude_warninglisted": true,
+              "indicator_mode": false
             }
           }
         },
@@ -24559,6 +25275,11 @@
             "type": "boolean",
             "title": "Exclude Warninglisted",
             "default": true
+          },
+          "indicator_mode": {
+            "type": "boolean",
+            "title": "Indicator Mode",
+            "default": false
           }
         },
         "type": "object",

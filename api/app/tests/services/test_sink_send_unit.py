@@ -41,6 +41,7 @@ class TestEffectiveFilters:
             "tags": [],
             "exclude_tags": ["tlp:red"],
             "exclude_warninglisted": True,
+            "indicator_mode": False,
         }
 
 

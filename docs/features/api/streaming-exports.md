@@ -1,6 +1,6 @@
 # Streaming exports
 
-`GET /attributes/export` and `GET /events/export` dump everything that matches a search query. They are designed for SIEMs and scripts that pull indicator sets on a schedule:
+`GET /attributes/export`, `GET /indicators/export` and `GET /events/export` dump everything that matches a search query. They are designed for SIEMs and scripts that pull indicator sets on a schedule:
 
 - **Streamed.** Results are paged out of OpenSearch and written as they arrive, so memory stays flat however much matches.
 - **Consistent.** Each export reads from a point-in-time snapshot of the index, so writes landing while a long export runs can't shift its pages and duplicate or skip documents. They show up in the next pull.
@@ -10,6 +10,7 @@
 | Endpoint | Scope | Formats |
 |---|---|---|
 | `GET /attributes/export` | `attributes:read` | `json`, `ndjson`, `csv`, `text`, `cdb` |
+| `GET /indicators/export` | `attributes:read` | `json`, `ndjson`, `csv`, `text`, `cdb` |
 | `GET /events/export` | `events:read` | `json`, `ndjson` |
 
 For MISP-style filtering (tags, `to_ids`, published, ...) and MISP's response shape, use [restSearch](rest-search.md) instead.
@@ -21,8 +22,8 @@ For MISP-style filtering (tags, `to_ids`, published, ...) and MISP's response sh
 | `query` | all | Lucene query, as in Explore (e.g. `type:ip-dst AND to_ids:true`) |
 | `format` | `json` | See below |
 | `include_deleted` | `false` | Include soft-deleted records |
-| `enforce_warninglist` | runtime setting (`true`) | Attributes only. Leave out attributes on an enabled [warninglist](../warninglists.md). Deltas (`since`) keep them, with their `warninglist_hits`, so consumers can drop them |
-| `since` | — | Attributes only. Return only attributes written at or after this time, soft-deleted ones included (see [Incremental pulls](#incremental-pulls)) |
+| `enforce_warninglist` | runtime setting (`true`) | Attributes and indicators. Leave out records on an enabled [warninglist](../warninglists.md). Deltas (`since`) keep them, with their `warninglist_hits`, so consumers can drop them |
+| `since` | — | Attributes and indicators. Return only records written at or after this time, soft-deleted ones (indicator tombstones) included (see [Incremental pulls](#incremental-pulls)) |
 
 ## Formats
 
@@ -30,11 +31,11 @@ For MISP-style filtering (tags, `to_ids`, published, ...) and MISP's response sh
 |---|---|
 | `json` | A JSON array of `{_index, _id, _source}` documents |
 | `ndjson` | One document (`_source`) per line |
-| `csv` | `uuid,event_uuid,object_uuid,category,type,value,comment,to_ids,deleted,timestamp,updated_at,tags` |
+| `csv` | Attributes: `uuid,event_uuid,object_uuid,category,type,value,comment,to_ids,deleted,timestamp,updated_at,tags`. Indicators: `uuid,type,value,to_ids,deleted,first_seen,last_seen,attribute_count,event_count,sources,organisations,tlp,tags,sightings_positive,sightings_false_positive,updated_at` |
 | `text` | One value per line |
 | `cdb` | A [Wazuh CDB list](https://documentation.wazuh.com/current/user-manual/ruleset/cdb-list.html): `value:type` per line, with keys containing `:` (IPv6, URLs) quoted |
 
-`text` and `cdb` skip values that span several lines (`text` attributes); `cdb` also skips values containing `"`.
+`text` and `cdb` list each value once, however many records share it; in `cdb` a value with several types lists them all (`203.0.113.5:ip-dst,ip-src`; values over 256 characters list the first one found). They skip values that span several lines (`text` attributes); `cdb` also skips values containing `"`.
 
 ## Incremental pulls
 

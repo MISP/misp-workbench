@@ -36,3 +36,4 @@ export * from "./servos.store";
 export * from "./notebooks.store";
 export * from "./apiKeys.store";
 export * from "./auditLogs.store";
+export * from "./indicators.store";

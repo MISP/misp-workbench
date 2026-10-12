@@ -132,6 +132,19 @@
             "sharing_group": {
                 "type": "object",
                 "dynamic": true
+            },
+            "source": {
+                "properties": {
+                    "type": {
+                        "type": "keyword"
+                    },
+                    "id": {
+                        "type": "long"
+                    },
+                    "name": {
+                        "type": "keyword"
+                    }
+                }
             }
         }
     }

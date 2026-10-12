@@ -2,6 +2,8 @@ from typing import Any, Optional
 
 from pydantic import BaseModel, Field
 
+from app.schemas.indicator import Indicator
+
 
 class LookupRequest(BaseModel):
     values: list[str] = Field(..., description="Values to check, up to 10,000")
@@ -18,6 +20,13 @@ class LookupRequest(BaseModel):
     include_warninglisted: bool = Field(
         False,
         description="Also match attributes on an enabled warninglist (left out by default)",
+    )
+    include_indicators: bool = Field(
+        False,
+        description=(
+            "Add each matched value's consolidated indicators: one per type, "
+            "with sources, seen dates, merged tags and sightings across events"
+        ),
     )
 
 
@@ -48,6 +57,7 @@ class LookupMatch(BaseModel):
     value: str
     attribute_count: int
     attributes: list[LookupAttribute]
+    indicators: list[Indicator] = []
 
 
 class LookupResponse(BaseModel):
@@ -64,6 +74,7 @@ class SingleLookupResponse(BaseModel):
     match: bool
     attribute_count: int = 0
     attributes: list[LookupAttribute] = []
+    indicators: list[Indicator] = []
 
 
 class LookupCacheStatus(BaseModel):

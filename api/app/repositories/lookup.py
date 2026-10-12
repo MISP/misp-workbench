@@ -386,12 +386,14 @@ def lookup(
     to_ids_only: bool = True,
     max_attributes: int = DEFAULT_MAX_ATTRIBUTES,
     include_warninglisted: bool = False,
+    include_indicators: bool = False,
 ) -> dict:
     """Which of ``values`` are known indicators, with their context.
 
     With ``to_ids_only`` (the default) only IDS attributes count and the Redis
     prefilter applies; otherwise every live attribute counts and OpenSearch is
-    asked about all values.
+    asked about all values. ``include_indicators`` adds each matched value's
+    consolidated indicators (one per type, context merged across events).
     """
     started = time.perf_counter()
     unique = list(
@@ -439,6 +441,14 @@ def lookup(
         for value in unique
         if value in found
     ]
+    if include_indicators and matches:
+        from app.repositories import indicators as indicators_repository
+
+        consolidated = indicators_repository.find_by_values(
+            [m["value"] for m in matches], to_ids_only, include_warninglisted
+        )
+        for match in matches:
+            match["indicators"] = consolidated.get(match["value"], [])
     return {
         "checked": len(unique),
         "matched": len(matches),

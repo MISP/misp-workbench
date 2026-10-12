@@ -80,7 +80,11 @@ export function sinksList() {
         ca_cert: null,
         hostname: "misp-workbench",
       },
-      filters: { ...FILTERS, types: ["ip-src", "ip-dst", "domain"] },
+      filters: {
+        ...FILTERS,
+        types: ["ip-src", "ip-dst", "domain"],
+        indicator_mode: true,
+      },
       created_at: minutesAgo(60 * 24 * 10),
       updated_at: minutesAgo(60 * 24 * 10),
       last_attempt_at: minutesAgo(30),
