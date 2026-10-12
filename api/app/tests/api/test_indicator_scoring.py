@@ -196,11 +196,11 @@ class TestScoreFunction:
         assert "cap" not in _factors({"score_breakdown": breakdown})
 
     def test_cap_holds_only_when_every_source_is_capped(self):
-        cfg = self._trusted(server={3: (0, 20)}, organisation={"Noisy Org": (0, 30)})
+        cfg = self._trusted(server={3: (0, 20)}, organisation={7: (0, 30)})
         server = {"type": "server", "id": 3, "name": "S", "event_count": 1}
         local = {"type": "local", "name": "local", "event_count": 1}
-        noisy_org = {"name": "Noisy Org", "event_count": 1}
-        other_org = {"name": "Other Org", "event_count": 1}
+        noisy_org = {"id": 7, "name": "Noisy Org", "event_count": 1}
+        other_org = {"id": 8, "name": "Other Org", "event_count": 1}
 
         def score(sources, organisations):
             indicator = {"type": "sha256", "sources": sources}
@@ -216,14 +216,14 @@ class TestScoreFunction:
         assert score([local], [noisy_org, other_org]) == 70
 
     def test_organisation_modifier_takes_the_most_favourable(self):
-        cfg = self._trusted(organisation={"Good": (15, None), "Bad": (-30, None)})
+        cfg = self._trusted(organisation={1: (15, None), 2: (-30, None)})
         indicator = {
             "type": "sha256",
             "sources": [{"type": "feed", "id": 9, "name": "F", "event_count": 1}],
         }
-        bad = {"name": "Bad", "event_count": 1}
+        bad = {"id": 2, "name": "Bad", "event_count": 1}
         assert scoring.score({**indicator, "organisations": [bad]}, cfg, NOW)[0] == 20
-        both = [bad, {"name": "Good", "event_count": 1}]
+        both = [bad, {"id": 1, "name": "Good", "event_count": 1}]
         assert scoring.score({**indicator, "organisations": both}, cfg, NOW)[0] == 65
 
     def test_disabled(self):
@@ -453,6 +453,15 @@ class TestIndicatorScoring(ApiTester):
             runtime_settings_repository.delete_setting(db, "scoring")
             get_redis_client().delete(indicators.REBUILD_QUEUED_KEY)
 
+    @staticmethod
+    def _set_event_org(event_uuid, org_id):
+        get_opensearch_client().update(
+            index="misp-events",
+            id=event_uuid,
+            body={"doc": {"orgc_id": org_id, "organisation": None}},
+            refresh=True,
+        )
+
     # Last: it lowers every score, which the tests above don't expect.
     def test_organisation_trust(self, db: Session):
         get_redis_client().delete(indicators.REBUILD_QUEUED_KEY)
@@ -479,6 +488,17 @@ class TestIndicatorScoring(ApiTester):
             )
             delay.assert_called_once()
 
+        # An impostor with the same name (as a feed can create) gets none of
+        # the trust: organisations are identified by id.
+        impostor = organisations_repository.create_organisation(
+            db,
+            organisation_schemas.OrganisationCreate(name=TRUST_ORG, local=False),
+        )
+        self._set_event_org(LOCAL_EVENT, impostor.id)
+        indicators.rebuild()
+        assert _indicator(FRESH_IP)["score"] == 70
+
+        self._set_event_org(LOCAL_EVENT, organisation.id)
         indicators.rebuild()
         fresh = _indicator(FRESH_IP)
         # local (70) - 20, then capped at 25

@@ -12,6 +12,7 @@ class IndicatorSource(BaseModel):
 
 
 class IndicatorOrganisation(BaseModel):
+    id: Optional[int] = None
     name: str
     event_count: int = 0
 

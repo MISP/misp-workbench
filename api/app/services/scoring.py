@@ -95,7 +95,8 @@ def _load_trust(db) -> dict:
     for kind, model, key in (
         ("feed", feed_models.Feed, "id"),
         ("server", server_models.Server, "id"),
-        ("organisation", organisation_models.Organisation, "name"),
+        # By id, never name: names aren't unique (see indicators._Events).
+        ("organisation", organisation_models.Organisation, "id"),
     ):
         rows = db.query(
             getattr(model, key), model.score_modifier, model.score_cap
@@ -179,9 +180,9 @@ def score(indicator: dict, cfg: dict, now: int) -> tuple[Optional[int], list]:
     if organisations:
         trusted = max(
             organisations,
-            key=lambda o: _trust(cfg, "organisation", o.get("name"))[0],
+            key=lambda o: _trust(cfg, "organisation", o.get("id"))[0],
         )
-        org_modifier = _trust(cfg, "organisation", trusted.get("name"))[0]
+        org_modifier = _trust(cfg, "organisation", trusted.get("id"))[0]
         if org_modifier:
             breakdown.append(
                 _entry(
@@ -251,7 +252,7 @@ def score(indicator: dict, cfg: dict, now: int) -> tuple[Optional[int], list]:
         [
             (
                 f"organisation: {o.get('name')}",
-                _trust(cfg, "organisation", o.get("name"))[1],
+                _trust(cfg, "organisation", o.get("id"))[1],
             )
             for o in organisations
         ]

@@ -249,9 +249,13 @@ class _Events:
             # Events from before sources were recorded: only locally created
             # ones carry their organisation.
             source = {"type": "local" if doc.get("organisation") else "unknown"}
-        org = (doc.get("organisation") or {}).get("name") or self.organisations.get(
-            doc.get("orgc_id") or doc.get("org_id")
-        )
+        # The organisation is identified by id: names aren't unique, and a feed
+        # creates an organisation under any name its data claims, so a name
+        # can't be what source trust is keyed on.
+        embedded = doc.get("organisation") or {}
+        org_id = embedded.get("id") or doc.get("orgc_id") or doc.get("org_id")
+        name = self.organisations.get(org_id) or embedded.get("name")
+        org = {"id": org_id, "name": name} if name else None
         return {
             "deleted": bool(doc.get("deleted")),
             "source": {
@@ -386,8 +390,9 @@ def build_indicator(
             continue
         source = event["source"]
         _counted(sources, (source["type"], source["id"], source["name"]), source)
-        if event["org"]:
-            _counted(organisations, event["org"], {"name": event["org"]})
+        org = event["org"]
+        if org:
+            _counted(organisations, (org["id"], org["name"]), dict(org))
         tag_names.update(event["tags"])
     for attribute in live:
         tag_names.update(_tag_names(attribute.get("tags")))

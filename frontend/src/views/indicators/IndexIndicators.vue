@@ -288,7 +288,7 @@ load();
                       <dd class="col-sm-10">
                         <span
                           v-for="org in indicator.organisations"
-                          :key="org.name"
+                          :key="`${org.id}-${org.name}`"
                           class="me-2"
                           >{{ org.name }} ({{ org.event_count }})</span
                         >

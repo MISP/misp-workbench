@@ -128,6 +128,15 @@ An indicator is as trustworthy as its most trusted source:
 
 Changing a source's trust re-scores every indicator.
 
+!!! warning "Organisation trust follows what the data claims"
+    Organisations are matched by their record, never by name. A feed can
+    create an organisation with any name, but that doesn't make it the
+    organisation you trust. Data from feeds and MISP servers does, however,
+    name its own creator organisation (by uuid), so a source could attribute
+    its data to an organisation you trust. To limit what an untrusted feed or
+    server can reach whatever it claims, give it a **score cap**: a cap holds
+    unless another uncapped source reports the same value.
+
 ## Using them
 
 Every output can work with indicators instead of raw attributes:

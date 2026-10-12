@@ -79,6 +79,9 @@
                     },
                     "event_count": {
                         "type": "integer"
+                    },
+                    "id": {
+                        "type": "long"
                     }
                 }
             },
