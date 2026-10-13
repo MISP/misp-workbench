@@ -3,6 +3,8 @@ import logging
 from functools import lru_cache
 
 import requests
+from fastapi import HTTPException, status
+
 from app.models import module as module_models
 from app.schemas import module as module_schemas
 from app.settings import Settings, get_settings
@@ -15,12 +17,23 @@ def get_modules_service_url(settings: Settings = get_settings()):
     return f"http://{settings.Modules.host}:{settings.Modules.port}"
 
 
+def _unreachable(error: requests.RequestException) -> HTTPException:
+    logger.warning("misp-modules unreachable: %s", error)
+    return HTTPException(
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        detail="The enrichment modules service (misp-modules) can't be reached.",
+    )
+
+
 @lru_cache
 def get_modules(db: Session, enabled: bool = None):
     modules = []
 
     # get modules from api
-    req = requests.get(f"{get_modules_service_url()}/modules")
+    try:
+        req = requests.get(f"{get_modules_service_url()}/modules")
+    except requests.RequestException as error:
+        raise _unreachable(error) from error
 
     rawModules = json.loads(req.text)
 
@@ -140,6 +153,9 @@ def query_module(
 
     url = f"{get_modules_service_url()}/query"
     logger.info("query misp-module: %s" % query.module)
-    req = requests.post(url, query.model_dump_json())
+    try:
+        req = requests.post(url, query.model_dump_json())
+    except requests.RequestException as error:
+        raise _unreachable(error) from error
 
     return req.json()
