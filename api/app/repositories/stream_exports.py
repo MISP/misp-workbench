@@ -398,19 +398,19 @@ def _prepare_profile_delta(
 
 
 def membership_record(source: dict, rules, ctx: dict) -> dict:
-    """An indicator in a profile delta: upsert with its record, or remove."""
+    """An indicator in a profile delta: upsert with its record, or remove.
+
+    A removal is the uuid alone: without state, the stream can't know the
+    consumer ever had the indicator, and its value (a tlp:red one, say) is
+    exactly what the profile keeps from the consumer. The uuid is what
+    consumers key on.
+    """
     from app.repositories import detection_profiles
 
     reason = detection_profiles.failing_rule(rules, source, ctx)
     if reason is None:
         return {**source, "action": "upsert"}
-    return {
-        "uuid": source.get("uuid"),
-        "type": source.get("type"),
-        "value": source.get("value"),
-        "action": "remove",
-        "reason": reason,
-    }
+    return {"uuid": source.get("uuid"), "action": "remove", "reason": reason}
 
 
 def _attributes_of(client, pages: Iterator[list[dict]]) -> Iterator[list[dict]]:

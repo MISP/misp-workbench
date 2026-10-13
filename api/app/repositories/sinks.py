@@ -552,7 +552,10 @@ def deliver_membership(sink: sink_models.Sink) -> int:
                     for batch in diff.removals()
                 ),
                 (
-                    [formatters.indicator_record(doc) for doc in batch]
+                    [
+                        formatters.indicator_record(doc)
+                        for doc in _exclusions_hold(rules, batch, diff)
+                    ]
                     for batch in diff.added_indicators()
                 ),
             )
@@ -564,6 +567,62 @@ def deliver_membership(sink: sink_models.Sink) -> int:
         return sent
     finally:
         redis.delete(lock)
+
+
+def _exclusions_hold(rules, docs: list[dict], diff) -> list[dict]:
+    """The indicators whose attributes, as they are now, pass the exclusions.
+
+    An indicator can be a sync behind its attributes: one tagged tlp:red a
+    second ago mustn't leave as an add on its stale indicator. Those that
+    fail are withheld from this run (and from the set kept as delivered), so
+    the next sync looks at them again.
+    """
+    from app.repositories import detection_profiles
+    from app.repositories import indicators as indicators_repository
+
+    if not docs:
+        return []
+    client = get_opensearch_client()
+    exclusions = detection_profiles.exclusions_only(rules)
+    ctx = detection_profiles.context()
+    keys = {(d.get("type"), d.get("value")): d for d in docs}
+    attributes: dict = {}
+    for clause in indicators_repository.value_clauses({v for _, v in keys}):
+        query = {"bool": {"filter": [clause, {"term": {"deleted": False}}]}}
+        for hits in stream_exports.iter_pit_pages(client, "misp-attributes", query):
+            for hit in hits:
+                source = hit["_source"]
+                key = (source.get("type"), source.get("value"))
+                if key in keys:
+                    attributes.setdefault(key, []).append(source)
+    event_ids = {
+        a["event_uuid"]
+        for group in attributes.values()
+        for a in group
+        if a.get("event_uuid")
+    }
+    events = {}
+    if event_ids:
+        response = client.mget(index="misp-events", body={"ids": list(event_ids)})
+        events = {d["_id"]: d["_source"] for d in response["docs"] if d.get("found")}
+
+    kept, withheld = [], []
+    for key, doc in keys.items():
+        if all(
+            detection_profiles.matches(
+                exclusions,
+                detection_profiles.attribute_indicator(
+                    a, events.get(a.get("event_uuid")), ctx
+                ),
+                ctx,
+            )
+            for a in attributes.get(key, [])
+        ):
+            kept.append(doc)
+        else:
+            withheld.append(doc["uuid"])
+    diff.withhold(withheld)
+    return kept
 
 
 def forget_membership(sink_id: int) -> None:

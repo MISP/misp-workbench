@@ -125,14 +125,21 @@ Where it applies:
   minutes the sink gets adds and removals. A removal is a record with
   `action: remove`; the `act` field in CEF, `_misp_action` in GELF. The
   first sync sends every member. A failed sync is retried with the same
-  changes.
+  changes. Before an indicator is sent, its attributes' current state is
+  checked against the exclusions (TLP, excluded tags, warninglists,
+  validation). An indicator a sync behind, such as one tagged `tlp:red` a
+  second ago, is held back until it catches up.
 - **`GET /indicators/export?profile=…&since=…`** (NDJSON or JSON). Each
   record is an `upsert` or a `remove`. A stream keeps no state, so it covers
   what it can see from the indicators alone: anything written since the
   cursor, and indicators that aged past the profile's age limit. Removals
   caused only by a source's trust or by editing the profile need a feed or
   a synced sink. A stream can also report a removal for an indicator the
-  consumer never had; ignore those.
+  consumer never had; ignore those. Because of that, a streamed removal is
+  only the `uuid` and the `reason`, never the type and value. The stream
+  can't know whether the consumer ever had the indicator, and its value
+  (a `tlp:red` one, say) is exactly what the profile keeps from the
+  consumer.
 
 ### The consumer contract
 

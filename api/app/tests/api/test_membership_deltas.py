@@ -283,15 +283,22 @@ class TestMembershipDeltas(ApiTester):
             headers=headers,
         )
         assert response.status_code == status.HTTP_200_OK, response.text
-        records = {r["value"]: r for r in map(json.loads, response.text.splitlines())}
-        assert records[LEAVES[1]]["action"] == "remove"
-        assert records[LEAVES[1]]["reason"] == "no_longer_ids"
-        assert records[JOINS[1]]["action"] == "upsert"
-        assert records[STAYS[1]]["action"] == "upsert"
-        assert records[AGES[1]] == {
+        # Removals are the uuid alone: the stream can't know the consumer
+        # had the indicator, so it never discloses what the profile withholds.
+        records = {r["uuid"]: r for r in map(json.loads, response.text.splitlines())}
+
+        def record(value):
+            return records[indicators.indicator_uuid("domain", value)]
+
+        assert record(LEAVES[1]) == {
+            "uuid": indicators.indicator_uuid("domain", LEAVES[1]),
+            "action": "remove",
+            "reason": "no_longer_ids",
+        }
+        assert record(JOINS[1])["action"] == "upsert"
+        assert record(STAYS[1])["action"] == "upsert"
+        assert record(AGES[1]) == {
             "uuid": indicators.indicator_uuid("domain", AGES[1]),
-            "type": "domain",
-            "value": AGES[1],
             "action": "remove",
             "reason": "expired",
         }
@@ -355,3 +362,40 @@ class TestMembershipDeltas(ApiTester):
 
         # Synced sinks aren't pushed event by event.
         assert sinks_repository.dispatch_published_event(db, EVENT) == 0
+
+    def test_sink_membership_checks_attributes_as_they_are_now(
+        self, db: Session, receiver
+    ):
+        url, received = receiver
+        sink = sinks_repository.create_sink(
+            db,
+            sink_schemas.SinkCreate(
+                name="careful",
+                type="webhook",
+                config={"url": url},
+                # The sink's default exclusions: tlp:red never leaves.
+                filters={"profile_id": self.profile.id, "sync_membership": True},
+            ),
+        )
+        # Tagged tlp:red a moment ago: its indicator hasn't caught up.
+        client = get_opensearch_client()
+        client.index(
+            index="misp-attributes",
+            id=LEAVES[0],
+            body=_attribute(LEAVES, tags=["tlp:red"]),
+            refresh=True,
+        )
+        sent = sinks_repository.deliver_membership(sink)
+        assert sent == 1
+        assert [r["value"] for r in received[0]["attributes"]] == [STAYS[1]]
+
+        # Withheld, not counted as delivered: once the tag is gone, it goes out.
+        client.index(
+            index="misp-attributes",
+            id=LEAVES[0],
+            body=_attribute(LEAVES),
+            refresh=True,
+        )
+        sent = sinks_repository.deliver_membership(sink)
+        assert sent == 1
+        assert [r["value"] for r in received[1]["attributes"]] == [LEAVES[1]]

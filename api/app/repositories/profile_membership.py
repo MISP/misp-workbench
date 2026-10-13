@@ -210,6 +210,13 @@ class Diff:
             if changed:
                 yield changed
 
+    def withhold(self, ids: list[str]) -> None:
+        """Leave members out of this run: not sent, not kept as delivered, so
+        the next run considers them again."""
+        if ids:
+            self.redis.srem(self.next_key, *ids)
+            self.redis.srem(self.added_key, *ids)
+
     def commit(self, state: Optional[str] = None) -> None:
         """Keep the current set (as ``state``, a sink's) and drop the rest."""
         pipe = self.redis.pipeline()
