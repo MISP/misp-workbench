@@ -122,6 +122,9 @@ class PreparedExport:
     etag: str
     last_modified: Optional[datetime]
     client: Any = field(default=None, repr=False)
+    # A profile export of attributes: ``query`` selects indicators, and the
+    # stream sends the live attributes behind them.
+    expand: bool = False
 
     @property
     def media_type(self) -> str:
@@ -207,14 +210,24 @@ def prepare_attribute_export(
     include_deleted: bool = False,
     enforce_warninglist: bool = False,
     index: str = ATTRIBUTES_INDEX,
+    profile: Optional[dict] = None,
 ) -> PreparedExport:
     """An attribute export, or with ``index=INDICATORS_INDEX`` an indicator one.
 
     Both are stamped with ``updated_at``, keep tombstones (``deleted``) and
     carry ``warninglist_hits``, so they share filtering, deltas and formats.
+
+    With a detection ``profile`` (see ``detection_profiles.load``), its rules
+    select indicators and replace ``include_deleted`` and
+    ``enforce_warninglist``; an attribute export sends the attributes behind
+    the selected indicators.
     """
     fmt = _validate_format(fmt, ATTRIBUTE_FORMATS)
     export_timestamp = int(time.time())
+    if profile is not None:
+        return _prepare_profile_export(
+            query, fmt, since, index, profile, export_timestamp
+        )
 
     filters: list = []
     if since not in (None, ""):
@@ -254,6 +267,85 @@ def prepare_attribute_export(
         last_modified=last_modified,
         client=client,
     )
+
+
+def _prepare_profile_export(
+    query: Optional[str],
+    fmt: str,
+    since: Optional[str],
+    index: str,
+    profile: dict,
+    export_timestamp: int,
+) -> PreparedExport:
+    from app.repositories import detection_profiles
+
+    delta = since not in (None, "")
+    filters: list = []
+    if delta:
+        if index == ATTRIBUTES_INDEX:
+            raise ExportError(
+                "since= with a profile needs an indicator export "
+                "(/indicators/export): a removal is an indicator's"
+            )
+        if fmt not in DELTA_FORMATS:
+            raise ExportError(
+                f"since= needs a format that can carry deletions "
+                f"({', '.join(DELTA_FORMATS)}); {fmt!r} cannot"
+            )
+        since_ts = parse_timestamp(since, "since", now=export_timestamp)
+        filters.append(
+            {"range": {"updated_at": {"gte": since_ts, "format": "epoch_second"}}}
+        )
+    ctx = detection_profiles.context(export_timestamp)
+    os_query = {
+        "bool": {
+            "must": [
+                _base_query(query, "value"),
+                detection_profiles.output_query(profile["rules"], ctx, delta=delta),
+            ],
+            "filter": filters,
+        }
+    }
+    client = get_opensearch_client()
+    request_key = json.dumps(
+        [index, query, fmt, since, profile["id"], profile["rules"].model_dump()],
+        sort_keys=True,
+    )
+    etag, last_modified = _fingerprint(client, INDICATORS_INDEX, os_query, request_key)
+    return PreparedExport(
+        index=INDICATORS_INDEX,
+        format=fmt,
+        query=os_query,
+        export_timestamp=export_timestamp,
+        etag=etag,
+        last_modified=last_modified,
+        client=client,
+        # One value per line is the same from indicators or attributes.
+        expand=index == ATTRIBUTES_INDEX and fmt not in LINE_FORMATS,
+    )
+
+
+def _attributes_of(client, pages: Iterator[list[dict]]) -> Iterator[list[dict]]:
+    """The live attributes behind pages of indicators, page by page."""
+    from app.repositories import indicators as indicators_repository
+
+    for hits in pages:
+        keys = {(h["_source"].get("type"), h["_source"].get("value")) for h in hits}
+        values = {value for _, value in keys if value}
+        for clause in indicators_repository.value_clauses(values):
+            query = {
+                "bool": {
+                    "filter": [clause, {"term": {"deleted": False}}],
+                }
+            }
+            for attribute_hits in iter_pit_pages(client, ATTRIBUTES_INDEX, query):
+                kept = [
+                    h
+                    for h in attribute_hits
+                    if (h["_source"].get("type"), h["_source"].get("value")) in keys
+                ]
+                if kept:
+                    yield kept
 
 
 def prepare_event_export(
@@ -581,6 +673,9 @@ def _stream(
     export: PreparedExport, pit_id: Optional[str], slot: Optional[ExportSlot]
 ) -> Iterator[str]:
     fmt = export.format
+    if export.expand:
+        yield from _stream_expanded(export, pit_id, slot)
+        return
     indicators = export.index == INDICATORS_INDEX
     source: Any = ["value", "type"] if fmt in ("text", "cdb") else True
     if indicators and source is True:
@@ -633,6 +728,45 @@ def _stream(
         elif fmt == "csv":
             yield "".join(csv_line(row(hit["_source"])) for hit in hits)
 
+    if fmt == "json":
+        yield "]"
+
+
+def _stream_expanded(
+    export: PreparedExport, pit_id: Optional[str], slot: Optional[ExportSlot]
+) -> Iterator[str]:
+    """A profile's attributes, in the attribute formats (json, ndjson, csv)."""
+    fmt = export.format
+    indicator_pages = iter_pit_pages(
+        export.client,
+        INDICATORS_INDEX,
+        export.query,
+        source=["type", "value"],
+        pit_id=pit_id,
+    )
+    if fmt == "json":
+        yield "["
+    elif fmt == "csv":
+        yield csv_line(CSV_COLUMNS)
+    first = True
+    for hits in _attributes_of(export.client, indicator_pages):
+        if slot is not None:
+            slot.renew()
+        if fmt == "json":
+            chunk = []
+            for hit in hits:
+                doc = {
+                    "_index": hit["_index"],
+                    "_id": hit["_id"],
+                    "_source": hit["_source"],
+                }
+                chunk.append(("" if first else ",") + json.dumps(doc, default=str))
+                first = False
+            yield "".join(chunk)
+        elif fmt == "ndjson":
+            yield "".join(json.dumps(h["_source"], default=str) + "\n" for h in hits)
+        elif fmt == "csv":
+            yield "".join(csv_line(_csv_row(h["_source"])) for h in hits)
     if fmt == "json":
         yield "]"
 

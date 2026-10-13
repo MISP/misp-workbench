@@ -381,6 +381,37 @@ def _context(attribute: dict, event: Optional[dict]) -> dict:
     }
 
 
+def _in_profile(profile: dict, matches: list[dict]) -> list[dict]:
+    from app.repositories import detection_profiles
+    from app.repositories import indicators as indicators_repository
+
+    ctx = detection_profiles.context()
+    consolidated = indicators_repository.find_by_values(
+        [m["value"] for m in matches], to_ids_only=False, include_warninglisted=True
+    )
+    kept = []
+    for match in matches:
+        found = consolidated.get(match["value"], [])
+        if found:
+            ok = any(
+                detection_profiles.matches(profile["rules"], i, ctx) for i in found
+            )
+        else:
+            ok = any(
+                detection_profiles.matches(
+                    profile["rules"],
+                    detection_profiles.attribute_indicator(
+                        {**a, "value": match["value"]}, a.get("event"), ctx
+                    ),
+                    ctx,
+                )
+                for a in match["attributes"]
+            )
+        if ok:
+            kept.append(match)
+    return kept
+
+
 def lookup(
     values: list,
     to_ids_only: bool = True,
@@ -388,6 +419,7 @@ def lookup(
     include_warninglisted: bool = False,
     include_indicators: bool = False,
     min_score: Optional[int] = None,
+    profile: Optional[dict] = None,
 ) -> dict:
     """Which of ``values`` are known indicators, with their context.
 
@@ -400,6 +432,9 @@ def lookup(
     indicators are asked for or ``min_score`` is set. ``min_score`` drops
     matches scoring below it; a value without an indicator yet (written in
     the last few seconds, so fresh) is kept.
+
+    ``profile`` (detection_profiles.load) keeps only values with an
+    indicator the profile selects, or, too new for one, an attribute it does.
     """
     started = time.perf_counter()
     unique = list(
@@ -447,6 +482,8 @@ def lookup(
         for value in unique
         if value in found
     ]
+    if profile is not None and matches:
+        matches = _in_profile(profile, matches)
     if (include_indicators or min_score) and matches:
         from app.repositories import indicators as indicators_repository
 

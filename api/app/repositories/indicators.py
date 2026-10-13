@@ -155,7 +155,7 @@ def merge_tags(names: Iterable[str]) -> tuple[list[str], Optional[str], list[str
 # ── Value queries ─────────────────────────────────────────────────────────
 
 
-def _value_clauses(values: Iterable[str]) -> Iterator[dict]:
+def value_clauses(values: Iterable[str]) -> Iterator[dict]:
     """Query clauses matching ``values``, in request-sized chunks.
 
     Values past the keyword's ignore_above aren't in ``value.keyword`` and
@@ -188,7 +188,7 @@ def _live_attributes(extra: Optional[list] = None) -> dict:
 
 
 def _scan_attributes(client, values: set) -> Iterator[dict]:
-    for clause in _value_clauses(values):
+    for clause in value_clauses(values):
         for hits in stream_exports.iter_pit_pages(
             client,
             ATTRIBUTES_INDEX,
@@ -204,7 +204,7 @@ def _scan_attributes(client, values: set) -> Iterator[dict]:
 def _existing_indicators(client, values: set) -> dict[str, dict]:
     """Live indicators of ``values``, by id."""
     found = {}
-    for clause in _value_clauses(values):
+    for clause in value_clauses(values):
         query = {
             "bool": {"filter": [clause], "must_not": [{"term": {"deleted": True}}]}
         }
@@ -920,8 +920,17 @@ def search(
     page: int = 1,
     size: int = 50,
     min_score: Optional[int] = None,
+    profile: Optional[dict] = None,
 ) -> dict:
     filters: list = []
+    if profile is not None:
+        from app.repositories import detection_profiles
+
+        filters.append(
+            detection_profiles.to_query(
+                profile["rules"], detection_profiles.context(), live_only=False
+            )
+        )
     if min_score:
         filters.append({"range": {"score": {"gte": min_score}}})
     if type_:
@@ -971,7 +980,7 @@ def find_by_values(
         from app.repositories.warninglists import WARNINGLISTED
 
         must_not.append(WARNINGLISTED)
-    for clause in _value_clauses(values):
+    for clause in value_clauses(values):
         filters = [clause]
         if to_ids_only:
             filters.append({"term": {"to_ids": True}})

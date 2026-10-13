@@ -1,7 +1,11 @@
 <script setup>
 import { reactive, ref, computed } from "vue";
 import { router } from "@/router";
-import { useSinksStore, useToastsStore } from "@/stores";
+import {
+  useSinksStore,
+  useToastsStore,
+  useDetectionProfilesStore,
+} from "@/stores";
 import TagsSelect from "@/components/tags/TagsSelect.vue";
 
 // With `sink` the form edits it; without, it creates a new one.
@@ -60,11 +64,15 @@ const configs = reactive(
 const config = computed(() => configs[form.type]);
 
 const joinList = (list) => (list || []).join(", ");
+const profilesStore = useDetectionProfilesStore();
+profilesStore.getAll();
+
 const filters = reactive({
   to_ids_only: props.sink?.filters?.to_ids_only ?? true,
   exclude_warninglisted: props.sink?.filters?.exclude_warninglisted ?? true,
   indicator_mode: props.sink?.filters?.indicator_mode ?? false,
   min_score: props.sink?.filters?.min_score ?? 0,
+  profile_id: props.sink?.filters?.profile_id ?? null,
   types: joinList(props.sink?.filters?.types),
   // Tag names (or patterns such as tlp:*), edited with the tag selector.
   tags: [...(props.sink?.filters?.tags || [])],
@@ -116,6 +124,7 @@ async function submit() {
       exclude_warninglisted: filters.exclude_warninglisted,
       indicator_mode: filters.indicator_mode,
       min_score: filters.min_score || 0,
+      profile_id: filters.profile_id,
       types: splitList(filters.types),
       tags: filters.tags,
       exclude_tags: filters.exclude_tags,
@@ -348,17 +357,93 @@ async function submit() {
       <!-- ── filters ── -->
       <hr />
       <h6 class="mb-3">What to send</h6>
-      <div class="form-check form-switch mb-3">
-        <input
-          id="sink-to-ids"
-          class="form-check-input"
-          type="checkbox"
-          v-model="filters.to_ids_only"
-        />
-        <label class="form-check-label" for="sink-to-ids"
-          >Only attributes flagged for IDS</label
+      <div class="mb-3">
+        <label class="form-label" for="sink-profile">Detection profile</label>
+        <select
+          id="sink-profile"
+          class="form-select"
+          v-model="filters.profile_id"
         >
+          <option :value="null">None: use the filters below</option>
+          <option v-for="p in profilesStore.profiles" :key="p.id" :value="p.id">
+            {{ p.name }} ({{ p.granularity }})
+          </option>
+        </select>
+        <div class="form-text">
+          A profile replaces every filter: its rules select what is sent, and it
+          sends either attributes or consolidated indicators.
+        </div>
       </div>
+      <template v-if="!filters.profile_id">
+        <div class="form-check form-switch mb-3">
+          <input
+            id="sink-to-ids"
+            class="form-check-input"
+            type="checkbox"
+            v-model="filters.to_ids_only"
+          />
+          <label class="form-check-label" for="sink-to-ids"
+            >Only attributes flagged for IDS</label
+          >
+        </div>
+        <div class="form-check form-switch mb-3">
+          <input
+            id="sink-indicator-mode"
+            class="form-check-input"
+            type="checkbox"
+            v-model="filters.indicator_mode"
+          />
+          <label class="form-check-label" for="sink-indicator-mode"
+            >Send consolidated indicators</label
+          >
+          <div class="form-text">
+            One record per value, with its sources, first and last seen,
+            sightings and the tags of every event it is in. Tag exclusions then
+            judge the value: one that is <code>tlp:red</code> anywhere is left
+            out.
+          </div>
+        </div>
+        <div class="mb-3">
+          <label class="form-label" for="sink-min-score">Minimum score</label>
+          <input
+            id="sink-min-score"
+            class="form-control"
+            type="number"
+            min="0"
+            max="100"
+            v-model.number="filters.min_score"
+            style="max-width: 10em"
+          />
+          <div class="form-text">
+            Leave out values whose indicator's confidence (0–100, from sources,
+            age, sightings and warninglists) is below this. 0 sends regardless;
+            values too new to be scored are sent.
+          </div>
+        </div>
+        <div class="mb-3">
+          <label class="form-label" for="sink-types">Attribute types</label>
+          <input
+            id="sink-types"
+            class="form-control font-monospace"
+            v-model="filters.types"
+            placeholder="all types — or e.g. ip-src, ip-dst, domain, url"
+          />
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Only with tags</label>
+          <!-- persist=false: only edits this list, never tags an event -->
+          <TagsSelect
+            modelClass="event"
+            :persist="false"
+            :selectedTags="includeTagObjects"
+            @update:selectedTags="filters.tags = $event"
+          />
+          <div class="form-text">Empty sends attributes with any tags.</div>
+        </div>
+      </template>
+      <p v-if="filters.profile_id" class="form-text">
+        The sink's own exclusions below still hold on top of the profile.
+      </p>
       <div class="form-check form-switch mb-3">
         <input
           id="sink-warninglisted"
@@ -369,59 +454,6 @@ async function submit() {
         <label class="form-check-label" for="sink-warninglisted"
           >Leave out values on an enabled warninglist</label
         >
-      </div>
-      <div class="form-check form-switch mb-3">
-        <input
-          id="sink-indicator-mode"
-          class="form-check-input"
-          type="checkbox"
-          v-model="filters.indicator_mode"
-        />
-        <label class="form-check-label" for="sink-indicator-mode"
-          >Send consolidated indicators</label
-        >
-        <div class="form-text">
-          One record per value, with its sources, first and last seen, sightings
-          and the tags of every event it is in. Tag exclusions then judge the
-          value: one that is <code>tlp:red</code> anywhere is left out.
-        </div>
-      </div>
-      <div class="mb-3">
-        <label class="form-label" for="sink-min-score">Minimum score</label>
-        <input
-          id="sink-min-score"
-          class="form-control"
-          type="number"
-          min="0"
-          max="100"
-          v-model.number="filters.min_score"
-          style="max-width: 10em"
-        />
-        <div class="form-text">
-          Leave out values whose indicator's confidence (0–100, from sources,
-          age, sightings and warninglists) is below this. 0 sends regardless;
-          values too new to be scored are sent.
-        </div>
-      </div>
-      <div class="mb-3">
-        <label class="form-label" for="sink-types">Attribute types</label>
-        <input
-          id="sink-types"
-          class="form-control font-monospace"
-          v-model="filters.types"
-          placeholder="all types — or e.g. ip-src, ip-dst, domain, url"
-        />
-      </div>
-      <div class="mb-3">
-        <label class="form-label">Only with tags</label>
-        <!-- persist=false: only edits this list, never tags an event -->
-        <TagsSelect
-          modelClass="event"
-          :persist="false"
-          :selectedTags="includeTagObjects"
-          @update:selectedTags="filters.tags = $event"
-        />
-        <div class="form-text">Empty sends attributes with any tags.</div>
       </div>
       <div class="mb-3">
         <label class="form-label">Never with tags</label>

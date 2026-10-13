@@ -54,6 +54,7 @@ as in MISP.
 | `value` | — | The value to check (`GET`) |
 | `to_ids_only` | `true` | Only attributes flagged for IDS count as matches. `false` matches any live attribute |
 | `include_warninglisted` | `false` | Also match attributes on an enabled [warninglist](../warninglists.md). They're left out by default, and every returned attribute carries its `warninglist_hits` |
+| `profile` | — | Only values a [detection profile](../detection-profiles.md) (id or name) selects |
 | `min_score` | — | Leave out values whose best [consolidated indicator](../indicators.md#confidence-scores) scores below this (0–100). Each match then carries `score`. Values too new to have an indicator are kept |
 | `include_indicators` | `false` | Add `indicators` to each match: the value's [consolidated indicators](../indicators.md), one per type, with sources, seen dates, merged tags and sightings across every event |
 | `max_attributes` | `10` | Attributes returned per matched value, newest first (up to 100). `attribute_count` always has the total. A response carries at most 50,000 attributes overall, so large batches get fewer per value (5 for 10,000 candidates) |

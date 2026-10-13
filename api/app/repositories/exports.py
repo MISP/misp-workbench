@@ -117,9 +117,28 @@ def get_export_by_id(db: Session, export_id: int, user_id: int) -> export_models
     )
 
 
+def _check_profile(db: Session, export: export_schemas.ExportCreate) -> None:
+    from fastapi import HTTPException, status
+
+    from app.repositories import detection_profiles
+
+    if export.profile_id is None:
+        return
+    profile = detection_profiles.get_profile(db, export.profile_id)
+    if profile is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Detection profile not found")
+    if export.incremental and profile.granularity != "indicators":
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            "an incremental profile feed needs a profile of indicators: "
+            "removals are an indicator's",
+        )
+
+
 def create_export(
     db: Session, export: export_schemas.ExportCreate, user_id: int
 ) -> export_models.Export:
+    _check_profile(db, export)
     db_export = export_models.Export(
         **export.model_dump(),
         user_id=user_id,
@@ -395,16 +414,17 @@ def _feed_query(
     }
 
 
-def _stream_to_storage(index: str, query: dict, fmt: str, key: str):
+def _stream_to_storage(index: str, query: dict, fmt: str, key: str, export=None):
     """Stream matching documents in ``fmt`` straight into storage.
 
     Reuses the streaming exporter (point-in-time paging, no record cap), so
-    memory stays flat however large the artifact. Returns
-    ``(stored_key, size, record_count, sha256)``.
+    memory stays flat however large the artifact. ``export`` is a prepared
+    export to stream instead of ``index`` and ``query`` (profile exports).
+    Returns ``(stored_key, size, record_count, sha256)``.
     """
     from app.repositories import stream_exports
 
-    export = stream_exports.PreparedExport(
+    export = export or stream_exports.PreparedExport(
         index=index,
         format=fmt,
         query=query,
@@ -436,8 +456,73 @@ def _prune_deltas(db: Session, export_id: int, keep: int) -> None:
         db.delete(delta)
 
 
+def _run_profile(db: Session, db_export: export_models.Export) -> None:
+    """A profile export: the profile's indicators, or the attributes behind them."""
+    from app.repositories import detection_profiles, stream_exports
+
+    profile = detection_profiles.load(db_export.profile_id)
+    index = (
+        stream_exports.INDICATORS_INDEX
+        if profile["granularity"] == "indicators"
+        else stream_exports.ATTRIBUTES_INDEX
+    )
+    cursor = int(time.time())
+
+    def stream(since, key):
+        export = stream_exports.prepare_attribute_export(
+            db_export.query or "*",
+            db_export.format,
+            since=None if since is None else str(since),
+            index=index,
+            profile=profile,
+        )
+        return _stream_to_storage(None, None, db_export.format, key, export=export)
+
+    stored_key, size, records, checksum = stream(
+        None, f"export-{db_export.id}.{db_export.format}"
+    )
+    db_export.storage_key = stored_key
+    db_export.file_size = size
+    db_export.record_count = records
+    db_export.checksum = checksum
+    if not db_export.incremental:
+        return
+    # The first run has nothing to diff against: its full artifact is the base.
+    if db_export.cursor is not None:
+        _write_delta(db, db_export, cursor, lambda key: stream(db_export.cursor, key))
+    db_export.cursor = cursor
+
+
+def _write_delta(db: Session, db_export, cursor: int, stream) -> None:
+    previous = _deltas(db, db_export.id)
+    seq = previous[-1].seq + 1 if previous else 1
+    delta_key, delta_size, delta_records, _ = stream(
+        f"export-{db_export.id}-delta-{seq}.{db_export.format}"
+    )
+    db.add(
+        export_models.ExportDelta(
+            export_id=db_export.id,
+            seq=seq,
+            since=db_export.cursor,
+            until=cursor,
+            storage_key=delta_key,
+            record_count=delta_records,
+            file_size=delta_size,
+            created_at=datetime.now(timezone.utc),
+        )
+    )
+    db.flush()
+    keep = RuntimeSettings(db).get_value(
+        "exports.delta_retention", default=DEFAULT_DELTA_RETENTION
+    )
+    _prune_deltas(db, db_export.id, max(int(keep), 1))
+
+
 def _run_streamed(db: Session, db_export: export_models.Export) -> None:
     """Materialize a streamed-format export, plus its delta when incremental."""
+    if db_export.profile_id is not None:
+        _run_profile(db, db_export)
+        return
     index = INDEX_MAP.get(db_export.index_target, "misp-attributes")
     # Taken before reading: a write landing during the run is in the next delta
     # too, rather than in neither.
@@ -462,31 +547,17 @@ def _run_streamed(db: Session, db_export: export_models.Export) -> None:
 
     # The first run has nothing to diff against: its full artifact is the base.
     if db_export.cursor is not None:
-        previous = _deltas(db, db_export.id)
-        seq = previous[-1].seq + 1 if previous else 1
-        delta_key, delta_size, delta_records, _ = _stream_to_storage(
-            index,
-            _feed_query(db_export.query, since=db_export.cursor),
-            db_export.format,
-            f"export-{db_export.id}-delta-{seq}.{db_export.format}",
+        _write_delta(
+            db,
+            db_export,
+            cursor,
+            lambda key: _stream_to_storage(
+                index,
+                _feed_query(db_export.query, since=db_export.cursor),
+                db_export.format,
+                key,
+            ),
         )
-        db.add(
-            export_models.ExportDelta(
-                export_id=db_export.id,
-                seq=seq,
-                since=db_export.cursor,
-                until=cursor,
-                storage_key=delta_key,
-                record_count=delta_records,
-                file_size=delta_size,
-                created_at=datetime.now(timezone.utc),
-            )
-        )
-        db.flush()
-        keep = RuntimeSettings(db).get_value(
-            "exports.delta_retention", default=DEFAULT_DELTA_RETENTION
-        )
-        _prune_deltas(db, db_export.id, max(int(keep), 1))
 
     db_export.cursor = cursor
 

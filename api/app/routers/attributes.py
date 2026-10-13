@@ -19,6 +19,17 @@ from sqlalchemy.orm import Session
 router = APIRouter()
 
 
+def _load_profile(ref):
+    from app.repositories import detection_profiles
+
+    if ref in (None, ""):
+        return None
+    try:
+        return detection_profiles.load(ref)
+    except detection_profiles.ProfileNotFound as error:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error))
+
+
 async def get_attributes_parameters(
     event_uuid: Optional[str] = None,
     deleted: Optional[bool] = None,
@@ -104,8 +115,16 @@ async def export_attributes(
         ),
     ),
     runtime_settings: RuntimeSettings = Depends(get_runtime_settings),
+    profile: Optional[str] = Query(
+        None,
+        description=(
+            "A detection profile (id or name) selecting what is exported, "
+            "instead of include_deleted and enforce_warninglist"
+        ),
+    ),
     user: user_schemas.User = Security(get_current_active_user, scopes=["attributes:read"]),
 ):
+    loaded = await run_in_threadpool(_load_profile, profile)
     if enforce_warninglist is None:
         enforce_warninglist = bool(
             await run_in_threadpool(
@@ -120,6 +139,8 @@ async def export_attributes(
             since,
             include_deleted,
             enforce_warninglist,
+            stream_exports_repository.ATTRIBUTES_INDEX,
+            loaded,
         )
     except stream_exports_repository.RestSearchError as error:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(error))

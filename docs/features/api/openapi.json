@@ -2819,6 +2819,24 @@
               "title": "Enforce Warninglist"
             },
             "description": "Leave out attributes on an enabled warninglist (full exports only). Defaults to the warninglists.enforce_on_outputs runtime setting."
+          },
+          {
+            "name": "profile",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "A detection profile (id or name) selecting what is exported, instead of include_deleted and enforce_warninglist",
+              "title": "Profile"
+            },
+            "description": "A detection profile (id or name) selecting what is exported, instead of include_deleted and enforce_warninglist"
           }
         ],
         "responses": {
@@ -10015,6 +10033,24 @@
               ],
               "title": "Min Score"
             }
+          },
+          {
+            "name": "profile",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Only values a detection profile (id or name) selects",
+              "title": "Profile"
+            },
+            "description": "Only values a detection profile (id or name) selects"
           }
         ],
         "responses": {
@@ -10067,6 +10103,427 @@
             ]
           }
         ]
+      }
+    },
+    "/detection-profiles": {
+      "get": {
+        "tags": [
+          "Detection profiles"
+        ],
+        "summary": "List Profiles",
+        "operationId": "list_profiles_detection_profiles_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/DetectionProfile"
+                  },
+                  "type": "array",
+                  "title": "Response List Profiles Detection Profiles Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "detection_profiles:read"
+            ]
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "Detection profiles"
+        ],
+        "summary": "Create Profile",
+        "operationId": "create_profile_detection_profiles_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DetectionProfileCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DetectionProfile"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "detection_profiles:create"
+            ]
+          }
+        ]
+      }
+    },
+    "/detection-profiles/preview": {
+      "post": {
+        "tags": [
+          "Detection profiles"
+        ],
+        "summary": "Preview Rules",
+        "description": "How many indicators these rules select, before saving them.",
+        "operationId": "preview_rules_detection_profiles_preview_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProfilePreviewRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfilePreview"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "detection_profiles:read"
+            ]
+          }
+        ]
+      }
+    },
+    "/detection-profiles/query": {
+      "post": {
+        "tags": [
+          "Detection profiles"
+        ],
+        "summary": "Rules As Query",
+        "description": "These rules as a Lucene query on the indicators index, for Explore.",
+        "operationId": "rules_as_query_detection_profiles_query_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProfilePreviewRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfileQuery"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "detection_profiles:read"
+            ]
+          }
+        ]
+      }
+    },
+    "/detection-profiles/{profile_id}/query": {
+      "get": {
+        "tags": [
+          "Detection profiles"
+        ],
+        "summary": "Profile As Query",
+        "description": "The profile as a Lucene query on the indicators index, for Explore.",
+        "operationId": "profile_as_query_detection_profiles__profile_id__query_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "detection_profiles:read"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "profile_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Profile Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfileQuery"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/detection-profiles/{profile_id}": {
+      "get": {
+        "tags": [
+          "Detection profiles"
+        ],
+        "summary": "Get Profile",
+        "operationId": "get_profile_detection_profiles__profile_id__get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "detection_profiles:read"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "profile_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Profile Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DetectionProfile"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Detection profiles"
+        ],
+        "summary": "Update Profile",
+        "operationId": "update_profile_detection_profiles__profile_id__patch",
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "detection_profiles:update"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "profile_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Profile Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DetectionProfileUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DetectionProfile"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Detection profiles"
+        ],
+        "summary": "Delete Profile",
+        "operationId": "delete_profile_detection_profiles__profile_id__delete",
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "detection_profiles:delete"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "profile_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Profile Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/detection-profiles/{profile_id}/count": {
+      "get": {
+        "tags": [
+          "Detection profiles"
+        ],
+        "summary": "Count Profile",
+        "operationId": "count_profile_detection_profiles__profile_id__count_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "detection_profiles:read"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "profile_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Profile Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfilePreview"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/indicators": {
@@ -10180,6 +10637,24 @@
               ],
               "title": "Min Score"
             }
+          },
+          {
+            "name": "profile",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Only indicators a detection profile (id or name) selects",
+              "title": "Profile"
+            },
+            "description": "Only indicators a detection profile (id or name) selects"
           },
           {
             "name": "page",
@@ -10318,6 +10793,24 @@
               "title": "Enforce Warninglist"
             },
             "description": "Leave out indicators on an enabled warninglist (full exports only). Defaults to the warninglists.enforce_on_outputs runtime setting."
+          },
+          {
+            "name": "profile",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "A detection profile (id or name) selecting what is exported, instead of include_deleted and enforce_warninglist",
+              "title": "Profile"
+            },
+            "description": "A detection profile (id or name) selecting what is exported, instead of include_deleted and enforce_warninglist"
           }
         ],
         "responses": {
@@ -15792,6 +16285,186 @@
         ],
         "title": "CorrelationStatsResponse"
       },
+      "DetectionProfile": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "granularity": {
+            "type": "string",
+            "enum": [
+              "indicators",
+              "attributes"
+            ],
+            "title": "Granularity",
+            "default": "indicators"
+          },
+          "rules": {
+            "$ref": "#/components/schemas/ProfileRules",
+            "default": {
+              "types": [],
+              "categories": [],
+              "tags": [],
+              "exclude_tags": [],
+              "sources": [],
+              "exclude_sources": [],
+              "organisations": [],
+              "exclude_organisations": [],
+              "to_ids": true,
+              "exclude_warninglisted": true,
+              "exclude_validation_issues": true
+            }
+          },
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "id",
+          "created_at"
+        ],
+        "title": "DetectionProfile"
+      },
+      "DetectionProfileCreate": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "granularity": {
+            "type": "string",
+            "enum": [
+              "indicators",
+              "attributes"
+            ],
+            "title": "Granularity",
+            "default": "indicators"
+          },
+          "rules": {
+            "$ref": "#/components/schemas/ProfileRules",
+            "default": {
+              "types": [],
+              "categories": [],
+              "tags": [],
+              "exclude_tags": [],
+              "sources": [],
+              "exclude_sources": [],
+              "organisations": [],
+              "exclude_organisations": [],
+              "to_ids": true,
+              "exclude_warninglisted": true,
+              "exclude_validation_issues": true
+            }
+          }
+        },
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "DetectionProfileCreate"
+      },
+      "DetectionProfileUpdate": {
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "granularity": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "indicators",
+                  "attributes"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Granularity"
+          },
+          "rules": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProfileRules"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "title": "DetectionProfileUpdate"
+      },
       "DistributionLevel": {
         "type": "integer",
         "enum": [
@@ -16557,6 +17230,17 @@
             "title": "Incremental",
             "default": false
           },
+          "profile_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile Id"
+          },
           "id": {
             "type": "integer",
             "title": "Id"
@@ -16780,6 +17464,17 @@
             "type": "boolean",
             "title": "Incremental",
             "default": false
+          },
+          "profile_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile Id"
           },
           "schedule": {
             "anyOf": [
@@ -19948,6 +20643,18 @@
             "title": "Min Score",
             "description": "Leave out values whose consolidated indicator scores below this (0-100). Values too new to have an indicator are kept"
           },
+          "profile": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile",
+            "description": "Only values a detection profile (id or name) selects: their indicator, or for a value too new to have one its attribute, passes"
+          },
           "include_indicators": {
             "type": "boolean",
             "title": "Include Indicators",
@@ -23031,6 +23738,203 @@
         ],
         "title": "PreviewPullResponse"
       },
+      "ProfilePreview": {
+        "properties": {
+          "count": {
+            "type": "integer",
+            "title": "Count"
+          },
+          "sample": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Sample",
+            "default": []
+          }
+        },
+        "type": "object",
+        "required": [
+          "count"
+        ],
+        "title": "ProfilePreview",
+        "description": "How many live indicators the rules select, and a few of them."
+      },
+      "ProfilePreviewRequest": {
+        "properties": {
+          "rules": {
+            "$ref": "#/components/schemas/ProfileRules"
+          }
+        },
+        "type": "object",
+        "required": [
+          "rules"
+        ],
+        "title": "ProfilePreviewRequest"
+      },
+      "ProfileQuery": {
+        "properties": {
+          "query": {
+            "type": "string",
+            "title": "Query"
+          },
+          "snapshot": {
+            "type": "boolean",
+            "title": "Snapshot",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "query"
+        ],
+        "title": "ProfileQuery",
+        "description": "The rules as a Lucene query on the indicators index (Explore)."
+      },
+      "ProfileRules": {
+        "properties": {
+          "types": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Types",
+            "default": []
+          },
+          "categories": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Categories",
+            "default": []
+          },
+          "tlp_ceiling": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "tlp:clear",
+                  "tlp:green",
+                  "tlp:amber",
+                  "tlp:amber+strict",
+                  "tlp:red"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tlp Ceiling"
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Tags",
+            "default": []
+          },
+          "exclude_tags": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Exclude Tags",
+            "default": []
+          },
+          "min_score": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 100.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Min Score"
+          },
+          "max_age_days": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Age Days"
+          },
+          "sources": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Sources",
+            "default": []
+          },
+          "exclude_sources": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Exclude Sources",
+            "default": []
+          },
+          "organisations": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Organisations",
+            "default": []
+          },
+          "exclude_organisations": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Exclude Organisations",
+            "default": []
+          },
+          "min_source_trust": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 100.0,
+                "minimum": -100.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Min Source Trust"
+          },
+          "to_ids": {
+            "type": "boolean",
+            "title": "To Ids",
+            "default": true
+          },
+          "exclude_warninglisted": {
+            "type": "boolean",
+            "title": "Exclude Warninglisted",
+            "default": true
+          },
+          "exclude_validation_issues": {
+            "type": "boolean",
+            "title": "Exclude Validation Issues",
+            "default": true
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "ProfileRules",
+        "description": "Which consolidated indicators a profile selects. Every rule narrows.\n\nEmpty lists and None leave a rule out."
+      },
       "ReactorRun": {
         "properties": {
           "id": {
@@ -25989,6 +26893,17 @@
             "minimum": 0.0,
             "title": "Min Score",
             "default": 0
+          },
+          "profile_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile Id"
           }
         },
         "type": "object",

@@ -8,11 +8,13 @@ import {
   useAttributesStore,
   useCorrelationsStore,
   useUserSettingsStore,
+  useIndicatorsStore,
 } from "@/stores";
 
 import AttributeResultCard from "./AttributeResultCard.vue";
 import EventResultCard from "./EventResultCard.vue";
 import CorrelationResultCard from "./CorrelationResultCard.vue";
+import IndicatorResultCard from "./IndicatorResultCard.vue";
 import ExploreSearchBar from "./ExploreSearchBar.vue";
 import ExploreSearchHistory from "./ExploreSearchHistory.vue";
 import ExploreResultsSection from "./ExploreResultsSection.vue";
@@ -62,6 +64,16 @@ const correlationsSortOrder = useLocalStorageRef(
   "desc",
 );
 const includeDeleted = useLocalStorageRef("explore_include_deleted", false);
+const indicatorsSortBy = useLocalStorageRef(
+  "explore_indicators_sort_by",
+  "score",
+);
+const INDICATOR_SORT_FIELDS = [
+  { value: "score", label: "Score" },
+  { value: "last_seen", label: "Last seen" },
+  { value: "event_count", label: "Events" },
+  { value: "first_seen", label: "First seen" },
+];
 
 const eventsFilters = ref([]);
 const attributesFilters = ref([]);
@@ -81,6 +93,7 @@ function applyFilters(baseQuery, filters) {
 
 const attributesStore = useAttributesStore();
 const correlationsStore = useCorrelationsStore();
+const indicatorsStore = useIndicatorsStore();
 const userSettingsStore = useUserSettingsStore();
 const { userSettings } = storeToRefs(userSettingsStore);
 
@@ -99,6 +112,11 @@ const {
   status: correlationsStatus,
   page_count: correlationsPageCount,
 } = storeToRefs(correlationsStore);
+const {
+  explore_docs: indicator_docs,
+  exploreStatus: indicatorsStatus,
+  explore_page_count: indicatorsPageCount,
+} = storeToRefs(indicatorsStore);
 
 const userRecentSearches = useLocalStorageRef(
   "user_recent_explore_searches",
@@ -117,6 +135,54 @@ function buildQuery() {
     parts.push(`@timestamp:[${from} TO ${to}]`);
   }
   return parts.length ? parts.join(" AND ") : "*";
+}
+
+// Epoch seconds for a time range bound: "now", "now-30d" or a date.
+const UNIT_SECONDS = {
+  s: 1,
+  m: 60,
+  h: 3600,
+  d: 86400,
+  w: 604800,
+  M: 2592000,
+  y: 31536000,
+};
+function toEpochSeconds(value) {
+  const relative = /^now(?:-(\d+)([smhdwMy]))?$/.exec(value);
+  if (relative) {
+    const ago = Number(relative[1] || 0) * UNIT_SECONDS[relative[2] || "s"];
+    return Math.floor(Date.now() / 1000) - ago;
+  }
+  const time = Date.parse(value);
+  return Number.isNaN(time) ? null : Math.floor(time / 1000);
+}
+
+// Indicators have no @timestamp: the time range applies to when they were
+// last seen, which is stored as epoch seconds.
+function buildIndicatorQuery() {
+  const parts = [];
+  if (searchQuery.value) parts.push(`(${searchQuery.value})`);
+  if (activeTimeRange.value) {
+    const from = toEpochSeconds(activeTimeRange.value.from);
+    const to = toEpochSeconds(activeTimeRange.value.to);
+    if (from !== null && to !== null)
+      parts.push(`last_seen:[${from} TO ${to}]`);
+  }
+  return parts.length ? parts.join(" AND ") : "*";
+}
+
+function searchIndicators(page = 1) {
+  indicatorsStore.exploreSearch({
+    query: buildIndicatorQuery(),
+    page,
+    size: props.page_size,
+    sort: indicatorsSortBy.value,
+  });
+}
+
+function onIndicatorsSortChange({ sortBy }) {
+  indicatorsSortBy.value = sortBy;
+  searchIndicators();
 }
 
 function onTimelineFilterDay(date) {
@@ -172,6 +238,7 @@ function search() {
     sort_by: correlationsSortBy.value,
     sort_order: correlationsSortOrder.value,
   });
+  searchIndicators();
   searchTimeline(base);
 
   if (
@@ -187,11 +254,12 @@ function search() {
 }
 
 // Tab order as rendered, which is also the order preferred when falling back.
-const TABS = ["events", "attributes", "correlations"];
+const TABS = ["events", "attributes", "indicators", "correlations"];
 
 function tabTotal(tab) {
   if (tab === "events") return event_docs.value?.total;
   if (tab === "attributes") return attribute_docs.value?.total;
+  if (tab === "indicators") return indicator_docs.value?.total;
   return correlation_docs.value?.total;
 }
 
@@ -204,6 +272,7 @@ const searchSettled = computed(
   () =>
     !eventsStatus.value?.loading &&
     !attributesStatus.value?.loading &&
+    !indicatorsStatus.value?.loading &&
     !correlationsStatus.value?.loading,
 );
 
@@ -220,18 +289,21 @@ const searchSettled = computed(
  * otherwise decide the tab while comparing against the previous search's
  * totals.
  */
-watch([searchSettled, event_docs, attribute_docs, correlation_docs], () => {
-  if (!autoFocusPending.value || !searchSettled.value) return;
-  autoFocusPending.value = false;
+watch(
+  [searchSettled, event_docs, attribute_docs, indicator_docs, correlation_docs],
+  () => {
+    if (!autoFocusPending.value || !searchSettled.value) return;
+    autoFocusPending.value = false;
 
-  // A tab with results is never taken away from the user.
-  if (tabTotal(activeTab.value) > 0) return;
+    // A tab with results is never taken away from the user.
+    if (tabTotal(activeTab.value) > 0) return;
 
-  const firstWithResults = TABS.find((tab) => tabTotal(tab) > 0);
-  // Nothing matched anywhere: stay put rather than shuffling through three
-  // empty tabs.
-  if (firstWithResults) activeTab.value = firstWithResults;
-});
+    const firstWithResults = TABS.find((tab) => tabTotal(tab) > 0);
+    // Nothing matched anywhere: stay put rather than shuffling through three
+    // empty tabs.
+    if (firstWithResults) activeTab.value = firstWithResults;
+  },
+);
 
 function onEventsPageChange(page) {
   eventsStore.search({
@@ -341,6 +413,8 @@ async function downloadAllResults(type, format = "json") {
       data = await eventsStore.export(params);
     } else if (type === "correlations") {
       data = correlation_docs.value?.results ?? [];
+    } else if (type === "indicators") {
+      data = await indicatorsStore.exportAll(buildIndicatorQuery());
     } else {
       throw new Error("Invalid type for export");
     }
@@ -397,6 +471,10 @@ function forgetRecentSearch(term) {
 
 const route = useRoute();
 onMounted(() => {
+  // ?tab=indicators: a link (a detection profile's pivot) opening a tab.
+  if (TABS.includes(route.query.tab)) {
+    activeTab.value = route.query.tab;
+  }
   const initialQuery = route.query.q;
   if (typeof initialQuery === "string" && initialQuery.length > 0) {
     searchQuery.value = initialQuery;
@@ -535,6 +613,26 @@ body {
           <li class="nav-item">
             <button
               class="nav-link"
+              :class="{ active: activeTab === 'indicators' }"
+              @click="activeTab = 'indicators'"
+            >
+              Indicators
+              <span
+                v-if="indicator_docs?.total != null"
+                class="badge ms-1"
+                :class="
+                  activeTab === 'indicators'
+                    ? 'text-bg-info'
+                    : 'text-bg-secondary'
+                "
+              >
+                {{ indicator_docs.total }}
+              </span>
+            </button>
+          </li>
+          <li class="nav-item">
+            <button
+              class="nav-link"
               :class="{ active: activeTab === 'correlations' }"
               @click="activeTab = 'correlations'"
             >
@@ -609,6 +707,31 @@ body {
                 v-for="result in attribute_docs.results"
                 :key="result._source.uuid"
                 :attribute="result"
+                class="mb-2"
+              />
+            </ExploreResultsSection>
+          </div>
+
+          <div v-show="activeTab === 'indicators'">
+            <ExploreResultsSection
+              title="Indicators"
+              :docs="indicator_docs"
+              :status="indicatorsStatus"
+              :page-count="indicatorsPageCount"
+              :sort-by="indicatorsSortBy"
+              sort-order="desc"
+              :sort-fields="INDICATOR_SORT_FIELDS"
+              :sort-order-toggle="false"
+              :filter-fields="[]"
+              :visible="activeTab === 'indicators'"
+              @page-change="searchIndicators"
+              @download="downloadAllResults('indicators', $event)"
+              @sort-change="onIndicatorsSortChange"
+            >
+              <IndicatorResultCard
+                v-for="result in indicator_docs?.results"
+                :key="result._id"
+                :indicator="result"
                 class="mb-2"
               />
             </ExploreResultsSection>

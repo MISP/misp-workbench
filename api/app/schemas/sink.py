@@ -115,6 +115,10 @@ class SinkFilters(BaseModel):
     # Leave out values whose consolidated indicator scores below this (0-100;
     # 0 sends regardless). Values too new to have an indicator are sent.
     min_score: int = Field(0, ge=0, le=100)
+    # A detection profile that replaces every filter above: its rules select
+    # what is sent, its granularity decides between attributes and
+    # consolidated indicators.
+    profile_id: Optional[int] = None
 
 
 class InvalidSinkConfig(ValueError):

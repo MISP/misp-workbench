@@ -33,6 +33,7 @@
     "docs:screenshots:warninglists": "playwright test scripts/docs-screenshots/warninglists.spec.ts --config=scripts/docs-screenshots/playwright.config.ts",
     "docs:screenshots:indicators": "playwright test scripts/docs-screenshots/indicators.spec.ts --config=scripts/docs-screenshots/playwright.config.ts",
     "docs:screenshots:normalisation": "playwright test scripts/docs-screenshots/normalisation.spec.ts --config=scripts/docs-screenshots/playwright.config.ts",
+    "docs:screenshots:profiles": "playwright test scripts/docs-screenshots/profiles.spec.ts --config=scripts/docs-screenshots/playwright.config.ts",
     "docs:screenshots:api-keys": "playwright test scripts/docs-screenshots/api-keys.spec.ts --config=scripts/docs-screenshots/playwright.config.ts",
     "build-only": "vite build",
     "type-check": "vue-tsc --noEmit -p tsconfig.vitest.json --composite false",

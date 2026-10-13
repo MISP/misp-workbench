@@ -7,6 +7,7 @@ from app.routers import (
     attributes,
     audit_logs,
     auth,
+    detection_profiles,
     diagnostics,
     events,
     exports,
@@ -186,6 +187,9 @@ app.include_router(hunts.router, tags=["Hunts"])
 
 # Bulk indicator lookup
 app.include_router(lookup.router, tags=["Lookup"])
+
+# Detection profiles shared by all outputs
+app.include_router(detection_profiles.router, tags=["Detection profiles"])
 
 # Consolidated indicators (one per type + value)
 app.include_router(indicators.router, tags=["Indicators"])
