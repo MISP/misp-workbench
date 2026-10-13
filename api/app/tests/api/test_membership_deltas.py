@@ -215,13 +215,15 @@ class TestMembershipDeltas(ApiTester):
             LEAVES[1],
         }
         # The first run is the base: no delta.
-        assert exports.get_feed_deltas(db, db_export, 0) == []
+        assert exports._deltas(db, db_export.id) == []
+        first_cursor = db_export.cursor
 
         self._changes()
         exports.run_export(db, db_export.id)
         db.refresh(db_export)
         assert db_export.status == "completed", db_export.error
-        [delta] = exports.get_feed_deltas(db, db_export, 0)
+        # What a consumer at the first run's cursor downloads next.
+        [delta] = exports.get_feed_deltas(db, db_export, first_cursor)
         records = {r["value"]: r for r in _lines(delta.storage_key)}
         assert records[LEAVES[1]]["action"] == "remove"
         assert records[LEAVES[1]]["reason"] == "no_longer_ids"
@@ -240,7 +242,7 @@ class TestMembershipDeltas(ApiTester):
         )
         exports.run_export(db, db_export.id)
         db.refresh(db_export)
-        last = exports.get_feed_deltas(db, db_export, 0)[-1]
+        last = exports._deltas(db, db_export.id)[-1]
         assert _lines(last.storage_key) == [
             {
                 "uuid": indicators.indicator_uuid("domain", JOINS[1]),
