@@ -546,8 +546,17 @@ def _write_membership_delta(db, db_export, profile, cursor: int, previous) -> No
     try:
         released = profile_gate.scope(profile)
         if released is not None:
+            exclusions = profile_gate.still_held(profile["rules"])
+            ctx = detection_profiles.context(cursor)
             diff.keep_released(
-                released["released"], profile_gate.held_removed_key(profile["id"])
+                released["released"],
+                profile_gate.held_removed_key(profile["id"]),
+                # A removal an exclusion calls for goes out, held or not.
+                still_allowed=lambda docs: [
+                    d["uuid"]
+                    for d in docs
+                    if detection_profiles.matches(exclusions, d, ctx)
+                ],
             )
 
         def lines():

@@ -402,6 +402,48 @@ class TestProfileGate(ApiTester):
         assert indicators.indicator_uuid("domain", FIRST[0]) not in released
         _write(FIRST[:1], offset=0)
 
+    def test_held_removals_still_honour_exclusions(self, db: Session):
+        from app.repositories import stream_exports
+
+        db_profile = detection_profiles.get_profile(db, self.profile_id)
+        detection_profiles.update_profile(
+            db,
+            db_profile,
+            profile_schemas.DetectionProfileUpdate(
+                rules=profile_schemas.ProfileRules(
+                    types=["domain"], min_score=0, tlp_ceiling="tlp:amber"
+                ),
+                gate=profile_schemas.ProfileGate(enabled=True, max_removals=0),
+            ),
+        )
+        profile_gate.ready(self.profile_id)
+        # Narrowed: every domain leaves, a soft removal the gate holds...
+        detection_profiles.update_profile(
+            db,
+            db_profile,
+            profile_schemas.DetectionProfileUpdate(
+                rules=profile_schemas.ProfileRules(
+                    types=["url"], min_score=0, tlp_ceiling="tlp:amber"
+                )
+            ),
+        )
+        profile_gate.ready(self.profile_id)
+        # ...but one is tagged tlp:red since: that one leaves now, though its
+        # first failing rule is still its type.
+        _write(FIRST[:1], offset=0, tags=[{"name": "tlp:red"}])
+        export = stream_exports.prepare_attribute_export(
+            "*",
+            "ndjson",
+            index=stream_exports.INDICATORS_INDEX,
+            profile=detection_profiles.load(self.profile_id),
+        )
+        values = [
+            json.loads(line)["value"]
+            for line in "".join(stream_exports.stream(export)).splitlines()
+        ]
+        assert sorted(values) == sorted(FIRST[1:])
+        _write(FIRST[:1], offset=0)
+
     def test_streams_send_only_what_was_released(self, db: Session):
         from app.repositories import stream_exports
 

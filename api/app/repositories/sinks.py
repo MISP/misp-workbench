@@ -552,7 +552,7 @@ def deliver_membership(sink: sink_models.Sink) -> int:
             # check above waits for the next sync, and a removal it holds
             # isn't sent, unless the sink's own exclusions call for it.
             if profile_gate.scope(profile) is not None:
-                exclusions = detection_profiles.exclusions_only(rules)
+                exclusions = profile_gate.still_held(rules)
                 diff.keep_released(
                     profile_gate.baseline_key(profile["id"]),
                     profile_gate.held_removed_key(profile["id"]),

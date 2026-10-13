@@ -287,7 +287,7 @@ def _prepare_profile_export(
     export_timestamp: int,
     gate_checked: bool = False,
 ) -> PreparedExport:
-    from app.repositories import detection_profiles
+    from app.repositories import detection_profiles, profile_gate
 
     released = _released_scope(profile, gate_checked)
     delta = since not in (None, "")
@@ -311,7 +311,7 @@ def _prepare_profile_export(
     selection = detection_profiles.output_query(profile["rules"], ctx, delta=delta)
     if released and released["held_removed"]:
         # Members whose removal the gate holds stay in, though the profile no
-        # longer selects them.
+        # longer selects them: as long as no exclusion applies to them now.
         selection = {
             "bool": {
                 "should": [
@@ -320,7 +320,9 @@ def _prepare_profile_export(
                         "bool": {
                             "filter": [
                                 {"ids": {"values": released["held_removed"]}},
-                                {"term": {"deleted": False}},
+                                detection_profiles.to_query(
+                                    profile_gate.still_held(profile["rules"]), ctx
+                                ),
                             ]
                         }
                     },
@@ -918,12 +920,15 @@ def _stream_membership(
         if export.released is not None and records:
             # A gated profile's consumers hear of what it released only: an
             # addition it holds isn't sent, nor a removal it holds (a member
-            # still released).
+            # still released), unless an exclusion calls for it.
+            from app.repositories.profile_gate import FORCED_REMOVALS
+
             released = redis.smismember(export.released, [r["uuid"] for r in records])
             records = [
                 r
                 for r, kept in zip(records, released)
-                if kept == (r["action"] == "upsert")
+                if (kept if r["action"] == "upsert" else not kept)
+                or r.get("reason") in FORCED_REMOVALS
             ]
         if export.format == "ndjson":
             yield "".join(json.dumps(r, default=str) + "\n" for r in records)

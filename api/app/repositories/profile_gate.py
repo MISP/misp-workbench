@@ -92,6 +92,15 @@ def baseline_key(profile_id: int) -> str:
     return profile_membership.state_key(f"profile:{profile_id}")
 
 
+def still_held(rules):
+    """The rules a member whose removal is held must still pass: every
+    exclusion (FORCED_REMOVALS) applies as it is now, whatever was held."""
+    exclusions = detection_profiles.exclusions_only(rules)
+    return exclusions.model_copy(
+        update={"to_ids": detection_profiles._rules(rules).to_ids}
+    )
+
+
 def held_removed_key(profile_id: int) -> str:
     """The members whose removal the gate holds: still released."""
     return f"{baseline_key(profile_id)}:held_removed"
@@ -360,10 +369,27 @@ def _keep_out(diff, held: dict, flagged: set, soft_removed: set) -> tuple[int, i
         for start in range(0, len(ids), 1000):
             diff.withhold(ids[start : start + 1000])
     if held["removed"] and soft_removed:
-        kept_removed = len(soft_removed)
+        # Its first failing rule may be a soft one while an exclusion applies
+        # too (narrowed rules and tlp:red, say): only removals no exclusion
+        # calls for are held. Purged ones aren't held either.
+        from app.repositories import indicators as indicators_repository
+
+        rules = still_held(diff.rules)
+        ctx = diff.ctx
         ids = list(soft_removed)
+        retained: set = set()
         for start in range(0, len(ids), 1000):
-            diff.retain(ids[start : start + 1000])
+            chunk = ids[start : start + 1000]
+            found = indicators_repository.get_indicators(chunk)
+            keep = [
+                i
+                for i in chunk
+                if i in found and detection_profiles.matches(rules, found[i], ctx)
+            ]
+            diff.retain(keep)
+            retained.update(keep)
+        soft_removed.intersection_update(retained)
+        kept_removed = len(retained)
     return kept_added, kept_removed
 
 
