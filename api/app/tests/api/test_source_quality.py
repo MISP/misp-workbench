@@ -210,7 +210,9 @@ class TestSourceQuality(ApiTester):
         found = client.get(
             "/indicators", params={"q": 'source_keys:"server:2"'}, headers=headers
         ).json()
-        assert sorted(i["value"] for i in found["items"]) == [SERVER_ONLY, SHARED]
+        assert sorted(i["value"] for i in found["items"]) == sorted(
+            [SERVER_ONLY, SHARED]
+        )
 
     def test_adaptive_trust(self, db: Session):
         runtime_settings_repository.set_setting(
