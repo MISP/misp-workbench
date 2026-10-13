@@ -40,6 +40,7 @@ MANAGE = [
     "warninglists:read",
     "local_warninglists:manage",
     "detection_profiles:read",
+    "detection_profiles:update",
 ]
 
 
@@ -394,6 +395,31 @@ class TestLocalWarninglists(ApiTester):
         db.commit()
         refused = client.delete(url, headers=headers)
         assert refused.status_code == status.HTTP_409_CONFLICT
+        # Around another organisation's list, a profile's rules can't be
+        # dry-run or changed (and the outputs compared) but by admins.
+        attaching = (
+            db.query(profile_models.DetectionProfile)
+            .filter(profile_models.DetectionProfile.name == "Attaching")
+            .one()
+        )
+        dry = client.post(
+            f"/detection-profiles/{attaching.id}/changes",
+            json={"rules": {"tags": ["probe"], "exclude_lists": [list_id]}},
+            headers=other,
+        )
+        assert dry.status_code == status.HTTP_403_FORBIDDEN
+        edit = client.patch(
+            f"/detection-profiles/{attaching.id}",
+            json={"rules": {"tags": ["probe"], "exclude_lists": [list_id]}},
+            headers=other,
+        )
+        assert edit.status_code == status.HTTP_403_FORBIDDEN
+        renamed = client.patch(
+            f"/detection-profiles/{attaching.id}",
+            json={"name": "Renamed"},
+            headers=other,
+        )
+        assert renamed.status_code == status.HTTP_200_OK, renamed.text
         db.query(profile_models.DetectionProfile).delete()
         db.commit()
         assert client.delete(url, headers=headers).status_code == 204

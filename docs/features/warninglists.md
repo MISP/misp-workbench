@@ -77,8 +77,11 @@ for you only. **Check values** tells you which entry of your lists a value
 matches, and why (its comment).
 
 Attaching a list to a profile others use makes its effect visible to them,
-in what the profile's outputs leave out. Explore's query for a profile
-can't leave a list's matches out (they're private), and says so.
+in what the profile's outputs leave out. So that nobody can probe it beyond
+that, rules attaching a list you can't see can't be previewed, and a profile
+attaching one can't be dry-run, nor have its rules changed, but by admins.
+Explore's query for a profile can't leave a list's matches out (they're
+private), and says so.
 
 Reading needs `warninglists:read`; creating lists and changing entries needs
 `local_warninglists:manage` (Org Admin and Publisher).

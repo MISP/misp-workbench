@@ -72,16 +72,23 @@ def _your_lists(db: Session, user) -> dict:
     return {w.id: w.name for w in local_warninglists.visible(db, user)}
 
 
-def _only_your_lists(db: Session, user, rules, attached=()) -> None:
-    """Rules previewed or dry-run may only attach lists the caller can see
-    (or, for a profile, ones it attaches already): comparing what they leave
-    out would tell another organisation's list's members."""
+def _invisible(db: Session, user, list_ids) -> set:
     from app.repositories import local_warninglists
 
+    return set(list_ids) - local_warninglists.visible_ids(db, user)
+
+
+def _attached(profile) -> list:
+    return (profile.rules or {}).get("exclude_lists") or []
+
+
+def _only_your_lists(db: Session, user, rules) -> None:
+    """Rules previewed or dry-run may only attach lists the caller can see:
+    comparing what rules of their choosing leave out would tell another
+    organisation's list's members."""
     if rules is None:
         return
-    wanted = set(profiles_repository._rules(rules).exclude_lists) - set(attached)
-    unknown = wanted - local_warninglists.visible_ids(db, user)
+    unknown = _invisible(db, user, profiles_repository._rules(rules).exclude_lists)
     if unknown:
         raise HTTPException(
             status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -265,7 +272,20 @@ def update_profile(
 ):
     db_profile = _get_or_404(db, profile_id)
     _check_review(db_profile, profile.model_dump(exclude_unset=True), can_review)
-    _check_lists(db, user, profile.model_dump(exclude_unset=True), db_profile)
+    patch = profile.model_dump(exclude_unset=True)
+    # Changing the rules around another organisation's list, and reading what
+    # the profile then leaves out, would probe it.
+    rules_change = "rules" in patch and (
+        profiles_repository._rules(patch["rules"]).model_dump()
+        != profiles_repository._rules(db_profile.rules).model_dump()
+    )
+    if rules_change and _invisible(db, user, _attached(db_profile)):
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            "The profile attaches another organisation's warninglist: only "
+            "admins change its rules",
+        )
+    _check_lists(db, user, patch, db_profile)
     try:
         updated = profiles_repository.update_profile(db, db_profile, profile)
     except IntegrityError:
@@ -330,12 +350,15 @@ def dry_run_changes(
 ):
     """The same, for rules not saved yet: what saving them would change."""
     profile = _get_or_404(db, profile_id)
-    _only_your_lists(
-        db,
-        user,
-        request.rules,
-        attached=(profile.rules or {}).get("exclude_lists") or [],
-    )
+    # The profile's own lists apply to a dry run too: with another
+    # organisation's among them, rules of the caller's choosing would probe it.
+    if _invisible(db, user, _attached(profile)):
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            "The profile attaches another organisation's warninglist: only "
+            "admins dry-run it",
+        )
+    _only_your_lists(db, user, request.rules)
     return profile_gate.preview(
         db, profile_id, rules=request.rules, your_lists=_your_lists(db, user)
     )
