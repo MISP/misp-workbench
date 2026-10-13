@@ -42,7 +42,7 @@ const title = computed(() => {
     case "hunt.result.changed":
       return `hunt matches`;
     case "detection_profile.changes.held":
-      return `profile changes wait for approval`;
+      return `profile changes held for approval`;
     default:
       return props.notification?.title || "unknown notification";
   }

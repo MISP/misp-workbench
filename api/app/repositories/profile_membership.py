@@ -218,6 +218,21 @@ class Diff:
         for start in range(0, len(pending), CHUNK):
             self.withhold(pending[start : start + CHUNK])
 
+    def withhold_added(self) -> None:
+        """Leave out every addition (see withhold)."""
+        self.redis.sdiffstore(self.next_key, [self.next_key, self.added_key])
+        # Storing over a key drops its expiry.
+        self.redis.expire(self.next_key, 6 * 3600)
+        self.redis.delete(self.added_key)
+
+    def retain_removed(self) -> None:
+        """Keep every member that would leave: none is removed this time, and
+        the next run considers them again."""
+        self.redis.sunionstore(self.next_key, [self.next_key, self.removed_key])
+        # Storing over a key drops its expiry.
+        self.redis.expire(self.next_key, 6 * 3600)
+        self.redis.delete(self.removed_key)
+
     def withhold(self, ids: list[str]) -> None:
         """Leave members out of this run: not sent, not kept as delivered, so
         the next run considers them again."""

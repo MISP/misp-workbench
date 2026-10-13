@@ -525,15 +525,9 @@ def deliver_membership(sink: sink_models.Sink) -> int:
         profile = detection_profiles.load(filters["profile_id"])
     except detection_profiles.ProfileNotFound:
         raise SinkDeliveryError("the sink's detection profile no longer exists")
-    # A run of the profile: it waits while the profile's changes are held,
-    # and runs again once they are approved.
-    try:
-        profile_gate.ready(profile["id"])
-    except profile_gate.ChangesHeld as held:
-        logger.info(
-            "sink %s waits for approval of its profile's changes: %s", sink.id, held
-        )
-        return 0
+    # A run of the profile: release its changes, less what its approval
+    # gate holds; only released members are sent.
+    profile_gate.ready(profile["id"])
     rules = profile["rules"]
     rules = rules.model_copy(
         update={

@@ -143,7 +143,7 @@ class DetectionProfile(DetectionProfileBase):
     id: int
     created_at: datetime
     updated_at: Optional[datetime] = None
-    # Its last run's changes wait for approval.
+    # Changes are held back from its outputs, waiting for approval.
     held: bool = False
     model_config = ConfigDict(from_attributes=True)
 
@@ -236,11 +236,14 @@ class ChangePreview(BaseModel):
     # Name it to approve these changes, and no others.
     fingerprint: str
     gate: ProfileGate
-    # Held: runs wait for approval, for these reasons.
+    # Changes are held back from its outputs, waiting for approval.
     held: bool = False
     held_since: Optional[datetime] = None
-    # Why the next run would be held (empty: it goes out).
+    # Why the next run holds changes back (empty: everything goes out), and
+    # how many additions and removals it holds.
     reasons: list[str] = []
+    held_added: int = 0
+    held_removed: int = 0
     changes: ChangeSummary
     releases: list[ProfileRelease] = []
     consumers: list[ProfileConsumer] = []

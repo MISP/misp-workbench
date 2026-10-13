@@ -29,7 +29,7 @@ LATER = ["four.example", "five.example", "six.example"]
 AFTER = ["seven.example"]
 
 
-def _write(values, offset=0):
+def _write(values, offset=0, **extra):
     client = get_opensearch_client()
     for i, value in enumerate(values):
         uuid = f"9a7e0000-1000-4000-8000-{offset + i:012d}"
@@ -47,6 +47,7 @@ def _write(values, offset=0):
                 "comment": "",
                 "timestamp": NOW - DAY,
                 "tags": [],
+                **extra,
             },
         )
     client.indices.refresh(index="misp-attributes")
@@ -122,6 +123,17 @@ class TestGateRules:
         # Low scores are flagged, but this gate doesn't hold on them.
         low = self.summary(added=1, risks={"low_score": {"count": 1}})
         assert profile_gate.hold_reasons(low, self.gate, None) == []
+
+    def test_what_is_held(self):
+        too_many = profile_gate.plan(self.summary(added=11), self.gate, None)
+        assert (too_many["all_added"], too_many["removed"]) == (True, False)
+        risky = profile_gate.plan(
+            self.summary(added=1, risks={"new_source": {"count": 1}}), self.gate, None
+        )
+        # Only the flagged additions (collected by summarise), not all.
+        assert risky["reasons"] and not risky["all_added"]
+        removals = profile_gate.plan(self.summary(removed=6), self.gate, None)
+        assert (removals["all_added"], removals["removed"]) == (False, True)
 
     def test_spikes(self):
         gate = self.gate.model_copy(update={"max_additions": None})
@@ -228,26 +240,6 @@ class TestProfileGate(ApiTester):
         profile_gate.ready(self.profile_id)
         assert [(r.status, r.added) for r in self._releases(db)] == [("baseline", 3)]
 
-        _write(LATER, offset=10)
-        with pytest.raises(profile_gate.ChangesHeld) as held:
-            profile_gate.ready(self.profile_id)
-        assert held.value.reasons == ["3 additions, more than 2"]
-        db.expire_all()
-        assert self._releases(db)[-1].status == "held"
-        assert (
-            db.query(notification_models.Notification)
-            .filter(notification_models.Notification.user_id == reviewer.id)
-            .one()
-            .payload["added"]
-            == 3
-        )
-        # Held again: the same hold, not another one (nor another notification).
-        with pytest.raises(profile_gate.ChangesHeld):
-            profile_gate.ready(self.profile_id)
-        db.expire_all()
-        assert [r.status for r in self._releases(db)] == ["baseline", "held"]
-
-        # An export of the profile waits, keeping its previous artifact.
         db_export = exports.create_export(
             db,
             export_schemas.ExportCreate(
@@ -258,10 +250,32 @@ class TestProfileGate(ApiTester):
             ),
             api_tester_user.id,
         )
+
+        _write(LATER, offset=10)
+        # Too many additions: all of them are held, and the run goes ahead
+        # without them.
         exports.run_export(db, db_export.id)
         db.refresh(db_export)
-        assert db_export.status == "held"
-        assert "3 additions" in db_export.error
+        assert db_export.status == "completed", db_export.error
+        assert db_export.record_count == 3
+        db.expire_all()
+        hold = self._releases(db)[-1]
+        assert (hold.status, hold.added, hold.reasons) == (
+            "held",
+            3,
+            ["3 additions, more than 2"],
+        )
+        assert (
+            db.query(notification_models.Notification)
+            .filter(notification_models.Notification.user_id == reviewer.id)
+            .one()
+            .payload["added"]
+            == 3
+        )
+        # Held again: the same hold, not another one (nor another notification).
+        profile_gate.ready(self.profile_id)
+        db.expire_all()
+        assert [r.status for r in self._releases(db)] == ["baseline", "held"]
 
         seen = profile_gate.preview(db, self.profile_id)["fingerprint"]
         approved = profile_gate.approve(db, self.profile_id, reviewer.id, seen)
@@ -272,12 +286,71 @@ class TestProfileGate(ApiTester):
             "lifted",
             "approved",
         ]
-        # Released: the next run goes out, with nothing new to check.
-        profile_gate.ready(self.profile_id)
         exports.run_export(db, db_export.id)
         db.refresh(db_export)
         assert db_export.status == "completed", db_export.error
         assert db_export.record_count == 6
+
+    def test_only_flagged_additions_are_held(self, db: Session):
+        db_profile = detection_profiles.get_profile(db, self.profile_id)
+        detection_profiles.update_profile(
+            db,
+            db_profile,
+            profile_schemas.DetectionProfileUpdate(
+                rules=profile_schemas.ProfileRules(
+                    types=["domain"], min_score=0, exclude_warninglisted=False
+                ),
+                gate=profile_schemas.ProfileGate(
+                    enabled=True, hold_on_risk=["warninglisted"]
+                ),
+            ),
+        )
+        profile_gate.ready(self.profile_id)
+        _write(LATER[:1], offset=10, warninglist_hits=["List of known sinkholes"])
+        _write(LATER[1:], offset=11)
+        profile_gate.ready(self.profile_id)
+
+        released = {
+            m.decode() if isinstance(m, bytes) else m
+            for m in get_redis_client().smembers(
+                profile_gate.baseline_key(self.profile_id)
+            )
+        }
+        assert indicators.indicator_uuid("domain", LATER[0]) not in released
+        assert {indicators.indicator_uuid("domain", v) for v in LATER[1:]} <= released
+        db.expire_all()
+        assert [(r.status, r.added) for r in self._releases(db)][-2:] == [
+            ("released", 2),
+            ("held", 1),
+        ]
+
+    def test_held_removals_stay_out(self, db: Session):
+        db_profile = detection_profiles.get_profile(db, self.profile_id)
+        detection_profiles.update_profile(
+            db,
+            db_profile,
+            profile_schemas.DetectionProfileUpdate(
+                gate=profile_schemas.ProfileGate(enabled=True, max_removals=0)
+            ),
+        )
+        profile_gate.ready(self.profile_id)
+        # Narrowing the profile would remove everything: those stay out there.
+        detection_profiles.update_profile(
+            db,
+            db_profile,
+            profile_schemas.DetectionProfileUpdate(
+                rules=profile_schemas.ProfileRules(types=["url"], min_score=0)
+            ),
+        )
+        profile_gate.ready(self.profile_id)
+        released = get_redis_client().scard(profile_gate.baseline_key(self.profile_id))
+        # The sentinel, and the three domains still released.
+        assert released == 4
+        db.expire_all()
+        assert (self._releases(db)[-1].status, self._releases(db)[-1].removed) == (
+            "held",
+            3,
+        )
 
     def test_check_looks_ahead_and_lifts(self, db: Session):
         profile_gate.ready(self.profile_id)

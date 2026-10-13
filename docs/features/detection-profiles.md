@@ -176,27 +176,31 @@ keeping in step with it.
   warninglist, reported only by a feed or server added recently, or with a
   low score.
 - **Recent runs**, with what each added and removed, so a spike stands out.
-- **Outputs** reading the profile, and whether they are held.
+- **Outputs** reading the profile, and whether the gate applies to them.
 
 <img src="../../screenshots/detection-profiles/misp-workbench-3_detection-profiles_changes.png#only-light" alt="A profile's changes, held for approval" style="max-width: 100%; height: auto;">
 <img src="../../screenshots/detection-profiles/misp-workbench-3_detection-profiles_changes-dark.png#only-dark" alt="A profile's changes, held for approval" style="max-width: 100%; height: auto;">
 
 ### Holding large or risky changes
 
-Turn on **Hold large or risky changes** in a profile to hold a run that:
+Turn on **Hold large or risky changes** in a profile, and what trips the
+gate is held back from its outputs until someone approves it, while
+everything else goes out as usual:
 
-- adds or removes more than a number of indicators;
-- adds anything carrying chosen risk flags;
-- adds a set number of times its usual (the median of its recent runs, from
-  20 additions up).
+| When a run… | Held back | Goes out |
+|---|---|---|
+| adds something carrying a chosen risk flag | those additions | the other additions, removals, updates |
+| adds more than a number of indicators, or a set number of times its usual (the median of recent runs, from 20 additions up) | all of its additions: the volume is the anomaly | removals, updates |
+| removes more than a number of indicators | all of its removals: they stay in the outputs | additions, updates |
 
-A held run doesn't happen: exports and feeds keep their previous artifact
-(their status is *held*), sinks send nothing. Every user who can review
-indicators (`indicators:review`) is notified. **Approve changes** releases
-exactly the changes on the page, and runs the outputs that waited. If they
-moved since the page was loaded (something joined or left), the approval is
-refused and the page shows them as they are now, to review again. Without a
-hold, each run releases its changes on its own.
+So outputs never go stale over one risky change. Every user who can review
+indicators (`indicators:review`) is notified once per hold. **Approve
+changes** releases exactly the changes on the page, held ones included, and
+runs the profile's outputs. If they moved since the page was loaded
+(something joined or left), the approval is refused and the page shows them
+as they are now, to review again. A hold that no longer applies (the flag is
+gone, the gate was loosened) is lifted by the next run or check, and what
+it held goes out.
 
 A run only ever sends what its profile released: an indicator joining
 between the check and the run waits for the next run, and its check.
@@ -207,20 +211,20 @@ rejected* off decide what goes out without a review: they need
 `indicators:review` too, not only the right to edit profiles.
 
 The check runs before every run, and every 5 minutes between runs, so a
-hold shows up (and is notified) before the next run comes. A hold that no
-longer applies, after an edit of the profile or its gate, is lifted.
+hold shows up (and is notified) before the next run comes.
 
 Lookups, restSearch and sinks sending published events judge one value at a
-time as it comes; they aren't runs and aren't held. A profile's first run
-sets its baseline and is never held.
+time as it comes; they aren't runs and nothing is held from them. A
+profile's first run sets its baseline and holds nothing.
 
 "Very new" sources are feeds and servers added in the last days (7 by
 default). Those added before this was recorded never count as new.
 
 ### Dry runs
 
-`GET /detection-profiles/{id}/changes` returns the same preview, and why the
-next run would be held (`reasons`). `POST` it with `{"rules": {…}}` to
+`GET /detection-profiles/{id}/changes` returns the same preview, and what
+the next run would hold back and why (`held_added`, `held_removed`,
+`reasons`). `POST` it with `{"rules": {…}}` to
 preview rules not saved yet: what saving them would change. A CI-style check
 in the SOC's own tooling can fail a change on either.
 
@@ -237,7 +241,7 @@ in the SOC's own tooling can fail a change on either.
 | `DELETE /detection-profiles/{id}` | `detection_profiles:delete` | Delete one (409 while an export or sink uses it) |
 | `GET /detection-profiles/{id}/changes` | `detection_profiles:read` | What its next run changes, whether it would be held, its recent runs and outputs |
 | `POST /detection-profiles/{id}/changes` | `detection_profiles:read` | The same for unsaved rules (`{"rules": {…}}`) |
-| `POST /detection-profiles/{id}/changes/approve` | `indicators:review` | Release the previewed changes, named by the preview's `fingerprint` (409 when they moved); the outputs that waited run |
+| `POST /detection-profiles/{id}/changes/approve` | `indicators:review` | Release the previewed changes, held ones included, named by the preview's `fingerprint` (409 when they moved); its outputs run |
 
 Every built-in role can read profiles. Changing them takes the create,
 update or delete scope, which only admins have by default.

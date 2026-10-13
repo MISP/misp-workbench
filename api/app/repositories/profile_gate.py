@@ -1,22 +1,25 @@
 """Change preview and approval gate: see what a profile's next run changes,
-and hold large or risky changes until an analyst approves them.
+and keep large or risky changes out of its outputs until approved.
 
 A profile's *runs* are those of the outputs that send its members as a set:
-exports and feeds referencing it, and sinks keeping in step with it. Before
-each, ``ready`` compares what the profile selects now with what it last
-*released* (a member set kept in Redis, like a sink's, see
-profile_membership):
+exports and feeds referencing it, and sinks keeping in step with it. A run
+only sends what the profile *released* (a member set kept in Redis, like a
+sink's, see profile_membership). Before each, ``ready`` compares what the
+profile selects now with that, and releases the changes its gate lets
+through. What trips the gate is *held*, kept out of the release:
 
-- within the profile's gate (or without one), the changes are released: the
-  baseline moves on and the run goes ahead;
-- past it (too many additions or removals, a risky addition, a spike), the
-  changes are *held*: the run waits, and reviewers are notified. Approving
-  releases them and runs the outputs that waited.
+- additions carrying a risk flag the gate holds on: those additions;
+- too many additions, or a spike: all of the run's additions;
+- too many removals: all of its removals (they stay in the outputs).
+
+The rest goes out, so outputs never go stale over one risky change.
+Reviewers are notified; approving releases what was held and runs the
+outputs. A hold that no longer applies is lifted.
 
 Every release and hold is recorded (``profile_releases``), with the change
 preview at the time, which gives the trend of recent runs. Lookups,
 restSearch and sinks sending published events judge one value at a time, as
-it comes; they aren't runs and aren't held.
+it comes; they aren't runs and nothing is held from them.
 """
 
 import hashlib
@@ -65,12 +68,8 @@ class ChangesMoved(Exception):
     """The changes aren't those a reviewer saw: approve them again."""
 
 
-class ChangesHeld(Exception):
-    """A run waits: its profile's changes need approving."""
-
-    def __init__(self, reasons: list[str]):
-        super().__init__("; ".join(reasons))
-        self.reasons = reasons
+class GateBusy(Exception):
+    """Another run is releasing the profile's changes."""
 
 
 def baseline_key(profile_id: int) -> str:
@@ -174,8 +173,11 @@ def fingerprint(diff) -> str:
     return digest.hexdigest()
 
 
-def summarise(diff, gate: profile_schemas.ProfileGate) -> dict:
-    """The change preview of a computed diff."""
+def summarise(
+    diff, gate: profile_schemas.ProfileGate, flagged: Optional[set] = None
+) -> dict:
+    """The change preview of a computed diff. ``flagged`` collects the
+    additions carrying a risk flag the gate holds on."""
     redis = get_redis_client()
     new = new_sources(gate.new_source_days)
     added_by_type: Counter = Counter()
@@ -196,6 +198,8 @@ def summarise(diff, gate: profile_schemas.ProfileGate) -> dict:
             for key in indicator.get("source_keys") or []:
                 added_by_source[key] += 1
             for flag, detail in risk_flags(indicator, gate, new):
+                if flagged is not None and flag in gate.hold_on_risk:
+                    flagged.add(indicator["uuid"])
                 risk = risks.setdefault(flag, {"count": 0, "sample": []})
                 risk["count"] += 1
                 if len(risk["sample"]) < SAMPLE:
@@ -256,18 +260,23 @@ def _count(n: int, noun: str) -> str:
     return f"{n:,} {noun}{'' if n == 1 else 's'}"
 
 
-def hold_reasons(
+def plan(
     summary: dict, gate: profile_schemas.ProfileGate, usual: Optional[float]
-) -> list[str]:
-    """Why the gate holds these changes; empty when it lets them through."""
+) -> dict:
+    """What the gate holds: ``reasons`` (empty: nothing), and whether that is
+    every addition (``all_added``, too many or a spike: the volume itself is
+    the anomaly), only the flagged ones, and every removal."""
+    held = {"reasons": [], "all_added": False, "removed": False}
     if not gate.enabled or summary["first"]:
-        return []
-    reasons = []
+        return held
+    reasons = held["reasons"]
     added, removed = summary["added"], summary["removed"]
     if gate.max_additions is not None and added > gate.max_additions:
         reasons.append(f"{_count(added, 'addition')}, more than {gate.max_additions:,}")
+        held["all_added"] = True
     if gate.max_removals is not None and removed > gate.max_removals:
         reasons.append(f"{_count(removed, 'removal')}, more than {gate.max_removals:,}")
+        held["removed"] = True
     for flag in gate.hold_on_risk:
         count = (summary["risks"].get(flag) or {}).get("count", 0)
         if count:
@@ -283,7 +292,34 @@ def hold_reasons(
         reasons.append(
             f"{added:,} additions, {added / max(usual, 1):.1f}× the usual {usual:,.0f}"
         )
-    return reasons
+        held["all_added"] = True
+    return held
+
+
+def hold_reasons(
+    summary: dict, gate: profile_schemas.ProfileGate, usual: Optional[float]
+) -> list[str]:
+    """Why the gate holds some of these changes; empty when it lets all of
+    them through."""
+    return plan(summary, gate, usual)["reasons"]
+
+
+def _keep_out(diff, held: dict, flagged: set) -> tuple[int, int]:
+    """Take what the gate holds out of the diff's release: (additions,
+    removals) held."""
+    kept_added = kept_removed = 0
+    if held["all_added"]:
+        kept_added = diff.added
+        diff.withhold_added()
+    elif held["reasons"] and flagged:
+        kept_added = len(flagged)
+        ids = list(flagged)
+        for start in range(0, len(ids), 1000):
+            diff.withhold(ids[start : start + 1000])
+    if held["removed"]:
+        kept_removed = diff.removed
+        diff.retain_removed()
+    return kept_added, kept_removed
 
 
 def _diff(profile: dict, rules=None):
@@ -298,36 +334,26 @@ def _diff(profile: dict, rules=None):
 # ── Releases ──────────────────────────────────────────────────────────────
 
 
-def latest(db: Session, profile_id: int):
+def active_hold(db: Session, profile_id: int):
+    """The profile's current hold, if any: what its outputs don't get yet."""
     return (
         db.query(release_models.ProfileRelease)
-        .filter(release_models.ProfileRelease.profile_id == profile_id)
-        .order_by(
-            release_models.ProfileRelease.created_at.desc(),
-            release_models.ProfileRelease.id.desc(),
+        .filter(
+            release_models.ProfileRelease.profile_id == profile_id,
+            release_models.ProfileRelease.status == "held",
         )
+        .order_by(release_models.ProfileRelease.id.desc())
         .first()
     )
 
 
 def held_profiles(db: Session) -> set[int]:
-    """Profiles whose latest check holds their changes."""
-    from sqlalchemy import func
-
-    newest = (
-        db.query(
-            release_models.ProfileRelease.profile_id,
-            func.max(release_models.ProfileRelease.id).label("id"),
-        )
-        .group_by(release_models.ProfileRelease.profile_id)
-        .subquery()
-    )
+    """Profiles holding changes back from their outputs."""
     return {
-        r.profile_id
-        for r in db.query(release_models.ProfileRelease).join(
-            newest, release_models.ProfileRelease.id == newest.c.id
-        )
-        if r.status == "held"
+        profile_id
+        for (profile_id,) in db.query(release_models.ProfileRelease.profile_id)
+        .filter(release_models.ProfileRelease.status == "held")
+        .distinct()
     }
 
 
@@ -368,77 +394,92 @@ def _record(
 
 
 def _lift(db: Session, profile_id: int) -> None:
-    row = latest(db, profile_id)
-    if row is not None and row.status == "held":
+    row = active_hold(db, profile_id)
+    if row is not None:
         row.status = "lifted"
         row.updated_at = datetime.now(timezone.utc)
 
 
-def _hold(db: Session, profile: dict, summary: dict, reasons: list[str]) -> None:
-    """Hold the changes: update a current hold, or start one and notify."""
-    row = latest(db, profile["id"])
-    if row is not None and row.status == "held":
+def _hold(
+    db: Session,
+    profile: dict,
+    summary: dict,
+    reasons: list[str],
+    kept: tuple[int, int],
+) -> None:
+    """Record what is held (``kept``: additions, removals): update the
+    current hold, or start one and notify the reviewers."""
+    held = {**summary, "added": kept[0], "removed": kept[1]}
+    row = active_hold(db, profile["id"])
+    if row is not None:
         row.summary = summary
         row.reasons = reasons
         row.members, row.added, row.removed = (
             summary["members"],
-            summary["added"],
-            summary["removed"],
+            kept[0],
+            kept[1],
         )
         row.updated_at = datetime.now(timezone.utc)
         db.commit()
         return
-    _record(db, profile["id"], "held", summary, reasons)
+    row = _record(db, profile["id"], "held", held, reasons)
+    row.summary = summary
     db.commit()
     logger.info("profile %s: changes held (%s)", profile["id"], "; ".join(reasons))
     from app.repositories import notifications
 
-    notifications.create_profile_held_notifications(db, profile, summary, reasons)
-
-
-def _changed(summary: dict) -> bool:
-    return bool(summary["first"] or summary["added"] or summary["removed"])
+    notifications.create_profile_held_notifications(db, profile, held, reasons)
 
 
 def ready(profile_id: int) -> None:
-    """Before a run: release the profile's changes, or raise ChangesHeld."""
+    """Before a run: release the profile's changes its gate lets through, and
+    hold the rest (see the module). Returns once released; a run sends the
+    released members only. While another run releases, this one sends what
+    was released already."""
     from app.database import SessionLocal
 
     profile = detection_profiles.load(profile_id)
     gate = gate_of(profile.get("gate"))
     with _lock(profile_id, LOCK_WAIT_SECONDS) as locked:
         if not locked:
-            raise ChangesHeld(["another run is checking the profile's changes"])
+            logger.info("profile %s: release busy; sending the last one", profile_id)
+            return
         diff = _diff(profile)
         try:
-            summary = summarise(diff, gate)
+            flagged: set = set()
+            summary = summarise(diff, gate, flagged)
             with SessionLocal() as db:
-                reasons = hold_reasons(
+                held = plan(
                     summary, gate, usual_added(db, profile_id) if gate.enabled else None
                 )
-                if reasons:
-                    diff.discard()
-                    _hold(db, profile, summary, reasons)
-                    raise ChangesHeld(reasons)
+                kept = _keep_out(diff, held, flagged)
+                members = diff.members
                 diff.commit(baseline_key(profile_id))
-                _lift(db, profile_id)
-                if _changed(summary):
+                released = {
+                    **summary,
+                    "members": members,
+                    "added": summary["added"] - kept[0],
+                    "removed": summary["removed"] - kept[1],
+                }
+                if summary["first"] or released["added"] or released["removed"]:
                     _record(
                         db,
                         profile_id,
                         "baseline" if summary["first"] else "released",
-                        summary,
+                        released,
                     )
+                if held["reasons"]:
+                    _hold(db, profile, summary, held["reasons"], kept)
+                else:
+                    _lift(db, profile_id)
                 db.commit()
-        except ChangesHeld:
-            raise
         except Exception:
             diff.discard()
             raise
 
 
 def check(profile_id: int) -> Optional[list[str]]:
-    """Look ahead (between runs): hold what the next run would hold, so
+    """Look ahead (between runs): record what the next run would hold, so
     reviewers hear of it early, and lift a hold that no longer applies.
     Nothing is released. None when another check is running."""
     from app.database import SessionLocal
@@ -450,17 +491,19 @@ def check(profile_id: int) -> Optional[list[str]]:
             return None
         diff = _diff(profile)
         try:
-            summary = summarise(diff, gate)
+            flagged: set = set()
+            summary = summarise(diff, gate, flagged)
+            with SessionLocal() as db:
+                held = plan(summary, gate, usual_added(db, profile_id))
+                kept = _keep_out(diff, held, flagged)
+                if held["reasons"]:
+                    _hold(db, profile, summary, held["reasons"], kept)
+                else:
+                    _lift(db, profile_id)
+                    db.commit()
         finally:
             diff.discard()
-        with SessionLocal() as db:
-            reasons = hold_reasons(summary, gate, usual_added(db, profile_id))
-            if reasons:
-                _hold(db, profile, summary, reasons)
-            else:
-                _lift(db, profile_id)
-                db.commit()
-        return reasons
+        return held["reasons"]
 
 
 def check_all() -> dict:
@@ -486,24 +529,29 @@ def preview(db: Session, profile_id: int, rules=None) -> dict:
     ``rules``, of those rules instead of the profile's (a dry run)."""
     profile = detection_profiles.load(profile_id)
     gate = gate_of(profile.get("gate"))
+    usual = usual_added(db, profile_id)
     diff = _diff(profile, rules)
     try:
-        summary = summarise(diff, gate)
+        flagged: set = set()
+        summary = summarise(diff, gate, flagged)
         digest = fingerprint(diff)
+        held = plan(summary, gate, usual)
+        kept = _keep_out(diff, held, flagged)
     finally:
         diff.discard()
-    usual = usual_added(db, profile_id)
     summary["usual_added"] = usual
-    row = latest(db, profile_id)
-    held = row is not None and row.status == "held"
+    hold = active_hold(db, profile_id)
     return {
         "generated_at": datetime.now(timezone.utc),
         # What approving these changes must name (see approve).
         "fingerprint": digest,
         "gate": gate,
-        "held": held,
-        "held_since": row.created_at if held else None,
-        "reasons": hold_reasons(summary, gate, usual),
+        "held": hold is not None,
+        "held_since": hold.created_at if hold is not None else None,
+        "reasons": held["reasons"],
+        # What the next run keeps out of the outputs.
+        "held_added": kept[0],
+        "held_removed": kept[1],
         "changes": summary,
         "releases": releases(db, profile_id),
         "consumers": consumers(db, profile_id),
@@ -511,14 +559,14 @@ def preview(db: Session, profile_id: int, rules=None) -> dict:
 
 
 def approve(db: Session, profile_id: int, user_id: int, expected: str) -> dict:
-    """Release the changes a reviewer saw (``expected``, the preview's
-    fingerprint), and run the outputs that waited. ChangesMoved when the
-    changes are no longer those: they need reviewing again."""
+    """Release every change a reviewer saw (``expected``, the preview's
+    fingerprint), held ones included, and run the outputs. ChangesMoved when
+    the changes are no longer those: they need reviewing again."""
     profile = detection_profiles.load(profile_id)
     gate = gate_of(profile.get("gate"))
     with _lock(profile_id, LOCK_WAIT_SECONDS) as locked:
         if not locked:
-            raise ChangesHeld(["another run is checking the profile's changes"])
+            raise GateBusy("another run is releasing the profile's changes")
         diff = _diff(profile)
         try:
             if fingerprint(diff) != expected:
@@ -611,11 +659,12 @@ def consumers(db: Session, profile_id: int) -> list[dict]:
 
 
 def _rerun(db: Session, profile_id: int) -> None:
-    """Run the exports that waited, and sync the sinks keeping in step."""
+    """Run the profile's exports, and sync its sinks keeping in step, so what
+    was approved goes out now."""
     from app.worker import tasks
 
     for consumer in consumers(db, profile_id):
-        if consumer["kind"] == "export" and consumer["status"] == "held":
+        if consumer["kind"] == "export":
             tasks.run_export.delay(consumer["id"])
         elif consumer["kind"] == "sink" and consumer["gated"]:
             tasks.sync_sink_membership.apply_async((consumer["id"],), queue="sinks")

@@ -63,17 +63,14 @@ async function approve() {
   const { added, removed } = preview.value.changes;
   if (
     !confirm(
-      `Release ${added.toLocaleString()} addition(s) and ${removed.toLocaleString()} removal(s) of "${profile.value.name}"? The outputs that waited run now.`,
+      `Release ${heldText(added, removed) || "the changes"} of "${profile.value.name}", held ones included? Its outputs run now.`,
     )
   )
     return;
   approving.value = true;
   try {
     await profilesStore.approveChanges(props.id, preview.value.fingerprint);
-    toastsStore.push(
-      "Changes approved; the outputs that waited run now.",
-      "success",
-    );
+    toastsStore.push("Changes approved; its outputs run now.", "success");
     await load();
   } catch (e) {
     toastsStore.push(`${e}`, "danger");
@@ -82,6 +79,18 @@ async function approve() {
   } finally {
     approving.value = false;
   }
+}
+
+// "3 additions", "1 addition and 2 removals": what is held, without zeros.
+function heldText(added, removed) {
+  const count = (n, noun) =>
+    `${n.toLocaleString()} ${noun}${n === 1 ? "" : "s"}`;
+  return [
+    added ? count(added, "addition") : null,
+    removed ? count(removed, "removal") : null,
+  ]
+    .filter(Boolean)
+    .join(" and ");
 }
 
 const changes = computed(() => preview.value?.changes);
@@ -151,43 +160,48 @@ load();
           exports, feeds and sinks keeping in step), against what it last
           released.
           <template v-if="preview.gate.enabled">
-            Its approval gate holds a run
-            <template v-if="preview.gate.max_additions !== null">
-              adding more than
-              {{ preview.gate.max_additions.toLocaleString() }},
-            </template>
-            <template v-if="preview.gate.max_removals !== null">
-              removing more than
-              {{ preview.gate.max_removals.toLocaleString() }},
-            </template>
+            Its approval gate keeps out of its outputs, until approved,
             <template v-if="preview.gate.hold_on_risk.length">
-              with an addition flagged
-              {{ preview.gate.hold_on_risk.map((f) => RISKS[f]).join(" or ") }},
+              additions flagged
+              {{ preview.gate.hold_on_risk.map((f) => RISKS[f]).join(" or ") }};
+            </template>
+            <template v-if="preview.gate.max_additions !== null">
+              a run's additions when there are more than
+              {{ preview.gate.max_additions.toLocaleString() }};
             </template>
             <template v-if="preview.gate.spike_factor">
-              adding {{ preview.gate.spike_factor }}× its usual,
+              a run's additions when they are
+              {{ preview.gate.spike_factor }}× its usual;
             </template>
-            until approved.
+            <template v-if="preview.gate.max_removals !== null">
+              a run's removals when there are more than
+              {{ preview.gate.max_removals.toLocaleString() }};
+            </template>
+            everything else goes out.
           </template>
           <template v-else>
-            It has no approval gate: runs always go out.
+            It has no approval gate: every change goes out.
           </template>
         </p>
 
         <div v-if="preview.held" class="alert alert-warning">
           <strong>Held</strong> since
-          <Timestamp :timestamp="preview.held_since" />: its outputs wait for
-          approval.
+          <Timestamp :timestamp="preview.held_since" />:
+          <template v-if="preview.held_added || preview.held_removed">
+            {{ heldText(preview.held_added, preview.held_removed) }} kept out of
+            its outputs until approved. The other changes go out.
+          </template>
           <ul class="mb-0">
             <li v-for="r in preview.reasons" :key="r">{{ r }}</li>
           </ul>
           <div v-if="!preview.reasons.length" class="small">
-            The changes no longer pass the gate's limits; the next check lifts
-            the hold.
+            The changes pass the gate now; its next run or check lifts the hold.
           </div>
         </div>
         <div v-else-if="preview.reasons.length" class="alert alert-info">
-          The next run will be held:
+          The next run will keep
+          {{ heldText(preview.held_added, preview.held_removed) }} out of its
+          outputs:
           <ul class="mb-0">
             <li v-for="r in preview.reasons" :key="r">{{ r }}</li>
           </ul>
@@ -467,18 +481,15 @@ load();
             <span class="text-muted ms-1">{{ c.kind }}</span>
             <span
               v-if="c.kind === 'export'"
-              class="badge ms-1"
-              :class="
-                c.status === 'held' ? 'text-bg-warning' : 'text-bg-light border'
-              "
+              class="badge ms-1 text-bg-light border"
               >{{ c.status }}</span
             >
             <span v-else class="ms-1 text-muted">· {{ c.status }}</span>
             <span
               v-if="!c.gated"
               class="badge text-bg-light border ms-1"
-              title="Sends values one at a time as events are published: not a run, never held"
-              >not held</span
+              title="Sends values one at a time as events are published: not a run, nothing is held from it"
+              >not gated</span
             >
           </li>
           <li v-if="!preview.consumers.length" class="text-muted">

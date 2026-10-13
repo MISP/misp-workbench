@@ -304,7 +304,7 @@ def approve_changes(
     profile = _get_or_404(db, profile_id)
     try:
         released = profile_gate.approve(db, profile_id, user.id, approval.fingerprint)
-    except (profile_gate.ChangesHeld, profile_gate.ChangesMoved) as conflict:
+    except (profile_gate.GateBusy, profile_gate.ChangesMoved) as conflict:
         raise HTTPException(status.HTTP_409_CONFLICT, str(conflict))
     audit.record(
         db,

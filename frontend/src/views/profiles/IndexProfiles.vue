@@ -122,7 +122,7 @@ async function remove(profile) {
                   v-if="p.held"
                   :to="`/detection-profiles/${p.id}/changes`"
                   class="badge text-bg-warning ms-2 text-decoration-none"
-                  title="Its last run's changes wait for approval"
+                  title="Some changes are kept out of its outputs until approved"
                   >changes held</RouterLink
                 >
                 <div v-if="p.description" class="small text-muted">

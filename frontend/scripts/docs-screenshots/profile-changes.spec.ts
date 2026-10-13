@@ -43,11 +43,12 @@ const sample = (
 });
 
 const RUNS = [
+  [4, "released", 0, 12, []],
   [
     4,
     "held",
     4870,
-    12,
+    0,
     [
       "4,870 additions, more than 1,000",
       "6 additions flagged shared infrastructure",
@@ -80,7 +81,9 @@ const PREVIEW = {
   gate: GATE,
   held: true,
   held_since: at(4),
-  reasons: RUNS[0].reasons,
+  reasons: RUNS[1].reasons,
+  held_added: 4870,
+  held_removed: 0,
   changes: {
     first: false,
     members: 26258,
@@ -145,7 +148,7 @@ const PREVIEW = {
       kind: "export",
       id: 4,
       name: "Palo Alto EDL",
-      status: "held",
+      status: "completed",
       gated: true,
     },
     {

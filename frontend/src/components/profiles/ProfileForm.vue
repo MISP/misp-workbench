@@ -536,13 +536,13 @@ async function submit() {
 
       <h6 class="fw-semibold">Approval gate</h6>
       <p class="form-text mt-0">
-        Holds a run of its exports, feeds and sinks keeping in step until
-        someone approves its
+        Keeps large or risky changes out of its exports, feeds and sinks keeping
+        in step, until someone approves its
         <RouterLink
           v-if="isEdit"
           :to="`/detection-profiles/${profile.id}/changes`"
           >changes</RouterLink
-        ><template v-else>changes</template>, when they are large or risky.
+        ><template v-else>changes</template>. Everything else goes out as usual.
       </p>
       <div v-if="!canReview" class="form-text mb-2">
         Changing the gate, auto-approval, or turning approval or rejections off

@@ -16800,6 +16800,16 @@
             "title": "Reasons",
             "default": []
           },
+          "held_added": {
+            "type": "integer",
+            "title": "Held Added",
+            "default": 0
+          },
+          "held_removed": {
+            "type": "integer",
+            "title": "Held Removed",
+            "default": 0
+          },
           "changes": {
             "$ref": "#/components/schemas/ChangeSummary"
           },
