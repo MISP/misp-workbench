@@ -59,7 +59,9 @@ page), open the context with `enter`, switch tabs with `1`–`4`. `?` lists the
 shortcuts.
 
 The **snoozed**, **approved** and **rejected** tabs list decisions, newest
-first, with who took them and why.
+first, with who took them and why. Who decided is audit data: the analyst's
+email is shown to their own organisation and to audit admins
+(`audit_logs:admin`); others see the organisation.
 
 <img src="../../screenshots/review-queue/misp-workbench-3_review-queue_rejected.png#only-light" alt="Rejected indicators, with who rejected them and why" style="max-width: 100%; height: auto;">
 <img src="../../screenshots/review-queue/misp-workbench-3_review-queue_rejected-dark.png#only-dark" alt="Rejected indicators, with who rejected them and why" style="max-width: 100%; height: auto;">

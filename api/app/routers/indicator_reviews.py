@@ -80,7 +80,9 @@ def review_decisions(
     ),
 ):
     """Decided indicators, newest decision first."""
-    return reviews_repository.decisions(db, status_, query=q, page=page, size=size)
+    page_ = reviews_repository.decisions(db, status_, query=q, page=page, size=size)
+    reviews_repository.redact(page_["items"], user)
+    return page_
 
 
 @router.post(
@@ -126,7 +128,12 @@ def indicator_review(
     ),
 ):
     """The decision on an indicator and every decision taken before."""
+    decision = reviews_repository.get_decision(db, str(indicator_uuid))
     return {
-        "decision": reviews_repository.get_decision(db, str(indicator_uuid)),
-        "history": reviews_repository.history(db, str(indicator_uuid)),
+        "decision": (
+            reviews_repository.redact([decision], user)[0] if decision else None
+        ),
+        "history": reviews_repository.redact(
+            reviews_repository.history(db, str(indicator_uuid)), user
+        ),
     }

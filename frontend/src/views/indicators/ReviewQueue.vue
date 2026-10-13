@@ -645,7 +645,9 @@ refresh();
                         item.reason || "—"
                       }}</span>
                     </td>
-                    <td class="small">{{ item.user_email || "—" }}</td>
+                    <td class="small">
+                      {{ item.user_email || item.user_organisation || "—" }}
+                    </td>
                     <td class="small">
                       <Timestamp :timestamp="item.decided_at" />
                     </td>
@@ -672,7 +674,12 @@ refresh();
                         >
                           <Timestamp :timestamp="h.at" /> ·
                           <strong>{{ h.action }}</strong>
-                          by {{ h.user_email || "someone since removed" }}
+                          by
+                          {{
+                            h.user_email ||
+                            h.user_organisation ||
+                            "someone since removed"
+                          }}
                           <span v-if="h.reason" class="text-muted"
                             >— {{ h.reason }}</span
                           >

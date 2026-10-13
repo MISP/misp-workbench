@@ -301,6 +301,25 @@ def summary(db: Session) -> dict:
 # ── Decisions ─────────────────────────────────────────────────────────────
 
 
+def _org_name(user) -> Optional[str]:
+    return user.organisation.name if user and user.organisation else None
+
+
+def redact(entries: list[dict], viewer) -> list[dict]:
+    """Who decided is audit data: the decider's email is only shown to audit
+    admins and to the decider's own organisation; others see the organisation.
+    """
+    from app.auth.utils import role_has_scope
+
+    scopes = list(getattr(getattr(viewer, "role", None), "scopes", None) or [])
+    if role_has_scope(scopes, "audit_logs:admin"):
+        return entries
+    for entry in entries:
+        if entry.get("user_org_id") != viewer.org_id:
+            entry["user_email"] = None
+    return entries
+
+
 def _decision(row) -> dict:
     return {
         "indicator_uuid": row.indicator_uuid,
@@ -312,6 +331,8 @@ def _decision(row) -> dict:
         "allowlisted": row.allowlisted,
         "user_id": row.user_id,
         "user_email": row.user.email if row.user else None,
+        "user_org_id": row.user.org_id if row.user else None,
+        "user_organisation": _org_name(row.user),
         "decided_at": row.decided_at,
     }
 
@@ -391,6 +412,8 @@ def history(db: Session, indicator_uuid: str) -> list[dict]:
             "action": e.action.removeprefix("indicator_review."),
             "at": e.created_at,
             "user_email": e.actor.email if e.actor else None,
+            "user_org_id": e.actor.org_id if e.actor else None,
+            "user_organisation": _org_name(e.actor),
             "reason": (e.metadata_ or {}).get("reason"),
             "snoozed_until": (e.metadata_ or {}).get("snoozed_until"),
             "allowlisted": bool((e.metadata_ or {}).get("allowlisted")),

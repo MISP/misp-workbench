@@ -25304,17 +25304,6 @@
             "title": "Allowlisted",
             "default": false
           },
-          "user_id": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "User Id"
-          },
           "user_email": {
             "anyOf": [
               {
@@ -25325,6 +25314,17 @@
               }
             ],
             "title": "User Email"
+          },
+          "user_organisation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Organisation"
           },
           "decided_at": {
             "type": "string",
@@ -25471,6 +25471,17 @@
               }
             ],
             "title": "User Email"
+          },
+          "user_organisation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Organisation"
           },
           "reason": {
             "anyOf": [

@@ -157,6 +157,25 @@ class TestReviewRules:
                 rules=profile_schemas.ProfileRules(require_approval=True),
             )
 
+    def test_deciders_are_shown_to_their_organisation_only(self):
+        from types import SimpleNamespace
+
+        from app.repositories import indicator_reviews
+
+        def entries():
+            return [
+                {"user_email": "a@one.test", "user_org_id": 1},
+                {"user_email": "b@two.test", "user_org_id": 2},
+            ]
+
+        def viewer(org_id, scopes):
+            return SimpleNamespace(org_id=org_id, role=SimpleNamespace(scopes=scopes))
+
+        shown = indicator_reviews.redact(entries(), viewer(1, ["attributes:read"]))
+        assert [e["user_email"] for e in shown] == ["a@one.test", None]
+        shown = indicator_reviews.redact(entries(), viewer(3, ["audit_logs:admin"]))
+        assert [e["user_email"] for e in shown] == ["a@one.test", "b@two.test"]
+
     def test_requests_are_consistent(self):
         with pytest.raises(ValidationError):
             review_schemas.ReviewDecisionRequest(indicators=["x"], action="snooze")

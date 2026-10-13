@@ -68,8 +68,9 @@ class ReviewDecision(BaseModel):
     reason: Optional[str] = None
     snoozed_until: Optional[datetime] = None
     allowlisted: bool = False
-    user_id: Optional[int] = None
+    # Only for audit admins and the decider's own organisation.
     user_email: Optional[str] = None
+    user_organisation: Optional[str] = None
     decided_at: datetime
 
 
@@ -84,7 +85,9 @@ class ReviewHistoryEntry(BaseModel):
     # approved, rejected, snoozed, reopened
     action: str
     at: datetime
+    # Only for audit admins and the decider's own organisation.
     user_email: Optional[str] = None
+    user_organisation: Optional[str] = None
     reason: Optional[str] = None
     snoozed_until: Optional[str] = None
     allowlisted: bool = False
