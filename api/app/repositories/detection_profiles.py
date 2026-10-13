@@ -100,6 +100,7 @@ def load(ref) -> dict:
             "name": profile.name,
             "granularity": profile.granularity,
             "rules": _rules(profile.rules),
+            "gate": profile.gate,
         }
 
 
@@ -110,6 +111,7 @@ def create_profile(db: Session, profile: profile_schemas.DetectionProfileCreate)
         granularity=profile.granularity,
         rules=profile.rules.model_dump(),
         auto_approve=profile.auto_approve,
+        gate=profile.gate.model_dump() if profile.gate else None,
         created_at=datetime.now(timezone.utc),
     )
     db.add(db_profile)
@@ -164,6 +166,9 @@ def delete_profile(db: Session, db_profile) -> None:
     used_by = users_of(db, db_profile.id)
     if used_by:
         raise ProfileInUse(", ".join(used_by))
+    from app.repositories import profile_gate
+
+    profile_gate.forget(db_profile.id)
     db.delete(db_profile)
     db.commit()
 

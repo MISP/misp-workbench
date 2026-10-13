@@ -76,6 +76,12 @@ celery_app.conf.update(
             "task": "app.worker.tasks.sync_sink_memberships",
             "schedule": 300.0,
         },
+        # Look ahead at gated detection profiles: hold (and notify about)
+        # changes their next run would hold, before it comes.
+        "profile-gates-check": {
+            "task": "app.worker.tasks.check_profile_gates",
+            "schedule": 300.0,
+        },
         # Flag attributes written since the last run with the warninglists
         # they hit (a full re-evaluation runs whenever the lists change).
         "warninglists-evaluate-recent": {
@@ -1443,6 +1449,14 @@ def sync_sink_memberships():
     for sink_id in sink_ids:
         sync_sink_membership.apply_async((sink_id,), queue="sinks")
     return len(sink_ids)
+
+
+@celery_app.task(ignore_result=True)
+def check_profile_gates():
+    """Look ahead at every detection profile with an approval gate."""
+    from app.repositories import profile_gate
+
+    return profile_gate.check_all()
 
 
 @celery_app.task(bind=True, queue="sinks", max_retries=SINK_MAX_RETRIES)

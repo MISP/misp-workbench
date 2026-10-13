@@ -463,9 +463,13 @@ def _run_profile(db: Session, db_export: export_models.Export) -> None:
     An incremental one is a profile *feed*: each delta says which indicators
     joined the profile, changed, or left it (and why), whatever made them
     leave, by diffing the member set with the previous run's full artifact.
-    """
-    from app.repositories import detection_profiles, stream_exports
 
+    A run of the profile: it waits while the profile's changes are held
+    (profile_gate.ChangesHeld), keeping the previous artifact.
+    """
+    from app.repositories import detection_profiles, profile_gate, stream_exports
+
+    profile_gate.ready(db_export.profile_id)
     profile = detection_profiles.load(db_export.profile_id)
     index = (
         stream_exports.INDICATORS_INDEX
@@ -659,6 +663,8 @@ def run_export(db: Session, export_id: int) -> None:
     Updates the row's status as it progresses. Any failure is recorded on the
     row rather than raised, so the job is observable via the API.
     """
+    from app.repositories import profile_gate
+
     db_export = (
         db.query(export_models.Export)
         .filter(export_models.Export.id == export_id)
@@ -706,6 +712,17 @@ def run_export(db: Session, export_id: int) -> None:
         db_export.record_count = record_count
         db_export.checksum = hashlib.sha256(content).hexdigest()
         _mark_completed(db, db_export)
+    except profile_gate.ChangesHeld as held:
+        # Not a failure: the profile's changes wait for approval, and this
+        # export runs again once they are approved.
+        logger.info("Export %s held: %s", export_id, held)
+        db.rollback()
+        db_export = db.get(export_models.Export, export_id)
+        if db_export is not None:
+            db_export.status = "held"
+            db_export.error = f"Waiting for approval of the profile's changes: {held}"
+            db_export.finished_at = datetime.now(timezone.utc)
+            db.commit()
     except Exception as e:
         logger.exception("Export %s failed", export_id)
         db.rollback()

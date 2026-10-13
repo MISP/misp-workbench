@@ -73,6 +73,37 @@ class ProfileRules(BaseModel):
         return cleaned
 
 
+RiskFlag = Literal[
+    "popular_domain",
+    "shared_infrastructure",
+    "warninglisted",
+    "new_source",
+    "low_score",
+]
+
+
+class ProfileGate(BaseModel):
+    """When a run's changes wait for approval instead of going out.
+
+    Changes are what the profile selects now against what it last released.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    enabled: bool = False
+    # Hold a run adding or removing more than this many indicators.
+    max_additions: Optional[int] = Field(None, ge=0)
+    max_removals: Optional[int] = Field(None, ge=0)
+    # Hold a run with any addition flagged so.
+    hold_on_risk: list[RiskFlag] = []
+    # Hold a run adding this many times its usual (the median of the last
+    # runs), from 20 additions up.
+    spike_factor: Optional[float] = Field(None, ge=1.5, le=100)
+    # What counts as a low score, and a very new source (days since added).
+    low_score: int = Field(40, ge=0, le=100)
+    new_source_days: int = Field(7, ge=1, le=365)
+
+
 class DetectionProfileBase(BaseModel):
     name: str = Field(min_length=1, max_length=255)
     description: Optional[str] = None
@@ -80,6 +111,7 @@ class DetectionProfileBase(BaseModel):
     rules: ProfileRules = ProfileRules()
     # What this profile selects is approved without a review.
     auto_approve: bool = False
+    gate: Optional[ProfileGate] = None
 
     @model_validator(mode="after")
     def _not_circular(self):
@@ -104,12 +136,15 @@ class DetectionProfileUpdate(BaseModel):
     granularity: Optional[Granularity] = None
     rules: Optional[ProfileRules] = None
     auto_approve: Optional[bool] = None
+    gate: Optional[ProfileGate] = None
 
 
 class DetectionProfile(DetectionProfileBase):
     id: int
     created_at: datetime
     updated_at: Optional[datetime] = None
+    # Its last run's changes wait for approval.
+    held: bool = False
     model_config = ConfigDict(from_attributes=True)
 
 
@@ -132,3 +167,84 @@ class ProfilePreview(BaseModel):
 
     count: int
     sample: list[dict] = []
+
+
+class SourceCount(BaseModel):
+    key: str
+    name: str
+    count: int
+
+
+class ChangeSample(BaseModel):
+    uuid: str
+    type: Optional[str] = None
+    value: Optional[str] = None
+    score: Optional[int] = None
+    # Why it is flagged, or why it leaves.
+    detail: Optional[str] = None
+
+
+class RiskSummary(BaseModel):
+    count: int = 0
+    sample: list[ChangeSample] = []
+
+
+class ChangeSummary(BaseModel):
+    """What a profile's next run changes, against its last release."""
+
+    # Nothing released yet: the next run sets the baseline.
+    first: bool = False
+    members: int = 0
+    previous_members: int = 0
+    added: int = 0
+    removed: int = 0
+    added_by_type: dict[str, int] = {}
+    added_by_source: list[SourceCount] = []
+    removed_by_type: dict[str, int] = {}
+    removed_by_reason: dict[str, int] = {}
+    risks: dict[str, RiskSummary] = {}
+    added_sample: list[ChangeSample] = []
+    removed_sample: list[ChangeSample] = []
+    # The median additions of the last runs that changed something.
+    usual_added: Optional[float] = None
+
+
+class ProfileRelease(BaseModel):
+    id: int
+    status: str
+    members: int
+    added: int
+    removed: int
+    reasons: list[str] = []
+    user_email: Optional[str] = None
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+
+
+class ProfileConsumer(BaseModel):
+    kind: str
+    id: int
+    name: str
+    # export: its last status; sink: whether it keeps in step (gated) or
+    # sends published events (not gated).
+    status: Optional[str] = None
+    gated: bool = True
+
+
+class ChangePreview(BaseModel):
+    generated_at: datetime
+    gate: ProfileGate
+    # Held: runs wait for approval, for these reasons.
+    held: bool = False
+    held_since: Optional[datetime] = None
+    # Why the next run would be held (empty: it goes out).
+    reasons: list[str] = []
+    changes: ChangeSummary
+    releases: list[ProfileRelease] = []
+    consumers: list[ProfileConsumer] = []
+
+
+class ChangePreviewRequest(BaseModel):
+    """Rules to preview instead of the profile's own (a dry run of an edit)."""
+
+    rules: Optional[ProfileRules] = None

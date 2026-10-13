@@ -26,5 +26,8 @@ class DetectionProfile(Base):
     auto_approve = Column(
         Boolean, nullable=False, default=False, server_default="false"
     )
+    # The approval gate: when a run's changes need approving (see
+    # app.repositories.profile_gate). None: never held.
+    gate = Column(JSON, nullable=True)
     created_at = Column(DateTime(timezone=True), nullable=False)
     updated_at = Column(DateTime(timezone=True), nullable=True)

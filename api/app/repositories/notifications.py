@@ -560,6 +560,7 @@ def invalidate_follow_cache(entity_type: str, entity_uuid: str):
 def _notification_email_subject(notification_type: str) -> str:
     prefixes = {
         "hunt.": "Hunt Results",
+        "detection_profile.": "Detection Profile Changes Held",
         "attribute.sighting.": "New Sighting",
         "attribute.correlation.": "New Correlation",
         "attribute.": "Attribute Update",
@@ -677,3 +678,42 @@ def create_hunt_notification(
     db.add(notification)
     db.commit()
     _enqueue_notification_emails(db, [notification])
+
+def create_profile_held_notifications(
+    db: Session, profile: dict, summary: dict, reasons: list[str]
+):
+    """Tell the reviewers (indicators:review) that a detection profile's
+    changes wait for their approval."""
+    from app.auth.utils import role_has_scope
+
+    reviewers = [
+        u
+        for u in db.query(user_models.User)
+        if not u.disabled
+        and u.role is not None
+        and role_has_scope(list(u.role.scopes or []), "indicators:review")
+    ]
+    notifications = [
+        notification_models.Notification(
+            user_id=user.id,
+            type="detection_profile.changes.held",
+            entity_type="detection_profile",
+            entity_uuid=None,
+            read=False,
+            payload={
+                "profile_id": profile["id"],
+                "profile_name": profile["name"],
+                "added": summary["added"],
+                "removed": summary["removed"],
+                "reasons": reasons,
+            },
+            created_at=datetime.now(timezone.utc),
+        )
+        for user in reviewers
+    ]
+    if not notifications:
+        return []
+    db.add_all(notifications)
+    db.commit()
+    _enqueue_notification_emails(db, notifications)
+    return notifications

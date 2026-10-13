@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from app.auth.security import get_current_active_user
 from app.db.session import get_db
 from app.repositories import detection_profiles as profiles_repository
+from app.repositories import profile_gate
 from app.schemas import detection_profile as profile_schemas
 from app.schemas import user as user_schemas
 from app.services import audit
@@ -44,7 +45,11 @@ def list_profiles(
         get_current_active_user, scopes=["detection_profiles:read"]
     ),
 ):
-    return profiles_repository.get_profiles(db)
+    profiles = profiles_repository.get_profiles(db)
+    held = profile_gate.held_profiles(db)
+    for profile in profiles:
+        profile.held = profile.id in held
+    return profiles
 
 
 @router.post(
@@ -101,7 +106,9 @@ def get_profile(
         get_current_active_user, scopes=["detection_profiles:read"]
     ),
 ):
-    return _get_or_404(db, profile_id)
+    profile = _get_or_404(db, profile_id)
+    profile.held = profile.id in profile_gate.held_profiles(db)
+    return profile
 
 
 @router.get(
@@ -188,3 +195,75 @@ def delete_profile(
             f"Still used by {error}; point them elsewhere first",
         )
     _audit(db, request, user, "detection_profile.deleted", db_profile)
+
+
+@router.get(
+    "/detection-profiles/{profile_id}/changes",
+    response_model=profile_schemas.ChangePreview,
+)
+def preview_changes(
+    profile_id: int,
+    db: Session = Depends(get_db),
+    user: user_schemas.User = Security(
+        get_current_active_user, scopes=["detection_profiles:read"]
+    ),
+):
+    """What the profile's next run changes against its last release, whether
+    the gate would hold it, and the recent runs."""
+    _get_or_404(db, profile_id)
+    return profile_gate.preview(db, profile_id)
+
+
+@router.post(
+    "/detection-profiles/{profile_id}/changes",
+    response_model=profile_schemas.ChangePreview,
+)
+def dry_run_changes(
+    profile_id: int,
+    request: profile_schemas.ChangePreviewRequest,
+    db: Session = Depends(get_db),
+    user: user_schemas.User = Security(
+        get_current_active_user, scopes=["detection_profiles:read"]
+    ),
+):
+    """The same, for rules not saved yet: what saving them would change."""
+    _get_or_404(db, profile_id)
+    return profile_gate.preview(db, profile_id, rules=request.rules)
+
+
+@router.post(
+    "/detection-profiles/{profile_id}/changes/approve",
+    response_model=profile_schemas.ProfileRelease,
+)
+def approve_changes(
+    profile_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    user: user_schemas.User = Security(
+        get_current_active_user, scopes=["indicators:review"]
+    ),
+):
+    """Release the profile's changes as they are now, and run the outputs
+    that waited for them."""
+    profile = _get_or_404(db, profile_id)
+    try:
+        released = profile_gate.approve(db, profile_id, user.id)
+    except profile_gate.ChangesHeld as busy:
+        raise HTTPException(status.HTTP_409_CONFLICT, str(busy))
+    audit.record(
+        db,
+        action="detection_profile.changes_approved",
+        resource_type="detection_profile",
+        resource_id=profile.id,
+        actor_user_id=user.id,
+        request=request,
+        metadata={
+            "name": profile.name,
+            "added": released["added"],
+            "removed": released["removed"],
+        },
+    )
+    db.commit()
+    return next(
+        r for r in profile_gate.releases(db, profile_id, 5) if r["id"] == released["id"]
+    )

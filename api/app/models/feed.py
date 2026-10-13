@@ -1,6 +1,18 @@
+from datetime import datetime, timezone
+
 from app.database import Base
 from app.models.event import DistributionLevel
-from sqlalchemy import JSON, Boolean, Column, Enum, Float, ForeignKey, Integer, String
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    Column,
+    DateTime,
+    Enum,
+    Float,
+    ForeignKey,
+    Integer,
+    String,
+)
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -10,6 +22,12 @@ class Feed(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, unique=True)
+    # When it was added; unknown for feeds added before this was recorded.
+    created_at = Column(
+        DateTime(timezone=True),
+        nullable=True,
+        default=lambda: datetime.now(timezone.utc),
+    )
     provider = Column(String, nullable=False)
     url = Column(String, nullable=False)
     rules = Column(JSON, nullable=False, default={})

@@ -517,7 +517,7 @@ def deliver_membership(sink: sink_models.Sink) -> int:
     is retried with the same changes. The sink's own exclusions narrow the
     members like the profile's rules do.
     """
-    from app.repositories import detection_profiles, profile_membership
+    from app.repositories import detection_profiles, profile_gate, profile_membership
     from app.services.redis import get_redis_client
 
     filters = sink.filters or {}
@@ -525,6 +525,15 @@ def deliver_membership(sink: sink_models.Sink) -> int:
         profile = detection_profiles.load(filters["profile_id"])
     except detection_profiles.ProfileNotFound:
         raise SinkDeliveryError("the sink's detection profile no longer exists")
+    # A run of the profile: it waits while the profile's changes are held,
+    # and runs again once they are approved.
+    try:
+        profile_gate.ready(profile["id"])
+    except profile_gate.ChangesHeld as held:
+        logger.info(
+            "sink %s waits for approval of its profile's changes: %s", sink.id, held
+        )
+        return 0
     rules = profile["rules"]
     rules = rules.model_copy(
         update={

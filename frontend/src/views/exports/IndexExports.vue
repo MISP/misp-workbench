@@ -36,6 +36,8 @@ const STATUS_BADGE = {
   running: "bg-info",
   completed: "bg-success",
   failed: "bg-danger",
+  // Its profile's changes wait for approval.
+  held: "bg-warning text-dark",
 };
 
 function formatBytes(bytes) {
@@ -215,6 +217,18 @@ onUnmounted(() => clearTimeout(pollTimer));
               :title="item.error"
             >
               {{ item.error }}
+            </div>
+            <div
+              v-if="item.status === 'held'"
+              class="small text-truncate"
+              style="max-width: 320px"
+              :title="item.error"
+            >
+              <RouterLink
+                :to="`/detection-profiles/${item.profile_id}/changes`"
+                class="text-warning-emphasis"
+                >Waiting for approval of its profile's changes</RouterLink
+              >
             </div>
           </td>
           <td v-if="!$isMobile">
