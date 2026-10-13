@@ -31,8 +31,10 @@ TRUST_ORG = "Scoring Trust Org"
 FEED_EVENT = "5c0e0000-0000-4000-8000-000000000001"
 LOCAL_EVENT = "5c0e0000-0000-4000-8000-000000000002"
 
-OLD_IP = ("5c0e0000-1000-4000-8000-000000000001", "ip-dst", "192.0.2.10")
-FRESH_IP = ("5c0e0000-1000-4000-8000-000000000002", "ip-dst", "192.0.2.20")
+# Public addresses: documentation ranges (192.0.2.0/24, ...) flagged for IDS
+# carry a validation issue, and its score penalty.
+OLD_IP = ("5c0e0000-1000-4000-8000-000000000001", "ip-dst", "185.220.101.10")
+FRESH_IP = ("5c0e0000-1000-4000-8000-000000000002", "ip-dst", "185.220.101.20")
 OLD_HASH = (
     "5c0e0000-1000-4000-8000-000000000003",
     "sha256",

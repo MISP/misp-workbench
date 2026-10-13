@@ -43,6 +43,7 @@ from app.routers import (
 )
 from app.database import SessionLocal
 from app.services.tech_lab.servos import chain as servo_chain
+from app.services import normalisation
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi_pagination import add_pagination
@@ -73,6 +74,9 @@ async def lifespan(app: FastAPI):
         servo_chain.sync_quietly(db)
     finally:
         db.close()
+    # The same goes for the normalisation pipeline: the repo copy carries the
+    # default rules, the stored settings may switch some off.
+    normalisation.sync_quietly()
 
     async with mcp_app.lifespan(app):
         yield

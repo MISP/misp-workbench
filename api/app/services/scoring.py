@@ -60,6 +60,7 @@ NUMBERS = (
     "false_positive_penalty",
     "false_positive_penalty_max",
     "warninglist_penalty",
+    "validation_penalty",
     "expiration_cap",
     "decayed_below",
     "refresh_step",
@@ -297,6 +298,12 @@ def score(indicator: dict, cfg: dict, now: int) -> tuple[Optional[int], list]:
     if hits:
         penalty = cfg["warninglist_penalty"]
         breakdown.append(_entry("warninglist", -penalty, f"on {', '.join(hits)}"))
+        points -= penalty
+
+    issues = indicator.get("validation_issues") or []
+    if issues and cfg["validation_penalty"]:
+        penalty = cfg["validation_penalty"]
+        breakdown.append(_entry("validation", -penalty, ", ".join(issues)))
         points -= penalty
 
     points = min(max(points, 0.0), 100.0)

@@ -304,6 +304,19 @@ tr.to-ids > td:first-child {
                 <FontAwesomeIcon :icon="faTriangleExclamation" />
                 warninglist
               </span>
+              <span
+                v-for="issue in attribute.validation_issues || []"
+                :key="issue"
+                class="badge bg-danger-subtle text-danger-emphasis ms-1"
+                :title="`Validation: ${issue}. Kept, but scored down; see Indicators.`"
+                >{{ issue }}</span
+              >
+              <span
+                v-if="attribute.original_value"
+                class="badge bg-secondary-subtle text-secondary-emphasis ms-1"
+                :title="`Normalised from: ${attribute.original_value}`"
+                >normalised</span
+              >
             </td>
             <td class="ids-col text-center">
               <button

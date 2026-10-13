@@ -196,6 +196,13 @@ load();
                       >IDS</span
                     >
                     <span
+                      v-for="issue in indicator.validation_issues || []"
+                      :key="issue"
+                      class="badge text-bg-danger me-1"
+                      :title="`Validation issue on one of its attributes: ${issue}`"
+                      >{{ issue }}</span
+                    >
+                    <span
                       v-if="indicator.warninglist_hits.length"
                       class="badge text-bg-warning me-1"
                       :title="indicator.warninglist_hits.join(', ')"

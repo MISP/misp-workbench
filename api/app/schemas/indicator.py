@@ -66,6 +66,8 @@ class Indicator(BaseModel):
     galaxies: list[str] = []
     sightings: IndicatorSightings = IndicatorSightings()
     warninglist_hits: list[str] = []
+    # Problems normalisation found on its attributes (private-ip, invalid-hash...).
+    validation_issues: list[str] = []
     # Confidence, 0-100 (None when scoring is off), and how it was reached.
     score: Optional[int] = None
     score_breakdown: list[ScoreComponent] = []

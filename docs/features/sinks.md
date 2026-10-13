@@ -41,7 +41,10 @@ followed by the filters:
 | **Minimum score** | 0 | Leave out values whose indicator's [confidence score](indicators.md#confidence-scores) is below this. Values too new to be scored are sent |
 
 Tag lists match the attribute's own tags **and** its event's tags, and accept
-shell-style patterns (`tlp:*`, `misp-galaxy:threat-actor=*`). Soft-deleted
+shell-style patterns (`tlp:*`, `misp-galaxy:threat-actor=*`). An attribute's
+[validation issues](normalisation.md#validation-issues) count as
+`workbench:validation="…"` tags, so `workbench:validation=*` in **Never with
+tags** keeps private IPs and malformed hashes out. Soft-deleted
 attributes are never sent.
 
 With **Send consolidated indicators**, a delivery sends one record per type

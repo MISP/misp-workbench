@@ -103,6 +103,9 @@ DEFAULT_SETTINGS = {
         "false_positive_penalty_max": 60,
         # On an enabled warninglist.
         "warninglist_penalty": 50,
+        # Any attribute with a validation issue (private or reserved IP,
+        # malformed IP, CIDR or hash; see the normalisation settings).
+        "validation_penalty": 40,
         # An expiration sighting newer than any positive one caps the score.
         "expiration_cap": 10,
         # Below this an indicator counts as decayed (restSearch excludeDecayed).
@@ -121,6 +124,44 @@ DEFAULT_SETTINGS = {
         "adaptive_min_indicators": 20,
         "adaptive_points_per_percent": 1,
         "adaptive_max_penalty": 30,
+    },
+    "normalisation": {
+        # Normalise and validate every attribute as it is written (the first
+        # step of the misp-attributes ingest pipeline). Rewritten values keep
+        # original_value; problems are recorded in validation_issues (and as
+        # workbench:validation tags on indicators), never by dropping data.
+        "enabled": True,
+        # hxxp://, 1.2.3[.]4, evil[.]com, bob[@]example.com
+        "refang": True,
+        # Domains, hostnames and email domains in lower case, without a
+        # trailing dot.
+        "lowercase_hostnames": True,
+        # URLs: lower-case scheme and host, no default port.
+        "normalise_urls": True,
+        # Also drop tracking parameters from URLs (patterns, * as suffix).
+        "strip_tracking_params": False,
+        "tracking_params": [
+            "utm_*",
+            "fbclid",
+            "gclid",
+            "dclid",
+            "msclkid",
+            "yclid",
+            "mc_cid",
+            "mc_eid",
+            "_hsenc",
+            "_hsmi",
+        ],
+        # Canonical IPv6 (RFC 5952) and IPv4 (no leading zeros).
+        "canonical_ips": True,
+        "lowercase_hashes": True,
+        # Flag hashes of the wrong length or with non-hex characters.
+        "validate_hashes": True,
+        # Flag malformed IPs, CIDRs and ports.
+        "validate_ips": True,
+        # Flag private, loopback, link-local, documentation, multicast and
+        # reserved IPs on attributes flagged for IDS.
+        "flag_reserved_ips": True,
     },
     "retention": {
         "enabled": False,

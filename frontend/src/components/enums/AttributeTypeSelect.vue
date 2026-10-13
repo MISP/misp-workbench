@@ -24,6 +24,16 @@ watch(
   },
 );
 
+// The field reads `selected` once, when it mounts: follow later changes too
+// (a type detected from the value as it is typed), without remounting it.
+const field = ref(null);
+watch(
+  () => props.selected,
+  (selected) => {
+    field.value?.handleChange(selected ?? "", false);
+  },
+);
+
 function handleInput(event) {
   const value = event.target.value;
 
@@ -35,6 +45,7 @@ function handleInput(event) {
 
 <template>
   <Field
+    ref="field"
     class="form-control"
     :name="name"
     list="attributeTypeOptions"

@@ -232,6 +232,22 @@
             },
             "warninglist_hits": {
                 "type": "keyword"
+            },
+            "original_value": {
+                "type": "text",
+                "fields": {
+                    "keyword": {
+                        "type": "keyword",
+                        "ignore_above": 256
+                    }
+                }
+            },
+            "validation_issues": {
+                "type": "keyword"
+            },
+            "normalisation_error": {
+                "type": "keyword",
+                "ignore_above": 1024
             }
         }
     }

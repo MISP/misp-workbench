@@ -11,6 +11,15 @@ router = APIRouter()
 
 
 def _check(namespace: str, value: dict) -> None:
+    if namespace == "normalisation":
+        from app.services import normalisation
+
+        try:
+            normalisation.validate(value)
+        except normalisation.InvalidNormalisationConfig as error:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST, detail=str(error)
+            )
     if namespace == "scoring":
         from app.services import scoring
 
@@ -23,6 +32,13 @@ def _check(namespace: str, value: dict) -> None:
 
 
 def _after_change(namespace: str) -> None:
+    # The rules are the pipeline's params: put the new ones in place. They
+    # apply to what is written from now on; re-applying them to existing
+    # attributes is a separate, explicit step (POST /attributes/normalise).
+    if namespace == "normalisation":
+        from app.services import normalisation
+
+        normalisation.sync()
     # Scores are stored on the indicators: rescore them all with the new
     # settings rather than at the next hourly rebuild.
     if namespace == "scoring":
@@ -105,6 +121,34 @@ def set_runtime_setting(
     db.commit()
     _after_change(namespace)
     return {"message": "Setting updated"}
+
+
+@router.post("/settings/runtime/normalisation/apply")
+def apply_normalisation(
+    request: Request,
+    db: Session = Depends(get_db),
+    user: user_schemas.User = Security(
+        get_current_active_user, scopes=["settings:update"]
+    ),
+):
+    """Run every existing attribute through the normalisation rules again.
+
+    Runs in OpenSearch's background; returns its task id.
+    """
+    from app.services import normalisation
+
+    normalisation.sync()
+    task = normalisation.reapply()
+    audit.record(
+        db,
+        action="normalisation.applied",
+        resource_type="runtime_setting",
+        actor_user_id=user.id,
+        request=request,
+        metadata={"namespace": "normalisation", "task": task},
+    )
+    db.commit()
+    return {"task": task}
 
 
 @router.delete("/settings/runtime/{namespace}")

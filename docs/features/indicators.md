@@ -36,6 +36,7 @@ Attributes in deleted events don't count.
 | `galaxies` | The `misp-galaxy:` tags among them |
 | `sightings` | `positive`, `false_positive` and `expiration` counts, with the first and last sighting time |
 | `warninglist_hits` | The enabled [warninglists](warninglists.md) any of its attributes is on |
+| `validation_issues` | The [validation issues](normalisation.md#validation-issues) of its attributes, also as `workbench:validation="…"` tags |
 | `deleted` | `true` on a **tombstone**: an indicator whose last live attribute went away |
 | `updated_at` | When its content last changed |
 
@@ -92,6 +93,7 @@ next to its value, and hovering over the badge shows the breakdown.
 | **Sightings**: positive ones | +5 for one, +10 for three, +15 for seven or more |
 | **False positives**: per false-positive sighting | −20, up to −60 |
 | **Warninglist**: on an enabled [warninglist](warninglists.md) | −50 |
+| **Validation**: one of its attributes has a [validation issue](normalisation.md#validation-issues) (private IP, malformed hash, ...) | −40 |
 | **Cap**: when every source reporting it is capped (see below) | none |
 | **Expiration**: an expiration sighting newer than any positive one | caps the score at 10 |
 

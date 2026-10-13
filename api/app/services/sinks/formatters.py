@@ -53,7 +53,11 @@ def build_record(attribute: dict, event: dict) -> dict:
         "last_seen": attribute.get("last_seen"),
         "object_uuid": attribute.get("object_uuid"),
         "object_relation": attribute.get("object_relation"),
-        "tags": tag_names(attribute.get("tags")),
+        "tags": tag_names(attribute.get("tags"))
+        + [
+            f'workbench:validation="{issue}"'
+            for issue in attribute.get("validation_issues") or []
+        ],
         "event": {
             "uuid": event.get("uuid"),
             "info": event.get("info"),
