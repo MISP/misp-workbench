@@ -252,6 +252,10 @@ def usual_added(db: Session, profile_id: int) -> Optional[float]:
     return float(statistics.median(r.added for r in rows))
 
 
+def _count(n: int, noun: str) -> str:
+    return f"{n:,} {noun}{'' if n == 1 else 's'}"
+
+
 def hold_reasons(
     summary: dict, gate: profile_schemas.ProfileGate, usual: Optional[float]
 ) -> list[str]:
@@ -261,13 +265,15 @@ def hold_reasons(
     reasons = []
     added, removed = summary["added"], summary["removed"]
     if gate.max_additions is not None and added > gate.max_additions:
-        reasons.append(f"{added:,} additions, more than {gate.max_additions:,}")
+        reasons.append(f"{_count(added, 'addition')}, more than {gate.max_additions:,}")
     if gate.max_removals is not None and removed > gate.max_removals:
-        reasons.append(f"{removed:,} removals, more than {gate.max_removals:,}")
+        reasons.append(f"{_count(removed, 'removal')}, more than {gate.max_removals:,}")
     for flag in gate.hold_on_risk:
         count = (summary["risks"].get(flag) or {}).get("count", 0)
         if count:
-            reasons.append(f"{count:,} addition(s) flagged {flag.replace('_', ' ')}")
+            reasons.append(
+                f"{_count(count, 'addition')} flagged {flag.replace('_', ' ')}"
+            )
     if (
         gate.spike_factor
         and usual is not None

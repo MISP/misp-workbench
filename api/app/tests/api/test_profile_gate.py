@@ -117,7 +117,7 @@ class TestGateRules:
         ]
         risky = self.summary(added=1, risks={"new_source": {"count": 1}})
         assert profile_gate.hold_reasons(risky, self.gate, None) == [
-            "1 addition(s) flagged new source"
+            "1 addition flagged new source"
         ]
         # Low scores are flagged, but this gate doesn't hold on them.
         low = self.summary(added=1, risks={"low_score": {"count": 1}})

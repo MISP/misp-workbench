@@ -50,7 +50,7 @@ const RUNS = [
     12,
     [
       "4,870 additions, more than 1,000",
-      "6 addition(s) flagged shared infrastructure",
+      "6 additions flagged shared infrastructure",
       "4,870 additions, 26.3× the usual 185",
     ],
   ],
