@@ -8,10 +8,14 @@ ways, kept equivalent by tests:
 - ``matches``: a check on one indicator, for outputs that judge records one
   at a time (sinks, /lookup, restSearch).
 
-A value too new to have an indicator yet is judged on its attribute
-(``attribute_indicator``): the rules it can answer (type, category, tags,
-TLP, to_ids, warninglists, validation) apply, the ones it can't (score,
-age, sources, trust) don't, as the value is fresh.
+A value too new to have an indicator yet is judged on an indicator built
+from its attribute and event (``attribute_indicator``), on every rule: its
+source and organisation come from the event, its score is computed as
+usual. A rule it can't answer fails closed. And because an indicator can
+lag behind its attributes by a sync, the rules that keep things out (TLP,
+excluded tags, warninglists, validation) are also checked on the attribute
+as it is now: a value tagged tlp:red a second ago doesn't leave on a stale
+indicator.
 """
 
 import fnmatch
@@ -156,9 +160,12 @@ def context(now: Optional[int] = None) -> dict:
     """What evaluating rules needs besides the indicator: time and trust."""
     from app.services import scoring
 
-    trust = scoring.load_config().get("_trust", {})
+    cfg = scoring.load_config()
+    trust = cfg.get("_trust", {})
     return {
         "now": int(time.time()) if now is None else now,
+        # For scoring indicators built from a lone attribute.
+        "scoring": cfg,
         # Source key -> score modifier, for feeds and servers that have one.
         "trust": {
             f"{kind}:{key}": modifier
@@ -290,13 +297,8 @@ def _any_tag(tags: list[str], patterns: list[str]) -> bool:
 
 
 def matches(rules, indicator: dict, ctx: dict) -> bool:
-    """Whether one indicator passes the rules (``to_query``, for one document).
-
-    An indicator built from a lone attribute (``partial``) skips the rules it
-    can't answer: score, age, sources, organisations and trust.
-    """
+    """Whether one indicator passes the rules (``to_query``, for one document)."""
     rules = _rules(rules)
-    partial = indicator.get("partial", False)
     if indicator.get("deleted"):
         return False
     if rules.types and indicator.get("type") not in rules.types:
@@ -319,8 +321,6 @@ def matches(rules, indicator: dict, ctx: dict) -> bool:
         return False
     if rules.exclude_validation_issues and indicator.get("validation_issues"):
         return False
-    if partial:
-        return True
 
     score = indicator.get("score")
     if rules.min_score is not None and (score is None or score < rules.min_score):
@@ -353,12 +353,35 @@ def matches(rules, indicator: dict, ctx: dict) -> bool:
     return True
 
 
-def attribute_indicator(attribute: dict, event: Optional[dict] = None) -> dict:
-    """A partial indicator from one attribute, for values without one yet."""
+def _event_source(event: dict) -> dict:
+    """The event's source, as indicators record it (see indicators._Events)."""
+    source = event.get("source") or {}
+    if not source.get("type"):
+        source = {"type": "local" if event.get("organisation") else "unknown"}
+    return {
+        "type": source.get("type"),
+        "id": source.get("id"),
+        "name": source.get("name") or source.get("type"),
+        "event_count": 1,
+    }
+
+
+def attribute_indicator(
+    attribute: dict, event: Optional[dict] = None, ctx: Optional[dict] = None
+) -> dict:
+    """An indicator from one attribute and its event, for values without one.
+
+    Its source and organisation come from the event (unknown without one),
+    its last seen from the attribute, and with ``ctx`` its score is computed
+    as for any indicator, so every rule can be judged.
+    """
+    from app.services import scoring
+
+    event = event or {}
     # Tags as stored (dicts) or as outputs carry them (names).
     tag_names = [
         t.get("name") if isinstance(t, dict) else t
-        for t in (attribute.get("tags") or []) + ((event or {}).get("tags") or [])
+        for t in (attribute.get("tags") or []) + (event.get("tags") or [])
         if (t.get("name") if isinstance(t, dict) else t)
     ]
     tag_names += [
@@ -368,8 +391,11 @@ def attribute_indicator(attribute: dict, event: Optional[dict] = None) -> dict:
     tags, tlp, _ = indicators_repository.merge_tags(
         TLP_ALIASES.get(t.lower(), t) for t in tag_names
     )
-    return {
-        "partial": True,
+    source = _event_source(event)
+    embedded = event.get("organisation") or {}
+    org_id = embedded.get("id") or event.get("orgc_id") or event.get("org_id")
+    seen = attribute.get("last_seen") or attribute.get("timestamp")
+    indicator = {
         "type": attribute.get("type"),
         "value": attribute.get("value"),
         "categories": [attribute["category"]] if attribute.get("category") else [],
@@ -378,7 +404,20 @@ def attribute_indicator(attribute: dict, event: Optional[dict] = None) -> dict:
         "tlp": TLP_ALIASES.get(tlp, tlp),
         "warninglist_hits": attribute.get("warninglist_hits") or [],
         "validation_issues": attribute.get("validation_issues") or [],
+        "sources": [source],
+        "source_keys": [indicators_repository.source_key(source)],
+        "organisations": (
+            [{"id": org_id, "name": embedded.get("name"), "event_count": 1}]
+            if org_id is not None
+            else []
+        ),
+        "organisation_ids": [org_id] if org_id is not None else [],
+        "last_seen": int(seen) if seen else None,
+        "sightings": {},
     }
+    if ctx is not None:
+        indicator["score"], _ = scoring.score(indicator, ctx["scoring"], ctx["now"])
+    return indicator
 
 
 def indicators_for(attributes: Iterable[dict]) -> dict[str, dict]:
@@ -392,12 +431,20 @@ def indicators_for(attributes: Iterable[dict]) -> dict[str, dict]:
 def attribute_matches(
     rules, attribute: dict, found: dict, ctx: dict, event: Optional[dict] = None
 ) -> bool:
-    """Whether an attribute's indicator (or, failing one, the attribute) passes."""
+    """Whether an attribute passes: its indicator does (or, without one, an
+    indicator built from the attribute does), and its exclusions hold on the
+    attribute as it is now, whatever its indicator still says."""
+    rules = _rules(rules)
     key = indicators_repository.indicator_uuid(
         attribute.get("type"), attribute.get("value")
     )
-    indicator = found.get(key) or attribute_indicator(attribute, event)
-    return matches(rules, indicator, ctx)
+    current = attribute_indicator(attribute, event, ctx)
+    indicator = found.get(key)
+    if indicator is None:
+        return matches(rules, current, ctx)
+    return matches(rules, indicator, ctx) and matches(
+        exclusions_only(rules), current, ctx
+    )
 
 
 def exclusions_only(rules) -> profile_schemas.ProfileRules:

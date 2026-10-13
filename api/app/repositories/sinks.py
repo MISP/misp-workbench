@@ -290,7 +290,7 @@ def effective_filters(sink: sink_models.Sink, apply_filters: bool = True) -> dic
     """
     filters = dict(sink.filters or {})
     if filters.get("profile_id") is not None:
-        return _profile_filters(filters["profile_id"], apply_filters)
+        return _profile_filters(filters, apply_filters)
     if apply_filters:
         return filters
     return {
@@ -304,17 +304,20 @@ def effective_filters(sink: sink_models.Sink, apply_filters: bool = True) -> dic
     }
 
 
-def _profile_filters(profile_id: int, apply_filters: bool) -> dict:
-    """A profile in place of the sink's filters.
+def _profile_filters(filters: dict, apply_filters: bool) -> dict:
+    """A profile in place of the sink's selection filters.
 
     The query keeps its cheap prefilters (types, to_ids, warninglists); the
-    profile itself is checked per attribute. Sends from code
-    (``apply_filters=False``) keep the profile's exclusions only.
+    profile itself is checked per attribute. The sink's own exclusions
+    (``exclude_tags``, by default tlp:red, and warninglisted values) still
+    hold on top of the profile: they are what must never leave this sink,
+    whatever the profile allows. Sends from code (``apply_filters=False``)
+    keep the profile's exclusions only.
     """
     from app.repositories import detection_profiles
 
     try:
-        profile = detection_profiles.load(profile_id)
+        profile = detection_profiles.load(filters["profile_id"])
     except detection_profiles.ProfileNotFound:
         # Deleting a profile in use is refused; this is a race, not a default.
         raise SinkDeliveryError("the sink's detection profile no longer exists")
@@ -328,8 +331,9 @@ def _profile_filters(profile_id: int, apply_filters: bool) -> dict:
         "to_ids_only": rules.to_ids,
         "types": rules.types,
         "tags": [],
-        "exclude_tags": [],
-        "exclude_warninglisted": rules.exclude_warninglisted,
+        "exclude_tags": filters.get("exclude_tags") or [],
+        "exclude_warninglisted": rules.exclude_warninglisted
+        or filters.get("exclude_warninglisted", True),
         "indicator_mode": profile["granularity"] == "indicators",
         "min_score": 0,
     }

@@ -401,7 +401,7 @@ def _in_profile(profile: dict, matches: list[dict]) -> list[dict]:
                 detection_profiles.matches(
                     profile["rules"],
                     detection_profiles.attribute_indicator(
-                        {**a, "value": match["value"]}, a.get("event")
+                        {**a, "value": match["value"]}, a.get("event"), ctx
                     ),
                     ctx,
                 )

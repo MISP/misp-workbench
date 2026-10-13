@@ -388,17 +388,6 @@ async function submit() {
         </div>
         <div class="form-check form-switch mb-3">
           <input
-            id="sink-warninglisted"
-            class="form-check-input"
-            type="checkbox"
-            v-model="filters.exclude_warninglisted"
-          />
-          <label class="form-check-label" for="sink-warninglisted"
-            >Leave out values on an enabled warninglist</label
-          >
-        </div>
-        <div class="form-check form-switch mb-3">
-          <input
             id="sink-indicator-mode"
             class="form-check-input"
             type="checkbox"
@@ -451,20 +440,34 @@ async function submit() {
           />
           <div class="form-text">Empty sends attributes with any tags.</div>
         </div>
-        <div class="mb-3">
-          <label class="form-label">Never with tags</label>
-          <TagsSelect
-            modelClass="event"
-            :persist="false"
-            :selectedTags="excludeTagObjects"
-            @update:selectedTags="filters.exclude_tags = $event"
-          />
-          <div class="form-text">
-            Both lists match attribute and event tags alike. Type a pattern such
-            as <code>tlp:*</code> to match a whole namespace.
-          </div>
-        </div>
       </template>
+      <p v-if="filters.profile_id" class="form-text">
+        The sink's own exclusions below still hold on top of the profile.
+      </p>
+      <div class="form-check form-switch mb-3">
+        <input
+          id="sink-warninglisted"
+          class="form-check-input"
+          type="checkbox"
+          v-model="filters.exclude_warninglisted"
+        />
+        <label class="form-check-label" for="sink-warninglisted"
+          >Leave out values on an enabled warninglist</label
+        >
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Never with tags</label>
+        <TagsSelect
+          modelClass="event"
+          :persist="false"
+          :selectedTags="excludeTagObjects"
+          @update:selectedTags="filters.exclude_tags = $event"
+        />
+        <div class="form-text">
+          Both lists match attribute and event tags alike. Type a pattern such
+          as <code>tlp:*</code> to match a whole namespace.
+        </div>
+      </div>
 
       <div class="form-check form-switch mb-4">
         <input

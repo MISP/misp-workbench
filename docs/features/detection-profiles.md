@@ -52,7 +52,7 @@ Two profiles are created on install, to adjust or copy:
 |---|---|
 | [Exports and feeds](exports.md) | Pick the profile in the export form (`profile_id` in the API). The query then only narrows it (`*` for all of it). Available as NDJSON, plain text and Wazuh CDB. An incremental feed needs a profile of indicators |
 | [Streaming exports](api/streaming-exports.md) | `GET /indicators/export?profile=…` streams the indicators, `GET /attributes/export?profile=…` the attributes behind them. `since=` works on the indicator export |
-| [Sinks](sinks.md) | Pick the profile in the sink form. It replaces the sink's filters, and its granularity decides between attributes and consolidated indicators. Sends from notebooks and reactor scripts keep the profile's exclusions: TLP ceiling, excluded tags, warninglists and validation issues |
+| [Sinks](sinks.md) | Pick the profile in the sink form. It replaces the sink's selection filters, and its granularity decides between attributes and consolidated indicators. The sink's own exclusions (**Never with tags**, by default `tlp:red`, and **Leave out warninglisted**) still hold on top of the profile. Sends from notebooks and reactor scripts keep the profile's exclusions too: TLP ceiling, excluded tags, warninglists and validation issues |
 | [Bulk lookup](api/lookup.md) | `profile` keeps only values the profile selects |
 | [restSearch](api/rest-search.md) | `profile` keeps only attributes the profile selects. Like `excludeDecayed`, this applies after paging |
 | Indicators | `GET /indicators?profile=…` |
@@ -60,10 +60,19 @@ Two profiles are created on install, to adjust or copy:
 `profile` takes a profile's id or its name.
 
 Outputs that judge records one at a time (sinks, `/lookup`, restSearch) check
-each value's indicator. A value written in the last few seconds may not have
-one yet. It is then judged on its attribute, by the rules that can be
-answered from one attribute: type, category, tags, TLP, `to_ids`,
-warninglists and validation. Score, age, sources and trust don't apply to it.
+each value's indicator, and fail closed:
+
+- **Values written in the last few seconds.** They may not have an indicator
+  yet, so they are judged on one built from the attribute and its event:
+  the event gives the source and organisation, and the score is computed
+  the usual way. Every rule applies. A rule that can't be confirmed, such as
+  a source rule for an attribute whose event isn't known, keeps the value
+  out.
+- **Values whose indicator hasn't caught up yet.** An indicator can be a
+  sync behind its attributes. The rules that keep things out (TLP ceiling,
+  excluded tags, warninglists, validation issues) are also checked on the
+  attribute as it is now, so a value tagged `tlp:red` a second ago doesn't
+  leave on a stale indicator.
 
 A profile used by an export or a sink can't be deleted: the output would
 fall back to sending everything its own query matches.

@@ -470,3 +470,121 @@ class TestDetectionProfiles(ApiTester):
             "/attributes/restSearch", json={"profile": "Nope"}, headers=headers
         )
         assert unknown.status_code == status.HTTP_400_BAD_REQUEST
+
+
+class TestProfilesFailClosed(ApiTester):
+    """Fresh values are judged on every rule; stale indicators don't let
+    newly excluded values through; a sink's own exclusions hold."""
+
+    @pytest.fixture(scope="class", autouse=True)
+    def dataset(self, cleanup):
+        client = get_opensearch_client()
+        _reset_redis()
+        client.index(
+            index="misp-events",
+            id=FEED_EVENT,
+            body={
+                "uuid": FEED_EVENT,
+                "info": "fail closed",
+                "deleted": False,
+                "organisation": {"id": 901, "name": "Org 901"},
+                "source": {"type": "feed", "id": 5, "name": "Feed Five"},
+                "tags": [],
+            },
+        )
+        for uuid, value, tags in (
+            ("d9f00000-2000-4000-8000-000000000001", "tagged.example", [GALAXY]),
+            ("d9f00000-2000-4000-8000-000000000002", "plain.example", []),
+        ):
+            client.index(
+                index="misp-attributes",
+                id=uuid,
+                body={
+                    "uuid": uuid,
+                    "event_uuid": FEED_EVENT,
+                    "type": "domain",
+                    "category": "Network activity",
+                    "value": value,
+                    "to_ids": True,
+                    "deleted": False,
+                    "timestamp": NOW - DAY,
+                    "tags": [{"name": t} for t in tags],
+                },
+            )
+        client.indices.refresh(index="misp-events,misp-attributes")
+        indicators.rebuild()
+        client.indices.refresh(index=indicators.INDEX)
+        yield
+        _reset_redis()
+
+    @pytest.fixture(autouse=True)
+    def _clean(self, db: Session):
+        db.query(sink_models.Sink).delete()
+        db.query(profile_models.DetectionProfile).delete()
+        db.commit()
+        yield
+        db.query(sink_models.Sink).delete()
+        db.query(profile_models.DetectionProfile).delete()
+        db.commit()
+
+    def test_fresh_values_are_judged_on_every_rule(self):
+        event = get_opensearch_client().get(index="misp-events", id=FEED_EVENT)[
+            "_source"
+        ]
+        fresh = {
+            "type": "domain",
+            "category": "Network activity",
+            "value": "fresh.example",
+            "to_ids": True,
+            "timestamp": NOW,
+            "tags": [],
+        }
+        ctx = detection_profiles.context()
+
+        def passes(**rules):
+            return detection_profiles.attribute_matches(rules, fresh, {}, ctx, event)
+
+        assert passes()
+        # Its source comes from its event: a feed the profile leaves out.
+        assert not passes(exclude_sources=["feed:5"])
+        assert not passes(sources=["server:6"])
+        # Its score is computed (feed: 50), not skipped.
+        assert passes(min_score=50)
+        assert not passes(min_score=60)
+        assert not passes(min_source_trust=10)
+        # Without an event, its source is unknown: source rules fail closed.
+        assert not detection_profiles.attribute_matches(
+            {"sources": ["feed:5"]}, fresh, {}, ctx
+        )
+
+    def test_stale_indicators_dont_let_exclusions_through(self, db: Session):
+        client = get_opensearch_client()
+        uuid = "d9f00000-2000-4000-8000-000000000001"
+        source = client.get(index="misp-attributes", id=uuid)["_source"]
+        found = detection_profiles.indicators_for([source])
+        ctx = detection_profiles.context()
+        rules = {"tags": ["misp-galaxy:*"], "tlp_ceiling": "tlp:amber"}
+        assert detection_profiles.attribute_matches(rules, source, found, ctx)
+        # Tagged tlp:red a moment ago: the indicator hasn't caught up yet.
+        red = {**source, "tags": source["tags"] + [{"name": "tlp:red"}]}
+        assert not detection_profiles.attribute_matches(rules, red, found, ctx)
+
+    def test_sink_exclusions_hold_with_a_profile(self, db: Session, receiver):
+        url, received = receiver
+        profile = detection_profiles.create_profile(
+            db,
+            profile_schemas.DetectionProfileCreate(
+                name="Anything", granularity="attributes", rules={}
+            ),
+        )
+        sink = sinks_repository.create_sink(
+            db,
+            sink_schemas.SinkCreate(
+                name="careful",
+                type="webhook",
+                config={"url": url},
+                filters={"profile_id": profile.id, "exclude_tags": ["misp-galaxy:*"]},
+            ),
+        )
+        assert sinks_repository.deliver_event(sink, FEED_EVENT) == 1
+        assert [a["value"] for a in received[0]["attributes"]] == ["plain.example"]
