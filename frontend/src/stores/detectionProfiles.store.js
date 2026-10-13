@@ -44,5 +44,24 @@ export const useDetectionProfilesStore = defineStore({
     async count(id) {
       return await fetchWrapper.get(`${baseUrl}/${id}/count`);
     },
+    /**
+     * What the profile's next run changes against its last release, whether
+     * its gate would hold it, its recent runs and outputs. With `rules`, a
+     * dry run of those rules instead.
+     */
+    async changes(id, rules = null) {
+      return rules
+        ? await fetchWrapper.post(`${baseUrl}/${id}/changes`, { rules })
+        : await fetchWrapper.get(`${baseUrl}/${id}/changes`);
+    },
+    /**
+     * Release the previewed changes, named by the preview's fingerprint (a
+     * 409 when they moved since); the outputs that waited run.
+     */
+    async approveChanges(id, fingerprint) {
+      return await fetchWrapper.post(`${baseUrl}/${id}/changes/approve`, {
+        fingerprint,
+      });
+    },
   },
 });

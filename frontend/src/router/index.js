@@ -59,6 +59,7 @@ import {
   IndexProfiles,
   AddProfile,
   EditProfile,
+  ProfileChanges,
   AddSink,
   EditSink,
   AddExport,
@@ -146,6 +147,11 @@ export const router = createRouter({
     {
       path: "/detection-profiles/update/:id",
       component: EditProfile,
+      props: true,
+    },
+    {
+      path: "/detection-profiles/:id/changes",
+      component: ProfileChanges,
       props: true,
     },
     { path: "/settings/runtime", component: IndexRuntimeSettings },

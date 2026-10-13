@@ -41,6 +41,8 @@ const title = computed(() => {
       return `object deleted`;
     case "hunt.result.changed":
       return `hunt matches`;
+    case "detection_profile.changes.held":
+      return `profile changes held for approval`;
     default:
       return props.notification?.title || "unknown notification";
   }
@@ -125,6 +127,20 @@ const deltaMatches = computed(() => {
         <span class="badge bg-info text-dark me-2">{{
           notification.payload.object_name
         }}</span>
+      </div>
+    </div>
+    <div v-else-if="notification.type.startsWith('detection_profile.changes')">
+      <div class="text-muted small">
+        {{ title }}: <code>{{ notification.payload.profile_name }}</code>
+      </div>
+      <div>
+        <span class="badge text-bg-success me-1"
+          >+{{ notification.payload.added }}</span
+        >
+        <span class="badge text-bg-danger me-2"
+          >−{{ notification.payload.removed }}</span
+        >
+        {{ (notification.payload.reasons || []).join("; ") }}
       </div>
     </div>
     <div v-else-if="notification.type.startsWith('hunt.result.changed')">

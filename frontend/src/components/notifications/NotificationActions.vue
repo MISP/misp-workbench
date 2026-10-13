@@ -12,6 +12,8 @@ const emit = defineEmits(["notification-unfollowed", "notification-deleted"]);
 const entityRoute = computed(() => {
   const { entity_type, payload } = props.notification;
   if (entity_type === "hunt") return `/hunts/${payload.hunt_id}`;
+  if (entity_type === "detection_profile")
+    return `/detection-profiles/${payload.profile_id}/changes`;
   if (entity_type === "event") return `/events/${payload.event_uuid}`;
   if (entity_type === "attribute" || entity_type === "object")
     return `/events/${payload.event_uuid}`;

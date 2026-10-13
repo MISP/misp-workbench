@@ -118,6 +118,13 @@ async function remove(profile) {
                   title="Only approved indicators; the rest wait in the review queue"
                   >requires approval</span
                 >
+                <RouterLink
+                  v-if="p.held"
+                  :to="`/detection-profiles/${p.id}/changes`"
+                  class="badge text-bg-warning ms-2 text-decoration-none"
+                  title="Some changes are kept out of its outputs until approved"
+                  >changes held</RouterLink
+                >
                 <div v-if="p.description" class="small text-muted">
                   {{ p.description }}
                 </div>
@@ -135,6 +142,12 @@ async function remove(profile) {
                 >
                   Explore
                 </button>
+                <RouterLink
+                  :to="`/detection-profiles/${p.id}/changes`"
+                  class="btn btn-outline-secondary btn-sm me-1"
+                  title="What its next run changes, and its recent runs"
+                  >Changes</RouterLink
+                >
                 <RouterLink
                   :to="`/detection-profiles/update/${p.id}`"
                   class="btn btn-outline-primary btn-sm me-1"

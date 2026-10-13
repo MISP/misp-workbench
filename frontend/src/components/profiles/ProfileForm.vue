@@ -1,11 +1,14 @@
 <script setup>
 import { reactive, ref, computed, watch } from "vue";
+import { storeToRefs } from "pinia";
 import { router } from "@/router";
 import {
+  useAuthStore,
   useDetectionProfilesStore,
   useIndicatorsStore,
   useToastsStore,
 } from "@/stores";
+import { authHelper } from "@/helpers";
 import TagsSelect from "@/components/tags/TagsSelect.vue";
 import AttributeTypeMultiSelect from "@/components/enums/AttributeTypeMultiSelect.vue";
 import ScoreBadge from "@/components/indicators/ScoreBadge.vue";
@@ -16,6 +19,15 @@ const props = defineProps({ profile: { type: Object, default: null } });
 const profilesStore = useDetectionProfilesStore();
 const indicatorsStore = useIndicatorsStore();
 const toastsStore = useToastsStore();
+const { scopes } = storeToRefs(useAuthStore());
+// What goes out without a review is for reviewers: auto-approval, the
+// approval gate, and turning approval or rejections off (the API refuses
+// the rest).
+const canReview = computed(() =>
+  authHelper.hasScope(scopes.value, "indicators:review"),
+);
+const wasRequired = !!props.profile?.rules?.require_approval;
+const wasExcluded = !!props.profile?.rules?.exclude_rejected;
 
 const TLPS = ["tlp:clear", "tlp:green", "tlp:amber", "tlp:amber+strict"];
 const DEFAULT_RULES = {
@@ -44,6 +56,24 @@ const form = reactive({
   granularity: props.profile?.granularity ?? "indicators",
   auto_approve: props.profile?.auto_approve ?? false,
 });
+const RISK_FLAGS = [
+  ["popular_domain", "popular domain"],
+  ["shared_infrastructure", "shared hosting, CDN or cloud"],
+  ["warninglisted", "on another warninglist"],
+  ["new_source", "only from a new source"],
+  ["low_score", "low score"],
+];
+const gate = reactive({
+  enabled: false,
+  max_additions: null,
+  max_removals: null,
+  hold_on_risk: [],
+  spike_factor: null,
+  low_score: 40,
+  new_source_days: 7,
+  ...(props.profile?.gate ?? {}),
+});
+const blankAsNull = (v) => (v === "" || v === undefined ? null : v);
 const rules = reactive({
   ...DEFAULT_RULES,
   ...(props.profile?.rules ?? {}),
@@ -126,7 +156,16 @@ async function explore() {
 
 async function submit() {
   apiError.value = null;
-  const payload = { ...form, rules: payloadRules() };
+  const payload = {
+    ...form,
+    rules: payloadRules(),
+    gate: {
+      ...gate,
+      max_additions: blankAsNull(gate.max_additions),
+      max_removals: blankAsNull(gate.max_removals),
+      spike_factor: blankAsNull(gate.spike_factor),
+    },
+  };
   try {
     if (isEdit.value) {
       await profilesStore.update(props.profile.id, payload);
@@ -446,7 +485,7 @@ async function submit() {
               class="form-check-input"
               type="checkbox"
               v-model="rules.require_approval"
-              :disabled="form.auto_approve"
+              :disabled="form.auto_approve || (!canReview && wasRequired)"
             />
             <label class="form-check-label" for="profile-require-approval"
               >Require approval</label
@@ -464,7 +503,7 @@ async function submit() {
               class="form-check-input"
               type="checkbox"
               :checked="rules.exclude_rejected || rules.require_approval"
-              :disabled="rules.require_approval"
+              :disabled="rules.require_approval || (!canReview && wasExcluded)"
               @change="rules.exclude_rejected = $event.target.checked"
             />
             <label class="form-check-label" for="profile-exclude-rejected"
@@ -482,7 +521,7 @@ async function submit() {
               class="form-check-input"
               type="checkbox"
               v-model="form.auto_approve"
-              :disabled="rules.require_approval"
+              :disabled="rules.require_approval || !canReview"
             />
             <label class="form-check-label" for="profile-auto-approve"
               >Auto-approve what it selects</label
@@ -494,6 +533,120 @@ async function submit() {
           </div>
         </div>
       </div>
+
+      <h6 class="fw-semibold">Approval gate</h6>
+      <p class="form-text mt-0">
+        Keeps large or risky changes out of its exports, feeds and sinks keeping
+        in step, until someone approves its
+        <RouterLink
+          v-if="isEdit"
+          :to="`/detection-profiles/${profile.id}/changes`"
+          >changes</RouterLink
+        ><template v-else>changes</template>. Everything else goes out as usual.
+      </p>
+      <div v-if="!canReview" class="form-text mb-2">
+        Changing the gate, auto-approval, or turning approval or rejections off
+        needs the <code>indicators:review</code> scope.
+      </div>
+      <div class="form-check form-switch mb-2">
+        <input
+          id="profile-gate"
+          class="form-check-input"
+          type="checkbox"
+          v-model="gate.enabled"
+          :disabled="!canReview"
+        />
+        <label class="form-check-label" for="profile-gate"
+          >Hold large or risky changes</label
+        >
+      </div>
+      <fieldset v-if="gate.enabled" class="row g-3 mb-3" :disabled="!canReview">
+        <div class="col-6 col-md-3">
+          <label class="form-label small" for="gate-additions"
+            >More additions than</label
+          >
+          <input
+            id="gate-additions"
+            class="form-control"
+            type="number"
+            min="0"
+            v-model.number="gate.max_additions"
+            placeholder="any number"
+          />
+        </div>
+        <div class="col-6 col-md-3">
+          <label class="form-label small" for="gate-removals"
+            >More removals than</label
+          >
+          <input
+            id="gate-removals"
+            class="form-control"
+            type="number"
+            min="0"
+            v-model.number="gate.max_removals"
+            placeholder="any number"
+          />
+        </div>
+        <div class="col-6 col-md-3">
+          <label class="form-label small" for="gate-spike"
+            >Times the usual additions</label
+          >
+          <input
+            id="gate-spike"
+            class="form-control"
+            type="number"
+            min="1.5"
+            step="0.5"
+            v-model.number="gate.spike_factor"
+            placeholder="no spike check"
+          />
+        </div>
+        <div class="col-6 col-md-3">
+          <label class="form-label small" for="gate-low-score"
+            >Low score below</label
+          >
+          <input
+            id="gate-low-score"
+            class="form-control"
+            type="number"
+            min="0"
+            max="100"
+            v-model.number="gate.low_score"
+          />
+        </div>
+        <div class="col-12 col-md-9">
+          <div class="form-label small">Any addition flagged</div>
+          <div
+            v-for="[flag, label] in RISK_FLAGS"
+            :key="flag"
+            class="form-check form-check-inline"
+          >
+            <input
+              :id="`gate-risk-${flag}`"
+              class="form-check-input"
+              type="checkbox"
+              :checked="gate.hold_on_risk.includes(flag)"
+              @change="toggle(gate.hold_on_risk, flag)"
+            />
+            <label class="form-check-label" :for="`gate-risk-${flag}`">{{
+              label
+            }}</label>
+          </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <label class="form-label small" for="gate-new-source"
+            >A source is new for (days)</label
+          >
+          <input
+            id="gate-new-source"
+            class="form-control"
+            type="number"
+            min="1"
+            max="365"
+            v-model.number="gate.new_source_days"
+          />
+        </div>
+      </fieldset>
 
       <div v-if="apiError" class="alert alert-danger">{{ apiError }}</div>
       <div class="d-flex justify-content-end gap-2">

@@ -160,6 +160,82 @@ Where it applies:
 A profile used by an export or a sink can't be deleted: the output would
 fall back to sending everything its own query matches.
 
+## Change preview and approval gate
+
+Each profile has a **Changes** page (the *Changes* button on the profile
+list): what its next run changes in the controls it feeds, against what it
+last released. A *run* is one of its exports or feeds, or a sync of a sink
+keeping in step with it.
+
+- **Totals:** how many indicators it selects now and at its last release, and
+  how many its next run adds and removes.
+- **Additions** by type and source, **removals** by type and why they leave
+  (`expired`, `score`, `rejected`, …), with examples.
+- **Risk flags** on additions: on a popular-sites list (Tranco, Cisco
+  Umbrella, …), in shared hosting, CDN or cloud ranges, on another
+  warninglist, reported only by a feed or server added recently, or with a
+  low score.
+- **Recent runs**, with what each added and removed, so a spike stands out.
+- **Outputs** reading the profile, and whether the gate applies to them.
+
+<img src="../../screenshots/detection-profiles/misp-workbench-3_detection-profiles_changes.png#only-light" alt="A profile's changes, held for approval" style="max-width: 100%; height: auto;">
+<img src="../../screenshots/detection-profiles/misp-workbench-3_detection-profiles_changes-dark.png#only-dark" alt="A profile's changes, held for approval" style="max-width: 100%; height: auto;">
+
+### Holding large or risky changes
+
+Turn on **Hold large or risky changes** in a profile, and what trips the
+gate is held back from its outputs until someone approves it, while
+everything else goes out as usual:
+
+| When a run… | Held back | Goes out |
+|---|---|---|
+| adds something carrying a chosen risk flag | those additions | the other additions, removals, updates |
+| adds more than a number of indicators, or a set number of times its usual (the median of recent runs, from 20 additions up) | all of its additions: the volume is the anomaly | removals, updates |
+| removes more than a number of indicators | its removals: they stay in the outputs | additions, updates, and removals an exclusion calls for |
+
+So outputs never go stale over one risky change. An exclusion is never
+held: an indicator tagged past the TLP ceiling or with an excluded tag,
+warninglisted, with a validation issue, rejected, no longer flagged for IDS
+or deleted leaves the outputs at once, removals held or not. Neither is a
+sink's own exclusion. Every user who can review
+indicators (`indicators:review`) is notified once per hold. **Approve
+changes** releases exactly the changes on the page, held ones included, and
+runs the profile's outputs. If they moved since the page was loaded
+(something joined or left), the approval is refused and the page shows them
+as they are now, to review again. A hold that no longer applies (the flag is
+gone, the gate was loosened) is lifted by the next run or check, and what
+it held goes out.
+
+A run only ever sends what its profile released: an indicator joining
+between the check and the run waits for the next run, and its check. The
+same goes for a gated profile pulled over HTTP (`/indicators/export` with the
+profile, deltas included): the pull releases what the gate lets through
+first, and sends nothing it holds. When held changes are released, their
+indicators count as changed then, so a delta pulled since carries them.
+
+Changing a profile's gate, making it auto-approve (or changing an
+auto-approve profile's rules), and turning *require approval* or *leave out
+rejected* off decide what goes out without a review: they need
+`indicators:review` too, not only the right to edit profiles.
+
+The check runs before every run, and every 5 minutes between runs, so a
+hold shows up (and is notified) before the next run comes.
+
+Lookups, restSearch and sinks sending published events judge one value at a
+time as it comes; they aren't runs and nothing is held from them. A
+profile's first run sets its baseline and holds nothing.
+
+"Very new" sources are feeds and servers added in the last days (7 by
+default). Those added before this was recorded never count as new.
+
+### Dry runs
+
+`GET /detection-profiles/{id}/changes` returns the same preview, and what
+the next run would hold back and why (`held_added`, `held_removed`,
+`reasons`). `POST` it with `{"rules": {…}}` to
+preview rules not saved yet: what saving them would change. A CI-style check
+in the SOC's own tooling can fail a change on either.
+
 ## API
 
 | Endpoint | Scope | Use |
@@ -168,9 +244,12 @@ fall back to sending everything its own query matches.
 | `GET /detection-profiles/{id}` | `detection_profiles:read` | One profile |
 | `GET /detection-profiles/{id}/count` | `detection_profiles:read` | How many indicators it selects now, and a few of them |
 | `POST /detection-profiles/preview` | `detection_profiles:read` | The same, for rules not saved yet (`{"rules": {…}}`) |
-| `POST /detection-profiles` | `detection_profiles:create` | Create one (`name`, `description`, `granularity`, `rules`, `auto_approve`) |
+| `POST /detection-profiles` | `detection_profiles:create` | Create one (`name`, `description`, `granularity`, `rules`, `auto_approve`, `gate`) |
 | `PATCH /detection-profiles/{id}` | `detection_profiles:update` | Change one |
 | `DELETE /detection-profiles/{id}` | `detection_profiles:delete` | Delete one (409 while an export or sink uses it) |
+| `GET /detection-profiles/{id}/changes` | `detection_profiles:read` | What its next run changes, whether it would be held, its recent runs and outputs |
+| `POST /detection-profiles/{id}/changes` | `detection_profiles:read` | The same for unsaved rules (`{"rules": {…}}`) |
+| `POST /detection-profiles/{id}/changes/approve` | `indicators:review` | Release the previewed changes, held ones included, named by the preview's `fingerprint` (409 when they moved); its outputs run |
 
 Every built-in role can read profiles. Changing them takes the create,
 update or delete scope, which only admins have by default.

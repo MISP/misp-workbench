@@ -10526,6 +10526,174 @@
         }
       }
     },
+    "/detection-profiles/{profile_id}/changes": {
+      "get": {
+        "tags": [
+          "Detection profiles"
+        ],
+        "summary": "Preview Changes",
+        "description": "What the profile's next run changes against its last release, whether\nthe gate would hold it, and the recent runs.",
+        "operationId": "preview_changes_detection_profiles__profile_id__changes_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "detection_profiles:read"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "profile_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Profile Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChangePreview"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Detection profiles"
+        ],
+        "summary": "Dry Run Changes",
+        "description": "The same, for rules not saved yet: what saving them would change.",
+        "operationId": "dry_run_changes_detection_profiles__profile_id__changes_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "detection_profiles:read"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "profile_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Profile Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangePreviewRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChangePreview"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/detection-profiles/{profile_id}/changes/approve": {
+      "post": {
+        "tags": [
+          "Detection profiles"
+        ],
+        "summary": "Approve Changes",
+        "description": "Release the previewed changes (named by their fingerprint), and run\nthe outputs that waited for them. 409 when they moved since.",
+        "operationId": "approve_changes_detection_profiles__profile_id__changes_approve_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "indicators:review"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "profile_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Profile Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApproveChangesRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfileRelease"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/indicators/review": {
       "get": {
         "tags": [
@@ -15771,6 +15939,21 @@
         ],
         "title": "ApiKeyUpdate"
       },
+      "ApproveChangesRequest": {
+        "properties": {
+          "fingerprint": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 64,
+            "title": "Fingerprint"
+          }
+        },
+        "type": "object",
+        "required": [
+          "fingerprint"
+        ],
+        "title": "ApproveChangesRequest"
+      },
       "Attribute": {
         "properties": {
           "object_uuid": {
@@ -16578,6 +16761,257 @@
         ],
         "title": "Body_upload_feed_file_feeds_upload_post"
       },
+      "ChangePreview": {
+        "properties": {
+          "generated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Generated At"
+          },
+          "fingerprint": {
+            "type": "string",
+            "title": "Fingerprint"
+          },
+          "gate": {
+            "$ref": "#/components/schemas/ProfileGate"
+          },
+          "held": {
+            "type": "boolean",
+            "title": "Held",
+            "default": false
+          },
+          "held_since": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Held Since"
+          },
+          "reasons": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Reasons",
+            "default": []
+          },
+          "held_added": {
+            "type": "integer",
+            "title": "Held Added",
+            "default": 0
+          },
+          "held_removed": {
+            "type": "integer",
+            "title": "Held Removed",
+            "default": 0
+          },
+          "changes": {
+            "$ref": "#/components/schemas/ChangeSummary"
+          },
+          "releases": {
+            "items": {
+              "$ref": "#/components/schemas/ProfileRelease"
+            },
+            "type": "array",
+            "title": "Releases",
+            "default": []
+          },
+          "consumers": {
+            "items": {
+              "$ref": "#/components/schemas/ProfileConsumer"
+            },
+            "type": "array",
+            "title": "Consumers",
+            "default": []
+          }
+        },
+        "type": "object",
+        "required": [
+          "generated_at",
+          "fingerprint",
+          "gate",
+          "changes"
+        ],
+        "title": "ChangePreview"
+      },
+      "ChangePreviewRequest": {
+        "properties": {
+          "rules": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProfileRules"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "title": "ChangePreviewRequest",
+        "description": "Rules to preview instead of the profile's own (a dry run of an edit)."
+      },
+      "ChangeSample": {
+        "properties": {
+          "uuid": {
+            "type": "string",
+            "title": "Uuid"
+          },
+          "type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Type"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          },
+          "score": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score"
+          },
+          "detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "required": [
+          "uuid"
+        ],
+        "title": "ChangeSample"
+      },
+      "ChangeSummary": {
+        "properties": {
+          "first": {
+            "type": "boolean",
+            "title": "First",
+            "default": false
+          },
+          "members": {
+            "type": "integer",
+            "title": "Members",
+            "default": 0
+          },
+          "previous_members": {
+            "type": "integer",
+            "title": "Previous Members",
+            "default": 0
+          },
+          "added": {
+            "type": "integer",
+            "title": "Added",
+            "default": 0
+          },
+          "removed": {
+            "type": "integer",
+            "title": "Removed",
+            "default": 0
+          },
+          "added_by_type": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Added By Type",
+            "default": {}
+          },
+          "added_by_source": {
+            "items": {
+              "$ref": "#/components/schemas/SourceCount"
+            },
+            "type": "array",
+            "title": "Added By Source",
+            "default": []
+          },
+          "removed_by_type": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Removed By Type",
+            "default": {}
+          },
+          "removed_by_reason": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Removed By Reason",
+            "default": {}
+          },
+          "risks": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/RiskSummary"
+            },
+            "type": "object",
+            "title": "Risks",
+            "default": {}
+          },
+          "added_sample": {
+            "items": {
+              "$ref": "#/components/schemas/ChangeSample"
+            },
+            "type": "array",
+            "title": "Added Sample",
+            "default": []
+          },
+          "removed_sample": {
+            "items": {
+              "$ref": "#/components/schemas/ChangeSample"
+            },
+            "type": "array",
+            "title": "Removed Sample",
+            "default": []
+          },
+          "usual_added": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Usual Added"
+          }
+        },
+        "type": "object",
+        "title": "ChangeSummary",
+        "description": "What a profile's next run changes, against its last release."
+      },
       "CorrelationDeleteResponse": {
         "properties": {
           "message": {
@@ -16744,6 +17178,16 @@
             "title": "Auto Approve",
             "default": false
           },
+          "gate": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProfileGate"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "id": {
             "type": "integer",
             "title": "Id"
@@ -16764,6 +17208,11 @@
               }
             ],
             "title": "Updated At"
+          },
+          "held": {
+            "type": "boolean",
+            "title": "Held",
+            "default": false
           }
         },
         "type": "object",
@@ -16824,6 +17273,16 @@
             "type": "boolean",
             "title": "Auto Approve",
             "default": false
+          },
+          "gate": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProfileGate"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "type": "object",
@@ -16893,6 +17352,16 @@
               }
             ],
             "title": "Auto Approve"
+          },
+          "gate": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProfileGate"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "type": "object",
@@ -24479,6 +24948,124 @@
         ],
         "title": "PreviewPullResponse"
       },
+      "ProfileConsumer": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "title": "Kind"
+          },
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          },
+          "gated": {
+            "type": "boolean",
+            "title": "Gated",
+            "default": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "kind",
+          "id",
+          "name"
+        ],
+        "title": "ProfileConsumer"
+      },
+      "ProfileGate": {
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled",
+            "default": false
+          },
+          "max_additions": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Additions"
+          },
+          "max_removals": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Removals"
+          },
+          "hold_on_risk": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "popular_domain",
+                "shared_infrastructure",
+                "warninglisted",
+                "new_source",
+                "low_score"
+              ]
+            },
+            "type": "array",
+            "title": "Hold On Risk",
+            "default": []
+          },
+          "spike_factor": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 100.0,
+                "minimum": 1.5
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Spike Factor"
+          },
+          "low_score": {
+            "type": "integer",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Low Score",
+            "default": 40
+          },
+          "new_source_days": {
+            "type": "integer",
+            "maximum": 365.0,
+            "minimum": 1.0,
+            "title": "New Source Days",
+            "default": 7
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "ProfileGate",
+        "description": "When a run's changes wait for approval instead of going out.\n\nChanges are what the profile selects now against what it last released."
+      },
       "ProfilePreview": {
         "properties": {
           "count": {
@@ -24550,6 +25137,76 @@
           "name"
         ],
         "title": "ProfileRef"
+      },
+      "ProfileRelease": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "members": {
+            "type": "integer",
+            "title": "Members"
+          },
+          "added": {
+            "type": "integer",
+            "title": "Added"
+          },
+          "removed": {
+            "type": "integer",
+            "title": "Removed"
+          },
+          "reasons": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Reasons",
+            "default": []
+          },
+          "user_email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Email"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "status",
+          "members",
+          "added",
+          "removed",
+          "created_at"
+        ],
+        "title": "ProfileRelease"
       },
       "ProfileRules": {
         "properties": {
@@ -25592,6 +26249,25 @@
           "rejected"
         ],
         "title": "ReviewSummary"
+      },
+      "RiskSummary": {
+        "properties": {
+          "count": {
+            "type": "integer",
+            "title": "Count",
+            "default": 0
+          },
+          "sample": {
+            "items": {
+              "$ref": "#/components/schemas/ChangeSample"
+            },
+            "type": "array",
+            "title": "Sample",
+            "default": []
+          }
+        },
+        "type": "object",
+        "title": "RiskSummary"
       },
       "Role": {
         "properties": {
@@ -28096,6 +28772,29 @@
         },
         "type": "object",
         "title": "SinkUpdate"
+      },
+      "SourceCount": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "title": "Key"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "count": {
+            "type": "integer",
+            "title": "Count"
+          }
+        },
+        "type": "object",
+        "required": [
+          "key",
+          "name",
+          "count"
+        ],
+        "title": "SourceCount"
       },
       "SourceOverlap": {
         "properties": {

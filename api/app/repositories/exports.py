@@ -463,9 +463,13 @@ def _run_profile(db: Session, db_export: export_models.Export) -> None:
     An incremental one is a profile *feed*: each delta says which indicators
     joined the profile, changed, or left it (and why), whatever made them
     leave, by diffing the member set with the previous run's full artifact.
-    """
-    from app.repositories import detection_profiles, stream_exports
 
+    A run of the profile: it sends what the profile released, which leaves
+    out the changes its approval gate holds (see profile_gate).
+    """
+    from app.repositories import detection_profiles, profile_gate, stream_exports
+
+    profile_gate.ready(db_export.profile_id)
     profile = detection_profiles.load(db_export.profile_id)
     index = (
         stream_exports.INDICATORS_INDEX
@@ -485,6 +489,8 @@ def _run_profile(db: Session, db_export: export_models.Export) -> None:
         db_export.format,
         index=index,
         profile=profile,
+        # Just released above: the export sends that release.
+        gate_checked=True,
     )
     stored_key, size, records, checksum = _stream_to_storage(
         None,
@@ -524,7 +530,7 @@ def _previous_members(storage_key: str):
 
 
 def _write_membership_delta(db, db_export, profile, cursor: int, previous) -> None:
-    from app.repositories import detection_profiles, profile_membership
+    from app.repositories import detection_profiles, profile_gate, profile_membership
 
     previous_key, details_key = previous
     since = db_export.cursor
@@ -538,6 +544,20 @@ def _write_membership_delta(db, db_export, profile, cursor: int, previous) -> No
         },
     )
     try:
+        released = profile_gate.scope(profile)
+        if released is not None:
+            exclusions = profile_gate.still_held(profile["rules"])
+            ctx = detection_profiles.context(cursor)
+            diff.keep_released(
+                released["released"],
+                profile_gate.held_removed_key(profile["id"]),
+                # A removal an exclusion calls for goes out, held or not.
+                still_allowed=lambda docs: [
+                    d["uuid"]
+                    for d in docs
+                    if detection_profiles.matches(exclusions, d, ctx)
+                ],
+            )
 
         def lines():
             for batch in diff.removals(details_key):

@@ -1,5 +1,7 @@
+from datetime import datetime, timezone
+
 from app.database import Base
-from sqlalchemy import JSON, Boolean, Column, ForeignKey, Integer, String
+from sqlalchemy import JSON, Boolean, Column, DateTime, ForeignKey, Integer, String
 
 
 class Server(Base):
@@ -7,6 +9,12 @@ class Server(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, unique=True)
+    # When it was added; unknown for servers added before this was recorded.
+    created_at = Column(
+        DateTime(timezone=True),
+        nullable=True,
+        default=lambda: datetime.now(timezone.utc),
+    )
     url = Column(String, nullable=False)
     authkey = Column(String, nullable=False)  # TODO: encrypted
     org_id = Column(Integer, ForeignKey("organisations.id"), nullable=False)

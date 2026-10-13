@@ -517,7 +517,7 @@ def deliver_membership(sink: sink_models.Sink) -> int:
     is retried with the same changes. The sink's own exclusions narrow the
     members like the profile's rules do.
     """
-    from app.repositories import detection_profiles, profile_membership
+    from app.repositories import detection_profiles, profile_gate, profile_membership
     from app.services.redis import get_redis_client
 
     filters = sink.filters or {}
@@ -525,6 +525,9 @@ def deliver_membership(sink: sink_models.Sink) -> int:
         profile = detection_profiles.load(filters["profile_id"])
     except detection_profiles.ProfileNotFound:
         raise SinkDeliveryError("the sink's detection profile no longer exists")
+    # A run of the profile: release its changes, less what its approval
+    # gate holds; only released members are sent.
+    profile_gate.ready(profile["id"])
     rules = profile["rules"]
     rules = rules.model_copy(
         update={
@@ -542,10 +545,23 @@ def deliver_membership(sink: sink_models.Sink) -> int:
     if not redis.set(lock, "1", nx=True, ex=MEMBERSHIP_LOCK_SECONDS):
         return 0
     try:
-        diff = profile_membership.Diff(
-            owner, rules, detection_profiles.context(), state
-        )
+        ctx = detection_profiles.context()
+        diff = profile_membership.Diff(owner, rules, ctx, state)
         try:
+            # Only what the profile released: whatever joined since the
+            # check above waits for the next sync, and a removal it holds
+            # isn't sent, unless the sink's own exclusions call for it.
+            if profile_gate.scope(profile) is not None:
+                exclusions = profile_gate.still_held(rules)
+                diff.keep_released(
+                    profile_gate.baseline_key(profile["id"]),
+                    profile_gate.held_removed_key(profile["id"]),
+                    still_allowed=lambda docs: [
+                        d["uuid"]
+                        for d in docs
+                        if detection_profiles.matches(exclusions, d, ctx)
+                    ],
+                )
             batches = itertools.chain(
                 (
                     [formatters.removal_record(r) for r in batch]

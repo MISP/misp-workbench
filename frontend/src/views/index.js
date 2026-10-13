@@ -35,6 +35,7 @@ export { default as ReviewQueue } from "./indicators/ReviewQueue.vue";
 export { default as IndexProfiles } from "./profiles/IndexProfiles.vue";
 export { default as AddProfile } from "./profiles/AddProfile.vue";
 export { default as EditProfile } from "./profiles/EditProfile.vue";
+export { default as ProfileChanges } from "./profiles/ProfileChanges.vue";
 export { default as ViewGalaxy } from "./galaxies/ViewGalaxy.vue";
 export { default as ViewObject } from "./objects/ViewObject.vue";
 export { default as EditObject } from "./objects/EditObject.vue";

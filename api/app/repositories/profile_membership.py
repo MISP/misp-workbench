@@ -210,6 +210,43 @@ class Diff:
             if changed:
                 yield changed
 
+    def keep_released(
+        self, released_key: str, held_removed_key: str, still_allowed=None
+    ) -> None:
+        """Send only what a profile released (see profile_gate): leave out
+        additions not in ``released_key``, and keep the members whose
+        removal it holds (``held_removed_key``). ``still_allowed(docs)``
+        narrows those to the ones a consumer's own exclusions still let
+        through: a removal they call for always goes out."""
+        pending = list(self.redis.sdiff([self.added_key, released_key]))
+        for start in range(0, len(pending), CHUNK):
+            self.withhold(pending[start : start + CHUNK])
+        held = [
+            m.decode() if isinstance(m, bytes) else m
+            for m in self.redis.sinter([self.removed_key, held_removed_key])
+        ]
+        for start in range(0, len(held), CHUNK):
+            ids = held[start : start + CHUNK]
+            if still_allowed is not None:
+                found = indicators_repository.get_indicators(ids)
+                allowed = set(still_allowed([found[i] for i in ids if i in found]))
+                ids = [i for i in ids if i in allowed]
+            self.retain(ids)
+
+    def retain(self, ids: list[str]) -> None:
+        """Keep members that would leave: no removal is sent for them, they
+        stay delivered, and the next run considers them again."""
+        if ids:
+            self.redis.sadd(self.next_key, *ids)
+            self.redis.srem(self.removed_key, *ids)
+
+    def withhold_added(self) -> None:
+        """Leave out every addition (see withhold)."""
+        self.redis.sdiffstore(self.next_key, [self.next_key, self.added_key])
+        # Storing over a key drops its expiry.
+        self.redis.expire(self.next_key, 6 * 3600)
+        self.redis.delete(self.added_key)
+
     def withhold(self, ids: list[str]) -> None:
         """Leave members out of this run: not sent, not kept as delivered, so
         the next run considers them again."""
