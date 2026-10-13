@@ -52,7 +52,7 @@ class TestEntries:
             ("10.1.2.3/8", ("cidr", "10.0.0.0/8")),
             ("*.Corp.Example", ("suffix", "corp.example")),
             (".corp.example", ("suffix", "corp.example")),
-            ("/^vpn-\\d+\\./i", ("regex", "/^vpn-\\d+\\./i")),
+            ("/vpn-\\d+\\./i", ("regex", "/vpn-\\d+\\./i")),
             ("evil.example", ("value", "evil.example")),
             ("1.2.3.4", ("value", "1.2.3.4")),
         ],
@@ -382,7 +382,8 @@ class TestLocalWarninglists(ApiTester):
         assert imported.json()["added"] == 1
 
         # Expired entries go; a list attached to a profile can't.
-        assert local_warninglists.sweep(db)["expired"] == 1
+        swept = local_warninglists.sweep(db)
+        assert swept["expired"] == 1
         db.add(
             profile_models.DetectionProfile(
                 name="Attaching",
@@ -671,7 +672,8 @@ class TestListLifecycle(ApiTester):
         db_list = db.get(warninglist_models.Warninglist, list_id)
         db_list.synced_at = None
         db.commit()
-        assert local_warninglists.sweep(db)["synced"] == 1
+        swept = local_warninglists.sweep(db)
+        assert swept["synced"] == 1
 
         assert client.delete(url, headers=headers).status_code == 204
         assert local_warninglists.members(list_id) == set()
