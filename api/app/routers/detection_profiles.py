@@ -72,6 +72,23 @@ def _your_lists(db: Session, user) -> dict:
     return {w.id: w.name for w in local_warninglists.visible(db, user)}
 
 
+def _only_your_lists(db: Session, user, rules, attached=()) -> None:
+    """Rules previewed or dry-run may only attach lists the caller can see
+    (or, for a profile, ones it attaches already): comparing what they leave
+    out would tell another organisation's list's members."""
+    from app.repositories import local_warninglists
+
+    if rules is None:
+        return
+    wanted = set(profiles_repository._rules(rules).exclude_lists) - set(attached)
+    unknown = wanted - local_warninglists.visible_ids(db, user)
+    if unknown:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            f"No organisation warninglist {', '.join(map(str, sorted(unknown)))}",
+        )
+
+
 def _check_lists(db: Session, user, patch: dict, before=None) -> None:
     """A profile attaches organisations' lists its editor can see (ones
     attached already, by someone else, can stay)."""
@@ -132,22 +149,26 @@ def list_profiles(
 )
 async def preview_rules(
     request: profile_schemas.ProfilePreviewRequest,
+    db: Session = Depends(get_db),
     user: user_schemas.User = Security(
         get_current_active_user, scopes=["detection_profiles:read"]
     ),
 ):
     """How many indicators these rules select, before saving them."""
+    _only_your_lists(db, user, request.rules)
     return await run_in_threadpool(profiles_repository.preview, request.rules)
 
 
 @router.post("/detection-profiles/query", response_model=profile_schemas.ProfileQuery)
 async def rules_as_query(
     request: profile_schemas.ProfilePreviewRequest,
+    db: Session = Depends(get_db),
     user: user_schemas.User = Security(
         get_current_active_user, scopes=["detection_profiles:read"]
     ),
 ):
     """These rules as a Lucene query on the indicators index, for Explore."""
+    _only_your_lists(db, user, request.rules)
     return await run_in_threadpool(
         profiles_repository.to_lucene, request.rules, profiles_repository.context()
     )
@@ -308,7 +329,13 @@ def dry_run_changes(
     ),
 ):
     """The same, for rules not saved yet: what saving them would change."""
-    _get_or_404(db, profile_id)
+    profile = _get_or_404(db, profile_id)
+    _only_your_lists(
+        db,
+        user,
+        request.rules,
+        attached=(profile.rules or {}).get("exclude_lists") or [],
+    )
     return profile_gate.preview(
         db, profile_id, rules=request.rules, your_lists=_your_lists(db, user)
     )

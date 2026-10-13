@@ -36,7 +36,11 @@ ATTRIBUTES = [
     ("old.example", "domain"),
     ("evil.example", "domain"),
 ]
-MANAGE = ["warninglists:read", "local_warninglists:manage"]
+MANAGE = [
+    "warninglists:read",
+    "local_warninglists:manage",
+    "detection_profiles:read",
+]
 
 
 class TestEntries:
@@ -338,6 +342,12 @@ class TestLocalWarninglists(ApiTester):
         # Another organisation neither sees it nor what it says.
         other = {"Authorization": "Bearer " + other_org_token}
         assert client.get(url, headers=other).status_code == 404
+        # ...nor can it compare what rules attaching it leave out.
+        for path in ("/detection-profiles/preview", "/detection-profiles/query"):
+            probe = client.post(
+                path, json={"rules": {"exclude_lists": [list_id]}}, headers=other
+            )
+            assert probe.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY, path
         assert (
             client.post(
                 "/local-warninglists/hits",
