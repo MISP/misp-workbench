@@ -175,6 +175,12 @@ sensors or scripts. OpenSearch is queried once per run, and every consumer
 downloads the stored file, so polling load on OpenSearch doesn't grow with the
 number of consumers.
 
+A [detection profile](detection-profiles.md)'s incremental feed works
+differently: its deltas say which indicators joined the profile, changed, or
+left it, and why. That holds whatever made them leave, including score decay,
+age, or edits to the profile. See
+[membership deltas](detection-profiles.md#membership-deltas-telling-consumers-what-left).
+
 With **Incremental feed** enabled (`"incremental": true`; `ndjson` attribute
 exports only), each run also stores a **delta**. It contains every matching
 attribute written since the previous run, with soft-deleted ones included as

@@ -94,6 +94,63 @@ each value's indicator, and fail closed:
   attribute as it is now, so a value tagged `tlp:red` a second ago doesn't
   leave on a stale indicator.
 
+## Membership deltas: telling consumers what left
+
+A delta that only lists what was *written* since a cursor can't tell a
+block list to drop anything: an indicator can leave a profile without being
+written. Its score decays, it ages out, a source's trust changes, or the
+profile's own rules change. Block lists would then only grow.
+
+Profile feeds and synced sinks keep the **member set** they last delivered
+and diff it with the current one on every run:
+
+| Action | Meaning |
+|---|---|
+| `add` | Joined the profile: the full indicator record |
+| `update` | Still a member, and its record changed (score, tags, sightings, ...) |
+| `remove` | Left the profile: `uuid`, `type`, `value` and the `reason` |
+
+A removal's `reason` is the rule the indicator now fails: `deleted`,
+`type`, `category`, `tlp`, `tags`, `excluded_tag`, `no_longer_ids`,
+`warninglisted`, `validation`, `score`, `expired`, `sources`,
+`excluded_source`, `organisations`, `excluded_organisation` or `trust`.
+
+Where it applies:
+
+- **Incremental [profile feeds](exports.md#incremental-feeds).** Each delta
+  is NDJSON with one record per line, each with its `action`. The previous
+  member set is the previous run's full artifact, so nothing extra is
+  stored.
+- **[Sinks](sinks.md) with *Keep in step with the profile*.** Every five
+  minutes the sink gets adds and removals. A removal is a record with
+  `action: remove`; the `act` field in CEF, `_misp_action` in GELF. The
+  first sync sends every member. A failed sync is retried with the same
+  changes. Before an indicator is sent, its attributes' current state is
+  checked against the exclusions (TLP, excluded tags, warninglists,
+  validation). An indicator a sync behind, such as one tagged `tlp:red` a
+  second ago, is held back until it catches up.
+- **`GET /indicators/export?profile=…&since=…`** (NDJSON or JSON). Each
+  record is an `upsert` or a `remove`. A stream keeps no state, so it covers
+  what it can see from the indicators alone: anything written since the
+  cursor, and indicators that aged past the profile's age limit. Removals
+  caused only by a source's trust or by editing the profile need a feed or
+  a synced sink. A stream can also report a removal for an indicator the
+  consumer never had; ignore those. Because of that, a streamed removal is
+  only the `uuid` and the `reason`, never the type and value. The stream
+  can't know whether the consumer ever had the indicator, and its value
+  (a `tlp:red` one, say) is exactly what the profile keeps from the
+  consumer.
+
+### The consumer contract
+
+1. Key indicators on `uuid`. It is derived from type and value, so it is
+   stable.
+2. Apply every delta in order: `add` and `update` upsert, `remove` deletes.
+   Both are idempotent, so receiving one twice is harmless.
+3. Resync from the full artifact (or a full export) periodically, and
+   whenever the feed says you are too far behind. Do it after editing the
+   profile, too, if you consume a stream.
+
 A profile used by an export or a sink can't be deleted: the output would
 fall back to sending everything its own query matches.
 

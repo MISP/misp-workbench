@@ -71,6 +71,64 @@ def build_record(attribute: dict, event: dict) -> dict:
     }
 
 
+_NO_EVENT = {
+    "uuid": None,
+    "info": None,
+    "date": None,
+    "threat_level_id": None,
+    "analysis": None,
+    "publish_timestamp": None,
+    "org": None,
+    "tags": [],
+}
+
+
+def indicator_record(indicator: dict, action: str = "add") -> dict:
+    """A consolidated indicator as a record, for membership sync.
+
+    ``action`` is add: the consumer adds (or refreshes) the value.
+    """
+    categories = indicator.get("categories") or []
+    base = {
+        "uuid": indicator.get("uuid"),
+        "type": indicator.get("type"),
+        "category": categories[0] if categories else None,
+        "value": indicator.get("value"),
+        "to_ids": bool(indicator.get("to_ids")),
+        "comment": "",
+        "timestamp": indicator.get("last_seen"),
+        "first_seen": indicator.get("first_seen"),
+        "last_seen": indicator.get("last_seen"),
+        "object_uuid": None,
+        "object_relation": None,
+        "tags": [],
+        "event": dict(_NO_EVENT),
+    }
+    return {**with_indicator(base, indicator), "action": action}
+
+
+def removal_record(removal: dict) -> dict:
+    """A value to take out (``action: remove``), with why it left."""
+    return {
+        "uuid": removal.get("uuid"),
+        "type": removal.get("type"),
+        "category": None,
+        "value": removal.get("value"),
+        "to_ids": False,
+        "comment": "",
+        "timestamp": None,
+        "first_seen": None,
+        "last_seen": None,
+        "object_uuid": None,
+        "object_relation": None,
+        "tags": [],
+        "event": dict(_NO_EVENT),
+        "action": "remove",
+        "reason": removal.get("reason"),
+        "indicator": {"uuid": removal.get("uuid")},
+    }
+
+
 def with_indicator(record: dict, indicator: dict) -> dict:
     """The record of an attribute, carrying its consolidated indicator.
 
@@ -158,8 +216,15 @@ def gelf_message(record: dict) -> dict:
         "_misp_event_org": event["org"],
         "_misp_threat_level_id": event["threat_level_id"],
     }
+    if record.get("action"):
+        message["_misp_action"] = record["action"]
+        message["_misp_removal_reason"] = record.get("reason")
+        if record["action"] == "remove":
+            message["short_message"] = (
+                f"MISP indicator removed {record['type']}: {record['value']}"
+            )
     indicator = record.get("indicator")
-    if indicator:
+    if indicator and record.get("action") != "remove":
         message.update(
             {
                 "_misp_indicator_uuid": indicator["uuid"],
@@ -223,8 +288,13 @@ def cef_message(record: dict) -> str:
         "cn1Label": "mispToIds",
         "cn1": int(record["to_ids"]),
     }
+    if record.get("action"):
+        # CEF's deviceAction; the reason a removal happened goes with it.
+        extension["act"] = record["action"]
+        if record.get("reason"):
+            extension["reason"] = record["reason"]
     indicator = record.get("indicator")
-    if indicator:
+    if indicator and record.get("action") != "remove":
         extension.update(
             {
                 "cn2Label": "mispEventCount",

@@ -39,6 +39,7 @@ followed by the filters:
 | **Leave out values on an enabled warninglist** | on | Never send attributes on an enabled [warninglist](warninglists.md) |
 | **Send consolidated indicators** | off | Send each value once, as its [consolidated indicator](indicators.md) (see below) |
 | **Detection profile** | none | A [detection profile](detection-profiles.md) in place of the filters here, except **Never with tags** and **Leave out values on an enabled warninglist**, which still hold |
+| **Keep in step with the profile** | off | With a profile of indicators: every five minutes, send what [joined and left](detection-profiles.md#membership-deltas-telling-consumers-what-left) the profile (removals as `action: remove`, with their reason), instead of each published event |
 | **Minimum score** | 0 | Leave out values whose indicator's [confidence score](indicators.md#confidence-scores) is below this. Values too new to be scored are sent |
 
 Tag lists match the attribute's own tags **and** its event's tags, and accept
