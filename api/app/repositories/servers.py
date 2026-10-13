@@ -64,6 +64,8 @@ def create_server(db: Session, server: server_schemas.ServerCreate):
         skip_proxy=server.skip_proxy,
         caching_enabled=server.caching_enabled,
         priority=server.priority,
+        score_modifier=server.score_modifier,
+        score_cap=server.score_cap,
     )
 
     db.add(db_server)
@@ -589,11 +591,17 @@ def update_server(
         )
 
     server_patch = server.model_dump(exclude_unset=True)
+    trust_before = (db_server.score_modifier, db_server.score_cap)
     for key, value in server_patch.items():
         setattr(db_server, key, value)
 
     db.add(db_server)
     db.commit()
+    # A source's trust is part of the score of everything it reports.
+    if (db_server.score_modifier, db_server.score_cap) != trust_before:
+        from app.repositories import indicators as indicators_repository
+
+        indicators_repository.request_rebuild()
     db.refresh(db_server)
 
     return db_server

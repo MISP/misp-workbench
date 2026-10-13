@@ -1,6 +1,11 @@
 import { test, expect, Page } from "@playwright/test";
 import { applyTheme, capture, pinForCapture } from "./helpers";
-import { INDICATORS_PAGE, INDICATORS_STATUS } from "./indicators-fixtures";
+import { EVENT_UUIDS } from "./fixtures";
+import {
+  INDICATORS_PAGE,
+  INDICATORS_STATUS,
+  scoreFor,
+} from "./indicators-fixtures";
 
 const FEATURE = "indicators";
 const API_PORT = 8080;
@@ -56,6 +61,65 @@ test.describe("Indicators screenshots", () => {
       page.locator(".card").first(),
       FEATURE,
       "misp-workbench-2_indicators_detail",
+    );
+  });
+
+  test("3 — scores on an event's attributes", async ({ page }) => {
+    // Scores come from indicators a dev instance may not have built.
+    await page.route(new RegExp(`:${API_PORT}/indicators/scores$`), (route) => {
+      const { attributes } = route.request().postDataJSON();
+      return route.fulfill(
+        json({
+          scores: attributes.map(
+            (a: { type: string; value: string }, i: number) => {
+              const score = scoreFor(a.type, a.value);
+              return {
+                uuid: `00000000-0000-5000-8000-${String(i).padStart(12, "0")}`,
+                score,
+                score_breakdown: [
+                  { factor: "base", points: 70, detail: "local source" },
+                  {
+                    factor: "decay",
+                    points: score - 70,
+                    detail: "since last seen",
+                  },
+                ],
+                scored_at: null,
+              };
+            },
+          ),
+        }),
+      );
+    });
+    await page.setViewportSize({ width: 1600, height: 1100 });
+    await page.goto(`/events/${EVENT_UUIDS.cobaltStrike}/attributes`);
+    const table = page
+      .locator('[data-tab-panel="attributes"] .table-responsive')
+      .first();
+    await expect(table.locator("td.value .score-badge").first()).toBeVisible();
+    await pinForCapture(page);
+
+    await capture(
+      table,
+      FEATURE,
+      "misp-workbench-3_indicators_attribute-scores",
+    );
+  });
+
+  test("4 — scoring settings", async ({ page }) => {
+    await page.setViewportSize({ width: 1400, height: 2600 });
+    await page.goto("/settings/runtime");
+    await page.getByRole("button", { name: /^scoring$/i }).click();
+    const form = page.locator(".accordion-item", {
+      hasText: "Score indicators",
+    });
+    await expect(form.getByText("Half-life by attribute type")).toBeVisible();
+    await pinForCapture(page);
+
+    await capture(
+      form,
+      FEATURE,
+      "misp-workbench-4_indicators_scoring-settings",
     );
   });
 });

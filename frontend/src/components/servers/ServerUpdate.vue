@@ -7,6 +7,7 @@ import { router } from "@/router";
 import { ServerSchema } from "@/schemas/server";
 import OrganisationsSelect from "@/components/organisations/OrganisationsSelect.vue";
 import PullRulesEditor from "@/components/servers/PullRulesEditor.vue";
+import SourceTrustFields from "@/components/indicators/SourceTrustFields.vue";
 
 const serversStore = useServersStore();
 const { server, status } = storeToRefs(serversStore);
@@ -272,6 +273,11 @@ function handleRemoteOrgUpdated(orgId) {
           </Field>
           <div class="invalid-feedback">{{ errors["server.priority"] }}</div>
         </div>
+        <SourceTrustFields
+          id-prefix="server"
+          v-model:modifier="server.score_modifier"
+          v-model:cap="server.score_cap"
+        />
         <div v-if="errors.apiError" class="w-100 alert alert-danger mt-3 mb-3">
           {{ errors.apiError }}
         </div>

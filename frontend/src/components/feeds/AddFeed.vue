@@ -143,6 +143,8 @@ function getFeedFromConfig() {
     distribution: parseInt(config.value.distribution),
     input_source: config.value.input_source,
     headers: config.value.headers ?? {},
+    score_modifier: config.value.score_modifier ?? 0,
+    score_cap: config.value.score_cap ?? null,
   };
 }
 

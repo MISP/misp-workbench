@@ -79,6 +79,9 @@
                     },
                     "event_count": {
                         "type": "integer"
+                    },
+                    "id": {
+                        "type": "long"
                     }
                 }
             },
@@ -107,6 +110,12 @@
                     },
                     "last_at": {
                         "type": "long"
+                    },
+                    "last_positive_at": {
+                        "type": "long"
+                    },
+                    "last_expiration_at": {
+                        "type": "long"
                     }
                 }
             },
@@ -118,6 +127,17 @@
                 "index": false
             },
             "updated_at": {
+                "type": "date",
+                "format": "epoch_second"
+            },
+            "score": {
+                "type": "integer"
+            },
+            "score_breakdown": {
+                "type": "object",
+                "enabled": false
+            },
+            "scored_at": {
                 "type": "date",
                 "format": "epoch_second"
             }

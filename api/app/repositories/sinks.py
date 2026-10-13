@@ -177,6 +177,26 @@ def _consolidate(records: list[dict], seen: set) -> list[dict]:
     ]
 
 
+def _above_min_score(records: list[dict], min_score: int) -> list[dict]:
+    """Records whose indicator scores at least ``min_score``.
+
+    A record without an indicator yet (its attribute was written in the last
+    few seconds) is fresh, so it is kept.
+    """
+    from app.repositories import indicators as indicators_repository
+
+    keys = [
+        indicators_repository.indicator_uuid(r["type"], r["value"]) for r in records
+    ]
+    found = indicators_repository.get_indicators(keys)
+    return [
+        record
+        for key, record in zip(keys, records)
+        if (found.get(key) or {}).get("score") is None
+        or found[key]["score"] >= min_score
+    ]
+
+
 def select_records(
     attributes: list[dict], event: dict, filters: dict, seen: Optional[set] = None
 ) -> list[dict]:
@@ -186,6 +206,8 @@ def select_records(
     built = [formatters.build_record(attribute, event) for attribute in attributes]
     if filters.get("indicator_mode"):
         built = _consolidate(built, seen if seen is not None else set())
+    if filters.get("min_score"):
+        built = _above_min_score(built, int(filters["min_score"]))
     records = []
     for record in built:
         tags = formatters.all_tags(record)

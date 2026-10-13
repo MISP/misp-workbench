@@ -6,6 +6,7 @@ import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
 import { faLink } from "@fortawesome/free-solid-svg-icons";
 import { FeedSchema } from "@/schemas/feed";
 import { Form, Field } from "vee-validate";
+import SourceTrustFields from "@/components/indicators/SourceTrustFields.vue";
 
 const props = defineProps({
   modelValue: {
@@ -329,6 +330,12 @@ function handleDistributionLevelUpdated(distributionLevelId) {
           file on the Update Feed page to re-ingest later.
         </div>
       </div>
+      <SourceTrustFields
+        class="mt-3"
+        id-prefix="feed"
+        v-model:modifier="local.score_modifier"
+        v-model:cap="local.score_cap"
+      />
     </Form>
   </div>
 </template>

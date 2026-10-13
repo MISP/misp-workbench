@@ -27,9 +27,10 @@ async def search_indicators(
     include_deleted: bool = Query(
         False, description="Include tombstones of removed indicators"
     ),
-    sort: Literal["last_seen", "first_seen", "event_count", "updated_at"] = Query(
-        "last_seen"
+    sort: Literal["score", "last_seen", "first_seen", "event_count", "updated_at"] = (
+        Query("last_seen")
     ),
+    min_score: Optional[int] = Query(None, ge=0, le=100),
     page: int = Query(1, ge=1),
     size: int = Query(50, ge=1, le=1000),
     user: user_schemas.User = Security(
@@ -46,6 +47,7 @@ async def search_indicators(
             sort,
             page,
             size,
+            min_score,
         )
     except ValueError as error:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(error))
@@ -103,6 +105,21 @@ async def export_indicators(
     return await stream_exports_repository.to_response(
         export, request, user_id=user.id, max_concurrent=max_concurrent
     )
+
+
+@router.post("/indicators/scores", response_model=indicator_schemas.ScoresResponse)
+async def indicator_scores(
+    request: indicator_schemas.ScoresRequest,
+    user: user_schemas.User = Security(
+        get_current_active_user, scopes=["attributes:read"]
+    ),
+):
+    """The score of the indicator behind each attribute (type + value), in order."""
+    scores = await run_in_threadpool(
+        indicators_repository.scores_for,
+        [(a.type, a.value) for a in request.attributes],
+    )
+    return {"scores": scores}
 
 
 @router.get("/indicators/status", response_model=indicator_schemas.IndicatorsStatus)

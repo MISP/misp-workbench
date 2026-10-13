@@ -1,5 +1,7 @@
 """Bulk indicator lookup for SIEM enrichment (see ``app.repositories.lookup``)."""
 
+from typing import Optional
+
 from fastapi import APIRouter, HTTPException, Query, Security, status
 from fastapi.concurrency import run_in_threadpool
 
@@ -27,6 +29,7 @@ async def bulk_lookup(
             request.max_attributes,
             request.include_warninglisted,
             request.include_indicators,
+            request.min_score,
         )
     except lookup_repository.TooManyValues as error:
         raise HTTPException(
@@ -41,6 +44,7 @@ async def single_lookup(
     max_attributes: int = Query(10, ge=1, le=100),
     include_warninglisted: bool = Query(False),
     include_indicators: bool = Query(False),
+    min_score: Optional[int] = Query(None, ge=0, le=100),
     user: user_schemas.User = Security(
         get_current_active_user, scopes=["attributes:read"]
     ),
@@ -53,6 +57,7 @@ async def single_lookup(
         max_attributes,
         include_warninglisted,
         include_indicators,
+        min_score,
     )
     if not result["matches"]:
         return lookup_schemas.SingleLookupResponse(value=value, match=False)
@@ -62,6 +67,7 @@ async def single_lookup(
         match=True,
         attribute_count=match["attribute_count"],
         attributes=match["attributes"],
+        score=match.get("score"),
         indicators=match.get("indicators", []),
     )
 

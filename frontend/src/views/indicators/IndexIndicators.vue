@@ -5,6 +5,7 @@ import { useIndicatorsStore } from "@/stores";
 import Spinner from "@/components/misc/Spinner.vue";
 import Timestamp from "@/components/misc/Timestamp.vue";
 import Pagination from "@/components/misc/Pagination.vue";
+import ScoreBadge from "@/components/indicators/ScoreBadge.vue";
 
 const indicatorsStore = useIndicatorsStore();
 const { page, indicatorsStatus, status } = storeToRefs(indicatorsStore);
@@ -13,6 +14,7 @@ const query = ref("");
 const type = ref("");
 const idsOnly = ref(true);
 const sort = ref("last_seen");
+const minScore = ref(null);
 const currentPage = ref(1);
 const expanded = ref(null);
 const SIZE = 50;
@@ -33,6 +35,7 @@ function load() {
     type: type.value.trim(),
     to_ids: idsOnly.value ? true : null,
     sort: sort.value,
+    min_score: minScore.value || null,
     page: currentPage.value,
     size: SIZE,
   });
@@ -91,7 +94,7 @@ load();
       </p>
 
       <form class="row g-2 align-items-center mb-3" @submit.prevent="apply">
-        <div class="col-12 col-md-5">
+        <div class="col-12 col-md-4">
           <input
             class="form-control font-monospace"
             v-model="query"
@@ -107,8 +110,21 @@ load();
             aria-label="Type"
           />
         </div>
+        <div class="col-6 col-md-1">
+          <input
+            class="form-control"
+            type="number"
+            min="0"
+            max="100"
+            v-model.number="minScore"
+            placeholder="min score"
+            aria-label="Minimum score"
+            title="Only indicators scoring at least this (0-100)"
+          />
+        </div>
         <div class="col-6 col-md-2">
           <select class="form-select" v-model="sort" aria-label="Sort">
+            <option value="score">score</option>
             <option value="last_seen">last seen</option>
             <option value="first_seen">first seen</option>
             <option value="event_count">events</option>
@@ -148,6 +164,7 @@ load();
           <table class="table table-hover align-middle">
             <thead>
               <tr>
+                <th>score</th>
                 <th>value</th>
                 <th>type</th>
                 <th class="text-end">events</th>
@@ -165,6 +182,12 @@ load();
                   :class="{ 'table-active': expanded === indicator.uuid }"
                   @click="toggle(indicator)"
                 >
+                  <td>
+                    <ScoreBadge
+                      :score="indicator.score"
+                      :breakdown="indicator.score_breakdown"
+                    />
+                  </td>
                   <td class="font-monospace text-break">
                     <span
                       v-if="indicator.to_ids"
@@ -225,8 +248,34 @@ load();
                   </td>
                 </tr>
                 <tr v-if="expanded === indicator.uuid">
-                  <td colspan="8" class="bg-body-tertiary">
+                  <td colspan="9" class="bg-body-tertiary">
                     <dl class="row small mb-0">
+                      <template v-if="indicator.score !== null">
+                        <dt class="col-sm-2">score</dt>
+                        <dd class="col-sm-10">
+                          <strong>{{ indicator.score }}</strong> / 100
+                          <ul class="list-unstyled mb-0">
+                            <li
+                              v-for="component in indicator.score_breakdown"
+                              :key="component.factor"
+                            >
+                              <span
+                                class="font-monospace d-inline-block text-end me-2"
+                                style="min-width: 3em"
+                                >{{
+                                  component.points > 0 &&
+                                  component.factor !== "base"
+                                    ? "+"
+                                    : ""
+                                }}{{ component.points }}</span
+                              >{{ component.factor }}
+                              <span class="text-muted"
+                                >— {{ component.detail }}</span
+                              >
+                            </li>
+                          </ul>
+                        </dd>
+                      </template>
                       <dt class="col-sm-2">attributes</dt>
                       <dd class="col-sm-10">
                         {{ indicator.attribute_count }} ({{
@@ -239,7 +288,7 @@ load();
                       <dd class="col-sm-10">
                         <span
                           v-for="org in indicator.organisations"
-                          :key="org.name"
+                          :key="`${org.id}-${org.name}`"
                           class="me-2"
                           >{{ org.name }} ({{ org.event_count }})</span
                         >
@@ -291,7 +340,7 @@ load();
                 </tr>
               </template>
               <tr v-if="!page.items.length">
-                <td colspan="8" class="text-center text-muted py-4">
+                <td colspan="9" class="text-center text-muted py-4">
                   No indicators match.
                 </td>
               </tr>

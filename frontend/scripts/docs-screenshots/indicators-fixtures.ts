@@ -37,8 +37,17 @@ const indicator = (
     last_at: null,
   },
   warninglist_hits: [],
+  score: null,
+  score_breakdown: [],
+  scored_at: now - 600,
   updated_at: now - 600,
   ...extra,
+});
+
+const part = (factor: string, points: number, detail: string) => ({
+  factor,
+  points,
+  detail,
 });
 
 const feed = (id: number, name: string, event_count: number) => ({
@@ -104,6 +113,13 @@ export const INDICATORS = [
       first_at: now - 20 * day,
       last_at: now - 2 * 3600,
     },
+    score: 89,
+    score_breakdown: [
+      part("base", 70, "local source"),
+      part("corroboration", 10, "3 sources"),
+      part("decay", -6, "last seen 0 days ago, half-life 30 days"),
+      part("sightings", 15, "37 positive sighting(s)"),
+    ],
   }),
   indicator(2, "domain", "c2.example-cobalt.net", {
     attribute_count: 3,
@@ -130,6 +146,13 @@ export const INDICATORS = [
       first_at: now - 18 * day,
       last_at: now - 5 * 3600,
     },
+    score: 89,
+    score_breakdown: [
+      part("base", 70, "local source"),
+      part("corroboration", 5, "2 sources"),
+      part("decay", -1, "last seen 0 days ago, half-life 90 days"),
+      part("sightings", 15, "15 positive sighting(s)"),
+    ],
   }),
   indicator(
     3,
@@ -146,6 +169,8 @@ export const INDICATORS = [
       tlp: "tlp:green",
       galaxies: ['misp-galaxy:malpedia="Cobalt Strike"'],
       last_seen: now - 26 * 3600,
+      score: 60,
+      score_breakdown: [part("base", 60, "server: Partner MISP")],
     },
   ),
   indicator(4, "url", "https://login-update.example.org/secure/verify.php", {
@@ -163,6 +188,13 @@ export const INDICATORS = [
       first_at: now - 6 * day,
       last_at: now - 2 * day,
     },
+    score: 39,
+    score_breakdown: [
+      part("base", 50, "feed: Phishing URLs"),
+      part("decay", -2, "last seen 2 days ago, half-life 30 days"),
+      part("sightings", 12, "4 positive sighting(s)"),
+      part("false_positives", -20, "1 false-positive sighting(s)"),
+    ],
   }),
   indicator(5, "ip-src", "203.0.113.77", {
     attribute_count: 2,
@@ -176,6 +208,12 @@ export const INDICATORS = [
     tags: ["tlp:green", "scanner"],
     tlp: "tlp:green",
     last_seen: now - 3 * day,
+    score: 61,
+    score_breakdown: [
+      part("base", 60, "server: Partner MISP"),
+      part("corroboration", 5, "2 sources"),
+      part("decay", -4, "last seen 3 days ago, half-life 30 days"),
+    ],
   }),
   indicator(6, "domain", "www.google.com", {
     event_count: 1,
@@ -185,6 +223,12 @@ export const INDICATORS = [
     tlp: "tlp:green",
     warninglist_hits: ["Top 1000 website from Alexa"],
     last_seen: now - 4 * day,
+    score: 18,
+    score_breakdown: [
+      part("base", 70, "local source"),
+      part("decay", -2, "last seen 4 days ago, half-life 90 days"),
+      part("warninglist", -50, "on Top 1000 website from Alexa"),
+    ],
   }),
 ];
 
@@ -204,3 +248,14 @@ export const INDICATORS_STATUS = {
   pending_sighted_values: 0,
   pending_events: 0,
 };
+
+// Scores for the attributes of a fixture event: decayed network indicators,
+// a hash that keeps its score, and a warninglisted value.
+export function scoreFor(type: string, value: string) {
+  if (value === "www.google.com" || value === "185.220.101.42") return 18;
+  if (/^(md5|sha1|sha256|sha512|filename\|)/.test(type)) return 70;
+  if (type === "ip-dst" || type === "ip-src") return 41;
+  if (type === "url") return 33;
+  if (type === "domain" || type === "hostname") return 64;
+  return 55;
+}

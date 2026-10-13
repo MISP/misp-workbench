@@ -64,6 +64,7 @@ const filters = reactive({
   to_ids_only: props.sink?.filters?.to_ids_only ?? true,
   exclude_warninglisted: props.sink?.filters?.exclude_warninglisted ?? true,
   indicator_mode: props.sink?.filters?.indicator_mode ?? false,
+  min_score: props.sink?.filters?.min_score ?? 0,
   types: joinList(props.sink?.filters?.types),
   // Tag names (or patterns such as tlp:*), edited with the tag selector.
   tags: [...(props.sink?.filters?.tags || [])],
@@ -114,6 +115,7 @@ async function submit() {
       to_ids_only: filters.to_ids_only,
       exclude_warninglisted: filters.exclude_warninglisted,
       indicator_mode: filters.indicator_mode,
+      min_score: filters.min_score || 0,
       types: splitList(filters.types),
       tags: filters.tags,
       exclude_tags: filters.exclude_tags,
@@ -382,6 +384,23 @@ async function submit() {
           One record per value, with its sources, first and last seen, sightings
           and the tags of every event it is in. Tag exclusions then judge the
           value: one that is <code>tlp:red</code> anywhere is left out.
+        </div>
+      </div>
+      <div class="mb-3">
+        <label class="form-label" for="sink-min-score">Minimum score</label>
+        <input
+          id="sink-min-score"
+          class="form-control"
+          type="number"
+          min="0"
+          max="100"
+          v-model.number="filters.min_score"
+          style="max-width: 10em"
+        />
+        <div class="form-text">
+          Leave out values whose indicator's confidence (0–100, from sources,
+          age, sightings and warninglists) is below this. 0 sends regardless;
+          values too new to be scored are sent.
         </div>
       </div>
       <div class="mb-3">

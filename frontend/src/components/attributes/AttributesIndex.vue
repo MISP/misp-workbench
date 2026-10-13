@@ -1,7 +1,12 @@
 <script setup>
-import { ref, onMounted } from "vue";
+import { ref, onMounted, watch } from "vue";
 import { storeToRefs } from "pinia";
-import { useAttributesStore, useAnalystDataStore } from "@/stores";
+import {
+  useAttributesStore,
+  useAnalystDataStore,
+  useIndicatorsStore,
+} from "@/stores";
+import ScoreBadge from "@/components/indicators/ScoreBadge.vue";
 import TagsSelect from "@/components/tags/TagsSelect.vue";
 import Paginate from "vuejs-paginate-next";
 import AddAttributeModal from "@/components/attributes/AddAttributeModal.vue";
@@ -50,6 +55,21 @@ function onPageChange(page) {
   });
 }
 onPageChange(1);
+
+// Confidence of the consolidated indicator behind each attribute on the page.
+const indicatorsStore = useIndicatorsStore();
+const scores = ref({});
+watch(
+  () => attributes.value?.items,
+  async (items) => {
+    try {
+      scores.value = await indicatorsStore.scoresFor(items);
+    } catch {
+      // A score is extra context; the list works without it.
+      scores.value = {};
+    }
+  },
+);
 
 function handleAttributesUpdated() {
   // TODO FIXME: resets the page to 1 and reloads the attributes, not the best way to do this, reload current page
@@ -270,6 +290,12 @@ tr.to-ids > td:first-child {
             <td class="value">
               <CopyToClipboard :value="attribute.value" />
               {{ attribute.value }}
+              <ScoreBadge
+                v-if="scores[attribute.uuid]"
+                class="ms-1"
+                :score="scores[attribute.uuid].score"
+                :breakdown="scores[attribute.uuid].score_breakdown"
+              />
               <span
                 v-if="attribute.warninglist_hits?.length"
                 class="badge bg-warning-subtle text-warning-emphasis ms-1"

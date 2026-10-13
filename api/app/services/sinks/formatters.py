@@ -82,6 +82,7 @@ def with_indicator(record: dict, indicator: dict) -> dict:
         "tags": tags,
         "indicator": {
             "uuid": indicator.get("uuid"),
+            "score": indicator.get("score"),
             "first_seen": indicator.get("first_seen"),
             "last_seen": indicator.get("last_seen"),
             "attribute_count": indicator.get("attribute_count"),
@@ -158,6 +159,7 @@ def gelf_message(record: dict) -> dict:
         message.update(
             {
                 "_misp_indicator_uuid": indicator["uuid"],
+                "_misp_score": indicator["score"],
                 "_misp_first_seen": indicator["first_seen"],
                 "_misp_last_seen": indicator["last_seen"],
                 "_misp_event_count": indicator["event_count"],
@@ -225,6 +227,8 @@ def cef_message(record: dict) -> str:
                 "cn2": indicator["event_count"],
                 "cn3Label": "mispSightings",
                 "cn3": indicator["sightings"]["positive"],
+                "cfp1Label": "mispScore",
+                "cfp1": indicator["score"],
             }
         )
     value_key = CEF_VALUE_KEYS.get(record["type"])

@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Optional
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class OrganisationBase(BaseModel):
@@ -19,6 +19,10 @@ class OrganisationBase(BaseModel):
     local: bool
     restricted_to_domain: Optional[str] = None
     landing_page: Optional[str] = None
+    # Indicator scoring: points added to (or taken off) the score of what
+    # this source reports, and an optional ceiling for it.
+    score_modifier: int = Field(0, ge=-100, le=100)
+    score_cap: Optional[int] = Field(None, ge=0, le=100)
 
 
 class Organisation(OrganisationBase):
@@ -40,6 +44,10 @@ class OrganisationCreate(BaseModel):
     local: bool
     restricted_to_domain: Optional[str] = None
     landing_page: Optional[str] = None
+    # Indicator scoring: points added to (or taken off) the score of what
+    # this source reports, and an optional ceiling for it.
+    score_modifier: int = Field(0, ge=-100, le=100)
+    score_cap: Optional[int] = Field(None, ge=0, le=100)
 
 
 class OrganisationUpdate(BaseModel):
@@ -55,3 +63,5 @@ class OrganisationUpdate(BaseModel):
     local: Optional[bool] = None
     restricted_to_domain: Optional[str] = None
     landing_page: Optional[str] = None
+    score_modifier: Optional[int] = Field(None, ge=-100, le=100)
+    score_cap: Optional[int] = Field(None, ge=0, le=100)

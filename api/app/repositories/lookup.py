@@ -387,6 +387,7 @@ def lookup(
     max_attributes: int = DEFAULT_MAX_ATTRIBUTES,
     include_warninglisted: bool = False,
     include_indicators: bool = False,
+    min_score: Optional[int] = None,
 ) -> dict:
     """Which of ``values`` are known indicators, with their context.
 
@@ -394,6 +395,11 @@ def lookup(
     prefilter applies; otherwise every live attribute counts and OpenSearch is
     asked about all values. ``include_indicators`` adds each matched value's
     consolidated indicators (one per type, context merged across events).
+
+    Each match carries ``score``, its best indicator's confidence, when
+    indicators are asked for or ``min_score`` is set. ``min_score`` drops
+    matches scoring below it; a value without an indicator yet (written in
+    the last few seconds, so fresh) is kept.
     """
     started = time.perf_counter()
     unique = list(
@@ -441,14 +447,23 @@ def lookup(
         for value in unique
         if value in found
     ]
-    if include_indicators and matches:
+    if (include_indicators or min_score) and matches:
         from app.repositories import indicators as indicators_repository
 
         consolidated = indicators_repository.find_by_values(
             [m["value"] for m in matches], to_ids_only, include_warninglisted
         )
+        kept = []
         for match in matches:
-            match["indicators"] = consolidated.get(match["value"], [])
+            found = consolidated.get(match["value"], [])
+            scores = [i["score"] for i in found if i.get("score") is not None]
+            match["score"] = max(scores) if scores else None
+            if min_score and match["score"] is not None and match["score"] < min_score:
+                continue
+            if include_indicators:
+                match["indicators"] = found
+            kept.append(match)
+        matches = kept
     return {
         "checked": len(unique),
         "matched": len(matches),

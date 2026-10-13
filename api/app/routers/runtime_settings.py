@@ -3,11 +3,32 @@ from app.db.session import get_db
 from app.services import audit
 from app.services.runtime_settings_provider import get_runtime_settings
 from app.schemas import user as user_schemas
-from fastapi import APIRouter, Security, Depends, Request
+from fastapi import APIRouter, Security, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 from app.services.runtime_settings import RuntimeSettings
 
 router = APIRouter()
+
+
+def _check(namespace: str, value: dict) -> None:
+    if namespace == "scoring":
+        from app.services import scoring
+
+        try:
+            scoring.validate(value)
+        except scoring.InvalidScoringConfig as error:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST, detail=str(error)
+            )
+
+
+def _after_change(namespace: str) -> None:
+    # Scores are stored on the indicators: rescore them all with the new
+    # settings rather than at the next hourly rebuild.
+    if namespace == "scoring":
+        from app.repositories import indicators as indicators_repository
+
+        indicators_repository.request_rebuild()
 
 
 def _diff_settings(before, after) -> dict:
@@ -68,6 +89,7 @@ def set_runtime_setting(
         get_current_active_user, scopes=["settings:update"]
     ),
 ):
+    _check(namespace, value)
     previous = runtime_settings.get(namespace)
     runtime_settings.set(namespace, value)
     audit.record(
@@ -79,6 +101,7 @@ def set_runtime_setting(
         metadata={"namespace": namespace, "diff": _diff_settings(previous, value)},
     )
     db.commit()
+    _after_change(namespace)
     return {"message": "Setting updated"}
 
 
@@ -103,4 +126,5 @@ def delete_runtime_setting(
         metadata={"namespace": namespace, "previous": previous},
     )
     db.commit()
+    _after_change(namespace)
     return {"message": "Setting deleted"}

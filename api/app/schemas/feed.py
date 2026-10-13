@@ -2,7 +2,7 @@ from typing import Optional
 from uuid import UUID
 
 from app.models.event import DistributionLevel
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class FeedBase(BaseModel):
@@ -32,6 +32,10 @@ class FeedBase(BaseModel):
     tag_collection_id: Optional[int] = None
     cached_elements: Optional[int] = None
     coverage_by_other_feeds: Optional[float] = None
+    # Indicator scoring: points added to (or taken off) the score of what
+    # this source reports, and an optional ceiling for it.
+    score_modifier: int = Field(0, ge=-100, le=100)
+    score_cap: Optional[int] = Field(None, ge=0, le=100)
 
 
 class Feed(FeedBase):
@@ -70,3 +74,5 @@ class FeedUpdate(FeedBase):
     tag_collection_id: Optional[int] = None
     cached_elements: Optional[int] = None
     coverage_by_other_feeds: Optional[float] = None
+    score_modifier: Optional[int] = Field(None, ge=-100, le=100)
+    score_cap: Optional[int] = Field(None, ge=0, le=100)

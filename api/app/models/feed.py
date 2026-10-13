@@ -39,3 +39,7 @@ class Feed(Base):
     tag_collection_id = Column(Integer, nullable=True)
     cached_elements = Column(Integer, nullable=False, default=0)
     coverage_by_other_feeds = Column(Float, nullable=False, default=0)
+    # Indicator scoring: points added to (or taken off) the score of what
+    # this source reports, and an optional ceiling for it.
+    score_modifier = Column(Integer, nullable=False, default=0, server_default="0")
+    score_cap = Column(Integer, nullable=True)

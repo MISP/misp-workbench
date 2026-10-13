@@ -9970,6 +9970,24 @@
               "default": false,
               "title": "Include Indicators"
             }
+          },
+          {
+            "name": "min_score",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "maximum": 100,
+                  "minimum": 0
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Min Score"
+            }
           }
         ],
         "responses": {
@@ -10107,6 +10125,7 @@
             "required": false,
             "schema": {
               "enum": [
+                "score",
                 "last_seen",
                 "first_seen",
                 "event_count",
@@ -10115,6 +10134,24 @@
               "type": "string",
               "default": "last_seen",
               "title": "Sort"
+            }
+          },
+          {
+            "name": "min_score",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "maximum": 100,
+                  "minimum": 0
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Min Score"
             }
           },
           {
@@ -10276,6 +10313,55 @@
             }
           }
         }
+      }
+    },
+    "/indicators/scores": {
+      "post": {
+        "tags": [
+          "Indicators"
+        ],
+        "summary": "Indicator Scores",
+        "description": "The score of the indicator behind each attribute (type + value), in order.",
+        "operationId": "indicator_scores_indicators_scores_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScoresRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScoresResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "attributes:read"
+            ]
+          }
+        ]
       }
     },
     "/indicators/status": {
@@ -16864,6 +16950,26 @@
             ],
             "title": "Coverage By Other Feeds"
           },
+          "score_modifier": {
+            "type": "integer",
+            "maximum": 100.0,
+            "minimum": -100.0,
+            "title": "Score Modifier",
+            "default": 0
+          },
+          "score_cap": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 100.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score Cap"
+          },
           "id": {
             "type": "integer",
             "title": "Id"
@@ -17145,6 +17251,26 @@
               }
             ],
             "title": "Coverage By Other Feeds"
+          },
+          "score_modifier": {
+            "type": "integer",
+            "maximum": 100.0,
+            "minimum": -100.0,
+            "title": "Score Modifier",
+            "default": 0
+          },
+          "score_cap": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 100.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score Cap"
           }
         },
         "type": "object",
@@ -17447,6 +17573,32 @@
               }
             ],
             "title": "Coverage By Other Feeds"
+          },
+          "score_modifier": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 100.0,
+                "minimum": -100.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score Modifier"
+          },
+          "score_cap": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 100.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score Cap"
           }
         },
         "type": "object",
@@ -18388,6 +18540,36 @@
             "title": "Warninglist Hits",
             "default": []
           },
+          "score": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score"
+          },
+          "score_breakdown": {
+            "items": {
+              "$ref": "#/components/schemas/ScoreComponent"
+            },
+            "type": "array",
+            "title": "Score Breakdown",
+            "default": []
+          },
+          "scored_at": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scored At"
+          },
           "updated_at": {
             "anyOf": [
               {
@@ -18409,8 +18591,37 @@
         "title": "Indicator",
         "description": "One type + value, merged from every live attribute carrying it."
       },
+      "IndicatorKey": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "title": "Type"
+          },
+          "value": {
+            "type": "string",
+            "title": "Value"
+          }
+        },
+        "type": "object",
+        "required": [
+          "type",
+          "value"
+        ],
+        "title": "IndicatorKey"
+      },
       "IndicatorOrganisation": {
         "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
           "name": {
             "type": "string",
             "title": "Name"
@@ -18458,6 +18669,49 @@
         ],
         "title": "IndicatorPage"
       },
+      "IndicatorScore": {
+        "properties": {
+          "uuid": {
+            "type": "string",
+            "title": "Uuid"
+          },
+          "score": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score"
+          },
+          "score_breakdown": {
+            "items": {
+              "$ref": "#/components/schemas/ScoreComponent"
+            },
+            "type": "array",
+            "title": "Score Breakdown",
+            "default": []
+          },
+          "scored_at": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scored At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "uuid"
+        ],
+        "title": "IndicatorScore"
+      },
       "IndicatorSightings": {
         "properties": {
           "positive": {
@@ -18496,6 +18750,28 @@
               }
             ],
             "title": "Last At"
+          },
+          "last_positive_at": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Positive At"
+          },
+          "last_expiration_at": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Expiration At"
           }
         },
         "type": "object",
@@ -19408,6 +19684,17 @@
             "type": "array",
             "title": "Attributes"
           },
+          "score": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score"
+          },
           "indicators": {
             "items": {
               "$ref": "#/components/schemas/Indicator"
@@ -19454,6 +19741,20 @@
             "title": "Include Warninglisted",
             "description": "Also match attributes on an enabled warninglist (left out by default)",
             "default": false
+          },
+          "min_score": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 100.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Min Score",
+            "description": "Leave out values whose consolidated indicator scores below this (0-100). Values too new to have an indicator are kept"
           },
           "include_indicators": {
             "type": "boolean",
@@ -21064,6 +21365,26 @@
             ],
             "title": "Landing Page"
           },
+          "score_modifier": {
+            "type": "integer",
+            "maximum": 100.0,
+            "minimum": -100.0,
+            "title": "Score Modifier",
+            "default": 0
+          },
+          "score_cap": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 100.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score Cap"
+          },
           "id": {
             "type": "integer",
             "title": "Id"
@@ -21214,6 +21535,26 @@
               }
             ],
             "title": "Landing Page"
+          },
+          "score_modifier": {
+            "type": "integer",
+            "maximum": 100.0,
+            "minimum": -100.0,
+            "title": "Score Modifier",
+            "default": 0
+          },
+          "score_cap": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 100.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score Cap"
           }
         },
         "type": "object",
@@ -21358,6 +21699,32 @@
               }
             ],
             "title": "Landing Page"
+          },
+          "score_modifier": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 100.0,
+                "minimum": -100.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score Modifier"
+          },
+          "score_cap": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 100.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score Cap"
           }
         },
         "type": "object",
@@ -23197,6 +23564,70 @@
         "type": "object",
         "title": "ScheduleTaskSchedule"
       },
+      "ScoreComponent": {
+        "properties": {
+          "factor": {
+            "type": "string",
+            "title": "Factor"
+          },
+          "points": {
+            "type": "integer",
+            "title": "Points"
+          },
+          "detail": {
+            "type": "string",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "required": [
+          "factor",
+          "points",
+          "detail"
+        ],
+        "title": "ScoreComponent",
+        "description": "One step of a score: base, corroboration, decay, sightings, ..."
+      },
+      "ScoresRequest": {
+        "properties": {
+          "attributes": {
+            "items": {
+              "$ref": "#/components/schemas/IndicatorKey"
+            },
+            "type": "array",
+            "maxItems": 1000,
+            "title": "Attributes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "attributes"
+        ],
+        "title": "ScoresRequest"
+      },
+      "ScoresResponse": {
+        "properties": {
+          "scores": {
+            "items": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/IndicatorScore"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Scores"
+          }
+        },
+        "type": "object",
+        "required": [
+          "scores"
+        ],
+        "title": "ScoresResponse"
+      },
       "Server": {
         "properties": {
           "name": {
@@ -23345,6 +23776,26 @@
           "priority": {
             "type": "integer",
             "title": "Priority"
+          },
+          "score_modifier": {
+            "type": "integer",
+            "maximum": 100.0,
+            "minimum": -100.0,
+            "title": "Score Modifier",
+            "default": 0
+          },
+          "score_cap": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 100.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score Cap"
           },
           "id": {
             "type": "integer",
@@ -23522,6 +23973,26 @@
           "priority": {
             "type": "integer",
             "title": "Priority"
+          },
+          "score_modifier": {
+            "type": "integer",
+            "maximum": 100.0,
+            "minimum": -100.0,
+            "title": "Score Modifier",
+            "default": 0
+          },
+          "score_cap": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 100.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score Cap"
           }
         },
         "type": "object",
@@ -23813,6 +24284,32 @@
               }
             ],
             "title": "Priority"
+          },
+          "score_modifier": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 100.0,
+                "minimum": -100.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score Modifier"
+          },
+          "score_cap": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 100.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score Cap"
           }
         },
         "type": "object",
@@ -25029,6 +25526,17 @@
             "title": "Attributes",
             "default": []
           },
+          "score": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score"
+          },
           "indicators": {
             "items": {
               "$ref": "#/components/schemas/Indicator"
@@ -25083,7 +25591,8 @@
                 "tlp:red"
               ],
               "exclude_warninglisted": true,
-              "indicator_mode": false
+              "indicator_mode": false,
+              "min_score": 0
             }
           },
           "id": {
@@ -25213,7 +25722,8 @@
                 "tlp:red"
               ],
               "exclude_warninglisted": true,
-              "indicator_mode": false
+              "indicator_mode": false,
+              "min_score": 0
             }
           }
         },
@@ -25280,6 +25790,13 @@
             "type": "boolean",
             "title": "Indicator Mode",
             "default": false
+          },
+          "min_score": {
+            "type": "integer",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Min Score",
+            "default": 0
           }
         },
         "type": "object",

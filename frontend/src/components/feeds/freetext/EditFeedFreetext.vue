@@ -22,6 +22,8 @@ const config = ref({
   input_source: feed.value.input_source,
   headers: feed.value.headers ?? {},
   settings: feed.value.settings ?? {},
+  score_modifier: feed.value.score_modifier ?? 0,
+  score_cap: feed.value.score_cap ?? null,
 });
 
 function submit() {
@@ -37,6 +39,8 @@ function submit() {
     input_source: config.value.input_source,
     headers: config.value.headers ?? {},
     settings: config.value.settings ?? {},
+    score_modifier: config.value.score_modifier ?? 0,
+    score_cap: config.value.score_cap ?? null,
   };
 
   return feedsStore

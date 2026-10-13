@@ -168,6 +168,7 @@ class TestLookup(ApiTester):
             "match": False,
             "attribute_count": 0,
             "attributes": [],
+            "score": None,
             "indicators": [],
         }
 

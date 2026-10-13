@@ -68,6 +68,8 @@ def create_feed(db: Session, feed: feed_schemas.FeedCreate):
         tag_collection_id=feed.tag_collection_id,
         cached_elements=feed.cached_elements,
         coverage_by_other_feeds=feed.coverage_by_other_feeds,
+        score_modifier=feed.score_modifier,
+        score_cap=feed.score_cap,
     )
 
     db.add(db_feed)
@@ -90,11 +92,17 @@ def update_feed(
         )
 
     feed_patch = feed.model_dump(exclude_unset=True)
+    trust_before = (db_feed.score_modifier, db_feed.score_cap)
     for key, value in feed_patch.items():
         setattr(db_feed, key, value)
 
     db.add(db_feed)
     db.commit()
+    # A source's trust is part of the score of everything it reports.
+    if (db_feed.score_modifier, db_feed.score_cap) != trust_before:
+        from app.repositories import indicators as indicators_repository
+
+        indicators_repository.request_rebuild()
     db.refresh(db_feed)
 
     return db_feed

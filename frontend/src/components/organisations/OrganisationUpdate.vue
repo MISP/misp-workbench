@@ -4,13 +4,19 @@ import { storeToRefs } from "pinia";
 import { useOrganisationsStore } from "@/stores";
 import { router } from "@/router";
 import { OrganisationSchema } from "@/schemas/organisation";
+import SourceTrustFields from "@/components/indicators/SourceTrustFields.vue";
 
 const organisationsStore = useOrganisationsStore();
 const { organisation, status } = storeToRefs(organisationsStore);
 
 function onSubmit(values, { setErrors }) {
   return organisationsStore
-    .update(values.organisation)
+    .update({
+      ...values.organisation,
+      // Not vee-validate fields: taken from the edited organisation.
+      score_modifier: organisation.value.score_modifier ?? 0,
+      score_cap: organisation.value.score_cap ?? null,
+    })
     .then(() => {
       router.push(`/organisations/${values.organisation.id}`);
     })
@@ -117,6 +123,11 @@ function onSubmit(values, { setErrors }) {
           </Field>
           <div class="invalid-feedback">{{ errors["organisation.local"] }}</div>
         </div>
+        <SourceTrustFields
+          id-prefix="organisation"
+          v-model:modifier="organisation.score_modifier"
+          v-model:cap="organisation.score_cap"
+        />
         <div v-if="errors.apiError" class="w-100 alert alert-danger mt-3 mb-3">
           {{ errors.apiError }}
         </div>
