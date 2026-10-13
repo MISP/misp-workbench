@@ -233,6 +233,8 @@ class ProfileConsumer(BaseModel):
 
 class ChangePreview(BaseModel):
     generated_at: datetime
+    # Name it to approve these changes, and no others.
+    fingerprint: str
     gate: ProfileGate
     # Held: runs wait for approval, for these reasons.
     held: bool = False
@@ -242,6 +244,11 @@ class ChangePreview(BaseModel):
     changes: ChangeSummary
     releases: list[ProfileRelease] = []
     consumers: list[ProfileConsumer] = []
+
+
+class ApproveChangesRequest(BaseModel):
+    # The fingerprint of the previewed changes being approved.
+    fingerprint: str = Field(min_length=64, max_length=64)
 
 
 class ChangePreviewRequest(BaseModel):

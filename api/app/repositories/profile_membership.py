@@ -210,6 +210,14 @@ class Diff:
             if changed:
                 yield changed
 
+    def keep_released(self, released_key: str) -> None:
+        """Leave out additions not in ``released_key`` (a profile's released
+        members, see profile_gate): a run sends nothing its profile hasn't
+        released, whatever joined since the release."""
+        pending = list(self.redis.sdiff([self.added_key, released_key]))
+        for start in range(0, len(pending), CHUNK):
+            self.withhold(pending[start : start + CHUNK])
+
     def withhold(self, ids: list[str]) -> None:
         """Leave members out of this run: not sent, not kept as delivered, so
         the next run considers them again."""

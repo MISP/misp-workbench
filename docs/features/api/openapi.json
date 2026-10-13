@@ -10640,7 +10640,7 @@
           "Detection profiles"
         ],
         "summary": "Approve Changes",
-        "description": "Release the profile's changes as they are now, and run the outputs\nthat waited for them.",
+        "description": "Release the previewed changes (named by their fingerprint), and run\nthe outputs that waited for them. 409 when they moved since.",
         "operationId": "approve_changes_detection_profiles__profile_id__changes_approve_post",
         "security": [
           {
@@ -10660,6 +10660,16 @@
             }
           }
         ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApproveChangesRequest"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -15929,6 +15939,21 @@
         ],
         "title": "ApiKeyUpdate"
       },
+      "ApproveChangesRequest": {
+        "properties": {
+          "fingerprint": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 64,
+            "title": "Fingerprint"
+          }
+        },
+        "type": "object",
+        "required": [
+          "fingerprint"
+        ],
+        "title": "ApproveChangesRequest"
+      },
       "Attribute": {
         "properties": {
           "object_uuid": {
@@ -16743,6 +16768,10 @@
             "format": "date-time",
             "title": "Generated At"
           },
+          "fingerprint": {
+            "type": "string",
+            "title": "Fingerprint"
+          },
           "gate": {
             "$ref": "#/components/schemas/ProfileGate"
           },
@@ -16794,6 +16823,7 @@
         "type": "object",
         "required": [
           "generated_at",
+          "fingerprint",
           "gate",
           "changes"
         ],

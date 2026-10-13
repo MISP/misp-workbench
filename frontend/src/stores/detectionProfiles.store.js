@@ -54,9 +54,14 @@ export const useDetectionProfilesStore = defineStore({
         ? await fetchWrapper.post(`${baseUrl}/${id}/changes`, { rules })
         : await fetchWrapper.get(`${baseUrl}/${id}/changes`);
     },
-    /** Release the changes as they are now; the outputs that waited run. */
-    async approveChanges(id) {
-      return await fetchWrapper.post(`${baseUrl}/${id}/changes/approve`, {});
+    /**
+     * Release the previewed changes, named by the preview's fingerprint (a
+     * 409 when they moved since); the outputs that waited run.
+     */
+    async approveChanges(id, fingerprint) {
+      return await fetchWrapper.post(`${baseUrl}/${id}/changes/approve`, {
+        fingerprint,
+      });
     },
   },
 });

@@ -1,7 +1,10 @@
 """Detection profiles shared by all outputs (see ``app.repositories.detection_profiles``)."""
 
+from typing import Optional
+
 from fastapi import APIRouter, Depends, HTTPException, Request, Security, status
 from fastapi.concurrency import run_in_threadpool
+from fastapi.security import SecurityScopes
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -21,6 +24,54 @@ def _get_or_404(db: Session, profile_id: int):
     if profile is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Detection profile not found")
     return profile
+
+
+async def _can_review(request: Request, db: Session = Depends(get_db)) -> bool:
+    """Whether the caller (its token or API key) holds indicators:review."""
+    try:
+        await get_current_active_user(
+            SecurityScopes(["indicators:review"]), request, None, db
+        )
+    except HTTPException:
+        return False
+    return True
+
+
+def _weakens_review(before, patch: dict) -> Optional[str]:
+    """What, in a create (``before`` None) or an update, decides what goes
+    out without a review: those are for reviewers (indicators:review), not
+    only for whoever edits profiles."""
+
+    def rules(raw):
+        return profiles_repository._rules(raw).model_dump()
+
+    def gate(raw):
+        return profile_gate.gate_of(raw).model_dump()
+
+    old_rules = rules(before.rules) if before is not None else rules({})
+    old_auto = bool(before.auto_approve) if before is not None else False
+    new_rules = rules(patch["rules"]) if "rules" in patch else None
+    new_auto = patch.get("auto_approve", old_auto)
+    if "gate" in patch and gate(patch["gate"]) != gate(before.gate if before else None):
+        return "its approval gate"
+    if new_auto != old_auto and new_auto:
+        return "auto-approval"
+    if new_auto and new_rules is not None and new_rules != old_rules:
+        return "the rules of an auto-approve profile"
+    if new_rules is not None and before is not None:
+        for rule in ("require_approval", "exclude_rejected"):
+            if old_rules.get(rule) and not new_rules.get(rule):
+                return f"turning {rule.replace('_', ' ')} off"
+    return None
+
+
+def _check_review(before, patch: dict, can_review: bool) -> None:
+    what = _weakens_review(before, patch)
+    if what and not can_review:
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            f"Changing {what} needs the indicators:review scope",
+        )
 
 
 def _audit(db, request, user, action, profile):
@@ -138,7 +189,9 @@ def create_profile(
     user: user_schemas.User = Security(
         get_current_active_user, scopes=["detection_profiles:create"]
     ),
+    can_review: bool = Depends(_can_review),
 ):
+    _check_review(None, profile.model_dump(exclude_unset=True), can_review)
     try:
         created = profiles_repository.create_profile(db, profile)
     except IntegrityError:
@@ -162,8 +215,10 @@ def update_profile(
     user: user_schemas.User = Security(
         get_current_active_user, scopes=["detection_profiles:update"]
     ),
+    can_review: bool = Depends(_can_review),
 ):
     db_profile = _get_or_404(db, profile_id)
+    _check_review(db_profile, profile.model_dump(exclude_unset=True), can_review)
     try:
         updated = profiles_repository.update_profile(db, db_profile, profile)
     except IntegrityError:
@@ -237,19 +292,20 @@ def dry_run_changes(
 )
 def approve_changes(
     profile_id: int,
+    approval: profile_schemas.ApproveChangesRequest,
     request: Request,
     db: Session = Depends(get_db),
     user: user_schemas.User = Security(
         get_current_active_user, scopes=["indicators:review"]
     ),
 ):
-    """Release the profile's changes as they are now, and run the outputs
-    that waited for them."""
+    """Release the previewed changes (named by their fingerprint), and run
+    the outputs that waited for them. 409 when they moved since."""
     profile = _get_or_404(db, profile_id)
     try:
-        released = profile_gate.approve(db, profile_id, user.id)
-    except profile_gate.ChangesHeld as busy:
-        raise HTTPException(status.HTTP_409_CONFLICT, str(busy))
+        released = profile_gate.approve(db, profile_id, user.id, approval.fingerprint)
+    except (profile_gate.ChangesHeld, profile_gate.ChangesMoved) as conflict:
+        raise HTTPException(status.HTTP_409_CONFLICT, str(conflict))
     audit.record(
         db,
         action="detection_profile.changes_approved",

@@ -555,6 +555,9 @@ def deliver_membership(sink: sink_models.Sink) -> int:
             owner, rules, detection_profiles.context(), state
         )
         try:
+            # Only what the profile released: whatever joined since the
+            # check above waits for the next sync.
+            diff.keep_released(profile_gate.baseline_key(profile["id"]))
             batches = itertools.chain(
                 (
                     [formatters.removal_record(r) for r in batch]

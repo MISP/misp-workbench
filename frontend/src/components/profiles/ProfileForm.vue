@@ -1,11 +1,14 @@
 <script setup>
 import { reactive, ref, computed, watch } from "vue";
+import { storeToRefs } from "pinia";
 import { router } from "@/router";
 import {
+  useAuthStore,
   useDetectionProfilesStore,
   useIndicatorsStore,
   useToastsStore,
 } from "@/stores";
+import { authHelper } from "@/helpers";
 import TagsSelect from "@/components/tags/TagsSelect.vue";
 import AttributeTypeMultiSelect from "@/components/enums/AttributeTypeMultiSelect.vue";
 import ScoreBadge from "@/components/indicators/ScoreBadge.vue";
@@ -16,6 +19,15 @@ const props = defineProps({ profile: { type: Object, default: null } });
 const profilesStore = useDetectionProfilesStore();
 const indicatorsStore = useIndicatorsStore();
 const toastsStore = useToastsStore();
+const { scopes } = storeToRefs(useAuthStore());
+// What goes out without a review is for reviewers: auto-approval, the
+// approval gate, and turning approval or rejections off (the API refuses
+// the rest).
+const canReview = computed(() =>
+  authHelper.hasScope(scopes.value, "indicators:review"),
+);
+const wasRequired = !!props.profile?.rules?.require_approval;
+const wasExcluded = !!props.profile?.rules?.exclude_rejected;
 
 const TLPS = ["tlp:clear", "tlp:green", "tlp:amber", "tlp:amber+strict"];
 const DEFAULT_RULES = {
@@ -473,7 +485,7 @@ async function submit() {
               class="form-check-input"
               type="checkbox"
               v-model="rules.require_approval"
-              :disabled="form.auto_approve"
+              :disabled="form.auto_approve || (!canReview && wasRequired)"
             />
             <label class="form-check-label" for="profile-require-approval"
               >Require approval</label
@@ -491,7 +503,7 @@ async function submit() {
               class="form-check-input"
               type="checkbox"
               :checked="rules.exclude_rejected || rules.require_approval"
-              :disabled="rules.require_approval"
+              :disabled="rules.require_approval || (!canReview && wasExcluded)"
               @change="rules.exclude_rejected = $event.target.checked"
             />
             <label class="form-check-label" for="profile-exclude-rejected"
@@ -509,7 +521,7 @@ async function submit() {
               class="form-check-input"
               type="checkbox"
               v-model="form.auto_approve"
-              :disabled="rules.require_approval"
+              :disabled="rules.require_approval || !canReview"
             />
             <label class="form-check-label" for="profile-auto-approve"
               >Auto-approve what it selects</label
@@ -532,18 +544,23 @@ async function submit() {
           >changes</RouterLink
         ><template v-else>changes</template>, when they are large or risky.
       </p>
+      <div v-if="!canReview" class="form-text mb-2">
+        Changing the gate, auto-approval, or turning approval or rejections off
+        needs the <code>indicators:review</code> scope.
+      </div>
       <div class="form-check form-switch mb-2">
         <input
           id="profile-gate"
           class="form-check-input"
           type="checkbox"
           v-model="gate.enabled"
+          :disabled="!canReview"
         />
         <label class="form-check-label" for="profile-gate"
           >Hold large or risky changes</label
         >
       </div>
-      <div v-if="gate.enabled" class="row g-3 mb-3">
+      <fieldset v-if="gate.enabled" class="row g-3 mb-3" :disabled="!canReview">
         <div class="col-6 col-md-3">
           <label class="form-label small" for="gate-additions"
             >More additions than</label
@@ -629,7 +646,7 @@ async function submit() {
             v-model.number="gate.new_source_days"
           />
         </div>
-      </div>
+      </fieldset>
 
       <div v-if="apiError" class="alert alert-danger">{{ apiError }}</div>
       <div class="d-flex justify-content-end gap-2">

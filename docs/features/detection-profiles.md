@@ -193,8 +193,18 @@ Turn on **Hold large or risky changes** in a profile to hold a run that:
 A held run doesn't happen: exports and feeds keep their previous artifact
 (their status is *held*), sinks send nothing. Every user who can review
 indicators (`indicators:review`) is notified. **Approve changes** releases
-them as they are at that moment and runs the outputs that waited. Without a
+exactly the changes on the page, and runs the outputs that waited. If they
+moved since the page was loaded (something joined or left), the approval is
+refused and the page shows them as they are now, to review again. Without a
 hold, each run releases its changes on its own.
+
+A run only ever sends what its profile released: an indicator joining
+between the check and the run waits for the next run, and its check.
+
+Changing a profile's gate, making it auto-approve (or changing an
+auto-approve profile's rules), and turning *require approval* or *leave out
+rejected* off decide what goes out without a review: they need
+`indicators:review` too, not only the right to edit profiles.
 
 The check runs before every run, and every 5 minutes between runs, so a
 hold shows up (and is notified) before the next run comes. A hold that no
@@ -227,7 +237,7 @@ in the SOC's own tooling can fail a change on either.
 | `DELETE /detection-profiles/{id}` | `detection_profiles:delete` | Delete one (409 while an export or sink uses it) |
 | `GET /detection-profiles/{id}/changes` | `detection_profiles:read` | What its next run changes, whether it would be held, its recent runs and outputs |
 | `POST /detection-profiles/{id}/changes` | `detection_profiles:read` | The same for unsaved rules (`{"rules": {…}}`) |
-| `POST /detection-profiles/{id}/changes/approve` | `indicators:review` | Release held changes; the outputs that waited run |
+| `POST /detection-profiles/{id}/changes/approve` | `indicators:review` | Release the previewed changes, named by the preview's `fingerprint` (409 when they moved); the outputs that waited run |
 
 Every built-in role can read profiles. Changing them takes the create,
 update or delete scope, which only admins have by default.

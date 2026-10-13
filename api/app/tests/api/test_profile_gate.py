@@ -1,3 +1,4 @@
+import json
 import time
 
 import pytest
@@ -260,7 +261,8 @@ class TestProfileGate(ApiTester):
         assert db_export.status == "held"
         assert "3 additions" in db_export.error
 
-        approved = profile_gate.approve(db, self.profile_id, reviewer.id)
+        seen = profile_gate.preview(db, self.profile_id)["fingerprint"]
+        approved = profile_gate.approve(db, self.profile_id, reviewer.id, seen)
         assert approved["added"] == 3
         db.expire_all()
         assert [r.status for r in self._releases(db)] == [
@@ -334,7 +336,17 @@ class TestProfileGate(ApiTester):
         listed = client.get("/detection-profiles", headers=headers).json()
         assert [p["held"] for p in listed] == [True]
 
-        approved = client.post(f"{url}/approve", headers=headers)
+        seen = client.get(url, headers=headers).json()["fingerprint"]
+        # Something joined after the reviewer looked: not what they approve.
+        _write(["seven.example"], offset=20)
+        moved = client.post(
+            f"{url}/approve", json={"fingerprint": seen}, headers=headers
+        )
+        assert moved.status_code == status.HTTP_409_CONFLICT
+        seen = client.get(url, headers=headers).json()["fingerprint"]
+        approved = client.post(
+            f"{url}/approve", json={"fingerprint": seen}, headers=headers
+        )
         assert approved.status_code == status.HTTP_200_OK, approved.text
         assert approved.json()["status"] == "approved"
         after = client.get(url, headers=headers).json()
@@ -348,6 +360,52 @@ class TestProfileGate(ApiTester):
     ):
         response = client.post(
             f"/detection-profiles/{self.profile_id}/changes/approve",
+            json={"fingerprint": "0" * 64},
             headers={"Authorization": "Bearer " + auth_token},
         )
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+    def test_runs_send_only_what_was_released(self, db: Session):
+        from app.repositories import stream_exports
+
+        profile_gate.ready(self.profile_id)
+        # Joins after the check, before the run reads the profile.
+        _write(LATER, offset=10)
+        export = stream_exports.prepare_attribute_export(
+            "*",
+            "ndjson",
+            index=stream_exports.INDICATORS_INDEX,
+            profile=detection_profiles.load(self.profile_id),
+        )
+        export.released = profile_gate.baseline_key(self.profile_id)
+        lines = "".join(stream_exports.stream(export)).splitlines()
+        assert sorted(json.loads(line)["value"] for line in lines) == sorted(FIRST)
+
+    @pytest.mark.parametrize("scopes", [["detection_profiles:update"]])
+    def test_review_settings_need_a_reviewer(
+        self, client: TestClient, auth_token: auth.Token
+    ):
+        headers = {"Authorization": "Bearer " + auth_token}
+        url = f"/detection-profiles/{self.profile_id}"
+        # Switching the gate off would let held changes out.
+        off = client.patch(url, json={"gate": {"enabled": False}}, headers=headers)
+        assert off.status_code == status.HTTP_403_FORBIDDEN
+        assert "indicators:review" in off.json()["detail"]
+        auto = client.patch(url, json={"auto_approve": True}, headers=headers)
+        assert auto.status_code == status.HTTP_403_FORBIDDEN
+        # Anything else is the editor's to change.
+        renamed = client.patch(url, json={"name": "Renamed"}, headers=headers)
+        assert renamed.status_code == status.HTTP_200_OK, renamed.text
+
+    @pytest.mark.parametrize(
+        "scopes", [["detection_profiles:update", "indicators:review"]]
+    )
+    def test_reviewers_change_review_settings(
+        self, client: TestClient, auth_token: auth.Token
+    ):
+        response = client.patch(
+            f"/detection-profiles/{self.profile_id}",
+            json={"gate": {"enabled": False}},
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+        assert response.status_code == status.HTTP_200_OK, response.text

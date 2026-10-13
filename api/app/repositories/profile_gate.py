@@ -19,6 +19,7 @@ restSearch and sinks sending published events judge one value at a time, as
 it comes; they aren't runs and aren't held.
 """
 
+import hashlib
 import logging
 import re
 import statistics
@@ -58,6 +59,10 @@ SHARED = re.compile(
     r"salesforce|ipfs|shortener|link in bio|dynamic dns|parking",
     re.I,
 )
+
+
+class ChangesMoved(Exception):
+    """The changes aren't those a reviewer saw: approve them again."""
 
 
 class ChangesHeld(Exception):
@@ -150,6 +155,23 @@ def _sample(indicator: dict, detail: Optional[str] = None) -> dict:
         "score": indicator.get("score"),
         "detail": detail,
     }
+
+
+def fingerprint(diff) -> str:
+    """Which indicators a diff adds and removes, as a digest: approving
+    releases those changes only, not ones that came after the preview."""
+    redis = get_redis_client()
+    digest = hashlib.sha256()
+    for label, key in ((b"+", diff.added_key), (b"-", diff.removed_key)):
+        members = sorted(
+            m.decode() if isinstance(m, bytes) else m
+            for m in redis.sscan_iter(key, count=1000)
+        )
+        digest.update(label)
+        for member in members:
+            if member != profile_membership.SENTINEL:
+                digest.update(member.encode() + b"\n")
+    return digest.hexdigest()
 
 
 def summarise(diff, gate: profile_schemas.ProfileGate) -> dict:
@@ -461,6 +483,7 @@ def preview(db: Session, profile_id: int, rules=None) -> dict:
     diff = _diff(profile, rules)
     try:
         summary = summarise(diff, gate)
+        digest = fingerprint(diff)
     finally:
         diff.discard()
     usual = usual_added(db, profile_id)
@@ -469,6 +492,8 @@ def preview(db: Session, profile_id: int, rules=None) -> dict:
     held = row is not None and row.status == "held"
     return {
         "generated_at": datetime.now(timezone.utc),
+        # What approving these changes must name (see approve).
+        "fingerprint": digest,
         "gate": gate,
         "held": held,
         "held_since": row.created_at if held else None,
@@ -479,9 +504,10 @@ def preview(db: Session, profile_id: int, rules=None) -> dict:
     }
 
 
-def approve(db: Session, profile_id: int, user_id: int) -> dict:
-    """Release the profile's changes as they are now, and run the outputs
-    that waited."""
+def approve(db: Session, profile_id: int, user_id: int, expected: str) -> dict:
+    """Release the changes a reviewer saw (``expected``, the preview's
+    fingerprint), and run the outputs that waited. ChangesMoved when the
+    changes are no longer those: they need reviewing again."""
     profile = detection_profiles.load(profile_id)
     gate = gate_of(profile.get("gate"))
     with _lock(profile_id, LOCK_WAIT_SECONDS) as locked:
@@ -489,6 +515,10 @@ def approve(db: Session, profile_id: int, user_id: int) -> dict:
             raise ChangesHeld(["another run is checking the profile's changes"])
         diff = _diff(profile)
         try:
+            if fingerprint(diff) != expected:
+                raise ChangesMoved(
+                    "the changes moved since they were previewed; review them again"
+                )
             summary = summarise(diff, gate)
             diff.commit(baseline_key(profile_id))
         except Exception:

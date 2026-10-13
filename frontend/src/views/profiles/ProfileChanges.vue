@@ -69,7 +69,7 @@ async function approve() {
     return;
   approving.value = true;
   try {
-    await profilesStore.approveChanges(props.id);
+    await profilesStore.approveChanges(props.id, preview.value.fingerprint);
     toastsStore.push(
       "Changes approved; the outputs that waited run now.",
       "success",
@@ -77,6 +77,8 @@ async function approve() {
     await load();
   } catch (e) {
     toastsStore.push(`${e}`, "danger");
+    // Moved since previewed: show what they are now, to review again.
+    await load();
   } finally {
     approving.value = false;
   }

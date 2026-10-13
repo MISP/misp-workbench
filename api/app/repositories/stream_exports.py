@@ -128,6 +128,9 @@ class PreparedExport:
     # A profile delta: {"rules", "ctx"}. Each record says whether the
     # indicator is in the profile (action upsert) or not (remove, reason).
     membership: Optional[dict] = None
+    # A run of a profile: only the indicators in this Redis set (its released
+    # members, see profile_gate) are sent.
+    released: Optional[str] = None
 
     @property
     def media_type(self) -> str:
@@ -745,6 +748,22 @@ def iter_pit_pages(
             logger.warning("could not delete export PIT on %s", index, exc_info=True)
 
 
+def _released_pages(export: PreparedExport, pages: Iterator[list]) -> Iterator[list]:
+    """Pages of indicator hits, without those its profile hasn't released."""
+    if export.released is None:
+        yield from pages
+        return
+    from app.services.redis import get_redis_client
+
+    redis = get_redis_client()
+    for hits in pages:
+        if not hits:
+            yield hits
+            continue
+        kept = redis.smismember(export.released, [h["_id"] for h in hits])
+        yield [h for h, keep in zip(hits, kept) if keep]
+
+
 def stream(
     export: PreparedExport,
     pit_id: Optional[str] = None,
@@ -777,19 +796,25 @@ def _stream(
         else (CSV_COLUMNS, _csv_row)
     )
     if fmt in LINE_FORMATS:
-        pages = iter_pit_pages(
-            export.client,
-            export.index,
-            export.query,
-            source=source,
-            pit_id=pit_id,
-            sort=VALUE_ORDER,
+        pages = _released_pages(
+            export,
+            iter_pit_pages(
+                export.client,
+                export.index,
+                export.query,
+                source=source,
+                pit_id=pit_id,
+                sort=VALUE_ORDER,
+            ),
         )
         yield from _unique_lines(pages, fmt, slot)
         return
 
-    pages = iter_pit_pages(
-        export.client, export.index, export.query, source=source, pit_id=pit_id
+    pages = _released_pages(
+        export,
+        iter_pit_pages(
+            export.client, export.index, export.query, source=source, pit_id=pit_id
+        ),
     )
 
     if fmt == "json":
@@ -858,12 +883,15 @@ def _stream_expanded(
 ) -> Iterator[str]:
     """A profile's attributes, in the attribute formats (json, ndjson, csv)."""
     fmt = export.format
-    indicator_pages = iter_pit_pages(
-        export.client,
-        INDICATORS_INDEX,
-        export.query,
-        source=["type", "value"],
-        pit_id=pit_id,
+    indicator_pages = _released_pages(
+        export,
+        iter_pit_pages(
+            export.client,
+            INDICATORS_INDEX,
+            export.query,
+            source=["type", "value"],
+            pit_id=pit_id,
+        ),
     )
     if fmt == "json":
         yield "["
