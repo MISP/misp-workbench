@@ -96,6 +96,16 @@ class ProfilePreviewRequest(BaseModel):
     rules: ProfileRules
 
 
+class ProfileQuery(BaseModel):
+    """The rules as a Lucene query on the indicators index (Explore)."""
+
+    query: str
+    # Some rules (sources and organisations to leave out, source trust) are
+    # written listing the sources present now: ones added later aren't
+    # covered by this query, though they are by the profile.
+    snapshot: bool = False
+
+
 class ProfilePreview(BaseModel):
     """How many live indicators the rules select, and a few of them."""
 

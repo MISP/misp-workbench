@@ -7,7 +7,9 @@ leaving every consumer to de-duplicate it and merge the context itself,
 misp-workbench keeps one **consolidated indicator** per type and value.
 
 Under ***internals*** → ***indicators*** you can search them. Click a row to
-see its organisations, sources, tags and events.
+see its organisations, sources, tags and events. [Explore](explore.md) has
+an *Indicators* tab too, searched with the same query as events and
+attributes; its time range applies to when they were last seen.
 
 <img src="../../screenshots/indicators/misp-workbench-1_indicators_list.png#only-light" alt="Indicators list" style="max-width: 100%; height: auto;">
 <img src="../../screenshots/indicators/misp-workbench-1_indicators_list-dark.png#only-dark" alt="Indicators list" style="max-width: 100%; height: auto;">

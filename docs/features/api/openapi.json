@@ -10232,6 +10232,105 @@
         ]
       }
     },
+    "/detection-profiles/query": {
+      "post": {
+        "tags": [
+          "Detection profiles"
+        ],
+        "summary": "Rules As Query",
+        "description": "These rules as a Lucene query on the indicators index, for Explore.",
+        "operationId": "rules_as_query_detection_profiles_query_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProfilePreviewRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfileQuery"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "detection_profiles:read"
+            ]
+          }
+        ]
+      }
+    },
+    "/detection-profiles/{profile_id}/query": {
+      "get": {
+        "tags": [
+          "Detection profiles"
+        ],
+        "summary": "Profile As Query",
+        "description": "The profile as a Lucene query on the indicators index, for Explore.",
+        "operationId": "profile_as_query_detection_profiles__profile_id__query_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "detection_profiles:read"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "profile_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Profile Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfileQuery"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/detection-profiles/{profile_id}": {
       "get": {
         "tags": [
@@ -23673,6 +23772,25 @@
           "rules"
         ],
         "title": "ProfilePreviewRequest"
+      },
+      "ProfileQuery": {
+        "properties": {
+          "query": {
+            "type": "string",
+            "title": "Query"
+          },
+          "snapshot": {
+            "type": "boolean",
+            "title": "Snapshot",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "query"
+        ],
+        "title": "ProfileQuery",
+        "description": "The rules as a Lucene query on the indicators index (Explore)."
       },
       "ProfileRules": {
         "properties": {

@@ -8,7 +8,9 @@ The Explore view provides an interactive search interface over the OpenSearch in
 
 ## Search bar
 
-Queries are written in **Lucene query syntax** and executed simultaneously against the `misp-events` and `misp-attributes` indices. Results from whichever index has hits appear first.
+Queries are written in **Lucene query syntax** and executed simultaneously against the `misp-events`, `misp-attributes` and `misp-indicators` indices (and correlations), one tab each. Results from whichever index has hits appear first.
+
+The **Indicators** tab shows [consolidated indicators](indicators.md): each type and value once, with its score, sources, TLP and events. It can be sorted by score, last seen, first seen or event count. Its fields are the indicator's: `score:>=60`, `source_keys:"feed:3"`, `tlp:"tlp:amber"`, `tags:"tlp:green"`. A [detection profile](detection-profiles.md#exploring-a-profile) opens here as a query.
 
 Press **Enter** or click the search button to run the query.
 
@@ -32,7 +34,7 @@ Clicking on ***Lucene query syntax supported*** button opens a Lucene cheatsheet
 
 ## Time range filter
 
-The time range picker constrains results to a specific window. It appends a `@timestamp` range clause to your query automatically.
+The time range picker constrains results to a specific window. It appends a `@timestamp` range clause to your query automatically, and on the Indicators tab, which has no `@timestamp`, a `last_seen` one.
 
 **Relative** mode offers quick presets (Last 15 minutes → Last 1 year) or a custom value + unit picker.
 

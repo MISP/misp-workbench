@@ -229,6 +229,22 @@ class TestDetectionProfiles(ApiTester):
         }
         assert _selected(rules) == by_check
 
+    @pytest.mark.parametrize("rules", RULE_SETS, ids=[json.dumps(r) for r in RULE_SETS])
+    def test_lucene_selects_the_same(self, rules):
+        lucene = detection_profiles.to_lucene(rules, detection_profiles.context())
+        response = get_opensearch_client().search(
+            index=indicators.INDEX,
+            body={
+                "size": 1000,
+                "query": {
+                    "query_string": {"query": lucene["query"], "default_field": "value"}
+                },
+            },
+        )
+        assert {h["_source"]["value"] for h in response["hits"]["hits"]} == _selected(
+            rules
+        )
+
     def test_rules(self):
         # The defaults: IDS, no warninglisted, no validation issues.
         assert _selected({}) == {
@@ -285,6 +301,19 @@ class TestDetectionProfiles(ApiTester):
         )
         assert bad.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
+        lucene = client.get(f"/detection-profiles/{profile_id}/query", headers=headers)
+        assert lucene.json() == {
+            "query": 'deleted:false AND type.keyword:("md5") AND score:>=10 AND '
+            "to_ids:true AND NOT _exists_:warninglist_hits AND NOT "
+            "_exists_:validation_issues",
+            "snapshot": False,
+        }
+        unsaved = client.post(
+            "/detection-profiles/query",
+            json={"rules": {"exclude_sources": ["feed:5"]}},
+            headers=headers,
+        )
+        assert unsaved.json()["snapshot"] is True
         count = client.get(f"/detection-profiles/{profile_id}/count", headers=headers)
         assert count.json()["count"] == 1
         assert count.json()["sample"][0]["value"] == HASH

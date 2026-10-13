@@ -292,6 +292,105 @@ def output_query(rules, ctx: dict, delta: bool = False) -> dict:
     }
 
 
+# ── As a Lucene query, for Explore ────────────────────────────────────────
+
+_LUCENE_SPECIAL = set('+-=&|><!(){}[]^"~*?:\\/ ')
+
+
+def _quoted(value) -> str:
+    return '"' + str(value).replace("\\", "\\\\").replace('"', '\\"') + '"'
+
+
+def _pattern(pattern: str) -> str:
+    """A tag pattern for query_string: wildcards kept, everything else escaped."""
+    if not any(c in pattern for c in "*?"):
+        return _quoted(pattern)
+    return "".join(
+        c if c in "*?" else ("\\" + c if c in _LUCENE_SPECIAL else c) for c in pattern
+    )
+
+
+def _any_of(field: str, values) -> str:
+    return f"{field}:({' OR '.join(_quoted(v) for v in values)})"
+
+
+def _present(field: str) -> list:
+    """Every value of ``field`` across live indicators (sources, organisations)."""
+    from app.services.opensearch import get_opensearch_client
+
+    response = get_opensearch_client().search(
+        index=indicators_repository.INDEX,
+        body={
+            "size": 0,
+            "query": {"term": {"deleted": False}},
+            "aggs": {"values": {"terms": {"field": field, "size": 10000}}},
+        },
+        ignore=[404],
+    )
+    buckets = (response.get("aggregations") or {}).get("values", {}).get("buckets", [])
+    return [b["key"] for b in buckets]
+
+
+def _outside(field: str, keys: list) -> str:
+    """Indicators with at least one ``field`` value outside ``keys``: the
+    query_string form of "not only from keys", over the values present now."""
+    others = [v for v in _present(field) if v not in set(keys)]
+    return _any_of(field, others) if others else "NOT *"
+
+
+def to_lucene(rules, ctx: dict) -> dict:
+    """The rules as a Lucene query on the indicators index, for Explore.
+
+    Selects what ``to_query`` does. "Never only from" sources and
+    organisations, and source trust, have no query_string form: they are
+    written as "has a source outside these", listing the sources present
+    now, so a source that appears later isn't covered (``snapshot``).
+    """
+    rules = _rules(rules)
+    parts = ["deleted:false"]
+    snapshot = False
+    if rules.types:
+        parts.append(_any_of("type.keyword", rules.types))
+    if rules.categories:
+        parts.append(_any_of("categories", rules.categories))
+    if rules.tlp_ceiling:
+        parts.append(f"NOT {_any_of('tlp', _too_restrictive(rules.tlp_ceiling))}")
+    if rules.tags:
+        parts.append(f"tags:({' OR '.join(_pattern(t) for t in rules.tags)})")
+    if rules.exclude_tags:
+        parts.append(
+            f"NOT tags:({' OR '.join(_pattern(t) for t in rules.exclude_tags)})"
+        )
+    if rules.min_score is not None:
+        parts.append(f"score:>={rules.min_score}")
+    if rules.max_age_days:
+        parts.append(f"last_seen:>={ctx['now'] - rules.max_age_days * DAY}")
+    if rules.sources:
+        parts.append(_any_of("source_keys", rules.sources))
+    if rules.exclude_sources:
+        parts.append(_outside("source_keys", rules.exclude_sources))
+        snapshot = True
+    if rules.organisations:
+        parts.append(_any_of("organisation_ids", rules.organisations))
+    if rules.exclude_organisations:
+        parts.append(_outside("organisation_ids", rules.exclude_organisations))
+        snapshot = True
+    if rules.min_source_trust is not None:
+        allowed, below = _trust_split(rules, ctx)
+        if allowed is not None:
+            parts.append(_any_of("source_keys", allowed) if allowed else "NOT *")
+        elif below:
+            parts.append(_outside("source_keys", below))
+        snapshot = True
+    if rules.to_ids:
+        parts.append("to_ids:true")
+    if rules.exclude_warninglisted:
+        parts.append("NOT _exists_:warninglist_hits")
+    if rules.exclude_validation_issues:
+        parts.append("NOT _exists_:validation_issues")
+    return {"query": " AND ".join(parts), "snapshot": snapshot}
+
+
 def _any_tag(tags: list[str], patterns: list[str]) -> bool:
     return any(fnmatch.fnmatchcase(t, p) for p in patterns for t in tags)
 

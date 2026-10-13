@@ -60,6 +60,37 @@ async def preview_rules(
     return await run_in_threadpool(profiles_repository.preview, request.rules)
 
 
+@router.post("/detection-profiles/query", response_model=profile_schemas.ProfileQuery)
+async def rules_as_query(
+    request: profile_schemas.ProfilePreviewRequest,
+    user: user_schemas.User = Security(
+        get_current_active_user, scopes=["detection_profiles:read"]
+    ),
+):
+    """These rules as a Lucene query on the indicators index, for Explore."""
+    return await run_in_threadpool(
+        profiles_repository.to_lucene, request.rules, profiles_repository.context()
+    )
+
+
+@router.get(
+    "/detection-profiles/{profile_id}/query",
+    response_model=profile_schemas.ProfileQuery,
+)
+async def profile_as_query(
+    profile_id: int,
+    db: Session = Depends(get_db),
+    user: user_schemas.User = Security(
+        get_current_active_user, scopes=["detection_profiles:read"]
+    ),
+):
+    """The profile as a Lucene query on the indicators index, for Explore."""
+    profile = _get_or_404(db, profile_id)
+    return await run_in_threadpool(
+        profiles_repository.to_lucene, profile.rules, profiles_repository.context()
+    )
+
+
 @router.get(
     "/detection-profiles/{profile_id}", response_model=profile_schemas.DetectionProfile
 )

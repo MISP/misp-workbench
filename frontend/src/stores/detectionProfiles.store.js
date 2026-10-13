@@ -34,6 +34,13 @@ export const useDetectionProfilesStore = defineStore({
     async preview(rules) {
       return await fetchWrapper.post(`${baseUrl}/preview`, { rules });
     },
+    /** {query, snapshot}: the profile as a Lucene query on indicators. */
+    async query(id) {
+      return await fetchWrapper.get(`${baseUrl}/${id}/query`);
+    },
+    async queryFor(rules) {
+      return await fetchWrapper.post(`${baseUrl}/query`, { rules });
+    },
     async count(id) {
       return await fetchWrapper.get(`${baseUrl}/${id}/count`);
     },

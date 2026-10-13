@@ -3,6 +3,7 @@ import { ref } from "vue";
 import { storeToRefs } from "pinia";
 import { useDetectionProfilesStore, useToastsStore } from "@/stores";
 import Spinner from "@/components/misc/Spinner.vue";
+import { router } from "@/router";
 
 const profilesStore = useDetectionProfilesStore();
 const toastsStore = useToastsStore();
@@ -37,6 +38,22 @@ function summary(rules) {
   if (rules.min_source_trust !== null && rules.min_source_trust !== undefined)
     parts.push(`trust ≥ ${rules.min_source_trust}`);
   return parts.join(" · ") || "everything";
+}
+
+// Open the profile's indicators in Explore, as an editable query.
+async function explore(profile) {
+  try {
+    const { query, snapshot } = await profilesStore.query(profile.id);
+    if (snapshot) {
+      toastsStore.push(
+        "The query lists the sources present now: ones added later aren't covered by it (they are by the profile).",
+        "info",
+      );
+    }
+    router.push({ path: "/explore", query: { q: query, tab: "indicators" } });
+  } catch (error) {
+    toastsStore.push(`${error}`, "danger");
+  }
 }
 
 async function remove(profile) {
@@ -97,6 +114,13 @@ async function remove(profile) {
                 {{ counts[p.id]?.toLocaleString() ?? "…" }}
               </td>
               <td class="text-end text-nowrap">
+                <button
+                  class="btn btn-outline-secondary btn-sm me-1"
+                  title="Open its indicators in Explore, as a query you can edit"
+                  @click="explore(p)"
+                >
+                  Explore
+                </button>
                 <RouterLink
                   :to="`/detection-profiles/update/${p.id}`"
                   class="btn btn-outline-primary btn-sm me-1"

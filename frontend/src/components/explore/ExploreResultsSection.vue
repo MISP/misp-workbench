@@ -24,6 +24,10 @@ const props = defineProps({
   filterFields: { type: Array, default: () => ["organisation", "tags"] },
   visible: { type: Boolean, default: true },
   exportable: { type: Boolean, default: false },
+  // [{value, label}]; the default suits events, attributes and correlations.
+  sortFields: { type: Array, default: null },
+  // Indicators sort one way only (most first).
+  sortOrderToggle: { type: Boolean, default: true },
 });
 
 const emit = defineEmits([
@@ -34,10 +38,11 @@ const emit = defineEmits([
   "filter-change",
 ]);
 
-const SORT_FIELDS = [
+const DEFAULT_SORT_FIELDS = [
   { value: "_score", label: "Relevance" },
   { value: "@timestamp", label: "Date" },
 ];
+const SORT_FIELDS = computed(() => props.sortFields || DEFAULT_SORT_FIELDS);
 
 const FILTER_LABELS = {
   organisation: "Organisation",
@@ -167,6 +172,7 @@ function onTypesChanged(types) {
 
         <div class="btn-group mt-2 mb-2">
           <button
+            v-if="sortOrderToggle"
             type="button"
             class="btn btn-sm btn-outline-info"
             @click="toggleSortOrder"

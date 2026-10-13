@@ -39,6 +39,26 @@ few of them.
 <img src="../../screenshots/detection-profiles/misp-workbench-2_detection-profiles_editor.png#only-light" alt="Editing a profile" style="height: 900px;">
 <img src="../../screenshots/detection-profiles/misp-workbench-2_detection-profiles_editor-dark.png#only-dark" alt="Editing a profile" style="height: 900px;">
 
+### Exploring a profile
+
+**Explore** next to a profile, or **Explore them** in the editor, opens its
+indicators in [Explore](explore.md)'s *Indicators* tab, written out as a
+Lucene query you can read, refine and save like any other search:
+
+```text
+deleted:false AND NOT tlp:("tlp:amber+strict" OR "tlp:red") AND score:>=50
+  AND to_ids:true AND NOT _exists_:warninglist_hits AND NOT _exists_:validation_issues
+```
+
+The query selects what the profile does. There is one exception: sources and
+organisations to leave out, and minimum source trust, have no direct query
+form. They are written as "reported by a source other than these", listing
+the sources present at that moment, so a source that appears later isn't
+covered by the query, though it is by the profile. Explore says so when it
+happens. The query is also available from the API:
+`GET /detection-profiles/{id}/query` returns `{query, snapshot}`, and
+`POST /detection-profiles/query` does the same for unsaved rules.
+
 Two profiles are created on install, to adjust or copy:
 
 | Profile | Rules |

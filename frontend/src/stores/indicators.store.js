@@ -9,6 +9,11 @@ export const useIndicatorsStore = defineStore({
     page: { total: 0, page: 1, size: 50, items: [] },
     indicatorsStatus: null,
     status: { loading: false, error: false },
+    // Explore's Indicators tab, in the {total, results: [{_id, _source}]}
+    // shape its other tabs use.
+    explore_docs: null,
+    explore_page_count: 0,
+    exploreStatus: { loading: false, error: false, exporting: false },
   }),
   actions: {
     /** One page of consolidated indicators (one per type + value). */
@@ -57,6 +62,36 @@ export const useIndicatorsStore = defineStore({
         );
       } catch {
         return null;
+      }
+    },
+    async exploreSearch({ query, page = 1, size = 5, sort = "score" }) {
+      this.exploreStatus.loading = true;
+      this.exploreStatus.error = false;
+      const params = new URLSearchParams({ q: query, page, size, sort });
+      return fetchWrapper
+        .get(`${baseUrl}?${params}`)
+        .then((response) => {
+          this.explore_docs = {
+            total: response.total,
+            results: response.items.map((i) => ({ _id: i.uuid, _source: i })),
+          };
+          this.explore_page_count = Math.ceil(response.total / size);
+        })
+        .catch((error) => (this.exploreStatus.error = error))
+        .finally(() => (this.exploreStatus.loading = false));
+    },
+    /** Every indicator matching a query, as JSON (for Explore's download). */
+    async exportAll(query) {
+      this.exploreStatus.exporting = true;
+      const params = new URLSearchParams({ query, format: "ndjson" });
+      try {
+        const text = await fetchWrapper.get(`${baseUrl}/export?${params}`);
+        return String(text)
+          .split("\n")
+          .filter(Boolean)
+          .map((line) => JSON.parse(line));
+      } finally {
+        this.exploreStatus.exporting = false;
       }
     },
     async getStatus() {

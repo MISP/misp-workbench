@@ -105,6 +105,22 @@ watch(
   { deep: true, immediate: true },
 );
 
+// The rules as edited, opened in Explore as a query.
+async function explore() {
+  try {
+    const { query, snapshot } = await profilesStore.queryFor(payloadRules());
+    if (snapshot) {
+      toastsStore.push(
+        "The query lists the sources present now: ones added later aren't covered by it (they are by the profile).",
+        "info",
+      );
+    }
+    router.push({ path: "/explore", query: { q: query, tab: "indicators" } });
+  } catch (error) {
+    apiError.value = error?.message || String(error);
+  }
+}
+
 async function submit() {
   apiError.value = null;
   const payload = { ...form, rules: payloadRules() };
@@ -144,6 +160,13 @@ async function submit() {
             preview.count.toLocaleString()
           }}</strong>
           indicators match right now.
+          <button
+            type="button"
+            class="btn btn-link btn-sm p-0 ms-2 align-baseline"
+            @click="explore"
+          >
+            Explore them
+          </button>
         </div>
         <div v-else>Counting…</div>
         <div v-if="preview?.sample?.length" class="small mt-1 text-break">
