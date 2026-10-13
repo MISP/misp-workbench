@@ -1,6 +1,7 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from "vue";
 import { storeToRefs } from "pinia";
+import { fetchWrapper } from "@/helpers";
 import { Modal } from "bootstrap";
 import Spinner from "@/components/misc/Spinner.vue";
 import RetentionConfirmModal from "./RetentionConfirmModal.vue";
@@ -126,10 +127,78 @@ const MATCH_TYPE_OPTIONS = ["term", "cidr", "ja4"];
 const KNOWN_NAMESPACES = [
   "correlations",
   "exports",
+  "normalisation",
   "notifications",
   "retention",
   "scoring",
 ];
+
+// Normalisation: the rules applied to every attribute as it is written.
+const NORMALISATION_RULES = [
+  ["refang", "Refang", "hxxp://, 1.2.3[.]4, evil[.]com, bob[@]example.com"],
+  [
+    "lowercase_hostnames",
+    "Lower-case hostnames",
+    "Domains, hostnames and email domains; no trailing dot.",
+  ],
+  [
+    "normalise_urls",
+    "Normalise URLs",
+    "Lower-case scheme and host, no default port.",
+  ],
+  [
+    "strip_tracking_params",
+    "Strip tracking parameters",
+    "Drop the URL query parameters listed below.",
+  ],
+  [
+    "canonical_ips",
+    "Canonical IPs",
+    "IPv6 per RFC 5952, IPv4 without leading zeros.",
+  ],
+  ["lowercase_hashes", "Lower-case hashes", "MD5, SHA-1, SHA-256, ..."],
+  [
+    "validate_hashes",
+    "Validate hashes",
+    "Flag a wrong length or non-hex characters (invalid-hash).",
+  ],
+  [
+    "validate_ips",
+    "Validate IPs",
+    "Flag malformed IPs, CIDRs and ports (invalid-ip, invalid-cidr, invalid-port).",
+  ],
+  [
+    "flag_reserved_ips",
+    "Flag reserved IPs",
+    "Private, loopback, link-local, documentation, multicast and reserved IPs on attributes flagged for IDS.",
+  ],
+];
+const trackingParamsText = computed({
+  get: () => (formValues.normalisation?.tracking_params || []).join("\n"),
+  set: (text) => {
+    formValues.normalisation.tracking_params = text
+      .split("\n")
+      .map((p) => p.trim())
+      .filter(Boolean);
+  },
+});
+const applyingNormalisation = ref(false);
+async function applyNormalisation() {
+  applyingNormalisation.value = true;
+  try {
+    const response = await fetchWrapper.post(
+      `${import.meta.env.VITE_API_URL}/settings/runtime/normalisation/apply`,
+    );
+    toastsStore.push(
+      `Re-normalising existing attributes in the background (task ${response.task}).`,
+      "success",
+    );
+  } catch (error) {
+    toastsStore.push(`Could not start it: ${error}`, "danger");
+  } finally {
+    applyingNormalisation.value = false;
+  }
+}
 
 // Scoring: per-type half-lives, edited as rows.
 const SCORE_SOURCES = ["local", "server", "feed", "unknown"];
@@ -168,6 +237,11 @@ const SCORE_NUMBERS = [
     "warninglist_penalty",
     "Warninglist penalty",
     "Taken off when on an enabled warninglist.",
+  ],
+  [
+    "validation_penalty",
+    "Validation penalty",
+    "Taken off when an attribute failed validation (see normalisation).",
   ],
   [
     "expiration_cap",
@@ -606,6 +680,91 @@ async function deleteRetentionSchedule() {
                       <button
                         class="btn btn-primary btn-sm"
                         @click="saveFormNamespace('notifications')"
+                      >
+                        Save
+                      </button>
+                    </div>
+                  </template>
+
+                  <!-- ── normalisation form ── -->
+                  <template
+                    v-else-if="
+                      namespace === 'normalisation' &&
+                      !jsonMode[namespace] &&
+                      formValues.normalisation
+                    "
+                  >
+                    <p class="text-muted small">
+                      Applied to every attribute as it is written: from the API,
+                      MISP servers, feeds and bulk imports. A rewritten value
+                      keeps the original; problems are flagged, never dropped,
+                      and lower the indicator's score.
+                    </p>
+                    <div class="form-check form-switch mb-3">
+                      <input
+                        id="normalisationEnabled"
+                        class="form-check-input"
+                        type="checkbox"
+                        v-model="formValues.normalisation.enabled"
+                      />
+                      <label class="form-check-label" for="normalisationEnabled"
+                        >Normalise and validate attributes</label
+                      >
+                    </div>
+                    <div class="row g-2 mb-3">
+                      <div
+                        v-for="[key, label, help] in NORMALISATION_RULES"
+                        :key="key"
+                        class="col-md-6"
+                      >
+                        <div class="form-check form-switch">
+                          <input
+                            :id="`normalisation-${key}`"
+                            class="form-check-input"
+                            type="checkbox"
+                            :disabled="!formValues.normalisation.enabled"
+                            v-model="formValues.normalisation[key]"
+                          />
+                          <label
+                            class="form-check-label"
+                            :for="`normalisation-${key}`"
+                            >{{ label }}</label
+                          >
+                          <div class="form-text mt-0">{{ help }}</div>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="mb-3">
+                      <label
+                        class="form-label fw-semibold"
+                        for="normalisationTrackingParams"
+                        >Tracking parameters</label
+                      >
+                      <textarea
+                        id="normalisationTrackingParams"
+                        class="form-control font-monospace"
+                        rows="4"
+                        v-model="trackingParamsText"
+                      />
+                      <div class="form-text">
+                        One per line; a trailing * matches a prefix (utm_*).
+                      </div>
+                    </div>
+                    <div
+                      class="d-flex justify-content-between align-items-center mt-3"
+                    >
+                      <button
+                        type="button"
+                        class="btn btn-outline-secondary btn-sm"
+                        :disabled="applyingNormalisation"
+                        title="New and edited attributes are normalised as they are written; this applies the rules to those stored before"
+                        @click="applyNormalisation"
+                      >
+                        Apply to existing attributes
+                      </button>
+                      <button
+                        class="btn btn-primary btn-sm"
+                        @click="saveFormNamespace('normalisation')"
                       >
                         Save
                       </button>

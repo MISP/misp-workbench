@@ -1,0 +1,377 @@
+// Normalise and validate an attribute's value on every write (the first step
+// of misp-attributes_default). Rules are switched by params, which the API
+// sets from the "normalisation" runtime settings (app.services.normalisation).
+//
+// A rewritten value keeps the original in original_value. Problems are
+// recorded in validation_issues, never by dropping the attribute.
+
+boolean isHashType(String t) {
+  return t == 'md5' || t == 'sha1' || t == 'sha224' || t == 'sha256'
+      || t == 'sha384' || t == 'sha512' || t == 'sha512/224'
+      || t == 'sha512/256' || t == 'sha3-224' || t == 'sha3-256'
+      || t == 'sha3-384' || t == 'sha3-512' || t == 'imphash'
+      || t == 'authentihash' || t == 'pehash' || t == 'cdhash'
+      || t == 'x509-fingerprint-md5' || t == 'x509-fingerprint-sha1'
+      || t == 'x509-fingerprint-sha256' || t == 'ja3-fingerprint-md5'
+      || t == 'hassh-md5' || t == 'hasshserver-md5';
+}
+
+int hashLength(String t) {
+  if (t == 'md5' || t == 'imphash' || t == 'x509-fingerprint-md5'
+      || t == 'ja3-fingerprint-md5' || t == 'hassh-md5'
+      || t == 'hasshserver-md5') { return 32; }
+  if (t == 'sha1' || t == 'pehash' || t == 'cdhash'
+      || t == 'x509-fingerprint-sha1') { return 40; }
+  if (t == 'sha224' || t == 'sha512/224' || t == 'sha3-224') { return 56; }
+  if (t == 'sha256' || t == 'sha512/256' || t == 'sha3-256'
+      || t == 'authentihash' || t == 'x509-fingerprint-sha256') { return 64; }
+  if (t == 'sha384' || t == 'sha3-384') { return 96; }
+  if (t == 'sha512' || t == 'sha3-512') { return 128; }
+  return -1;
+}
+
+boolean isIpType(String t) {
+  return t == 'ip-src' || t == 'ip-dst' || t == 'ip';
+}
+
+boolean isHostType(String t) {
+  return t == 'domain' || t == 'hostname';
+}
+
+boolean isEmailType(String t) {
+  return t == 'email' || t == 'email-src' || t == 'email-dst'
+      || t == 'email-reply-to' || t == 'target-email' || t == 'whois-registrant-email';
+}
+
+boolean refangable(String t) {
+  return t == 'url' || t == 'link' || t == 'uri' || isHostType(t)
+      || isIpType(t) || isEmailType(t) || t == 'domain|ip'
+      || t == 'ip-src|port' || t == 'ip-dst|port' || t == 'hostname|port';
+}
+
+boolean allDigits(String s) {
+  if (s.length() == 0) { return false; }
+  for (int i = 0; i < s.length(); i++) {
+    if (!Character.isDigit(s.charAt(i))) { return false; }
+  }
+  return true;
+}
+
+String refang(String v) {
+  String lower = v.toLowerCase();
+  if (lower.startsWith('hxxp')) { v = 'http' + v.substring(4); }
+  else if (lower.startsWith('fxp')) { v = 'ftp' + v.substring(3); }
+  v = v.replace('[://]', '://').replace('[:]', ':');
+  v = v.replace('[.]', '.').replace('(.)', '.').replace('{.}', '.');
+  v = v.replace('[dot]', '.').replace('[DOT]', '.').replace('(dot)', '.').replace('(DOT)', '.');
+  v = v.replace('[@]', '@').replace('[at]', '@').replace('[AT]', '@');
+  return v;
+}
+
+// IPv4 as a number; -1 when it isn't one.
+long ip4(String s) {
+  String[] parts = s.splitOnToken('.');
+  if (parts.length != 4) { return -1L; }
+  long result = 0L;
+  for (String p : parts) {
+    if (p.length() == 0 || p.length() > 3 || !allDigits(p)) { return -1L; }
+    int octet = Integer.parseInt(p);
+    if (octet > 255) { return -1L; }
+    result = result * 256L + octet;
+  }
+  return result;
+}
+
+String ip4Text(long ip) {
+  return ((ip >> 24) & 255L) + '.' + ((ip >> 16) & 255L) + '.'
+      + ((ip >> 8) & 255L) + '.' + (ip & 255L);
+}
+
+// The 8 groups of an IPv6 address; null when it isn't one.
+int[] parse6(String a) {
+  String s = a.toLowerCase();
+  List tail = new ArrayList();
+  List head = new ArrayList();
+  int dbl = s.indexOf('::');
+  if (dbl >= 0 && dbl != s.lastIndexOf('::')) { return null; }
+  String left = dbl >= 0 ? s.substring(0, dbl) : s;
+  String right = dbl >= 0 ? s.substring(dbl + 2) : '';
+  if (left.length() > 0) { for (String p : left.splitOnToken(':')) { head.add(p); } }
+  if (right.length() > 0) { for (String p : right.splitOnToken(':')) { tail.add(p); } }
+  // An embedded IPv4 (::ffff:192.0.2.1) is two groups.
+  List last = tail.size() > 0 ? tail : head;
+  if (last.size() > 0 && ((String) last.get(last.size() - 1)).indexOf('.') >= 0) {
+    long v4 = ip4((String) last.get(last.size() - 1));
+    if (v4 < 0) { return null; }
+    last.remove(last.size() - 1);
+    last.add(Long.toHexString((v4 >> 16) & 65535L));
+    last.add(Long.toHexString(v4 & 65535L));
+  }
+  int missing = 8 - head.size() - tail.size();
+  if (dbl >= 0 ? missing < 1 : missing != 0) { return null; }
+  List groups = new ArrayList(head);
+  for (int i = 0; i < missing && dbl >= 0; i++) { groups.add('0'); }
+  groups.addAll(tail);
+  int[] values = new int[8];
+  for (int i = 0; i < 8; i++) {
+    String g = (String) groups.get(i);
+    if (g.length() == 0 || g.length() > 4) { return null; }
+    int value = 0;
+    for (int j = 0; j < g.length(); j++) {
+      int d = Character.digit(g.charAt(j), 16);
+      if (d < 0) { return null; }
+      value = value * 16 + d;
+    }
+    values[i] = value;
+  }
+  return values;
+}
+
+// RFC 5952: lower case, no leading zeros, the longest run of zero groups
+// (two or more, leftmost on a tie) as ::.
+String ip6Text(int[] g) {
+  // IPv4-mapped addresses keep the dotted IPv4 (RFC 5952 section 5).
+  if (g[0] == 0 && g[1] == 0 && g[2] == 0 && g[3] == 0 && g[4] == 0 && g[5] == 65535) {
+    return '::ffff:' + ip4Text(((long) g[6]) * 65536L + g[7]);
+  }
+  int bestStart = -1;
+  int bestLength = 0;
+  int i = 0;
+  while (i < 8) {
+    if (g[i] == 0) {
+      int j = i;
+      while (j < 8 && g[j] == 0) { j++; }
+      if (j - i > bestLength) { bestStart = i; bestLength = j - i; }
+      i = j;
+    } else {
+      i++;
+    }
+  }
+  if (bestLength < 2) { bestStart = -1; }
+  StringBuilder out = new StringBuilder();
+  int k = 0;
+  while (k < 8) {
+    if (k == bestStart) {
+      out.append('::');
+      k += bestLength;
+      continue;
+    }
+    if (out.length() > 0 && out.charAt(out.length() - 1) != (char) ':') { out.append(':'); }
+    out.append(Integer.toHexString(g[k]));
+    k++;
+  }
+  return out.toString();
+}
+
+String canonIp(String s) {
+  String address = s;
+  String suffix = '';
+  int slash = s.indexOf('/');
+  if (slash >= 0) {
+    address = s.substring(0, slash);
+    String prefix = s.substring(slash + 1).trim();
+    suffix = allDigits(prefix) ? '/' + Integer.parseInt(prefix) : '/' + prefix;
+  }
+  if (address.indexOf(':') >= 0) {
+    int[] g = parse6(address);
+    return g == null ? s : ip6Text(g) + suffix;
+  }
+  long v4 = ip4(address);
+  return v4 < 0 ? s : ip4Text(v4) + suffix;
+}
+
+String stripTracking(String tail, List patterns) {
+  int q = tail.indexOf('?');
+  if (q < 0) { return tail; }
+  int hash = tail.indexOf('#', q);
+  String before = tail.substring(0, q);
+  String query = hash >= 0 ? tail.substring(q + 1, hash) : tail.substring(q + 1);
+  String fragment = hash >= 0 ? tail.substring(hash) : '';
+  StringBuilder kept = new StringBuilder();
+  for (String pair : query.splitOnToken('&')) {
+    if (pair.length() == 0) { continue; }
+    int eq = pair.indexOf('=');
+    String key = (eq >= 0 ? pair.substring(0, eq) : pair).toLowerCase();
+    boolean drop = false;
+    for (def pattern : patterns) {
+      String p = pattern.toString().toLowerCase();
+      if (p.endsWith('*') ? key.startsWith(p.substring(0, p.length() - 1)) : key == p) {
+        drop = true;
+      }
+    }
+    if (!drop) {
+      if (kept.length() > 0) { kept.append('&'); }
+      kept.append(pair);
+    }
+  }
+  return before + (kept.length() > 0 ? '?' + kept.toString() : '') + fragment;
+}
+
+String normaliseUrl(String v, Map params) {
+  int schemeEnd = v.indexOf('://');
+  if (schemeEnd <= 0) { return v; }
+  String scheme = v.substring(0, schemeEnd).toLowerCase();
+  String rest = v.substring(schemeEnd + 3);
+  int end = rest.length();
+  for (String d : new String[] {'/', '?', '#'}) {
+    int i = rest.indexOf(d);
+    if (i >= 0 && i < end) { end = i; }
+  }
+  String authority = rest.substring(0, end);
+  String tail = rest.substring(end);
+  int at = authority.lastIndexOf('@');
+  String user = at >= 0 ? authority.substring(0, at + 1) : '';
+  String hostPort = at >= 0 ? authority.substring(at + 1) : authority;
+  String host = hostPort;
+  String port = '';
+  if (hostPort.startsWith('[')) {
+    int bracket = hostPort.indexOf(']');
+    if (bracket > 0) { host = hostPort.substring(0, bracket + 1); port = hostPort.substring(bracket + 1); }
+  } else {
+    int colon = hostPort.lastIndexOf(':');
+    if (colon >= 0) { host = hostPort.substring(0, colon); port = hostPort.substring(colon); }
+  }
+  host = host.toLowerCase();
+  if (host.endsWith('.')) { host = host.substring(0, host.length() - 1); }
+  if ((scheme == 'http' && port == ':80') || (scheme == 'https' && port == ':443')) { port = ''; }
+  if (params.strip_tracking_params) { tail = stripTracking(tail, params.tracking_params); }
+  return scheme + '://' + user + host + port + tail;
+}
+
+String normalisePart(String t, String s, Map params) {
+  if (isHostType(t)) {
+    if (params.lowercase_hostnames) {
+      s = s.toLowerCase();
+      if (s.endsWith('.')) { s = s.substring(0, s.length() - 1); }
+    }
+    return s;
+  }
+  if (isIpType(t)) { return params.canonical_ips ? canonIp(s) : s; }
+  if (t == 'url' || t == 'link') { return params.normalise_urls ? normaliseUrl(s, params) : s; }
+  if (isEmailType(t) && params.lowercase_hostnames) {
+    int at = s.lastIndexOf('@');
+    return at >= 0 ? s.substring(0, at + 1) + s.substring(at + 1).toLowerCase() : s;
+  }
+  if (isHashType(t) && params.lowercase_hashes) { return s.toLowerCase(); }
+  return s;
+}
+
+// Types normalisation rewrites; everything else (text, comments, ...) is
+// left exactly as written.
+boolean normalisable(String t) {
+  return refangable(t) || isHashType(t) || t == 'link'
+      || t.startsWith('filename|');
+}
+
+String normalise(String t, String v, Map params) {
+  if (!normalisable(t)) { return v; }
+  String s = v.trim();
+  if (params.refang && refangable(t)) { s = refang(s); }
+  int typeBar = t.indexOf('|');
+  int valueBar = s.indexOf('|');
+  if (typeBar > 0 && valueBar > 0) {
+    return normalisePart(t.substring(0, typeBar), s.substring(0, valueBar), params)
+        + '|' + normalisePart(t.substring(typeBar + 1), s.substring(valueBar + 1), params);
+  }
+  return normalisePart(t, s, params);
+}
+
+// Which special range a valid IPv4 is in, or null. Each range is three
+// numbers: network, prefix length, index into names.
+String range4(long ip) {
+  long[] ranges = new long[] {
+    0L, 8L, 0L,             167772160L, 8L, 1L,     1681915904L, 10L, 1L,
+    2130706432L, 8L, 2L,    2851995648L, 16L, 3L,   2886729728L, 12L, 1L,
+    3221225472L, 24L, 0L,   3221225984L, 24L, 4L,   3232235520L, 16L, 1L,
+    3323068416L, 15L, 0L,   3325256704L, 24L, 4L,   3405803776L, 24L, 4L,
+    3758096384L, 4L, 5L,    4026531840L, 4L, 0L
+  };
+  String[] names = new String[] {'reserved-ip', 'private-ip', 'loopback-ip', 'link-local-ip', 'documentation-ip', 'multicast-ip'};
+  for (int i = 0; i < ranges.length; i += 3) {
+    long shift = 32L - ranges[i + 1];
+    if ((ip >> shift) == (ranges[i] >> shift)) { return names[(int) ranges[i + 2]]; }
+  }
+  return null;
+}
+
+String range6(int[] g) {
+  boolean allZero = true;
+  for (int i = 0; i < 7; i++) { if (g[i] != 0) { allZero = false; } }
+  if (allZero && g[7] == 1) { return 'loopback-ip'; }
+  if (allZero && g[7] == 0) { return 'reserved-ip'; }
+  // ::ffff:a.b.c.d is an IPv4.
+  if (g[0] == 0 && g[1] == 0 && g[2] == 0 && g[3] == 0 && g[4] == 0 && g[5] == 65535) {
+    return range4(((long) g[6]) * 65536L + g[7]);
+  }
+  if ((g[0] & 65024) == 64512) { return 'private-ip'; }
+  if ((g[0] & 65472) == 65152) { return 'link-local-ip'; }
+  if (g[0] == 8193 && g[1] == 3512) { return 'documentation-ip'; }
+  if ((g[0] & 65280) == 65280) { return 'multicast-ip'; }
+  return null;
+}
+
+void addIssue(List issues, String issue) {
+  if (issue != null && !issues.contains(issue)) { issues.add(issue); }
+}
+
+void validatePart(String t, String s, Map params, boolean toIds, List issues) {
+  if (isIpType(t) && params.validate_ips) {
+    String address = s;
+    String prefix = null;
+    int slash = s.indexOf('/');
+    if (slash >= 0) { address = s.substring(0, slash); prefix = s.substring(slash + 1); }
+    if (address.indexOf(':') >= 0) {
+      int[] g = parse6(address);
+      if (g == null) { addIssue(issues, 'invalid-ip'); return; }
+      if (prefix != null && (!allDigits(prefix) || prefix.length() > 3 || Integer.parseInt(prefix) > 128)) {
+        addIssue(issues, 'invalid-cidr'); return;
+      }
+      if (toIds && params.flag_reserved_ips) { addIssue(issues, range6(g)); }
+    } else {
+      long v4 = ip4(address);
+      if (v4 < 0) { addIssue(issues, 'invalid-ip'); return; }
+      if (prefix != null && (!allDigits(prefix) || prefix.length() > 2 || Integer.parseInt(prefix) > 32)) {
+        addIssue(issues, 'invalid-cidr'); return;
+      }
+      if (toIds && params.flag_reserved_ips) { addIssue(issues, range4(v4)); }
+    }
+    return;
+  }
+  if (t == 'port' && params.validate_ips) {
+    if (!allDigits(s) || s.length() > 5 || Integer.parseInt(s) > 65535) { addIssue(issues, 'invalid-port'); }
+    return;
+  }
+  if (isHashType(t) && params.validate_hashes) {
+    int expected = hashLength(t);
+    boolean hex = s.length() > 0;
+    for (int i = 0; i < s.length(); i++) {
+      if (Character.digit(s.charAt(i), 16) < 0) { hex = false; }
+    }
+    if (!hex || s.length() != expected) { addIssue(issues, 'invalid-hash'); }
+  }
+}
+
+if (ctx.type == null || ctx.value == null) { return; }
+String t = ctx.type.toString();
+String value = ctx.value.toString();
+String normalised = normalise(t, value, params);
+if (normalised != value) {
+  ctx.original_value = value;
+  ctx.value = normalised;
+} else if (ctx.original_value != null
+    && normalise(t, ctx.original_value.toString(), params) != normalised) {
+  // The value was edited since: the original no longer describes it.
+  ctx.remove('original_value');
+}
+
+List issues = new ArrayList();
+boolean toIds = ctx.to_ids == true;
+int typeBar = t.indexOf('|');
+int valueBar = normalised.indexOf('|');
+if (typeBar > 0 && valueBar > 0) {
+  validatePart(t.substring(0, typeBar), normalised.substring(0, valueBar), params, toIds, issues);
+  validatePart(t.substring(typeBar + 1), normalised.substring(valueBar + 1), params, toIds, issues);
+} else {
+  validatePart(t, normalised, params, toIds, issues);
+}
+if (issues.size() > 0) { ctx.validation_issues = issues; } else { ctx.remove('validation_issues'); }

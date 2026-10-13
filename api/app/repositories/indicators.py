@@ -111,6 +111,7 @@ ATTRIBUTE_SOURCE = [
     "event_uuid",
     "tags",
     "warninglist_hits",
+    "validation_issues",
 ]
 
 
@@ -347,6 +348,14 @@ def _millis_to_seconds(value) -> Optional[int]:
 # ── Building ──────────────────────────────────────────────────────────────
 
 
+VALIDATION_TAG = 'workbench:validation="{}"'
+
+
+def validation_tag(issue: str) -> str:
+    """The tag a validation issue shows as, e.g. workbench:validation="private-ip"."""
+    return VALIDATION_TAG.format(issue)
+
+
 def source_key(source: dict) -> str:
     """``feed:3``, ``server:2``, ``local`` or ``unknown``: one source, exactly."""
     if source.get("type") in ("feed", "server") and source.get("id") is not None:
@@ -403,8 +412,13 @@ def build_indicator(
         if org:
             _counted(organisations, (org["id"], org["name"]), dict(org))
         tag_names.update(event["tags"])
+    validation_issues = sorted(
+        {issue for a in live for issue in a.get("validation_issues") or []}
+    )
     for attribute in live:
         tag_names.update(_tag_names(attribute.get("tags")))
+    # As tags too, so tag filters (sinks, exports) can leave them out.
+    tag_names.update(validation_tag(issue) for issue in validation_issues)
     tags, tlp, galaxies = merge_tags(tag_names)
 
     sightings = sightings or {}
@@ -461,6 +475,7 @@ def build_indicator(
         "warninglist_hits": sorted(
             {hit for a in live for hit in a.get("warninglist_hits") or []}
         ),
+        "validation_issues": validation_issues,
     }
     doc["checksum"] = hashlib.sha256(
         json.dumps(doc, sort_keys=True, default=str).encode("utf-8")

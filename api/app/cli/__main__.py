@@ -1540,5 +1540,20 @@ def rebuild_indicators(
         f"{result['removed']} removed, {result['purged']} old tombstones purged."
     )
 
+@app.command()
+def normalise_attributes():
+    """Run every existing attribute through the normalisation rules again.
+
+    New and edited attributes are normalised as they are written; this applies
+    the rules (or changed settings) to what was stored before. Runs in
+    OpenSearch's background and prints the task to follow.
+    """
+    from app.services import normalisation
+
+    normalisation.sync()
+    task = normalisation.reapply()
+    typer.echo(f"Normalising attributes in the background: OpenSearch task {task}")
+
+
 if __name__ == "__main__":
     app()

@@ -155,6 +155,9 @@
             },
             "organisation_count": {
                 "type": "integer"
+            },
+            "validation_issues": {
+                "type": "keyword"
             }
         }
     }

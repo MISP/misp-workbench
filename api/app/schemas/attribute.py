@@ -39,6 +39,10 @@ class Attribute(AttributeBase):
     expanded: Optional[dict] = None
     # Names of the enabled warninglists the value is on.
     warninglist_hits: Optional[list[str]] = None
+    # Set by the normalisation ingest step: the value as received when it was
+    # rewritten, and the problems found (private-ip, invalid-hash, ...).
+    original_value: Optional[str] = None
+    validation_issues: Optional[list[str]] = None
     model_config = ConfigDict(from_attributes=True)
 
     def to_misp_format(self, include_attachments: bool = True) -> dict:

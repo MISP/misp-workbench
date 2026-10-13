@@ -9005,6 +9005,33 @@
         }
       }
     },
+    "/settings/runtime/normalisation/apply": {
+      "post": {
+        "tags": [
+          "Runtime Settings"
+        ],
+        "summary": "Apply Normalisation",
+        "description": "Run every existing attribute through the normalisation rules again.\n\nRuns in OpenSearch's background; returns its task id.",
+        "operationId": "apply_normalisation_settings_runtime_normalisation_apply_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "settings:update"
+            ]
+          }
+        ]
+      }
+    },
     "/settings/user": {
       "get": {
         "tags": [
@@ -15061,6 +15088,31 @@
               }
             ],
             "title": "Warninglist Hits"
+          },
+          "original_value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Original Value"
+          },
+          "validation_issues": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Validation Issues"
           }
         },
         "type": "object",
@@ -18659,6 +18711,14 @@
             },
             "type": "array",
             "title": "Warninglist Hits",
+            "default": []
+          },
+          "validation_issues": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Validation Issues",
             "default": []
           },
           "score": {
