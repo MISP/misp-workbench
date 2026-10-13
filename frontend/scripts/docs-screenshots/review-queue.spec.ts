@@ -47,14 +47,14 @@ const REJECTED = [
     7,
   ],
   ["domain", "sinkhole.example.net", "sinkholed since September", false, 26],
-].map(([type, value, reason, allowlisted, hours], i) => ({
+].map(([type, value, reason, warninglisted, hours], i) => ({
   indicator_uuid: `7e7e0000-2000-4000-8000-00000000000${i}`,
   type,
   value,
   status: "rejected",
   reason,
   snoozed_until: null,
-  allowlisted,
+  warninglisted,
   user_id: 1,
   user_email: i % 2 ? "analyst@acme-soc.example" : "lead@acme-soc.example",
   decided_at: decidedAt(hours as number),
@@ -93,7 +93,7 @@ async function stubApi(page: Page) {
             user_email: "lead@acme-soc.example",
             reason: "seen again in a new campaign",
             snoozed_until: null,
-            allowlisted: false,
+            warninglisted: false,
           },
           {
             action: "snoozed",
@@ -101,7 +101,7 @@ async function stubApi(page: Page) {
             user_email: "analyst@acme-soc.example",
             reason: "waiting for the partner's confirmation",
             snoozed_until: null,
-            allowlisted: false,
+            warninglisted: false,
           },
         ],
       }),
@@ -161,7 +161,7 @@ test.describe("Review queue screenshots", () => {
     );
   });
 
-  test("2 — rejecting, with an allowlist entry", async ({ page }) => {
+  test("2 — rejecting onto a warninglist", async ({ page }) => {
     await page.setViewportSize({ width: 1600, height: 900 });
     await page.goto("/indicators/review");
     await expect(page.locator(".review-table tbody tr").first()).toContainText(
@@ -170,7 +170,9 @@ test.describe("Review queue screenshots", () => {
     await page.keyboard.press("r");
     const dialog = page.getByRole("dialog");
     await dialog.locator("textarea").fill("shared hosting, hundreds of sites");
-    await dialog.getByLabel("Also add to the allowlist").check();
+    await dialog
+      .getByLabel("Also add to the Rejected in review warninglist")
+      .check();
     await pinForCapture(page);
     await capture(
       dialog.locator(".modal-content"),

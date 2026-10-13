@@ -22,9 +22,9 @@ Under ***settings*** → ***warninglists***:
   background whenever lists change.
 - **Check values** tells you which enabled lists a set of values is on.
 
-One list doesn't come from the submodule: the **Workbench allowlist** holds
-the values analysts rejected in the [review queue](review-queue.md#rejecting-with-an-allowlist-entry)
-with an allowlist entry. It is created on the first such rejection, matched
+One list doesn't come from the submodule: **Rejected in review** holds the
+values analysts rejected in the [review queue](review-queue.md#rejecting-onto-a-warninglist)
+and put on it. It is created on the first such rejection, matched
 like any other list, and left alone by updates. Taking the rejection back
 takes the value off it.
 

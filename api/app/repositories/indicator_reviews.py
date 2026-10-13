@@ -328,7 +328,7 @@ def _decision(row) -> dict:
         "status": row.status,
         "reason": row.reason,
         "snoozed_until": row.snoozed_until,
-        "allowlisted": row.allowlisted,
+        "warninglisted": row.warninglisted,
         "user_id": row.user_id,
         "user_email": row.user.email if row.user else None,
         "user_org_id": row.user.org_id if row.user else None,
@@ -416,7 +416,7 @@ def history(db: Session, indicator_uuid: str) -> list[dict]:
             "user_organisation": _org_name(e.actor),
             "reason": (e.metadata_ or {}).get("reason"),
             "snoozed_until": (e.metadata_ or {}).get("snoozed_until"),
-            "allowlisted": bool((e.metadata_ or {}).get("allowlisted")),
+            "warninglisted": bool((e.metadata_ or {}).get("warninglisted")),
         }
         for e in entries
     ]
@@ -429,14 +429,15 @@ def decide(
     user_id: int,
     reason: Optional[str] = None,
     snooze_days: Optional[int] = None,
-    allowlist: bool = False,
+    warninglist: bool = False,
     request: Optional[Request] = None,
 ) -> dict:
     """Approve, reject, snooze or reopen indicators, by uuid.
 
     An indicator is known by its live document, or for one decided before,
     by its decision (a purged indicator can still be reopened). Rejecting
-    with ``allowlist`` adds the value to the local allowlist warninglist; any
+    with ``warninglist`` adds the value to the "Rejected in review"
+    warninglist; any
     other decision on it takes the value off again.
     """
     from app.repositories import warninglists
@@ -455,7 +456,7 @@ def decide(
         if action == "snooze" and snooze_days
         else None
     )
-    allow, disallow = [], []
+    to_list, to_unlist = [], []
     touched = []
     for indicator_id in ids:
         row = rows.get(indicator_id)
@@ -465,18 +466,18 @@ def decide(
                 indicator_uuid=indicator_id,
                 type=found["type"],
                 value=found["value"],
-                allowlisted=False,
+                warninglisted=False,
             )
             db.add(row)
-        allowlisted = action == "reject" and allowlist
-        if allowlisted and not row.allowlisted:
-            allow.append(row.value)
-        if row.allowlisted and not allowlisted:
-            disallow.append(row.value)
+        listed = action == "reject" and warninglist
+        if listed and not row.warninglisted:
+            to_list.append(row.value)
+        if row.warninglisted and not listed:
+            to_unlist.append(row.value)
         row.status = status
         row.reason = reason
         row.snoozed_until = until
-        row.allowlisted = allowlisted
+        row.warninglisted = listed
         row.user_id = user_id
         row.decided_at = now
         touched.append(row)
@@ -495,14 +496,14 @@ def decide(
                 "value": row.value,
                 "reason": reason,
                 "snoozed_until": until.isoformat() if until else None,
-                "allowlisted": row.allowlisted,
+                "warninglisted": row.warninglisted,
             },
         )
     db.commit()
 
     values = [row.value for row in touched]
-    if allow or disallow:
-        warninglists.change_allowlist(db, add=allow, remove=disallow)
+    if to_list or to_unlist:
+        warninglists.change_rejected_list(db, add=to_list, remove=to_unlist)
     _apply(values)
     return {"decided": len(touched), "status": status}
 

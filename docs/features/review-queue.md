@@ -76,16 +76,16 @@ built again.
 Every decision is also in the [audit log](api/audit-logs.md)
 (`indicator_review.approved`, `.rejected`, `.snoozed`, `.reopened`).
 
-### Rejecting with an allowlist entry
+### Rejecting onto a warninglist
 
 Rejecting only keeps a value out of the profiles that read decisions.
-**Also add to the allowlist** puts it on the *Workbench allowlist*
+**Also add to the *Rejected in review* warninglist** puts it on that
 [warninglist](warninglists.md) too: it is then warninglisted everywhere,
 for every profile and output that leaves warninglisted values out, and its
 score drops. Any later decision on it takes it off the list again.
 
-<img src="../../screenshots/review-queue/misp-workbench-2_review-queue_reject.png#only-light" alt="Rejecting with an allowlist entry" style="height: 360px;">
-<img src="../../screenshots/review-queue/misp-workbench-2_review-queue_reject-dark.png#only-dark" alt="Rejecting with an allowlist entry" style="height: 360px;">
+<img src="../../screenshots/review-queue/misp-workbench-2_review-queue_reject.png#only-light" alt="Rejecting onto a warninglist" style="height: 360px;">
+<img src="../../screenshots/review-queue/misp-workbench-2_review-queue_reject-dark.png#only-dark" alt="Rejecting onto a warninglist" style="height: 360px;">
 
 ## Where decisions apply
 
@@ -102,7 +102,7 @@ value too new to have an indicator yet is judged on its stored decision.
 | `GET /indicators/review` | `attributes:read` | Pending indicators, each with `pending_for`. Filters: `profile_id`, `q`, `type`, `source`, `min_score`, `max_score`, `sort` |
 | `GET /indicators/review/summary` | `attributes:read` | Pending and decided counts, and the profiles involved |
 | `GET /indicators/review/decisions?status=` | `attributes:read` | Approved, rejected or (still) snoozed indicators, with who and why |
-| `POST /indicators/review/decisions` | `indicators:review` | Decide on up to 500 indicators: `{"indicators": [uuid…], "action": "approve" \| "reject" \| "snooze" \| "reopen", "reason", "snooze_days", "allowlist"}` |
+| `POST /indicators/review/decisions` | `indicators:review` | Decide on up to 500 indicators: `{"indicators": [uuid…], "action": "approve" \| "reject" \| "snooze" \| "reopen", "reason", "snooze_days", "warninglist"}` |
 | `GET /indicators/{uuid}/review` | `attributes:read` | The decision on one indicator, and every decision before it |
 
 Org Admin and Publisher have `indicators:review`; every role that reads

@@ -43,15 +43,15 @@ class ReviewDecisionRequest(BaseModel):
     reason: Optional[str] = Field(None, max_length=2000)
     # Snooze for this many days.
     snooze_days: Optional[int] = Field(None, ge=1, le=365)
-    # Rejecting: also add the value to the local allowlist warninglist.
-    allowlist: bool = False
+    # Rejecting: also add the value to the "Rejected in review" warninglist.
+    warninglist: bool = False
 
     @model_validator(mode="after")
     def _consistent(self):
         if self.action == "snooze" and not self.snooze_days:
             raise ValueError("snoozing needs snooze_days")
-        if self.allowlist and self.action != "reject":
-            raise ValueError("only a rejection can add an allowlist entry")
+        if self.warninglist and self.action != "reject":
+            raise ValueError("only a rejection can add the value to a warninglist")
         return self
 
 
@@ -67,7 +67,7 @@ class ReviewDecision(BaseModel):
     status: str
     reason: Optional[str] = None
     snoozed_until: Optional[datetime] = None
-    allowlisted: bool = False
+    warninglisted: bool = False
     # Only for audit admins and the decider's own organisation.
     user_email: Optional[str] = None
     user_organisation: Optional[str] = None
@@ -90,7 +90,7 @@ class ReviewHistoryEntry(BaseModel):
     user_organisation: Optional[str] = None
     reason: Optional[str] = None
     snoozed_until: Optional[str] = None
-    allowlisted: bool = False
+    warninglisted: bool = False
 
 
 class IndicatorReviewDetail(BaseModel):

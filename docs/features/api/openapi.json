@@ -25299,9 +25299,9 @@
             ],
             "title": "Snoozed Until"
           },
-          "allowlisted": {
+          "warninglisted": {
             "type": "boolean",
-            "title": "Allowlisted",
+            "title": "Warninglisted",
             "default": false
           },
           "user_email": {
@@ -25419,9 +25419,9 @@
             ],
             "title": "Snooze Days"
           },
-          "allowlist": {
+          "warninglist": {
             "type": "boolean",
-            "title": "Allowlist",
+            "title": "Warninglist",
             "default": false
           }
         },
@@ -25505,9 +25505,9 @@
             ],
             "title": "Snoozed Until"
           },
-          "allowlisted": {
+          "warninglisted": {
             "type": "boolean",
-            "title": "Allowlisted",
+            "title": "Warninglisted",
             "default": false
           }
         },

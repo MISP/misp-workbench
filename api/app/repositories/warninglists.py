@@ -214,23 +214,23 @@ def set_enabled(db: Session, db_list, enabled: bool):
     return db_list
 
 
-# ── The local allowlist ───────────────────────────────────────────────────
+# ── Rejected in review ───────────────────────────────────────────────────
 
-# Values analysts rejected in the review queue "with an allowlist entry". A
+# Values analysts rejected in the review queue and put on a warninglist. A
 # warninglist like the others (enabled, matched, a hit on outputs and scores)
 # that isn't in the submodule, so loading the lists leaves it alone.
-ALLOWLIST_NAME = "Workbench allowlist"
+REJECTED_LIST_NAME = "Rejected in review"
 
 
-def allowlist(db: Session):
+def rejected_list(db: Session):
     db_list = (
         db.query(warninglist_models.Warninglist)
-        .filter(warninglist_models.Warninglist.name == ALLOWLIST_NAME)
+        .filter(warninglist_models.Warninglist.name == REJECTED_LIST_NAME)
         .first()
     )
     if db_list is None:
         db_list = warninglist_models.Warninglist(
-            name=ALLOWLIST_NAME,
+            name=REJECTED_LIST_NAME,
             description=(
                 "Values analysts rejected in the review queue as known benign."
             ),
@@ -247,10 +247,10 @@ def allowlist(db: Session):
     return db_list
 
 
-def change_allowlist(
+def change_rejected_list(
     db: Session, add: Iterable[str] = (), remove: Iterable[str] = ()
 ) -> None:
-    """Add values to the allowlist and take others off, then re-evaluate the
+    """Add values to the "Rejected in review" list and take others off, then re-evaluate the
     attributes carrying them so outputs and indicators see it."""
     from app.repositories import indicators as indicators_repository
 
@@ -258,7 +258,7 @@ def change_allowlist(
     if not add and not remove:
         return
     client = get_opensearch_client()
-    db_list = allowlist(db)
+    db_list = rejected_list(db)
     for start in range(0, len(remove), BATCH_SIZE):
         chunk = remove[start : start + BATCH_SIZE]
         client.delete_by_query(
@@ -282,8 +282,8 @@ def change_allowlist(
                 {
                     "_index": ENTRIES_INDEX,
                     # One entry per value, however often it is added.
-                    "_id": f"allowlist-{db_list.id}-"
-                    + indicators_repository.indicator_uuid("allowlist", value),
+                    "_id": f"rejected-{db_list.id}-"
+                    + indicators_repository.indicator_uuid("rejected", value),
                     "_source": {"warninglist_id": db_list.id, "type": "string", **doc},
                 }
                 for value in add

@@ -181,10 +181,10 @@ class TestReviewRules:
             review_schemas.ReviewDecisionRequest(indicators=["x"], action="snooze")
         with pytest.raises(ValidationError):
             review_schemas.ReviewDecisionRequest(
-                indicators=["x"], action="approve", allowlist=True
+                indicators=["x"], action="approve", warninglist=True
             )
         review_schemas.ReviewDecisionRequest(
-            indicators=["x"], action="reject", allowlist=True
+            indicators=["x"], action="reject", warninglist=True
         )
 
 
@@ -377,12 +377,14 @@ class TestReviewQueue(ApiTester):
         assert {h["_source"]["value"] for h in response["hits"]["hits"]} == by_check
 
     @pytest.mark.parametrize("scopes", [["attributes:read", "indicators:review"]])
-    def test_allowlist(self, client: TestClient, auth_token: auth.Token, db: Session):
+    def test_rejected_warninglist(
+        self, client: TestClient, auth_token: auth.Token, db: Session
+    ):
         headers = {"Authorization": "Bearer " + auth_token}
-        self._decide(client, headers, ["reject.example"], "reject", allowlist=True)
+        self._decide(client, headers, ["reject.example"], "reject", warninglist=True)
         by_value = {i["value"]: i for i in _live()}
         assert by_value["reject.example"]["warninglist_hits"] == [
-            warninglists.ALLOWLIST_NAME
+            warninglists.REJECTED_LIST_NAME
         ]
         # Every profile leaves it out now, not only those reading decisions.
         assert "reject.example" not in _selected({})
@@ -391,7 +393,7 @@ class TestReviewQueue(ApiTester):
         by_value = {i["value"]: i for i in _live()}
         assert by_value["reject.example"]["warninglist_hits"] == []
         db.query(warninglist_models.Warninglist).filter(
-            warninglist_models.Warninglist.name == warninglists.ALLOWLIST_NAME
+            warninglist_models.Warninglist.name == warninglists.REJECTED_LIST_NAME
         ).delete()
         db.commit()
 

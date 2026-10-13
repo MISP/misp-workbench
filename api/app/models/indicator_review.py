@@ -31,8 +31,10 @@ class IndicatorReview(Base):
     status = Column(String(16), nullable=False, index=True)
     reason = Column(Text, nullable=True)
     snoozed_until = Column(DateTime(timezone=True), nullable=True)
-    # Rejected with an entry in the local allowlist warninglist.
-    allowlisted = Column(Boolean, nullable=False, default=False, server_default="false")
+    # Rejected with the value added to the "Rejected in review" warninglist.
+    warninglisted = Column(
+        Boolean, nullable=False, default=False, server_default="false"
+    )
     user_id = Column(
         Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
     )

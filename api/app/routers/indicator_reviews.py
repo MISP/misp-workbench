@@ -106,7 +106,7 @@ def decide(
             user_id=user.id,
             reason=decision.reason,
             snooze_days=decision.snooze_days,
-            allowlist=decision.allowlist,
+            warninglist=decision.warninglist,
             request=request,
         )
     except reviews_repository.UnknownIndicators as error:

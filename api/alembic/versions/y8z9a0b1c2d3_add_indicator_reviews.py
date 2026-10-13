@@ -55,7 +55,9 @@ def upgrade():
         sa.Column("status", sa.String(length=16), nullable=False),
         sa.Column("reason", sa.Text(), nullable=True),
         sa.Column("snoozed_until", sa.DateTime(timezone=True), nullable=True),
-        sa.Column("allowlisted", sa.Boolean(), nullable=False, server_default="false"),
+        sa.Column(
+            "warninglisted", sa.Boolean(), nullable=False, server_default="false"
+        ),
         sa.Column(
             "user_id",
             sa.Integer(),

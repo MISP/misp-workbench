@@ -179,13 +179,13 @@ function reopen(ids = targets()) {
 
 function startReject(ids = targets()) {
   if (!canReview.value || !ids.length) return;
-  rejecting.value = { ids, reason: "", allowlist: false };
+  rejecting.value = { ids, reason: "", warninglist: false };
 }
 
 function confirmReject() {
-  const { ids, reason, allowlist } = rejecting.value;
+  const { ids, reason, warninglist } = rejecting.value;
   rejecting.value = null;
-  decide("reject", ids, { reason: reason.trim() || null, allowlist });
+  decide("reject", ids, { reason: reason.trim() || null, warninglist });
 }
 
 // ── Keyboard ──────────────────────────────────────────────────────────────
@@ -628,10 +628,10 @@ refresh();
                   <template v-else>
                     <td class="font-monospace text-break">
                       <span
-                        v-if="item.allowlisted"
+                        v-if="item.warninglisted"
                         class="badge text-bg-warning me-1"
-                        title="Also on the Workbench allowlist warninglist"
-                        >allowlisted</span
+                        title="Also on the Rejected in review warninglist"
+                        >warninglisted</span
                       >
                       {{ item.value }}
                     </td>
@@ -684,9 +684,9 @@ refresh();
                             >— {{ h.reason }}</span
                           >
                           <span
-                            v-if="h.allowlisted"
+                            v-if="h.warninglisted"
                             class="badge text-bg-warning ms-1"
-                            >allowlisted</span
+                            >warninglisted</span
                           >
                         </li>
                       </ul>
@@ -760,18 +760,18 @@ refresh();
               ></textarea>
               <div class="form-check mt-3">
                 <input
-                  id="reject-allowlist"
-                  v-model="rejecting.allowlist"
+                  id="reject-warninglist"
+                  v-model="rejecting.warninglist"
                   class="form-check-input"
                   type="checkbox"
                 />
-                <label class="form-check-label" for="reject-allowlist"
-                  >Also add to the allowlist</label
+                <label class="form-check-label" for="reject-warninglist"
+                  >Also add to the
+                  <em>Rejected in review</em> warninglist</label
                 >
                 <div class="form-text">
-                  The <em>Workbench allowlist</em> warninglist: the value is
-                  flagged as warninglisted everywhere, for every profile and
-                  output, and scores lower.
+                  The value is flagged as warninglisted everywhere, for every
+                  profile and output, and scores lower.
                 </div>
               </div>
             </div>
