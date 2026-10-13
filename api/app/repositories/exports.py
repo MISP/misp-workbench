@@ -489,10 +489,9 @@ def _run_profile(db: Session, db_export: export_models.Export) -> None:
         db_export.format,
         index=index,
         profile=profile,
+        # Just released above: the export sends that release.
+        gate_checked=True,
     )
-    # Only what the profile released: whatever joined since the check above
-    # waits for the next run (and check).
-    export.released = profile_gate.baseline_key(profile["id"])
     stored_key, size, records, checksum = _stream_to_storage(
         None,
         None,
@@ -545,7 +544,11 @@ def _write_membership_delta(db, db_export, profile, cursor: int, previous) -> No
         },
     )
     try:
-        diff.keep_released(profile_gate.baseline_key(profile["id"]))
+        released = profile_gate.scope(profile)
+        if released is not None:
+            diff.keep_released(
+                released["released"], profile_gate.held_removed_key(profile["id"])
+            )
 
         def lines():
             for batch in diff.removals(details_key):

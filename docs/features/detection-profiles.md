@@ -191,9 +191,13 @@ everything else goes out as usual:
 |---|---|---|
 | adds something carrying a chosen risk flag | those additions | the other additions, removals, updates |
 | adds more than a number of indicators, or a set number of times its usual (the median of recent runs, from 20 additions up) | all of its additions: the volume is the anomaly | removals, updates |
-| removes more than a number of indicators | all of its removals: they stay in the outputs | additions, updates |
+| removes more than a number of indicators | its removals: they stay in the outputs | additions, updates, and removals an exclusion calls for |
 
-So outputs never go stale over one risky change. Every user who can review
+So outputs never go stale over one risky change. An exclusion is never
+held: an indicator tagged past the TLP ceiling or with an excluded tag,
+warninglisted, with a validation issue, rejected, no longer flagged for IDS
+or deleted leaves the outputs at once, removals held or not. Neither is a
+sink's own exclusion. Every user who can review
 indicators (`indicators:review`) is notified once per hold. **Approve
 changes** releases exactly the changes on the page, held ones included, and
 runs the profile's outputs. If they moved since the page was loaded
@@ -203,7 +207,11 @@ gone, the gate was loosened) is lifted by the next run or check, and what
 it held goes out.
 
 A run only ever sends what its profile released: an indicator joining
-between the check and the run waits for the next run, and its check.
+between the check and the run waits for the next run, and its check. The
+same goes for a gated profile pulled over HTTP (`/indicators/export` with the
+profile, deltas included): the pull releases what the gate lets through
+first, and sends nothing it holds. When held changes are released, their
+indicators count as changed then, so a delta pulled since carries them.
 
 Changing a profile's gate, making it auto-approve (or changing an
 auto-approve profile's rules), and turning *require approval* or *leave out

@@ -545,13 +545,23 @@ def deliver_membership(sink: sink_models.Sink) -> int:
     if not redis.set(lock, "1", nx=True, ex=MEMBERSHIP_LOCK_SECONDS):
         return 0
     try:
-        diff = profile_membership.Diff(
-            owner, rules, detection_profiles.context(), state
-        )
+        ctx = detection_profiles.context()
+        diff = profile_membership.Diff(owner, rules, ctx, state)
         try:
             # Only what the profile released: whatever joined since the
-            # check above waits for the next sync.
-            diff.keep_released(profile_gate.baseline_key(profile["id"]))
+            # check above waits for the next sync, and a removal it holds
+            # isn't sent, unless the sink's own exclusions call for it.
+            if profile_gate.scope(profile) is not None:
+                exclusions = detection_profiles.exclusions_only(rules)
+                diff.keep_released(
+                    profile_gate.baseline_key(profile["id"]),
+                    profile_gate.held_removed_key(profile["id"]),
+                    still_allowed=lambda docs: [
+                        d["uuid"]
+                        for d in docs
+                        if detection_profiles.matches(exclusions, d, ctx)
+                    ],
+                )
             batches = itertools.chain(
                 (
                     [formatters.removal_record(r) for r in batch]

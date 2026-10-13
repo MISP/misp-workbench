@@ -379,6 +379,58 @@ class TestProfileGate(ApiTester):
             3,
         )
 
+    def test_exclusions_are_never_held(self, db: Session):
+        db_profile = detection_profiles.get_profile(db, self.profile_id)
+        detection_profiles.update_profile(
+            db,
+            db_profile,
+            profile_schemas.DetectionProfileUpdate(
+                rules=profile_schemas.ProfileRules(
+                    types=["domain"], min_score=0, tlp_ceiling="tlp:amber"
+                ),
+                gate=profile_schemas.ProfileGate(enabled=True, max_removals=0),
+            ),
+        )
+        profile_gate.ready(self.profile_id)
+        # Tagged tlp:red: it must leave the controls, held removals or not.
+        _write(FIRST[:1], offset=0, tags=[{"name": "tlp:red"}])
+        profile_gate.ready(self.profile_id)
+        released = get_redis_client().smembers(
+            profile_gate.baseline_key(self.profile_id)
+        )
+        released = {m.decode() if isinstance(m, bytes) else m for m in released}
+        assert indicators.indicator_uuid("domain", FIRST[0]) not in released
+        _write(FIRST[:1], offset=0)
+
+    def test_streams_send_only_what_was_released(self, db: Session):
+        from app.repositories import stream_exports
+
+        profile_gate.ready(self.profile_id)
+        since = int(time.time()) - 1
+        _write(LATER, offset=10)
+        profile = detection_profiles.load(self.profile_id)
+        # Pulled over HTTP: released first, so the additions it holds stay out.
+        full = stream_exports.prepare_attribute_export(
+            "*", "ndjson", index=stream_exports.INDICATORS_INDEX, profile=profile
+        )
+        values = [
+            json.loads(line)["value"]
+            for line in "".join(stream_exports.stream(full)).splitlines()
+        ]
+        assert sorted(values) == sorted(FIRST)
+        delta = stream_exports.prepare_attribute_export(
+            "*",
+            "ndjson",
+            since=str(since),
+            index=stream_exports.INDICATORS_INDEX,
+            profile=profile,
+        )
+        records = [
+            json.loads(line)
+            for line in "".join(stream_exports.stream(delta)).splitlines()
+        ]
+        assert not [r for r in records if r.get("value") in LATER]
+
     @pytest.mark.parametrize(
         "scopes", [["detection_profiles:read", "indicators:review"]]
     )

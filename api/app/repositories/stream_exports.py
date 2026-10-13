@@ -217,6 +217,7 @@ def prepare_attribute_export(
     enforce_warninglist: bool = False,
     index: str = ATTRIBUTES_INDEX,
     profile: Optional[dict] = None,
+    gate_checked: bool = False,
 ) -> PreparedExport:
     """An attribute export, or with ``index=INDICATORS_INDEX`` an indicator one.
 
@@ -226,13 +227,15 @@ def prepare_attribute_export(
     With a detection ``profile`` (see ``detection_profiles.load``), its rules
     select indicators and replace ``include_deleted`` and
     ``enforce_warninglist``; an attribute export sends the attributes behind
-    the selected indicators.
+    the selected indicators. A profile with an approval gate sends what it
+    released only (see profile_gate); ``gate_checked`` says its changes were
+    just released (a run), otherwise this releases them first.
     """
     fmt = _validate_format(fmt, ATTRIBUTE_FORMATS)
     export_timestamp = int(time.time())
     if profile is not None:
         return _prepare_profile_export(
-            query, fmt, since, index, profile, export_timestamp
+            query, fmt, since, index, profile, export_timestamp, gate_checked
         )
 
     filters: list = []
@@ -282,9 +285,11 @@ def _prepare_profile_export(
     index: str,
     profile: dict,
     export_timestamp: int,
+    gate_checked: bool = False,
 ) -> PreparedExport:
     from app.repositories import detection_profiles
 
+    released = _released_scope(profile, gate_checked)
     delta = since not in (None, "")
     filters: list = []
     if delta:
@@ -300,21 +305,46 @@ def _prepare_profile_export(
             )
         since_ts = parse_timestamp(since, "since", now=export_timestamp)
         return _prepare_profile_delta(
-            query, fmt, since, since_ts, profile, export_timestamp
+            query, fmt, since, since_ts, profile, export_timestamp, released
         )
     ctx = detection_profiles.context(export_timestamp)
+    selection = detection_profiles.output_query(profile["rules"], ctx, delta=delta)
+    if released and released["held_removed"]:
+        # Members whose removal the gate holds stay in, though the profile no
+        # longer selects them.
+        selection = {
+            "bool": {
+                "should": [
+                    selection,
+                    {
+                        "bool": {
+                            "filter": [
+                                {"ids": {"values": released["held_removed"]}},
+                                {"term": {"deleted": False}},
+                            ]
+                        }
+                    },
+                ],
+                "minimum_should_match": 1,
+            }
+        }
     os_query = {
         "bool": {
-            "must": [
-                _base_query(query, "value"),
-                detection_profiles.output_query(profile["rules"], ctx, delta=delta),
-            ],
+            "must": [_base_query(query, "value"), selection],
             "filter": filters,
         }
     }
     client = get_opensearch_client()
     request_key = json.dumps(
-        [index, query, fmt, since, profile["id"], profile["rules"].model_dump()],
+        [
+            index,
+            query,
+            fmt,
+            since,
+            profile["id"],
+            profile["rules"].model_dump(),
+            released["version"] if released else None,
+        ],
         sort_keys=True,
     )
     etag, last_modified = _fingerprint(client, INDICATORS_INDEX, os_query, request_key)
@@ -328,7 +358,20 @@ def _prepare_profile_export(
         client=client,
         # One value per line is the same from indicators or attributes.
         expand=index == ATTRIBUTES_INDEX and fmt not in LINE_FORMATS,
+        released=released["released"] if released else None,
     )
+
+
+def _released_scope(profile: dict, gate_checked: bool) -> Optional[dict]:
+    """What a gated profile released (see profile_gate.scope), releasing its
+    changes first unless a run just did."""
+    from app.repositories import profile_gate
+
+    if profile_gate.scope(profile) is None:
+        return None
+    if not gate_checked:
+        profile_gate.ready(profile["id"], wait_seconds=30)
+    return profile_gate.scope(profile)
 
 
 # A profile delta's records carry an action: a structured format.
@@ -342,6 +385,7 @@ def _prepare_profile_delta(
     since_ts: int,
     profile: dict,
     export_timestamp: int,
+    released: Optional[dict] = None,
 ) -> PreparedExport:
     """What changed for a profile's consumer since ``since_ts``, statelessly.
 
@@ -384,6 +428,7 @@ def _prepare_profile_delta(
             profile["id"],
             rules.model_dump(),
             "delta",
+            released["version"] if released else None,
         ],
         sort_keys=True,
     )
@@ -397,6 +442,7 @@ def _prepare_profile_delta(
         last_modified=last_modified,
         client=client,
         membership={"rules": rules, "ctx": ctx},
+        released=released["released"] if released else None,
     )
 
 
@@ -851,7 +897,10 @@ def _stream(
 def _stream_membership(
     export: PreparedExport, pit_id: Optional[str], slot: Optional[ExportSlot]
 ) -> Iterator[str]:
+    from app.services.redis import get_redis_client
+
     rules, ctx = export.membership["rules"], export.membership["ctx"]
+    redis = get_redis_client()
     pages = iter_pit_pages(
         export.client,
         INDICATORS_INDEX,
@@ -866,6 +915,16 @@ def _stream_membership(
         if slot is not None:
             slot.renew()
         records = [membership_record(h["_source"], rules, ctx) for h in hits]
+        if export.released is not None and records:
+            # A gated profile's consumers hear of what it released only: an
+            # addition it holds isn't sent, nor a removal it holds (a member
+            # still released).
+            released = redis.smismember(export.released, [r["uuid"] for r in records])
+            records = [
+                r
+                for r, kept in zip(records, released)
+                if kept == (r["action"] == "upsert")
+            ]
         if export.format == "ndjson":
             yield "".join(json.dumps(r, default=str) + "\n" for r in records)
         else:

@@ -10,7 +10,9 @@ through. What trips the gate is *held*, kept out of the release:
 
 - additions carrying a risk flag the gate holds on: those additions;
 - too many additions, or a spike: all of the run's additions;
-- too many removals: all of its removals (they stay in the outputs).
+- too many removals: its removals (they stay in the outputs), except the
+  ones an exclusion calls for (FORCED_REMOVALS): a TLP, an excluded tag, a
+  warninglist, a rejection... always take an indicator out of the controls.
 
 The rest goes out, so outputs never go stale over one risky change.
 Reviewers are notified; approving releases what was held and runs the
@@ -49,6 +51,20 @@ TOP_SOURCES = 20
 SPIKE_HISTORY = 10
 SPIKE_MIN = 20
 KEEP_RELEASES = 200
+TOUCH_CHUNK = 1000
+# Removals the gate never holds: an exclusion, not a change of opinion, so
+# the indicator must leave the controls now (see detection_profiles.REASONS).
+FORCED_REMOVALS = frozenset(
+    (
+        "deleted",
+        "tlp",
+        "excluded_tag",
+        "no_longer_ids",
+        "warninglisted",
+        "validation",
+        "rejected",
+    )
+)
 
 # Warninglists by what they say about a value. Matched on list names.
 POPULAR = re.compile(
@@ -74,6 +90,27 @@ class GateBusy(Exception):
 
 def baseline_key(profile_id: int) -> str:
     return profile_membership.state_key(f"profile:{profile_id}")
+
+
+def held_removed_key(profile_id: int) -> str:
+    """The members whose removal the gate holds: still released."""
+    return f"{baseline_key(profile_id)}:held_removed"
+
+
+def scope(profile: dict) -> Optional[dict]:
+    """What outputs of a gated profile may send: its released members
+    (``released``, a Redis set) and, of those, the ones whose removal is held
+    (``held_removed``, ids). None without a gate: outputs send it all."""
+    if not gate_of(profile.get("gate")).enabled:
+        return None
+    redis = get_redis_client()
+    held = redis.smembers(held_removed_key(profile["id"]))
+    return {
+        "released": baseline_key(profile["id"]),
+        # Moves on with every release (for ETags).
+        "version": int(redis.get(f"{baseline_key(profile['id'])}:version") or 0),
+        "held_removed": sorted(m.decode() if isinstance(m, bytes) else m for m in held),
+    }
 
 
 def gate_of(raw) -> profile_schemas.ProfileGate:
@@ -174,10 +211,14 @@ def fingerprint(diff) -> str:
 
 
 def summarise(
-    diff, gate: profile_schemas.ProfileGate, flagged: Optional[set] = None
+    diff,
+    gate: profile_schemas.ProfileGate,
+    flagged: Optional[set] = None,
+    soft_removed: Optional[set] = None,
 ) -> dict:
     """The change preview of a computed diff. ``flagged`` collects the
-    additions carrying a risk flag the gate holds on."""
+    additions carrying a risk flag the gate holds on, ``soft_removed`` the
+    removals it can hold (not FORCED_REMOVALS)."""
     redis = get_redis_client()
     new = new_sources(gate.new_source_days)
     added_by_type: Counter = Counter()
@@ -214,6 +255,8 @@ def summarise(
         for removal in batch:
             removed_by_type[removal.get("type") or "unknown"] += 1
             removed_by_reason[removal["reason"]] += 1
+            if soft_removed is not None and removal["reason"] not in FORCED_REMOVALS:
+                soft_removed.add(removal["uuid"])
             if len(removed_sample) < SAMPLE * 2:
                 removed_sample.append(_sample(removal, removal["reason"]))
 
@@ -304,7 +347,7 @@ def hold_reasons(
     return plan(summary, gate, usual)["reasons"]
 
 
-def _keep_out(diff, held: dict, flagged: set) -> tuple[int, int]:
+def _keep_out(diff, held: dict, flagged: set, soft_removed: set) -> tuple[int, int]:
     """Take what the gate holds out of the diff's release: (additions,
     removals) held."""
     kept_added = kept_removed = 0
@@ -316,10 +359,61 @@ def _keep_out(diff, held: dict, flagged: set) -> tuple[int, int]:
         ids = list(flagged)
         for start in range(0, len(ids), 1000):
             diff.withhold(ids[start : start + 1000])
-    if held["removed"]:
-        kept_removed = diff.removed
-        diff.retain_removed()
+    if held["removed"] and soft_removed:
+        kept_removed = len(soft_removed)
+        ids = list(soft_removed)
+        for start in range(0, len(ids), 1000):
+            diff.retain(ids[start : start + 1000])
     return kept_added, kept_removed
+
+
+def _members(redis, key: str) -> list[str]:
+    return [
+        m.decode() if isinstance(m, bytes) else m
+        for m in redis.sscan_iter(key, count=1000)
+        if (m.decode() if isinstance(m, bytes) else m) != profile_membership.SENTINEL
+    ]
+
+
+def _touch(ids: list[str]) -> None:
+    """Mark indicators as changed now: a release of a gated profile is news
+    to consumers reading deltas by updated_at, though nothing else changed."""
+    from app.repositories import indicators as indicators_repository
+    from app.services.opensearch import get_opensearch_client
+
+    if not ids:
+        return
+    client = get_opensearch_client()
+    now = int(time.time())
+    for start in range(0, len(ids), TOUCH_CHUNK):
+        client.update_by_query(
+            index=indicators_repository.INDEX,
+            body={
+                "query": {"ids": {"values": ids[start : start + TOUCH_CHUNK]}},
+                "script": {
+                    "source": "ctx._source.updated_at = params.now",
+                    "params": {"now": now},
+                },
+            },
+            conflicts="proceed",
+            refresh=True,
+        )
+
+
+def _release(diff, profile_id: int, gate, held: dict, retained: set) -> None:
+    """Commit the release: the baseline, the removals still held, and for a
+    gated profile, what changed for consumers reading by updated_at."""
+    redis = get_redis_client()
+    if gate.enabled:
+        _touch(_members(redis, diff.added_key) + _members(redis, diff.removed_key))
+    diff.commit(baseline_key(profile_id))
+    redis.incr(f"{baseline_key(profile_id)}:version")
+    key = held_removed_key(profile_id)
+    redis.delete(key)
+    if held["removed"] and retained:
+        ids = list(retained)
+        for start in range(0, len(ids), 1000):
+            redis.sadd(key, *ids[start : start + 1000])
 
 
 def _diff(profile: dict, rules=None):
@@ -431,7 +525,7 @@ def _hold(
     notifications.create_profile_held_notifications(db, profile, held, reasons)
 
 
-def ready(profile_id: int) -> None:
+def ready(profile_id: int, wait_seconds: int = LOCK_WAIT_SECONDS) -> None:
     """Before a run: release the profile's changes its gate lets through, and
     hold the rest (see the module). Returns once released; a run sends the
     released members only. While another run releases, this one sends what
@@ -440,21 +534,22 @@ def ready(profile_id: int) -> None:
 
     profile = detection_profiles.load(profile_id)
     gate = gate_of(profile.get("gate"))
-    with _lock(profile_id, LOCK_WAIT_SECONDS) as locked:
+    with _lock(profile_id, wait_seconds) as locked:
         if not locked:
             logger.info("profile %s: release busy; sending the last one", profile_id)
             return
         diff = _diff(profile)
         try:
             flagged: set = set()
-            summary = summarise(diff, gate, flagged)
+            soft_removed: set = set()
+            summary = summarise(diff, gate, flagged, soft_removed)
             with SessionLocal() as db:
                 held = plan(
                     summary, gate, usual_added(db, profile_id) if gate.enabled else None
                 )
-                kept = _keep_out(diff, held, flagged)
+                kept = _keep_out(diff, held, flagged, soft_removed)
                 members = diff.members
-                diff.commit(baseline_key(profile_id))
+                _release(diff, profile_id, gate, held, soft_removed)
                 released = {
                     **summary,
                     "members": members,
@@ -492,10 +587,11 @@ def check(profile_id: int) -> Optional[list[str]]:
         diff = _diff(profile)
         try:
             flagged: set = set()
-            summary = summarise(diff, gate, flagged)
+            soft_removed: set = set()
+            summary = summarise(diff, gate, flagged, soft_removed)
             with SessionLocal() as db:
                 held = plan(summary, gate, usual_added(db, profile_id))
-                kept = _keep_out(diff, held, flagged)
+                kept = _keep_out(diff, held, flagged, soft_removed)
                 if held["reasons"]:
                     _hold(db, profile, summary, held["reasons"], kept)
                 else:
@@ -533,10 +629,11 @@ def preview(db: Session, profile_id: int, rules=None) -> dict:
     diff = _diff(profile, rules)
     try:
         flagged: set = set()
-        summary = summarise(diff, gate, flagged)
+        soft_removed: set = set()
+        summary = summarise(diff, gate, flagged, soft_removed)
         digest = fingerprint(diff)
         held = plan(summary, gate, usual)
-        kept = _keep_out(diff, held, flagged)
+        kept = _keep_out(diff, held, flagged, soft_removed)
     finally:
         diff.discard()
     summary["usual_added"] = usual
@@ -574,7 +671,7 @@ def approve(db: Session, profile_id: int, user_id: int, expected: str) -> dict:
                     "the changes moved since they were previewed; review them again"
                 )
             summary = summarise(diff, gate)
-            diff.commit(baseline_key(profile_id))
+            _release(diff, profile_id, gate, {"removed": False}, set())
         except Exception:
             diff.discard()
             raise
@@ -671,4 +768,8 @@ def _rerun(db: Session, profile_id: int) -> None:
 
 
 def forget(profile_id: int) -> None:
-    get_redis_client().delete(baseline_key(profile_id))
+    get_redis_client().delete(
+        baseline_key(profile_id),
+        held_removed_key(profile_id),
+        f"{baseline_key(profile_id)}:version",
+    )
