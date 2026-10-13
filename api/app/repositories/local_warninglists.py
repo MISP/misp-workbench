@@ -734,6 +734,11 @@ def _forbidden(address: str) -> bool:
     )
 
 
+def _resolve(host: str, port: int) -> set[str]:
+    """The addresses a host resolves to."""
+    return {info[4][0] for info in socket.getaddrinfo(host, port)}
+
+
 def _check_destination(url: str) -> None:
     """At fetch time: the host is still allowed, and none of the addresses
     it resolves to is one a sync may never reach."""
@@ -741,7 +746,7 @@ def _check_destination(url: str) -> None:
     parts = urlsplit(url)
     port = parts.port or (443 if parts.scheme == "https" else 80)
     try:
-        addresses = {info[4][0] for info in socket.getaddrinfo(parts.hostname, port)}
+        addresses = _resolve(parts.hostname, port)
     except socket.gaierror as error:
         raise InvalidEntry(f"{parts.hostname} doesn't resolve: {error}") from None
     blocked = sorted(a for a in addresses if _forbidden(a))

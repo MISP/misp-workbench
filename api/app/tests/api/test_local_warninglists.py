@@ -469,22 +469,20 @@ class TestDestinations:
         )
 
         def resolves_to(address):
-            return lambda host, port: [(None, None, None, None, (address, port))]
+            return lambda host, port: {address}
 
         monkeypatch.setattr(
-            local_warninglists.socket, "getaddrinfo", resolves_to("169.254.169.254")
+            local_warninglists, "_resolve", resolves_to("169.254.169.254")
         )
         with pytest.raises(local_warninglists.InvalidEntry, match="may not reach"):
             local_warninglists._check_destination("http://cmdb.corp.example/r.txt")
-        monkeypatch.setattr(
-            local_warninglists.socket, "getaddrinfo", resolves_to("10.1.2.3")
-        )
+        monkeypatch.setattr(local_warninglists, "_resolve", resolves_to("10.1.2.3"))
         local_warninglists._check_destination("http://cmdb.corp.example/r.txt")
 
         def unresolvable(host, port):
             raise local_warninglists.socket.gaierror("no such host")
 
-        monkeypatch.setattr(local_warninglists.socket, "getaddrinfo", unresolvable)
+        monkeypatch.setattr(local_warninglists, "_resolve", unresolvable)
         with pytest.raises(local_warninglists.InvalidEntry, match="doesn't resolve"):
             local_warninglists._check_destination("http://cmdb.corp.example/r.txt")
 
@@ -600,9 +598,7 @@ class TestListLifecycle(ApiTester):
             local_warninglists, "allowed_hosts", lambda: ["cmdb.corp.example"]
         )
         monkeypatch.setattr(
-            local_warninglists.socket,
-            "getaddrinfo",
-            lambda host, port: [(None, None, None, None, ("10.1.2.3", port))],
+            local_warninglists, "_resolve", lambda host, port: {"10.1.2.3"}
         )
         updated = client.patch(
             url,
