@@ -290,10 +290,8 @@ class TestDetectionProfiles(ApiTester):
         assert created.status_code == status.HTTP_201_CREATED, created.text
         profile_id = created.json()["id"]
         assert created.json()["granularity"] == "indicators"
-        assert (
-            client.post("/detection-profiles", json=body, headers=headers).status_code
-            == status.HTTP_409_CONFLICT
-        )
+        duplicate = client.post("/detection-profiles", json=body, headers=headers)
+        assert duplicate.status_code == status.HTTP_409_CONFLICT
         bad = client.post(
             "/detection-profiles",
             json={"name": "Bad", "rules": {"sources": ["nope"]}},
@@ -353,12 +351,8 @@ class TestDetectionProfiles(ApiTester):
         assert "uses it" in in_use.json()["detail"]
         db.query(export_models.Export).delete()
         db.commit()
-        assert (
-            client.delete(
-                f"/detection-profiles/{profile_id}", headers=headers
-            ).status_code
-            == status.HTTP_204_NO_CONTENT
-        )
+        deleted = client.delete(f"/detection-profiles/{profile_id}", headers=headers)
+        assert deleted.status_code == status.HTTP_204_NO_CONTENT
 
     @pytest.mark.parametrize("scopes", [["attributes:read"]])
     def test_indicator_search_and_exports(
@@ -447,7 +441,8 @@ class TestDetectionProfiles(ApiTester):
                 filters={"profile_id": profile.id, "exclude_tags": []},
             ),
         )
-        assert sinks_repository.deliver_event(sink, LOCAL_EVENT) == 1
+        sent = sinks_repository.deliver_event(sink, LOCAL_EVENT)
+        assert sent == 1
         [record] = received[0]["attributes"]
         assert record["value"] == "good.example"
         assert "indicator" not in record
@@ -455,7 +450,8 @@ class TestDetectionProfiles(ApiTester):
         # A profile of indicators sends them consolidated.
         profile.granularity = "indicators"
         db.commit()
-        assert sinks_repository.deliver_event(sink, LOCAL_EVENT) == 1
+        sent = sinks_repository.deliver_event(sink, LOCAL_EVENT)
+        assert sent == 1
         assert received[1]["attributes"][0]["indicator"]["uuid"]
 
         with pytest.raises(HTTPException):
@@ -615,5 +611,6 @@ class TestProfilesFailClosed(ApiTester):
                 filters={"profile_id": profile.id, "exclude_tags": ["misp-galaxy:*"]},
             ),
         )
-        assert sinks_repository.deliver_event(sink, FEED_EVENT) == 1
+        sent = sinks_repository.deliver_event(sink, FEED_EVENT)
+        assert sent == 1
         assert [a["value"] for a in received[0]["attributes"]] == ["plain.example"]
