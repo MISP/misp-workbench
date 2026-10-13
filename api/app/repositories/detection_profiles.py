@@ -16,6 +16,11 @@ lag behind its attributes by a sync, the rules that keep things out (TLP,
 excluded tags, warninglists, validation) are also checked on the attribute
 as it is now: a value tagged tlp:red a second ago doesn't leave on a stale
 indicator.
+
+Review decisions (``indicator_reviews``) are on the indicators too: a profile
+can require approval, by an analyst or by an auto-approve profile, or just
+leave out what analysts rejected. A value without an indicator is judged on
+its stored decision.
 """
 
 import fnmatch
@@ -104,6 +109,7 @@ def create_profile(db: Session, profile: profile_schemas.DetectionProfileCreate)
         description=profile.description,
         granularity=profile.granularity,
         rules=profile.rules.model_dump(),
+        auto_approve=profile.auto_approve,
         created_at=datetime.now(timezone.utc),
     )
     db.add(db_profile)
@@ -116,6 +122,15 @@ def update_profile(
     db: Session, db_profile, profile: profile_schemas.DetectionProfileUpdate
 ):
     patch = profile.model_dump(exclude_unset=True)
+    try:
+        profile_schemas.check_auto_approve(
+            patch.get("auto_approve", db_profile.auto_approve),
+            _rules(patch.get("rules", db_profile.rules)),
+        )
+    except ValueError as error:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(error)
+        )
     for key, value in patch.items():
         setattr(db_profile, key, value)
     db_profile.updated_at = datetime.now(timezone.utc)
@@ -157,12 +172,14 @@ def delete_profile(db: Session, db_profile) -> None:
 
 
 def context(now: Optional[int] = None) -> dict:
-    """What evaluating rules needs besides the indicator: time and trust."""
+    """What evaluating rules needs besides the indicator: time, trust, and
+    the auto-approve profiles' rules."""
     from app.services import scoring
 
     cfg = scoring.load_config()
     trust = cfg.get("_trust", {})
     return {
+        "auto_approve": auto_approve_rules(),
         "now": int(time.time()) if now is None else now,
         # For scoring indicators built from a lone attribute.
         "scoring": cfg,
@@ -173,6 +190,19 @@ def context(now: Optional[int] = None) -> dict:
             for key, (modifier, _cap) in trust.get(kind, {}).items()
         },
     }
+
+
+def auto_approve_rules() -> list[profile_schemas.ProfileRules]:
+    """The rules of the auto-approve profiles."""
+    from app.database import SessionLocal
+
+    with SessionLocal() as db:
+        return [
+            _rules(p.rules)
+            for p in db.query(profile_models.DetectionProfile)
+            .filter(profile_models.DetectionProfile.auto_approve.is_(True))
+            .order_by(profile_models.DetectionProfile.id)
+        ]
 
 
 def _rules(rules) -> profile_schemas.ProfileRules:
@@ -214,6 +244,27 @@ def _trust_split(rules, ctx: dict) -> tuple[Optional[list], list]:
         # Unconfigured sources (0) are below: only configured ones can pass.
         return [k for k, m in trust.items() if m >= threshold], []
     return None, [k for k, m in trust.items() if m < threshold]
+
+
+REJECTED = {"term": {"review.status": "rejected"}}
+
+
+def approved_query(ctx: dict) -> dict:
+    """Indicators an analyst approved, or an auto-approve profile selects and
+    no analyst rejected."""
+    should: list = [{"term": {"review.status": "approved"}}]
+    auto = [to_query(r, ctx) for r in ctx.get("auto_approve", [])]
+    if auto:
+        should.append(
+            {
+                "bool": {
+                    "should": auto,
+                    "minimum_should_match": 1,
+                    "must_not": [REJECTED],
+                }
+            }
+        )
+    return {"bool": {"should": should, "minimum_should_match": 1}}
 
 
 def to_query(rules, ctx: dict, live_only: bool = True) -> dict:
@@ -273,6 +324,10 @@ def to_query(rules, ctx: dict, live_only: bool = True) -> dict:
         must_not.append({"exists": {"field": "warninglist_hits"}})
     if rules.exclude_validation_issues:
         must_not.append({"exists": {"field": "validation_issues"}})
+    if rules.require_approval:
+        filters.append(approved_query(ctx))
+    elif rules.exclude_rejected:
+        must_not.append(REJECTED)
     return {"bool": {"filter": filters, "must_not": must_not}}
 
 
@@ -388,6 +443,16 @@ def to_lucene(rules, ctx: dict) -> dict:
         parts.append("NOT _exists_:warninglist_hits")
     if rules.exclude_validation_issues:
         parts.append("NOT _exists_:validation_issues")
+    if rules.require_approval:
+        either = ["review.status:approved"]
+        auto = [to_lucene(r, ctx) for r in ctx.get("auto_approve", [])]
+        if auto:
+            snapshot = snapshot or any(a["snapshot"] for a in auto)
+            selected = " OR ".join(f"({a['query']})" for a in auto)
+            either.append(f"(NOT review.status:rejected AND ({selected}))")
+        parts.append(f"({' OR '.join(either)})")
+    elif rules.exclude_rejected:
+        parts.append("NOT review.status:rejected")
     return {"query": " AND ".join(parts), "snapshot": snapshot}
 
 
@@ -413,7 +478,36 @@ REASONS = (
     "organisations",
     "excluded_organisation",
     "trust",
+    "rejected",
+    "pending",
 )
+
+
+def _review_status(indicator: dict, ctx: dict) -> Optional[str]:
+    """The analysts' decision on an indicator (approved, rejected, snoozed).
+
+    An indicator built from an attribute doesn't carry it: it is read from
+    the stored decisions, once per context.
+    """
+    if not indicator.get("_fresh"):
+        return (indicator.get("review") or {}).get("status")
+    if "_reviews" not in ctx:
+        from app.repositories import indicator_reviews
+
+        ctx["_reviews"] = indicator_reviews.statuses()
+    return ctx["_reviews"].get(
+        indicators_repository.indicator_uuid(
+            indicator.get("type"), indicator.get("value")
+        )
+    )
+
+
+def approved(indicator: dict, ctx: dict) -> bool:
+    """``approved_query`` for one indicator."""
+    status = _review_status(indicator, ctx)
+    if status in ("approved", "rejected"):
+        return status == "approved"
+    return any(matches(r, indicator, ctx) for r in ctx.get("auto_approve", []))
 
 
 def failing_rule(rules, indicator: Optional[dict], ctx: dict) -> Optional[str]:
@@ -425,6 +519,10 @@ def failing_rule(rules, indicator: Optional[dict], ctx: dict) -> Optional[str]:
     rules = _rules(rules)
     if not indicator or indicator.get("deleted"):
         return "deleted"
+    if (rules.require_approval or rules.exclude_rejected) and _review_status(
+        indicator, ctx
+    ) == "rejected":
+        return "rejected"
     if rules.types and indicator.get("type") not in rules.types:
         return "type"
     if rules.categories and not set(indicator.get("categories") or []) & set(
@@ -474,6 +572,8 @@ def failing_rule(rules, indicator: Optional[dict], ctx: dict) -> Optional[str]:
             return "trust"
         if allowed is None and below and keys and set(keys) <= set(below):
             return "trust"
+    if rules.require_approval and not approved(indicator, ctx):
+        return "pending"
     return None
 
 
@@ -543,6 +643,8 @@ def attribute_indicator(
         "organisation_ids": [org_id] if org_id is not None else [],
         "last_seen": int(seen) if seen else None,
         "sightings": {},
+        # Its review decision is stored, not on it (see _review_status).
+        "_fresh": True,
     }
     if ctx is not None:
         indicator["score"], _ = scoring.score(indicator, ctx["scoring"], ctx["now"])
@@ -581,7 +683,7 @@ def exclusions_only(rules) -> profile_schemas.ProfileRules:
 
     For sends from notebooks and reactor scripts: code chooses what to send,
     but a profile's TLP ceiling, excluded tags, warninglists and validation
-    issues still hold.
+    issues still hold, and so does an analyst's rejection.
     """
     rules = _rules(rules)
     return profile_schemas.ProfileRules(
@@ -590,6 +692,7 @@ def exclusions_only(rules) -> profile_schemas.ProfileRules:
         to_ids=False,
         exclude_warninglisted=rules.exclude_warninglisted,
         exclude_validation_issues=rules.exclude_validation_issues,
+        exclude_rejected=rules.exclude_rejected or rules.require_approval,
     )
 
 

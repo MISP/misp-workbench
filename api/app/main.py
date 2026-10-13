@@ -14,6 +14,7 @@ from app.routers import (
     feeds,
     galaxies,
     hunts,
+    indicator_reviews,
     indicators,
     lab,
     lookup,
@@ -191,7 +192,9 @@ app.include_router(lookup.router, tags=["Lookup"])
 # Detection profiles shared by all outputs
 app.include_router(detection_profiles.router, tags=["Detection profiles"])
 
-# Consolidated indicators (one per type + value)
+# Consolidated indicators (one per type + value). The review queue first:
+# /indicators/review would otherwise be read as an indicator uuid.
+app.include_router(indicator_reviews.router, tags=["Indicators"])
 app.include_router(indicators.router, tags=["Indicators"])
 
 # Exports resource

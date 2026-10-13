@@ -6,6 +6,7 @@ import Spinner from "@/components/misc/Spinner.vue";
 import Timestamp from "@/components/misc/Timestamp.vue";
 import Pagination from "@/components/misc/Pagination.vue";
 import ScoreBadge from "@/components/indicators/ScoreBadge.vue";
+import IndicatorDetails from "@/components/indicators/IndicatorDetails.vue";
 
 const indicatorsStore = useIndicatorsStore();
 const { page, indicatorsStatus, status } = storeToRefs(indicatorsStore);
@@ -18,6 +19,12 @@ const minScore = ref(null);
 const currentPage = ref(1);
 const expanded = ref(null);
 const SIZE = 50;
+
+const REVIEW_CLASSES = {
+  approved: "text-bg-success",
+  rejected: "text-bg-dark",
+  snoozed: "text-bg-light border",
+};
 
 const TLP_CLASSES = {
   "tlp:red": "text-bg-danger",
@@ -203,6 +210,13 @@ load();
                       >{{ issue }}</span
                     >
                     <span
+                      v-if="indicator.review"
+                      class="badge me-1"
+                      :class="REVIEW_CLASSES[indicator.review.status]"
+                      :title="`Review: ${indicator.review.status}`"
+                      >{{ indicator.review.status }}</span
+                    >
+                    <span
                       v-if="indicator.warninglist_hits.length"
                       class="badge text-bg-warning me-1"
                       :title="indicator.warninglist_hits.join(', ')"
@@ -256,93 +270,7 @@ load();
                 </tr>
                 <tr v-if="expanded === indicator.uuid">
                   <td colspan="9" class="bg-body-tertiary">
-                    <dl class="row small mb-0">
-                      <template v-if="indicator.score !== null">
-                        <dt class="col-sm-2">score</dt>
-                        <dd class="col-sm-10">
-                          <strong>{{ indicator.score }}</strong> / 100
-                          <ul class="list-unstyled mb-0">
-                            <li
-                              v-for="component in indicator.score_breakdown"
-                              :key="component.factor"
-                            >
-                              <span
-                                class="font-monospace d-inline-block text-end me-2"
-                                style="min-width: 3em"
-                                >{{
-                                  component.points > 0 &&
-                                  component.factor !== "base"
-                                    ? "+"
-                                    : ""
-                                }}{{ component.points }}</span
-                              >{{ component.factor }}
-                              <span class="text-muted"
-                                >— {{ component.detail }}</span
-                              >
-                            </li>
-                          </ul>
-                        </dd>
-                      </template>
-                      <dt class="col-sm-2">attributes</dt>
-                      <dd class="col-sm-10">
-                        {{ indicator.attribute_count }} ({{
-                          indicator.ids_attribute_count
-                        }}
-                        for IDS) ·
-                        {{ indicator.categories.join(", ") || "no category" }}
-                      </dd>
-                      <dt class="col-sm-2">organisations</dt>
-                      <dd class="col-sm-10">
-                        <span
-                          v-for="org in indicator.organisations"
-                          :key="`${org.id}-${org.name}`"
-                          class="me-2"
-                          >{{ org.name }} ({{ org.event_count }})</span
-                        >
-                      </dd>
-                      <dt class="col-sm-2">sources</dt>
-                      <dd class="col-sm-10">
-                        <span
-                          v-for="source in indicator.sources"
-                          :key="`${source.type}-${source.id}-${source.name}`"
-                          class="me-2"
-                          >{{ sourceLabel(source) }} ({{
-                            source.event_count
-                          }})</span
-                        >
-                      </dd>
-                      <dt class="col-sm-2">tags</dt>
-                      <dd class="col-sm-10">
-                        <span
-                          v-for="tag in indicator.tags"
-                          :key="tag"
-                          class="badge text-bg-light border me-1"
-                          >{{ tag }}</span
-                        >
-                      </dd>
-                      <dt class="col-sm-2">events</dt>
-                      <dd class="col-sm-10">
-                        <RouterLink
-                          v-for="eventUuid in indicator.events"
-                          :key="eventUuid"
-                          :to="`/events/${eventUuid}`"
-                          class="font-monospace me-2"
-                          @click.stop
-                          >{{ eventUuid.slice(0, 8) }}</RouterLink
-                        >
-                        <span
-                          v-if="indicator.event_count > indicator.events.length"
-                          class="text-muted"
-                          >and
-                          {{ indicator.event_count - indicator.events.length }}
-                          more</span
-                        >
-                      </dd>
-                      <dt class="col-sm-2">uuid</dt>
-                      <dd class="col-sm-10 font-monospace">
-                        {{ indicator.uuid }}
-                      </dd>
-                    </dl>
+                    <IndicatorDetails :indicator="indicator" />
                   </td>
                 </tr>
               </template>

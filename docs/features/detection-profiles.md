@@ -29,6 +29,12 @@ narrows the selection, and an empty rule leaves nothing out.
 | **Only flagged for IDS** (on) | at least one attribute flagged `to_ids` |
 | **Leave out warninglisted** (on) | not on an enabled [warninglist](warninglists.md) |
 | **Leave out validation issues** (on) | no [validation issue](normalisation.md#validation-issues) |
+| **Require approval** | only indicators approved in the [review queue](review-queue.md), by an analyst or by an auto-approve profile. The rest wait in the queue |
+| **Leave out rejected** | everything but what an analyst rejected in the review queue. Requiring approval leaves rejected ones out too |
+
+A profile marked **auto-approve what it selects** is a rule of the review
+queue: what it selects is approved without a review. It can't require
+approval itself.
 
 A profile also says what outputs send: the **consolidated indicators**
 (each value once, with its context), or the **attributes** behind them.
@@ -162,7 +168,7 @@ fall back to sending everything its own query matches.
 | `GET /detection-profiles/{id}` | `detection_profiles:read` | One profile |
 | `GET /detection-profiles/{id}/count` | `detection_profiles:read` | How many indicators it selects now, and a few of them |
 | `POST /detection-profiles/preview` | `detection_profiles:read` | The same, for rules not saved yet (`{"rules": {…}}`) |
-| `POST /detection-profiles` | `detection_profiles:create` | Create one (`name`, `description`, `granularity`, `rules`) |
+| `POST /detection-profiles` | `detection_profiles:create` | Create one (`name`, `description`, `granularity`, `rules`, `auto_approve`) |
 | `PATCH /detection-profiles/{id}` | `detection_profiles:update` | Change one |
 | `DELETE /detection-profiles/{id}` | `detection_profiles:delete` | Delete one (409 while an export or sink uses it) |
 

@@ -34,12 +34,15 @@ const DEFAULT_RULES = {
   to_ids: true,
   exclude_warninglisted: true,
   exclude_validation_issues: true,
+  require_approval: false,
+  exclude_rejected: false,
 };
 
 const form = reactive({
   name: props.profile?.name ?? "",
   description: props.profile?.description ?? "",
   granularity: props.profile?.granularity ?? "indicators",
+  auto_approve: props.profile?.auto_approve ?? false,
 });
 const rules = reactive({
   ...DEFAULT_RULES,
@@ -429,6 +432,68 @@ async function submit() {
           </tr>
         </tbody>
       </table>
+
+      <h6 class="fw-semibold">Review</h6>
+      <p class="form-text mt-0">
+        Analysts approve, reject or snooze indicators in the
+        <RouterLink to="/indicators/review">review queue</RouterLink>.
+      </p>
+      <div class="row g-3 mb-3">
+        <div class="col-md-4">
+          <div class="form-check form-switch">
+            <input
+              id="profile-require-approval"
+              class="form-check-input"
+              type="checkbox"
+              v-model="rules.require_approval"
+              :disabled="form.auto_approve"
+            />
+            <label class="form-check-label" for="profile-require-approval"
+              >Require approval</label
+            >
+          </div>
+          <div class="form-text">
+            Only approved indicators, by an analyst or an auto-approve profile;
+            the rest wait in the queue.
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="form-check form-switch">
+            <input
+              id="profile-exclude-rejected"
+              class="form-check-input"
+              type="checkbox"
+              :checked="rules.exclude_rejected || rules.require_approval"
+              :disabled="rules.require_approval"
+              @change="rules.exclude_rejected = $event.target.checked"
+            />
+            <label class="form-check-label" for="profile-exclude-rejected"
+              >Leave out rejected</label
+            >
+          </div>
+          <div class="form-text">
+            Everything else goes out without waiting for a review.
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="form-check form-switch">
+            <input
+              id="profile-auto-approve"
+              class="form-check-input"
+              type="checkbox"
+              v-model="form.auto_approve"
+              :disabled="rules.require_approval"
+            />
+            <label class="form-check-label" for="profile-auto-approve"
+              >Auto-approve what it selects</label
+            >
+          </div>
+          <div class="form-text">
+            A rule of the queue: what this profile selects needs no review (an
+            analyst's rejection still holds).
+          </div>
+        </div>
+      </div>
 
       <div v-if="apiError" class="alert alert-danger">{{ apiError }}</div>
       <div class="d-flex justify-content-end gap-2">

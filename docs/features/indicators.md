@@ -39,6 +39,7 @@ Attributes in deleted events don't count.
 | `sightings` | `positive`, `false_positive` and `expiration` counts, with the first and last sighting time |
 | `warninglist_hits` | The enabled [warninglists](warninglists.md) any of its attributes is on |
 | `validation_issues` | The [validation issues](normalisation.md#validation-issues) of its attributes, also as `workbench:validation="…"` tags |
+| `review` | An analyst's decision in the [review queue](review-queue.md): `status` (approved, rejected, snoozed), `until` for a snooze, and `at`. Absent while undecided |
 | `deleted` | `true` on a **tombstone**: an indicator whose last live attribute went away |
 | `updated_at` | When its content last changed |
 

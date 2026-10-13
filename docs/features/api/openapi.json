@@ -10526,6 +10526,414 @@
         }
       }
     },
+    "/indicators/review": {
+      "get": {
+        "tags": [
+          "Indicators"
+        ],
+        "summary": "Review Queue",
+        "description": "Pending indicators: ones a profile requiring approval would select,\nnot yet approved, rejected or snoozed.",
+        "operationId": "review_queue_indicators_review_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "attributes:read"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "profile_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Only indicators pending for this profile",
+              "title": "Profile Id"
+            },
+            "description": "Only indicators pending for this profile"
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Lucene query; bare terms match the value",
+              "title": "Q"
+            },
+            "description": "Lucene query; bare terms match the value"
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Type"
+            }
+          },
+          {
+            "name": "source",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "A source key: feed:3, server:2, local, unknown",
+              "title": "Source"
+            },
+            "description": "A source key: feed:3, server:2, local, unknown"
+          },
+          {
+            "name": "min_score",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "maximum": 100,
+                  "minimum": 0
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Min Score"
+            }
+          },
+          {
+            "name": "max_score",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "maximum": 100,
+                  "minimum": 0
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Max Score"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "score",
+                "last_seen",
+                "first_seen",
+                "event_count"
+              ],
+              "type": "string",
+              "default": "score",
+              "title": "Sort"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1,
+              "title": "Page"
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 50,
+              "title": "Size"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewQueuePage"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/indicators/review/summary": {
+      "get": {
+        "tags": [
+          "Indicators"
+        ],
+        "summary": "Review Summary",
+        "operationId": "review_summary_indicators_review_summary_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewSummary"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "attributes:read"
+            ]
+          }
+        ]
+      }
+    },
+    "/indicators/review/decisions": {
+      "get": {
+        "tags": [
+          "Indicators"
+        ],
+        "summary": "Review Decisions",
+        "description": "Decided indicators, newest decision first.",
+        "operationId": "review_decisions_indicators_review_decisions_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "attributes:read"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "enum": [
+                "approved",
+                "rejected",
+                "snoozed"
+              ],
+              "type": "string",
+              "title": "Status"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Part of the value",
+              "title": "Q"
+            },
+            "description": "Part of the value"
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1,
+              "title": "Page"
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 50,
+              "title": "Size"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewDecisionPage"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Indicators"
+        ],
+        "summary": "Decide",
+        "description": "Approve, reject, snooze or reopen indicators (up to 500 at a time).",
+        "operationId": "decide_indicators_review_decisions_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "indicators:review"
+            ]
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewDecisionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewDecisionResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/indicators/{indicator_uuid}/review": {
+      "get": {
+        "tags": [
+          "Indicators"
+        ],
+        "summary": "Indicator Review",
+        "description": "The decision on an indicator and every decision taken before.",
+        "operationId": "indicator_review_indicators__indicator_uuid__review_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "attributes:read"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "indicator_uuid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Indicator Uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IndicatorReviewDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/indicators": {
       "get": {
         "tags": [
@@ -16326,8 +16734,15 @@
               "exclude_organisations": [],
               "to_ids": true,
               "exclude_warninglisted": true,
-              "exclude_validation_issues": true
+              "exclude_validation_issues": true,
+              "require_approval": false,
+              "exclude_rejected": false
             }
+          },
+          "auto_approve": {
+            "type": "boolean",
+            "title": "Auto Approve",
+            "default": false
           },
           "id": {
             "type": "integer",
@@ -16400,8 +16815,15 @@
               "exclude_organisations": [],
               "to_ids": true,
               "exclude_warninglisted": true,
-              "exclude_validation_issues": true
+              "exclude_validation_issues": true,
+              "require_approval": false,
+              "exclude_rejected": false
             }
+          },
+          "auto_approve": {
+            "type": "boolean",
+            "title": "Auto Approve",
+            "default": false
           }
         },
         "type": "object",
@@ -16460,6 +16882,17 @@
                 "type": "null"
               }
             ]
+          },
+          "auto_approve": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Auto Approve"
           }
         },
         "type": "object",
@@ -19446,6 +19879,16 @@
             ],
             "title": "Scored At"
           },
+          "review": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/IndicatorReviewState"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "updated_at": {
             "anyOf": [
               {
@@ -19544,6 +19987,66 @@
           "items"
         ],
         "title": "IndicatorPage"
+      },
+      "IndicatorReviewDetail": {
+        "properties": {
+          "decision": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReviewDecision"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "history": {
+            "items": {
+              "$ref": "#/components/schemas/ReviewHistoryEntry"
+            },
+            "type": "array",
+            "title": "History",
+            "default": []
+          }
+        },
+        "type": "object",
+        "title": "IndicatorReviewDetail"
+      },
+      "IndicatorReviewState": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "until": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Until"
+          },
+          "at": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "title": "IndicatorReviewState",
+        "description": "An analyst's decision, as the indicator carries it."
       },
       "IndicatorScore": {
         "properties": {
@@ -23503,6 +24006,244 @@
         ],
         "title": "Page[Servo]"
       },
+      "PendingIndicator": {
+        "properties": {
+          "uuid": {
+            "type": "string",
+            "title": "Uuid"
+          },
+          "type": {
+            "type": "string",
+            "title": "Type"
+          },
+          "value": {
+            "type": "string",
+            "title": "Value"
+          },
+          "categories": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Categories",
+            "default": []
+          },
+          "to_ids": {
+            "type": "boolean",
+            "title": "To Ids",
+            "default": false
+          },
+          "deleted": {
+            "type": "boolean",
+            "title": "Deleted",
+            "default": false
+          },
+          "attribute_count": {
+            "type": "integer",
+            "title": "Attribute Count",
+            "default": 0
+          },
+          "ids_attribute_count": {
+            "type": "integer",
+            "title": "Ids Attribute Count",
+            "default": 0
+          },
+          "event_count": {
+            "type": "integer",
+            "title": "Event Count",
+            "default": 0
+          },
+          "events": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Events",
+            "default": []
+          },
+          "first_seen": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Seen"
+          },
+          "last_seen": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Seen"
+          },
+          "sources": {
+            "items": {
+              "$ref": "#/components/schemas/IndicatorSource"
+            },
+            "type": "array",
+            "title": "Sources",
+            "default": []
+          },
+          "organisations": {
+            "items": {
+              "$ref": "#/components/schemas/IndicatorOrganisation"
+            },
+            "type": "array",
+            "title": "Organisations",
+            "default": []
+          },
+          "source_keys": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Source Keys",
+            "default": []
+          },
+          "source_count": {
+            "type": "integer",
+            "title": "Source Count",
+            "default": 0
+          },
+          "organisation_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Organisation Ids",
+            "default": []
+          },
+          "organisation_count": {
+            "type": "integer",
+            "title": "Organisation Count",
+            "default": 0
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Tags",
+            "default": []
+          },
+          "tlp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tlp"
+          },
+          "galaxies": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Galaxies",
+            "default": []
+          },
+          "sightings": {
+            "$ref": "#/components/schemas/IndicatorSightings",
+            "default": {
+              "positive": 0,
+              "false_positive": 0,
+              "expiration": 0
+            }
+          },
+          "warninglist_hits": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Warninglist Hits",
+            "default": []
+          },
+          "validation_issues": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Validation Issues",
+            "default": []
+          },
+          "score": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score"
+          },
+          "score_breakdown": {
+            "items": {
+              "$ref": "#/components/schemas/ScoreComponent"
+            },
+            "type": "array",
+            "title": "Score Breakdown",
+            "default": []
+          },
+          "scored_at": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scored At"
+          },
+          "review": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/IndicatorReviewState"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          },
+          "pending_for": {
+            "items": {
+              "$ref": "#/components/schemas/ProfileRef"
+            },
+            "type": "array",
+            "title": "Pending For",
+            "default": []
+          }
+        },
+        "type": "object",
+        "required": [
+          "uuid",
+          "type",
+          "value"
+        ],
+        "title": "PendingIndicator"
+      },
       "PipelineDetail": {
         "properties": {
           "name": {
@@ -23792,6 +24533,24 @@
         "title": "ProfileQuery",
         "description": "The rules as a Lucene query on the indicators index (Explore)."
       },
+      "ProfileRef": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name"
+        ],
+        "title": "ProfileRef"
+      },
       "ProfileRules": {
         "properties": {
           "types": {
@@ -23928,6 +24687,16 @@
             "type": "boolean",
             "title": "Exclude Validation Issues",
             "default": true
+          },
+          "require_approval": {
+            "type": "boolean",
+            "title": "Require Approval",
+            "default": false
+          },
+          "exclude_rejected": {
+            "type": "boolean",
+            "title": "Exclude Rejected",
+            "default": false
           }
         },
         "additionalProperties": false,
@@ -24488,6 +25257,330 @@
           "relationship_type"
         ],
         "title": "RelationshipCreate"
+      },
+      "ReviewDecision": {
+        "properties": {
+          "indicator_uuid": {
+            "type": "string",
+            "title": "Indicator Uuid"
+          },
+          "type": {
+            "type": "string",
+            "title": "Type"
+          },
+          "value": {
+            "type": "string",
+            "title": "Value"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "snoozed_until": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Snoozed Until"
+          },
+          "allowlisted": {
+            "type": "boolean",
+            "title": "Allowlisted",
+            "default": false
+          },
+          "user_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Id"
+          },
+          "user_email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Email"
+          },
+          "decided_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Decided At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "indicator_uuid",
+          "type",
+          "value",
+          "status",
+          "decided_at"
+        ],
+        "title": "ReviewDecision"
+      },
+      "ReviewDecisionPage": {
+        "properties": {
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "page": {
+            "type": "integer",
+            "title": "Page"
+          },
+          "size": {
+            "type": "integer",
+            "title": "Size"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ReviewDecision"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "type": "object",
+        "required": [
+          "total",
+          "page",
+          "size",
+          "items"
+        ],
+        "title": "ReviewDecisionPage"
+      },
+      "ReviewDecisionRequest": {
+        "properties": {
+          "indicators": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 500,
+            "minItems": 1,
+            "title": "Indicators"
+          },
+          "action": {
+            "type": "string",
+            "enum": [
+              "approve",
+              "reject",
+              "snooze",
+              "reopen"
+            ],
+            "title": "Action"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "snooze_days": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 365.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Snooze Days"
+          },
+          "allowlist": {
+            "type": "boolean",
+            "title": "Allowlist",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "indicators",
+          "action"
+        ],
+        "title": "ReviewDecisionRequest"
+      },
+      "ReviewDecisionResult": {
+        "properties": {
+          "decided": {
+            "type": "integer",
+            "title": "Decided"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          }
+        },
+        "type": "object",
+        "required": [
+          "decided",
+          "status"
+        ],
+        "title": "ReviewDecisionResult"
+      },
+      "ReviewHistoryEntry": {
+        "properties": {
+          "action": {
+            "type": "string",
+            "title": "Action"
+          },
+          "at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "At"
+          },
+          "user_email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Email"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "snoozed_until": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Snoozed Until"
+          },
+          "allowlisted": {
+            "type": "boolean",
+            "title": "Allowlisted",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "action",
+          "at"
+        ],
+        "title": "ReviewHistoryEntry"
+      },
+      "ReviewQueuePage": {
+        "properties": {
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "page": {
+            "type": "integer",
+            "title": "Page"
+          },
+          "size": {
+            "type": "integer",
+            "title": "Size"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/PendingIndicator"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "type": "object",
+        "required": [
+          "total",
+          "page",
+          "size",
+          "items"
+        ],
+        "title": "ReviewQueuePage"
+      },
+      "ReviewSummary": {
+        "properties": {
+          "pending": {
+            "type": "integer",
+            "title": "Pending"
+          },
+          "snoozed": {
+            "type": "integer",
+            "title": "Snoozed"
+          },
+          "approved": {
+            "type": "integer",
+            "title": "Approved"
+          },
+          "rejected": {
+            "type": "integer",
+            "title": "Rejected"
+          },
+          "requiring_profiles": {
+            "items": {
+              "$ref": "#/components/schemas/ProfileRef"
+            },
+            "type": "array",
+            "title": "Requiring Profiles",
+            "default": []
+          },
+          "auto_approve_profiles": {
+            "items": {
+              "$ref": "#/components/schemas/ProfileRef"
+            },
+            "type": "array",
+            "title": "Auto Approve Profiles",
+            "default": []
+          }
+        },
+        "type": "object",
+        "required": [
+          "pending",
+          "snoozed",
+          "approved",
+          "rejected"
+        ],
+        "title": "ReviewSummary"
       },
       "Role": {
         "properties": {

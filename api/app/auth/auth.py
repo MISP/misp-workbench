@@ -129,6 +129,7 @@ AVAILABLE_SCOPES: dict[str, str] = {
         "detection_profiles:create": "Create detection profiles.",
         "detection_profiles:update": "Update detection profiles.",
         "detection_profiles:delete": "Delete detection profiles.",
+        "indicators:review": "Approve, reject or snooze indicators in the review queue.",
         "sinks:read": "Read outbound sinks and their delivery status.",
         "sinks:create": "Create outbound sinks.",
         "sinks:update": "Update outbound sinks.",

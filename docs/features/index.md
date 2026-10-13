@@ -12,6 +12,7 @@
 | [Normalisation](normalisation.md) | Refang, lower-case, canonicalise URLs, IPs and hashes as attributes are written, and flag malformed values and private or reserved IPs without dropping anything |
 | [Indicators](indicators.md) | One consolidated record per type and value, with sources, first and last seen, merged tags and sightings across every event it is in, and a confidence score that decays with age and follows source trust |
 | [Detection profiles](detection-profiles.md) | What goes to which security control, defined once (types, TLP, tags, score, age, sources, trust, warninglists) and used by exports, feeds, sinks, lookups and restSearch |
+| [Review queue](review-queue.md) | Analysts approve, reject or snooze what profiles requiring approval would send; auto-approve profiles cover the trusted bulk |
 | [Correlations](correlations.md) | Batch and incremental correlation scans over indexed attributes |
 | [Event Graph](event-graph.md) | Draw an event as a graph: its attributes, objects, tags and the references between them |
 | [Notifications](notifications.md) | Event-driven notifications processed by Celery workers. |

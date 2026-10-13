@@ -37,6 +37,8 @@ function summary(rules) {
     parts.push(`not only ${rules.exclude_sources.join(", ")}`);
   if (rules.min_source_trust !== null && rules.min_source_trust !== undefined)
     parts.push(`trust ≥ ${rules.min_source_trust}`);
+  if (rules.require_approval) parts.push("approved only");
+  else if (rules.exclude_rejected) parts.push("no rejected");
   return parts.join(" · ") || "everything";
 }
 
@@ -104,6 +106,18 @@ async function remove(profile) {
                 <RouterLink :to="`/detection-profiles/update/${p.id}`">{{
                   p.name
                 }}</RouterLink>
+                <span
+                  v-if="p.auto_approve"
+                  class="badge text-bg-success ms-2"
+                  title="What it selects is approved without a review"
+                  >auto-approve</span
+                >
+                <span
+                  v-if="p.rules.require_approval"
+                  class="badge text-bg-info ms-2"
+                  title="Only approved indicators; the rest wait in the review queue"
+                  >requires approval</span
+                >
                 <div v-if="p.description" class="small text-muted">
                   {{ p.description }}
                 </div>

@@ -22,6 +22,12 @@ Under ***settings*** → ***warninglists***:
   background whenever lists change.
 - **Check values** tells you which enabled lists a set of values is on.
 
+One list doesn't come from the submodule: the **Workbench allowlist** holds
+the values analysts rejected in the [review queue](review-queue.md#rejecting-with-an-allowlist-entry)
+with an allowlist entry. It is created on the first such rejection, matched
+like any other list, and left alone by updates. Taking the rejection back
+takes the value off it.
+
 <img src="../../screenshots/warninglists/misp-workbench-1_warninglists_page.png#only-light" alt="Warninglists page with a value check" style="max-width: 100%; height: auto;">
 <img src="../../screenshots/warninglists/misp-workbench-1_warninglists_page-dark.png#only-dark" alt="Warninglists page with a value check" style="max-width: 100%; height: auto;">
 
