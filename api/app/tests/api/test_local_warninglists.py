@@ -438,3 +438,244 @@ class TestLocalWarninglists(ApiTester):
             headers={"Authorization": "Bearer " + auth_token},
         )
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+
+class FakeResponse:
+    def __init__(self, body: bytes, status_code: int = 200, redirect: bool = False):
+        self.body = body
+        self.status_code = status_code
+        self.is_redirect = redirect
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        return False
+
+    def raise_for_status(self):
+        if self.status_code >= 400:
+            import requests
+
+            raise requests.HTTPError(f"{self.status_code}")
+
+    def iter_content(self, size):
+        yield self.body
+
+
+class TestDestinations:
+    def test_destinations_are_checked_when_fetching(self, monkeypatch):
+        monkeypatch.setattr(
+            local_warninglists, "allowed_hosts", lambda: ["cmdb.corp.example"]
+        )
+
+        def resolves_to(address):
+            return lambda host, port: [(None, None, None, None, (address, port))]
+
+        monkeypatch.setattr(
+            local_warninglists.socket, "getaddrinfo", resolves_to("169.254.169.254")
+        )
+        with pytest.raises(local_warninglists.InvalidEntry, match="may not reach"):
+            local_warninglists._check_destination("http://cmdb.corp.example/r.txt")
+        monkeypatch.setattr(
+            local_warninglists.socket, "getaddrinfo", resolves_to("10.1.2.3")
+        )
+        local_warninglists._check_destination("http://cmdb.corp.example/r.txt")
+
+        def unresolvable(host, port):
+            raise local_warninglists.socket.gaierror("no such host")
+
+        monkeypatch.setattr(local_warninglists.socket, "getaddrinfo", unresolvable)
+        with pytest.raises(local_warninglists.InvalidEntry, match="doesn't resolve"):
+            local_warninglists._check_destination("http://cmdb.corp.example/r.txt")
+
+    def test_exports_read_back_as_imports(self):
+        class Entry:
+            def __init__(self, kind, value, comment=None):
+                self.kind, self.value, self.comment = kind, value, comment
+
+        class Query:
+            def __init__(self, rows):
+                self.rows = rows
+
+            def filter(self, *args):
+                return self
+
+            def order_by(self, *args):
+                return self.rows
+
+        class Db:
+            def query(self, model):
+                return Query(
+                    [
+                        Entry("suffix", "corp.example", "ours"),
+                        Entry("value", "evil.example"),
+                    ]
+                )
+
+        class List:
+            name = "Corporate"
+            id = 1
+
+        text = "".join(local_warninglists.export_lines(Db(), List()))
+        assert local_warninglists.parse_lines(text) == [
+            {"value": "*.corp.example", "comment": "ours"},
+            {"value": "evil.example", "comment": None},
+        ]
+
+
+class TestListLifecycle(ApiTester):
+    @pytest.fixture(scope="class", autouse=True)
+    def dataset(self, cleanup):
+        client = get_opensearch_client()
+        client.index(
+            index="misp-events",
+            id=EVENT,
+            body={
+                "uuid": EVENT,
+                "info": "local lists",
+                "deleted": False,
+                "published": True,
+                "organisation": {"id": 961, "name": "Org 961"},
+                "source": {"type": "local", "id": None, "name": None},
+                "tags": [],
+            },
+        )
+        client.indices.refresh(index="misp-events")
+        yield
+
+    def _attribute(self, i, value, type_="domain"):
+        client = get_opensearch_client()
+        uuid = f"10ca0000-2000-4000-8000-{i:012d}"
+        client.index(
+            index="misp-attributes",
+            id=uuid,
+            body={
+                "uuid": uuid,
+                "event_uuid": EVENT,
+                "type": type_,
+                "category": "Network activity",
+                "value": value,
+                "to_ids": True,
+                "deleted": False,
+                "comment": "",
+                "timestamp": NOW - DAY,
+                "tags": [],
+            },
+        )
+        client.indices.refresh(index="misp-attributes")
+        indicators.refresh_values([value])
+        client.indices.refresh(index=indicators.INDEX)
+        return indicators.indicator_uuid(type_, value)
+
+    @pytest.mark.parametrize("scopes", [MANAGE])
+    def test_lifecycle(
+        self, client: TestClient, auth_token: auth.Token, db: Session, monkeypatch
+    ):
+        headers = {"Authorization": "Bearer " + auth_token}
+        created = client.post(
+            "/local-warninglists", json={"name": "Partners"}, headers=headers
+        )
+        list_id = created.json()["id"]
+        url = f"/local-warninglists/{list_id}"
+        again = client.post(
+            "/local-warninglists", json={"name": "Partners"}, headers=headers
+        )
+        assert again.status_code == status.HTTP_409_CONFLICT
+        assert client.get(url, headers=headers).json()["name"] == "Partners"
+        assert [
+            w["id"] for w in client.get("/local-warninglists", headers=headers).json()
+        ] == [list_id]
+
+        # Sources are the operator's call: none allowed by default.
+        refused = client.patch(
+            url, json={"source_url": "https://cmdb.corp.example/r.txt"}, headers=headers
+        )
+        assert refused.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert (
+            client.post(f"{url}/sync", headers=headers).status_code
+            == status.HTTP_400_BAD_REQUEST
+        )
+
+        monkeypatch.setattr(
+            local_warninglists, "allowed_hosts", lambda: ["cmdb.corp.example"]
+        )
+        monkeypatch.setattr(
+            local_warninglists.socket,
+            "getaddrinfo",
+            lambda host, port: [(None, None, None, None, ("10.1.2.3", port))],
+        )
+        updated = client.patch(
+            url,
+            json={
+                "source_url": "https://cmdb.corp.example/r.txt",
+                "description": "partners",
+            },
+            headers=headers,
+        )
+        assert updated.status_code == status.HTTP_200_OK, updated.text
+
+        bodies = iter(
+            [
+                FakeResponse(b"# partners\npartner.example  # main\n*.partner.net\n"),
+                FakeResponse(b"", redirect=True),
+                FakeResponse(b"", status_code=500),
+            ]
+        )
+        monkeypatch.setattr("requests.get", lambda *a, **k: next(bodies))
+        synced = client.post(f"{url}/sync", headers=headers).json()
+        assert synced["sync_error"] is None
+        assert synced["entry_count"] == 2
+        redirected = client.post(f"{url}/sync", headers=headers).json()
+        assert "redirects" in redirected["sync_error"]
+        # A failed sync keeps what the last one brought.
+        failed = client.post(f"{url}/sync", headers=headers).json()
+        assert failed["sync_error"] and failed["entry_count"] == 2
+
+        page = client.get(
+            f"{url}/entries", params={"q": "partner.net"}, headers=headers
+        ).json()
+        assert [e["value"] for e in page["items"]] == ["partner.net"]
+        assert page["items"][0]["origin"] == "sync"
+
+        # Members: a full run, then the indicators written since.
+        listed = self._attribute(1, "partner.example")
+        local_warninglists.evaluate_all(db)
+        assert local_warninglists.members(list_id) == {listed}
+        newcomer = self._attribute(2, "api.partner.net")
+        local_warninglists.evaluate_recent(db)
+        assert local_warninglists.members(list_id) == {listed, newcomer}
+
+        removed = client.post(
+            f"{url}/entries/delete",
+            json={"ids": [page["items"][0]["id"]]},
+            headers=headers,
+        )
+        assert removed.json()["removed"] == 1
+        local_warninglists.evaluate_all(db)
+        assert local_warninglists.members(list_id) == {listed}
+
+        # Disabled: no members, nothing matched.
+        disabled = client.patch(url, json={"enabled": False}, headers=headers)
+        assert disabled.json()["enabled"] is False
+        local_warninglists.evaluate_all(db)
+        assert local_warninglists.members(list_id) == set()
+        assert (
+            client.post(
+                "/local-warninglists/explain",
+                json={"values": ["partner.example"]},
+                headers=headers,
+            ).json()["matches"]
+            == {}
+        )
+        client.patch(url, json={"enabled": True}, headers=headers)
+
+        # A due sync runs with the sweep.
+        bodies = iter([FakeResponse(b"partner.example\n")])
+        db.expire_all()
+        db_list = db.get(warninglist_models.Warninglist, list_id)
+        db_list.synced_at = None
+        db.commit()
+        assert local_warninglists.sweep(db)["synced"] == 1
+
+        assert client.delete(url, headers=headers).status_code == 204
+        assert local_warninglists.members(list_id) == set()
