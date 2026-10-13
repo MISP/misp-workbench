@@ -310,6 +310,13 @@ function navAndClose(path) {
               >
             </li>
             <li>
+              <RouterLink
+                to="/indicators/sources"
+                class="dropdown-item fw-light"
+                >source quality</RouterLink
+              >
+            </li>
+            <li>
               <RouterLink to="/exports" class="dropdown-item fw-light"
                 >exports</RouterLink
               >
@@ -676,6 +683,15 @@ function navAndClose(path) {
                 @click.prevent="navAndClose('/indicators')"
               >
                 indicators
+              </RouterLink>
+            </li>
+            <li>
+              <RouterLink
+                to="/indicators/sources"
+                class="list-group-item list-group-item-action ps-4"
+                @click.prevent="navAndClose('/indicators/sources')"
+              >
+                source quality
               </RouterLink>
             </li>
             <li>

@@ -10392,6 +10392,101 @@
         ]
       }
     },
+    "/indicators/sources": {
+      "get": {
+        "tags": [
+          "Indicators"
+        ],
+        "summary": "Source Quality Report",
+        "description": "Volume, overlap, hit rate, false-positive rate and trust of every source.",
+        "operationId": "source_quality_report_indicators_sources_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SourceQualityReport"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "attributes:read"
+            ]
+          }
+        ]
+      }
+    },
+    "/indicators/sources/{kind}/{key}": {
+      "get": {
+        "tags": [
+          "Indicators"
+        ],
+        "summary": "Source Quality",
+        "description": "One source's quality: /indicators/sources/feed/3, .../organisation/5, .../local/-",
+        "operationId": "source_quality_indicators_sources__kind___key__get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "attributes:read"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "kind",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "enum": [
+                "feed",
+                "server",
+                "organisation",
+                "local",
+                "unknown"
+              ],
+              "type": "string",
+              "title": "Kind"
+            }
+          },
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SourceQuality"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/indicators/{indicator_uuid}": {
       "get": {
         "tags": [
@@ -18497,6 +18592,32 @@
             "title": "Organisations",
             "default": []
           },
+          "source_keys": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Source Keys",
+            "default": []
+          },
+          "source_count": {
+            "type": "integer",
+            "title": "Source Count",
+            "default": 0
+          },
+          "organisation_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Organisation Ids",
+            "default": []
+          },
+          "organisation_count": {
+            "type": "integer",
+            "title": "Organisation Count",
+            "default": 0
+          },
           "tags": {
             "items": {
               "type": "string"
@@ -18772,6 +18893,17 @@
               }
             ],
             "title": "Last Expiration At"
+          },
+          "last_false_positive_at": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last False Positive At"
           }
         },
         "type": "object",
@@ -25878,6 +26010,173 @@
         },
         "type": "object",
         "title": "SinkUpdate"
+      },
+      "SourceOverlap": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "title": "Key"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "indicators": {
+            "type": "integer",
+            "title": "Indicators"
+          }
+        },
+        "type": "object",
+        "required": [
+          "key",
+          "name",
+          "indicators"
+        ],
+        "title": "SourceOverlap"
+      },
+      "SourceQuality": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "title": "Key"
+          },
+          "kind": {
+            "type": "string",
+            "title": "Kind"
+          },
+          "id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "indicators": {
+            "type": "integer",
+            "title": "Indicators"
+          },
+          "exclusive": {
+            "type": "integer",
+            "title": "Exclusive"
+          },
+          "overlap_rate": {
+            "type": "number",
+            "title": "Overlap Rate"
+          },
+          "top_overlaps": {
+            "items": {
+              "$ref": "#/components/schemas/SourceOverlap"
+            },
+            "type": "array",
+            "title": "Top Overlaps",
+            "default": []
+          },
+          "hit_rate": {
+            "type": "number",
+            "title": "Hit Rate"
+          },
+          "false_positive_rate": {
+            "type": "number",
+            "title": "False Positive Rate"
+          },
+          "average_score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Average Score"
+          },
+          "decayed_rate": {
+            "type": "number",
+            "title": "Decayed Rate"
+          },
+          "score_modifier": {
+            "type": "integer",
+            "title": "Score Modifier",
+            "default": 0
+          },
+          "score_cap": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score Cap"
+          },
+          "adaptive_penalty": {
+            "type": "integer",
+            "title": "Adaptive Penalty",
+            "default": 0
+          },
+          "effective_modifier": {
+            "type": "integer",
+            "title": "Effective Modifier",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "required": [
+          "key",
+          "kind",
+          "name",
+          "indicators",
+          "exclusive",
+          "overlap_rate",
+          "hit_rate",
+          "false_positive_rate",
+          "decayed_rate"
+        ],
+        "title": "SourceQuality",
+        "description": "How good one source's (or organisation's) indicators are."
+      },
+      "SourceQualityReport": {
+        "properties": {
+          "window_days": {
+            "type": "number",
+            "title": "Window Days"
+          },
+          "adaptive_trust": {
+            "type": "boolean",
+            "title": "Adaptive Trust"
+          },
+          "sources": {
+            "items": {
+              "$ref": "#/components/schemas/SourceQuality"
+            },
+            "type": "array",
+            "title": "Sources",
+            "default": []
+          },
+          "organisations": {
+            "items": {
+              "$ref": "#/components/schemas/SourceQuality"
+            },
+            "type": "array",
+            "title": "Organisations",
+            "default": []
+          }
+        },
+        "type": "object",
+        "required": [
+          "window_days",
+          "adaptive_trust"
+        ],
+        "title": "SourceQualityReport"
       },
       "StatusResponse": {
         "properties": {

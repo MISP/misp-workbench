@@ -8,6 +8,7 @@ from fastapi.concurrency import run_in_threadpool
 
 from app.auth.security import get_current_active_user
 from app.repositories import indicators as indicators_repository
+from app.repositories import source_quality as source_quality_repository
 from app.repositories import stream_exports as stream_exports_repository
 from app.schemas import indicator as indicator_schemas
 from app.schemas import user as user_schemas
@@ -129,6 +130,47 @@ async def indicators_status(
     ),
 ):
     return await run_in_threadpool(indicators_repository.status)
+
+
+@router.get("/indicators/sources", response_model=indicator_schemas.SourceQualityReport)
+async def source_quality_report(
+    user: user_schemas.User = Security(
+        get_current_active_user, scopes=["attributes:read"]
+    ),
+):
+    """Volume, overlap, hit rate, false-positive rate and trust of every source."""
+    return await run_in_threadpool(source_quality_repository.statistics)
+
+
+@router.get(
+    "/indicators/sources/{kind}/{key}",
+    response_model=indicator_schemas.SourceQuality,
+)
+async def source_quality(
+    kind: Literal["feed", "server", "organisation", "local", "unknown"],
+    key: str,
+    user: user_schemas.User = Security(
+        get_current_active_user, scopes=["attributes:read"]
+    ),
+):
+    """One source's quality: /indicators/sources/feed/3, .../organisation/5, .../local/-"""
+    if kind == "organisation":
+        if not key.isdigit():
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Organisation not found")
+        only = ("organisation", int(key))
+    elif kind in ("feed", "server"):
+        if not key.isdigit():
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Source not found")
+        only = ("source", f"{kind}:{int(key)}")
+    else:
+        only = ("source", kind)
+    report = await run_in_threadpool(source_quality_repository.statistics, None, only)
+    found = report["sources"] + report["organisations"]
+    if not found:
+        raise HTTPException(
+            status.HTTP_404_NOT_FOUND, "No indicators from this source yet"
+        )
+    return found[0]
 
 
 @router.get("/indicators/{indicator_uuid}", response_model=indicator_schemas.Indicator)

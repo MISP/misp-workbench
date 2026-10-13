@@ -30,6 +30,7 @@ Attributes in deleted events don't count.
 | `event_count`, `events` | How many events it is in, and the 50 newest |
 | `sources` | Where those events came from (a `feed`, a MISP `server`, `local`), with how many events each |
 | `organisations` | The events' creator organisations, with how many events each |
+| `source_keys`, `organisation_ids` | One key per source (`feed:3`, `server:2`, `local`) and the organisations' ids, for queries that must match one source exactly: `source_keys:"feed:3"` |
 | `tags` | Every tag of its attributes and their events, merged. Nothing is dropped, so an output that excludes any of them excludes the value |
 | `tlp` | The **most restrictive TLP** among them (`tlp:red` over `tlp:amber+strict` over `tlp:amber` over `tlp:green` over `tlp:clear`) |
 | `galaxies` | The `misp-galaxy:` tags among them |
@@ -127,6 +128,44 @@ An indicator is as trustworthy as its most trusted source:
 - **Caps.** A cap holds only when every feed, server or local source reporting the value is capped. Organisation caps are combined separately: a feed capped at 40 stays capped whatever the organisations are, unless another uncapped source reports the value too.
 
 Changing a source's trust re-scores every indicator.
+
+### Source quality
+
+Under ***internals*** → ***source quality***, every feed, MISP server,
+local source and organisation is listed with how its indicators hold up:
+
+| Column | Meaning |
+|---|---|
+| **indicators** | Live indicators it reports |
+| **overlap** | Share of those also reported by another source, and which ones it overlaps with most |
+| **hit rate** | Share sighted (positive sighting) within the window, 30 days by default |
+| **false positives** | Share reported benign (false-positive sighting) within the window |
+| **avg score**, **decayed** | Their average score, and the share below the decayed threshold |
+| **trust** | Its score modifier and cap |
+| **adaptive** | What adaptive trust takes off (see below) |
+
+Each feed's, server's and organisation's own page shows the same figures in
+an *Indicator quality* card. `GET /indicators/sources` returns them all, and
+`GET /indicators/sources/{feed|server|organisation|local}/{id}` returns one.
+
+<img src="../../screenshots/indicators/misp-workbench-5_indicators_source-quality.png#only-light" alt="Source quality" style="max-width: 100%; height: auto;">
+<img src="../../screenshots/indicators/misp-workbench-5_indicators_source-quality-dark.png#only-dark" alt="Source quality" style="max-width: 100%; height: auto;">
+
+### Adaptive trust
+
+With **adaptive trust** on (*runtime settings* → *scoring*), a feed's,
+server's or organisation's false-positive rate lowers its trust. The
+penalty is 1 point per percent of its indicators reported benign within the
+window, up to 30, and only applies once it has at least 20 indicators. A
+feed with 12% of its values reported benign this month loses 12 points. The
+penalty shows in each affected score's breakdown and on the source quality
+page.
+
+It is **off by default**: anyone who can report sightings can report false
+positives against a source's values, and so lower its trust. The source
+quality page shows what it would take off either way. Penalties are
+recomputed at most every 10 minutes, and saving the scoring settings
+re-scores everything.
 
 !!! warning "Organisation trust follows what the data claims"
     Organisations are matched by their record, never by name. A feed can

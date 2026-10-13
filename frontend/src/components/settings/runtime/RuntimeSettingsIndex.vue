@@ -185,6 +185,28 @@ const SCORE_NUMBERS = [
     "A stored score is rewritten when it moves this much (or crosses Decayed below).",
   ],
 ];
+const ADAPTIVE_NUMBERS = [
+  [
+    "adaptive_window_days",
+    "Window (days)",
+    "False positives and sightings this recent count, here and in source quality.",
+  ],
+  [
+    "adaptive_min_indicators",
+    "Minimum indicators",
+    "Sources with fewer indicators are left alone.",
+  ],
+  [
+    "adaptive_points_per_percent",
+    "Points per percent",
+    "Taken off per percent of a source's indicators reported benign.",
+  ],
+  [
+    "adaptive_max_penalty",
+    "Maximum penalty",
+    "Adaptive trust never takes off more than this.",
+  ],
+];
 const newHalfLifeType = ref("");
 const newHalfLifeDays = ref(30);
 function addHalfLife(type) {
@@ -697,6 +719,44 @@ async function deleteRetentionSchedule() {
                           :selected="newHalfLifeType"
                           @attribute-type-updated="addHalfLife"
                         />
+                      </div>
+                    </div>
+
+                    <h6 class="fw-semibold">Adaptive trust</h6>
+                    <div class="form-check form-switch mb-1">
+                      <input
+                        id="scoringAdaptiveTrust"
+                        class="form-check-input"
+                        type="checkbox"
+                        v-model="formValues.scoring.adaptive_trust"
+                      />
+                      <label class="form-check-label" for="scoringAdaptiveTrust"
+                        >Lower the trust of sources whose indicators are
+                        reported benign</label
+                      >
+                    </div>
+                    <div class="form-text mb-2">
+                      Off by default: anyone who can report sightings can report
+                      false positives against a source. Source quality shows
+                      what it would take off either way.
+                    </div>
+                    <div class="row g-3 mb-3">
+                      <div
+                        v-for="[key, label, help] in ADAPTIVE_NUMBERS"
+                        :key="key"
+                        class="col-md-3"
+                      >
+                        <label class="form-label" :for="`scoring-${key}`">{{
+                          label
+                        }}</label>
+                        <input
+                          :id="`scoring-${key}`"
+                          type="number"
+                          min="0"
+                          class="form-control"
+                          v-model.number="formValues.scoring[key]"
+                        />
+                        <div class="form-text">{{ help }}</div>
                       </div>
                     </div>
 

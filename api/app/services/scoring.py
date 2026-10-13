@@ -20,11 +20,14 @@ Each step is kept as a breakdown entry, so "why is this 42?" has an answer.
 """
 
 import copy
+import logging
 import math
 from datetime import datetime, timezone
 from typing import Optional
 
 from app.defaults.runtime_settings_defaults import DEFAULT_SETTINGS
+
+logger = logging.getLogger(__name__)
 
 DEFAULTS = DEFAULT_SETTINGS["scoring"]
 DAY = 86400
@@ -60,7 +63,12 @@ NUMBERS = (
     "expiration_cap",
     "decayed_below",
     "refresh_step",
+    "adaptive_window_days",
+    "adaptive_min_indicators",
+    "adaptive_points_per_percent",
+    "adaptive_max_penalty",
 )
+FLAGS = ("enabled", "adaptive_trust")
 MAPS = ("base_by_source", "half_life_days")
 
 
@@ -74,8 +82,9 @@ def validate(stored: dict) -> None:
             raise InvalidScoringConfig(f"{key} must be >= 0")
 
     cfg = config(stored)
-    if not isinstance(cfg.get("enabled"), bool):
-        raise InvalidScoringConfig("enabled must be true or false")
+    for key in FLAGS:
+        if not isinstance(cfg.get(key), bool):
+            raise InvalidScoringConfig(f"{key} must be true or false")
     for key in NUMBERS:
         number(key, cfg.get(key))
     for key in MAPS:
@@ -114,7 +123,15 @@ def load_config() -> dict:
     with SessionLocal() as db:
         cfg = config(RuntimeSettings(db).get("scoring"))
         cfg["_trust"] = _load_trust(db)
-        return cfg
+    if cfg["adaptive_trust"]:
+        from app.repositories import source_quality
+
+        try:
+            cfg["_adaptive"] = source_quality.adaptive_penalties(cfg)
+        except Exception:
+            # Scoring goes on without it rather than not at all.
+            logger.exception("adaptive trust unavailable; scoring without it")
+    return cfg
 
 
 def _trust(cfg: dict, kind: str, key) -> tuple[int, Optional[int]]:
@@ -125,6 +142,38 @@ def _source_trust(cfg: dict, source: dict) -> tuple[int, Optional[int]]:
     if source.get("type") in ("feed", "server"):
         return _trust(cfg, source["type"], source.get("id"))
     return 0, None
+
+
+def _adaptive(cfg: dict, kind: str, key) -> tuple[int, float]:
+    """Adaptive trust penalty and the false-positive rate behind it."""
+    penalty, rate = cfg.get("_adaptive", {}).get(kind, {}).get(key, (0, 0.0))
+    return penalty, rate
+
+
+def _source_adaptive(cfg: dict, source: dict) -> tuple[int, float]:
+    if source.get("type") in ("feed", "server"):
+        return _adaptive(cfg, source["type"], source.get("id"))
+    return 0, 0.0
+
+
+def _source_modifier(cfg: dict, source: dict) -> int:
+    return _source_trust(cfg, source)[0] - _source_adaptive(cfg, source)[0]
+
+
+def _organisation_modifier(cfg: dict, organisation: dict) -> int:
+    key = organisation.get("id")
+    return _trust(cfg, "organisation", key)[0] - _adaptive(cfg, "organisation", key)[0]
+
+
+def _adaptive_entry(
+    factor: str, penalty: int, rate: float, label: str, cfg: dict
+) -> dict:
+    return _entry(
+        factor,
+        -penalty,
+        f"{rate:.0%} of {label}'s indicators reported benign in "
+        f"{cfg['adaptive_window_days']:g} days",
+    )
 
 
 def _label(source: dict) -> str:
@@ -166,8 +215,9 @@ def score(indicator: dict, cfg: dict, now: int) -> tuple[Optional[int], list]:
     def source_base(source):
         return float(bases.get(source.get("type"), bases.get("unknown", 50)))
 
-    # The best source: the highest base once its own trust modifier is in.
-    best = max(sources, key=lambda s: source_base(s) + _source_trust(cfg, s)[0])
+    # The best source: the highest base once its own trust modifier (and any
+    # adaptive penalty) is in.
+    best = max(sources, key=lambda s: source_base(s) + _source_modifier(cfg, s))
     base = source_base(best)
     breakdown.append(_entry("base", base, _label(best)))
     points = base
@@ -175,23 +225,29 @@ def score(indicator: dict, cfg: dict, now: int) -> tuple[Optional[int], list]:
     if modifier:
         breakdown.append(_entry("source_trust", modifier, _label(best)))
         points += modifier
+    penalty, rate = _source_adaptive(cfg, best)
+    if penalty:
+        breakdown.append(
+            _adaptive_entry("adaptive_trust", penalty, rate, _label(best), cfg)
+        )
+        points -= penalty
 
     organisations = indicator.get("organisations") or []
     if organisations:
-        trusted = max(
-            organisations,
-            key=lambda o: _trust(cfg, "organisation", o.get("id"))[0],
-        )
+        trusted = max(organisations, key=lambda o: _organisation_modifier(cfg, o))
+        label = f"organisation: {trusted.get('name')}"
         org_modifier = _trust(cfg, "organisation", trusted.get("id"))[0]
         if org_modifier:
+            breakdown.append(_entry("organisation_trust", org_modifier, label))
+            points += org_modifier
+        penalty, rate = _adaptive(cfg, "organisation", trusted.get("id"))
+        if penalty:
             breakdown.append(
-                _entry(
-                    "organisation_trust",
-                    org_modifier,
-                    f"organisation: {trusted.get('name')}",
+                _adaptive_entry(
+                    "organisation_adaptive_trust", penalty, rate, label, cfg
                 )
             )
-            points += org_modifier
+            points -= penalty
 
     if len(sources) > 1:
         bonus = min(

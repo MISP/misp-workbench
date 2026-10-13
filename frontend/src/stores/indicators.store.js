@@ -42,6 +42,23 @@ export const useIndicatorsStore = defineStore({
       });
       return scores;
     },
+    /** Volume, overlap, hit and false-positive rates of every source. */
+    async sourceQuality() {
+      return await fetchWrapper.get(`${baseUrl}/sources`);
+    },
+    /**
+     * One source's quality: kind is feed, server, organisation or local;
+     * null when it has no indicators yet.
+     */
+    async sourceQualityFor(kind, key) {
+      try {
+        return await fetchWrapper.get(
+          `${baseUrl}/sources/${kind}/${encodeURIComponent(key ?? "-")}`,
+        );
+      } catch {
+        return null;
+      }
+    },
     async getStatus() {
       return fetchWrapper
         .get(`${baseUrl}/status`)

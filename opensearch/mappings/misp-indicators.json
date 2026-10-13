@@ -116,6 +116,9 @@
                     },
                     "last_expiration_at": {
                         "type": "long"
+                    },
+                    "last_false_positive_at": {
+                        "type": "long"
                     }
                 }
             },
@@ -140,6 +143,18 @@
             "scored_at": {
                 "type": "date",
                 "format": "epoch_second"
+            },
+            "source_keys": {
+                "type": "keyword"
+            },
+            "source_count": {
+                "type": "integer"
+            },
+            "organisation_ids": {
+                "type": "long"
+            },
+            "organisation_count": {
+                "type": "integer"
             }
         }
     }
