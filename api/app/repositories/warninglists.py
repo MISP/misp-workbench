@@ -214,6 +214,98 @@ def set_enabled(db: Session, db_list, enabled: bool):
     return db_list
 
 
+# ── Rejected in review ───────────────────────────────────────────────────
+
+# Values analysts rejected in the review queue and put on a warninglist. A
+# warninglist like the others (enabled, matched, a hit on outputs and scores)
+# that isn't in the submodule, so loading the lists leaves it alone.
+REJECTED_LIST_NAME = "Rejected in review"
+
+
+def rejected_list(db: Session):
+    db_list = (
+        db.query(warninglist_models.Warninglist)
+        .filter(warninglist_models.Warninglist.name == REJECTED_LIST_NAME)
+        .first()
+    )
+    if db_list is None:
+        db_list = warninglist_models.Warninglist(
+            name=REJECTED_LIST_NAME,
+            description=(
+                "Values analysts rejected in the review queue as known benign."
+            ),
+            type="string",
+            category="known",
+            version=0,
+            matching_attributes=[],
+            entry_count=0,
+            enabled=True,
+            updated_at=datetime.now(timezone.utc),
+        )
+        db.add(db_list)
+        db.flush()
+    return db_list
+
+
+def change_rejected_list(
+    db: Session, add: Iterable[str] = (), remove: Iterable[str] = ()
+) -> None:
+    """Add values to the "Rejected in review" list and take others off, then re-evaluate the
+    attributes carrying them so outputs and indicators see it."""
+    from app.repositories import indicators as indicators_repository
+
+    add, remove = sorted(set(add)), sorted(set(remove) - set(add))
+    if not add and not remove:
+        return
+    client = get_opensearch_client()
+    db_list = rejected_list(db)
+    for start in range(0, len(remove), BATCH_SIZE):
+        chunk = remove[start : start + BATCH_SIZE]
+        client.delete_by_query(
+            index=ENTRIES_INDEX,
+            body={
+                "query": {
+                    "bool": {
+                        "filter": [
+                            {"term": {"warninglist_id": db_list.id}},
+                            {"terms": {"value": chunk}},
+                        ]
+                    }
+                }
+            },
+            conflicts="proceed",
+        )
+    if add:
+        opensearch_helpers.bulk(
+            client,
+            (
+                {
+                    "_index": ENTRIES_INDEX,
+                    # One entry per value, however often it is added.
+                    "_id": f"rejected-{db_list.id}-"
+                    + indicators_repository.indicator_uuid("rejected", value),
+                    "_source": {"warninglist_id": db_list.id, "type": "string", **doc},
+                }
+                for value in add
+                if (doc := _index_value("string", value)) is not None
+            ),
+        )
+    client.indices.refresh(index=ENTRIES_INDEX)
+    db_list.entry_count = client.count(
+        index=ENTRIES_INDEX, body={"query": {"term": {"warninglist_id": db_list.id}}}
+    )["count"]
+    db_list.updated_at = datetime.now(timezone.utc)
+    db.commit()
+
+    values = add + remove
+    for clause in indicators_repository.value_clauses(values):
+        _evaluate(
+            Matcher(db),
+            {"bool": {"filter": [clause], "must_not": [{"term": {"deleted": True}}]}},
+        )
+    indicators_repository.mark_sighted(values)
+
+
 # ── Matching ──────────────────────────────────────────────────────────────
 
 

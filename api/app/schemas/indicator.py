@@ -36,6 +36,17 @@ class ScoreComponent(BaseModel):
     detail: str
 
 
+class IndicatorReviewState(BaseModel):
+    """An analyst's decision, as the indicator carries it."""
+
+    # approved, rejected or snoozed
+    status: str
+    # Snoozed until (epoch seconds).
+    until: Optional[int] = None
+    # Decided at (epoch seconds).
+    at: Optional[int] = None
+
+
 class Indicator(BaseModel):
     """One type + value, merged from every live attribute carrying it."""
 
@@ -72,6 +83,8 @@ class Indicator(BaseModel):
     score: Optional[int] = None
     score_breakdown: list[ScoreComponent] = []
     scored_at: Optional[int] = None
+    # The review queue's decision on it; none while undecided.
+    review: Optional[IndicatorReviewState] = None
     updated_at: Optional[int] = None
 
 

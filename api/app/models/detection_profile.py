@@ -1,4 +1,4 @@
-from sqlalchemy import JSON, Column, DateTime, Integer, String, Text
+from sqlalchemy import JSON, Boolean, Column, DateTime, Integer, String, Text
 
 from app.database import Base
 
@@ -10,7 +10,8 @@ class DetectionProfile(Base):
     age, sources, trust, to_ids, warninglists, validation issues; see
     ``app.schemas.detection_profile.ProfileRules``). ``granularity`` says
     whether outputs referencing the profile send those indicators or the
-    attributes behind them.
+    attributes behind them. An ``auto_approve`` profile is a rule of the
+    review queue: what it selects is approved without a review.
     """
 
     __tablename__ = "detection_profiles"
@@ -22,5 +23,8 @@ class DetectionProfile(Base):
         String(16), nullable=False, default="indicators", server_default="indicators"
     )
     rules = Column(JSON, nullable=False, default=dict)
+    auto_approve = Column(
+        Boolean, nullable=False, default=False, server_default="false"
+    )
     created_at = Column(DateTime(timezone=True), nullable=False)
     updated_at = Column(DateTime(timezone=True), nullable=True)

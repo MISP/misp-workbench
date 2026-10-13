@@ -159,6 +159,11 @@ class ApiTester:
         db.query(lab_models.LabFolder).delete(synchronize_session=False)
         db.query(notification_models.Notification).delete(synchronize_session=False)
         db.query(api_key_models.ApiKey).delete(synchronize_session=False)
+        from app.models import indicator_review as indicator_review_models
+
+        db.query(indicator_review_models.IndicatorReview).delete(
+            synchronize_session=False
+        )
         db.query(audit_log_models.AuditLog).delete(synchronize_session=False)
         from app.models import user_setting as user_setting_models
 

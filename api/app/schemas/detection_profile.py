@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Literal, Optional
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 Granularity = Literal["indicators", "attributes"]
 Tlp = Literal["tlp:clear", "tlp:green", "tlp:amber", "tlp:amber+strict", "tlp:red"]
@@ -44,6 +44,12 @@ class ProfileRules(BaseModel):
     to_ids: bool = True
     exclude_warninglisted: bool = True
     exclude_validation_issues: bool = True
+    # The review queue: only indicators approved by an analyst or by an
+    # auto-approve profile (require_approval), or everything but those an
+    # analyst rejected (exclude_rejected). Requiring approval leaves rejected
+    # ones out too.
+    require_approval: bool = False
+    exclude_rejected: bool = False
 
     @field_validator("sources", "exclude_sources")
     @classmethod
@@ -72,6 +78,20 @@ class DetectionProfileBase(BaseModel):
     description: Optional[str] = None
     granularity: Granularity = "indicators"
     rules: ProfileRules = ProfileRules()
+    # What this profile selects is approved without a review.
+    auto_approve: bool = False
+
+    @model_validator(mode="after")
+    def _not_circular(self):
+        check_auto_approve(self.auto_approve, self.rules)
+        return self
+
+
+def check_auto_approve(auto_approve: bool, rules: Optional[ProfileRules]) -> None:
+    """An auto-approve profile can't itself require approval: it would only
+    approve what is approved already."""
+    if auto_approve and rules is not None and rules.require_approval:
+        raise ValueError("an auto-approve profile can't require approval")
 
 
 class DetectionProfileCreate(DetectionProfileBase):
@@ -83,6 +103,7 @@ class DetectionProfileUpdate(BaseModel):
     description: Optional[str] = None
     granularity: Optional[Granularity] = None
     rules: Optional[ProfileRules] = None
+    auto_approve: Optional[bool] = None
 
 
 class DetectionProfile(DetectionProfileBase):

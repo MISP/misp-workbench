@@ -55,6 +55,7 @@ import {
   IndexWarninglists,
   IndexIndicators,
   SourceQuality,
+  ReviewQueue,
   IndexProfiles,
   AddProfile,
   EditProfile,
@@ -139,6 +140,7 @@ export const router = createRouter({
     { path: "/correlations", component: IndexCorrelations },
     { path: "/indicators", component: IndexIndicators },
     { path: "/indicators/sources", component: SourceQuality },
+    { path: "/indicators/review", component: ReviewQueue },
     { path: "/detection-profiles", component: IndexProfiles },
     { path: "/detection-profiles/add", component: AddProfile },
     {

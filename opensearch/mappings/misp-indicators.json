@@ -158,6 +158,19 @@
             },
             "validation_issues": {
                 "type": "keyword"
+            },
+            "review": {
+                "properties": {
+                    "status": {
+                        "type": "keyword"
+                    },
+                    "until": {
+                        "type": "long"
+                    },
+                    "at": {
+                        "type": "long"
+                    }
+                }
             }
         }
     }

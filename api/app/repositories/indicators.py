@@ -11,7 +11,8 @@ of the type and value:
   creator organisation, in how many;
 - the tags, with TLP reduced to the most restrictive one and galaxies unioned;
 - sighting counters (positive, false-positive, expiration);
-- the warninglists any of its attributes hit.
+- the warninglists any of its attributes hit;
+- the analysts' decision on it, if any (``review``, see indicator_reviews).
 
 The unit of work is a *value*: refreshing one recomputes the indicators of
 every type it has and tombstones those left without a live attribute.
@@ -377,6 +378,7 @@ def build_indicator(
     sightings: Optional[dict] = None,
     scoring_config: Optional[dict] = None,
     now: Optional[int] = None,
+    review: Optional[dict] = None,
 ) -> Optional[dict]:
     """The consolidated record of one type and value, or None if it has no
     live attribute (all in deleted events).
@@ -477,6 +479,8 @@ def build_indicator(
         ),
         "validation_issues": validation_issues,
     }
+    if review:
+        doc["review"] = review
     doc["checksum"] = hashlib.sha256(
         json.dumps(doc, sort_keys=True, default=str).encode("utf-8")
     ).hexdigest()
@@ -528,6 +532,9 @@ def _refresh_batch(run: _Run, values: set) -> None:
         }
     )
     sightings = _sightings(client, values)
+    reviews = _reviews(
+        [indicator_uuid(type_, value) for type_, value in groups if type_]
+    )
     now = int(time.time())
 
     docs = {}
@@ -535,7 +542,14 @@ def _refresh_batch(run: _Run, values: set) -> None:
         if not type_:
             continue
         doc = build_indicator(
-            type_, value, attributes, events, sightings.get(value), run.scoring, now
+            type_,
+            value,
+            attributes,
+            events,
+            sightings.get(value),
+            run.scoring,
+            now,
+            reviews.get(indicator_uuid(type_, value)),
         )
         if doc is not None:
             docs[doc["uuid"]] = doc
@@ -570,6 +584,12 @@ def _refresh_batch(run: _Run, values: set) -> None:
         opensearch_helpers.bulk(client, actions)
     run.written += len(actions) - len(removed)
     run.removed += len(removed)
+
+
+def _reviews(ids: list[str]) -> dict[str, dict]:
+    from app.repositories import indicator_reviews
+
+    return indicator_reviews.reviews_for(ids)
 
 
 # ── Maintenance ───────────────────────────────────────────────────────────
@@ -800,7 +820,8 @@ def request_rebuild() -> None:
 
 
 def mark_sighted(values: Iterable[str]) -> None:
-    """Queue values whose sightings changed for the next sync. Best-effort."""
+    """Queue values whose sightings (or review decisions) changed for the
+    next sync. Best-effort."""
     values = [str(v) for v in values if v not in (None, "")]
     if not values:
         return

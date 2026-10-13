@@ -31,6 +31,7 @@ export { default as ViewTaxonomy } from "./taxonomies/ViewTaxonomy.vue";
 export { default as IndexWarninglists } from "./warninglists/IndexWarninglists.vue";
 export { default as IndexIndicators } from "./indicators/IndexIndicators.vue";
 export { default as SourceQuality } from "./indicators/SourceQuality.vue";
+export { default as ReviewQueue } from "./indicators/ReviewQueue.vue";
 export { default as IndexProfiles } from "./profiles/IndexProfiles.vue";
 export { default as AddProfile } from "./profiles/AddProfile.vue";
 export { default as EditProfile } from "./profiles/EditProfile.vue";
