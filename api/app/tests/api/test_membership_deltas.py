@@ -219,6 +219,10 @@ class TestMembershipDeltas(ApiTester):
         first_cursor = db_export.cursor
 
         self._changes()
+        # Writes in the same second as a run's cursor show up in the next
+        # delta too (deltas include their lower bound; repeats are harmless):
+        # keep this test's deltas exact.
+        _past_this_second()
         exports.run_export(db, db_export.id)
         db.refresh(db_export)
         assert db_export.status == "completed", db_export.error
