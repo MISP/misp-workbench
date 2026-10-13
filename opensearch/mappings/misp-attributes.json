@@ -248,9 +248,6 @@
             "normalisation_error": {
                 "type": "keyword",
                 "ignore_above": 1024
-            },
-            "local_list_hits": {
-                "type": "integer"
             }
         }
     }

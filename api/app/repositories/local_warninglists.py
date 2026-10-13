@@ -8,21 +8,30 @@ kinds, each with a comment and an optional expiry:
 - ``value``: an exact value;
 - ``cidr``: an address range (an IP in it, or in an ip|port, matches);
 - ``suffix``: a domain and its subdomains (``*.corp.example``);
-- ``regex``: guarded against catastrophic backtracking, matched against at
-  most the first 1024 characters of a value.
+- ``regex``: matched with RE2, in linear time whatever the pattern, against
+  at most the first 1024 characters of a value.
 
 Entries are kept here (Postgres) and, but for regexes, in the warninglist
-entries index for matching (see warninglists.LocalMatcher). What a list
-matches is flagged on attributes and indicators as ``local_list_hits`` (list
-ids), apart from the MISP lists: a detection profile leaves those out only
-when it attaches the list (``ProfileRules.exclude_lists``), so one
-organisation's list doesn't silence everyone else's outputs. Which entry
-matched is only told to the list's organisation (``explain``).
+entries index for matching (LocalMatcher).
+
+Which indicators a list matches (its *members*) is private too, so it is
+kept out of the attributes and indicators indices, which anyone can query:
+a Redis set per list, mirrored to the ``misp-local-list-members`` index for
+detection profiles to leave members out with a terms lookup. A profile
+leaves a list's members out only when it attaches the list
+(``ProfileRules.exclude_lists``), so one organisation's list doesn't silence
+everyone else's outputs. Members are recomputed whenever a list changes, and
+for the indicators written since, every minute; a value without an indicator
+yet is matched as it comes (detection_profiles). Which lists an indicator is
+on, and which entry matched, is only told to the lists' organisation.
 """
 
+import fnmatch
 import ipaddress
 import logging
 import re
+import socket
+import time
 from datetime import datetime, timezone
 from typing import Iterable, Iterator, Optional
 from urllib.parse import urlsplit
@@ -34,6 +43,7 @@ from app.auth.utils import role_has_scope
 from app.models import warninglist as models
 from app.repositories import warninglists
 from app.services.opensearch import get_opensearch_client
+from app.services.redis import get_redis_client
 
 logger = logging.getLogger(__name__)
 
@@ -44,12 +54,16 @@ SYNC_MAX_BYTES = 5 * 1024 * 1024
 SYNC_TIMEOUT = (10, 30)
 SYNC_EVERY_SECONDS = 24 * 3600
 BULK_CHUNK = 1000
-
-# A group repeated, holding a repetition or an alternation of its own
-# ((a+)+, (\w*)*, (a|ab)*): the shapes of catastrophic backtracking.
-# Backreferences can blow up too.
-_NESTED_QUANTIFIER = re.compile(r"\((?:[^()\\]|\\.)*[*+}|](?:[^()\\]|\\.)*\)[*+{]")
-_BACKREFERENCE = re.compile(r"\\[1-9]|\(\?P=")
+LOCAL_TYPE = "local"
+# A regex is matched against this much of a value at most.
+REGEX_VALUE_LIMIT = 1024
+# Where lists' members (indicator uuids) are mirrored for terms lookups.
+MEMBERS_INDEX = "misp-local-list-members"
+EVAL_LOCK = "local_lists:eval:lock"
+EVAL_DIRTY = "local_lists:eval:dirty"
+EVAL_CURSOR = "local_lists:eval:cursor"
+EVAL_LOCK_SECONDS = 2 * 3600
+EVAL_OVERLAP_SECONDS = 30
 
 
 class InvalidEntry(ValueError):
@@ -58,6 +72,329 @@ class InvalidEntry(ValueError):
 
 class NotVisible(Exception):
     pass
+
+
+# ── Matching ──────────────────────────────────────────────────────────────
+
+
+def compile_local_regex(pattern: str):
+    """An organisation's regex, compiled with RE2: matching takes linear
+    time whatever the pattern (no catastrophic backtracking), unlike the
+    MISP lists' (vetted upstream). ``/body/flags`` like MISP's; None when
+    RE2 can't compile it (backreferences, lookarounds...)."""
+    import re2
+
+    body, prefix = pattern, ""
+    match = re.fullmatch(r"/(.*)/([a-z]*)", pattern, flags=re.S)
+    if match:
+        body, modifiers = match.groups()
+        if "i" in modifiers:
+            prefix = "(?i)"
+    try:
+        return re2.compile(prefix + body)
+    except re2.error:
+        return None
+
+
+def _not_expired(now: int) -> dict:
+    return {
+        "bool": {
+            "should": [
+                {"bool": {"must_not": {"exists": {"field": "expires_at"}}}},
+                {"range": {"expires_at": {"gt": now}}},
+            ],
+            "minimum_should_match": 1,
+        }
+    }
+
+
+def _in_range(ip: str, cidr: Optional[str]) -> bool:
+    try:
+        return ipaddress.ip_address(ip) in ipaddress.ip_network(cidr, strict=False)
+    except (TypeError, ValueError):
+        return False
+
+
+class LocalMatcher:
+    """Enabled organisations' lists (or ``only`` these): which of them each
+    value hits. Expired entries don't match."""
+
+    def __init__(self, db: Session, only: Optional[Iterable[int]] = None):
+        now = datetime.now(timezone.utc)
+        query = db.query(models.Warninglist).filter(
+            models.Warninglist.type == LOCAL_TYPE,
+            models.Warninglist.enabled.is_(True),
+        )
+        if only is not None:
+            query = query.filter(models.Warninglist.id.in_(list(only)))
+        self.ids = [w.id for w in query]
+        self.regexes: list = []
+        if self.ids:
+            for entry in db.query(models.WarninglistEntry).filter(
+                models.WarninglistEntry.warninglist_id.in_(self.ids),
+                models.WarninglistEntry.kind == "regex",
+            ):
+                if entry.expires_at is not None and entry.expires_at <= now:
+                    continue
+                compiled = compile_local_regex(entry.value)
+                if compiled is not None:
+                    self.regexes.append((entry.warninglist_id, compiled))
+        self.client = get_opensearch_client()
+
+    @property
+    def empty(self) -> bool:
+        return not self.ids
+
+    def entries(self, strings: set, hosts: set, ips: set) -> list[dict]:
+        """The live index entries matching any candidate, with their ids."""
+        if not self.ids or not (strings or hosts or ips):
+            return []
+        should: list = []
+        for list_type, keys in (("string", strings), ("hostname", hosts)):
+            if keys:
+                should.append(
+                    {
+                        "bool": {
+                            "filter": [
+                                {"term": {"type": list_type}},
+                                {"terms": {"value": sorted(keys)}},
+                            ]
+                        }
+                    }
+                )
+        should += [{"term": {"range": ip}} for ip in sorted(ips)]
+        query = {
+            "bool": {
+                "filter": [
+                    {"terms": {"warninglist_id": self.ids}},
+                    _not_expired(int(time.time())),
+                    {"bool": {"should": should, "minimum_should_match": 1}},
+                ]
+            }
+        }
+        found = []
+        search_after = None
+        while True:
+            body = {
+                "query": query,
+                "size": warninglists.MAX_HITS_PER_SEARCH,
+                "sort": [{"_id": "asc"}],
+            }
+            if search_after:
+                body["search_after"] = search_after
+            hits = self.client.search(index=warninglists.ENTRIES_INDEX, body=body)[
+                "hits"
+            ]["hits"]
+            found.extend({**h["_source"], "_id": h["_id"]} for h in hits)
+            if len(hits) < warninglists.MAX_HITS_PER_SEARCH:
+                return found
+            search_after = hits[-1]["sort"]
+
+    def match(self, items: list[tuple[Optional[str], str]]) -> list[list[int]]:
+        """For each (type, value), the ids of the lists it hits."""
+        if self.empty:
+            return [[] for _ in items]
+        candidates = [warninglists._candidates(t, v) for t, v in items]
+        entries: list = []
+        for start in range(0, len(candidates), warninglists.BATCH_SIZE):
+            chunk = candidates[start : start + warninglists.BATCH_SIZE]
+            entries += self.entries(
+                set().union(*(c.strings for c in chunk)),
+                set().union(*(c.hosts for c in chunk)),
+                set().union(*(c.ips for c in chunk)),
+            )
+        return [
+            sorted(self._hits(value, cand, entries))
+            for (_, value), cand in zip(items, candidates)
+        ]
+
+    def _hits(self, value: str, cand, entries: list[dict]) -> set:
+        hits = set()
+        for entry in entries:
+            if entry["type"] == "string" and entry.get("value") in cand.strings:
+                hits.add(entry["warninglist_id"])
+            elif entry["type"] == "hostname" and entry.get("value") in cand.hosts:
+                hits.add(entry["warninglist_id"])
+            elif entry["type"] == "cidr" and any(
+                _in_range(ip, entry.get("range")) for ip in cand.ips
+            ):
+                hits.add(entry["warninglist_id"])
+        bounded = value[:REGEX_VALUE_LIMIT]
+        for list_id, pattern in self.regexes:
+            if list_id not in hits and pattern.search(bounded):
+                hits.add(list_id)
+        return hits
+
+
+# ── Members ───────────────────────────────────────────────────────────────
+
+
+def members_key(list_id: int) -> str:
+    return f"local_list:{list_id}:members"
+
+
+def members(list_id: int) -> set[str]:
+    """The indicators (uuids) a list matches."""
+    return {
+        m.decode() if isinstance(m, bytes) else m
+        for m in get_redis_client().smembers(members_key(list_id))
+    }
+
+
+def lists_of(indicator_ids: list[str], list_ids: Iterable[int]) -> dict[str, list]:
+    """Of ``list_ids``, the ones each indicator is on."""
+    redis = get_redis_client()
+    found: dict[str, list] = {i: [] for i in indicator_ids}
+    if not indicator_ids:
+        return found
+    for list_id in list_ids:
+        flags = redis.smismember(members_key(list_id), indicator_ids)
+        for indicator_id, flagged in zip(indicator_ids, flags):
+            if flagged:
+                found[indicator_id].append(list_id)
+    return found
+
+
+def _mirror(list_ids: Iterable[int]) -> None:
+    """Copy lists' members where profiles' terms lookups read them."""
+    client = get_opensearch_client()
+    for list_id in list_ids:
+        client.index(
+            index=MEMBERS_INDEX,
+            id=str(list_id),
+            body={"members": sorted(members(list_id))},
+            refresh=True,
+        )
+
+
+def _forget(list_id: int) -> None:
+    get_redis_client().delete(members_key(list_id))
+    get_opensearch_client().delete(
+        index=MEMBERS_INDEX, id=str(list_id), ignore=[404], refresh=True
+    )
+
+
+def _indicator_pages(query: dict):
+    from app.repositories import indicators as indicators_repository
+    from app.repositories import stream_exports
+
+    return stream_exports.iter_pit_pages(
+        get_opensearch_client(),
+        indicators_repository.INDEX,
+        query,
+        source=["uuid", "type", "value", "deleted"],
+    )
+
+
+def _evaluate(db: Session, query: dict, full: bool) -> dict:
+    """Match the indicators of ``query`` against the enabled lists. A full
+    run replaces every list's members; otherwise the indicators evaluated
+    are added to or taken off each list."""
+    redis = get_redis_client()
+    matcher = LocalMatcher(db)
+    if matcher.empty and full:
+        for key in redis.scan_iter("local_list:*:members"):
+            key = key.decode() if isinstance(key, bytes) else key
+            _forget(int(key.split(":")[1]))
+        return {"evaluated": 0, "lists": 0}
+    if matcher.empty:
+        return {"evaluated": 0, "lists": 0}
+    run = f"{int(time.time())}:{id(matcher)}"
+    temp = {i: f"local_list:tmp:{run}:{i}" for i in matcher.ids}
+    changed: set = set()
+    evaluated = 0
+    for hits in _indicator_pages(query):
+        live = [h["_source"] for h in hits if not h["_source"].get("deleted")]
+        gone = [h["_source"]["uuid"] for h in hits if h["_source"].get("deleted")]
+        found = matcher.match(
+            [(i.get("type"), str(i.get("value") or "")) for i in live]
+        )
+        evaluated += len(hits)
+        pipe = redis.pipeline()
+        for indicator, lists in zip(live, found):
+            for list_id in matcher.ids:
+                if full:
+                    if list_id in lists:
+                        pipe.sadd(temp[list_id], indicator["uuid"])
+                    pipe.expire(temp[list_id], EVAL_LOCK_SECONDS)
+                elif list_id in lists:
+                    pipe.sadd(members_key(list_id), indicator["uuid"])
+                else:
+                    pipe.srem(members_key(list_id), indicator["uuid"])
+        if not full and gone:
+            for list_id in matcher.ids:
+                pipe.srem(members_key(list_id), *gone)
+        results = pipe.execute()
+        if not full and any(results):
+            changed.update(matcher.ids)
+    if full:
+        for list_id in matcher.ids:
+            if redis.exists(temp[list_id]):
+                redis.rename(temp[list_id], members_key(list_id))
+            else:
+                redis.delete(members_key(list_id))
+        changed.update(matcher.ids)
+        # Lists disabled or deleted since: no members.
+        enabled = set(matcher.ids)
+        for key in redis.scan_iter("local_list:*:members"):
+            key = key.decode() if isinstance(key, bytes) else key
+            list_id = int(key.split(":")[1])
+            if list_id not in enabled:
+                _forget(list_id)
+    _mirror(changed)
+    return {"evaluated": evaluated, "lists": len(matcher.ids)}
+
+
+def evaluate_all(db: Session) -> Optional[dict]:
+    """Recompute every list's members (after the lists changed). One run
+    however many changes come in the meantime."""
+    redis = get_redis_client()
+    if not redis.set(EVAL_LOCK, "1", nx=True, ex=EVAL_LOCK_SECONDS):
+        redis.set(EVAL_DIRTY, "1", ex=EVAL_LOCK_SECONDS)
+        return None
+    try:
+        while True:
+            redis.delete(EVAL_DIRTY)
+            started = int(time.time())
+            counts = _evaluate(db, {"term": {"deleted": False}}, full=True)
+            redis.set(EVAL_CURSOR, started)
+            if not redis.exists(EVAL_DIRTY):
+                return counts
+            db.expire_all()
+    finally:
+        redis.delete(EVAL_LOCK)
+
+
+def evaluate_recent(db: Session) -> Optional[dict]:
+    """Match the indicators written since the last run (new ones, tombstones)."""
+    redis = get_redis_client()
+    cursor = redis.get(EVAL_CURSOR)
+    if cursor is None:
+        return evaluate_all(db)
+    if not redis.set(EVAL_LOCK, "1", nx=True, ex=EVAL_LOCK_SECONDS):
+        return None
+    try:
+        started = int(time.time())
+        counts = _evaluate(
+            db,
+            {
+                "range": {
+                    "updated_at": {
+                        "gte": int(cursor) - EVAL_OVERLAP_SECONDS,
+                        "format": "epoch_second",
+                    }
+                }
+            },
+            full=False,
+        )
+        redis.set(EVAL_CURSOR, started)
+        return counts
+    finally:
+        redis.delete(EVAL_LOCK)
+        if redis.exists(EVAL_DIRTY):
+            from app.worker import tasks
+
+            tasks.evaluate_local_warninglists.delay()
 
 
 # ── Who sees what ─────────────────────────────────────────────────────────
@@ -69,9 +406,7 @@ def sees_all(user) -> bool:
 
 
 def visible(db: Session, user) -> list:
-    query = db.query(models.Warninglist).filter(
-        models.Warninglist.type == warninglists.LOCAL_TYPE
-    )
+    query = db.query(models.Warninglist).filter(models.Warninglist.type == LOCAL_TYPE)
     if not sees_all(user):
         query = query.filter(models.Warninglist.org_id == user.org_id)
     return query.order_by(models.Warninglist.name).all()
@@ -87,7 +422,7 @@ def get_list(db: Session, user, list_id: int):
     db_list = db.get(models.Warninglist, list_id)
     if (
         db_list is None
-        or db_list.type != warninglists.LOCAL_TYPE
+        or db_list.type != LOCAL_TYPE
         or not (sees_all(user) or db_list.org_id == user.org_id)
     ):
         raise NotVisible(list_id)
@@ -105,21 +440,15 @@ def can_manage(user) -> bool:
 
 
 def check_regex(pattern: str) -> None:
+    """Regexes are matched with RE2 (linear time, see
+    compile_local_regex): one it can't compile is refused."""
     if len(pattern) > MAX_REGEX_LENGTH:
         raise InvalidEntry(f"a regex is at most {MAX_REGEX_LENGTH} characters")
-    body = pattern
-    match = re.fullmatch(r"/(.*)/([a-z]*)", pattern, flags=re.S)
-    if match:
-        body = match.group(1)
-    if _NESTED_QUANTIFIER.search(body) or _BACKREFERENCE.search(body):
+    if compile_local_regex(pattern) is None:
         raise InvalidEntry(
-            "nested repetitions and backreferences aren't allowed in a regex "
-            "(they can take forever to match)"
+            "not a regex this list can match (backreferences and lookarounds "
+            "aren't supported)"
         )
-    try:
-        re.compile(body)
-    except re.error as error:
-        raise InvalidEntry(f"not a valid regex: {error}") from None
 
 
 def normalise(value: str, kind: Optional[str] = None) -> tuple[str, str]:
@@ -227,11 +556,11 @@ def _recount(db: Session, db_list) -> None:
 
 
 def _reflag() -> None:
-    """The lists changed: flag attributes again, in the background (one
+    """The lists changed: recompute their members in the background (one
     full evaluation however many changes come in the meantime)."""
     from app.worker import tasks
 
-    tasks.evaluate_all_warninglist_hits.delay()
+    tasks.evaluate_local_warninglists.delay()
 
 
 def entries(
@@ -364,13 +693,63 @@ def export_lines(db: Session, db_list) -> Iterator[str]:
         yield f"{value}  # {entry.comment}\n" if entry.comment else f"{value}\n"
 
 
+def allowed_hosts() -> list[str]:
+    """Hosts lists may sync from (runtime setting warninglists.source_hosts)."""
+    from app.database import SessionLocal
+    from app.services.runtime_settings import RuntimeSettings
+
+    with SessionLocal() as db:
+        hosts = RuntimeSettings(db).get_value("warninglists.source_hosts", default=[])
+    return [str(h).strip().lower() for h in hosts or [] if str(h).strip()]
+
+
 def check_source_url(url: Optional[str]) -> Optional[str]:
+    """An http(s) URL on a host an admin allowed. Fetching from inside the
+    network is the point (a CMDB), so where to is the operator's call, not
+    the list owner's."""
     if not url:
         return None
     parts = urlsplit(url.strip())
-    if parts.scheme not in ("http", "https") or not parts.netloc:
+    if parts.scheme not in ("http", "https") or not parts.hostname:
         raise InvalidEntry("a source is an http(s) URL")
+    host = parts.hostname.lower()
+    if not any(fnmatch.fnmatchcase(host, pattern) for pattern in allowed_hosts()):
+        raise InvalidEntry(
+            f"{host} isn't a host lists may sync from; an admin allows hosts in "
+            "the runtime settings (warninglists.source_hosts)"
+        )
     return url.strip()
+
+
+def _forbidden(address: str) -> bool:
+    ip = ipaddress.ip_address(address)
+    # Private ranges are fine (a CMDB is on one); these never are: the host
+    # itself, link-local (cloud metadata services), multicast, reserved.
+    return (
+        ip.is_loopback
+        or ip.is_link_local
+        or ip.is_multicast
+        or ip.is_reserved
+        or ip.is_unspecified
+    )
+
+
+def _check_destination(url: str) -> None:
+    """At fetch time: the host is still allowed, and none of the addresses
+    it resolves to is one a sync may never reach."""
+    check_source_url(url)
+    parts = urlsplit(url)
+    port = parts.port or (443 if parts.scheme == "https" else 80)
+    try:
+        addresses = {info[4][0] for info in socket.getaddrinfo(parts.hostname, port)}
+    except socket.gaierror as error:
+        raise InvalidEntry(f"{parts.hostname} doesn't resolve: {error}") from None
+    blocked = sorted(a for a in addresses if _forbidden(a))
+    if blocked:
+        raise InvalidEntry(
+            f"{parts.hostname} resolves to an address a sync may not reach "
+            f"({', '.join(blocked)})"
+        )
 
 
 def sync(db: Session, db_list) -> dict:
@@ -379,9 +758,16 @@ def sync(db: Session, db_list) -> dict:
     import requests
 
     try:
+        _check_destination(db_list.source_url)
+        # No redirects: they could lead anywhere the checks above don't.
         with requests.get(
-            db_list.source_url, timeout=SYNC_TIMEOUT, stream=True
+            db_list.source_url,
+            timeout=SYNC_TIMEOUT,
+            stream=True,
+            allow_redirects=False,
         ) as response:
+            if response.is_redirect:
+                raise InvalidEntry("the source redirects; give its final URL")
             response.raise_for_status()
             body = b""
             for chunk in response.iter_content(64 * 1024):
@@ -434,7 +820,7 @@ def sweep(db: Session) -> dict:
 
     synced = 0
     for db_list in db.query(models.Warninglist).filter(
-        models.Warninglist.type == warninglists.LOCAL_TYPE,
+        models.Warninglist.type == LOCAL_TYPE,
         models.Warninglist.source_url.isnot(None),
         models.Warninglist.enabled.is_(True),
     ):
@@ -454,7 +840,7 @@ def create_list(db: Session, org_id: int, name: str, description=None, source_ur
     db_list = models.Warninglist(
         name=name,
         description=description,
-        type=warninglists.LOCAL_TYPE,
+        type=LOCAL_TYPE,
         category="organisation",
         version=0,
         matching_attributes=[],
@@ -492,10 +878,11 @@ def delete_list(db: Session, db_list) -> None:
             models.WarninglistEntry.warninglist_id == db_list.id
         )
     ]
+    list_id = db_list.id
     db.delete(db_list)
     db.commit()
     _unindex(ids)
-    _reflag()
+    _forget(list_id)
 
 
 # ── Why a value matches ───────────────────────────────────────────────────
@@ -508,9 +895,7 @@ def explain(db: Session, user, values: list[str], type_: Optional[str] = None) -
     lists = {w.id: w for w in visible(db, user) if w.enabled}
     if not lists:
         return {}
-    matcher = warninglists.LocalMatcher(db)
-    matcher.ids = [i for i in matcher.ids if i in lists]
-    matcher.regexes = [(i, p) for i, p in matcher.regexes if i in lists]
+    matcher = LocalMatcher(db, only=lists)
     found: dict[str, list] = {}
     for value in dict.fromkeys(v for v in values if v):
         cand = warninglists._candidates(type_, value)
@@ -524,9 +909,7 @@ def explain(db: Session, user, values: list[str], type_: Optional[str] = None) -
                 or (d["type"] == "hostname" and d.get("value") in cand.hosts)
                 or (
                     d["type"] == "cidr"
-                    and any(
-                        warninglists._in_range(ip, d.get("range")) for ip in cand.ips
-                    )
+                    and any(_in_range(ip, d.get("range")) for ip in cand.ips)
                 )
             )
         ]
@@ -537,7 +920,7 @@ def explain(db: Session, user, values: list[str], type_: Optional[str] = None) -
             if entry_ids
             else []
         )
-        bounded = value[: warninglists.REGEX_VALUE_LIMIT]
+        bounded = value[:REGEX_VALUE_LIMIT]
         regex_lists = {i for i, p in matcher.regexes if p.search(bounded)}
         if regex_lists:
             now = datetime.now(timezone.utc)
@@ -545,7 +928,7 @@ def explain(db: Session, user, values: list[str], type_: Optional[str] = None) -
                 models.WarninglistEntry.warninglist_id.in_(regex_lists),
                 models.WarninglistEntry.kind == "regex",
             ):
-                compiled = warninglists._compile_regex(row.value)
+                compiled = compile_local_regex(row.value)
                 if (
                     compiled is not None
                     and compiled.search(bounded)

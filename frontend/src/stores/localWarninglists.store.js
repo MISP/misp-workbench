@@ -78,6 +78,14 @@ export const useLocalWarninglistsStore = defineStore({
     async sync(id) {
       return await fetchWrapper.post(`${baseUrl}/${id}/sync`, {});
     },
+    /** {indicator uuid: [ids of your lists it is on]}. */
+    async hits(indicators) {
+      if (!indicators.length) return {};
+      const response = await fetchWrapper.post(`${baseUrl}/hits`, {
+        indicators,
+      });
+      return response.hits;
+    },
     /** {value: [{list_name, entry, kind, comment, …}]}: why values match. */
     async explain(values, type = null) {
       const response = await fetchWrapper.post(`${baseUrl}/explain`, {

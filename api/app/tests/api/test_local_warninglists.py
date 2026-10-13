@@ -56,11 +56,18 @@ class TestEntries:
         assert local_warninglists.normalise(raw) == expected
 
     @pytest.mark.parametrize(
-        "raw", ["/(a+)+$/", "/(\\w*)*/", "/(a|ab)*/", "/(a)\\1/", "/(/", "*.x", " "]
+        "raw", ["/(a)\\1/", "/(?=a)b/", "/(/", "/" + "a" * 300 + "/", "*.x", " "]
     )
     def test_bad_entries_are_refused(self, raw):
         with pytest.raises(local_warninglists.InvalidEntry):
             local_warninglists.normalise(raw)
+
+    def test_regexes_take_linear_time(self):
+        # Catastrophic for a backtracking engine; RE2 doesn't backtrack.
+        pattern = local_warninglists.compile_local_regex("/(a+)+$/")
+        started = time.monotonic()
+        assert not pattern.search("a" * 5000 + "!")
+        assert time.monotonic() - started < 1
 
     def test_plain_lists(self):
         text = "# Corp\n10.0.0.0/8  # offices\n\n*.corp.example\nevil.example\n"
@@ -70,9 +77,43 @@ class TestEntries:
             {"value": "evil.example", "comment": None},
         ]
 
+    def test_sync_sources_are_the_operators_call(self, monkeypatch):
+        monkeypatch.setattr(local_warninglists, "allowed_hosts", lambda: [])
+        with pytest.raises(local_warninglists.InvalidEntry):
+            local_warninglists.check_source_url("https://cmdb.corp.example/r.txt")
+        monkeypatch.setattr(
+            local_warninglists, "allowed_hosts", lambda: ["*.corp.example"]
+        )
+        assert local_warninglists.check_source_url("https://cmdb.corp.example/r.txt")
+        for url in ("file:///etc/passwd", "https://cmdb.other.example/r.txt"):
+            with pytest.raises(local_warninglists.InvalidEntry):
+                local_warninglists.check_source_url(url)
+
+    @pytest.mark.parametrize(
+        "address,forbidden",
+        [
+            ("169.254.169.254", True),
+            ("127.0.0.1", True),
+            ("::1", True),
+            ("0.0.0.0", True),
+            ("224.0.0.1", True),
+            ("fe80::1", True),
+            # A CMDB on the internal network is the point.
+            ("10.1.2.3", False),
+            ("192.168.1.10", False),
+            ("198.51.100.7", False),
+        ],
+    )
+    def test_destinations_a_sync_never_reaches(self, address, forbidden):
+        assert local_warninglists._forbidden(address) is forbidden
+
     def test_hits(self):
-        matcher = warninglists.LocalMatcher.__new__(warninglists.LocalMatcher)
-        matcher.regexes = [(4, warninglists._compile_regex("/^vpn-\\d+\\./"))]
+        matcher = local_warninglists.LocalMatcher.__new__(
+            local_warninglists.LocalMatcher
+        )
+        matcher.regexes = [
+            (4, local_warninglists.compile_local_regex("/^vpn-\\d+\\./"))
+        ]
         entries = [
             {"warninglist_id": 1, "type": "string", "value": "evil.example"},
             {"warninglist_id": 2, "type": "hostname", "value": "corp.example"},
@@ -90,8 +131,9 @@ class TestEntries:
         assert hits("hostname", "vpn-17.elsewhere") == {4}
 
     def test_profiles_attach_lists(self):
-        ctx = {"now": NOW, "trust": {}}
-        listed = {"to_ids": True, "local_list_hits": [7]}
+        # Members are looked up once per context (here, given).
+        ctx = {"now": NOW, "trust": {}, "_list_members": {7: {"u1"}, 8: set()}}
+        listed = {"uuid": "u1", "to_ids": True}
         assert detection_profiles.failing_rule({}, listed, ctx) is None
         assert (
             detection_profiles.failing_rule({"exclude_lists": [7]}, listed, ctx)
@@ -170,27 +212,18 @@ class TestLocalWarninglists(ApiTester):
         db.delete(org)
         db.commit()
 
-    def _flag(self, db):
-        warninglists._evaluate(
-            warninglists.Matcher(db),
-            {"bool": {"must_not": [{"term": {"deleted": True}}]}},
-        )
+    def _evaluate(self, db):
         indicators.refresh_values([v for v, _ in ATTRIBUTES])
         get_opensearch_client().indices.refresh(index=indicators.INDEX)
+        local_warninglists.evaluate_all(db)
 
-    def _hits(self):
-        client = get_opensearch_client()
-        return {
-            h["_source"]["value"]: h["_source"].get("local_list_hits") or []
-            for h in client.search(
-                index="misp-attributes",
-                body={
-                    "size": 100,
-                    "query": {"term": {"event_uuid": EVENT}},
-                    "_source": ["value", "local_list_hits"],
-                },
-            )["hits"]["hits"]
-        }
+    def _uuid(self, value):
+        type_ = dict(ATTRIBUTES)[value]
+        return indicators.indicator_uuid(type_, value)
+
+    def _on(self, list_id):
+        members = local_warninglists.members(list_id)
+        return {v for v, _ in ATTRIBUTES if self._uuid(v) in members}
 
     @pytest.mark.parametrize("scopes", [MANAGE])
     def test_lists(
@@ -230,28 +263,23 @@ class TestLocalWarninglists(ApiTester):
         )
         assert added.json() == {"added": 5, "updated": 0, "removed": 0}
         bad = client.post(
-            f"{url}/entries", json={"entries": [{"value": "/(a+)+/"}]}, headers=headers
+            f"{url}/entries", json={"entries": [{"value": "/(a)\\1/"}]}, headers=headers
         )
         assert bad.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
-        self._flag(db)
-        hits = self._hits()
-        for value in (
+        self._evaluate(db)
+        # Expired (old.example) no longer matches; evil.example isn't listed.
+        assert self._on(list_id) == {
             "vpn.corp.example",
             "10.20.30.40",
             "10.20.30.40|443",
             "partner.example",
             "vpn-17.corp.example.net",
-        ):
-            assert hits[value] == [list_id], value
-        # Expired: no longer matches. Not listed: nothing.
-        assert hits["old.example"] == []
-        assert hits["evil.example"] == []
-        # The MISP lists are untouched by it.
-        indicator = indicators.get_indicator(
-            indicators.indicator_uuid("domain", "partner.example")
-        )
-        assert indicator["local_list_hits"] == [list_id]
+        }
+        indicator = indicators.get_indicator(self._uuid("partner.example"))
+        # Private: nothing on the indicator (anyone can query those), and the
+        # MISP lists are untouched by it.
+        assert "local_list_hits" not in indicator
         assert indicator["warninglist_hits"] == []
 
         # Only profiles attaching the list leave its matches out.
@@ -283,9 +311,41 @@ class TestLocalWarninglists(ApiTester):
         assert explained["vpn.corp.example"][0]["entry"] == "corp.example"
         assert explained["vpn.corp.example"][0]["comment"] == "our domains"
 
+        hits = client.post(
+            "/local-warninglists/hits",
+            json={"indicators": [indicator["uuid"], self._uuid("evil.example")]},
+            headers=headers,
+        ).json()["hits"]
+        assert hits == {indicator["uuid"]: [list_id]}
+
+        # A value without an indicator yet is matched as it comes.
+        fresh = {
+            "type": "domain",
+            "value": "fresh.corp.example",
+            "to_ids": True,
+            "timestamp": NOW,
+            "tags": [],
+        }
+        assert detection_profiles.attribute_matches({}, fresh, {}, ctx)
+        assert not detection_profiles.attribute_matches(
+            {"exclude_lists": [list_id]}, fresh, {}, ctx
+        )
+        # Explore can't leave private members out: the query says so.
+        assert detection_profiles.to_lucene({"exclude_lists": [list_id]}, ctx)[
+            "snapshot"
+        ]
+
         # Another organisation neither sees it nor what it says.
         other = {"Authorization": "Bearer " + other_org_token}
         assert client.get(url, headers=other).status_code == 404
+        assert (
+            client.post(
+                "/local-warninglists/hits",
+                json={"indicators": [indicator["uuid"]]},
+                headers=other,
+            ).json()["hits"]
+            == {}
+        )
         assert client.get("/local-warninglists", headers=other).json() == []
         assert (
             client.post(

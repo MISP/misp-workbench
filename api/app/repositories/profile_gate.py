@@ -167,7 +167,10 @@ def new_sources(days: int) -> dict[str, str]:
 
 
 def risk_flags(
-    indicator: dict, gate: profile_schemas.ProfileGate, new: dict[str, str]
+    indicator: dict,
+    gate: profile_schemas.ProfileGate,
+    new: dict[str, str],
+    your_lists: Optional[list] = None,
 ) -> list[tuple[str, str]]:
     """Why an addition is risky: (flag, detail) pairs."""
     flags = []
@@ -182,17 +185,10 @@ def risk_flags(
     ):
         if lists:
             flags.append((flag, ", ".join(lists)))
-    # On an organisation's own list the profile doesn't attach: someone
-    # considers it benign in their environment. Which list isn't told here
-    # (only to its organisation).
-    local = indicator.get("local_list_hits") or []
-    if local:
-        flags.append(
-            (
-                "organisation_list",
-                f"on {len(local)} organisation list{'' if len(local) == 1 else 's'}",
-            )
-        )
+    # On one of the viewer's organisation's lists: benign in their
+    # environment. Only shown to them, so never a reason to hold.
+    if your_lists:
+        flags.append(("organisation_list", ", ".join(your_lists)))
     keys = indicator.get("source_keys") or []
     # Reported only by new sources: one an established source also reports
     # isn't new to anyone.
@@ -236,10 +232,12 @@ def summarise(
     gate: profile_schemas.ProfileGate,
     flagged: Optional[set] = None,
     soft_removed: Optional[set] = None,
+    your_lists: Optional[dict] = None,
 ) -> dict:
     """The change preview of a computed diff. ``flagged`` collects the
     additions carrying a risk flag the gate holds on, ``soft_removed`` the
-    removals it can hold (not FORCED_REMOVALS)."""
+    removals it can hold (not FORCED_REMOVALS). ``your_lists`` (id ->
+    name), the viewer's organisation's lists, flags additions on them."""
     redis = get_redis_client()
     new = new_sources(gate.new_source_days)
     added_by_type: Counter = Counter()
@@ -248,6 +246,11 @@ def summarise(
     risks: dict[str, dict] = {}
     added_sample: list = []
     for batch in diff.added_indicators():
+        on = {}
+        if your_lists:
+            from app.repositories import local_warninglists
+
+            on = local_warninglists.lists_of([i["uuid"] for i in batch], your_lists)
         for indicator in batch:
             added_by_type[indicator.get("type")] += 1
             for source in indicator.get("sources") or []:
@@ -259,7 +262,8 @@ def summarise(
                 source_names.setdefault(key, source.get("name") or key)
             for key in indicator.get("source_keys") or []:
                 added_by_source[key] += 1
-            for flag, detail in risk_flags(indicator, gate, new):
+            listed = [your_lists[i] for i in on.get(indicator["uuid"], [])]
+            for flag, detail in risk_flags(indicator, gate, new, listed):
                 if flagged is not None and flag in gate.hold_on_risk:
                     flagged.add(indicator["uuid"])
                 risk = risks.setdefault(flag, {"count": 0, "sample": []})
@@ -658,7 +662,9 @@ def check_all() -> dict:
     return {"checked": len(ids), "held": held}
 
 
-def preview(db: Session, profile_id: int, rules=None) -> dict:
+def preview(
+    db: Session, profile_id: int, rules=None, your_lists: Optional[dict] = None
+) -> dict:
     """The change preview, with why the next run would be held. With
     ``rules``, of those rules instead of the profile's (a dry run)."""
     profile = detection_profiles.load(profile_id)
@@ -668,7 +674,7 @@ def preview(db: Session, profile_id: int, rules=None) -> dict:
     try:
         flagged: set = set()
         soft_removed: set = set()
-        summary = summarise(diff, gate, flagged, soft_removed)
+        summary = summarise(diff, gate, flagged, soft_removed, your_lists)
         digest = fingerprint(diff)
         held = plan(summary, gate, usual)
         kept = _keep_out(diff, held, flagged, soft_removed)

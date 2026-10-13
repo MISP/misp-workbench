@@ -5917,6 +5917,55 @@
         }
       }
     },
+    "/local-warninglists/hits": {
+      "post": {
+        "tags": [
+          "Warninglists"
+        ],
+        "summary": "Hits",
+        "description": "Which of your organisation's lists each indicator is on (others'\nlists are never told).",
+        "operationId": "hits_local_warninglists_hits_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HitsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HitsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "warninglists:read"
+            ]
+          }
+        ]
+      }
+    },
     "/local-warninglists/explain": {
       "post": {
         "tags": [
@@ -16819,20 +16868,6 @@
             ],
             "title": "Warninglist Hits"
           },
-          "local_list_hits": {
-            "anyOf": [
-              {
-                "items": {
-                  "type": "integer"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Local List Hits"
-          },
           "original_value": {
             "anyOf": [
               {
@@ -20775,6 +20810,43 @@
         "type": "object",
         "title": "HTTPValidationError"
       },
+      "HitsRequest": {
+        "properties": {
+          "indicators": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 1000,
+            "minItems": 1,
+            "title": "Indicators"
+          }
+        },
+        "type": "object",
+        "required": [
+          "indicators"
+        ],
+        "title": "HitsRequest"
+      },
+      "HitsResponse": {
+        "properties": {
+          "hits": {
+            "additionalProperties": {
+              "items": {
+                "type": "integer"
+              },
+              "type": "array"
+            },
+            "type": "object",
+            "title": "Hits"
+          }
+        },
+        "type": "object",
+        "required": [
+          "hits"
+        ],
+        "title": "HitsResponse"
+      },
       "Hunt": {
         "properties": {
           "name": {
@@ -21294,14 +21366,6 @@
             },
             "type": "array",
             "title": "Warninglist Hits",
-            "default": []
-          },
-          "local_list_hits": {
-            "items": {
-              "type": "integer"
-            },
-            "type": "array",
-            "title": "Local List Hits",
             "default": []
           },
           "validation_issues": {
@@ -22588,14 +22652,6 @@
             },
             "type": "array",
             "title": "Warninglist Hits",
-            "default": []
-          },
-          "local_list_hits": {
-            "items": {
-              "type": "integer"
-            },
-            "type": "array",
-            "title": "Local List Hits",
             "default": []
           },
           "event": {
@@ -25833,14 +25889,6 @@
             "title": "Warninglist Hits",
             "default": []
           },
-          "local_list_hits": {
-            "items": {
-              "type": "integer"
-            },
-            "type": "array",
-            "title": "Local List Hits",
-            "default": []
-          },
           "validation_issues": {
             "items": {
               "type": "string"
@@ -26229,7 +26277,6 @@
                 "popular_domain",
                 "shared_infrastructure",
                 "warninglisted",
-                "organisation_list",
                 "new_source",
                 "low_score"
               ]

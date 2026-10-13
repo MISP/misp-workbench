@@ -222,9 +222,9 @@ load();
       <div v-else-if="error" class="alert alert-danger">{{ error }}</div>
       <template v-else-if="list">
         <p class="text-muted">
-          Values never to act on in your environment. They are flagged on
-          attributes and indicators, and the detection profiles attaching this
-          list leave them out. Only your organisation sees its entries.
+          Values never to act on in your environment. The detection profiles
+          attaching this list leave what it matches out. Only your organisation
+          sees its entries and what it matches.
         </p>
 
         <fieldset :disabled="!canManage || busy" class="row g-2 mb-4">

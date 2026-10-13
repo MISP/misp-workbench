@@ -65,6 +65,13 @@ def _weakens_review(before, patch: dict) -> Optional[str]:
     return None
 
 
+def _your_lists(db: Session, user) -> dict:
+    """The viewer's organisation's lists (id -> name), to flag additions on."""
+    from app.repositories import local_warninglists
+
+    return {w.id: w.name for w in local_warninglists.visible(db, user)}
+
+
 def _check_lists(db: Session, user, patch: dict, before=None) -> None:
     """A profile attaches organisations' lists its editor can see (ones
     attached already, by someone else, can stay)."""
@@ -285,7 +292,7 @@ def preview_changes(
     """What the profile's next run changes against its last release, whether
     the gate would hold it, and the recent runs."""
     _get_or_404(db, profile_id)
-    return profile_gate.preview(db, profile_id)
+    return profile_gate.preview(db, profile_id, your_lists=_your_lists(db, user))
 
 
 @router.post(
@@ -302,7 +309,9 @@ def dry_run_changes(
 ):
     """The same, for rules not saved yet: what saving them would change."""
     _get_or_404(db, profile_id)
-    return profile_gate.preview(db, profile_id, rules=request.rules)
+    return profile_gate.preview(
+        db, profile_id, rules=request.rules, your_lists=_your_lists(db, user)
+    )
 
 
 @router.post(

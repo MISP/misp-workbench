@@ -84,6 +84,15 @@ class EntriesChanged(BaseModel):
     removed: int = 0
 
 
+class HitsRequest(BaseModel):
+    indicators: list[str] = Field(..., min_length=1, max_length=1000)
+
+
+class HitsResponse(BaseModel):
+    # indicator uuid -> the ids of your organisation's lists it is on.
+    hits: dict[str, list[int]]
+
+
 class ExplainRequest(BaseModel):
     values: list[str] = Field(..., min_length=1, max_length=1000)
     type: Optional[str] = None

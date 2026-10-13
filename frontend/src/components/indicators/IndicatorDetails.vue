@@ -1,16 +1,30 @@
 <script setup>
+import { ref, watch } from "vue";
 import { storeToRefs } from "pinia";
 import Timestamp from "@/components/misc/Timestamp.vue";
 import { useLocalWarninglistsStore } from "@/stores";
 
 // Everything an indicator carries: how its score was reached, where it comes
 // from, its tags, sightings and the warninglists it hits.
-defineProps({ indicator: { type: Object, required: true } });
+const props = defineProps({ indicator: { type: Object, required: true } });
 
-// Organisations' lists are named when they're yours (or for admins).
+// Your organisation's lists it is on (others' lists are never told).
 const localListsStore = useLocalWarninglistsStore();
 const { byId: localLists } = storeToRefs(localListsStore);
-localListsStore.ensureLoaded();
+const yourLists = ref([]);
+watch(
+  () => props.indicator.uuid,
+  async (uuid) => {
+    yourLists.value = [];
+    try {
+      await localListsStore.ensureLoaded();
+      yourLists.value = (await localListsStore.hits([uuid]))[uuid] || [];
+    } catch {
+      yourLists.value = [];
+    }
+  },
+  { immediate: true },
+);
 
 function sourceLabel(source) {
   return source.type === "feed" || source.type === "server"
@@ -90,24 +104,17 @@ function sourceLabel(source) {
         >
       </dd>
     </template>
-    <template v-if="(indicator.local_list_hits || []).length">
-      <dt class="col-sm-2">organisation lists</dt>
+    <template v-if="yourLists.length">
+      <dt class="col-sm-2">your lists</dt>
       <dd class="col-sm-10">
-        <template v-for="id in indicator.local_list_hits" :key="id">
-          <RouterLink
-            v-if="localLists[id]"
-            :to="`/settings/warninglists/local/${id}`"
-            class="badge text-bg-warning text-decoration-none me-1"
-            @click.stop
-            >{{ localLists[id].name }}</RouterLink
-          >
-          <span
-            v-else
-            class="badge text-bg-light border me-1"
-            title="Another organisation's list: only they see it"
-            >another organisation's list</span
-          >
-        </template>
+        <RouterLink
+          v-for="id in yourLists"
+          :key="id"
+          :to="`/settings/warninglists/local/${id}`"
+          class="badge text-bg-warning text-decoration-none me-1"
+          @click.stop
+          >{{ localLists[id]?.name || `list ${id}` }}</RouterLink
+        >
       </dd>
     </template>
     <template v-if="(indicator.validation_issues || []).length">

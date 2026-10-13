@@ -55,9 +55,9 @@ listsStore.getAll();
     </div>
     <p class="text-muted small mb-2">
       Values never to act on in your environment: your ranges and domains, VPN
-      egress, partners, critical SaaS. Matches are flagged on attributes and
-      indicators; the detection profiles attaching a list leave them out. Only
-      your organisation sees a list's entries.
+      egress, partners, critical SaaS. The detection profiles attaching a list
+      leave what it matches out. Only your organisation sees a list's entries
+      and what it matches.
     </p>
     <form v-if="creating" class="row g-2 mb-3" @submit.prevent="create">
       <div class="col-12 col-md-4">

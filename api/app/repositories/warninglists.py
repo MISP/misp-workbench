@@ -448,11 +448,10 @@ class Matcher:
                     )
                 )
         self.client = get_opensearch_client()
-        self.local = LocalMatcher(db, self.client)
 
     @property
     def empty(self) -> bool:
-        return not self.indexed and not self.patterns and self.local.empty
+        return not self.indexed and not self.patterns
 
     def _entry_hits(self, strings: set, hosts: set) -> set:
         """(list id, value) pairs among string/hostname entries."""
@@ -574,146 +573,6 @@ class Matcher:
         return results
 
 
-# ── Organisations' own lists ───────────────────────────────────────────────
-
-LOCAL_TYPE = "local"
-# A regex is matched against this much of a value at most.
-REGEX_VALUE_LIMIT = 1024
-
-
-def _not_expired(now: int) -> dict:
-    return {
-        "bool": {
-            "should": [
-                {"bool": {"must_not": {"exists": {"field": "expires_at"}}}},
-                {"range": {"expires_at": {"gt": now}}},
-            ],
-            "minimum_should_match": 1,
-        }
-    }
-
-
-class LocalMatcher:
-    """The enabled organisations' lists: which of them each value hits.
-
-    Their entries are of several kinds (value, CIDR, domain suffix, regex),
-    unlike a MISP list's; expired ones don't match. Hits are list ids, kept
-    apart from the MISP lists' (``local_list_hits``).
-    """
-
-    def __init__(self, db: Session, client=None):
-        from app.models import warninglist as models
-
-        now = datetime.now(timezone.utc)
-        self.ids = [
-            w.id
-            for w in db.query(models.Warninglist).filter(
-                models.Warninglist.type == LOCAL_TYPE,
-                models.Warninglist.enabled.is_(True),
-            )
-        ]
-        self.regexes: list[tuple[int, re.Pattern]] = []
-        if self.ids:
-            for entry in db.query(models.WarninglistEntry).filter(
-                models.WarninglistEntry.warninglist_id.in_(self.ids),
-                models.WarninglistEntry.kind == "regex",
-            ):
-                if entry.expires_at is not None and entry.expires_at <= now:
-                    continue
-                compiled = _compile_regex(entry.value)
-                if compiled is not None:
-                    self.regexes.append((entry.warninglist_id, compiled))
-        self.client = client or get_opensearch_client()
-
-    @property
-    def empty(self) -> bool:
-        return not self.ids
-
-    def entries(self, strings: set, hosts: set, ips: set) -> list[dict]:
-        """The live index entries matching any candidate: their sources."""
-        if not self.ids or not (strings or hosts or ips):
-            return []
-        should: list = []
-        if strings:
-            should.append(
-                {
-                    "bool": {
-                        "filter": [
-                            {"term": {"type": "string"}},
-                            {"terms": {"value": sorted(strings)}},
-                        ]
-                    }
-                }
-            )
-        if hosts:
-            should.append(
-                {
-                    "bool": {
-                        "filter": [
-                            {"term": {"type": "hostname"}},
-                            {"terms": {"value": sorted(hosts)}},
-                        ]
-                    }
-                }
-            )
-        should += [{"term": {"range": ip}} for ip in sorted(ips)]
-        query = {
-            "bool": {
-                "filter": [
-                    {"terms": {"warninglist_id": self.ids}},
-                    _not_expired(int(time.time())),
-                    {"bool": {"should": should, "minimum_should_match": 1}},
-                ]
-            }
-        }
-        found = []
-        for page in stream_exports.iter_pit_pages(self.client, ENTRIES_INDEX, query):
-            found.extend({**h["_source"], "_id": h["_id"]} for h in page)
-        return found
-
-    def match(self, items: list[tuple[Optional[str], str]]) -> list[list[int]]:
-        """For each (type, value), the ids of the lists it hits."""
-        if self.empty:
-            return [[] for _ in items]
-        candidates = [_candidates(t, v) for t, v in items]
-        entries = []
-        for start in range(0, len(candidates), BATCH_SIZE):
-            chunk = candidates[start : start + BATCH_SIZE]
-            entries += self.entries(
-                set().union(*(c.strings for c in chunk)),
-                set().union(*(c.hosts for c in chunk)),
-                set().union(*(c.ips for c in chunk)),
-            )
-        results = []
-        for (_, value), cand in zip(items, candidates):
-            results.append(sorted(self._hits(value, cand, entries)))
-        return results
-
-    def _hits(self, value: str, cand: _Candidates, entries: list[dict]) -> set:
-        hits = set()
-        for entry in entries:
-            if entry["type"] == "string" and entry.get("value") in cand.strings:
-                hits.add(entry["warninglist_id"])
-            elif entry["type"] == "hostname" and entry.get("value") in cand.hosts:
-                hits.add(entry["warninglist_id"])
-            elif entry["type"] == "cidr" and any(
-                _in_range(ip, entry.get("range")) for ip in cand.ips
-            ):
-                hits.add(entry["warninglist_id"])
-        bounded = value[:REGEX_VALUE_LIMIT]
-        for list_id, pattern in self.regexes:
-            if list_id not in hits and pattern.search(bounded):
-                hits.add(list_id)
-        return hits
-
-
-def _in_range(ip: str, cidr: Optional[str]) -> bool:
-    try:
-        return ipaddress.ip_address(ip) in ipaddress.ip_network(cidr, strict=False)
-    except (TypeError, ValueError):
-        return False
-
-
 def check_values(
     db: Session, values: list[str], attribute_type: Optional[str] = None
 ) -> dict:
@@ -734,8 +593,7 @@ def check_values(
 
 
 def _evaluate(matcher: Matcher, query: dict) -> dict:
-    """Recompute warninglist_hits (and local_list_hits, organisations' own
-    lists) for matching attributes; write only changes."""
+    """Recompute warninglist_hits for matching attributes; write only changes."""
     client = matcher.client
     counts = {"evaluated": 0, "changed": 0}
 
@@ -744,28 +602,22 @@ def _evaluate(matcher: Matcher, query: dict) -> dict:
             client,
             ATTRIBUTES_INDEX,
             query,
-            source=["type", "value", "warninglist_hits", "local_list_hits"],
+            source=["type", "value", "warninglist_hits"],
         ):
             items = [
                 (h["_source"].get("type"), str(h["_source"].get("value") or ""))
                 for h in hits
             ]
-            for hit, new, local in zip(
-                hits, matcher.match(items), matcher.local.match(items)
-            ):
+            for hit, new in zip(hits, matcher.match(items)):
                 counts["evaluated"] += 1
-                doc = {}
-                if new != sorted(hit["_source"].get("warninglist_hits") or []):
-                    doc["warninglist_hits"] = new
-                if local != sorted(hit["_source"].get("local_list_hits") or []):
-                    doc["local_list_hits"] = local
-                if doc:
+                old = sorted(hit["_source"].get("warninglist_hits") or [])
+                if new != old:
                     counts["changed"] += 1
                     yield {
                         "_op_type": "update",
                         "_index": ATTRIBUTES_INDEX,
                         "_id": hit["_id"],
-                        "doc": doc,
+                        "doc": {"warninglist_hits": new},
                     }
 
     opensearch_helpers.bulk(

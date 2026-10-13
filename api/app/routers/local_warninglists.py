@@ -264,6 +264,20 @@ async def sync_list(
     return db_list
 
 
+@router.post("/local-warninglists/hits", response_model=schemas.HitsResponse)
+def hits(
+    payload: schemas.HitsRequest,
+    db: Session = Depends(get_db),
+    user: user_schemas.User = Security(get_current_active_user, scopes=READ),
+):
+    """Which of your organisation's lists each indicator is on (others'
+    lists are never told)."""
+    found = lists_repository.lists_of(
+        payload.indicators, lists_repository.visible_ids(db, user)
+    )
+    return {"hits": {i: ids for i, ids in found.items() if ids}}
+
+
 @router.post("/local-warninglists/explain", response_model=schemas.ExplainResponse)
 async def explain(
     payload: schemas.ExplainRequest,

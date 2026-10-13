@@ -77,9 +77,6 @@ class Indicator(BaseModel):
     galaxies: list[str] = []
     sightings: IndicatorSightings = IndicatorSightings()
     warninglist_hits: list[str] = []
-    # Organisations' own warninglists it matches (ids); only the profiles
-    # attaching one leave its matches out.
-    local_list_hits: list[int] = []
     # Problems normalisation found on its attributes (private-ip, invalid-hash...).
     validation_issues: list[str] = []
     # Confidence, 0-100 (None when scoring is off), and how it was reached.

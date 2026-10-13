@@ -80,7 +80,6 @@ RiskFlag = Literal[
     "popular_domain",
     "shared_infrastructure",
     "warninglisted",
-    "organisation_list",
     "new_source",
     "low_score",
 ]

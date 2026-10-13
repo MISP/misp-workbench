@@ -66,7 +66,6 @@ class LookupAttribute(BaseModel):
     last_seen: Optional[Any] = None
     tags: list[str] = []
     warninglist_hits: list[str] = []
-    local_list_hits: list[int] = []
     event: LookupEvent
 
 

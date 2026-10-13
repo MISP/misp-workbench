@@ -112,7 +112,6 @@ ATTRIBUTE_SOURCE = [
     "event_uuid",
     "tags",
     "warninglist_hits",
-    "local_list_hits",
     "validation_issues",
 ]
 
@@ -478,16 +477,10 @@ def build_indicator(
         "warninglist_hits": sorted(
             {hit for a in live for hit in a.get("warninglist_hits") or []}
         ),
-
         "validation_issues": validation_issues,
     }
     if review:
         doc["review"] = review
-    # Organisations' own lists, by id: only the profiles attaching one leave
-    # its matches out. Only when there are, so other indicators don't change.
-    local_hits = sorted({h for a in live for h in a.get("local_list_hits") or []})
-    if local_hits:
-        doc["local_list_hits"] = local_hits
     doc["checksum"] = hashlib.sha256(
         json.dumps(doc, sort_keys=True, default=str).encode("utf-8")
     ).hexdigest()

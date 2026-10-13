@@ -171,9 +171,6 @@
                         "type": "long"
                     }
                 }
-            },
-            "local_list_hits": {
-                "type": "integer"
             }
         }
     }

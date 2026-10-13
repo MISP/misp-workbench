@@ -76,6 +76,12 @@ celery_app.conf.update(
             "task": "app.worker.tasks.sync_sink_memberships",
             "schedule": 300.0,
         },
+        # Organisations' warninglists: match the indicators written since the
+        # last run.
+        "local-warninglists-evaluate-recent": {
+            "task": "app.worker.tasks.evaluate_recent_local_warninglists",
+            "schedule": 60.0,
+        },
         # Organisations' warninglists: drop expired entries, sync the lists
         # whose source URL is due (daily).
         "local-warninglists-sweep": {
@@ -1455,6 +1461,24 @@ def sync_sink_memberships():
     for sink_id in sink_ids:
         sync_sink_membership.apply_async((sink_id,), queue="sinks")
     return len(sink_ids)
+
+
+@celery_app.task(ignore_result=True)
+def evaluate_local_warninglists():
+    """Recompute the members of every organisation's list."""
+    from app.repositories import local_warninglists
+
+    with Session(engine) as db:
+        return local_warninglists.evaluate_all(db)
+
+
+@celery_app.task(ignore_result=True)
+def evaluate_recent_local_warninglists():
+    """Match the indicators written since the last run."""
+    from app.repositories import local_warninglists
+
+    with Session(engine) as db:
+        return local_warninglists.evaluate_recent(db)
 
 
 @celery_app.task(ignore_result=True)

@@ -36,6 +36,7 @@ boto3 = "^1.35"
 celery-redbeat = "^2.3.3"
 fastmcp = "^2.0"
 pyinstrument = "^5.0"
+google-re2 = "^1.1"
 
 [tool.poetry.group.lab]
 optional = true

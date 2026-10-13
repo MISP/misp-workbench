@@ -22,9 +22,9 @@ class Warninglist(Base):
     ``patterns`` to be matched in memory.
 
     An organisation's own list (``org_id``, type ``local``) holds entries of
-    several kinds (``WarninglistEntry``) and flags what it matches apart from
-    the MISP lists (``local_list_hits``): only the detection profiles that
-    attach it leave those out. See app.repositories.local_warninglists.
+    several kinds (``WarninglistEntry``). Which indicators it matches is kept
+    privately, apart from the MISP lists' hits: only the detection profiles
+    that attach it leave those out. See app.repositories.local_warninglists.
     """
 
     __tablename__ = "warninglists"

@@ -236,7 +236,6 @@ ATTRIBUTE_FIELDS = [
     "event_uuid",
     "tags",
     "warninglist_hits",
-    "local_list_hits",
 ]
 NEWEST_FIRST = [{"timestamp": {"order": "desc", "unmapped_type": "long"}}]
 
@@ -371,7 +370,6 @@ def _context(attribute: dict, event: Optional[dict]) -> dict:
         "last_seen": attribute.get("last_seen"),
         "tags": _tag_names(attribute.get("tags")),
         "warninglist_hits": list(attribute.get("warninglist_hits") or []),
-        "local_list_hits": list(attribute.get("local_list_hits") or []),
         "event": {
             "uuid": attribute.get("event_uuid"),
             "info": event.get("info"),
