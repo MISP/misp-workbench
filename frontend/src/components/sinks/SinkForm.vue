@@ -73,6 +73,7 @@ const filters = reactive({
   indicator_mode: props.sink?.filters?.indicator_mode ?? false,
   min_score: props.sink?.filters?.min_score ?? 0,
   profile_id: props.sink?.filters?.profile_id ?? null,
+  sync_membership: props.sink?.filters?.sync_membership ?? false,
   types: joinList(props.sink?.filters?.types),
   // Tag names (or patterns such as tlp:*), edited with the tag selector.
   tags: [...(props.sink?.filters?.tags || [])],
@@ -125,6 +126,7 @@ async function submit() {
       indicator_mode: filters.indicator_mode,
       min_score: filters.min_score || 0,
       profile_id: filters.profile_id,
+      sync_membership: !!filters.profile_id && filters.sync_membership,
       types: splitList(filters.types),
       tags: filters.tags,
       exclude_tags: filters.exclude_tags,
@@ -372,6 +374,23 @@ async function submit() {
         <div class="form-text">
           A profile replaces every filter: its rules select what is sent, and it
           sends either attributes or consolidated indicators.
+        </div>
+      </div>
+      <div v-if="filters.profile_id" class="form-check form-switch mb-3">
+        <input
+          id="sink-sync-membership"
+          class="form-check-input"
+          type="checkbox"
+          v-model="filters.sync_membership"
+        />
+        <label class="form-check-label" for="sink-sync-membership"
+          >Keep in step with the profile</label
+        >
+        <div class="form-text">
+          Every few minutes, send what joined the profile and what left it
+          (<code>action: remove</code>, with the reason), instead of each
+          published event. The first sync sends every member. Needs a profile of
+          indicators.
         </div>
       </div>
       <template v-if="!filters.profile_id">

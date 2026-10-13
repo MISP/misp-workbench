@@ -9,6 +9,7 @@ batches that had already gone through.
 """
 
 import fnmatch
+import itertools
 import logging
 from datetime import datetime, timezone
 from typing import Iterator, Optional
@@ -49,11 +50,22 @@ def _check_profile(db: Session, filters) -> None:
 
     from app.repositories import detection_profiles
 
-    if filters is not None and filters.profile_id is not None:
-        if detection_profiles.get_profile(db, filters.profile_id) is None:
+    if filters is None:
+        return
+    profile = None
+    if filters.profile_id is not None:
+        profile = detection_profiles.get_profile(db, filters.profile_id)
+        if profile is None:
             raise HTTPException(
                 status.HTTP_404_NOT_FOUND, "Detection profile not found"
             )
+    if filters.sync_membership and (
+        profile is None or profile.granularity != "indicators"
+    ):
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            "membership sync needs a detection profile of indicators",
+        )
 
 
 def create_sink(db: Session, sink: sink_schemas.SinkCreate) -> sink_models.Sink:
@@ -137,8 +149,10 @@ def update_sink(
 
 
 def delete_sink(db: Session, db_sink: sink_models.Sink) -> None:
+    sink_id = db_sink.id
     db.delete(db_sink)
     db.commit()
+    forget_membership(sink_id)
 
 
 # ── Dispatch ──────────────────────────────────────────────────────────────
@@ -148,11 +162,14 @@ def dispatch_published_event(db: Session, event_uuid: str) -> int:
     """Queue a delivery of ``event_uuid`` to every enabled sink."""
     from app.worker import tasks
 
+    # Membership-synced sinks get the profile's changes on their own
+    # schedule, not event by event.
     sink_ids = [
-        sink_id
-        for (sink_id,) in db.query(sink_models.Sink.id)
+        sink.id
+        for sink in db.query(sink_models.Sink)
         .filter(sink_models.Sink.enabled.is_(True))
         .all()
+        if not (sink.filters or {}).get("sync_membership")
     ]
     for sink_id in sink_ids:
         tasks.deliver_to_sink.apply_async((sink_id, event_uuid), queue=SINKS_QUEUE)
@@ -474,6 +491,87 @@ def _records_in_profile(rules, records: list[dict]) -> list[dict]:
             rules, r, found, ctx, {"tags": (r.get("event") or {}).get("tags") or []}
         )
     ]
+
+
+MEMBERSHIP_LOCK_SECONDS = 30 * 60
+
+
+def membership_sinks(db: Session) -> list[int]:
+    """Enabled sinks that keep in step with a profile's members."""
+    return [
+        sink.id
+        for sink in db.query(sink_models.Sink)
+        .filter(sink_models.Sink.enabled.is_(True))
+        .all()
+        if (sink.filters or {}).get("sync_membership")
+        and (sink.filters or {}).get("profile_id") is not None
+    ]
+
+
+def deliver_membership(sink: sink_models.Sink) -> int:
+    """Send the sink what changed in its profile's members since last time.
+
+    Adds (``action: add``) and removals (``action: remove``, with the rule
+    the indicator now fails). The first sync sends every member. The new
+    member set is kept only once everything is delivered, so a failed sync
+    is retried with the same changes. The sink's own exclusions narrow the
+    members like the profile's rules do.
+    """
+    from app.repositories import detection_profiles, profile_membership
+    from app.services.redis import get_redis_client
+
+    filters = sink.filters or {}
+    try:
+        profile = detection_profiles.load(filters["profile_id"])
+    except detection_profiles.ProfileNotFound:
+        raise SinkDeliveryError("the sink's detection profile no longer exists")
+    rules = profile["rules"]
+    rules = rules.model_copy(
+        update={
+            "exclude_tags": list(rules.exclude_tags)
+            + list(filters.get("exclude_tags") or []),
+            "exclude_warninglisted": rules.exclude_warninglisted
+            or filters.get("exclude_warninglisted", True),
+        }
+    )
+
+    redis = get_redis_client()
+    owner = f"sink:{sink.id}"
+    state = profile_membership.state_key(owner)
+    lock = f"{state}:lock"
+    if not redis.set(lock, "1", nx=True, ex=MEMBERSHIP_LOCK_SECONDS):
+        return 0
+    try:
+        diff = profile_membership.Diff(
+            owner, rules, detection_profiles.context(), state
+        )
+        try:
+            batches = itertools.chain(
+                (
+                    [formatters.removal_record(r) for r in batch]
+                    for batch in diff.removals()
+                ),
+                (
+                    [formatters.indicator_record(doc) for doc in batch]
+                    for batch in diff.added_indicators()
+                ),
+            )
+            sent = _send_in_batches(sink, batches)
+        except Exception:
+            diff.discard()
+            raise
+        diff.commit(state)
+        return sent
+    finally:
+        redis.delete(lock)
+
+
+def forget_membership(sink_id: int) -> None:
+    """Drop a sink's last member set: its next sync sends every member."""
+    from app.repositories import profile_membership
+    from app.services.redis import get_redis_client
+
+    get_redis_client().delete(profile_membership.state_key(f"sink:{sink_id}"))
 
 
 def record_success(db: Session, sink_id: int, delivered: int) -> None:

@@ -119,6 +119,10 @@ class SinkFilters(BaseModel):
     # what is sent, its granularity decides between attributes and
     # consolidated indicators.
     profile_id: Optional[int] = None
+    # With a profile of indicators: keep the destination in step with the
+    # profile's members (adds, and removals with action "remove") every few
+    # minutes, instead of pushing each published event.
+    sync_membership: bool = False
 
 
 class InvalidSinkConfig(ValueError):

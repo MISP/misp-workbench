@@ -395,61 +395,91 @@ def _any_tag(tags: list[str], patterns: list[str]) -> bool:
     return any(fnmatch.fnmatchcase(t, p) for p in patterns for t in tags)
 
 
-def matches(rules, indicator: dict, ctx: dict) -> bool:
-    """Whether one indicator passes the rules (``to_query``, for one document)."""
+# Why an indicator fails a profile, as removals in membership deltas report it.
+REASONS = (
+    "deleted",
+    "type",
+    "category",
+    "tlp",
+    "tags",
+    "excluded_tag",
+    "no_longer_ids",
+    "warninglisted",
+    "validation",
+    "score",
+    "expired",
+    "sources",
+    "excluded_source",
+    "organisations",
+    "excluded_organisation",
+    "trust",
+)
+
+
+def failing_rule(rules, indicator: Optional[dict], ctx: dict) -> Optional[str]:
+    """The first rule an indicator fails (one of ``REASONS``), or None.
+
+    ``to_query`` for one document: None means the profile selects it. A
+    missing indicator (purged) is ``deleted``.
+    """
     rules = _rules(rules)
-    if indicator.get("deleted"):
-        return False
+    if not indicator or indicator.get("deleted"):
+        return "deleted"
     if rules.types and indicator.get("type") not in rules.types:
-        return False
+        return "type"
     if rules.categories and not set(indicator.get("categories") or []) & set(
         rules.categories
     ):
-        return False
+        return "category"
     tlp = indicator.get("tlp")
     if rules.tlp_ceiling and tlp in _too_restrictive(rules.tlp_ceiling):
-        return False
+        return "tlp"
     tags = indicator.get("tags") or []
     if rules.tags and not _any_tag(tags, rules.tags):
-        return False
+        return "tags"
     if rules.exclude_tags and _any_tag(tags, rules.exclude_tags):
-        return False
+        return "excluded_tag"
     if rules.to_ids and not indicator.get("to_ids"):
-        return False
+        return "no_longer_ids"
     if rules.exclude_warninglisted and indicator.get("warninglist_hits"):
-        return False
+        return "warninglisted"
     if rules.exclude_validation_issues and indicator.get("validation_issues"):
-        return False
+        return "validation"
 
     score = indicator.get("score")
     if rules.min_score is not None and (score is None or score < rules.min_score):
-        return False
+        return "score"
     last_seen = indicator.get("last_seen")
     if rules.max_age_days and (
         last_seen is None or last_seen < ctx["now"] - rules.max_age_days * DAY
     ):
-        return False
+        return "expired"
     keys = indicator.get("source_keys") or []
     if rules.sources and not set(keys) & set(rules.sources):
-        return False
+        return "sources"
     if rules.exclude_sources and keys and set(keys) <= set(rules.exclude_sources):
-        return False
+        return "excluded_source"
     organisations = indicator.get("organisation_ids") or []
     if rules.organisations and not set(organisations) & set(rules.organisations):
-        return False
+        return "organisations"
     if (
         rules.exclude_organisations
         and organisations
         and set(organisations) <= set(rules.exclude_organisations)
     ):
-        return False
+        return "excluded_organisation"
     if rules.min_source_trust is not None:
         allowed, below = _trust_split(rules, ctx)
         if allowed is not None and not set(keys) & set(allowed):
-            return False
+            return "trust"
         if allowed is None and below and keys and set(keys) <= set(below):
-            return False
-    return True
+            return "trust"
+    return None
+
+
+def matches(rules, indicator: dict, ctx: dict) -> bool:
+    """Whether one indicator passes the rules (``to_query``, for one document)."""
+    return failing_rule(rules, indicator, ctx) is None
 
 
 def _event_source(event: dict) -> dict:

@@ -26688,7 +26688,8 @@
               ],
               "exclude_warninglisted": true,
               "indicator_mode": false,
-              "min_score": 0
+              "min_score": 0,
+              "sync_membership": false
             }
           },
           "id": {
@@ -26819,7 +26820,8 @@
               ],
               "exclude_warninglisted": true,
               "indicator_mode": false,
-              "min_score": 0
+              "min_score": 0,
+              "sync_membership": false
             }
           }
         },
@@ -26904,6 +26906,11 @@
               }
             ],
             "title": "Profile Id"
+          },
+          "sync_membership": {
+            "type": "boolean",
+            "title": "Sync Membership",
+            "default": false
           }
         },
         "type": "object",

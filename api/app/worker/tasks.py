@@ -71,6 +71,11 @@ celery_app.conf.update(
             "task": "app.worker.tasks.rebuild_indicators",
             "schedule": 3600.0,
         },
+        # Keep membership-synced sinks in step with their profiles.
+        "sinks-membership-sync": {
+            "task": "app.worker.tasks.sync_sink_memberships",
+            "schedule": 300.0,
+        },
         # Flag attributes written since the last run with the warninglists
         # they hit (a full re-evaluation runs whenever the lists change).
         "warninglists-evaluate-recent": {
@@ -1426,6 +1431,28 @@ def _deliver_with_retries(task, sink_id: int, label: str, deliver):
         sinks_repository.record_success(db, sink_id, sent)
         logger.info("sink %s delivered %s attributes of %s", sink_id, sent, label)
         return sent
+
+
+@celery_app.task(ignore_result=True)
+def sync_sink_memberships():
+    """Queue a membership sync of every sink that keeps in step with a profile."""
+    from app.repositories import sinks as sinks_repository
+
+    with Session(engine) as db:
+        sink_ids = sinks_repository.membership_sinks(db)
+    for sink_id in sink_ids:
+        sync_sink_membership.apply_async((sink_id,), queue="sinks")
+    return len(sink_ids)
+
+
+@celery_app.task(bind=True, queue="sinks", max_retries=SINK_MAX_RETRIES)
+def sync_sink_membership(self, sink_id: int):
+    """Send one sink what joined and left its profile since its last sync."""
+    from app.repositories import sinks as sinks_repository
+
+    return _deliver_with_retries(
+        self, sink_id, "membership changes", sinks_repository.deliver_membership
+    )
 
 
 @celery_app.task(bind=True, queue="sinks", max_retries=SINK_MAX_RETRIES)

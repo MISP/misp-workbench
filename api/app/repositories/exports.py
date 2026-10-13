@@ -1,4 +1,5 @@
 import hashlib
+import json
 import logging
 import tempfile
 import time
@@ -457,7 +458,12 @@ def _prune_deltas(db: Session, export_id: int, keep: int) -> None:
 
 
 def _run_profile(db: Session, db_export: export_models.Export) -> None:
-    """A profile export: the profile's indicators, or the attributes behind them."""
+    """A profile export: the profile's indicators, or the attributes behind them.
+
+    An incremental one is a profile *feed*: each delta says which indicators
+    joined the profile, changed, or left it (and why), whatever made them
+    leave, by diffing the member set with the previous run's full artifact.
+    """
     from app.repositories import detection_profiles, stream_exports
 
     profile = detection_profiles.load(db_export.profile_id)
@@ -468,18 +474,24 @@ def _run_profile(db: Session, db_export: export_models.Export) -> None:
     )
     cursor = int(time.time())
 
-    def stream(since, key):
-        export = stream_exports.prepare_attribute_export(
-            db_export.query or "*",
-            db_export.format,
-            since=None if since is None else str(since),
-            index=index,
-            profile=profile,
-        )
-        return _stream_to_storage(None, None, db_export.format, key, export=export)
+    # The previous member set is the previous full artifact: read it before
+    # this run overwrites it.
+    previous = None
+    if db_export.incremental and db_export.cursor is not None and db_export.storage_key:
+        previous = _previous_members(db_export.storage_key)
 
-    stored_key, size, records, checksum = stream(
-        None, f"export-{db_export.id}.{db_export.format}"
+    export = stream_exports.prepare_attribute_export(
+        db_export.query or "*",
+        db_export.format,
+        index=index,
+        profile=profile,
+    )
+    stored_key, size, records, checksum = _stream_to_storage(
+        None,
+        None,
+        db_export.format,
+        f"export-{db_export.id}.{db_export.format}",
+        export=export,
     )
     db_export.storage_key = stored_key
     db_export.file_size = size
@@ -488,9 +500,75 @@ def _run_profile(db: Session, db_export: export_models.Export) -> None:
     if not db_export.incremental:
         return
     # The first run has nothing to diff against: its full artifact is the base.
-    if db_export.cursor is not None:
-        _write_delta(db, db_export, cursor, lambda key: stream(db_export.cursor, key))
+    if previous is not None:
+        try:
+            _write_membership_delta(db, db_export, profile, cursor, previous)
+        finally:
+            from app.services.redis import get_redis_client
+
+            get_redis_client().delete(*previous)
     db_export.cursor = cursor
+
+
+def _previous_members(storage_key: str):
+    from app.repositories import profile_membership
+    from app.services.exports_storage import open_export
+
+    try:
+        chunks = open_export(storage_key)
+    except Exception:
+        # Gone (storage reset): this run is a new base, its consumers resync.
+        logger.warning("previous artifact %s unreadable; no delta", storage_key)
+        return None
+    return profile_membership.load_previous(profile_membership.lines_of(chunks))
+
+
+def _write_membership_delta(db, db_export, profile, cursor: int, previous) -> None:
+    from app.repositories import detection_profiles, profile_membership
+
+    previous_key, details_key = previous
+    since = db_export.cursor
+    diff = profile_membership.Diff(
+        f"export:{db_export.id}",
+        profile["rules"],
+        detection_profiles.context(cursor),
+        previous_key,
+        extra={
+            "query_string": {"query": db_export.query or "*", "default_field": "value"}
+        },
+    )
+    try:
+
+        def lines():
+            for batch in diff.removals(details_key):
+                for record in batch:
+                    yield json.dumps(record, default=str) + "\n"
+            for batch in diff.added_indicators():
+                for doc in batch:
+                    yield json.dumps({**doc, "action": "add"}, default=str) + "\n"
+            for batch in diff.changed_indicators(since):
+                for doc in batch:
+                    yield json.dumps({**doc, "action": "update"}, default=str) + "\n"
+
+        _write_delta(db, db_export, cursor, lambda key: _store_lines(key, lines()))
+    finally:
+        diff.discard()
+
+
+def _store_lines(key: str, lines) -> tuple:
+    """Store an iterable of text lines; ``(stored_key, size, records, sha256)``."""
+    digest = hashlib.sha256()
+    size = 0
+    records = 0
+    with tempfile.SpooledTemporaryFile(max_size=SPOOL_MAX_BYTES) as tmp:
+        for line in lines:
+            data = line.encode("utf-8")
+            digest.update(data)
+            size += len(data)
+            records += 1
+            tmp.write(data)
+        stored_key = store_export_file(key, tmp)
+    return stored_key, size, records, digest.hexdigest()
 
 
 def _write_delta(db: Session, db_export, cursor: int, stream) -> None:

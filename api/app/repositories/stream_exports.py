@@ -125,6 +125,9 @@ class PreparedExport:
     # A profile export of attributes: ``query`` selects indicators, and the
     # stream sends the live attributes behind them.
     expand: bool = False
+    # A profile delta: {"rules", "ctx"}. Each record says whether the
+    # indicator is in the profile (action upsert) or not (remove, reason).
+    membership: Optional[dict] = None
 
     @property
     def media_type(self) -> str:
@@ -287,14 +290,14 @@ def _prepare_profile_export(
                 "since= with a profile needs an indicator export "
                 "(/indicators/export): a removal is an indicator's"
             )
-        if fmt not in DELTA_FORMATS:
+        if fmt not in PROFILE_DELTA_FORMATS:
             raise ExportError(
-                f"since= needs a format that can carry deletions "
-                f"({', '.join(DELTA_FORMATS)}); {fmt!r} cannot"
+                "since= with a profile needs a format that carries an action "
+                f"per record ({', '.join(PROFILE_DELTA_FORMATS)}); {fmt!r} cannot"
             )
         since_ts = parse_timestamp(since, "since", now=export_timestamp)
-        filters.append(
-            {"range": {"updated_at": {"gte": since_ts, "format": "epoch_second"}}}
+        return _prepare_profile_delta(
+            query, fmt, since, since_ts, profile, export_timestamp
         )
     ctx = detection_profiles.context(export_timestamp)
     os_query = {
@@ -323,6 +326,91 @@ def _prepare_profile_export(
         # One value per line is the same from indicators or attributes.
         expand=index == ATTRIBUTES_INDEX and fmt not in LINE_FORMATS,
     )
+
+
+# A profile delta's records carry an action: a structured format.
+PROFILE_DELTA_FORMATS = ("json", "ndjson")
+
+
+def _prepare_profile_delta(
+    query: Optional[str],
+    fmt: str,
+    since: str,
+    since_ts: int,
+    profile: dict,
+    export_timestamp: int,
+) -> PreparedExport:
+    """What changed for a profile's consumer since ``since_ts``, statelessly.
+
+    Every indicator written since (in the profile or not any more) and every
+    one that aged past the profile's max_age_days in the meantime; the
+    stream marks each upsert or remove. Without state it can't see what left
+    for reasons that write nothing (a source's trust, the profile's own rules
+    changing): a feed's membership deltas can (see profile_membership).
+    """
+    from app.repositories import detection_profiles
+
+    rules = profile["rules"]
+    ctx = detection_profiles.context(export_timestamp)
+    changed: list = [
+        {"range": {"updated_at": {"gte": since_ts, "format": "epoch_second"}}}
+    ]
+    if rules.max_age_days:
+        age = rules.max_age_days * detection_profiles.DAY
+        # Last seen before the age limit now, but within it at since_ts.
+        changed.append(
+            {
+                "range": {
+                    "last_seen": {"gte": since_ts - age, "lt": export_timestamp - age}
+                }
+            }
+        )
+    os_query = {
+        "bool": {
+            "must": [_base_query(query, "value")],
+            "filter": [{"bool": {"should": changed, "minimum_should_match": 1}}],
+        }
+    }
+    client = get_opensearch_client()
+    request_key = json.dumps(
+        [
+            INDICATORS_INDEX,
+            query,
+            fmt,
+            since,
+            profile["id"],
+            rules.model_dump(),
+            "delta",
+        ],
+        sort_keys=True,
+    )
+    etag, last_modified = _fingerprint(client, INDICATORS_INDEX, os_query, request_key)
+    return PreparedExport(
+        index=INDICATORS_INDEX,
+        format=fmt,
+        query=os_query,
+        export_timestamp=export_timestamp,
+        etag=etag,
+        last_modified=last_modified,
+        client=client,
+        membership={"rules": rules, "ctx": ctx},
+    )
+
+
+def membership_record(source: dict, rules, ctx: dict) -> dict:
+    """An indicator in a profile delta: upsert with its record, or remove."""
+    from app.repositories import detection_profiles
+
+    reason = detection_profiles.failing_rule(rules, source, ctx)
+    if reason is None:
+        return {**source, "action": "upsert"}
+    return {
+        "uuid": source.get("uuid"),
+        "type": source.get("type"),
+        "value": source.get("value"),
+        "action": "remove",
+        "reason": reason,
+    }
 
 
 def _attributes_of(client, pages: Iterator[list[dict]]) -> Iterator[list[dict]]:
@@ -676,6 +764,9 @@ def _stream(
     if export.expand:
         yield from _stream_expanded(export, pit_id, slot)
         return
+    if export.membership is not None:
+        yield from _stream_membership(export, pit_id, slot)
+        return
     indicators = export.index == INDICATORS_INDEX
     source: Any = ["value", "type"] if fmt in ("text", "cdb") else True
     if indicators and source is True:
@@ -729,6 +820,36 @@ def _stream(
             yield "".join(csv_line(row(hit["_source"])) for hit in hits)
 
     if fmt == "json":
+        yield "]"
+
+
+def _stream_membership(
+    export: PreparedExport, pit_id: Optional[str], slot: Optional[ExportSlot]
+) -> Iterator[str]:
+    rules, ctx = export.membership["rules"], export.membership["ctx"]
+    pages = iter_pit_pages(
+        export.client,
+        INDICATORS_INDEX,
+        export.query,
+        source={"excludes": ["checksum"]},
+        pit_id=pit_id,
+    )
+    if export.format == "json":
+        yield "["
+    first = True
+    for hits in pages:
+        if slot is not None:
+            slot.renew()
+        records = [membership_record(h["_source"], rules, ctx) for h in hits]
+        if export.format == "ndjson":
+            yield "".join(json.dumps(r, default=str) + "\n" for r in records)
+        else:
+            chunk = []
+            for record in records:
+                chunk.append(("" if first else ",") + json.dumps(record, default=str))
+                first = False
+            yield "".join(chunk)
+    if export.format == "json":
         yield "]"
 
 
