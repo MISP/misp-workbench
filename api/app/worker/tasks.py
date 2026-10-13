@@ -76,6 +76,12 @@ celery_app.conf.update(
             "task": "app.worker.tasks.sync_sink_memberships",
             "schedule": 300.0,
         },
+        # Organisations' warninglists: drop expired entries, sync the lists
+        # whose source URL is due (daily).
+        "local-warninglists-sweep": {
+            "task": "app.worker.tasks.sweep_local_warninglists",
+            "schedule": 300.0,
+        },
         # Look ahead at gated detection profiles: hold (and notify about)
         # changes their next run would hold, before it comes.
         "profile-gates-check": {
@@ -1449,6 +1455,15 @@ def sync_sink_memberships():
     for sink_id in sink_ids:
         sync_sink_membership.apply_async((sink_id,), queue="sinks")
     return len(sink_ids)
+
+
+@celery_app.task(ignore_result=True)
+def sweep_local_warninglists():
+    """Expire organisations' warninglist entries and sync due sources."""
+    from app.repositories import local_warninglists
+
+    with Session(engine) as db:
+        return local_warninglists.sweep(db)
 
 
 @celery_app.task(ignore_result=True)

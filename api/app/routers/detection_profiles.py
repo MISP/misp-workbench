@@ -65,6 +65,23 @@ def _weakens_review(before, patch: dict) -> Optional[str]:
     return None
 
 
+def _check_lists(db: Session, user, patch: dict, before=None) -> None:
+    """A profile attaches organisations' lists its editor can see (ones
+    attached already, by someone else, can stay)."""
+    from app.repositories import local_warninglists
+
+    attached = set(
+        ((before.rules or {}) if before is not None else {}).get("exclude_lists") or []
+    )
+    wanted = set((patch.get("rules") or {}).get("exclude_lists") or []) - attached
+    unknown = wanted - local_warninglists.visible_ids(db, user)
+    if unknown:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            f"No organisation warninglist {', '.join(map(str, sorted(unknown)))}",
+        )
+
+
 def _check_review(before, patch: dict, can_review: bool) -> None:
     what = _weakens_review(before, patch)
     if what and not can_review:
@@ -192,6 +209,7 @@ def create_profile(
     can_review: bool = Depends(_can_review),
 ):
     _check_review(None, profile.model_dump(exclude_unset=True), can_review)
+    _check_lists(db, user, profile.model_dump(exclude_unset=True))
     try:
         created = profiles_repository.create_profile(db, profile)
     except IntegrityError:
@@ -219,6 +237,7 @@ def update_profile(
 ):
     db_profile = _get_or_404(db, profile_id)
     _check_review(db_profile, profile.model_dump(exclude_unset=True), can_review)
+    _check_lists(db, user, profile.model_dump(exclude_unset=True), db_profile)
     try:
         updated = profiles_repository.update_profile(db, db_profile, profile)
     except IntegrityError:

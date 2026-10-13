@@ -329,6 +329,8 @@ def to_query(rules, ctx: dict, live_only: bool = True) -> dict:
         must_not.append({"exists": {"field": "warninglist_hits"}})
     if rules.exclude_validation_issues:
         must_not.append({"exists": {"field": "validation_issues"}})
+    if rules.exclude_lists:
+        must_not.append({"terms": {"local_list_hits": rules.exclude_lists}})
     if rules.require_approval:
         filters.append(approved_query(ctx))
     elif rules.exclude_rejected:
@@ -448,6 +450,8 @@ def to_lucene(rules, ctx: dict) -> dict:
         parts.append("NOT _exists_:warninglist_hits")
     if rules.exclude_validation_issues:
         parts.append("NOT _exists_:validation_issues")
+    if rules.exclude_lists:
+        parts.append(f"NOT {_any_of('local_list_hits', rules.exclude_lists)}")
     if rules.require_approval:
         either = ["review.status:approved"]
         auto = [to_lucene(r, ctx) for r in ctx.get("auto_approve", [])]
@@ -485,6 +489,7 @@ REASONS = (
     "trust",
     "rejected",
     "pending",
+    "listed",
 )
 
 
@@ -548,6 +553,10 @@ def failing_rule(rules, indicator: Optional[dict], ctx: dict) -> Optional[str]:
         return "warninglisted"
     if rules.exclude_validation_issues and indicator.get("validation_issues"):
         return "validation"
+    if rules.exclude_lists and set(indicator.get("local_list_hits") or []) & set(
+        rules.exclude_lists
+    ):
+        return "listed"
 
     score = indicator.get("score")
     if rules.min_score is not None and (score is None or score < rules.min_score):
@@ -637,6 +646,7 @@ def attribute_indicator(
         "tags": tags,
         "tlp": TLP_ALIASES.get(tlp, tlp),
         "warninglist_hits": attribute.get("warninglist_hits") or [],
+        "local_list_hits": attribute.get("local_list_hits") or [],
         "validation_issues": attribute.get("validation_issues") or [],
         "sources": [source],
         "source_keys": [indicators_repository.source_key(source)],
@@ -697,6 +707,7 @@ def exclusions_only(rules) -> profile_schemas.ProfileRules:
         to_ids=False,
         exclude_warninglisted=rules.exclude_warninglisted,
         exclude_validation_issues=rules.exclude_validation_issues,
+        exclude_lists=rules.exclude_lists,
         exclude_rejected=rules.exclude_rejected or rules.require_approval,
     )
 

@@ -1,9 +1,15 @@
 <script setup>
 import { ref, computed } from "vue";
 import { storeToRefs } from "pinia";
-import { useWarninglistsStore, useAuthStore, useToastsStore } from "@/stores";
+import {
+  useWarninglistsStore,
+  useLocalWarninglistsStore,
+  useAuthStore,
+  useToastsStore,
+} from "@/stores";
 import { authHelper } from "@/helpers";
 import Spinner from "@/components/misc/Spinner.vue";
+import OrganisationLists from "@/components/warninglists/OrganisationLists.vue";
 
 const warninglistsStore = useWarninglistsStore();
 const authStore = useAuthStore();
@@ -76,10 +82,17 @@ async function check() {
   if (!values.length) return;
   checking.value = true;
   try {
-    const response = await warninglistsStore.check(values);
+    // The MISP lists, and which entries of your organisation's lists match.
+    const [response, local] = await Promise.all([
+      warninglistsStore.check(values),
+      useLocalWarninglistsStore()
+        .explain(values)
+        .catch(() => ({})),
+    ]);
     checkResult.value = values.map((value) => ({
       value,
       hits: response.hits[value] || [],
+      local: local[value] || [],
     }));
   } catch (error) {
     toastsStore.push(`Check failed: ${error}`, "danger");
@@ -142,12 +155,28 @@ async function check() {
               <span v-if="r.hits.length" class="text-warning-emphasis">
                 — on {{ r.hits.join(", ") }}</span
               >
-              <span v-else class="text-muted"> — not on any enabled list</span>
+              <span
+                v-for="m in r.local"
+                :key="m.entry_id"
+                class="text-warning-emphasis"
+              >
+                — on {{ m.list_name }} (<code>{{
+                  m.kind === "suffix" ? `*.${m.entry}` : m.entry
+                }}</code
+                ><template v-if="m.comment">: {{ m.comment }}</template
+                >)</span
+              >
+              <span v-if="!r.hits.length && !r.local.length" class="text-muted">
+                — not on any enabled list</span
+              >
             </li>
           </ul>
         </div>
       </div>
 
+      <OrganisationLists />
+
+      <h5>MISP warninglists</h5>
       <input
         class="form-control mb-3"
         v-model="search"

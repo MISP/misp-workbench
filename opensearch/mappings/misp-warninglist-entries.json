@@ -12,6 +12,9 @@
             },
             "range": {
                 "type": "ip_range"
+            },
+            "expires_at": {
+                "type": "long"
             }
         }
     }

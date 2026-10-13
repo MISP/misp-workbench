@@ -163,3 +163,85 @@ export const WARNINGLISTED_ATTRIBUTES = [
     ],
   },
 ];
+
+// An organisation's own lists (see LocalWarninglist.vue).
+const created = "2026-10-01T09:00:00Z";
+export const LOCAL_LISTS = [
+  {
+    id: 41,
+    name: "Corporate ranges",
+    description: "Offices, data centres and VPN egress: never block.",
+    enabled: true,
+    entry_count: 6,
+    org_id: 1,
+    source_url: "https://cmdb.corp.example/exports/ranges.txt",
+    synced_at: "2026-10-13T06:00:00Z",
+    sync_error: null,
+    updated_at: created,
+  },
+  {
+    id: 42,
+    name: "Partners and SaaS",
+    description: "Domains of partners and critical SaaS providers.",
+    enabled: true,
+    entry_count: 3,
+    org_id: 1,
+    source_url: null,
+    synced_at: null,
+    sync_error: null,
+    updated_at: created,
+  },
+];
+
+const entry = (
+  id: number,
+  kind: string,
+  value: string,
+  comment: string | null,
+  origin = "sync",
+  expires_at: string | null = null,
+) => ({ id, kind, value, comment, expires_at, origin, created_at: created });
+
+export const LOCAL_ENTRIES = {
+  total: 6,
+  page: 1,
+  size: 50,
+  items: [
+    entry(1, "cidr", "198.51.100.0/24", "Luxembourg office"),
+    entry(2, "cidr", "203.0.113.0/25", "Data centre DC2"),
+    entry(3, "cidr", "192.0.2.128/26", "VPN egress"),
+    entry(4, "suffix", "corp.example", "Our domains", "manual"),
+    entry(
+      5,
+      "regex",
+      "/^vpn-\\d+\\.corp\\.example$/",
+      "VPN gateways",
+      "manual",
+    ),
+    entry(
+      6,
+      "value",
+      "203.0.113.200",
+      "Pentest box, Oct campaign",
+      "manual",
+      "2026-11-01T00:00:00Z",
+    ),
+  ],
+};
+
+export const LOCAL_EXPLAIN = {
+  matches: {
+    "10.0.0.5": [],
+    "vpn-12.corp.example": [
+      {
+        list_id: 41,
+        list_name: "Corporate ranges",
+        entry_id: 5,
+        kind: "regex",
+        entry: "/^vpn-\\d+\\.corp\\.example$/",
+        comment: "VPN gateways",
+        expires_at: null,
+      },
+    ],
+  },
+};

@@ -44,6 +44,9 @@ class ProfileRules(BaseModel):
     to_ids: bool = True
     exclude_warninglisted: bool = True
     exclude_validation_issues: bool = True
+    # Organisations' own warninglists (ids): leave out what they match. Unlike
+    # the MISP lists, they only count for the profiles attaching them.
+    exclude_lists: list[int] = []
     # The review queue: only indicators approved by an analyst or by an
     # auto-approve profile (require_approval), or everything but those an
     # analyst rejected (exclude_rejected). Requiring approval leaves rejected
@@ -77,6 +80,7 @@ RiskFlag = Literal[
     "popular_domain",
     "shared_infrastructure",
     "warninglisted",
+    "organisation_list",
     "new_source",
     "low_score",
 ]

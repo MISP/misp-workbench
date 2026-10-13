@@ -63,6 +63,7 @@ FORCED_REMOVALS = frozenset(
         "warninglisted",
         "validation",
         "rejected",
+        "listed",
     )
 )
 
@@ -181,6 +182,17 @@ def risk_flags(
     ):
         if lists:
             flags.append((flag, ", ".join(lists)))
+    # On an organisation's own list the profile doesn't attach: someone
+    # considers it benign in their environment. Which list isn't told here
+    # (only to its organisation).
+    local = indicator.get("local_list_hits") or []
+    if local:
+        flags.append(
+            (
+                "organisation_list",
+                f"on {len(local)} organisation list{'' if len(local) == 1 else 's'}",
+            )
+        )
     keys = indicator.get("source_keys") or []
     # Reported only by new sources: one an established source also reports
     # isn't new to anyone.

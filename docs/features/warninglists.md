@@ -35,6 +35,45 @@ Reading lists and checking values needs `warninglists:read`, which every
 built-in role has. Updating and enabling or disabling lists needs
 `warninglists:update`, which only admins have by default.
 
+## Your organisation's lists
+
+The MISP lists are global and generic. Every organisation also has values
+it must never block or alert on in *its* environment: its own ranges and
+domains, VPN egress, partners, critical SaaS. Under ***settings*** →
+***warninglists***, **Your organisation's lists** keeps those.
+
+<img src="../../screenshots/warninglists/misp-workbench-3_warninglists_organisation-list.png#only-light" alt="An organisation's own list" style="max-width: 100%; height: auto;">
+<img src="../../screenshots/warninglists/misp-workbench-3_warninglists_organisation-list-dark.png#only-dark" alt="An organisation's own list" style="max-width: 100%; height: auto;">
+
+- **Entries** are exact values, address ranges (`10.0.0.0/8`: an IP in it
+  matches, in an `ip|port` too), domains with their subdomains
+  (`*.corp.example`) or regexes (`/^vpn-\d+\./`), each with a comment and
+  an optional expiry. Expired entries stop matching and are dropped.
+- **Regexes are guarded**: at most 256 characters, no nested repetitions
+  (`(a+)+`), repeated alternations (`(a|ab)*`) or backreferences, which can
+  take forever to match. They are matched against the first 1024 characters
+  of a value.
+- **Import and export** as plain lists, one entry per line
+  (`entry  # comment`). Importing can replace the entries an earlier import
+  brought.
+- **Sync** from a URL serving such a list (your CMDB's ranges, say): daily,
+  replacing what the last sync brought.
+
+What a list matches is flagged on attributes and indicators apart from the
+MISP lists (`local_list_hits`), and doesn't leave anything out by itself: a
+[detection profile](detection-profiles.md#rules) leaves it out when it
+**attaches** the list. So one organisation's list never silences another's
+outputs. Additions on a list a profile doesn't attach are flagged in its
+[change preview](detection-profiles.md#change-preview-and-approval-gate).
+
+A list is your organisation's: only it (and admins) sees its entries. On an
+indicator, another organisation's list is shown as such, without its name.
+**Check values** tells you which entry of your lists a value matches, and
+why (its comment).
+
+Reading needs `warninglists:read`; creating lists and changing entries needs
+`local_warninglists:manage` (Org Admin and Publisher).
+
 ## How attributes are flagged
 
 Each attribute carries `warninglist_hits`: the names of the enabled lists its
