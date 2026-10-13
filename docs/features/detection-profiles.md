@@ -175,5 +175,5 @@ fall back to sending everything its own query matches.
 Every built-in role can read profiles. Changing them takes the create,
 update or delete scope, which only admins have by default.
 
-[Local allowlists](https://github.com/MISP/misp-workbench/issues/440) will
-become a profile rule once they exist.
+[Per-organisation warninglists](https://github.com/MISP/misp-workbench/issues/440)
+will become a profile rule once they exist.
