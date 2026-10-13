@@ -1,5 +1,6 @@
 <script setup>
 import DeleteServerModal from "@/components/servers/DeleteServerModal.vue";
+import SourceQualityCard from "@/components/indicators/SourceQualityCard.vue";
 
 import { router } from "@/router";
 
@@ -149,4 +150,5 @@ function handleServerDeleted() {
       </div>
     </div>
   </div>
+  <SourceQualityCard kind="server" :source-id="server.id" />
 </template>

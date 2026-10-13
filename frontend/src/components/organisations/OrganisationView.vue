@@ -1,6 +1,7 @@
 <script setup>
 import DeleteOrganisationModal from "@/components/organisations/DeleteOrganisationModal.vue";
 import UUID from "@/components/misc/UUID.vue";
+import SourceQualityCard from "@/components/indicators/SourceQualityCard.vue";
 import { router } from "@/router";
 
 defineProps(["organisation"]);
@@ -111,4 +112,5 @@ function handleOrganisationDeleted() {
       </div>
     </div>
   </div>
+  <SourceQualityCard kind="organisation" :source-id="organisation.id" />
 </template>

@@ -110,6 +110,17 @@ DEFAULT_SETTINGS = {
         # A stored score is rewritten when it moves this much, or crosses
         # decayed_below: hourly decay doesn't rewrite every indicator.
         "refresh_step": 5,
+        # Adaptive trust: a feed's, server's or organisation's share of
+        # indicators reported benign in the window lowers its trust modifier
+        # by points_per_percent per percent, up to max_penalty, once it has
+        # min_indicators. Off by default: anyone who can report sightings can
+        # report false positives against a source. The window is also the one
+        # source quality statistics use.
+        "adaptive_trust": False,
+        "adaptive_window_days": 30,
+        "adaptive_min_indicators": 20,
+        "adaptive_points_per_percent": 1,
+        "adaptive_max_penalty": 30,
     },
     "retention": {
         "enabled": False,

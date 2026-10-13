@@ -30,6 +30,7 @@ export { default as IndexGalaxies } from "./galaxies/IndexGalaxies.vue";
 export { default as ViewTaxonomy } from "./taxonomies/ViewTaxonomy.vue";
 export { default as IndexWarninglists } from "./warninglists/IndexWarninglists.vue";
 export { default as IndexIndicators } from "./indicators/IndexIndicators.vue";
+export { default as SourceQuality } from "./indicators/SourceQuality.vue";
 export { default as ViewGalaxy } from "./galaxies/ViewGalaxy.vue";
 export { default as ViewObject } from "./objects/ViewObject.vue";
 export { default as EditObject } from "./objects/EditObject.vue";

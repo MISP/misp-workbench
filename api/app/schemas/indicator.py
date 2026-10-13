@@ -25,6 +25,7 @@ class IndicatorSightings(BaseModel):
     last_at: Optional[int] = None
     last_positive_at: Optional[int] = None
     last_expiration_at: Optional[int] = None
+    last_false_positive_at: Optional[int] = None
 
 
 class ScoreComponent(BaseModel):
@@ -53,6 +54,12 @@ class Indicator(BaseModel):
     last_seen: Optional[int] = None
     sources: list[IndicatorSource] = []
     organisations: list[IndicatorOrganisation] = []
+    # One key per source (feed:3, server:2, local), for queries such as
+    # source_keys:"feed:3", and the organisations' ids.
+    source_keys: list[str] = []
+    source_count: int = 0
+    organisation_ids: list[int] = []
+    organisation_count: int = 0
     # Merged attribute and event tags, keeping only the most restrictive TLP.
     tags: list[str] = []
     tlp: Optional[str] = None
@@ -85,6 +92,45 @@ class IndicatorScore(BaseModel):
 class ScoresResponse(BaseModel):
     # In request order; null where the type + value has no live indicator.
     scores: list[Optional[IndicatorScore]]
+
+
+class SourceOverlap(BaseModel):
+    key: str
+    name: str
+    indicators: int
+
+
+class SourceQuality(BaseModel):
+    """How good one source's (or organisation's) indicators are."""
+
+    # feed:3, server:2, local, unknown; or the organisation's id.
+    key: str
+    kind: str
+    id: Optional[int] = None
+    name: str
+    indicators: int
+    # Reported by no other source; overlap_rate is the share that is.
+    exclusive: int
+    overlap_rate: float
+    top_overlaps: list[SourceOverlap] = []
+    # Shares of its indicators sighted / reported benign within the window.
+    hit_rate: float
+    false_positive_rate: float
+    average_score: Optional[float] = None
+    decayed_rate: float
+    score_modifier: int = 0
+    score_cap: Optional[int] = None
+    # What adaptive trust takes off (shown even when it is off) and the
+    # modifier scoring uses.
+    adaptive_penalty: int = 0
+    effective_modifier: int = 0
+
+
+class SourceQualityReport(BaseModel):
+    window_days: float
+    adaptive_trust: bool
+    sources: list[SourceQuality] = []
+    organisations: list[SourceQuality] = []
 
 
 class IndicatorPage(BaseModel):

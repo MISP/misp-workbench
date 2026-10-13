@@ -1,5 +1,6 @@
 <script setup>
 import FeedActions from "@/components/feeds/FeedActions.vue";
+import SourceQualityCard from "@/components/indicators/SourceQualityCard.vue";
 import ViewFeedMISP from "@/components/feeds/misp/ViewFeedMISP.vue";
 import { DISTRIBUTION_LEVEL } from "@/helpers/constants";
 import { computed } from "vue";
@@ -170,4 +171,5 @@ const sourceFormatLabel = computed(() => {
       </div>
     </div>
   </div>
+  <SourceQualityCard kind="feed" :source-id="feed.id" />
 </template>

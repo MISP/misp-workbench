@@ -4,6 +4,7 @@ import { EVENT_UUIDS } from "./fixtures";
 import {
   INDICATORS_PAGE,
   INDICATORS_STATUS,
+  SOURCE_QUALITY,
   scoreFor,
 } from "./indicators-fixtures";
 
@@ -120,6 +121,22 @@ test.describe("Indicators screenshots", () => {
       form,
       FEATURE,
       "misp-workbench-4_indicators_scoring-settings",
+    );
+  });
+
+  test("5 — source quality", async ({ page }) => {
+    await page.route(new RegExp(`:${API_PORT}/indicators/sources$`), (r) =>
+      r.fulfill(json(SOURCE_QUALITY)),
+    );
+    await page.setViewportSize({ width: 1600, height: 1100 });
+    await page.goto("/indicators/sources");
+    await expect(page.getByText("Phishing URLs").first()).toBeVisible();
+    await pinForCapture(page);
+
+    await capture(
+      page.locator(".card").first(),
+      FEATURE,
+      "misp-workbench-5_indicators_source-quality",
     );
   });
 });

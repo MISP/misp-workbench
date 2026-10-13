@@ -334,6 +334,8 @@ def _sightings(client, values: set) -> dict[str, dict]:
                 # An expiration only counts when no positive sighting followed.
                 "last_positive_at": last("positive"),
                 "last_expiration_at": last("expiration"),
+                # For a source's recent false-positive rate (source quality).
+                "last_false_positive_at": last("false-positive"),
             }
     return counters
 
@@ -343,6 +345,13 @@ def _millis_to_seconds(value) -> Optional[int]:
 
 
 # ── Building ──────────────────────────────────────────────────────────────
+
+
+def source_key(source: dict) -> str:
+    """``feed:3``, ``server:2``, ``local`` or ``unknown``: one source, exactly."""
+    if source.get("type") in ("feed", "server") and source.get("id") is not None:
+        return f"{source['type']}:{source['id']}"
+    return str(source.get("type") or "unknown")
 
 
 def _counted(counts: dict, key, entry: dict) -> None:
@@ -426,6 +435,16 @@ def build_indicator(
         "organisations": sorted(
             organisations.values(), key=lambda o: (-o["event_count"], o["name"])
         ),
+        # Flat keys, so queries and per-source statistics can match one
+        # source exactly (sources is an array of objects, flattened when
+        # indexed: sources.type:feed AND sources.id:2 could pair the type of
+        # one with the id of another).
+        "source_keys": sorted({source_key(s) for s in sources.values()}),
+        "source_count": len(sources),
+        "organisation_ids": sorted(
+            {o["id"] for o in organisations.values() if o.get("id") is not None}
+        ),
+        "organisation_count": len(organisations),
         "tags": tags,
         "tlp": tlp,
         "galaxies": galaxies,
@@ -437,6 +456,7 @@ def build_indicator(
             "last_at": sightings.get("last_at"),
             "last_positive_at": sightings.get("last_positive_at"),
             "last_expiration_at": sightings.get("last_expiration_at"),
+            "last_false_positive_at": sightings.get("last_false_positive_at"),
         },
         "warninglist_hits": sorted(
             {hit for a in live for hit in a.get("warninglist_hits") or []}

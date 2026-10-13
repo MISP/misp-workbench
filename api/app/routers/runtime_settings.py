@@ -27,7 +27,9 @@ def _after_change(namespace: str) -> None:
     # settings rather than at the next hourly rebuild.
     if namespace == "scoring":
         from app.repositories import indicators as indicators_repository
+        from app.repositories import source_quality
 
+        source_quality.forget_adaptive_penalties()
         indicators_repository.request_rebuild()
 
 
