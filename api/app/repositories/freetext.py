@@ -40,8 +40,14 @@ def _is_ip(value: str) -> bool:
 
 
 def detect_type(value: str) -> Optional[str]:
-    """Detect the most likely MISP attribute type for a freetext value."""
-    value = value.strip()
+    """Detect the most likely MISP attribute type for a freetext value.
+
+    Defanged values (hxxps://evil[.]com, 1.2.3[.]4) are recognised as what
+    they refang to, which is what normalisation stores them as.
+    """
+    from app.services.normalisation import refang
+
+    value = refang(value.strip())
     if _is_ip(value):
         return "ip-src"
     for type_name, pattern in _PATTERNS:

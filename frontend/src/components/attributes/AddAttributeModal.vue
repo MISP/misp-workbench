@@ -2,6 +2,7 @@
 import { watch, ref } from "vue";
 import { useAttributesStore } from "@/stores";
 import { errorHandler } from "@/helpers";
+import { detectAttribute } from "@/helpers/indicators";
 import { storeToRefs } from "pinia";
 import { AttributeSchema } from "@/schemas/attribute";
 import { DISTRIBUTION_LEVEL } from "@/helpers/constants";
@@ -87,56 +88,6 @@ function handleAttributeTypeUpdated(type) {
 function handleDistributionLevelUpdated(distributionLevelId) {
   attribute.value.distribution = parseInt(distributionLevelId);
 }
-
-function detectAttribute(value) {
-  if (!value) return null;
-
-  const v = value.trim();
-
-  // IPv4
-  if (/^(?:\d{1,3}\.){3}\d{1,3}$/.test(v)) {
-    return {
-      type: "ip-dst",
-      category: "Network activity",
-      label: "IP address",
-    };
-  }
-
-  // SHA-256
-  if (/^[a-fA-F0-9]{64}$/.test(v)) {
-    return {
-      type: "sha256",
-      category: "Payload delivery",
-      label: "SHA-256 hash",
-    };
-  }
-
-  // MD5
-  if (/^[a-fA-F0-9]{32}$/.test(v)) {
-    return { type: "md5", category: "Payload delivery", label: "MD5 hash" };
-  }
-
-  // URL
-  if (/^https?:\/\//i.test(v)) {
-    return { type: "url", category: "Payload delivery", label: "URL" };
-  }
-
-  // Domain
-  if (/^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(v)) {
-    return { type: "domain", category: "Network activity", label: "Domain" };
-  }
-
-  // CVE / GCVE
-  if (/^(?:CVE-\d{4}-\d{4,}|GCVE-0-\d{4}-\d{4,})$/i.test(v)) {
-    return {
-      type: "vulnerability",
-      category: "External analysis",
-      label: "Vulnerability",
-    };
-  }
-
-  return null;
-}
 </script>
 
 <template>
@@ -184,6 +135,13 @@ function detectAttribute(value) {
                 </Field>
                 <div class="invalid-feedback">
                   {{ errors["attribute.value"] }}
+                </div>
+                <div v-if="detected" class="form-text">
+                  Detected: {{ detected.label
+                  }}<template v-if="detected.defanged"
+                    >, defanged. It will be stored as
+                    <code>{{ detected.value }}</code></template
+                  >
                 </div>
               </div>
             </div>

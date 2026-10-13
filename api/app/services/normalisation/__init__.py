@@ -62,6 +62,36 @@ ISSUES = {
 }
 
 
+# The same replacements as normalise.painless's refang() (and the form's,
+# frontend/src/helpers/indicators.js).
+_REFANGS = (
+    ("[://]", "://"),
+    ("[:]", ":"),
+    ("[.]", "."),
+    ("(.)", "."),
+    ("{.}", "."),
+    ("[dot]", "."),
+    ("[DOT]", "."),
+    ("(dot)", "."),
+    ("(DOT)", "."),
+    ("[@]", "@"),
+    ("[at]", "@"),
+    ("[AT]", "@"),
+)
+
+
+def refang(value: str) -> str:
+    """The value with defanging undone: hxxp://, [.], [@], ..."""
+    lower = value.lower()
+    if lower.startswith("hxxp"):
+        value = "http" + value[4:]
+    elif lower.startswith("fxp"):
+        value = "ftp" + value[3:]
+    for defanged, plain in _REFANGS:
+        value = value.replace(defanged, plain)
+    return value
+
+
 class InvalidNormalisationConfig(ValueError):
     pass
 

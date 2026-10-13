@@ -1,3 +1,5 @@
+import pytest
+
 from app.repositories.freetext import detect_type
 
 
@@ -127,3 +129,23 @@ class TestDetectType:
 
     def test_plain_text_returns_other(self):
         assert detect_type("some random free text without structure") == "other"
+
+
+class TestDefangedValues:
+    """Defanged values are detected as what they refang to."""
+
+    @pytest.mark.parametrize(
+        "value,expected",
+        [
+            ("1.2.3[.]4", "ip-src"),
+            ("10.0.0[.]0/8", "ip-src"),
+            ("hxxps://evil[.]example/login", "url"),
+            ("hXXp://evil(.)example", "url"),
+            ("evil[.]example", "domain"),
+            ("sub{.}evil[dot]example", "domain"),
+            ("bob[@]example[.]com", "email-src"),
+            ("bob[at]example[.]com", "email-src"),
+        ],
+    )
+    def test_detected(self, value, expected):
+        assert detect_type(value) == expected

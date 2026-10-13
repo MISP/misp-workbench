@@ -41,6 +41,13 @@ All rules are on by default, except stripping tracking parameters.
 
 Other types (`text`, `comment`, `filename`, …) are left exactly as written.
 
+Type detection refangs too. The *Add Attribute* form, freetext feeds,
+batch import and the MCP `detect_indicator_type` tool recognise
+`hxxps://evil[.]com` as a URL and `1.2.3[.]4` as an IP. The form also says
+when a value is defanged and what it will be stored as. It recognises IPv4
+and IPv6 addresses and ranges, `ip:port`, URLs, domains, email addresses,
+MD5 to SHA-512 hashes, CVEs and JA4+ fingerprints.
+
 ## Validation issues
 
 | Issue | Meaning |
