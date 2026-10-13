@@ -25,6 +25,8 @@ NOW = int(time.time())
 EVENT = "9a7e0000-0000-4000-8000-000000000001"
 FIRST = ["one.example", "two.example", "three.example"]
 LATER = ["four.example", "five.example", "six.example"]
+# Joins after a preview (test_api).
+AFTER = ["seven.example"]
 
 
 def _write(values, offset=0):
@@ -183,10 +185,10 @@ class TestProfileGate(ApiTester):
             client = get_opensearch_client()
             client.delete_by_query(
                 index="misp-attributes",
-                body={"query": {"terms": {"value.keyword": LATER}}},
+                body={"query": {"terms": {"value.keyword": LATER + AFTER}}},
                 refresh=True,
             )
-            indicators.refresh_values(LATER)
+            indicators.refresh_values(LATER + AFTER)
             client.indices.refresh(index=indicators.INDEX)
 
         clean()
@@ -338,7 +340,7 @@ class TestProfileGate(ApiTester):
 
         seen = client.get(url, headers=headers).json()["fingerprint"]
         # Something joined after the reviewer looked: not what they approve.
-        _write(["seven.example"], offset=20)
+        _write(AFTER, offset=20)
         moved = client.post(
             f"{url}/approve", json={"fingerprint": seen}, headers=headers
         )
