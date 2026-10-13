@@ -37,3 +37,4 @@ export * from "./notebooks.store";
 export * from "./apiKeys.store";
 export * from "./auditLogs.store";
 export * from "./indicators.store";
+export * from "./detectionProfiles.store";

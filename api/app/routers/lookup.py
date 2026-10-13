@@ -13,6 +13,17 @@ from app.schemas import user as user_schemas
 router = APIRouter()
 
 
+def _load_profile(ref):
+    from app.repositories import detection_profiles
+
+    if ref in (None, ""):
+        return None
+    try:
+        return detection_profiles.load(ref)
+    except detection_profiles.ProfileNotFound as error:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error))
+
+
 @router.post("/lookup", response_model=lookup_schemas.LookupResponse)
 async def bulk_lookup(
     request: lookup_schemas.LookupRequest,
@@ -30,6 +41,7 @@ async def bulk_lookup(
             request.include_warninglisted,
             request.include_indicators,
             request.min_score,
+            await run_in_threadpool(_load_profile, request.profile),
         )
     except lookup_repository.TooManyValues as error:
         raise HTTPException(
@@ -45,6 +57,9 @@ async def single_lookup(
     include_warninglisted: bool = Query(False),
     include_indicators: bool = Query(False),
     min_score: Optional[int] = Query(None, ge=0, le=100),
+    profile: Optional[str] = Query(
+        None, description="Only values a detection profile (id or name) selects"
+    ),
     user: user_schemas.User = Security(
         get_current_active_user, scopes=["attributes:read"]
     ),
@@ -58,6 +73,7 @@ async def single_lookup(
         include_warninglisted,
         include_indicators,
         min_score,
+        await run_in_threadpool(_load_profile, profile),
     )
     if not result["matches"]:
         return lookup_schemas.SingleLookupResponse(value=value, match=False)

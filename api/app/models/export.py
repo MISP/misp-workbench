@@ -54,6 +54,14 @@ class Export(Base):
     # previous run. ``cursor`` is the unix time the latest run read the index
     # at; the full artifact is current as of it.
     incremental = Column(Boolean, nullable=False, default=False, server_default="false")
+    # A detection profile selecting what the export holds, instead of (and
+    # combined with) ``query``.
+    profile_id = Column(
+        Integer,
+        ForeignKey("detection_profiles.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
     cursor = Column(BigInteger, nullable=True)
     created_at = Column(DateTime(timezone=True), nullable=False)
     started_at = Column(DateTime(timezone=True), nullable=True)

@@ -38,6 +38,7 @@ followed by the filters:
 | **Never with tags** | `tlp:red` | Never send attributes carrying any of these tags |
 | **Leave out values on an enabled warninglist** | on | Never send attributes on an enabled [warninglist](warninglists.md) |
 | **Send consolidated indicators** | off | Send each value once, as its [consolidated indicator](indicators.md) (see below) |
+| **Detection profile** | none | A [detection profile](detection-profiles.md) in place of every filter here |
 | **Minimum score** | 0 | Leave out values whose indicator's [confidence score](indicators.md#confidence-scores) is below this. Values too new to be scored are sent |
 
 Tag lists match the attribute's own tags **and** its event's tags, and accept

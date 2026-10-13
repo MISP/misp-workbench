@@ -44,7 +44,20 @@ def get_sink(db: Session, sink_id: int) -> Optional[sink_models.Sink]:
     return db.query(sink_models.Sink).filter(sink_models.Sink.id == sink_id).first()
 
 
+def _check_profile(db: Session, filters) -> None:
+    from fastapi import HTTPException, status
+
+    from app.repositories import detection_profiles
+
+    if filters is not None and filters.profile_id is not None:
+        if detection_profiles.get_profile(db, filters.profile_id) is None:
+            raise HTTPException(
+                status.HTTP_404_NOT_FOUND, "Detection profile not found"
+            )
+
+
 def create_sink(db: Session, sink: sink_schemas.SinkCreate) -> sink_models.Sink:
+    _check_profile(db, sink.filters)
     now = _now()
     db_sink = sink_models.Sink(
         name=sink.name,
@@ -115,6 +128,7 @@ def update_sink(
             _merge_secrets(db_sink.type, db_sink.config or {}, payload.config),
         )
     if payload.filters is not None:
+        _check_profile(db, payload.filters)
         db_sink.filters = payload.filters.model_dump()
     db_sink.updated_at = _now()
     db.commit()
@@ -197,12 +211,30 @@ def _above_min_score(records: list[dict], min_score: int) -> list[dict]:
     ]
 
 
+def _in_profile(rules, attributes: list[dict], event: Optional[dict]) -> list[dict]:
+    """The attributes whose indicator (or, new, the attribute) a profile selects."""
+    from app.repositories import detection_profiles
+
+    if not attributes:
+        return []
+    found = detection_profiles.indicators_for(attributes)
+    ctx = detection_profiles.context()
+    return [
+        a
+        for a in attributes
+        if detection_profiles.attribute_matches(rules, a, found, ctx, event)
+    ]
+
+
 def select_records(
     attributes: list[dict], event: dict, filters: dict, seen: Optional[set] = None
 ) -> list[dict]:
     """The records a sink's tag filters keep (type/to_ids are done in the query)."""
     include = filters.get("tags") or []
     exclude = filters.get("exclude_tags") or []
+    profile = filters.get("profile")
+    if profile is not None:
+        attributes = _in_profile(profile, attributes, event)
     built = [formatters.build_record(attribute, event) for attribute in attributes]
     if filters.get("indicator_mode"):
         built = _consolidate(built, seen if seen is not None else set())
@@ -257,6 +289,8 @@ def effective_filters(sink: sink_models.Sink, apply_filters: bool = True) -> dic
     apply: code can choose what to send, not override what must never leave.
     """
     filters = dict(sink.filters or {})
+    if filters.get("profile_id") is not None:
+        return _profile_filters(filters["profile_id"], apply_filters)
     if apply_filters:
         return filters
     return {
@@ -267,6 +301,37 @@ def effective_filters(sink: sink_models.Sink, apply_filters: bool = True) -> dic
         "exclude_warninglisted": filters.get("exclude_warninglisted", True),
         # The shape of what is sent, not a selection.
         "indicator_mode": filters.get("indicator_mode", False),
+    }
+
+
+def _profile_filters(profile_id: int, apply_filters: bool) -> dict:
+    """A profile in place of the sink's filters.
+
+    The query keeps its cheap prefilters (types, to_ids, warninglists); the
+    profile itself is checked per attribute. Sends from code
+    (``apply_filters=False``) keep the profile's exclusions only.
+    """
+    from app.repositories import detection_profiles
+
+    try:
+        profile = detection_profiles.load(profile_id)
+    except detection_profiles.ProfileNotFound:
+        # Deleting a profile in use is refused; this is a race, not a default.
+        raise SinkDeliveryError("the sink's detection profile no longer exists")
+    rules = (
+        profile["rules"]
+        if apply_filters
+        else detection_profiles.exclusions_only(profile["rules"])
+    )
+    return {
+        "profile": rules,
+        "to_ids_only": rules.to_ids,
+        "types": rules.types,
+        "tags": [],
+        "exclude_tags": [],
+        "exclude_warninglisted": rules.exclude_warninglisted,
+        "indicator_mode": profile["granularity"] == "indicators",
+        "min_score": 0,
     }
 
 
@@ -375,6 +440,8 @@ def deliver_records(
     include = filters.get("tags") or []
     exclude = filters.get("exclude_tags") or []
     types = set(filters.get("types") or [])
+    if filters.get("profile") is not None:
+        records = _records_in_profile(filters["profile"], records)
     selected = []
     for record in records:
         tags = formatters.all_tags(record)
@@ -386,6 +453,23 @@ def deliver_records(
             continue
         selected.append(record)
     return _send_in_batches(sink, iter([selected]))
+
+
+def _records_in_profile(rules, records: list[dict]) -> list[dict]:
+    """Caller-built records a profile selects, judged as attributes."""
+    from app.repositories import detection_profiles
+
+    if not records:
+        return []
+    found = detection_profiles.indicators_for(records)
+    ctx = detection_profiles.context()
+    return [
+        r
+        for r in records
+        if detection_profiles.attribute_matches(
+            rules, r, found, ctx, {"tags": (r.get("event") or {}).get("tags") or []}
+        )
+    ]
 
 
 def record_success(db: Session, sink_id: int, delivered: int) -> None:

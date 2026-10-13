@@ -15,6 +15,7 @@ can always fetch the same URL for the latest results.
 | Term | Description |
 |---|---|
 | **Query** | Lucene query run against the selected index |
+| **Detection profile** | Optional: a [detection profile](detection-profiles.md) decides what the export holds (indicators or attributes), and the query only narrows it. NDJSON, plain text and Wazuh CDB only |
 | **Index target** | Which index to export: `attributes`, `events` or `indicators` ([consolidated](indicators.md): one record per type and value; `ndjson`, `text` and `cdb` only) |
 | **Format** | `json`, `misp` (MISP JSON), `csv`, `stix` (STIX 2.1), `ndjson`, `text` or `cdb` (Wazuh CDB list) |
 | **Incremental** | `ndjson` attribute and indicator exports only: every run also stores a delta of what changed since the previous run (see [Incremental feeds](#incremental-feeds)) |

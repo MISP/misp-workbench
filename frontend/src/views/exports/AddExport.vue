@@ -1,7 +1,11 @@
 <script setup>
 import { ref, reactive, computed } from "vue";
 import { router } from "@/router";
-import { useExportsStore, useToastsStore } from "@/stores";
+import {
+  useExportsStore,
+  useToastsStore,
+  useDetectionProfilesStore,
+} from "@/stores";
 import LuceneQuerySyntaxHint from "@/components/misc/LuceneQuerySyntaxHint.vue";
 import ExportScheduleFields from "@/components/exports/ExportScheduleFields.vue";
 
@@ -17,7 +21,26 @@ const exportJob = reactive({
   format: "ndjson",
   distribution: null,
   incremental: false,
+  profile_id: null,
 });
+
+// A detection profile decides what the export holds (and whether as
+// indicators or attributes); the query then only narrows it.
+const profilesStore = useDetectionProfilesStore();
+profilesStore.getAll();
+const profile = computed(() =>
+  profilesStore.profiles.find((p) => p.id === exportJob.profile_id),
+);
+function onProfileChange() {
+  if (profile.value) {
+    exportJob.index_target = profile.value.granularity;
+    if (!exportJob.query) exportJob.query = "*";
+    if (!STREAMED_FORMATS.includes(exportJob.format)) {
+      exportJob.format = "ndjson";
+    }
+  }
+  onFormatChange();
+}
 
 const scheduleModel = ref({ schedule: null, schedule_enabled: false });
 
@@ -43,14 +66,22 @@ const canSubmit = computed(
 const isIndicators = computed(() => exportJob.index_target === "indicators");
 // Indicators are only written by the streamed exporter.
 const STREAMED_FORMATS = ["ndjson", "text", "cdb"];
-const stixDisabled = computed(() => exportJob.index_target !== "attributes");
-const recordFormatsDisabled = computed(() => isIndicators.value);
+const stixDisabled = computed(
+  () => exportJob.index_target !== "attributes" || !!profile.value,
+);
+const recordFormatsDisabled = computed(
+  () => isIndicators.value || !!profile.value,
+);
 // One value per line, so events have nothing to put there.
 const lineFormatsDisabled = computed(() => exportJob.index_target === "events");
 // Deltas carry deletions (ndjson tombstones) and key off write times, which
 // attributes and indicators have.
+// A profile feed's removals are an indicator's: it needs indicators.
 const canBeIncremental = computed(
-  () => exportJob.format === "ndjson" && exportJob.index_target !== "events",
+  () =>
+    exportJob.format === "ndjson" &&
+    exportJob.index_target !== "events" &&
+    (!profile.value || profile.value.granularity === "indicators"),
 );
 
 function onIndexTargetChange() {
@@ -119,11 +150,31 @@ function cancel() {
       </div>
 
       <div class="mb-3">
+        <label class="form-label" for="export-profile">Detection profile</label>
+        <select
+          id="export-profile"
+          class="form-select"
+          v-model="exportJob.profile_id"
+          @change="onProfileChange"
+        >
+          <option :value="null">None: choose what to export below</option>
+          <option v-for="p in profilesStore.profiles" :key="p.id" :value="p.id">
+            {{ p.name }} ({{ p.granularity }})
+          </option>
+        </select>
+        <div class="form-text">
+          A profile decides what the export holds. The query below then only
+          narrows it (<code>*</code> for all of it).
+        </div>
+      </div>
+
+      <div class="mb-3">
         <label class="form-label" for="export-target">Search index</label>
         <select
           id="export-target"
           class="form-select"
           v-model="exportJob.index_target"
+          :disabled="!!profile"
           @change="onIndexTargetChange"
         >
           <option value="indicators">

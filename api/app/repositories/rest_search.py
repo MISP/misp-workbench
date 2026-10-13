@@ -850,6 +850,8 @@ class PreparedSearch:
     limit: Optional[int] = None
     offset: int = 0
     client: Any = field(default=None, repr=False)
+    # A detection profile (detection_profiles.load) the results must pass.
+    profile: Optional[dict] = None
 
 
 _MEDIA_TYPES = {"json": "application/json", "csv": "text/csv", "text": "text/plain"}
@@ -871,6 +873,7 @@ def prepare_attribute_search(params: dict) -> PreparedSearch:
     _parse_flag(params, "includedecayscore")
     _parse_flag(params, "excludedecayed")
     _parse_int(params.get("score"), "score")
+    profile = _load_profile(params.get("profile"))
     limit, offset = _parse_pagination(params)
     client = get_opensearch_client()
     return PreparedSearch(
@@ -881,7 +884,38 @@ def prepare_attribute_search(params: dict) -> PreparedSearch:
         limit=limit,
         offset=offset,
         client=client,
+        profile=profile,
     )
+
+
+def _load_profile(ref) -> Optional[dict]:
+    """misp-workbench's ``profile``: only attributes a detection profile selects.
+
+    Like excludeDecayed it applies after paging, so a page can hold fewer
+    than ``limit`` attributes.
+    """
+    if _is_empty(ref):
+        return None
+    from app.repositories import detection_profiles
+
+    try:
+        return detection_profiles.load(ref)
+    except detection_profiles.ProfileNotFound as error:
+        raise RestSearchError(str(error)) from None
+
+
+def _in_profile(profile: Optional[dict], sources: list[dict]) -> list[dict]:
+    if profile is None or not sources:
+        return sources
+    from app.repositories import detection_profiles
+
+    found = detection_profiles.indicators_for(sources)
+    ctx = detection_profiles.context()
+    return [
+        s
+        for s in sources
+        if detection_profiles.attribute_matches(profile["rules"], s, found, ctx)
+    ]
 
 
 def prepare_event_search(params: dict) -> PreparedSearch:
@@ -990,7 +1024,13 @@ def stream_attributes(search: PreparedSearch) -> Iterator[str]:
         ATTRIBUTES_INDEX,
         search.query,
         # Scores are keyed on type + value.
-        source=True if fmt != "text" else ["value", "type"],
+        # Scores and profiles are keyed on type + value, and profiles read
+        # tags, to_ids and flags too.
+        source=(
+            True
+            if fmt != "text" or search.profile
+            else ["value", "type"]
+        ),
         limit=search.limit,
         offset=search.offset,
     )
@@ -1002,7 +1042,7 @@ def stream_attributes(search: PreparedSearch) -> Iterator[str]:
 
     first = True
     for hits in pages:
-        sources = [h["_source"] for h in hits]
+        sources = _in_profile(search.profile, [h["_source"] for h in hits])
         scores = decay.scores(sources)
         sources = [s for s in sources if decay.keep(scores, s)]
 

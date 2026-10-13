@@ -33,6 +33,10 @@ class ExportBase(BaseModel):
     distribution: Optional[int] = None
     # Also write a delta of what changed since the previous run on every run.
     incremental: bool = False
+    # A detection profile selecting what the export holds (combined with
+    # query; "*" for all of it). Its granularity decides between indicators
+    # and attributes, in place of index_target.
+    profile_id: Optional[int] = None
 
 
 class ExportCreate(ExportBase):
@@ -43,6 +47,14 @@ class ExportCreate(ExportBase):
     def _require_distribution_for_misp(self):
         if self.format == "misp" and self.distribution is None:
             raise ValueError("distribution is required for MISP-format exports")
+        return self
+
+    @model_validator(mode="after")
+    def _check_profile_format(self):
+        if self.profile_id is not None and self.format not in STREAMED_FORMATS:
+            raise ValueError(
+                "profile exports are available as " + ", ".join(STREAMED_FORMATS)
+            )
         return self
 
     @model_validator(mode="after")

@@ -23,6 +23,7 @@ For MISP-style filtering (tags, `to_ids`, published, ...) and MISP's response sh
 | `format` | `json` | See below |
 | `include_deleted` | `false` | Include soft-deleted records |
 | `enforce_warninglist` | runtime setting (`true`) | Attributes and indicators. Leave out records on an enabled [warninglist](../warninglists.md). Deltas (`since`) keep them, with their `warninglist_hits`, so consumers can drop them |
+| `profile` | — | A [detection profile](../detection-profiles.md) (id or name) selecting what is exported. It replaces `include_deleted` and `enforce_warninglist`. `/attributes/export` sends the attributes behind the selected indicators, without `since` |
 | `since` | — | Attributes and indicators. Return only records written at or after this time, soft-deleted ones (indicator tombstones) included (see [Incremental pulls](#incremental-pulls)) |
 
 ## Formats

@@ -48,6 +48,7 @@ nav:
     - Warninglists: features/warninglists.md
     - Normalisation: features/normalisation.md
     - Indicators: features/indicators.md
+    - Detection profiles: features/detection-profiles.md
     - Correlations: features/correlations.md
     - Event Graph: features/event-graph.md
     - Notifications: features/notifications.md

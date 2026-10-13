@@ -18,6 +18,17 @@ from app.services.runtime_settings_provider import get_runtime_settings
 router = APIRouter()
 
 
+def _load_profile(ref):
+    from app.repositories import detection_profiles
+
+    if ref in (None, ""):
+        return None
+    try:
+        return detection_profiles.load(ref)
+    except detection_profiles.ProfileNotFound as error:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error))
+
+
 @router.get("/indicators", response_model=indicator_schemas.IndicatorPage)
 async def search_indicators(
     q: Optional[str] = Query(
@@ -32,6 +43,9 @@ async def search_indicators(
         Query("last_seen")
     ),
     min_score: Optional[int] = Query(None, ge=0, le=100),
+    profile: Optional[str] = Query(
+        None, description="Only indicators a detection profile (id or name) selects"
+    ),
     page: int = Query(1, ge=1),
     size: int = Query(50, ge=1, le=1000),
     user: user_schemas.User = Security(
@@ -49,6 +63,7 @@ async def search_indicators(
             page,
             size,
             min_score,
+            await run_in_threadpool(_load_profile, profile),
         )
     except ValueError as error:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(error))
@@ -75,12 +90,20 @@ async def export_indicators(
             "Defaults to the warninglists.enforce_on_outputs runtime setting."
         ),
     ),
+    profile: Optional[str] = Query(
+        None,
+        description=(
+            "A detection profile (id or name) selecting what is exported, "
+            "instead of include_deleted and enforce_warninglist"
+        ),
+    ),
     runtime_settings: RuntimeSettings = Depends(get_runtime_settings),
     user: user_schemas.User = Security(
         get_current_active_user, scopes=["attributes:read"]
     ),
 ):
     """Every indicator matching ``query``, streamed (formats as /attributes/export)."""
+    loaded = await run_in_threadpool(_load_profile, profile)
     if enforce_warninglist is None:
         enforce_warninglist = bool(
             await run_in_threadpool(
@@ -96,6 +119,7 @@ async def export_indicators(
             include_deleted,
             enforce_warninglist,
             stream_exports_repository.INDICATORS_INDEX,
+            loaded,
         )
     except stream_exports_repository.RestSearchError as error:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(error))

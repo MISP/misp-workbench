@@ -30,6 +30,13 @@ class LookupRequest(BaseModel):
             "(0-100). Values too new to have an indicator are kept"
         ),
     )
+    profile: Optional[str] = Field(
+        None,
+        description=(
+            "Only values a detection profile (id or name) selects: their "
+            "indicator, or for a value too new to have one its attribute, passes"
+        ),
+    )
     include_indicators: bool = Field(
         False,
         description=(
