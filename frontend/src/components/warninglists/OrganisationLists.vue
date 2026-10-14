@@ -1,67 +1,18 @@
 <script setup>
-import { ref, computed } from "vue";
+import { computed } from "vue";
 import { storeToRefs } from "pinia";
-import {
-  useLocalWarninglistsStore,
-  useAuthStore,
-  useToastsStore,
-} from "@/stores";
+import { useLocalWarninglistsStore, useAuthStore } from "@/stores";
 import { authHelper } from "@/helpers";
 import Timestamp from "@/components/misc/Timestamp.vue";
+import NewLocalWarninglistModal from "@/components/warninglists/NewLocalWarninglistModal.vue";
 
 // Your organisation's own warninglists (every organisation's, for admins).
 const listsStore = useLocalWarninglistsStore();
-const toastsStore = useToastsStore();
 const { lists, status } = storeToRefs(listsStore);
 const { scopes } = storeToRefs(useAuthStore());
 const canManage = computed(() =>
   authHelper.hasScope(scopes.value, "local_warninglists:manage"),
 );
-
-const creating = ref(false);
-const saving = ref(false);
-const draft = ref({ name: "", description: "", source_url: "" });
-// Hosts lists may sync from (an admin's call); null until loaded.
-const sourceHosts = ref(null);
-
-async function openForm() {
-  creating.value = !creating.value;
-  if (creating.value && sourceHosts.value === null) {
-    sourceHosts.value = await listsStore.sources().catch(() => []);
-  }
-}
-
-async function create() {
-  if (!draft.value.name.trim()) return;
-  saving.value = true;
-  try {
-    const created = await listsStore.create({
-      name: draft.value.name.trim(),
-      description: draft.value.description.trim() || null,
-      source_url: draft.value.source_url.trim() || null,
-    });
-    if (created.sync_error) {
-      toastsStore.push(
-        `"${created.name}" created, but its sync failed: ${created.sync_error}`,
-        "warning",
-      );
-    } else if (created.source_url) {
-      toastsStore.push(
-        `"${created.name}" created with ${created.entry_count} entries from its URL.`,
-        "success",
-      );
-    } else {
-      toastsStore.push(`"${created.name}" created.`, "success");
-    }
-    draft.value = { name: "", description: "", source_url: "" };
-    creating.value = false;
-    await listsStore.getAll();
-  } catch (error) {
-    toastsStore.push(`${error}`, "danger");
-  } finally {
-    saving.value = false;
-  }
-}
 
 listsStore.getAll();
 </script>
@@ -74,7 +25,8 @@ listsStore.getAll();
         v-if="canManage"
         type="button"
         class="btn btn-outline-primary btn-sm"
-        @click="openForm"
+        data-bs-toggle="modal"
+        data-bs-target="#newLocalWarninglistModal"
       >
         + New list
       </button>
@@ -85,53 +37,6 @@ listsStore.getAll();
       leave what it matches out. Only your organisation sees a list's entries
       and what it matches.
     </p>
-    <form v-if="creating" class="row g-2 mb-3" @submit.prevent="create">
-      <div class="col-12 col-md-4">
-        <input
-          v-model="draft.name"
-          class="form-control"
-          placeholder="Corporate ranges"
-          aria-label="Name"
-        />
-      </div>
-      <div class="col-12 col-md-8">
-        <input
-          v-model="draft.description"
-          class="form-control"
-          placeholder="What it holds, who owns it"
-          aria-label="Description"
-        />
-      </div>
-      <div class="col-12 col-md-10">
-        <input
-          v-model="draft.source_url"
-          class="form-control font-monospace"
-          placeholder="Optional: sync daily from https://cmdb.corp.example/ranges.txt"
-          aria-label="Source URL"
-          :disabled="sourceHosts !== null && !sourceHosts.length"
-        />
-        <div class="form-text">
-          <template v-if="sourceHosts && sourceHosts.length">
-            A plain list, one entry per line (<code>entry # comment</code>),
-            fetched now and daily. Allowed hosts:
-            <code>{{ sourceHosts.join(", ") }}</code
-            >.
-          </template>
-          <template v-else-if="sourceHosts">
-            No host is allowed to sync from yet: an admin adds them to
-            <code>source_hosts</code> under
-            <RouterLink to="/settings/runtime">runtime settings</RouterLink>
-            → warninglists. You can add entries by hand or import them
-            meanwhile.
-          </template>
-        </div>
-      </div>
-      <div class="col-12 col-md-2">
-        <button class="btn btn-primary w-100" type="submit" :disabled="saving">
-          {{ saving ? "Creating…" : "Create" }}
-        </button>
-      </div>
-    </form>
     <div class="table-responsive">
       <table class="table table-sm align-middle mb-0">
         <thead>
@@ -189,5 +94,6 @@ listsStore.getAll();
         </tbody>
       </table>
     </div>
+    <NewLocalWarninglistModal v-if="canManage" @created="listsStore.getAll()" />
   </div>
 </template>
