@@ -1,5 +1,6 @@
 <script setup>
-import { computed } from "vue";
+import { ref, computed, nextTick } from "vue";
+import { Modal } from "bootstrap";
 import { storeToRefs } from "pinia";
 import { useEdlsStore, useAuthStore, useToastsStore } from "@/stores";
 import { authHelper } from "@/helpers";
@@ -25,6 +26,36 @@ function created(edl) {
     "success",
   );
   router.push(`/edls/${edl.id}`);
+}
+
+// The list being edited, in the edit dialog.
+const editing = ref(null);
+
+async function edit(edl) {
+  editing.value = edl;
+  await nextTick();
+  Modal.getOrCreateInstance(document.getElementById("edlEditModal")).show();
+}
+
+function saved(edl) {
+  toastsStore.push(`"${edl.name}" saved; it is being rebuilt.`, "success");
+  edlsStore.getAll();
+}
+
+async function remove(edl) {
+  if (
+    !confirm(
+      `Delete "${edl.name}"? Firewalls fetching it get a 404 from now on.`,
+    )
+  )
+    return;
+  try {
+    await edlsStore.remove(edl.id);
+    toastsStore.push(`"${edl.name}" deleted.`, "success");
+    edlsStore.getAll();
+  } catch (err) {
+    toastsStore.push(`${err}`, "danger");
+  }
 }
 </script>
 
@@ -65,6 +96,7 @@ function created(edl) {
               <th class="text-end">entries</th>
               <th>built</th>
               <th class="text-end">tokens</th>
+              <th v-if="canManage" class="text-end">actions</th>
             </tr>
           </thead>
           <tbody>
@@ -102,9 +134,28 @@ function created(edl) {
                 <span v-else class="text-muted">soon</span>
               </td>
               <td class="text-end">{{ e.active_tokens }}</td>
+              <td v-if="canManage" class="text-end text-nowrap">
+                <button
+                  type="button"
+                  class="btn btn-outline-primary btn-sm me-1"
+                  @click="edit(e)"
+                >
+                  Edit
+                </button>
+                <button
+                  type="button"
+                  class="btn btn-outline-danger btn-sm"
+                  @click="remove(e)"
+                >
+                  Delete
+                </button>
+              </td>
             </tr>
             <tr v-if="!edls.length">
-              <td colspan="6" class="text-center text-muted py-4">
+              <td
+                :colspan="canManage ? 7 : 6"
+                class="text-center text-muted py-4"
+              >
                 No list yet.
                 <template v-if="canManage"
                   >Create one with "+ New EDL".</template
@@ -116,5 +167,11 @@ function created(edl) {
       </div>
     </div>
     <EdlFormModal v-if="canManage" @saved="created" />
+    <EdlFormModal
+      v-if="canManage"
+      modal-id="edlEditModal"
+      :edl="editing"
+      @saved="saved"
+    />
   </div>
 </template>
