@@ -42,6 +42,34 @@ function saved(edl) {
   edlsStore.getAll();
 }
 
+// The lists being rebuilt, by id.
+const building = ref(new Set());
+
+async function rebuild(edl) {
+  building.value = new Set(building.value).add(edl.id);
+  try {
+    const built = await edlsStore.build(edl.id);
+    edls.value = edls.value.map((e) => (e.id === built.id ? built : e));
+    if (built.build_error) {
+      toastsStore.push(
+        `"${built.name}" failed to build: ${built.build_error}`,
+        "danger",
+      );
+    } else {
+      toastsStore.push(
+        `"${built.name}" rebuilt: ${built.entry_count.toLocaleString()} entries.`,
+        "success",
+      );
+    }
+  } catch (err) {
+    toastsStore.push(`${err}`, "danger");
+  } finally {
+    const rest = new Set(building.value);
+    rest.delete(edl.id);
+    building.value = rest;
+  }
+}
+
 async function remove(edl) {
   if (
     !confirm(
@@ -135,6 +163,15 @@ async function remove(edl) {
               </td>
               <td class="text-end">{{ e.active_tokens }}</td>
               <td v-if="canManage" class="text-end text-nowrap">
+                <button
+                  type="button"
+                  class="btn btn-outline-secondary btn-sm me-1"
+                  :disabled="building.has(e.id)"
+                  title="Build it now, rather than at its next refresh"
+                  @click="rebuild(e)"
+                >
+                  {{ building.has(e.id) ? "Rebuilding…" : "Rebuild" }}
+                </button>
                 <button
                   type="button"
                   class="btn btn-outline-primary btn-sm me-1"
