@@ -5320,6 +5320,730 @@
         }
       }
     },
+    "/local-warninglists/sources": {
+      "get": {
+        "tags": [
+          "Warninglists"
+        ],
+        "summary": "Sync Sources",
+        "description": "The hosts lists may sync from (set by an admin in the runtime\nsettings, warninglists.source_hosts).",
+        "operationId": "sync_sources_local_warninglists_sources_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SyncSources"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "warninglists:read"
+            ]
+          }
+        ]
+      }
+    },
+    "/local-warninglists": {
+      "get": {
+        "tags": [
+          "Warninglists"
+        ],
+        "summary": "List Lists",
+        "description": "Your organisation's lists (every organisation's, for admins).",
+        "operationId": "list_lists_local_warninglists_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/LocalWarninglist"
+                  },
+                  "type": "array",
+                  "title": "Response List Lists Local Warninglists Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "warninglists:read"
+            ]
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "Warninglists"
+        ],
+        "summary": "Create List",
+        "operationId": "create_list_local_warninglists_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LocalWarninglistCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LocalWarninglist"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "warninglists:read",
+              "local_warninglists:manage"
+            ]
+          }
+        ]
+      }
+    },
+    "/local-warninglists/{list_id}": {
+      "get": {
+        "tags": [
+          "Warninglists"
+        ],
+        "summary": "Get List",
+        "operationId": "get_list_local_warninglists__list_id__get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "warninglists:read"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "list_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "List Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LocalWarninglist"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Warninglists"
+        ],
+        "summary": "Update List",
+        "operationId": "update_list_local_warninglists__list_id__patch",
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "warninglists:read",
+              "local_warninglists:manage"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "list_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "List Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LocalWarninglistUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LocalWarninglist"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Warninglists"
+        ],
+        "summary": "Delete List",
+        "operationId": "delete_list_local_warninglists__list_id__delete",
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "warninglists:read",
+              "local_warninglists:manage"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "list_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "List Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/local-warninglists/{list_id}/entries": {
+      "get": {
+        "tags": [
+          "Warninglists"
+        ],
+        "summary": "List Entries",
+        "operationId": "list_entries_local_warninglists__list_id__entries_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "warninglists:read"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "list_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "List Id"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Part of the entry",
+              "title": "Q"
+            },
+            "description": "Part of the entry"
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1,
+              "title": "Page"
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 500,
+              "minimum": 1,
+              "default": 50,
+              "title": "Size"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EntryPage"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Warninglists"
+        ],
+        "summary": "Add Entries",
+        "description": "Add entries (or update the comment and expiry of ones there).\nAttributes are flagged again in the background.",
+        "operationId": "add_entries_local_warninglists__list_id__entries_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "warninglists:read",
+              "local_warninglists:manage"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "list_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "List Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EntriesRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EntriesChanged"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/local-warninglists/{list_id}/entries/delete": {
+      "post": {
+        "tags": [
+          "Warninglists"
+        ],
+        "summary": "Delete Entries",
+        "operationId": "delete_entries_local_warninglists__list_id__entries_delete_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "warninglists:read",
+              "local_warninglists:manage"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "list_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "List Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EntryIds"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EntriesChanged"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/local-warninglists/{list_id}/import": {
+      "post": {
+        "tags": [
+          "Warninglists"
+        ],
+        "summary": "Import Entries",
+        "description": "A plain list, one entry per line (``entry  # comment``).",
+        "operationId": "import_entries_local_warninglists__list_id__import_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "warninglists:read",
+              "local_warninglists:manage"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "list_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "List Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImportRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EntriesChanged"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/local-warninglists/{list_id}/export": {
+      "get": {
+        "tags": [
+          "Warninglists"
+        ],
+        "summary": "Export Entries",
+        "description": "The list as plain text, one entry per line: what import reads.",
+        "operationId": "export_entries_local_warninglists__list_id__export_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "warninglists:read"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "list_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "List Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/local-warninglists/{list_id}/sync": {
+      "post": {
+        "tags": [
+          "Warninglists"
+        ],
+        "summary": "Sync List",
+        "description": "Sync the entries from the list's source URL now.",
+        "operationId": "sync_list_local_warninglists__list_id__sync_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "warninglists:read",
+              "local_warninglists:manage"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "list_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "List Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LocalWarninglist"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/local-warninglists/hits": {
+      "post": {
+        "tags": [
+          "Warninglists"
+        ],
+        "summary": "Hits",
+        "description": "Which of your organisation's lists each indicator is on (others'\nlists are never told).",
+        "operationId": "hits_local_warninglists_hits_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HitsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HitsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "warninglists:read"
+            ]
+          }
+        ]
+      }
+    },
+    "/local-warninglists/explain": {
+      "post": {
+        "tags": [
+          "Warninglists"
+        ],
+        "summary": "Explain",
+        "description": "Which entries of your organisation's lists each value matches.",
+        "operationId": "explain_local_warninglists_explain_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExplainRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExplainResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "warninglists:read"
+            ]
+          }
+        ]
+      }
+    },
     "/taxonomies/": {
       "get": {
         "tags": [
@@ -17169,6 +17893,7 @@
               "to_ids": true,
               "exclude_warninglisted": true,
               "exclude_validation_issues": true,
+              "exclude_lists": [],
               "require_approval": false,
               "exclude_rejected": false
             }
@@ -17265,6 +17990,7 @@
               "to_ids": true,
               "exclude_warninglisted": true,
               "exclude_validation_issues": true,
+              "exclude_lists": [],
               "require_approval": false,
               "exclude_rejected": false
             }
@@ -17379,6 +18105,263 @@
         ],
         "title": "DistributionLevel",
         "description": "Enum for the Event distribution level"
+      },
+      "EntriesChanged": {
+        "properties": {
+          "added": {
+            "type": "integer",
+            "title": "Added",
+            "default": 0
+          },
+          "updated": {
+            "type": "integer",
+            "title": "Updated",
+            "default": 0
+          },
+          "removed": {
+            "type": "integer",
+            "title": "Removed",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "title": "EntriesChanged"
+      },
+      "EntriesRequest": {
+        "properties": {
+          "entries": {
+            "items": {
+              "$ref": "#/components/schemas/EntryIn"
+            },
+            "type": "array",
+            "maxItems": 10000,
+            "minItems": 1,
+            "title": "Entries"
+          }
+        },
+        "type": "object",
+        "required": [
+          "entries"
+        ],
+        "title": "EntriesRequest"
+      },
+      "Entry": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "kind": {
+            "type": "string",
+            "title": "Kind"
+          },
+          "value": {
+            "type": "string",
+            "title": "Value"
+          },
+          "comment": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comment"
+          },
+          "expires_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expires At"
+          },
+          "origin": {
+            "type": "string",
+            "title": "Origin"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "value",
+          "origin",
+          "created_at"
+        ],
+        "title": "Entry"
+      },
+      "EntryIds": {
+        "properties": {
+          "ids": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "maxItems": 10000,
+            "minItems": 1,
+            "title": "Ids"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ids"
+        ],
+        "title": "EntryIds"
+      },
+      "EntryIn": {
+        "properties": {
+          "value": {
+            "type": "string",
+            "maxLength": 2048,
+            "minLength": 1,
+            "title": "Value"
+          },
+          "kind": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "value",
+                  "cidr",
+                  "suffix",
+                  "regex"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kind"
+          },
+          "comment": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 1000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comment"
+          },
+          "expires_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expires At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "value"
+        ],
+        "title": "EntryIn"
+      },
+      "EntryMatch": {
+        "properties": {
+          "list_id": {
+            "type": "integer",
+            "title": "List Id"
+          },
+          "list_name": {
+            "type": "string",
+            "title": "List Name"
+          },
+          "entry_id": {
+            "type": "integer",
+            "title": "Entry Id"
+          },
+          "kind": {
+            "type": "string",
+            "title": "Kind"
+          },
+          "entry": {
+            "type": "string",
+            "title": "Entry"
+          },
+          "comment": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comment"
+          },
+          "expires_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expires At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "list_id",
+          "list_name",
+          "entry_id",
+          "kind",
+          "entry"
+        ],
+        "title": "EntryMatch"
+      },
+      "EntryPage": {
+        "properties": {
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "page": {
+            "type": "integer",
+            "title": "Page"
+          },
+          "size": {
+            "type": "integer",
+            "title": "Size"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/Entry"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "type": "object",
+        "required": [
+          "total",
+          "page",
+          "size",
+          "items"
+        ],
+        "title": "EntryPage"
       },
       "Event": {
         "properties": {
@@ -18081,6 +19064,54 @@
         },
         "type": "object",
         "title": "EventUpdate"
+      },
+      "ExplainRequest": {
+        "properties": {
+          "values": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 1000,
+            "minItems": 1,
+            "title": "Values"
+          },
+          "type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Type"
+          }
+        },
+        "type": "object",
+        "required": [
+          "values"
+        ],
+        "title": "ExplainRequest"
+      },
+      "ExplainResponse": {
+        "properties": {
+          "matches": {
+            "additionalProperties": {
+              "items": {
+                "$ref": "#/components/schemas/EntryMatch"
+              },
+              "type": "array"
+            },
+            "type": "object",
+            "title": "Matches"
+          }
+        },
+        "type": "object",
+        "required": [
+          "matches"
+        ],
+        "title": "ExplainResponse"
       },
       "Export": {
         "properties": {
@@ -19808,6 +20839,43 @@
         "type": "object",
         "title": "HTTPValidationError"
       },
+      "HitsRequest": {
+        "properties": {
+          "indicators": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 1000,
+            "minItems": 1,
+            "title": "Indicators"
+          }
+        },
+        "type": "object",
+        "required": [
+          "indicators"
+        ],
+        "title": "HitsRequest"
+      },
+      "HitsResponse": {
+        "properties": {
+          "hits": {
+            "additionalProperties": {
+              "items": {
+                "type": "integer"
+              },
+              "type": "array"
+            },
+            "type": "object",
+            "title": "Hits"
+          }
+        },
+        "type": "object",
+        "required": [
+          "hits"
+        ],
+        "title": "HitsResponse"
+      },
       "Hunt": {
         "properties": {
           "name": {
@@ -20147,6 +21215,25 @@
         },
         "type": "object",
         "title": "HuntUpdate"
+      },
+      "ImportRequest": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "maxLength": 5242880,
+            "title": "Text"
+          },
+          "replace": {
+            "type": "boolean",
+            "title": "Replace",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "text"
+        ],
+        "title": "ImportRequest"
       },
       "Indicator": {
         "properties": {
@@ -21311,6 +22398,200 @@
         ],
         "title": "LabTree",
         "description": "Single response that returns Personal + Global + Library trees so the\nleft panel renders in one round trip. Library notebooks are read-only\nprebuilt content (seeded via CLI); users fork them to a personal copy\nbefore running."
+      },
+      "LocalWarninglist": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled"
+          },
+          "entry_count": {
+            "type": "integer",
+            "title": "Entry Count",
+            "default": 0
+          },
+          "org_id": {
+            "type": "integer",
+            "title": "Org Id"
+          },
+          "source_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Url"
+          },
+          "synced_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Synced At"
+          },
+          "sync_error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sync Error"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "enabled",
+          "org_id"
+        ],
+        "title": "LocalWarninglist"
+      },
+      "LocalWarninglistCreate": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "source_url": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Url"
+          },
+          "org_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Org Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "LocalWarninglistCreate"
+      },
+      "LocalWarninglistUpdate": {
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Enabled"
+          },
+          "source_url": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Url"
+          }
+        },
+        "type": "object",
+        "title": "LocalWarninglistUpdate"
       },
       "LookupAttribute": {
         "properties": {
@@ -25345,6 +26626,14 @@
             "title": "Exclude Validation Issues",
             "default": true
           },
+          "exclude_lists": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Exclude Lists",
+            "default": []
+          },
           "require_approval": {
             "type": "boolean",
             "title": "Require Approval",
@@ -28975,6 +30264,20 @@
           "status"
         ],
         "title": "StatusResponse"
+      },
+      "SyncSources": {
+        "properties": {
+          "hosts": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Hosts",
+            "default": []
+          }
+        },
+        "type": "object",
+        "title": "SyncSources"
       },
       "Tag": {
         "properties": {

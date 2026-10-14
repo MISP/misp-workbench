@@ -5,7 +5,7 @@ from app.models.sink import Sink  # noqa
 from app.models.detection_profile import DetectionProfile  # noqa
 from app.models.indicator_review import IndicatorReview  # noqa
 from app.models.profile_release import ProfileRelease  # noqa
-from app.models.warninglist import Warninglist  # noqa
+from app.models.warninglist import Warninglist, WarninglistEntry  # noqa
 from app.models.hunt import Hunt  # noqa
 from app.models.module import ModuleSettings  # noqa
 from app.models.organisation import Organisation  # noqa

@@ -48,6 +48,10 @@ DEFAULT_SETTINGS = {
         # MISP and only filters when enforceWarninglist is passed; sinks have
         # their own per-sink switch.
         "enforce_on_outputs": True,
+        # Hosts organisations' lists may sync from (a CMDB, say): exact names
+        # or "*.corp.example". Empty: no list syncs from a URL. Fetching from
+        # inside the network is the point, so an admin decides where to.
+        "source_hosts": [],
     },
     "sightings": {
         # Turn to_ids off on every attribute holding a value once this many

@@ -1,9 +1,30 @@
 <script setup>
+import { ref, watch } from "vue";
+import { storeToRefs } from "pinia";
 import Timestamp from "@/components/misc/Timestamp.vue";
+import { useLocalWarninglistsStore } from "@/stores";
 
 // Everything an indicator carries: how its score was reached, where it comes
 // from, its tags, sightings and the warninglists it hits.
-defineProps({ indicator: { type: Object, required: true } });
+const props = defineProps({ indicator: { type: Object, required: true } });
+
+// Your organisation's lists it is on (others' lists are never told).
+const localListsStore = useLocalWarninglistsStore();
+const { byId: localLists } = storeToRefs(localListsStore);
+const yourLists = ref([]);
+watch(
+  () => props.indicator.uuid,
+  async (uuid) => {
+    yourLists.value = [];
+    try {
+      await localListsStore.ensureLoaded();
+      yourLists.value = (await localListsStore.hits([uuid]))[uuid] || [];
+    } catch {
+      yourLists.value = [];
+    }
+  },
+  { immediate: true },
+);
 
 function sourceLabel(source) {
   return source.type === "feed" || source.type === "server"
@@ -80,6 +101,19 @@ function sourceLabel(source) {
           :key="hit"
           class="badge text-bg-warning me-1"
           >{{ hit }}</span
+        >
+      </dd>
+    </template>
+    <template v-if="yourLists.length">
+      <dt class="col-sm-2">your lists</dt>
+      <dd class="col-sm-10">
+        <RouterLink
+          v-for="id in yourLists"
+          :key="id"
+          :to="`/settings/warninglists/local/${id}`"
+          class="badge text-bg-warning text-decoration-none me-1"
+          @click.stop
+          >{{ localLists[id]?.name || `list ${id}` }}</RouterLink
         >
       </dd>
     </template>

@@ -131,7 +131,13 @@ def update_warninglists(db: Session, lists_dir: str = WARNINGLISTS_DIR) -> dict:
     """
     client = get_opensearch_client()
     counts = {"created": 0, "updated": 0, "unchanged": 0, "skipped": 0}
-    existing = {w.name: w for w in db.query(warninglist_models.Warninglist).all()}
+    # The MISP lists only: an organisation's list of the same name is its own.
+    existing = {
+        w.name: w
+        for w in db.query(warninglist_models.Warninglist).filter(
+            warninglist_models.Warninglist.org_id.is_(None)
+        )
+    }
 
     for entry in sorted(os.listdir(lists_dir)):
         path = os.path.join(lists_dir, entry, "list.json")
@@ -192,17 +198,24 @@ def update_warninglists(db: Session, lists_dir: str = WARNINGLISTS_DIR) -> dict:
 
 
 def get_warninglists(db: Session) -> list:
+    """The shared lists (MISP's, and Rejected in review); organisations'
+    own lists are in local_warninglists."""
     return (
         db.query(warninglist_models.Warninglist)
+        .filter(warninglist_models.Warninglist.org_id.is_(None))
         .order_by(warninglist_models.Warninglist.name.asc())
         .all()
     )
 
 
 def get_warninglist(db: Session, warninglist_id: int):
+    """A shared list (see get_warninglists)."""
     return (
         db.query(warninglist_models.Warninglist)
-        .filter(warninglist_models.Warninglist.id == warninglist_id)
+        .filter(
+            warninglist_models.Warninglist.id == warninglist_id,
+            warninglist_models.Warninglist.org_id.is_(None),
+        )
         .first()
     )
 
@@ -225,7 +238,10 @@ REJECTED_LIST_NAME = "Rejected in review"
 def rejected_list(db: Session):
     db_list = (
         db.query(warninglist_models.Warninglist)
-        .filter(warninglist_models.Warninglist.name == REJECTED_LIST_NAME)
+        .filter(
+            warninglist_models.Warninglist.name == REJECTED_LIST_NAME,
+            warninglist_models.Warninglist.org_id.is_(None),
+        )
         .first()
     )
     if db_list is None:

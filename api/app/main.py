@@ -32,6 +32,7 @@ from app.routers import (
     tags,
     taxonomies,
     users,
+    local_warninglists,
     warninglists,
     reports,
     rest_search,
@@ -145,6 +146,7 @@ app.include_router(tags.router, tags=["Tags"])
 
 # Warninglists resource
 app.include_router(warninglists.router, tags=["Warninglists"])
+app.include_router(local_warninglists.router, tags=["Warninglists"])
 
 # Taxonomies resource
 app.include_router(taxonomies.router, tags=["Taxonomies"])

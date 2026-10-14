@@ -33,6 +33,7 @@ const RISKS = {
   popular_domain: "popular domain (top sites lists)",
   shared_infrastructure: "shared hosting, CDN or cloud",
   warninglisted: "on another warninglist",
+  organisation_list: "on an organisation's list",
   new_source: "only from a new source",
   low_score: "low score",
 };

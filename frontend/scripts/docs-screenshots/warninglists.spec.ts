@@ -5,10 +5,42 @@ import {
   WARNINGLISTS,
   CHECK_RESULT,
   WARNINGLISTED_ATTRIBUTES,
+  LOCAL_LISTS,
+  LOCAL_ENTRIES,
+  LOCAL_EXPLAIN,
 } from "./warninglists-fixtures";
 
 const FEATURE = "warninglists";
 const API_PORT = 8080;
+
+function json(body: unknown) {
+  return {
+    status: 200,
+    contentType: "application/json",
+    body: JSON.stringify(body),
+  };
+}
+
+async function stubLocalLists(page: Page) {
+  await page.route(new RegExp(`:${API_PORT}/local-warninglists$`), (r) =>
+    r.fulfill(json(LOCAL_LISTS)),
+  );
+  await page.route(
+    new RegExp(`:${API_PORT}/local-warninglists/sources$`),
+    (r) => r.fulfill(json({ hosts: ["cmdb.corp.example"] })),
+  );
+  await page.route(
+    new RegExp(`:${API_PORT}/local-warninglists/explain$`),
+    (r) => r.fulfill(json(LOCAL_EXPLAIN)),
+  );
+  await page.route(new RegExp(`:${API_PORT}/local-warninglists/41$`), (r) =>
+    r.fulfill(json(LOCAL_LISTS[0])),
+  );
+  await page.route(
+    new RegExp(`:${API_PORT}/local-warninglists/41/entries\?`),
+    (r) => r.fulfill(json(LOCAL_ENTRIES)),
+  );
+}
 
 async function stubNotifications(page: Page) {
   await page.route(
@@ -32,6 +64,7 @@ test.describe("Warninglists screenshots", () => {
   test.beforeEach(async ({ page }) => {
     await applyTheme(page);
     await stubNotifications(page);
+    await stubLocalLists(page);
   });
 
   test("1 — warninglists page with a value check", async ({ page }) => {
@@ -55,7 +88,7 @@ test.describe("Warninglists screenshots", () => {
     await expect(page.getByText("List of RFC 1918 CIDR blocks")).toBeVisible();
     await page.fill(
       "#warninglist-check",
-      "8.8.8.8 www.google.com 10.0.0.5 phish-login-update.xyz",
+      "8.8.8.8 www.google.com 10.0.0.5 vpn-12.corp.example phish-login-update.xyz",
     );
     await page.getByRole("button", { name: "Check", exact: true }).click();
     await expect(page.getByText(/not on any enabled list/)).toBeVisible();
@@ -123,6 +156,18 @@ test.describe("Warninglists screenshots", () => {
       table,
       FEATURE,
       "misp-workbench-2_warninglists_flagged-attributes",
+    );
+  });
+
+  test("3 — an organisation's own list", async ({ page }) => {
+    await page.setViewportSize({ width: 1500, height: 1200 });
+    await page.goto("/settings/warninglists/local/41");
+    await expect(page.getByText("Luxembourg office")).toBeVisible();
+    await pinForCapture(page);
+    await capture(
+      page.locator(".card").first(),
+      FEATURE,
+      "misp-workbench-3_warninglists_organisation-list",
     );
   });
 });

@@ -29,6 +29,7 @@ narrows the selection, and an empty rule leaves nothing out.
 | **Only flagged for IDS** (on) | at least one attribute flagged `to_ids` |
 | **Leave out warninglisted** (on) | not on an enabled [warninglist](warninglists.md) |
 | **Leave out validation issues** (on) | no [validation issue](normalisation.md#validation-issues) |
+| **Organisation warninglists** | not on any of these [organisations' lists](warninglists.md#your-organisations-lists): unlike the MISP lists, one only counts for the profiles attaching it |
 | **Require approval** | only indicators approved in the [review queue](review-queue.md), by an analyst or by an auto-approve profile. The rest wait in the queue |
 | **Leave out rejected** | everything but what an analyst rejected in the review queue. Requiring approval leaves rejected ones out too |
 
@@ -118,7 +119,7 @@ and diff it with the current one on every run:
 
 A removal's `reason` is the rule the indicator now fails: `deleted`,
 `type`, `category`, `tlp`, `tags`, `excluded_tag`, `no_longer_ids`,
-`warninglisted`, `validation`, `score`, `expired`, `sources`,
+`warninglisted`, `validation`, `listed` (an attached organisation list), `score`, `expired`, `sources`,
 `excluded_source`, `organisations`, `excluded_organisation` or `trust`.
 
 Where it applies:

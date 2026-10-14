@@ -32,6 +32,10 @@ function summary(rules) {
   if (rules.tlp_ceiling) parts.push(`≤ ${rules.tlp_ceiling}`);
   if (rules.exclude_warninglisted) parts.push("no warninglisted");
   if (rules.exclude_validation_issues) parts.push("no validation issues");
+  if (rules.exclude_lists?.length)
+    parts.push(
+      `not on ${rules.exclude_lists.length} organisation list${rules.exclude_lists.length === 1 ? "" : "s"}`,
+    );
   if (rules.sources?.length) parts.push(`only ${rules.sources.join(", ")}`);
   if (rules.exclude_sources?.length)
     parts.push(`not only ${rules.exclude_sources.join(", ")}`);

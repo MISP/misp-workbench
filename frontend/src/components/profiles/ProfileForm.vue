@@ -6,6 +6,7 @@ import {
   useAuthStore,
   useDetectionProfilesStore,
   useIndicatorsStore,
+  useLocalWarninglistsStore,
   useToastsStore,
 } from "@/stores";
 import { authHelper } from "@/helpers";
@@ -20,6 +21,11 @@ const profilesStore = useDetectionProfilesStore();
 const indicatorsStore = useIndicatorsStore();
 const toastsStore = useToastsStore();
 const { scopes } = storeToRefs(useAuthStore());
+// Organisations' own warninglists the profile can attach (yours; all of
+// them for admins).
+const localListsStore = useLocalWarninglistsStore();
+const { lists: localLists } = storeToRefs(localListsStore);
+localListsStore.getAll();
 // What goes out without a review is for reviewers: auto-approval, the
 // approval gate, and turning approval or rejections off (the API refuses
 // the rest).
@@ -46,6 +52,7 @@ const DEFAULT_RULES = {
   to_ids: true,
   exclude_warninglisted: true,
   exclude_validation_issues: true,
+  exclude_lists: [],
   require_approval: false,
   exclude_rejected: false,
 };
@@ -400,6 +407,47 @@ async function submit() {
               >Leave out validation issues</label
             >
           </div>
+        </div>
+      </div>
+
+      <h6 class="fw-semibold">Organisation warninglists</h6>
+      <p class="form-text mt-0">
+        Leave out what these lists match. Unlike the MISP lists, an
+        organisation's list only counts for the profiles attaching it.
+        <RouterLink to="/settings/warninglists">Manage lists</RouterLink>
+      </p>
+      <div class="mb-3">
+        <div
+          v-for="list in localLists"
+          :key="list.id"
+          class="form-check form-check-inline"
+        >
+          <input
+            :id="`profile-list-${list.id}`"
+            class="form-check-input"
+            type="checkbox"
+            :checked="rules.exclude_lists.includes(list.id)"
+            @change="toggle(rules.exclude_lists, list.id)"
+          />
+          <label class="form-check-label" :for="`profile-list-${list.id}`"
+            >{{ list.name }}
+            <span class="text-muted small"
+              >({{ list.entry_count.toLocaleString() }})</span
+            ></label
+          >
+        </div>
+        <div v-if="!localLists.length" class="text-muted small">
+          Your organisation has no list yet.
+        </div>
+        <div
+          v-if="
+            rules.exclude_lists.some(
+              (id) => !localLists.find((l) => l.id === id),
+            )
+          "
+          class="form-text"
+        >
+          Also attached: another organisation's list.
         </div>
       </div>
 

@@ -65,6 +65,54 @@ def _weakens_review(before, patch: dict) -> Optional[str]:
     return None
 
 
+def _your_lists(db: Session, user) -> dict:
+    """The viewer's organisation's lists (id -> name), to flag additions on."""
+    from app.repositories import local_warninglists
+
+    return {w.id: w.name for w in local_warninglists.visible(db, user)}
+
+
+def _invisible(db: Session, user, list_ids) -> set:
+    from app.repositories import local_warninglists
+
+    return set(list_ids) - local_warninglists.visible_ids(db, user)
+
+
+def _attached(profile) -> list:
+    return (profile.rules or {}).get("exclude_lists") or []
+
+
+def _only_your_lists(db: Session, user, rules) -> None:
+    """Rules previewed or dry-run may only attach lists the caller can see:
+    comparing what rules of their choosing leave out would tell another
+    organisation's list's members."""
+    if rules is None:
+        return
+    unknown = _invisible(db, user, profiles_repository._rules(rules).exclude_lists)
+    if unknown:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            f"No organisation warninglist {', '.join(map(str, sorted(unknown)))}",
+        )
+
+
+def _check_lists(db: Session, user, patch: dict, before=None) -> None:
+    """A profile attaches organisations' lists its editor can see (ones
+    attached already, by someone else, can stay)."""
+    from app.repositories import local_warninglists
+
+    attached = set(
+        ((before.rules or {}) if before is not None else {}).get("exclude_lists") or []
+    )
+    wanted = set((patch.get("rules") or {}).get("exclude_lists") or []) - attached
+    unknown = wanted - local_warninglists.visible_ids(db, user)
+    if unknown:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            f"No organisation warninglist {', '.join(map(str, sorted(unknown)))}",
+        )
+
+
 def _check_review(before, patch: dict, can_review: bool) -> None:
     what = _weakens_review(before, patch)
     if what and not can_review:
@@ -108,22 +156,26 @@ def list_profiles(
 )
 async def preview_rules(
     request: profile_schemas.ProfilePreviewRequest,
+    db: Session = Depends(get_db),
     user: user_schemas.User = Security(
         get_current_active_user, scopes=["detection_profiles:read"]
     ),
 ):
     """How many indicators these rules select, before saving them."""
+    _only_your_lists(db, user, request.rules)
     return await run_in_threadpool(profiles_repository.preview, request.rules)
 
 
 @router.post("/detection-profiles/query", response_model=profile_schemas.ProfileQuery)
 async def rules_as_query(
     request: profile_schemas.ProfilePreviewRequest,
+    db: Session = Depends(get_db),
     user: user_schemas.User = Security(
         get_current_active_user, scopes=["detection_profiles:read"]
     ),
 ):
     """These rules as a Lucene query on the indicators index, for Explore."""
+    _only_your_lists(db, user, request.rules)
     return await run_in_threadpool(
         profiles_repository.to_lucene, request.rules, profiles_repository.context()
     )
@@ -192,6 +244,7 @@ def create_profile(
     can_review: bool = Depends(_can_review),
 ):
     _check_review(None, profile.model_dump(exclude_unset=True), can_review)
+    _check_lists(db, user, profile.model_dump(exclude_unset=True))
     try:
         created = profiles_repository.create_profile(db, profile)
     except IntegrityError:
@@ -219,6 +272,20 @@ def update_profile(
 ):
     db_profile = _get_or_404(db, profile_id)
     _check_review(db_profile, profile.model_dump(exclude_unset=True), can_review)
+    patch = profile.model_dump(exclude_unset=True)
+    # Changing the rules around another organisation's list, and reading what
+    # the profile then leaves out, would probe it.
+    rules_change = "rules" in patch and (
+        profiles_repository._rules(patch["rules"]).model_dump()
+        != profiles_repository._rules(db_profile.rules).model_dump()
+    )
+    if rules_change and _invisible(db, user, _attached(db_profile)):
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            "The profile attaches another organisation's warninglist: only "
+            "admins change its rules",
+        )
+    _check_lists(db, user, patch, db_profile)
     try:
         updated = profiles_repository.update_profile(db, db_profile, profile)
     except IntegrityError:
@@ -266,7 +333,7 @@ def preview_changes(
     """What the profile's next run changes against its last release, whether
     the gate would hold it, and the recent runs."""
     _get_or_404(db, profile_id)
-    return profile_gate.preview(db, profile_id)
+    return profile_gate.preview(db, profile_id, your_lists=_your_lists(db, user))
 
 
 @router.post(
@@ -282,8 +349,19 @@ def dry_run_changes(
     ),
 ):
     """The same, for rules not saved yet: what saving them would change."""
-    _get_or_404(db, profile_id)
-    return profile_gate.preview(db, profile_id, rules=request.rules)
+    profile = _get_or_404(db, profile_id)
+    # The profile's own lists apply to a dry run too: with another
+    # organisation's among them, rules of the caller's choosing would probe it.
+    if _invisible(db, user, _attached(profile)):
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            "The profile attaches another organisation's warninglist: only "
+            "admins dry-run it",
+        )
+    _only_your_lists(db, user, request.rules)
+    return profile_gate.preview(
+        db, profile_id, rules=request.rules, your_lists=_your_lists(db, user)
+    )
 
 
 @router.post(

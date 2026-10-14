@@ -35,6 +35,60 @@ Reading lists and checking values needs `warninglists:read`, which every
 built-in role has. Updating and enabling or disabling lists needs
 `warninglists:update`, which only admins have by default.
 
+## Your organisation's lists
+
+The MISP lists are global and generic. Every organisation also has values
+it must never block or alert on in *its* environment: its own ranges and
+domains, VPN egress, partners, critical SaaS. Under ***settings*** →
+***warninglists***, **Your organisation's lists** keeps those.
+
+<img src="../../screenshots/warninglists/misp-workbench-3_warninglists_organisation-list.png#only-light" alt="An organisation's own list" style="max-width: 100%; height: auto;">
+<img src="../../screenshots/warninglists/misp-workbench-3_warninglists_organisation-list-dark.png#only-dark" alt="An organisation's own list" style="max-width: 100%; height: auto;">
+
+- **Entries** are exact values, address ranges (`10.0.0.0/8`: an IP in it
+  matches, in an `ip|port` too), domains with their subdomains
+  (`*.corp.example`) or regexes (`/^vpn-\d+\./`), each with a comment and
+  an optional expiry. Expired entries stop matching and are dropped.
+- **Regexes** run on RE2: matching takes linear time whatever the pattern,
+  so a regex can't stall the platform. Backreferences and lookarounds aren't
+  supported. A regex is at most 256 characters, matched against the first
+  1024 characters of a value.
+- **Import and export** as plain lists, one entry per line
+  (`entry  # comment`). Importing can replace the entries an earlier import
+  brought.
+- **Sync** from a URL serving such a list (your CMDB's ranges, say): give
+  it when creating the list (**+ New list**, choose **Remote**), or later
+  on the list's page.
+  It is fetched at once, then daily, each sync replacing what the last one
+  brought. Fetching from inside the network is
+  the point, so where lists may sync from is an admin's call: only hosts in
+  the runtime setting `warninglists.source_hosts` (exact names or
+  `*.corp.example`), none by default. A host resolving to a loopback,
+  link-local (cloud metadata), multicast or reserved address is refused
+  whatever the setting, and redirects aren't followed.
+
+**What a list matches stays private.** It isn't stored on attributes or
+indicators, which anyone can search: which indicators each list matches is
+kept apart, recomputed when the list changes and, for new indicators, every
+minute. A [detection profile](detection-profiles.md#rules) leaves a list's
+matches out only when it **attaches** the list, so one organisation's list
+never silences another's outputs, and a value too new to have an indicator
+is matched as it comes. Your lists show on an indicator's details, and
+additions on them are flagged in a profile's
+[change preview](detection-profiles.md#change-preview-and-approval-gate),
+for you only. **Check values** tells you which entry of your lists a value
+matches, and why (its comment).
+
+Attaching a list to a profile others use makes its effect visible to them,
+in what the profile's outputs leave out. So that nobody can probe it beyond
+that, rules attaching a list you can't see can't be previewed, and a profile
+attaching one can't be dry-run, nor have its rules changed, but by admins.
+Explore's query for a profile can't leave a list's matches out (they're
+private), and says so.
+
+Reading needs `warninglists:read`; creating lists and changing entries needs
+`local_warninglists:manage` (Org Admin and Publisher).
+
 ## How attributes are flagged
 
 Each attribute carries `warninglist_hits`: the names of the enabled lists its
