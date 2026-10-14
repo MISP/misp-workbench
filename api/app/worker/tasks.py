@@ -88,6 +88,11 @@ celery_app.conf.update(
             "task": "app.worker.tasks.sweep_local_warninglists",
             "schedule": 300.0,
         },
+        # External dynamic lists: rebuild those due (each has its own refresh).
+        "edls-refresh": {
+            "task": "app.worker.tasks.refresh_edls",
+            "schedule": 60.0,
+        },
         # Look ahead at gated detection profiles: hold (and notify about)
         # changes their next run would hold, before it comes.
         "profile-gates-check": {
@@ -1488,6 +1493,27 @@ def sweep_local_warninglists():
 
     with Session(engine) as db:
         return local_warninglists.sweep(db)
+
+
+@celery_app.task(ignore_result=True)
+def refresh_edls():
+    """Rebuild the external dynamic lists due."""
+    from app.repositories import edls
+
+    with Session(engine) as db:
+        return edls.refresh_due(db)
+
+
+@celery_app.task(ignore_result=True)
+def build_edl(edl_id: int):
+    """Rebuild one external dynamic list now (created, edited, approved)."""
+    from app.models import edl as edl_models
+    from app.repositories import edls
+
+    with Session(engine) as db:
+        edl = db.get(edl_models.Edl, edl_id)
+        if edl is not None:
+            edls.build(db, edl)
 
 
 @celery_app.task(ignore_result=True)

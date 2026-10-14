@@ -66,6 +66,9 @@ const canReadWarninglists = computed(() =>
 const canReadSinks = computed(() =>
   authHelper.hasScope(scopes.value, "sinks:read"),
 );
+const canReadEdls = computed(() =>
+  authHelper.hasScope(scopes.value, "edls:read"),
+);
 const canAdminAuditLogs = computed(() =>
   authHelper.hasScope(scopes.value, "audit_logs:admin"),
 );
@@ -336,6 +339,11 @@ function navAndClose(path) {
             <li v-if="canReadSinks">
               <RouterLink to="/sinks" class="dropdown-item fw-light"
                 >sinks</RouterLink
+              >
+            </li>
+            <li v-if="canReadEdls">
+              <RouterLink to="/edls" class="dropdown-item fw-light"
+                >external dynamic lists</RouterLink
               >
             </li>
             <li><hr class="dropdown-divider" /></li>
@@ -740,6 +748,15 @@ function navAndClose(path) {
                 @click.prevent="navAndClose('/sinks')"
               >
                 sinks
+              </RouterLink>
+            </li>
+            <li v-if="canReadEdls">
+              <RouterLink
+                to="/edls"
+                class="list-group-item list-group-item-action ps-4"
+                @click.prevent="navAndClose('/edls')"
+              >
+                external dynamic lists
               </RouterLink>
             </li>
             <li v-if="canReadTasks">

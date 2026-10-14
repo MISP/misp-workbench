@@ -1,6 +1,7 @@
 from app.models.api_key import ApiKey  # noqa
 from app.models.audit_log import AuditLog  # noqa
 from app.models.export import Export, ExportDelta  # noqa
+from app.models.edl import Edl, EdlToken  # noqa
 from app.models.sink import Sink  # noqa
 from app.models.detection_profile import DetectionProfile  # noqa
 from app.models.indicator_review import IndicatorReview  # noqa
