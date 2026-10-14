@@ -26,6 +26,10 @@ async function stubLocalLists(page: Page) {
     r.fulfill(json(LOCAL_LISTS)),
   );
   await page.route(
+    new RegExp(`:${API_PORT}/local-warninglists/sources$`),
+    (r) => r.fulfill(json({ hosts: ["cmdb.corp.example"] })),
+  );
+  await page.route(
     new RegExp(`:${API_PORT}/local-warninglists/explain$`),
     (r) => r.fulfill(json(LOCAL_EXPLAIN)),
   );

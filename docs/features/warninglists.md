@@ -56,8 +56,10 @@ domains, VPN egress, partners, critical SaaS. Under ***settings*** →
 - **Import and export** as plain lists, one entry per line
   (`entry  # comment`). Importing can replace the entries an earlier import
   brought.
-- **Sync** from a URL serving such a list (your CMDB's ranges, say): daily,
-  replacing what the last sync brought. Fetching from inside the network is
+- **Sync** from a URL serving such a list (your CMDB's ranges, say): give
+  it when creating the list (**+ New list**), or later on the list's page.
+  It is fetched at once, then daily, each sync replacing what the last one
+  brought. Fetching from inside the network is
   the point, so where lists may sync from is an admin's call: only hosts in
   the runtime setting `warninglists.source_hosts` (exact names or
   `*.corp.example`), none by default. A host resolving to a loopback,
