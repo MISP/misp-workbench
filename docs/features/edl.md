@@ -26,6 +26,16 @@ Indicators of composite types give the part a list wants: the IP of an
 `filename|sha256`. Values a vendor can't take are skipped, and each entry is
 written once.
 
+Some values are never written, whatever the profile selects, because a
+firewall blocking them would cut off more than an indicator:
+
+- addresses and networks that aren't public (private, loopback, link-local,
+  documentation, reserved), and networks broader than a `/16` (IPv4) or a
+  `/32` (IPv6): a poisoned or mistaken `0.0.0.0/0` would block everything;
+- URLs with credentials or a backslash before the host
+  (`http://evil.example@good.example/`): parsers disagree on which host that
+  is, and the list could block the one a browser doesn't go to.
+
 ## Vendors
 
 | Vendor | Lists | Size limit | Written as |

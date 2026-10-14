@@ -86,6 +86,9 @@ VENDORS = {
     },
 }
 
+# The broadest network a list takes (prefix length, by IP version): a
+# poisoned or mistaken 0.0.0.0/0 would make a firewall block everything.
+MIN_PREFIX = {4: 16, 6: 32}
 # PAN-OS reads * and ^ in a URL list as wildcards, and refuses longer entries.
 PANOS_URL_MAX = 255
 HASH_LENGTHS = (32, 40, 64)
@@ -116,9 +119,16 @@ def _part(list_type: str, type_: str, value: str) -> str:
 
 
 def _ip(value: str) -> Optional[str]:
+    """An address or network a firewall can block safely: public, and no
+    broader than MIN_PREFIX (private, loopback, link-local, reserved and
+    huge ranges would cut off a network's own traffic)."""
     try:
         network = ipaddress.ip_network(value.strip(), strict=False)
     except ValueError:
+        return None
+    if network.prefixlen < MIN_PREFIX[network.version]:
+        return None
+    if not (network.network_address.is_global and network.broadcast_address.is_global):
         return None
     if network.prefixlen == network.max_prefixlen:
         return str(network.network_address)
@@ -148,7 +158,9 @@ def _url(value: str) -> Optional[tuple[str, str]]:
     """``(scheme, the rest)`` of a URL: host lowercased, fragment dropped,
     a path of at least ``/``."""
     raw = value.strip()
-    if not raw or any(c.isspace() for c in raw):
+    # Credentials or a backslash before the host: parsers disagree on which
+    # host that is, and a list would block the one a browser doesn't go to.
+    if not raw or any(c.isspace() for c in raw) or "\\" in raw:
         return None
     if "://" not in raw:
         raw = f"http://{raw}"
@@ -159,6 +171,8 @@ def _url(value: str) -> Optional[tuple[str, str]]:
     except ValueError:
         return None
     if parts.scheme.lower() not in ("http", "https") or not host:
+        return None
+    if "@" in parts.netloc:
         return None
     netloc = host.lower() + (f":{port}" if port else "")
     rest = netloc + (parts.path or "/")

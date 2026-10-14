@@ -28,11 +28,11 @@ MANAGE = ["edls:read", "edls:manage"]
 
 # value -> type
 ATTRIBUTES = {
-    "198.51.100.7": "ip-dst",
-    "203.0.113.0/24": "ip-src",
-    "192.0.2.44|8443": "ip-dst|port",
+    "45.33.32.7": "ip-dst",
+    "45.33.33.0/24": "ip-src",
+    "45.33.34.44|8443": "ip-dst|port",
     "bad.example": "domain",
-    "worse.example|192.0.2.45": "domain|ip",
+    "worse.example|45.33.35.45": "domain|ip",
     "https://bad.example/payload?id=1": "url",
     "d41d8cd98f00b204e9800998ecf8427e": "md5",
 }
@@ -60,23 +60,34 @@ class TestFormats:
     @pytest.mark.parametrize(
         "vendor,list_type,type_,value,expected",
         [
-            ("plain", "ip", "ip-dst", "198.51.100.7", ["198.51.100.7"]),
-            ("plain", "ip", "ip-src", "203.0.113.9/24", ["203.0.113.0/24"]),
-            ("plain", "ip", "ip-dst", "2001:db8::1/128", ["2001:db8::1"]),
-            ("plain", "ip", "ip-dst|port", "192.0.2.44|8443", ["192.0.2.44"]),
-            ("plain", "ip", "domain|ip", "worse.example|192.0.2.45", ["192.0.2.45"]),
+            ("plain", "ip", "ip-dst", "45.33.32.7", ["45.33.32.7"]),
+            ("plain", "ip", "ip-src", "45.33.33.9/24", ["45.33.33.0/24"]),
+            ("plain", "ip", "ip-dst", "2a00:1450::1/128", ["2a00:1450::1"]),
+            ("plain", "ip", "ip-dst", "2001:db8::1", []),
+            ("plain", "ip", "ip-dst|port", "45.33.34.44|8443", ["45.33.34.44"]),
+            ("plain", "ip", "domain|ip", "worse.example|45.33.35.45", ["45.33.35.45"]),
             ("plain", "ip", "ip-dst", "not an ip", []),
+            # Nothing that would cut off a network's own traffic.
+            ("plain", "ip", "ip-dst", "0.0.0.0/0", []),
+            ("plain", "ip", "ip-dst", "::/0", []),
+            ("plain", "ip", "ip-dst", "45.0.0.0/8", []),
+            ("plain", "ip", "ip-dst", "45.33.0.0/16", ["45.33.0.0/16"]),
+            ("plain", "ip", "ip-dst", "10.1.2.3", []),
+            ("plain", "ip", "ip-dst", "127.0.0.1", []),
+            ("plain", "ip", "ip-dst", "169.254.169.254", []),
+            ("plain", "ip", "ip-dst", "0.0.0.0", []),
+            ("plain", "ip", "ip-dst", "192.0.2.1", []),
             (
                 "plain",
                 "domain",
                 "domain|ip",
-                "worse.example|192.0.2.45",
+                "worse.example|45.33.35.45",
                 ["worse.example"],
             ),
             ("plain", "domain", "domain", "Bad.Example.", ["bad.example"]),
             ("plain", "domain", "domain", "bücher.example", ["xn--bcher-kva.example"]),
             ("plain", "domain", "domain", "localhost", []),
-            ("plain", "domain", "domain", "198.51.100.7", []),
+            ("plain", "domain", "domain", "45.33.32.7", []),
             ("paloalto", "domain", "domain", "bad.example", ["bad.example"]),
             ("squid", "domain", "domain", "bad.example", ["bad.example"]),
             (
@@ -112,6 +123,10 @@ class TestFormats:
             ),
             ("plain", "url", "url", "ftp://bad.example/x", []),
             ("plain", "url", "url", "http://bad.example/a b", []),
+            # Which host is that? Parsers and browsers disagree: skipped.
+            ("paloalto", "url", "url", "http://bad.example@good.example/x", []),
+            ("paloalto", "url", "url", "https://u:p@good.example/", []),
+            ("paloalto", "url", "url", "http://good.example\\@bad.example/", []),
         ],
     )
     def test_entries(self, vendor, list_type, type_, value, expected):
@@ -143,14 +158,14 @@ class TestFormats:
         # Pages come best scored first; duplicates count once.
         pages = [
             [
-                {"type": "ip-dst", "value": "192.0.2.1"},
-                {"type": "ip-dst|port", "value": "192.0.2.1|80"},
-                {"type": "ip-dst", "value": "192.0.2.2"},
+                {"type": "ip-dst", "value": "45.33.36.1"},
+                {"type": "ip-dst|port", "value": "45.33.36.1|80"},
+                {"type": "ip-dst", "value": "45.33.36.2"},
             ],
-            [{"type": "ip-dst", "value": "192.0.2.3"}],
+            [{"type": "ip-dst", "value": "45.33.36.3"}],
         ]
         lines, truncated = edls.render(_edl(max_entries=2), iter(pages))
-        assert lines == ["192.0.2.1", "192.0.2.2"]
+        assert lines == ["45.33.36.1", "45.33.36.2"]
         assert truncated == 1
 
     def test_vendor_limits(self):
@@ -448,7 +463,7 @@ class TestEdls(ApiTester):
             return sorted(edls.preview(edl)["lines"])
 
         assert build(vendor="paloalto", list_type="ip") == sorted(
-            ["198.51.100.7", "203.0.113.0/24", "192.0.2.44", "192.0.2.45"]
+            ["45.33.32.7", "45.33.33.0/24", "45.33.34.44", "45.33.35.45"]
         )
         assert build(
             vendor="fortinet", list_type="domain", include_subdomains=True
