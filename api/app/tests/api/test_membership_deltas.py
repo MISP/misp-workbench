@@ -138,10 +138,80 @@ class TestFailingRule:
                 {"to_ids": True, "source_keys": ["feed:1"]},
                 None,
             ),
+            # Hit-rate expiry: neither hit nor reported within the window.
+            (
+                {"hit_expiry": {"days": 30}},
+                {"to_ids": True, "last_reported": NOW - 31 * DAY},
+                "no_hits",
+            ),
+            (
+                {"hit_expiry": {"days": 30}},
+                {
+                    "to_ids": True,
+                    "last_reported": NOW - 31 * DAY,
+                    "sightings": {"last_positive_at": NOW - DAY},
+                },
+                None,
+            ),
+            # A false positive is no hit, though it moves last_seen.
+            (
+                {"hit_expiry": {"days": 30}},
+                {
+                    "to_ids": True,
+                    "last_seen": NOW - DAY,
+                    "last_reported": NOW - 31 * DAY,
+                    "sightings": {"last_false_positive_at": NOW - DAY},
+                },
+                "no_hits",
+            ),
+            # Indexed before last_reported existed: last_seen stands in.
+            (
+                {"hit_expiry": {"days": 30}},
+                {"to_ids": True, "last_seen": NOW - DAY},
+                None,
+            ),
+            (
+                {"hit_expiry": {"days": 30, "types": {"ip-dst": 7}}},
+                {"type": "ip-dst", "to_ids": True, "last_reported": NOW - 8 * DAY},
+                "no_hits",
+            ),
+            (
+                {"hit_expiry": {"types": {"ip-dst": 7}}},
+                {"type": "domain", "to_ids": True, "last_reported": NOW - 400 * DAY},
+                None,
+            ),
+            (
+                {"hit_expiry": {"days": 30, "exempt_tags": ["internal:*"]}},
+                {"to_ids": True, "tags": ["internal:keep"], "last_reported": 0},
+                None,
+            ),
+            (
+                {"hit_expiry": {"days": 30, "exempt_sources": ["feed:1"]}},
+                {
+                    "to_ids": True,
+                    "source_keys": ["feed:1", "local"],
+                    "last_reported": 0,
+                },
+                None,
+            ),
         ],
     )
     def test_reasons(self, rules, indicator, reason):
         assert detection_profiles.failing_rule(rules, indicator, self.ctx) == reason
+
+    @pytest.mark.parametrize(
+        "expiry",
+        [
+            {},
+            {"days": 0},
+            {"types": {"ip-dst": 0}},
+            {"days": 30, "exempt_sources": ["nope"]},
+            {"days": 30, "unknown": 1},
+        ],
+    )
+    def test_hit_expiry_is_checked(self, expiry):
+        with pytest.raises(ValueError):
+            profile_schemas.HitExpiry(**expiry)
 
 
 class TestMembershipDeltas(ApiTester):

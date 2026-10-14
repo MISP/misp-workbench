@@ -21,6 +21,10 @@ Review decisions (``indicator_reviews``) are on the indicators too: a profile
 can require approval, by an analyst or by an auto-approve profile, or just
 leave out what analysts rejected. A value without an indicator is judged on
 its stored decision.
+
+Hit-rate expiry (``hit_expiry``) leaves out what no sensor has hit lately: no
+positive sighting, and no new report from a source, within its type's
+window. Either brings it back.
 """
 
 import fnmatch
@@ -41,6 +45,8 @@ TLP_LEVELS = ["tlp:clear", "tlp:green", "tlp:amber", "tlp:amber+strict", "tlp:re
 # A tlp:white is a tlp:clear.
 TLP_ALIASES = {"tlp:white": "tlp:clear"}
 PREVIEW_SAMPLE = 5
+# "Hit recently", in the hit report of a profile without hit-rate expiry.
+HIT_WINDOW_DAYS = 30
 
 
 class ProfileInUse(Exception):
@@ -254,6 +260,54 @@ def _trust_split(rules, ctx: dict) -> tuple[Optional[list], list]:
 REJECTED = {"term": {"review.status": "rejected"}}
 
 
+def _active_since(since: int) -> dict:
+    """Indicators hit (a positive sighting) or reported at ``since`` or
+    later. One indexed before ``last_reported`` existed goes by last_seen."""
+    return {
+        "bool": {
+            "should": [
+                {"range": {"sightings.last_positive_at": {"gte": since}}},
+                {"range": {"last_reported": {"gte": since}}},
+                {
+                    "bool": {
+                        "filter": [{"range": {"last_seen": {"gte": since}}}],
+                        "must_not": [{"exists": {"field": "last_reported"}}],
+                    }
+                },
+            ],
+            "minimum_should_match": 1,
+        }
+    }
+
+
+def hit_expiry_kept(expiry, ctx: dict) -> dict:
+    """The indicators hit-rate expiry keeps: exempt ones, and those active
+    within their type's window."""
+    now = ctx["now"]
+    should: list = [_tag_clause(t) for t in expiry.exempt_tags]
+    if expiry.exempt_sources:
+        should.append({"terms": {"source_keys": expiry.exempt_sources}})
+    for type_, days in expiry.types.items():
+        should.append(
+            {
+                "bool": {
+                    "filter": [
+                        {"term": {"type.keyword": type_}},
+                        _active_since(now - days * DAY),
+                    ]
+                }
+            }
+        )
+    # Every other type: its window is ``days``, or it never expires.
+    others: dict = {"filter": [], "must_not": []}
+    if expiry.types:
+        others["must_not"].append({"terms": {"type.keyword": list(expiry.types)}})
+    if expiry.days:
+        others["filter"].append(_active_since(now - expiry.days * DAY))
+    should.append({"bool": others})
+    return {"bool": {"should": should, "minimum_should_match": 1}}
+
+
 def approved_query(ctx: dict) -> dict:
     """Indicators an analyst approved, or an auto-approve profile selects and
     no analyst rejected."""
@@ -343,6 +397,8 @@ def to_query(rules, ctx: dict, live_only: bool = True) -> dict:
                 }
             }
         )
+    if rules.hit_expiry:
+        filters.append(hit_expiry_kept(rules.hit_expiry, ctx))
     if rules.require_approval:
         filters.append(approved_query(ctx))
     elif rules.exclude_rejected:
@@ -412,6 +468,35 @@ def _outside(field: str, keys: list) -> str:
     return _any_of(field, others) if others else "NOT *"
 
 
+def _active_lucene(since: int) -> str:
+    return (
+        f"(sightings.last_positive_at:>={since} OR last_reported:>={since} OR "
+        f"(last_seen:>={since} AND NOT _exists_:last_reported))"
+    )
+
+
+def _hit_expiry_lucene(expiry, ctx: dict) -> str:
+    """``hit_expiry_kept`` as a Lucene query."""
+    now = ctx["now"]
+    either = []
+    if expiry.exempt_tags:
+        either.append(f"tags:({' OR '.join(_pattern(t) for t in expiry.exempt_tags)})")
+    if expiry.exempt_sources:
+        either.append(_any_of("source_keys", expiry.exempt_sources))
+    for type_, days in expiry.types.items():
+        either.append(
+            f"({_any_of('type.keyword', [type_])} AND "
+            f"{_active_lucene(now - days * DAY)})"
+        )
+    others = ["*:*"]
+    if expiry.types:
+        others.append(f"NOT {_any_of('type.keyword', list(expiry.types))}")
+    if expiry.days:
+        others.append(_active_lucene(now - expiry.days * DAY))
+    either.append(f"({' AND '.join(others)})")
+    return f"({' OR '.join(either)})"
+
+
 def to_lucene(rules, ctx: dict) -> dict:
     """The rules as a Lucene query on the indicators index, for Explore.
 
@@ -465,6 +550,8 @@ def to_lucene(rules, ctx: dict) -> dict:
     if rules.exclude_lists:
         # A list's members are private: Explore can't leave them out.
         snapshot = True
+    if rules.hit_expiry:
+        parts.append(_hit_expiry_lucene(rules.hit_expiry, ctx))
     if rules.require_approval:
         either = ["review.status:approved"]
         auto = [to_lucene(r, ctx) for r in ctx.get("auto_approve", [])]
@@ -495,6 +582,7 @@ REASONS = (
     "validation",
     "score",
     "expired",
+    "no_hits",
     "sources",
     "excluded_source",
     "organisations",
@@ -553,6 +641,23 @@ def _listed(indicator: dict, list_ids: list[int], ctx: dict) -> bool:
     return False
 
 
+def _hit_expired(expiry, indicator: dict, ctx: dict) -> bool:
+    """``hit_expiry_kept``, negated, for one indicator."""
+    if expiry.exempt_tags and _any_tag(indicator.get("tags") or [], expiry.exempt_tags):
+        return False
+    if set(indicator.get("source_keys") or []) & set(expiry.exempt_sources):
+        return False
+    days = expiry.types.get(indicator.get("type"), expiry.days)
+    if not days:
+        return False
+    since = ctx["now"] - days * DAY
+    hit = (indicator.get("sightings") or {}).get("last_positive_at")
+    reported = indicator.get("last_reported")
+    if reported is None:
+        reported = indicator.get("last_seen")
+    return not any(t is not None and t >= since for t in (hit, reported))
+
+
 def approved(indicator: dict, ctx: dict) -> bool:
     """``approved_query`` for one indicator."""
     status = _review_status(indicator, ctx)
@@ -605,6 +710,8 @@ def failing_rule(rules, indicator: Optional[dict], ctx: dict) -> Optional[str]:
         last_seen is None or last_seen < ctx["now"] - rules.max_age_days * DAY
     ):
         return "expired"
+    if rules.hit_expiry and _hit_expired(rules.hit_expiry, indicator, ctx):
+        return "no_hits"
     keys = indicator.get("source_keys") or []
     if rules.sources and not set(keys) & set(rules.sources):
         return "sources"
@@ -695,6 +802,7 @@ def attribute_indicator(
         ),
         "organisation_ids": [org_id] if org_id is not None else [],
         "last_seen": int(seen) if seen else None,
+        "last_reported": int(seen) if seen else None,
         "sightings": {},
         # Its review decision is stored, not on it (see _review_status).
         "_fresh": True,
@@ -770,4 +878,78 @@ def preview(rules, ctx: Optional[dict] = None) -> dict:
     return {
         "count": hits.get("total", {}).get("value", 0),
         "sample": [h["_source"] for h in hits.get("hits", [])],
+    }
+
+
+def hit_report(rules, ctx: Optional[dict] = None) -> dict:
+    """How much of what the rules select sensors hit, overall and per
+    source: never hit, hit recently, and what hit-rate expiry leaves out."""
+    from app.repositories import source_quality
+    from app.services.opensearch import get_opensearch_client
+
+    ctx = ctx or context()
+    rules = _rules(rules)
+    expiry = rules.hit_expiry
+    window = expiry.days if expiry and expiry.days else HIT_WINDOW_DAYS
+    kept = hit_expiry_kept(expiry, ctx) if expiry else {"match_all": {}}
+    never = {
+        "bool": {"must_not": [{"exists": {"field": "sightings.last_positive_at"}}]}
+    }
+    recent = {
+        "range": {"sightings.last_positive_at": {"gte": ctx["now"] - window * DAY}}
+    }
+    response = get_opensearch_client().search(
+        index=indicators_repository.INDEX,
+        body={
+            "size": 0,
+            "track_total_hits": True,
+            # Everything else the rules select, expired or not.
+            "query": to_query(rules.model_copy(update={"hit_expiry": None}), ctx),
+            "aggs": {
+                "kept": {
+                    "filter": kept,
+                    "aggs": {
+                        "never_hit": {"filter": never},
+                        "hit_recently": {"filter": recent},
+                    },
+                },
+                "sources": {
+                    "terms": {
+                        "field": "source_keys",
+                        "size": source_quality.MAX_SOURCES,
+                    },
+                    "aggs": {
+                        "kept": {
+                            "filter": kept,
+                            "aggs": {"never_hit": {"filter": never}},
+                        }
+                    },
+                },
+            },
+        },
+        ignore=[404],
+    )
+    total = response.get("hits", {}).get("total", {}).get("value", 0)
+    aggs = response.get("aggregations") or {}
+    members = aggs.get("kept", {})
+    names = source_quality._names()
+    by_source = [
+        {
+            "key": bucket["key"],
+            "name": names.get(bucket["key"], bucket["key"]),
+            "members": bucket["kept"]["doc_count"],
+            "never_hit": bucket["kept"]["never_hit"]["doc_count"],
+            "expired": bucket["doc_count"] - bucket["kept"]["doc_count"],
+        }
+        for bucket in aggs.get("sources", {}).get("buckets", [])
+    ]
+    by_source.sort(key=lambda s: (-(s["never_hit"] + s["expired"]), s["key"]))
+    return {
+        "members": members.get("doc_count", 0),
+        "never_hit": members.get("never_hit", {}).get("doc_count", 0),
+        "hit_recently": members.get("hit_recently", {}).get("doc_count", 0),
+        "window_days": window,
+        "expired": total - members.get("doc_count", 0),
+        "expiry": expiry is not None,
+        "by_source": by_source,
     }

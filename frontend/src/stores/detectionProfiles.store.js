@@ -45,6 +45,13 @@ export const useDetectionProfilesStore = defineStore({
       return await fetchWrapper.get(`${baseUrl}/${id}/count`);
     },
     /**
+     * How much of what the profile selects sensors hit, per source, and
+     * what its hit-rate expiry leaves out now.
+     */
+    async hits(id) {
+      return await fetchWrapper.get(`${baseUrl}/${id}/hits`);
+    },
+    /**
      * What the profile's next run changes against its last release, whether
      * its gate would hold it, its recent runs and outputs. With `rules`, a
      * dry run of those rules instead.

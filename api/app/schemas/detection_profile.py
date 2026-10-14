@@ -7,6 +7,71 @@ Granularity = Literal["indicators", "attributes"]
 Tlp = Literal["tlp:clear", "tlp:green", "tlp:amber", "tlp:amber+strict", "tlp:red"]
 
 
+def _check_source_keys(keys: list[str]) -> list[str]:
+    for key in keys:
+        kind, _, ident = key.partition(":")
+        if key in ("local", "unknown"):
+            continue
+        if kind not in ("feed", "server") or not ident.isdigit():
+            raise ValueError(
+                f"{key!r} is not a source key (feed:<id>, server:<id>, local, unknown)"
+            )
+    return keys
+
+
+def _check_non_empty(values: list[str]) -> list[str]:
+    cleaned = [v.strip() for v in values]
+    if any(not v for v in cleaned):
+        raise ValueError("entries can't be empty")
+    return cleaned
+
+
+class HitExpiry(BaseModel):
+    """Leave out indicators no sensor has hit lately.
+
+    An indicator leaves once it has had no positive sighting, and no source
+    has reported it again, for its type's window; either brings it back.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    # The window, in days, for every type not in ``types``. None: only the
+    # types listed expire.
+    days: Optional[int] = Field(None, ge=1, le=3650)
+    # Attribute type -> its own window, in days.
+    types: dict[str, int] = {}
+    # Never expire indicators with one of these tags (patterns), or reported
+    # by one of these sources (feed:3, server:2, local).
+    exempt_tags: list[str] = []
+    exempt_sources: list[str] = []
+
+    @field_validator("types")
+    @classmethod
+    def _windows(cls, types: dict[str, int]) -> dict[str, int]:
+        for type_, days in types.items():
+            if not type_.strip():
+                raise ValueError("types can't be empty")
+            if not 1 <= days <= 3650:
+                raise ValueError(f"{type_}: a window is 1 to 3650 days")
+        return types
+
+    @field_validator("exempt_sources")
+    @classmethod
+    def _source_keys(cls, keys: list[str]) -> list[str]:
+        return _check_source_keys(keys)
+
+    @field_validator("exempt_tags")
+    @classmethod
+    def _non_empty(cls, values: list[str]) -> list[str]:
+        return _check_non_empty(values)
+
+    @model_validator(mode="after")
+    def _some_window(self):
+        if self.days is None and not self.types:
+            raise ValueError("set a window: days, or one per type")
+        return self
+
+
 class ProfileRules(BaseModel):
     """Which consolidated indicators a profile selects. Every rule narrows.
 
@@ -53,27 +118,18 @@ class ProfileRules(BaseModel):
     # ones out too.
     require_approval: bool = False
     exclude_rejected: bool = False
+    # Hit-rate expiry: leave out what no sensor has hit lately.
+    hit_expiry: Optional[HitExpiry] = None
 
     @field_validator("sources", "exclude_sources")
     @classmethod
     def _source_keys(cls, keys: list[str]) -> list[str]:
-        for key in keys:
-            kind, _, ident = key.partition(":")
-            if key in ("local", "unknown"):
-                continue
-            if kind not in ("feed", "server") or not ident.isdigit():
-                raise ValueError(
-                    f"{key!r} is not a source key (feed:<id>, server:<id>, local, unknown)"
-                )
-        return keys
+        return _check_source_keys(keys)
 
     @field_validator("types", "categories", "tags", "exclude_tags")
     @classmethod
     def _non_empty(cls, values: list[str]) -> list[str]:
-        cleaned = [v.strip() for v in values]
-        if any(not v for v in cleaned):
-            raise ValueError("entries can't be empty")
-        return cleaned
+        return _check_non_empty(values)
 
 
 RiskFlag = Literal[
@@ -170,6 +226,31 @@ class ProfilePreview(BaseModel):
 
     count: int
     sample: list[dict] = []
+
+
+class SourceHits(BaseModel):
+    key: str
+    name: str
+    # Members it reports, those never hit (no positive sighting at all), and
+    # those hit-rate expiry leaves out now.
+    members: int = 0
+    never_hit: int = 0
+    expired: int = 0
+
+
+class HitReport(BaseModel):
+    """How much of what a profile selects sensors actually hit."""
+
+    # The profile's members now (after hit-rate expiry, if it has one).
+    members: int = 0
+    never_hit: int = 0
+    # Hit (a positive sighting) within the last ``window_days``.
+    hit_recently: int = 0
+    window_days: int
+    # What hit-rate expiry leaves out now (0 without it).
+    expired: int = 0
+    expiry: bool = False
+    by_source: list[SourceHits] = []
 
 
 class SourceCount(BaseModel):

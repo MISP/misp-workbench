@@ -6,7 +6,9 @@ Security controls want one record per indicator, so this keeps a
 ``misp-indicators`` index with exactly that, merged from every live attribute
 of the type and value:
 
-- ``first_seen`` / ``last_seen`` across the attributes and the value's sightings;
+- ``first_seen`` / ``last_seen`` across the attributes and the value's sightings,
+  and ``last_reported`` across the attributes alone (when a source last
+  reported it, for hit-rate expiry);
 - the events it appears in, and per source (feed, MISP server, local) and
   creator organisation, in how many;
 - the tags, with TLP reduced to the most restrictive one and galaxies unioned;
@@ -426,6 +428,7 @@ def build_indicator(
     sightings = sightings or {}
     starts = [_as_int(a.get("first_seen") or a.get("timestamp")) for a in live]
     ends = [_as_int(a.get("last_seen") or a.get("timestamp")) for a in live]
+    reported = [t for t in ends if t]
     starts.append(sightings.get("first_at"))
     ends.append(sightings.get("last_at"))
     starts = [t for t in starts if t]
@@ -445,6 +448,7 @@ def build_indicator(
         "events": event_uuids[:MAX_EVENTS_LISTED],
         "first_seen": min(starts) if starts else None,
         "last_seen": max(ends) if ends else None,
+        "last_reported": max(reported) if reported else None,
         "sources": sorted(
             sources.values(), key=lambda s: (-s["event_count"], str(s["name"]))
         ),
