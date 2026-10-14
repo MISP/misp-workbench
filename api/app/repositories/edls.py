@@ -22,7 +22,7 @@ import re
 import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Iterator, Optional
-from urllib.parse import urlsplit
+from urllib.parse import unquote, urlsplit
 
 from sqlalchemy.orm import Session
 
@@ -93,6 +93,7 @@ MIN_PREFIX = {4: 16, 6: 32}
 PANOS_URL_MAX = 255
 HASH_LENGTHS = (32, 40, 64)
 _HEX = re.compile(r"^[0-9a-f]+$")
+_NUMERIC_LABEL = re.compile(r"^(0x[0-9a-f]*|[0-9]+)$")
 _LABEL = re.compile(r"^(?!-)[a-z0-9_-]{1,63}(?<!-)$")
 # POSIX extended regex metacharacters, escaped for Squid's url_regex.
 _ERE_SPECIAL = set(".[]()*+?{}|^$\\")
@@ -154,16 +155,38 @@ def _domain(value: str) -> Optional[str]:
     return domain
 
 
+def _url_host(host: str) -> Optional[str]:
+    """A URL's host as a browser reads it (percent-decoded, IDNA, numeric
+    forms as addresses), or None when it isn't one a list can name."""
+    host = unquote(host).lower().rstrip(".")
+    if host.startswith("[") and host.endswith("]"):
+        host = host[1:-1]
+    try:
+        ipaddress.ip_address(host)
+    except ValueError:
+        pass
+    else:
+        address = _ip(host)
+        return f"[{address}]" if address and ":" in address else address
+    # A last label that is a number makes browsers read the host as an IPv4
+    # address in another form (0x7f.1, 2130706433): not a domain to list.
+    if _NUMERIC_LABEL.match(host.rsplit(".", 1)[-1]):
+        return None
+    return _domain(host)
+
+
 def _url(value: str) -> Optional[tuple[str, str]]:
-    """``(scheme, the rest)`` of a URL: host lowercased, fragment dropped,
-    a path of at least ``/``."""
+    """``(scheme, the rest)`` of a URL, read as a browser reads it: a
+    backslash is a slash, credentials are dropped, the host is normalised
+    (``_url_host``); fragment dropped, a path of at least ``/``."""
     raw = value.strip()
-    # Credentials or a backslash before the host: parsers disagree on which
-    # host that is, and a list would block the one a browser doesn't go to.
-    if not raw or any(c.isspace() for c in raw) or "\\" in raw:
+    if not raw or any(c.isspace() for c in raw):
         return None
     if "://" not in raw:
         raw = f"http://{raw}"
+    # In http(s) URLs browsers read \ as /: http://good.example\@bad.example/
+    # goes to good.example, whatever urlsplit says.
+    raw = raw.replace("\\", "/")
     try:
         parts = urlsplit(raw)
         host = parts.hostname
@@ -172,9 +195,12 @@ def _url(value: str) -> Optional[tuple[str, str]]:
         return None
     if parts.scheme.lower() not in ("http", "https") or not host:
         return None
-    if "@" in parts.netloc:
+    # Credentials (http://bank.example@evil.example/) aren't the host: the
+    # browser goes to the one after the @, which is what the list names.
+    host = _url_host(host)
+    if not host:
         return None
-    netloc = host.lower() + (f":{port}" if port else "")
+    netloc = host + (f":{port}" if port else "")
     rest = netloc + (parts.path or "/")
     if parts.query:
         rest += f"?{parts.query}"

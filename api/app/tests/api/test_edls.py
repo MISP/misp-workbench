@@ -123,10 +123,36 @@ class TestFormats:
             ),
             ("plain", "url", "url", "ftp://bad.example/x", []),
             ("plain", "url", "url", "http://bad.example/a b", []),
-            # Which host is that? Parsers and browsers disagree: skipped.
-            ("paloalto", "url", "url", "http://bad.example@good.example/x", []),
-            ("paloalto", "url", "url", "https://u:p@good.example/", []),
-            ("paloalto", "url", "url", "http://good.example\\@bad.example/", []),
+            # The host a browser goes to: after the credentials, before a
+            # backslash (a slash in http URLs).
+            (
+                "paloalto",
+                "url",
+                "url",
+                "http://bank.example@bad.example/x",
+                ["bad.example/x"],
+            ),
+            ("paloalto", "url", "url", "https://u:p@bad.example/", ["bad.example/"]),
+            (
+                "paloalto",
+                "url",
+                "url",
+                "http://bad.example\\@good.example/",
+                ["bad.example/@good.example/"],
+            ),
+            ("paloalto", "url", "url", "http://B%61d.example/x", ["bad.example/x"]),
+            (
+                "cisco",
+                "url",
+                "url",
+                "http://[2a00:1450::1]:8080/x",
+                ["http://[2a00:1450::1]:8080/x"],
+            ),
+            ("paloalto", "url", "url", "http://45.33.32.7/x", ["45.33.32.7/x"]),
+            # Hosts a browser reads as addresses it can't block safely.
+            ("paloalto", "url", "url", "http://10.0.0.1/admin", []),
+            ("paloalto", "url", "url", "http://0x7f.1/", []),
+            ("paloalto", "url", "url", "http://2130706433/", []),
         ],
     )
     def test_entries(self, vendor, list_type, type_, value, expected):

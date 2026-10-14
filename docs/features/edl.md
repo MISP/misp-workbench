@@ -32,9 +32,12 @@ firewall blocking them would cut off more than an indicator:
 - addresses and networks that aren't public (private, loopback, link-local,
   documentation, reserved), and networks broader than a `/16` (IPv4) or a
   `/32` (IPv6): a poisoned or mistaken `0.0.0.0/0` would block everything;
-- URLs with credentials or a backslash before the host
-  (`http://evil.example@good.example/`): parsers disagree on which host that
-  is, and the list could block the one a browser doesn't go to.
+- URLs whose host a browser reads as such an address (`http://10.0.0.1/`,
+  or numeric forms like `http://0x7f.1/`).
+
+A URL is listed with the host a browser goes to: after any credentials
+(`http://bank.example@evil.example/` lists `evil.example/`), with a backslash
+read as a slash, and percent-encoding in the host decoded.
 
 ## Vendors
 
