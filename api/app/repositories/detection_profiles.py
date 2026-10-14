@@ -148,7 +148,7 @@ def update_profile(
 
 
 def users_of(db: Session, profile_id: int) -> list[str]:
-    """Exports and sinks referencing the profile, by name."""
+    """Exports, sinks and EDLs referencing the profile, by name."""
     from app.models import export as export_models
     from app.models import sink as sink_models
 
@@ -163,6 +163,9 @@ def users_of(db: Session, profile_id: int) -> list[str]:
         for s in db.query(sink_models.Sink).all()
         if (s.filters or {}).get("profile_id") == profile_id
     ]
+    from app.repositories import edls
+
+    names += [f"EDL {e.name!r}" for e in edls.using_profile(db, profile_id)]
     return names
 
 

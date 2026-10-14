@@ -12847,6 +12847,585 @@
         }
       }
     },
+    "/edls/vendors": {
+      "get": {
+        "tags": [
+          "External dynamic lists"
+        ],
+        "summary": "List Vendors",
+        "description": "The vendors lists can be written for, the lists each takes and its\nsize limit by default.",
+        "operationId": "list_vendors_edls_vendors_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/VendorInfo"
+                  },
+                  "type": "array",
+                  "title": "Response List Vendors Edls Vendors Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "edls:read"
+            ]
+          }
+        ]
+      }
+    },
+    "/edls": {
+      "get": {
+        "tags": [
+          "External dynamic lists"
+        ],
+        "summary": "List Edls",
+        "description": "Your organisation's lists (every organisation's, for admins).",
+        "operationId": "list_edls_edls_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/Edl"
+                  },
+                  "type": "array",
+                  "title": "Response List Edls Edls Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "edls:read"
+            ]
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "External dynamic lists"
+        ],
+        "summary": "Create Edl",
+        "operationId": "create_edl_edls_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EdlCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Edl"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "edls:read",
+              "edls:manage"
+            ]
+          }
+        ]
+      }
+    },
+    "/edls/{edl_id}": {
+      "get": {
+        "tags": [
+          "External dynamic lists"
+        ],
+        "summary": "Get Edl",
+        "operationId": "get_edl_edls__edl_id__get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "edls:read"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "edl_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Edl Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Edl"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "External dynamic lists"
+        ],
+        "summary": "Update Edl",
+        "operationId": "update_edl_edls__edl_id__patch",
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "edls:read",
+              "edls:manage"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "edl_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Edl Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EdlUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Edl"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "External dynamic lists"
+        ],
+        "summary": "Delete Edl",
+        "operationId": "delete_edl_edls__edl_id__delete",
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "edls:read",
+              "edls:manage"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "edl_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Edl Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/edls/{edl_id}/build": {
+      "post": {
+        "tags": [
+          "External dynamic lists"
+        ],
+        "summary": "Build Edl",
+        "description": "Rebuild the list now, rather than at its next refresh.",
+        "operationId": "build_edl_edls__edl_id__build_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "edls:read",
+              "edls:manage"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "edl_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Edl Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Edl"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/edls/{edl_id}/preview": {
+      "get": {
+        "tags": [
+          "External dynamic lists"
+        ],
+        "summary": "Preview Edl",
+        "description": "The first lines of the list, as firewalls get it.",
+        "operationId": "preview_edl_edls__edl_id__preview_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "edls:read"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "edl_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Edl Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EdlPreview"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/edls/{edl_id}/tokens": {
+      "get": {
+        "tags": [
+          "External dynamic lists"
+        ],
+        "summary": "List Tokens",
+        "operationId": "list_tokens_edls__edl_id__tokens_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "edls:read",
+              "edls:manage"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "edl_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Edl Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/EdlToken"
+                  },
+                  "title": "Response List Tokens Edls  Edl Id  Tokens Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "External dynamic lists"
+        ],
+        "summary": "Create Token",
+        "description": "A token for this list only. Its value is in this response and\nnowhere else: only its hash is kept.",
+        "operationId": "create_token_edls__edl_id__tokens_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "edls:read",
+              "edls:manage"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "edl_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Edl Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EdlTokenCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EdlTokenCreated"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/edls/{edl_id}/tokens/{token_id}": {
+      "delete": {
+        "tags": [
+          "External dynamic lists"
+        ],
+        "summary": "Revoke Token",
+        "description": "Revoke a token: the list stops answering it at once.",
+        "operationId": "revoke_token_edls__edl_id__tokens__token_id__delete",
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "edls:read",
+              "edls:manage"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "edl_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Edl Id"
+            }
+          },
+          {
+            "name": "token_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Token Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/edl/{token}": {
+      "get": {
+        "tags": [
+          "External dynamic lists"
+        ],
+        "summary": "Fetch Edl",
+        "description": "The list a token is for, one entry per line. The token in the URL is\nthe only credential: firewalls can't send an Authorization header.",
+        "operationId": "fetch_edl_edl__token__get",
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The list",
+            "content": {
+              "text/plain": {}
+            }
+          },
+          "304": {
+            "description": "Unchanged since the ETag sent"
+          },
+          "403": {
+            "description": "The token can't be used from this address"
+          },
+          "404": {
+            "description": "No such token, or revoked or expired"
+          },
+          "503": {
+            "description": "The list hasn't been built yet"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/sinks/": {
       "get": {
         "tags": [
@@ -18155,6 +18734,661 @@
         ],
         "title": "DistributionLevel",
         "description": "Enum for the Event distribution level"
+      },
+      "Edl": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "profile_id": {
+            "type": "integer",
+            "title": "Profile Id"
+          },
+          "list_type": {
+            "type": "string",
+            "enum": [
+              "ip",
+              "domain",
+              "url",
+              "hash"
+            ],
+            "title": "List Type"
+          },
+          "vendor": {
+            "type": "string",
+            "enum": [
+              "paloalto",
+              "fortinet",
+              "checkpoint",
+              "cisco",
+              "squid",
+              "plain"
+            ],
+            "title": "Vendor",
+            "default": "plain"
+          },
+          "max_entries": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 1000000.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Entries"
+          },
+          "include_subdomains": {
+            "type": "boolean",
+            "title": "Include Subdomains",
+            "default": false
+          },
+          "refresh_minutes": {
+            "type": "integer",
+            "maximum": 10080.0,
+            "minimum": 1.0,
+            "title": "Refresh Minutes",
+            "default": 15
+          },
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled",
+            "default": true
+          },
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "org_id": {
+            "type": "integer",
+            "title": "Org Id"
+          },
+          "entry_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entry Count"
+          },
+          "truncated": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Truncated"
+          },
+          "checksum": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Checksum"
+          },
+          "built_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Built At"
+          },
+          "build_error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Build Error"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          },
+          "active_tokens": {
+            "type": "integer",
+            "title": "Active Tokens",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "profile_id",
+          "list_type",
+          "id",
+          "org_id",
+          "created_at"
+        ],
+        "title": "Edl"
+      },
+      "EdlCreate": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "profile_id": {
+            "type": "integer",
+            "title": "Profile Id"
+          },
+          "list_type": {
+            "type": "string",
+            "enum": [
+              "ip",
+              "domain",
+              "url",
+              "hash"
+            ],
+            "title": "List Type"
+          },
+          "vendor": {
+            "type": "string",
+            "enum": [
+              "paloalto",
+              "fortinet",
+              "checkpoint",
+              "cisco",
+              "squid",
+              "plain"
+            ],
+            "title": "Vendor",
+            "default": "plain"
+          },
+          "max_entries": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 1000000.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Entries"
+          },
+          "include_subdomains": {
+            "type": "boolean",
+            "title": "Include Subdomains",
+            "default": false
+          },
+          "refresh_minutes": {
+            "type": "integer",
+            "maximum": 10080.0,
+            "minimum": 1.0,
+            "title": "Refresh Minutes",
+            "default": 15
+          },
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled",
+            "default": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "profile_id",
+          "list_type"
+        ],
+        "title": "EdlCreate"
+      },
+      "EdlPreview": {
+        "properties": {
+          "lines": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Lines",
+            "default": []
+          },
+          "entry_count": {
+            "type": "integer",
+            "title": "Entry Count",
+            "default": 0
+          },
+          "truncated": {
+            "type": "integer",
+            "title": "Truncated",
+            "default": 0
+          },
+          "built_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Built At"
+          }
+        },
+        "type": "object",
+        "title": "EdlPreview",
+        "description": "The first lines of the list as served."
+      },
+      "EdlToken": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "edl_id": {
+            "type": "integer",
+            "title": "Edl Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "prefix": {
+            "type": "string",
+            "title": "Prefix"
+          },
+          "allowed_ips": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Allowed Ips",
+            "default": []
+          },
+          "expires_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expires At"
+          },
+          "revoked_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revoked At"
+          },
+          "last_used_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Used At"
+          },
+          "last_used_ip": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Used Ip"
+          },
+          "use_count": {
+            "type": "integer",
+            "title": "Use Count",
+            "default": 0
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "edl_id",
+          "name",
+          "prefix",
+          "created_at"
+        ],
+        "title": "EdlToken"
+      },
+      "EdlTokenCreate": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "expires_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expires At"
+          },
+          "allowed_ips": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 100,
+            "title": "Allowed Ips",
+            "default": []
+          }
+        },
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "EdlTokenCreate"
+      },
+      "EdlTokenCreated": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "edl_id": {
+            "type": "integer",
+            "title": "Edl Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "prefix": {
+            "type": "string",
+            "title": "Prefix"
+          },
+          "allowed_ips": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Allowed Ips",
+            "default": []
+          },
+          "expires_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expires At"
+          },
+          "revoked_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revoked At"
+          },
+          "last_used_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Used At"
+          },
+          "last_used_ip": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Used Ip"
+          },
+          "use_count": {
+            "type": "integer",
+            "title": "Use Count",
+            "default": 0
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "token": {
+            "type": "string",
+            "title": "Token"
+          },
+          "path": {
+            "type": "string",
+            "title": "Path"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "edl_id",
+          "name",
+          "prefix",
+          "created_at",
+          "token",
+          "path"
+        ],
+        "title": "EdlTokenCreated"
+      },
+      "EdlUpdate": {
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "profile_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile Id"
+          },
+          "list_type": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "ip",
+                  "domain",
+                  "url",
+                  "hash"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "List Type"
+          },
+          "vendor": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "paloalto",
+                  "fortinet",
+                  "checkpoint",
+                  "cisco",
+                  "squid",
+                  "plain"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vendor"
+          },
+          "max_entries": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 1000000.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Entries"
+          },
+          "include_subdomains": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Include Subdomains"
+          },
+          "refresh_minutes": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 10080.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Refresh Minutes"
+          },
+          "enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Enabled"
+          }
+        },
+        "type": "object",
+        "title": "EdlUpdate"
       },
       "EntriesChanged": {
         "properties": {
@@ -31348,6 +32582,57 @@
           "type"
         ],
         "title": "ValidationError"
+      },
+      "VendorInfo": {
+        "properties": {
+          "vendor": {
+            "type": "string",
+            "enum": [
+              "paloalto",
+              "fortinet",
+              "checkpoint",
+              "cisco",
+              "squid",
+              "plain"
+            ],
+            "title": "Vendor"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "list_types": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "ip",
+                "domain",
+                "url",
+                "hash"
+              ]
+            },
+            "type": "array",
+            "title": "List Types"
+          },
+          "max_entries": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Entries"
+          }
+        },
+        "type": "object",
+        "required": [
+          "vendor",
+          "name",
+          "list_types"
+        ],
+        "title": "VendorInfo"
       },
       "Vulnerability": {
         "properties": {

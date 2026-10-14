@@ -9,6 +9,7 @@ from app.routers import (
     auth,
     detection_profiles,
     diagnostics,
+    edls,
     events,
     exports,
     feeds,
@@ -201,6 +202,9 @@ app.include_router(indicators.router, tags=["Indicators"])
 
 # Exports resource
 app.include_router(exports.router, tags=["Exports"])
+
+# External dynamic lists, and what firewalls fetch
+app.include_router(edls.router, tags=["External dynamic lists"])
 
 # Outbound sinks resource
 app.include_router(sinks.router, tags=["Sinks"])

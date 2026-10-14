@@ -126,6 +126,8 @@ AVAILABLE_SCOPES: dict[str, str] = {
         "exports:create": "Create IOC exports.",
         "exports:read": "Read and download IOC exports.",
         "exports:delete": "Delete IOC exports.",
+        "edls:read": "Read the organisation's external dynamic lists (EDLs).",
+        "edls:manage": "Manage the organisation's external dynamic lists and their URL tokens.",
         "detection_profiles:read": "Read detection profiles and preview what they select.",
         "detection_profiles:create": "Create detection profiles.",
         "detection_profiles:update": "Update detection profiles.",

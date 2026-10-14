@@ -796,12 +796,24 @@ def consumers(db: Session, profile_id: int) -> list[dict]:
                 "gated": bool(filters.get("sync_membership")),
             }
         )
+    from app.repositories import edls
+
+    for edl in edls.using_profile(db, profile_id):
+        found.append(
+            {
+                "kind": "edl",
+                "id": edl.id,
+                "name": edl.name,
+                "status": "failed" if edl.build_error else "built",
+                "gated": True,
+            }
+        )
     return found
 
 
 def _rerun(db: Session, profile_id: int) -> None:
-    """Run the profile's exports, and sync its sinks keeping in step, so what
-    was approved goes out now."""
+    """Run the profile's exports, sync its sinks keeping in step and rebuild
+    its EDLs, so what was approved goes out now."""
     from app.worker import tasks
 
     for consumer in consumers(db, profile_id):
@@ -809,6 +821,8 @@ def _rerun(db: Session, profile_id: int) -> None:
             tasks.run_export.delay(consumer["id"])
         elif consumer["kind"] == "sink" and consumer["gated"]:
             tasks.sync_sink_membership.apply_async((consumer["id"],), queue="sinks")
+        elif consumer["kind"] == "edl":
+            tasks.build_edl.delay(consumer["id"])
 
 
 def forget(profile_id: int) -> None:

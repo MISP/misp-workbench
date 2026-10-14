@@ -476,9 +476,16 @@ load();
         <h6 class="fw-semibold mt-3">Outputs</h6>
         <ul class="list-unstyled small mb-0">
           <li v-for="c in preview.consumers" :key="`${c.kind}-${c.id}`">
-            <RouterLink :to="c.kind === 'export' ? '/exports' : '/sinks'">{{
-              c.name
-            }}</RouterLink>
+            <RouterLink
+              :to="
+                c.kind === 'export'
+                  ? '/exports'
+                  : c.kind === 'edl'
+                    ? `/edls/${c.id}`
+                    : '/sinks'
+              "
+              >{{ c.name }}</RouterLink
+            >
             <span class="text-muted ms-1">{{ c.kind }}</span>
             <span
               v-if="c.kind === 'export'"
@@ -494,7 +501,7 @@ load();
             >
           </li>
           <li v-if="!preview.consumers.length" class="text-muted">
-            No export or sink uses this profile yet.
+            No export, sink or EDL uses this profile yet.
           </li>
         </ul>
       </template>
