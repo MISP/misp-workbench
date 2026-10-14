@@ -18,6 +18,9 @@ of `198.51.100.7` applies to every attribute holding that value.
 
 ## Reporting sightings
 
+SIEMs and SOARs can also report sightings without any code: post their alerts
+to an [alert webhook](alert-webhooks.md), which reads the values out of them.
+
 ### Native API
 
 ```

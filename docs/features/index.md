@@ -9,6 +9,7 @@
 | [External dynamic lists](edl.md) | Plain-text lists firewalls and proxies fetch on a schedule (Palo Alto, Fortinet, Check Point, Cisco, Squid), in each vendor's format, at a URL with a revocable token for that list alone |
 | [Sinks](sinks.md) | Push published indicators to SIEMs and other tools: Splunk HEC, Graylog GELF, syslog/CEF or webhooks, with per-sink filters and delivery status |
 | [Sightings](sightings.md) | Record where indicators were seen or proved benign, in bulk or through MISP's `/sightings/add`, with optional false-positive feedback |
+| [Alert webhooks](alert-webhooks.md) | Turn SIEM and SOAR alerts (Splunk, Elastic, Graylog, Wazuh, Sentinel, any JSON) into sightings, with a mapping you can try on a pasted alert, per-webhook tokens and rate limits |
 | [Warninglists](warninglists.md) | MISP warninglists flag benign or overly common values (public resolvers, top domains, private ranges) and keep them out of exports, feeds, sinks and lookups; organisations keep their own lists (ranges, domains, partners) for the profiles attaching them |
 | [Normalisation](normalisation.md) | Refang, lower-case, canonicalise URLs, IPs and hashes as attributes are written, and flag malformed values and private or reserved IPs without dropping anything |
 | [Indicators](indicators.md) | One consolidated record per type and value, with sources, first and last seen, merged tags and sightings across every event it is in, and a confidence score that decays with age and follows source trust |
