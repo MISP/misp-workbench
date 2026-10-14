@@ -13,6 +13,7 @@ import { authHelper } from "@/helpers";
 import TagsSelect from "@/components/tags/TagsSelect.vue";
 import AttributeTypeMultiSelect from "@/components/enums/AttributeTypeMultiSelect.vue";
 import ScoreBadge from "@/components/indicators/ScoreBadge.vue";
+import ProfileHits from "@/components/profiles/ProfileHits.vue";
 
 // With `profile` the form edits it; without, it creates a new one.
 const props = defineProps({ profile: { type: Object, default: null } });
@@ -56,6 +57,7 @@ const DEFAULT_RULES = {
   require_approval: false,
   exclude_rejected: false,
 };
+const DEFAULT_EXPIRY_DAYS = 90;
 
 const form = reactive({
   name: props.profile?.name ?? "",
@@ -81,10 +83,35 @@ const gate = reactive({
   ...(props.profile?.gate ?? {}),
 });
 const blankAsNull = (v) => (v === "" || v === undefined ? null : v);
+const { hit_expiry: savedExpiry, ...savedRules } = props.profile?.rules ?? {};
 const rules = reactive({
   ...DEFAULT_RULES,
-  ...(props.profile?.rules ?? {}),
+  ...savedRules,
 });
+// Hit-rate expiry, edited apart from the rules (per-type windows as rows).
+const expiry = reactive({
+  enabled: !!savedExpiry,
+  days: savedExpiry ? savedExpiry.days : DEFAULT_EXPIRY_DAYS,
+  types: Object.entries(savedExpiry?.types ?? {}).map(([type, days]) => ({
+    type,
+    days,
+  })),
+  exempt_tags: [...(savedExpiry?.exempt_tags ?? [])],
+  exempt_sources: [...(savedExpiry?.exempt_sources ?? [])],
+});
+function payloadExpiry() {
+  if (!expiry.enabled) return null;
+  return {
+    days: blankAsNull(expiry.days),
+    types: Object.fromEntries(
+      expiry.types
+        .filter((t) => t.type.trim() && t.days)
+        .map((t) => [t.type.trim(), t.days]),
+    ),
+    exempt_tags: expiry.exempt_tags,
+    exempt_sources: expiry.exempt_sources,
+  };
+}
 const categoriesText = ref((rules.categories || []).join(", "));
 watch(categoriesText, (text) => {
   rules.categories = text
@@ -113,6 +140,7 @@ const asTagObjects = (names) =>
   names.map((name) => ({ id: null, name, colour: "#6c757d" }));
 const includeTagObjects = computed(() => asTagObjects(rules.tags));
 const excludeTagObjects = computed(() => asTagObjects(rules.exclude_tags));
+const exemptTagObjects = computed(() => asTagObjects(expiry.exempt_tags));
 
 function payloadRules() {
   return {
@@ -122,6 +150,7 @@ function payloadRules() {
     min_source_trust:
       rules.min_source_trust === "" ? null : rules.min_source_trust,
     tlp_ceiling: rules.tlp_ceiling || null,
+    hit_expiry: payloadExpiry(),
   };
 }
 
@@ -130,7 +159,7 @@ const preview = ref(null);
 const previewError = ref(null);
 let previewTimer = null;
 watch(
-  rules,
+  [rules, expiry],
   () => {
     clearTimeout(previewTimer);
     previewTimer = setTimeout(async () => {
@@ -409,6 +438,117 @@ async function submit() {
           </div>
         </div>
       </div>
+
+      <h6 class="fw-semibold">Hit-rate expiry</h6>
+      <p class="form-text mt-0">
+        Block lists only grow. This leaves out what no sensor has hit: no
+        positive sighting, and no new report from a source, within the window.
+        Either brings an indicator back. It needs sensors to report their hits
+        as sightings.
+      </p>
+      <div class="form-check form-switch mb-2">
+        <input
+          id="profile-hit-expiry"
+          class="form-check-input"
+          type="checkbox"
+          v-model="expiry.enabled"
+        />
+        <label class="form-check-label" for="profile-hit-expiry"
+          >Expire what sensors don't hit</label
+        >
+      </div>
+      <div v-if="expiry.enabled" class="row g-3 mb-3">
+        <div class="col-md-4">
+          <label class="form-label" for="expiry-days">Window (days)</label>
+          <input
+            id="expiry-days"
+            type="number"
+            min="1"
+            max="3650"
+            class="form-control"
+            v-model.number="expiry.days"
+            placeholder="never, but the types below"
+          />
+          <div class="form-text">For every type without its own.</div>
+        </div>
+        <div class="col-md-8">
+          <div class="form-label">Per type</div>
+          <div
+            v-for="(row, i) in expiry.types"
+            :key="i"
+            class="input-group input-group-sm mb-1"
+          >
+            <input
+              class="form-control font-monospace"
+              v-model="row.type"
+              placeholder="ip-dst"
+              :aria-label="`Type ${i + 1}`"
+            />
+            <input
+              class="form-control"
+              type="number"
+              min="1"
+              max="3650"
+              v-model.number="row.days"
+              :aria-label="`Days for type ${i + 1}`"
+            />
+            <span class="input-group-text">days</span>
+            <button
+              type="button"
+              class="btn btn-outline-secondary"
+              :aria-label="`Remove type ${i + 1}`"
+              @click="expiry.types.splice(i, 1)"
+            >
+              ×
+            </button>
+          </div>
+          <button
+            type="button"
+            class="btn btn-link btn-sm p-0"
+            @click="expiry.types.push({ type: '', days: 30 })"
+          >
+            + a type's own window
+          </button>
+          <div class="form-text">
+            IPs churn faster than domains or hashes: give them a shorter one.
+          </div>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Never expire with tags</label>
+          <TagsSelect
+            modelClass="event"
+            :persist="false"
+            :selectedTags="exemptTagObjects"
+            @update:selectedTags="expiry.exempt_tags = $event"
+          />
+        </div>
+        <div class="col-md-6">
+          <div class="form-label">Never expire from sources</div>
+          <div
+            v-for="s in known.sources"
+            :key="s.key"
+            class="form-check form-check-inline"
+          >
+            <input
+              :id="`expiry-source-${s.key}`"
+              class="form-check-input"
+              type="checkbox"
+              :checked="expiry.exempt_sources.includes(s.key)"
+              @change="toggle(expiry.exempt_sources, s.key)"
+            />
+            <label class="form-check-label" :for="`expiry-source-${s.key}`">{{
+              s.name
+            }}</label>
+          </div>
+          <div v-if="!known.sources.length" class="text-muted small">
+            No sources with indicators yet.
+          </div>
+          <div class="form-text">
+            A high-trust internal source, say: reported by it, never expired.
+          </div>
+        </div>
+      </div>
+      <ProfileHits v-if="isEdit" :profile-id="profile.id" />
 
       <h6 class="fw-semibold">Organisation warninglists</h6>
       <p class="form-text mt-0">

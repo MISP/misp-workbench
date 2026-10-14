@@ -23,6 +23,7 @@ narrows the selection, and an empty rule leaves nothing out.
 | **Only with tags** / **never with tags** | indicators with at least one of these tags / none of them. Patterns work: `misp-galaxy:threat-actor=*`, `workbench:validation=*` |
 | **Minimum score** | a [confidence score](indicators.md#confidence-scores) at least this |
 | **Last seen within** | last seen at most this many days ago |
+| **Hit-rate expiry** | indicators a sensor hit, or a source reported, lately. See [below](#hit-rate-expiry) |
 | **Sources**: only / never | reported by one of these sources / not reported *only* by these. A value that a noisy feed and a trusted partner both report stays |
 | **Organisations**: only / never | the same, for the organisations that created the events |
 | **Minimum source trust** | reported by at least one feed or server whose [score modifier](indicators.md#source-trust) is at least this. Local and unknown sources count as 0 |
@@ -32,6 +33,40 @@ narrows the selection, and an empty rule leaves nothing out.
 | **Organisation warninglists** | not on any of these [organisations' lists](warninglists.md#your-organisations-lists): unlike the MISP lists, one only counts for the profiles attaching it |
 | **Require approval** | only indicators approved in the [review queue](review-queue.md), by an analyst or by an auto-approve profile. The rest wait in the queue |
 | **Leave out rejected** | everything but what an analyst rejected in the review queue. Requiring approval leaves rejected ones out too |
+
+### Hit-rate expiry
+
+Block lists only grow, and firewalls cap how large an external list can be.
+Most indicators are never seen by any sensor, yet they stay forever.
+**Hit-rate expiry** leaves out an indicator once it has gone a whole window
+with neither:
+
+- a **positive sighting** from any sensor (false positives and expirations
+  don't count), nor
+- a **new report** from a source: an attribute holding it created or updated
+  (`last_reported` on the indicator, which unlike `last_seen` leaves
+  sightings out).
+
+Either one brings it back on the next run. Outputs keeping in step send it as
+a removal with reason `no_hits`, and as an addition when it returns.
+
+| Setting | Meaning |
+|---|---|
+| **Window** | days, for every type without its own. Empty: only the types listed expire |
+| **Per type** | a type's own window: IPs churn faster than domains or hashes, so `ip-dst` 30 with 180 for the rest |
+| **Never expire with tags** | exempt indicators with one of these tags (patterns work) |
+| **Never expire from sources** | exempt indicators one of these sources reports, a high-trust internal one say |
+
+It needs sensors to report what they hit as sightings, which the
+[sightings API](sightings.md#reporting-sightings) takes in bulk. A profile
+whose sensors report nothing would expire everything older than its window.
+Turning it on for a profile with an [approval gate](#change-preview-and-approval-gate)
+and a removals threshold lets you look at the first, large expiry before it
+goes out.
+
+The editor reports, for a saved profile, how much of it was **never hit**
+and how much was hit lately, per source, and what expiry leaves out now;
+`GET /detection-profiles/{id}/hits` returns the same.
 
 A profile marked **auto-approve what it selects** is a rule of the review
 queue: what it selects is approved without a review. It can't require
@@ -119,7 +154,8 @@ and diff it with the current one on every run:
 
 A removal's `reason` is the rule the indicator now fails: `deleted`,
 `type`, `category`, `tlp`, `tags`, `excluded_tag`, `no_longer_ids`,
-`warninglisted`, `validation`, `listed` (an attached organisation list), `score`, `expired`, `sources`,
+`warninglisted`, `validation`, `listed` (an attached organisation list), `score`, `expired`,
+`no_hits` (hit-rate expiry), `sources`,
 `excluded_source`, `organisations`, `excluded_organisation` or `trust`.
 
 Where it applies:

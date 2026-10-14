@@ -63,6 +63,8 @@ class Indicator(BaseModel):
     events: list[str] = []
     first_seen: Optional[int] = None
     last_seen: Optional[int] = None
+    # When a source last reported it (its attributes, sightings aside).
+    last_reported: Optional[int] = None
     sources: list[IndicatorSource] = []
     organisations: list[IndicatorOrganisation] = []
     # One key per source (feed:3, server:2, local), for queries such as

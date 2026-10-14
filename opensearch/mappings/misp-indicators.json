@@ -56,6 +56,9 @@
             "last_seen": {
                 "type": "long"
             },
+            "last_reported": {
+                "type": "long"
+            },
             "sources": {
                 "properties": {
                     "type": {

@@ -11250,6 +11250,56 @@
         }
       }
     },
+    "/detection-profiles/{profile_id}/hits": {
+      "get": {
+        "tags": [
+          "Detection profiles"
+        ],
+        "summary": "Profile Hits",
+        "description": "How much of what the profile selects sensors hit (positive\nsightings), per source, and what hit-rate expiry leaves out now.",
+        "operationId": "profile_hits_detection_profiles__profile_id__hits_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "detection_profiles:read"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "profile_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Profile Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HitReport"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/detection-profiles/{profile_id}/changes": {
       "get": {
         "tags": [
@@ -20839,6 +20889,98 @@
         "type": "object",
         "title": "HTTPValidationError"
       },
+      "HitExpiry": {
+        "properties": {
+          "days": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 3650.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Days"
+          },
+          "types": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Types",
+            "default": {}
+          },
+          "exempt_tags": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Exempt Tags",
+            "default": []
+          },
+          "exempt_sources": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Exempt Sources",
+            "default": []
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "HitExpiry",
+        "description": "Leave out indicators no sensor has hit lately.\n\nAn indicator leaves once it has had no positive sighting, and no source\nhas reported it again, for its type's window; either brings it back."
+      },
+      "HitReport": {
+        "properties": {
+          "members": {
+            "type": "integer",
+            "title": "Members",
+            "default": 0
+          },
+          "never_hit": {
+            "type": "integer",
+            "title": "Never Hit",
+            "default": 0
+          },
+          "hit_recently": {
+            "type": "integer",
+            "title": "Hit Recently",
+            "default": 0
+          },
+          "window_days": {
+            "type": "integer",
+            "title": "Window Days"
+          },
+          "expired": {
+            "type": "integer",
+            "title": "Expired",
+            "default": 0
+          },
+          "expiry": {
+            "type": "boolean",
+            "title": "Expiry",
+            "default": false
+          },
+          "by_source": {
+            "items": {
+              "$ref": "#/components/schemas/SourceHits"
+            },
+            "type": "array",
+            "title": "By Source",
+            "default": []
+          }
+        },
+        "type": "object",
+        "required": [
+          "window_days"
+        ],
+        "title": "HitReport",
+        "description": "How much of what a profile selects sensors actually hit."
+      },
       "HitsRequest": {
         "properties": {
           "indicators": {
@@ -21311,6 +21453,17 @@
               }
             ],
             "title": "Last Seen"
+          },
+          "last_reported": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Reported"
           },
           "sources": {
             "items": {
@@ -25833,6 +25986,17 @@
             ],
             "title": "Last Seen"
           },
+          "last_reported": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Reported"
+          },
           "sources": {
             "items": {
               "$ref": "#/components/schemas/IndicatorSource"
@@ -26643,6 +26807,16 @@
             "type": "boolean",
             "title": "Exclude Rejected",
             "default": false
+          },
+          "hit_expiry": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HitExpiry"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "additionalProperties": false,
@@ -30084,6 +30258,39 @@
           "count"
         ],
         "title": "SourceCount"
+      },
+      "SourceHits": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "title": "Key"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "members": {
+            "type": "integer",
+            "title": "Members",
+            "default": 0
+          },
+          "never_hit": {
+            "type": "integer",
+            "title": "Never Hit",
+            "default": 0
+          },
+          "expired": {
+            "type": "integer",
+            "title": "Expired",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "required": [
+          "key",
+          "name"
+        ],
+        "title": "SourceHits"
       },
       "SourceOverlap": {
         "properties": {

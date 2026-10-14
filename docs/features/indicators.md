@@ -29,6 +29,7 @@ Attributes in deleted events don't count.
 | `to_ids` | `true` when at least one of its attributes is flagged for IDS (`ids_attribute_count` of `attribute_count`) |
 | `categories` | The categories of its attributes |
 | `first_seen`, `last_seen` | Across its attributes (their `first_seen`/`last_seen`, or else their timestamp) and the value's sightings |
+| `last_reported` | When a source last reported it: its attributes alone, sightings aside. [Hit-rate expiry](detection-profiles.md#hit-rate-expiry) counts from it |
 | `event_count`, `events` | How many events it is in, and the 50 newest |
 | `sources` | Where those events came from (a `feed`, a MISP `server`, `local`), with how many events each |
 | `organisations` | The events' creator organisations, with how many events each |

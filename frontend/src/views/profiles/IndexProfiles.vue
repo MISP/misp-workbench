@@ -41,6 +41,13 @@ function summary(rules) {
     parts.push(`not only ${rules.exclude_sources.join(", ")}`);
   if (rules.min_source_trust !== null && rules.min_source_trust !== undefined)
     parts.push(`trust ≥ ${rules.min_source_trust}`);
+  if (rules.hit_expiry) {
+    const windows = Object.entries(rules.hit_expiry.types || {}).map(
+      ([type, days]) => `${type} ${days}d`,
+    );
+    if (rules.hit_expiry.days) windows.unshift(`${rules.hit_expiry.days}d`);
+    parts.push(`hit within ${windows.join(", ")}`);
+  }
   if (rules.require_approval) parts.push("approved only");
   else if (rules.exclude_rejected) parts.push("no rejected");
   return parts.join(" · ") || "everything";

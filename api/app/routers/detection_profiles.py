@@ -229,6 +229,23 @@ async def count_profile(
     return await run_in_threadpool(profiles_repository.preview, profile.rules)
 
 
+@router.get(
+    "/detection-profiles/{profile_id}/hits",
+    response_model=profile_schemas.HitReport,
+)
+async def profile_hits(
+    profile_id: int,
+    db: Session = Depends(get_db),
+    user: user_schemas.User = Security(
+        get_current_active_user, scopes=["detection_profiles:read"]
+    ),
+):
+    """How much of what the profile selects sensors hit (positive
+    sightings), per source, and what hit-rate expiry leaves out now."""
+    profile = _get_or_404(db, profile_id)
+    return await run_in_threadpool(profiles_repository.hit_report, profile.rules)
+
+
 @router.post(
     "/detection-profiles",
     response_model=profile_schemas.DetectionProfile,
