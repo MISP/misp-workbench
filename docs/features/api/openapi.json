@@ -13465,7 +13465,7 @@
           "Alert receivers"
         ],
         "summary": "Test Mapping",
-        "description": "What a body would report with a mapping. Nothing is written.",
+        "description": "What a body would report with a mapping. Nothing is written. It tells\nwhich values attributes hold, and reads attributes named by uuid: so it\ntakes attributes:read too.",
         "operationId": "test_mapping_alert_receivers_test_post",
         "requestBody": {
           "content": {
@@ -13502,7 +13502,8 @@
         "security": [
           {
             "OAuth2PasswordBearer": [
-              "alert_receivers:read"
+              "alert_receivers:read",
+              "attributes:read"
             ]
           }
         ]
@@ -17308,21 +17309,11 @@
           "records": {
             "type": "integer",
             "title": "Records"
-          },
-          "sightings": {
-            "type": "integer",
-            "title": "Sightings"
-          },
-          "skipped": {
-            "type": "integer",
-            "title": "Skipped"
           }
         },
         "type": "object",
         "required": [
-          "records",
-          "sightings",
-          "skipped"
+          "records"
         ],
         "title": "AlertAccepted"
       },

@@ -75,11 +75,11 @@ with a wrong clock can't keep an indicator alive past its hit-rate expiry.
 
 | Status | When |
 |---|---|
-| `202` | reported: `{"records": 2, "sightings": 3, "skipped": 1}`. `skipped` counts values no attribute holds (when only those are reported) and attribute uuids that don't exist |
+| `202` | taken: `{"records": 2}`. How many values became sightings is shown on the webhook's page and not in the response, because the counts would tell anyone holding the token which values this instance tracks |
 | `400` | the body isn't JSON |
 | `403` | the webhook is disabled, or the request came from an address not in **Only from** |
 | `404` | no webhook has this token |
-| `413` | the body is over 1 MiB, or it holds more than 10,000 sightings |
+| `413` | the body is over 1 MiB, or it holds more than 10,000 sightings, more than 1,000 attribute uuids or more than 200 values over 256 characters (each of those costs its own lookup) |
 | `422` | the mapping can't read the body; the response names the record and field that failed |
 | `429` | over the rate limit; wait `Retry-After` seconds |
 
@@ -111,7 +111,7 @@ are attributed to the webhook's organisation, with the mapped source and with
 
 | Scope | Allows | Roles |
 |---|---|---|
-| `alert_receivers:read` | seeing the webhooks and trying mappings | Org Admin, User, Publisher, Read Only |
+| `alert_receivers:read` | seeing the webhooks. Trying a mapping also requires `attributes:read`, because the result shows which values attributes hold | Org Admin, User, Publisher, Read Only |
 | `alert_receivers:manage` | creating, editing and deleting webhooks, and replacing their URLs. Also requires `sightings:create`, because a webhook reports sightings for its organisation | Org Admin, Publisher |
 
 Users see their organisation's webhooks; admins see every organisation's.

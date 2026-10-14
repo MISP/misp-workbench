@@ -21,6 +21,11 @@ const canManage = computed(
     authHelper.hasScope(scopes.value, "sightings:create"),
 );
 
+// The console tells which values attributes hold.
+const canTry = computed(() =>
+  authHelper.hasScope(scopes.value, "attributes:read"),
+);
+
 const FIELDS = [
   [
     "records",
@@ -356,7 +361,7 @@ async function tryMapping() {
           </div>
         </div>
       </div>
-      <div class="col-lg-6">
+      <div v-if="canTry" class="col-lg-6">
         <div class="card h-100">
           <div
             class="card-header border-bottom d-flex justify-content-between align-items-center"

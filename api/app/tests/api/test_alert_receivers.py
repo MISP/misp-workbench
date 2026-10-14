@@ -11,6 +11,7 @@ from app.auth import auth
 from app.models import alert_receiver as alert_receiver_models
 from app.models import audit_log as audit_log_models
 from app.repositories import alert_receivers as receivers
+from app.repositories.sightings import MAX_SIGHTINGS_PER_REQUEST, TooManySightings
 from app.routers.alert_receivers import RedactTokens
 from app.schemas import alert_receiver as receiver_schemas
 from app.services.opensearch import get_opensearch_client
@@ -243,6 +244,16 @@ class TestMapping:
         with pytest.raises(receivers.MappingError, match="no JSON"):
             receivers.parse_body(b"\xff\xfe")
 
+    def test_deep_nesting_is_refused_not_a_crash(self):
+        deep = b"[" * 100_000 + b"]" * 100_000
+        with pytest.raises(receivers.MappingError, match="too deep"):
+            receivers.parse_body(deep)
+        # Nesting json takes is flattened without running out of stack.
+        nested: list = ["x"]
+        for _ in range(5000):
+            nested = [nested]
+        assert receivers._flatten(nested) == ["x"]
+
 
 class TestResolve:
     @pytest.fixture(autouse=True)
@@ -254,15 +265,17 @@ class TestResolve:
             "find_sighted_attributes",
             lambda values: {v: [{}] for v in values if v in KNOWN},
         )
-        monkeypatch.setattr(
-            sightings,
-            "_resolve_attribute",
-            lambda ref: (
-                {"uuid": ATTRIBUTE, "value": KNOWN[0], "event_uuid": EVENT}
+        self.lookups = []
+
+        def attributes(refs):
+            self.lookups.append(refs)
+            return {
+                ref: {"uuid": ATTRIBUTE, "value": KNOWN[0], "event_uuid": EVENT}
+                for ref in refs
                 if ref == ATTRIBUTE
-                else None
-            ),
-        )
+            }
+
+        monkeypatch.setattr(receivers, "_attributes", attributes)
 
     def _sightings(self, *values, uuid=None):
         base = {"type": "positive", "source": "r", "timestamp": NOW}
@@ -297,6 +310,27 @@ class TestResolve:
             (KNOWN[0], ATTRIBUTE, EVENT)
         ]
         assert skipped == 1
+        # One lookup for them all, not one an attribute.
+        assert self.lookups == [sorted([ATTRIBUTE, "nope"])]
+
+    def test_limits(self):
+        def sightings(*values, uuids=()):
+            return self._sightings(*values) + [
+                s for uuid in uuids for s in self._sightings(uuid=uuid)
+            ]
+
+        receivers.check_limits(sightings("a", uuids=[ATTRIBUTE]))
+        many = [f"u{i}" for i in range(receivers.MAX_ATTRIBUTE_REFS + 1)]
+        with pytest.raises(TooManySightings, match="attributes named"):
+            receivers.check_limits(sightings(uuids=many))
+        long = [f"{i}" + "a" * 300 for i in range(receivers.MAX_LONG_VALUES + 1)]
+        with pytest.raises(TooManySightings, match="values over 256"):
+            receivers.check_limits(sightings(*long))
+        receivers.check_limits(sightings(*long[:-1]))
+        with pytest.raises(TooManySightings, match="sightings: at most"):
+            receivers.check_limits(
+                sightings(*[f"{i}" for i in range(MAX_SIGHTINGS_PER_REQUEST + 1)])
+            )
 
 
 class TestReceiving:
@@ -414,7 +448,9 @@ class TestAlertReceivers(ApiTester):
         hits = client.search(
             index="misp-sightings", body={"size": 100, "query": {"match_all": {}}}
         )["hits"]["hits"]
-        return sorted((h["_source"] for h in hits), key=lambda s: (s["value"], s["type"]))
+        return sorted(
+            (h["_source"] for h in hits), key=lambda s: (s["value"], s["type"])
+        )
 
     @pytest.mark.parametrize("scopes", [MANAGE])
     def test_a_splunk_alert_end_to_end(
@@ -447,7 +483,8 @@ class TestAlertReceivers(ApiTester):
         sample = receivers.PRESETS["splunk"]["sample"]
         posted = client.post(path, json=sample)
         assert posted.status_code == status.HTTP_202_ACCEPTED, posted.text
-        assert posted.json() == {"records": 1, "sightings": 1, "skipped": 1}
+        # Only the records taken: not which values are known.
+        assert posted.json() == {"records": 1}
         sightings = self._sightings()
         assert [s["value"] for s in sightings] == ["185.220.101.42"]
         assert sightings[0]["observer"]["source"] == "Outbound to known C2"
@@ -534,7 +571,7 @@ class TestAlertReceivers(ApiTester):
                 {"uuid": "a1e40000-1000-4000-8000-999999999999"},
             ],
         )
-        assert posted.json() == {"records": 4, "sightings": 4, "skipped": 1}
+        assert posted.json() == {"records": 4}
         sightings = self._sightings()
         assert [(s["value"], s["type"]) for s in sightings] == [
             ("10.9.9.9", "positive"),
@@ -564,6 +601,19 @@ class TestAlertReceivers(ApiTester):
             assert 1 <= int(limited.headers["Retry-After"]) <= 60
 
     @pytest.mark.parametrize("scopes", [["alert_receivers:read"]])
+    def test_trying_takes_reading_attributes(
+        self, client: TestClient, auth_token: auth.Token
+    ):
+        headers = {"Authorization": "Bearer " + auth_token}
+        assert client.get("/alert-receivers", headers=headers).status_code == 200
+        tried = client.post(
+            "/alert-receivers/test",
+            json={"mapping": {"values": "v"}, "payload": {"v": KNOWN[0]}},
+            headers=headers,
+        )
+        assert tried.status_code == status.HTTP_401_UNAUTHORIZED
+
+    @pytest.mark.parametrize("scopes", [["alert_receivers:read", "attributes:read"]])
     def test_reading_isnt_managing(self, client: TestClient, auth_token: auth.Token):
         headers = {"Authorization": "Bearer " + auth_token}
         assert client.get("/alert-receivers", headers=headers).status_code == 200

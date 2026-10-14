@@ -87,9 +87,13 @@ def list_presets(
 @router.post("/alert-receivers/test", response_model=receiver_schemas.MappingResult)
 def test_mapping(
     data: receiver_schemas.MappingTest,
-    user: user_schemas.User = Security(get_current_active_user, scopes=READ),
+    user: user_schemas.User = Security(
+        get_current_active_user, scopes=READ + ["attributes:read"]
+    ),
 ):
-    """What a body would report with a mapping. Nothing is written."""
+    """What a body would report with a mapping. Nothing is written. It tells
+    which values attributes hold, and reads attributes named by uuid: so it
+    takes attributes:read too."""
     return receivers_repository.try_mapping(data, data.name)
 
 

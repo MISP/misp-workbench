@@ -153,6 +153,6 @@ class MappingResult(BaseModel):
 
 
 class AlertAccepted(BaseModel):
+    # The records taken. How many became sightings is on the receiver's
+    # page, not here: it would tell the sender which values are known.
     records: int
-    sightings: int
-    skipped: int

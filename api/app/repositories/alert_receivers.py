@@ -36,6 +36,10 @@ MAX_BODY = 1024 * 1024
 LAST_PAYLOAD_MAX = 64 * 1024
 # Longer values are no indicator, or a mapping picking up a whole message.
 MAX_VALUE_LENGTH = 2048
+# Attributes a request may name by uuid or id, looked up in one request.
+MAX_ATTRIBUTE_REFS = 1000
+# Values past the keyword limit are each a phrase query: few a request.
+MAX_LONG_VALUES = 200
 # Senders' clocks drift; a sighting further in the future is taken as now,
 # so a wrong clock can't keep an indicator alive past its hit-rate expiry.
 FUTURE_SKEW_SECONDS = 300
@@ -315,19 +319,28 @@ def _search(expression: Optional[str], data: Any, options, field: str) -> Any:
         return compile_expression(expression).search(data, options)
     except jmespath_exceptions.JMESPathError as error:
         raise MappingError(f"{field}: {error}")
+    except RecursionError:
+        raise MappingError(f"{field}: the body is nested too deep")
 
 
 def _flatten(value: Any) -> list[str]:
     """The strings in a value, however nested: numbers count, objects and
-    booleans don't."""
-    if value is None or isinstance(value, (bool, dict)):
-        return []
-    if isinstance(value, list):
-        return [item for element in value for item in _flatten(element)]
-    if isinstance(value, float) and value.is_integer():
-        value = int(value)
-    text = str(value).strip()
-    return [text] if text and len(text) <= MAX_VALUE_LENGTH else []
+    booleans don't. Iterative, so no nesting runs out of stack."""
+    texts: list[str] = []
+    stack = [value]
+    while stack:
+        item = stack.pop()
+        if item is None or isinstance(item, (bool, dict)):
+            continue
+        if isinstance(item, list):
+            stack.extend(reversed(item))
+            continue
+        if isinstance(item, float) and item.is_integer():
+            item = int(item)
+        text = str(item).strip()
+        if text and len(text) <= MAX_VALUE_LENGTH:
+            texts.append(text)
+    return texts
 
 
 def sighting_type(value: Any) -> str:
@@ -419,14 +432,79 @@ def map_payload(
     return len(records), sightings
 
 
+def check_limits(sightings: list[dict]) -> None:
+    """Refuse a request whose lookups would cost more than an alert's worth:
+    raises sightings_repository.TooManySightings."""
+    limit = sightings_repository.MAX_SIGHTINGS_PER_REQUEST
+    if len(sightings) > limit:
+        raise sightings_repository.TooManySightings(
+            f"{len(sightings)} sightings: at most {limit} a request"
+        )
+    refs = {s["attribute_uuid"] for s in sightings if s.get("attribute_uuid")}
+    if len(refs) > MAX_ATTRIBUTE_REFS:
+        raise sightings_repository.TooManySightings(
+            f"{len(refs)} attributes named: at most {MAX_ATTRIBUTE_REFS} a request"
+        )
+    long = {
+        s["value"]
+        for s in sightings
+        if s.get("value")
+        and len(s["value"]) > sightings_repository.KEYWORD_IGNORE_ABOVE
+    }
+    if len(long) > MAX_LONG_VALUES:
+        raise sightings_repository.TooManySightings(
+            f"{len(long)} values over "
+            f"{sightings_repository.KEYWORD_IGNORE_ABOVE} characters: at most "
+            f"{MAX_LONG_VALUES} a request"
+        )
+
+
+def _attributes(refs: list[str]) -> dict[str, dict]:
+    """Attributes by uuid, or by numeric MISP id for pulled ones, as
+    sightings_repository._resolve_attribute finds them; in one request
+    for each kind rather than one a reference."""
+    from app.services.opensearch import get_opensearch_client
+
+    if not refs:
+        return {}
+    client = get_opensearch_client()
+    source = ["uuid", "value", "event_uuid", "id"]
+    found: dict[str, dict] = {}
+    ids = sorted({ref for ref in refs if ref.isdigit()})
+    uuids = sorted({ref for ref in refs if not ref.isdigit()})
+    if uuids:
+        response = client.mget(
+            index="misp-attributes", body={"ids": uuids}, _source=source
+        )
+        for doc in response.get("docs", []):
+            if doc.get("found"):
+                found[doc["_id"]] = doc["_source"]
+    if ids:
+        hits = client.search(
+            index="misp-attributes",
+            body={
+                "query": {"terms": {"id": [int(i) for i in ids]}},
+                "size": len(ids),
+                "_source": source,
+            },
+        )["hits"]["hits"]
+        for hit in hits:
+            found.setdefault(str(hit["_source"].get("id")), hit["_source"])
+    return found
+
+
 def resolve(sightings: list[dict], only_known: bool) -> tuple[list[dict], int]:
     """The sightings to report, each marked ``known`` when an attribute
-    holds its value; and how many were left out."""
-    attributes: dict[str, Optional[dict]] = {}
-    for sighting in sightings:
-        uuid = sighting.get("attribute_uuid")
-        if uuid and uuid not in attributes:
-            attributes[uuid] = sightings_repository._resolve_attribute(uuid)
+    holds its value; and how many were left out. Call check_limits first."""
+    attributes = _attributes(
+        sorted(
+            {
+                str(s["attribute_uuid"]).strip()
+                for s in sightings
+                if s.get("attribute_uuid")
+            }
+        )
+    )
     known = set(
         sightings_repository.find_sighted_attributes(
             sorted({s["value"] for s in sightings if s.get("value")})
@@ -438,7 +516,7 @@ def resolve(sightings: list[dict], only_known: bool) -> tuple[list[dict], int]:
     for sighting in sightings:
         uuid = sighting.get("attribute_uuid")
         if uuid:
-            attribute = attributes.get(uuid)
+            attribute = attributes.get(str(uuid).strip())
             if attribute is None:
                 skipped += 1
                 continue
@@ -468,12 +546,10 @@ def try_mapping(data: alert_receiver_schemas.MappingTest, default_source: str) -
         )
     except MappingError as error:
         return {"error": str(error)}
-    if len(sightings) > sightings_repository.MAX_SIGHTINGS_PER_REQUEST:
-        return {
-            "records": records,
-            "error": f"{len(sightings)} sightings: at most "
-            f"{sightings_repository.MAX_SIGHTINGS_PER_REQUEST} a request",
-        }
+    try:
+        check_limits(sightings)
+    except sightings_repository.TooManySightings as error:
+        return {"records": records, "error": str(error)}
     kept, skipped = resolve(sightings, data.only_known)
     return {"records": records, "sightings": kept, "skipped": skipped}
 
@@ -664,12 +740,8 @@ def receive(db: Session, receiver, payload: Any) -> dict:
     """Report a body's sightings. Raises MappingError when the mapping can't
     read it, sightings_repository.TooManySightings past the limit."""
     records, sightings = map_payload(payload, receiver.mapping, receiver.name)
-    if len(sightings) > sightings_repository.MAX_SIGHTINGS_PER_REQUEST:
-        raise sightings_repository.TooManySightings(
-            f"{len(sightings)} sightings: at most "
-            f"{sightings_repository.MAX_SIGHTINGS_PER_REQUEST} a request"
-        )
-    kept, skipped = resolve(sightings, receiver.only_known)
+    check_limits(sightings)
+    kept, _ = resolve(sightings, receiver.only_known)
     docs = []
     for sighting in kept:
         doc = {
@@ -694,7 +766,9 @@ def receive(db: Session, receiver, payload: Any) -> dict:
         last_error=None,
         last_error_at=None,
     )
-    return {"records": records, "sightings": len(docs), "skipped": skipped}
+    # Only the records taken: how many values were known would tell whoever
+    # holds the token which indicators this instance tracks.
+    return {"records": records}
 
 
 def parse_body(body: bytes) -> Any:
@@ -702,3 +776,5 @@ def parse_body(body: bytes) -> Any:
         return json.loads(body)
     except (ValueError, UnicodeDecodeError) as error:
         raise MappingError(f"the body is no JSON: {error}")
+    except RecursionError:
+        raise MappingError("the body is nested too deep")
