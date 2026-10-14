@@ -123,10 +123,16 @@ def _ip(value: str) -> Optional[str]:
     """An address or network a firewall can block safely: public, and no
     broader than MIN_PREFIX (private, loopback, link-local, reserved and
     huge ranges would cut off a network's own traffic)."""
+    value = value.strip()
     try:
-        network = ipaddress.ip_network(value.strip(), strict=False)
+        network = ipaddress.ip_network(value, strict=False)
     except ValueError:
-        return None
+        # Written in fullwidth digits, say: the address it reads as.
+        address, _, prefix = value.partition("/")
+        kind, host = _host(address)
+        if kind != "address" or host is None or host == address:
+            return None
+        return _ip(f"{host}/{prefix}" if prefix else host)
     if network.prefixlen < MIN_PREFIX[network.version]:
         return None
     if not (network.network_address.is_global and network.broadcast_address.is_global):
@@ -136,43 +142,54 @@ def _ip(value: str) -> Optional[str]:
     return str(network)
 
 
-def _domain(value: str) -> Optional[str]:
-    domain = value.strip().lower().rstrip(".")
-    if domain.startswith("*."):
-        domain = domain[2:]
-    try:
-        domain = domain.encode("idna").decode("ascii")
-    except UnicodeError:
-        return None
-    labels = domain.split(".")
-    if len(domain) > 253 or len(labels) < 2:
-        return None
-    if not all(_LABEL.match(label) for label in labels):
-        return None
-    # A bare address isn't a domain.
-    if _ip(domain):
-        return None
-    return domain
-
-
-def _url_host(host: str) -> Optional[str]:
-    """A URL's host as a browser reads it (percent-decoded, IDNA, numeric
-    forms as addresses), or None when it isn't one a list can name."""
-    host = unquote(host).lower().rstrip(".")
+def _host(value: str) -> tuple[Optional[str], Optional[str]]:
+    """``(kind, host)``: a name read as a browser reads it (IDNA-mapped, so
+    fullwidth digits and dots are ASCII), then classified once: ``address``
+    (an IP, or a numeric form browsers take for one, which has no valid
+    host here), or ``domain``. ``(None, None)`` for neither."""
+    host = value.strip().lower().rstrip(".")
     if host.startswith("[") and host.endswith("]"):
         host = host[1:-1]
     try:
-        ipaddress.ip_address(host)
+        return "address", str(ipaddress.ip_address(host))
     except ValueError:
         pass
-    else:
-        address = _ip(host)
-        return f"[{address}]" if address and ":" in address else address
+    try:
+        host = host.encode("idna").decode("ascii").rstrip(".")
+    except UnicodeError:
+        return None, None
+    try:
+        return "address", str(ipaddress.ip_address(host))
+    except ValueError:
+        pass
     # A last label that is a number makes browsers read the host as an IPv4
-    # address in another form (0x7f.1, 2130706433): not a domain to list.
+    # address in another form (127.1, 0x7f.1, 2130706433): never a domain.
     if _NUMERIC_LABEL.match(host.rsplit(".", 1)[-1]):
-        return None
-    return _domain(host)
+        return "address", None
+    labels = host.split(".")
+    if len(host) > 253 or len(labels) < 2:
+        return None, None
+    if not all(_LABEL.match(label) for label in labels):
+        return None, None
+    return "domain", host
+
+
+def _domain(value: str) -> Optional[str]:
+    domain = value.strip()
+    if domain.startswith("*."):
+        domain = domain[2:]
+    kind, host = _host(domain)
+    return host if kind == "domain" else None
+
+
+def _url_host(host: str) -> Optional[str]:
+    """A URL's host as a browser reads it (percent-decoded, see ``_host``),
+    or None when it isn't one a list can name."""
+    kind, normalised = _host(unquote(host))
+    if kind == "address":
+        address = _ip(normalised) if normalised else None
+        return f"[{address}]" if address and ":" in address else address
+    return normalised
 
 
 def _url(value: str) -> Optional[tuple[str, str]]:

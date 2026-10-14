@@ -67,6 +67,8 @@ class TestFormats:
             ("plain", "ip", "ip-dst|port", "45.33.34.44|8443", ["45.33.34.44"]),
             ("plain", "ip", "domain|ip", "worse.example|45.33.35.45", ["45.33.35.45"]),
             ("plain", "ip", "ip-dst", "not an ip", []),
+            ("plain", "ip", "ip-dst", "４５.33.32.7", ["45.33.32.7"]),
+            ("plain", "ip", "ip-dst", "１０.０.０.１", []),
             # Nothing that would cut off a network's own traffic.
             ("plain", "ip", "ip-dst", "0.0.0.0/0", []),
             ("plain", "ip", "ip-dst", "::/0", []),
@@ -153,6 +155,9 @@ class TestFormats:
             ("paloalto", "url", "url", "http://10.0.0.1/admin", []),
             ("paloalto", "url", "url", "http://0x7f.1/", []),
             ("paloalto", "url", "url", "http://2130706433/", []),
+            ("paloalto", "url", "url", "http://１０.０.０.１/x", []),
+            ("paloalto", "url", "url", "http://10.0.0.1。/x", []),
+            ("paloalto", "url", "url", "http://４５.33.32.7/x", ["45.33.32.7/x"]),
         ],
     )
     def test_entries(self, vendor, list_type, type_, value, expected):
