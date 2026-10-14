@@ -56,6 +56,8 @@ export { default as AddExport } from "./exports/AddExport.vue";
 export { default as IndexSinks } from "./sinks/IndexSinks.vue";
 export { default as IndexEdls } from "./edls/IndexEdls.vue";
 export { default as ViewEdl } from "./edls/ViewEdl.vue";
+export { default as IndexAlertReceivers } from "./alertReceivers/IndexAlertReceivers.vue";
+export { default as ViewAlertReceiver } from "./alertReceivers/ViewAlertReceiver.vue";
 export { default as AddSink } from "./sinks/AddSink.vue";
 export { default as EditSink } from "./sinks/EditSink.vue";
 export { default as IndexHunts } from "./hunts/IndexHunts.vue";

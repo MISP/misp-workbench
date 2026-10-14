@@ -13426,6 +13426,476 @@
         }
       }
     },
+    "/alert-receivers/presets": {
+      "get": {
+        "tags": [
+          "Alert receivers"
+        ],
+        "summary": "List Presets",
+        "description": "The senders with a ready mapping, how to set each up, and a body as\neach posts it.",
+        "operationId": "list_presets_alert_receivers_presets_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AlertPreset"
+                  },
+                  "type": "array",
+                  "title": "Response List Presets Alert Receivers Presets Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "alert_receivers:read"
+            ]
+          }
+        ]
+      }
+    },
+    "/alert-receivers/test": {
+      "post": {
+        "tags": [
+          "Alert receivers"
+        ],
+        "summary": "Test Mapping",
+        "description": "What a body would report with a mapping. Nothing is written. It tells\nwhich values attributes hold, and reads attributes named by uuid: so it\ntakes attributes:read too.",
+        "operationId": "test_mapping_alert_receivers_test_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MappingTest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MappingResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "alert_receivers:read",
+              "attributes:read"
+            ]
+          }
+        ]
+      }
+    },
+    "/alert-receivers": {
+      "get": {
+        "tags": [
+          "Alert receivers"
+        ],
+        "summary": "List Receivers",
+        "description": "Your organisation's receivers (every organisation's, for admins).",
+        "operationId": "list_receivers_alert_receivers_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AlertReceiver"
+                  },
+                  "type": "array",
+                  "title": "Response List Receivers Alert Receivers Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "alert_receivers:read"
+            ]
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "Alert receivers"
+        ],
+        "summary": "Create Receiver",
+        "description": "A new receiver. Its token is in this response only.",
+        "operationId": "create_receiver_alert_receivers_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AlertReceiverCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlertReceiverCreated"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "alert_receivers:read",
+              "alert_receivers:manage",
+              "sightings:create"
+            ]
+          }
+        ]
+      }
+    },
+    "/alert-receivers/{receiver_id}": {
+      "get": {
+        "tags": [
+          "Alert receivers"
+        ],
+        "summary": "Get Receiver",
+        "operationId": "get_receiver_alert_receivers__receiver_id__get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "alert_receivers:read"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "receiver_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Receiver Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlertReceiver"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Alert receivers"
+        ],
+        "summary": "Update Receiver",
+        "operationId": "update_receiver_alert_receivers__receiver_id__patch",
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "alert_receivers:read",
+              "alert_receivers:manage",
+              "sightings:create"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "receiver_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Receiver Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AlertReceiverUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlertReceiver"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Alert receivers"
+        ],
+        "summary": "Delete Receiver",
+        "operationId": "delete_receiver_alert_receivers__receiver_id__delete",
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "alert_receivers:read",
+              "alert_receivers:manage",
+              "sightings:create"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "receiver_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Receiver Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/alert-receivers/{receiver_id}/token": {
+      "post": {
+        "tags": [
+          "Alert receivers"
+        ],
+        "summary": "Rotate Token",
+        "description": "A new token; the old one stops working now. In this response only.",
+        "operationId": "rotate_token_alert_receivers__receiver_id__token_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "alert_receivers:read",
+              "alert_receivers:manage",
+              "sightings:create"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "receiver_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Receiver Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlertReceiverCreated"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/alert-receivers/{receiver_id}/last-payload": {
+      "get": {
+        "tags": [
+          "Alert receivers"
+        ],
+        "summary": "Last Payload",
+        "description": "The last body posted, to try the mapping on. Alerts can carry more\nthan indicators, so only those managing the receiver read it.",
+        "operationId": "last_payload_alert_receivers__receiver_id__last_payload_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "alert_receivers:read",
+              "alert_receivers:manage",
+              "sightings:create"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "receiver_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Receiver Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LastPayload"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/webhooks/alerts/{token}": {
+      "post": {
+        "tags": [
+          "Alert receivers"
+        ],
+        "summary": "Receive Alert",
+        "description": "Report the values an alert hit as sightings, read from the body with\nthe receiver's mapping. The token in the URL is the only credential:\nsenders' webhooks seldom send an Authorization header. All or nothing:\na body refused reports none of its sightings.",
+        "operationId": "receive_alert_webhooks_alerts__token__post",
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Token"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlertAccepted"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body is no JSON"
+          },
+          "403": {
+            "description": "The receiver is disabled, or not from this address"
+          },
+          "404": {
+            "description": "No such token"
+          },
+          "413": {
+            "description": "The body, or the sightings in it, are too many"
+          },
+          "422": {
+            "description": "The mapping can't read the body"
+          },
+          "429": {
+            "description": "Past the receiver's rate limit"
+          }
+        }
+      }
+    },
     "/sinks/": {
       "get": {
         "tags": [
@@ -16834,6 +17304,599 @@
   },
   "components": {
     "schemas": {
+      "AlertAccepted": {
+        "properties": {
+          "records": {
+            "type": "integer",
+            "title": "Records"
+          }
+        },
+        "type": "object",
+        "required": [
+          "records"
+        ],
+        "title": "AlertAccepted"
+      },
+      "AlertMapping": {
+        "properties": {
+          "records": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Records",
+            "default": "@"
+          },
+          "values": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Values"
+          },
+          "type": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Type"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          },
+          "timestamp": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp"
+          },
+          "attribute_uuid": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Attribute Uuid"
+          }
+        },
+        "type": "object",
+        "required": [
+          "values"
+        ],
+        "title": "AlertMapping",
+        "description": "Where an alert's parts are, as JMESPath expressions.\n\n``records`` picks the alerts out of a request (``@``: the body itself,\nor each element when it is an array); the others are read from each\nrecord, and ``root()`` reaches back to the whole body."
+      },
+      "AlertPreset": {
+        "properties": {
+          "preset": {
+            "type": "string",
+            "title": "Preset"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "mapping": {
+            "$ref": "#/components/schemas/AlertMapping"
+          },
+          "setup": {
+            "type": "string",
+            "title": "Setup"
+          },
+          "sample": {
+            "title": "Sample"
+          }
+        },
+        "type": "object",
+        "required": [
+          "preset",
+          "name",
+          "mapping",
+          "setup",
+          "sample"
+        ],
+        "title": "AlertPreset"
+      },
+      "AlertReceiver": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "preset": {
+            "type": "string",
+            "title": "Preset",
+            "default": "generic"
+          },
+          "only_known": {
+            "type": "boolean",
+            "title": "Only Known",
+            "default": true
+          },
+          "rate_limit": {
+            "type": "integer",
+            "maximum": 10000.0,
+            "minimum": 1.0,
+            "title": "Rate Limit",
+            "default": 120
+          },
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled",
+            "default": true
+          },
+          "allowed_ips": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 100,
+            "title": "Allowed Ips",
+            "default": []
+          },
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "org_id": {
+            "type": "integer",
+            "title": "Org Id"
+          },
+          "mapping": {
+            "$ref": "#/components/schemas/AlertMapping"
+          },
+          "token_prefix": {
+            "type": "string",
+            "title": "Token Prefix"
+          },
+          "last_received_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Received At"
+          },
+          "last_ip": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Ip"
+          },
+          "received_count": {
+            "type": "integer",
+            "title": "Received Count",
+            "default": 0
+          },
+          "sightings_count": {
+            "type": "integer",
+            "title": "Sightings Count",
+            "default": 0
+          },
+          "last_error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Error"
+          },
+          "last_error_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Error At"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "id",
+          "org_id",
+          "mapping",
+          "token_prefix",
+          "created_at"
+        ],
+        "title": "AlertReceiver"
+      },
+      "AlertReceiverCreate": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "preset": {
+            "type": "string",
+            "title": "Preset",
+            "default": "generic"
+          },
+          "only_known": {
+            "type": "boolean",
+            "title": "Only Known",
+            "default": true
+          },
+          "rate_limit": {
+            "type": "integer",
+            "maximum": 10000.0,
+            "minimum": 1.0,
+            "title": "Rate Limit",
+            "default": 120
+          },
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled",
+            "default": true
+          },
+          "allowed_ips": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 100,
+            "title": "Allowed Ips",
+            "default": []
+          },
+          "mapping": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AlertMapping"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "AlertReceiverCreate"
+      },
+      "AlertReceiverCreated": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "preset": {
+            "type": "string",
+            "title": "Preset",
+            "default": "generic"
+          },
+          "only_known": {
+            "type": "boolean",
+            "title": "Only Known",
+            "default": true
+          },
+          "rate_limit": {
+            "type": "integer",
+            "maximum": 10000.0,
+            "minimum": 1.0,
+            "title": "Rate Limit",
+            "default": 120
+          },
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled",
+            "default": true
+          },
+          "allowed_ips": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 100,
+            "title": "Allowed Ips",
+            "default": []
+          },
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "org_id": {
+            "type": "integer",
+            "title": "Org Id"
+          },
+          "mapping": {
+            "$ref": "#/components/schemas/AlertMapping"
+          },
+          "token_prefix": {
+            "type": "string",
+            "title": "Token Prefix"
+          },
+          "last_received_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Received At"
+          },
+          "last_ip": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Ip"
+          },
+          "received_count": {
+            "type": "integer",
+            "title": "Received Count",
+            "default": 0
+          },
+          "sightings_count": {
+            "type": "integer",
+            "title": "Sightings Count",
+            "default": 0
+          },
+          "last_error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Error"
+          },
+          "last_error_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Error At"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          },
+          "token": {
+            "type": "string",
+            "title": "Token"
+          },
+          "path": {
+            "type": "string",
+            "title": "Path"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "id",
+          "org_id",
+          "mapping",
+          "token_prefix",
+          "created_at",
+          "token",
+          "path"
+        ],
+        "title": "AlertReceiverCreated"
+      },
+      "AlertReceiverUpdate": {
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "preset": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Preset"
+          },
+          "mapping": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AlertMapping"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "only_known": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Only Known"
+          },
+          "rate_limit": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 10000.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rate Limit"
+          },
+          "enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Enabled"
+          },
+          "allowed_ips": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array",
+                "maxItems": 100
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Allowed Ips"
+          }
+        },
+        "type": "object",
+        "title": "AlertReceiverUpdate"
+      },
       "AnalysisLevel": {
         "type": "integer",
         "enum": [
@@ -23786,6 +24849,35 @@
         "title": "LabTree",
         "description": "Single response that returns Personal + Global + Library trees so the\nleft panel renders in one round trip. Library notebooks are read-only\nprebuilt content (seeded via CLI); users fork them to a personal copy\nbefore running."
       },
+      "LastPayload": {
+        "properties": {
+          "received_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Received At"
+          },
+          "payload": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Payload"
+          }
+        },
+        "type": "object",
+        "title": "LastPayload"
+      },
       "LocalWarninglist": {
         "properties": {
           "id": {
@@ -24348,6 +25440,112 @@
           "matches"
         ],
         "title": "LookupResponse"
+      },
+      "MappedSighting": {
+        "properties": {
+          "value": {
+            "type": "string",
+            "title": "Value"
+          },
+          "type": {
+            "type": "string",
+            "title": "Type"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source"
+          },
+          "timestamp": {
+            "type": "number",
+            "title": "Timestamp"
+          },
+          "attribute_uuid": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Attribute Uuid"
+          },
+          "known": {
+            "type": "boolean",
+            "title": "Known",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "value",
+          "type",
+          "source",
+          "timestamp"
+        ],
+        "title": "MappedSighting"
+      },
+      "MappingResult": {
+        "properties": {
+          "records": {
+            "type": "integer",
+            "title": "Records",
+            "default": 0
+          },
+          "sightings": {
+            "items": {
+              "$ref": "#/components/schemas/MappedSighting"
+            },
+            "type": "array",
+            "title": "Sightings",
+            "default": []
+          },
+          "skipped": {
+            "type": "integer",
+            "title": "Skipped",
+            "default": 0
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          }
+        },
+        "type": "object",
+        "title": "MappingResult"
+      },
+      "MappingTest": {
+        "properties": {
+          "mapping": {
+            "$ref": "#/components/schemas/AlertMapping"
+          },
+          "only_known": {
+            "type": "boolean",
+            "title": "Only Known",
+            "default": true
+          },
+          "payload": {
+            "title": "Payload"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 255,
+            "title": "Name",
+            "default": "this receiver"
+          }
+        },
+        "type": "object",
+        "required": [
+          "mapping",
+          "payload"
+        ],
+        "title": "MappingTest"
       },
       "MispSightingAdd": {
         "properties": {

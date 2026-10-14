@@ -69,6 +69,9 @@ const canReadSinks = computed(() =>
 const canReadEdls = computed(() =>
   authHelper.hasScope(scopes.value, "edls:read"),
 );
+const canReadAlertReceivers = computed(() =>
+  authHelper.hasScope(scopes.value, "alert_receivers:read"),
+);
 const canAdminAuditLogs = computed(() =>
   authHelper.hasScope(scopes.value, "audit_logs:admin"),
 );
@@ -243,6 +246,14 @@ function navAndClose(path) {
             <li>
               <RouterLink to="/servers" class="dropdown-item fw-light"
                 >MISP servers</RouterLink
+              >
+            </li>
+            <li v-if="canReadAlertReceivers">
+              <hr class="dropdown-divider" />
+            </li>
+            <li v-if="canReadAlertReceivers">
+              <RouterLink to="/alert-receivers" class="dropdown-item fw-light"
+                >alert webhooks</RouterLink
               >
             </li>
           </ul>
@@ -615,6 +626,15 @@ function navAndClose(path) {
                 @click.prevent="navAndClose('/feeds')"
               >
                 feeds
+              </RouterLink>
+            </li>
+            <li v-if="canReadAlertReceivers">
+              <RouterLink
+                to="/alert-receivers"
+                class="list-group-item list-group-item-action ps-4"
+                @click.prevent="navAndClose('/alert-receivers')"
+              >
+                alert webhooks
               </RouterLink>
             </li>
           </ul>

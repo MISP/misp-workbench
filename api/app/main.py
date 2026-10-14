@@ -2,6 +2,7 @@ import logging.config
 from contextlib import asynccontextmanager
 
 from app.routers import (
+    alert_receivers,
     api_keys,
     attachments,
     attributes,
@@ -205,6 +206,9 @@ app.include_router(exports.router, tags=["Exports"])
 
 # External dynamic lists, and what firewalls fetch
 app.include_router(edls.router, tags=["External dynamic lists"])
+
+# Inbound alert webhooks, and what SIEMs post
+app.include_router(alert_receivers.router, tags=["Alert receivers"])
 
 # Outbound sinks resource
 app.include_router(sinks.router, tags=["Sinks"])
