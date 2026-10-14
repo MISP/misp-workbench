@@ -40,6 +40,10 @@ export const useLocalWarninglistsStore = defineStore({
     async ensureLoaded() {
       if (!this.loaded && !this.status.loading) await this.getAll();
     },
+    /** The hosts lists may sync from, as an admin allowed them. */
+    async sources() {
+      return (await fetchWrapper.get(`${baseUrl}/sources`)).hosts;
+    },
     async get(id) {
       return await fetchWrapper.get(`${baseUrl}/${id}`);
     },

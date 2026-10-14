@@ -48,6 +48,15 @@ def _invalid(error: Exception) -> HTTPException:
     return HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(error))
 
 
+@router.get("/local-warninglists/sources", response_model=schemas.SyncSources)
+def sync_sources(
+    user: user_schemas.User = Security(get_current_active_user, scopes=READ),
+):
+    """The hosts lists may sync from (set by an admin in the runtime
+    settings, warninglists.source_hosts)."""
+    return {"hosts": lists_repository.allowed_hosts()}
+
+
 @router.get("/local-warninglists", response_model=list[schemas.LocalWarninglist])
 def list_lists(
     db: Session = Depends(get_db),
@@ -88,6 +97,10 @@ def create_list(
     except lists_repository.InvalidEntry as error:
         raise _invalid(error)
     _audit(db, request, user, "created", db_list)
+    # Created from a URL: fetch it now rather than at the next daily sync.
+    if db_list.source_url:
+        lists_repository.sync(db, db_list)
+        db.refresh(db_list)
     return db_list
 
 

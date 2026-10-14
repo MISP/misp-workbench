@@ -666,6 +666,19 @@ class TestListLifecycle(ApiTester):
         )
         client.patch(url, json={"enabled": True}, headers=headers)
 
+        # Created from a URL: fetched at once.
+        assert client.get("/local-warninglists/sources", headers=headers).json() == {
+            "hosts": ["cmdb.corp.example"]
+        }
+        bodies = iter([FakeResponse(b"10.0.0.0/8  # offices\n")])
+        from_url = client.post(
+            "/local-warninglists",
+            json={"name": "Ranges", "source_url": "https://cmdb.corp.example/r.txt"},
+            headers=headers,
+        ).json()
+        assert (from_url["entry_count"], from_url["sync_error"]) == (1, None)
+        client.delete(f"/local-warninglists/{from_url['id']}", headers=headers)
+
         # A due sync runs with the sweep.
         bodies = iter([FakeResponse(b"partner.example\n")])
         db.expire_all()

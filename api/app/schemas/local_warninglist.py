@@ -84,6 +84,12 @@ class EntriesChanged(BaseModel):
     removed: int = 0
 
 
+class SyncSources(BaseModel):
+    # Hosts lists may sync from (exact names or *.domain), as an admin
+    # allowed them (runtime setting warninglists.source_hosts).
+    hosts: list[str] = []
+
+
 class HitsRequest(BaseModel):
     indicators: list[str] = Field(..., min_length=1, max_length=1000)
 

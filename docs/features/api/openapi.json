@@ -5320,6 +5320,35 @@
         }
       }
     },
+    "/local-warninglists/sources": {
+      "get": {
+        "tags": [
+          "Warninglists"
+        ],
+        "summary": "Sync Sources",
+        "description": "The hosts lists may sync from (set by an admin in the runtime\nsettings, warninglists.source_hosts).",
+        "operationId": "sync_sources_local_warninglists_sources_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SyncSources"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "warninglists:read"
+            ]
+          }
+        ]
+      }
+    },
     "/local-warninglists": {
       "get": {
         "tags": [
@@ -30235,6 +30264,20 @@
           "status"
         ],
         "title": "StatusResponse"
+      },
+      "SyncSources": {
+        "properties": {
+          "hosts": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Hosts",
+            "default": []
+          }
+        },
+        "type": "object",
+        "title": "SyncSources"
       },
       "Tag": {
         "properties": {

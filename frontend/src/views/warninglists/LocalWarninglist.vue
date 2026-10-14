@@ -43,6 +43,12 @@ const newEntry = ref({ value: "", comment: "", expires_at: "" });
 const importText = ref("");
 const importReplace = ref(false);
 const busy = ref(false);
+// Hosts lists may sync from (an admin's call).
+const sourceHosts = ref([]);
+listsStore
+  .sources()
+  .then((hosts) => (sourceHosts.value = hosts))
+  .catch(() => {});
 
 const hasNextPage = computed(
   () => currentPage.value * SIZE < (page.value.total || 0),
@@ -256,6 +262,18 @@ load();
               class="form-control font-monospace"
               placeholder="https://cmdb.corp.example/ranges.txt"
             />
+            <div v-if="!list.source_url" class="form-text">
+              <template v-if="sourceHosts.length">
+                Allowed hosts: <code>{{ sourceHosts.join(", ") }}</code
+                >.
+              </template>
+              <template v-else>
+                No host is allowed to sync from yet: an admin adds them to
+                <code>source_hosts</code> under
+                <RouterLink to="/settings/runtime">runtime settings</RouterLink>
+                → warninglists.
+              </template>
+            </div>
             <div v-if="list.source_url" class="form-text">
               <template v-if="list.synced_at">
                 Synced <Timestamp :timestamp="list.synced_at" />.
