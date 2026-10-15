@@ -56,6 +56,12 @@ _METADATA_UNSAFE = re.compile(r"[^A-Za-z0-9_.:/@-]+")
 # special-purpose address (loopback, which sinkholed domains resolve to, say),
 # and no public suffix (``co.uk``) a domain record would cover all of.
 MIN_PREFIX = {4: 16, 6: 48}
+# IPv6 ranges that embed IPv4 addresses: BIND keeps IPv4 rpz-ip triggers as
+# IPv4-mapped ones, so ::ffff:0:0/96 would be every IPv4 answer, and a mapped
+# network's IPv6 prefix length says nothing of its IPv4 breadth.
+EMBEDDED_IPV4 = tuple(
+    ipaddress.ip_network(n) for n in ("::ffff:0:0/96", "::/96", "64:ff9b::/96")
+)
 _ADDRESS = re.compile(r"^[0-9a-fA-F.:]+(/[0-9]{1,3})?$")
 WARNINGLISTS_DIR = "app/submodules/misp-warninglists/lists"
 PUBLIC_SUFFIX_LISTS = ("tlds", "second-level-tlds")
@@ -104,6 +110,8 @@ def network(value: str):
     try:
         net = ipaddress.ip_network(value, strict=False)
     except ValueError:
+        return None
+    if net.version == 6 and any(net.overlaps(e) for e in EMBEDDED_IPV4):
         return None
     if net.prefixlen < MIN_PREFIX[net.version] or any(
         (

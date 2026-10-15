@@ -74,6 +74,14 @@ class TestWhatAValueMayBlock:
             # Python takes a scope, which would go into the rule as is.
             'fe80::1%a] any (msg:"x"; sid:1;) #',
             "2001:db8::1%eth0",
+            # IPv4 in IPv6: all of IPv4, a /8, loopback.
+            "::ffff:0:0/96",
+            "::ffff:10.0.0.0/104",
+            "::ffff:127.0.0.1",
+            "::ffff:192.0.2.1",
+            "::/96",
+            "64:ff9b::/96",
+            "64:ff9b::c000:201",
         ],
     )
     def test_addresses(self, value):

@@ -35,6 +35,8 @@ block more than an indicator:
   name under them;
 - addresses must be plain notation: a scoped IPv6 address (`fe80::1%eth0`) is
   left out.
+- IPv6 ranges that embed IPv4 addresses (`::ffff:0:0/96`, `::/96`,
+  `64:ff9b::/96`) are left out: `::ffff:0:0/96` would be every IPv4 address.
 
 Private addresses (`10.1.2.3`) are kept; leave them out with the RFC 1918
 warninglist or a [detection profile](detection-profiles.md).
