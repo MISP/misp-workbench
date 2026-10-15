@@ -79,7 +79,7 @@ load();
 <template>
   <div class="card">
     <div
-      class="card-header border-bottom d-flex justify-content-between align-items-center"
+      class="card-header border-bottom d-flex flex-wrap justify-content-between align-items-center gap-1"
     >
       <h4 class="mb-0">Indicators</h4>
       <small v-if="indicatorsStatus" class="text-muted">
@@ -93,7 +93,7 @@ load();
       </small>
     </div>
     <div class="card-body">
-      <p class="text-muted">
+      <p class="text-muted d-none d-md-block">
         One record per type and value, merged from every event it appears in:
         sources, first and last seen, every tag and the most restrictive TLP,
         and sightings. Exports, feeds, sinks and lookups can send these instead
@@ -101,15 +101,20 @@ load();
       </p>
 
       <form class="row g-2 align-items-center mb-3" @submit.prevent="apply">
-        <div class="col-12 col-md-4">
-          <input
-            class="form-control font-monospace"
-            v-model="query"
-            placeholder='value, or a query like sources.name:"CIRCL"'
-            aria-label="Search indicators"
-          />
+        <div class="col-12 col-lg-5">
+          <div class="input-group">
+            <input
+              class="form-control font-monospace"
+              v-model="query"
+              placeholder='value, or a query like sources.name:"CIRCL"'
+              aria-label="Search indicators"
+            />
+            <button class="btn btn-outline-primary" type="submit">
+              Search
+            </button>
+          </div>
         </div>
-        <div class="col-6 col-md-2">
+        <div class="col-6 col-md-3 col-lg-2">
           <input
             class="form-control"
             v-model="type"
@@ -117,7 +122,7 @@ load();
             aria-label="Type"
           />
         </div>
-        <div class="col-6 col-md-1">
+        <div class="col-6 col-md-3 col-lg-1">
           <input
             class="form-control"
             type="number"
@@ -129,7 +134,7 @@ load();
             title="Only indicators scoring at least this (0-100)"
           />
         </div>
-        <div class="col-6 col-md-2">
+        <div class="col-6 col-md-3 col-lg-2">
           <select class="form-select" v-model="sort" aria-label="Sort">
             <option value="score">score</option>
             <option value="last_seen">last seen</option>
@@ -138,7 +143,7 @@ load();
             <option value="updated_at">recently changed</option>
           </select>
         </div>
-        <div class="col-6 col-md-2">
+        <div class="col-6 col-md-3 col-lg-2">
           <div class="form-check form-switch mb-0">
             <input
               id="indicators-ids-only"
@@ -151,11 +156,6 @@ load();
               >IDS only</label
             >
           </div>
-        </div>
-        <div class="col-6 col-md-1 text-end">
-          <button class="btn btn-outline-primary w-100" type="submit">
-            Search
-          </button>
         </div>
       </form>
 
@@ -173,13 +173,13 @@ load();
               <tr>
                 <th>score</th>
                 <th>value</th>
-                <th>type</th>
-                <th class="text-end">events</th>
-                <th>sources</th>
-                <th>TLP</th>
-                <th>first seen</th>
-                <th>last seen</th>
-                <th class="text-end">sightings</th>
+                <th class="d-none d-md-table-cell">type</th>
+                <th class="d-none d-lg-table-cell text-end">events</th>
+                <th class="d-none d-xl-table-cell">sources</th>
+                <th class="d-none d-md-table-cell">TLP</th>
+                <th class="d-none d-xl-table-cell">first seen</th>
+                <th class="d-none d-lg-table-cell">last seen</th>
+                <th class="d-none d-lg-table-cell text-end">sightings</th>
               </tr>
             </thead>
             <tbody>
@@ -195,7 +195,8 @@ load();
                       :breakdown="indicator.score_breakdown"
                     />
                   </td>
-                  <td class="font-monospace text-break">
+                  <!-- Takes the room the shown columns leave. -->
+                  <td class="indicator-value">
                     <span
                       v-if="indicator.to_ids"
                       class="badge text-bg-primary me-1"
@@ -222,11 +223,52 @@ load();
                       :title="indicator.warninglist_hits.join(', ')"
                       >warninglist</span
                     >
-                    {{ indicator.value }}
+                    <span class="font-monospace text-break">{{
+                      indicator.value
+                    }}</span>
+                    <!-- On a phone, what the hidden columns would say. -->
+                    <div
+                      class="d-md-none small text-body-secondary d-flex flex-wrap align-items-center column-gap-2 mt-1"
+                    >
+                      <span>{{ indicator.type }}</span>
+                      <span
+                        >{{ indicator.event_count }}
+                        {{
+                          indicator.event_count === 1 ? "event" : "events"
+                        }}</span
+                      >
+                      <span
+                        v-if="indicator.tlp"
+                        class="badge"
+                        :class="
+                          TLP_CLASSES[indicator.tlp] || 'text-bg-secondary'
+                        "
+                        >{{ indicator.tlp }}</span
+                      >
+                      <span
+                        v-if="indicator.sightings.positive"
+                        class="text-success"
+                        title="positive sightings"
+                        >+{{ indicator.sightings.positive }}</span
+                      >
+                      <span
+                        v-if="indicator.sightings.false_positive"
+                        class="text-danger"
+                        title="false-positive sightings"
+                        >fp {{ indicator.sightings.false_positive }}</span
+                      >
+                      <span v-if="indicator.last_seen"
+                        >last seen <Timestamp :timestamp="indicator.last_seen"
+                      /></span>
+                    </div>
                   </td>
-                  <td>{{ indicator.type }}</td>
-                  <td class="text-end">{{ indicator.event_count }}</td>
-                  <td>
+                  <td class="d-none d-md-table-cell text-nowrap">
+                    {{ indicator.type }}
+                  </td>
+                  <td class="d-none d-lg-table-cell text-end">
+                    {{ indicator.event_count }}
+                  </td>
+                  <td class="d-none d-xl-table-cell">
                     <span
                       v-for="source in indicator.sources.slice(0, 3)"
                       :key="`${source.type}-${source.id}-${source.name}`"
@@ -239,7 +281,7 @@ load();
                       >+{{ indicator.sources.length - 3 }}</span
                     >
                   </td>
-                  <td>
+                  <td class="d-none d-md-table-cell">
                     <span
                       v-if="indicator.tlp"
                       class="badge"
@@ -247,13 +289,13 @@ load();
                       >{{ indicator.tlp }}</span
                     >
                   </td>
-                  <td class="small">
+                  <td class="d-none d-xl-table-cell small">
                     <Timestamp :timestamp="indicator.first_seen" />
                   </td>
-                  <td class="small">
+                  <td class="d-none d-lg-table-cell small">
                     <Timestamp :timestamp="indicator.last_seen" />
                   </td>
-                  <td class="text-end small">
+                  <td class="d-none d-lg-table-cell text-end small">
                     <span
                       v-if="indicator.sightings.positive"
                       class="text-success"
@@ -269,7 +311,9 @@ load();
                   </td>
                 </tr>
                 <tr v-if="expanded === indicator.uuid">
-                  <td colspan="9" class="bg-body-tertiary">
+                  <!-- max-width: 0, so long tags are cut to the row, not
+                       the row stretched to them. -->
+                  <td colspan="9" class="bg-body-tertiary" style="max-width: 0">
                     <IndicatorDetails :indicator="indicator" />
                   </td>
                 </tr>
@@ -293,3 +337,12 @@ load();
     </div>
   </div>
 </template>
+
+<style scoped>
+/* The usual table trick: a cell sized to what the others leave, so a long
+   value wraps inside it rather than widen the table past the screen. */
+.indicator-value {
+  width: 100%;
+  max-width: 0;
+}
+</style>

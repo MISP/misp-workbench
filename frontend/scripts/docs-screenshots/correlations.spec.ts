@@ -180,10 +180,10 @@ test.describe("Correlations screenshots", () => {
     await expect(
       page.getByRole("heading", { name: "Correlations", exact: true }),
     ).toBeVisible();
-    await expect(page.getByText("Top Attribute Correlations")).toBeVisible();
-    // Wait for at least one stats row to render
+    await expect(page.getByText("Most correlated attributes")).toBeVisible();
+    // Wait for the stubbed attribute to land in the rankings.
     await expect(
-      page.locator("table tbody tr").filter({ hasText: "ip-src" }).first(),
+      page.locator(".rank-row").filter({ hasText: "185.220.101.42" }).first(),
     ).toBeVisible({ timeout: 10_000 });
     await pinForCapture(page);
 
@@ -250,16 +250,13 @@ test.describe("Correlations screenshots", () => {
     await expect(sitemap).toBeVisible({ timeout: 10_000 });
     await sitemap.click();
 
-    const modal = page.locator(
-      `#correlatedAttributesModal${SOURCE_ATTRIBUTE_UUID}`,
-    );
+    // An attribute row mounts more than one modal element under that id;
+    // the one Bootstrap shows is the one to capture.
+    const modal = page.locator(".modal.show");
     await expect(modal).toBeVisible();
-    // The modal body lists the correlation; presence of these labels means
-    // attribute.correlations was populated and the row rendered.
-    await expect(modal.getByText("Match Type:")).toBeVisible({
-      timeout: 10_000,
-    });
-    await expect(modal.getByText("Score:")).toBeVisible();
+    await expect(modal.locator(".modal-title")).toContainText("Correlations");
+    // Let the reworked modal draw its match list (or graph) before capturing.
+    await page.waitForTimeout(800);
     await pinForCapture(page);
 
     await capture(

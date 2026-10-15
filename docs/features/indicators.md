@@ -6,7 +6,7 @@ MISP servers, with different tags, `to_ids` flags and timestamps. Rather than
 leaving every consumer to de-duplicate it and merge the context itself,
 misp-workbench keeps one **consolidated indicator** per type and value.
 
-Under ***internals*** → ***indicators*** you can search them. Click a row to
+Under ***Intel*** → ***Indicators*** you can search them. Click a row to
 see its organisations, sources, tags and events. [Explore](explore.md) has
 an *Indicators* tab too, searched with the same query as events and
 attributes; its time range applies to when they were last seen.
@@ -113,7 +113,7 @@ so incremental exports carry real changes.
 
 ### Settings
 
-Under ***internals*** → ***runtime settings*** → ***scoring***, every
+Under ***Admin*** → ***Runtime settings*** → ***scoring***, every
 number above can be changed, including the half-life of each attribute type.
 Scoring can also be turned off. Saving re-scores every indicator.
 
@@ -137,7 +137,7 @@ Changing a source's trust re-scores every indicator.
 
 ### Source quality
 
-Under ***internals*** → ***source quality***, every feed, MISP server,
+Under ***Intel*** → ***Source quality***, every feed, MISP server,
 local source and organisation is listed with how its indicators hold up:
 
 | Column | Meaning |
@@ -159,7 +159,7 @@ an *Indicator quality* card. `GET /indicators/sources` returns them all, and
 
 ### Adaptive trust
 
-With **adaptive trust** on (*runtime settings* → *scoring*), a feed's,
+With **adaptive trust** on (***Admin*** → ***Runtime settings*** → ***scoring***), a feed's,
 server's or organisation's false-positive rate lowers its trust. The
 penalty is 1 point per percent of its indicators reported benign within the
 window, up to 30, and only applies once it has at least 20 indicators. A

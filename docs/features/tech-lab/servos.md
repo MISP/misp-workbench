@@ -8,7 +8,7 @@ misp-workbench already ships a chain of ingest pipelines (IP extraction, composi
     [How ingest pipelines work](../opensearch/ingest-pipelines.md#how-ingest-pipelines-work) covers processors, conditional execution, failure handling and `_simulate` in a few minutes, and links the official OpenSearch documentation for the detail. Worth reading before writing your first servo.
 
 !!! info "Where to find it"
-    The **tech-lab** → **transformation servos** view splits into two tabs: **Custom servos**, where you create, dry-run, enable, disable and delete your own, and **System pipelines**, a read-only view of what misp-workbench ships. The active tab is in the URL (`?tab=system`), so a link to either survives a refresh.
+    The **Tech lab** → **Transformation servos** view splits into two tabs: **Custom servos**, where you create, dry-run, enable, disable and delete your own, and **System pipelines**, a read-only view of what misp-workbench ships. The active tab is in the URL (`?tab=system`), so a link to either survives a refresh.
 
 The landing tab lists your servos and nothing else — the shipped pipelines never push them below the fold:
 

@@ -68,52 +68,52 @@ function onHuntCreated() {
       <thead>
         <tr>
           <th>name</th>
-          <th v-if="!$isMobile">target</th>
-          <th v-if="!$isMobile">last run</th>
-          <th v-if="!$isMobile">frequency</th>
-          <th v-if="!$isMobile">matches</th>
+          <th class="d-none d-xl-table-cell">target</th>
+          <th class="d-none d-md-table-cell">last run</th>
+          <th class="d-none d-lg-table-cell">frequency</th>
+          <th class="d-none d-md-table-cell">matches</th>
           <th class="text-end">status</th>
-          <th class="text-end">actions</th>
+          <th class="text-end"><span class="visually-hidden">actions</span></th>
         </tr>
       </thead>
       <tbody>
         <tr v-for="hunt in hunts.items" :key="hunt.id">
-          <td>
+          <!-- Takes the room the other columns leave; the query truncates. -->
+          <td class="hunt-name">
             <RouterLink
               :to="`/hunts/${hunt.id}`"
-              class="fw-semibold text-decoration-none"
+              class="fw-semibold text-decoration-none text-break"
             >
               {{ hunt.name }}
             </RouterLink>
             <div
               class="text-muted small text-truncate font-monospace"
-              style="max-width: 320px"
               :title="hunt.query"
             >
               {{ hunt.query }}
             </div>
           </td>
-          <td v-if="!$isMobile">
+          <td class="d-none d-xl-table-cell">
             <span class="badge bg-secondary">{{
               hunt.hunt_type === "opensearch"
                 ? hunt.index_target
                 : hunt.hunt_type
             }}</span>
           </td>
-          <td v-if="!$isMobile" class="text-muted small">
+          <td class="d-none d-md-table-cell text-muted small text-nowrap">
             {{
               hunt.last_run_at
                 ? dayjs.utc(hunt.last_run_at).local().fromNow()
                 : "never"
             }}
           </td>
-          <td v-if="!$isMobile" class="text-muted small">
+          <td class="d-none d-lg-table-cell text-muted small">
             <template v-if="huntSchedule(hunt.id)">
               {{ formatSchedule(huntSchedule(hunt.id).schedule) }}
             </template>
             <span v-else>manual</span>
           </td>
-          <td v-if="!$isMobile">
+          <td class="d-none d-md-table-cell">
             <HuntSparkline :hunt-id="hunt.id" :last-run-at="hunt.last_run_at" />
           </td>
           <td class="text-end">
@@ -143,3 +143,12 @@ function onHuntCreated() {
     @close="addModalOpen = false"
   />
 </template>
+
+<style scoped>
+/* The usual table truncation: a cell sized to what the others leave, so
+   its contents can be cut with an ellipsis rather than widen the table. */
+.hunt-name {
+  width: 100%;
+  max-width: 0;
+}
+</style>
