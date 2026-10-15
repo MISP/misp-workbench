@@ -17,6 +17,24 @@ function handleAttributeDeleted() {
 </script>
 
 <style>
+.attribute-details th {
+  width: 1%;
+  white-space: nowrap;
+}
+
+@media (max-width: 575.98px) {
+  .attribute-details th,
+  .attribute-details td {
+    display: block;
+    width: auto;
+  }
+
+  .attribute-details th {
+    border-bottom: 0;
+    padding-bottom: 0;
+  }
+}
+
 .single-stat-card .card-body {
   font-size: x-large;
   text-align: center;
@@ -58,12 +76,12 @@ div.row h3 {
         </div>
       </div>
     </div>
-    <div class="row m-1">
-      <div class="col-sm-6 mt-2">
-        <div class="card">
+    <div class="row m-1 g-2">
+      <div class="col-12 col-lg-8">
+        <div class="card mt-2">
           <div class="card-body d-flex flex-column">
-            <div class="table-responsive-sm">
-              <table class="table table-striped">
+            <div class="table-responsive">
+              <table class="table table-striped attribute-details mb-0">
                 <tbody>
                   <tr>
                     <th>uuid</th>
@@ -87,11 +105,11 @@ div.row h3 {
                   </tr>
                   <tr>
                     <th>value</th>
-                    <td>{{ attribute.value }}</td>
+                    <td class="text-break">{{ attribute.value }}</td>
                   </tr>
                   <tr>
                     <th>comment</th>
-                    <td>{{ attribute.comment }}</td>
+                    <td class="text-break">{{ attribute.comment }}</td>
                   </tr>
                   <tr>
                     <th>timestamp</th>
@@ -144,12 +162,6 @@ div.row h3 {
             </div>
           </div>
         </div>
-      </div>
-      <div class="col-xs-12 col-sm-12 col-md-12 col-lg-6 col-xl-3">
-        <SightingsSparklineWidget :value="attribute.value" />
-        <SightingsStatsWidget :value="attribute.value" />
-      </div>
-      <div class="col col-sm-6">
         <div class="card mt-2">
           <div class="card-header"><FontAwesomeIcon :icon="faTags" /> tags</div>
           <div class="card-body d-flex flex-column">
@@ -158,6 +170,10 @@ div.row h3 {
             </div>
           </div>
         </div>
+      </div>
+      <div class="col-12 col-lg-4">
+        <SightingsSparklineWidget :value="attribute.value" />
+        <SightingsStatsWidget :value="attribute.value" />
       </div>
     </div>
     <DeleteAttributeModal
