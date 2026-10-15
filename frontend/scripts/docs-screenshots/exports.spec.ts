@@ -53,7 +53,9 @@ test.describe("Exports screenshots", () => {
     await page.fill("#export-name", "Network IOCs — daily");
     await page.fill("#export-query", "type:ip-dst AND to_ids:true");
     await page.locator("#export-schedule-enabled").check();
-    await expect(page.getByText(/run on a schedule/i)).toBeVisible();
+    await expect(
+      page.locator("label[for=export-schedule-enabled]"),
+    ).toBeVisible();
     await pinForCapture(page);
 
     await capture(

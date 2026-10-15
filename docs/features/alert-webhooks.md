@@ -8,7 +8,7 @@ those alerts as sightings used to take custom code on the sender's side. An
 values each alert hit, and those values are reported as your organisation's
 sightings.
 
-Find them under **sources → alert webhooks**.
+Find them under ***Ingest*** → ***Alert webhooks***.
 
 ## Setting one up
 

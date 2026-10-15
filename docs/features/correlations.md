@@ -4,7 +4,7 @@ Correlations identify attributes that share a common value across different even
 <img src="../../screenshots/correlations/misp-workbench-1_correlations-view.png#only-light">
 <img src="../../screenshots/correlations/misp-workbench-1_correlations-view-dark.png#only-dark">
 
-Correlations are computed automatically when an attribute is added or updated. To force a full re-run across all your data, go to ***internals*** → ***correlations*** and click the ***Re-run Correlations*** button. This may take some time depending on how large is your dataset.
+Correlations are computed automatically when an attribute is added or updated. To force a full re-run across all your data, go to ***Hunt*** → ***Correlations*** and click the ***Re-run Correlations*** button. This may take some time depending on how large is your dataset.
 
 ## How it works
 
@@ -76,7 +76,7 @@ A fingerprint attribute also gets a <span style="color: rgb(13, 202, 240);">:fon
 
 Freetext feeds and batch import detect JA4, JA4S, JA4H, JA4X and JA4SSH fingerprints and add them as `text`. In a `ja4-plus` object, the `ja4-fingerprint` field only accepts letters, digits, `_` and `-`, which catches pasted labels or quotes without rejecting the variants that have no recognisable shape.
 
-With `ja4` disabled, fingerprints correlate through `term` like any other value. Deployments that saved their correlation settings before `ja4` existed keep their saved `matchTypes` and need `ja4` ticked under ***Internals*** → ***Runtime Settings*** → ***correlations***.
+With `ja4` disabled, fingerprints correlate through `term` like any other value. Deployments that saved their correlation settings before `ja4` existed keep their saved `matchTypes` and need `ja4` ticked under ***Admin*** → ***Runtime settings*** → ***correlations***.
 
 Attributes indexed before the pipeline existed have no `expanded.ja4` until they are reprocessed. The `backfill-ja4` command does that, then rebuilds the correlations of every fingerprint it finds:
 

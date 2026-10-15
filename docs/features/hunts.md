@@ -86,7 +86,7 @@ The `index_target` field selects where to look:
 
 ### Creating a scheduled task for a _Hunt_
 
-1. Go to ***internals*** → ***tasks*** to open the scheduled tasks view, then click the ***+ New*** button.
+1. Go to ***Admin*** → ***Tasks*** to open the scheduled tasks view, then click the ***+ New*** button.
     <img src="../../screenshots/hunts/misp-workbench-6_hunts_scheduled-task-add-button.png#only-light" style="max-width: 100%; height: auto;">
     <img src="../../screenshots/hunts/misp-workbench-6_hunts_scheduled-task-add-button-dark.png#only-dark" style="max-width: 100%; height: auto;">
 2. Select ***run_task*** as the task type, then select the hunt you want to run periodically. The run frequency can be defined using a fixed interval or a crontab expression for more granular scheduling.

@@ -13,7 +13,11 @@ const canCreate = computed(() =>
 </script>
 
 <template>
-  <RouterLink v-if="canCreate" to="/events/add" class="btn btn-primary btn-sm">
+  <RouterLink
+    v-if="canCreate"
+    to="/events/add"
+    class="btn btn-primary btn-sm text-nowrap"
+  >
     + New Event
   </RouterLink>
 </template>

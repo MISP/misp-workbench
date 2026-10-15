@@ -28,7 +28,7 @@ To follow an _Event_ or _Attribute_ one can click on the :fa:fontawesome-solid-s
 
 Follows are stored in user settings under the `notifications` namespace. The `follow` key holds lists of UUIDs per entity type.
 
-You check the followed entities by navigating to ***internals*** → ***user settings*** → ***notifications***.
+You check the followed entities by navigating to the account menu → ***User settings*** → ***notifications***.
 <img src="../../screenshots/notifications/misp-workbench-3_notifications-user-settings.png#only-light">
 <img src="../../screenshots/notifications/misp-workbench-3_notifications-user-settings-dark.png#only-dark">
 
