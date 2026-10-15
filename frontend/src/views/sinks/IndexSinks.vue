@@ -92,7 +92,13 @@ async function sendTest(sink) {
   try {
     const result = await sinksStore.test(sink.id);
     if (result.ok) {
-      toastsStore.push(`Test message delivered to "${sink.name}".`, "success");
+      // Vendor APIs are checked, not sent a test indicator (it could block).
+      toastsStore.push(
+        BETA_TYPES.includes(sink.type)
+          ? `"${sink.name}" works: its credentials were accepted.`
+          : `Test message delivered to "${sink.name}".`,
+        "success",
+      );
     } else {
       toastsStore.push(`"${sink.name}" test failed: ${result.error}`, "danger");
     }
