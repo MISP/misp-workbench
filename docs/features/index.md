@@ -2,6 +2,7 @@
 
 | Feature | Description |
 |---|---|
+| [Navigation](navigation.md) | Menus grouped by task (Hunt, Intel, Ingest, Share, Tech lab, Admin), shown by scope, and a <kbd>Ctrl</kbd>+<kbd>K</kbd> quick switcher to jump to any page, uuid or value |
 | [Feed ingestion](feeds/index.md) | Ingest MISP, CSV, JSON, and Freetext feeds on a schedule or on demand |
 | [Explore](explore.md) | Lucene queries against OpenSearch for fast indicator lookups |
 | [Hunt](hunts.md) | Hunts are saved searches that run periodically and trigger alerts. |

@@ -1,6 +1,9 @@
 import { createRouter, createWebHistory } from "vue-router";
 
 import { useAuthStore } from "@/stores";
+import { authHelper } from "@/helpers/auth";
+import { guardFor } from "@/components/menu/menu";
+import Forbidden from "@/views/Forbidden.vue";
 import {
   Home,
   Login,
@@ -88,6 +91,7 @@ export const router = createRouter({
   routes: [
     { path: "/", component: Home },
     { path: "/login", component: Login },
+    { path: "/forbidden", component: Forbidden },
     // The event view is tabbed and the tab is part of the URL, so it can be
     // linked and stepped back through. Spelling the tabs out keeps the param
     // from swallowing "/events/update/:id" and friends.
@@ -232,5 +236,12 @@ router.beforeEach(async (to) => {
   if (authRequired && !auth.isAuthenticated()) {
     auth.returnUrl = to.fullPath;
     return "/login";
+  }
+
+  // A page the user's role doesn't open: say so, rather than render it and
+  // have its every API call refused. The scope is its menu entry's.
+  const entry = guardFor(to.path);
+  if (entry && !authHelper.hasScope(auth.scopes || [], entry.scope)) {
+    return { path: "/forbidden", query: { from: to.fullPath } };
   }
 });

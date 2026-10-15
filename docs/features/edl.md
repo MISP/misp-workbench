@@ -8,7 +8,7 @@ send an `Authorization` header. An EDL here is one
 way a vendor reads them. The firewall fetches it from a URL with a token in
 it, and that token opens that one list and nothing else.
 
-Find them under **internals → external dynamic lists**.
+Find them under ***Share*** → ***External dynamic lists***.
 
 ## Creating a list
 

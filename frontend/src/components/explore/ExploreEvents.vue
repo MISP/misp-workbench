@@ -470,8 +470,10 @@ function forgetRecentSearch(term) {
 }
 
 const route = useRoute();
-onMounted(() => {
-  // ?tab=indicators: a link (a detection profile's pivot) opening a tab.
+
+// ?q= searches and ?tab=indicators opens a tab: links (a detection profile's
+// pivot, the quick switcher) land here with them, on this page or another.
+function applyRouteQuery() {
   if (TABS.includes(route.query.tab)) {
     activeTab.value = route.query.tab;
   }
@@ -480,7 +482,9 @@ onMounted(() => {
     searchQuery.value = initialQuery;
     search();
   }
-});
+}
+onMounted(applyRouteQuery);
+watch(() => [route.query.q, route.query.tab], applyRouteQuery);
 </script>
 
 <style>

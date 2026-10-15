@@ -34,7 +34,7 @@ function sourceLabel(source) {
 </script>
 
 <template>
-  <dl class="row small mb-0">
+  <dl class="row small mb-0 mx-0">
     <template v-if="indicator.score !== null">
       <dt class="col-sm-2">score</dt>
       <dd class="col-sm-10">
@@ -99,7 +99,7 @@ function sourceLabel(source) {
         <span
           v-for="hit in indicator.warninglist_hits"
           :key="hit"
-          class="badge text-bg-warning me-1"
+          class="badge text-bg-warning me-1 text-wrap text-start"
           >{{ hit }}</span
         >
       </dd>

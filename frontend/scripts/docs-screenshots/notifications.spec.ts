@@ -114,7 +114,9 @@ test.describe("Notifications screenshots", () => {
     // marks cobaltStrike as followed, so the star renders text-warning.
     await page.goto(`/events/${FOLLOWED_EVENT_UUID}`);
 
-    await expect(page.getByText(/Event #/).first()).toBeVisible({
+    // The event's name is the page title now ("Event #…" was the old card
+    // header).
+    await expect(page.getByRole("heading", { level: 4 }).first()).toBeVisible({
       timeout: 15_000,
     });
     const followBtn = page
@@ -125,8 +127,11 @@ test.describe("Notifications screenshots", () => {
     await expect(followBtn.locator("svg")).toHaveClass(/text-warning/);
     await pinForCapture(page);
 
-    // Capture just the event-title header card, not the rest of the page.
-    const titleCard = page.locator(".event-title").first();
+    // Capture just the event's header row (title, badges, toolbar), not the
+    // rest of the page.
+    const titleCard = followBtn.locator(
+      "xpath=ancestor::div[contains(@class, 'justify-content-between')][1]",
+    );
     await capture(
       titleCard,
       FEATURE,
