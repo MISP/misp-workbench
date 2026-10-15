@@ -63,6 +63,8 @@ class Export(Base):
         index=True,
     )
     cursor = Column(BigInteger, nullable=True)
+    # Options of the detection formats (suricata, zeek, rpz).
+    format_options = Column(JSON, nullable=True)
     created_at = Column(DateTime(timezone=True), nullable=False)
     started_at = Column(DateTime(timezone=True), nullable=True)
     finished_at = Column(DateTime(timezone=True), nullable=True)

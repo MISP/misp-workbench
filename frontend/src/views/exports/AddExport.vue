@@ -8,6 +8,7 @@ import {
 } from "@/stores";
 import LuceneQuerySyntaxHint from "@/components/misc/LuceneQuerySyntaxHint.vue";
 import ExportScheduleFields from "@/components/exports/ExportScheduleFields.vue";
+import DetectionFormatOptions from "@/components/exports/DetectionFormatOptions.vue";
 
 const exportsStore = useExportsStore();
 const toastsStore = useToastsStore();
@@ -22,6 +23,11 @@ const exportJob = reactive({
   distribution: null,
   incremental: false,
   profile_id: null,
+  format_options: {
+    rule_action: "alert",
+    rpz_policy: "nxdomain",
+    rpz_redirect: "",
+  },
 });
 
 // A detection profile decides what the export holds (and whether as
@@ -65,7 +71,10 @@ const canSubmit = computed(
 
 const isIndicators = computed(() => exportJob.index_target === "indicators");
 // Indicators are only written by the streamed exporter.
-const STREAMED_FORMATS = ["ndjson", "text", "cdb"];
+const STREAMED_FORMATS = ["ndjson", "text", "cdb", "suricata", "zeek", "rpz"];
+// What one value turns into: a line, a rule, an intel item, a zone record.
+const LINE_FORMATS = ["text", "cdb", "suricata", "zeek", "rpz"];
+const DETECTION_FORMATS = ["suricata", "zeek", "rpz"];
 const stixDisabled = computed(
   () => exportJob.index_target !== "attributes" || !!profile.value,
 );
@@ -92,7 +101,7 @@ function onIndexTargetChange() {
   if (stixDisabled.value && exportJob.format === "stix") {
     exportJob.format = "json";
   }
-  if (lineFormatsDisabled.value && ["text", "cdb"].includes(exportJob.format)) {
+  if (lineFormatsDisabled.value && LINE_FORMATS.includes(exportJob.format)) {
     exportJob.format = "json";
   }
   onFormatChange();
@@ -226,12 +235,31 @@ function cancel() {
           <option value="cdb" :disabled="lineFormatsDisabled">
             Wazuh CDB list{{ lineFormatsDisabled ? " (not for events)" : "" }}
           </option>
+          <optgroup label="Detection engines">
+            <option value="suricata" :disabled="lineFormatsDisabled">
+              Suricata rules{{ lineFormatsDisabled ? " (not for events)" : "" }}
+            </option>
+            <option value="zeek" :disabled="lineFormatsDisabled">
+              Zeek Intel{{ lineFormatsDisabled ? " (not for events)" : "" }}
+            </option>
+            <option value="rpz" :disabled="lineFormatsDisabled">
+              DNS RPZ zone{{ lineFormatsDisabled ? " (not for events)" : "" }}
+            </option>
+          </optgroup>
         </select>
         <div class="form-text">
           STIX 2.1 groups matching attributes into events and converts them via
-          the misp-stix library. NDJSON, plain text and Wazuh CDB are streamed
-          straight into storage, with no record limit.
+          the misp-stix library. NDJSON, plain text, Wazuh CDB and the detection
+          engines' formats are streamed straight into storage, with no record
+          limit.
         </div>
+      </div>
+
+      <div v-if="DETECTION_FORMATS.includes(exportJob.format)" class="mb-4">
+        <DetectionFormatOptions
+          v-model="exportJob.format_options"
+          :format="exportJob.format"
+        />
       </div>
 
       <div v-if="canBeIncremental" class="mb-4">

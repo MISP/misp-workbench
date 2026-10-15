@@ -15,9 +15,10 @@ can always fetch the same URL for the latest results.
 | Term | Description |
 |---|---|
 | **Query** | Lucene query run against the selected index |
-| **Detection profile** | Optional: a [detection profile](detection-profiles.md) decides what the export holds (indicators or attributes), and the query only narrows it. NDJSON, plain text and Wazuh CDB only |
-| **Index target** | Which index to export: `attributes`, `events` or `indicators` ([consolidated](indicators.md): one record per type and value; `ndjson`, `text` and `cdb` only) |
-| **Format** | `json`, `misp` (MISP JSON), `csv`, `stix` (STIX 2.1), `ndjson`, `text` or `cdb` (Wazuh CDB list) |
+| **Detection profile** | Optional: a [detection profile](detection-profiles.md) decides what the export holds (indicators or attributes), and the query only narrows it. NDJSON, plain text, Wazuh CDB and the [detection engine formats](detection-formats.md) only |
+| **Index target** | Which index to export: `attributes`, `events` or `indicators` ([consolidated](indicators.md): one record per type and value; `ndjson`, `text`, `cdb`, `suricata`, `zeek` and `rpz` only) |
+| **Format** | `json`, `misp` (MISP JSON), `csv`, `stix` (STIX 2.1), `ndjson`, `text`, `cdb` (Wazuh CDB list), `suricata` (Suricata rules), `zeek` (Zeek Intel) or `rpz` (DNS RPZ zone) |
+| **Format options** | `suricata` and `rpz` only: the rules' action and the zone's answer (see [Detection engine formats](detection-formats.md)) |
 | **Incremental** | `ndjson` attribute and indicator exports only: every run also stores a delta of what changed since the previous run (see [Incremental feeds](#incremental-feeds)) |
 | **Status** | `queued`, `running`, `completed`, or `failed` |
 | **Schedule** | Optional recurring cadence (crontab). When set, the export re-runs automatically and overwrites its previous file |
@@ -34,8 +35,11 @@ can always fetch the same URL for the latest results.
 | `ndjson` | One `_source` document per line | Streamed; no record cap. Can be [incremental](#incremental-feeds) |
 | `text` | One value per line | Attributes and indicators. Streamed; no record cap. Each value once, however many attributes or types share it. Multi-line values are skipped |
 | `cdb` | A [Wazuh CDB list](https://documentation.wazuh.com/current/user-manual/ruleset/cdb-list.html), `value:type` per line | Attributes and indicators. Streamed; no record cap. Each value once; a value with several types lists them all (`203.0.113.5:ip-dst,ip-src`; values over 256 characters list the first one found). Keys containing `:` are quoted |
+| `suricata` | [Suricata](https://suricata.io) rules | Attributes and indicators. Streamed; no record cap. IP, DNS, TLS SNI, HTTP and JA3 rules with stable SIDs; see [Detection engine formats](detection-formats.md) |
+| `zeek` | A [Zeek Intel](https://docs.zeek.org/en/master/frameworks/intel.html) file | Attributes and indicators. Streamed; no record cap. Addresses, networks, domains, URLs, hashes, file names, e-mail addresses |
+| `rpz` | A DNS Response Policy Zone | Attributes and indicators. Streamed; no record cap. Domain, hostname and `rpz-ip` triggers, answered NXDOMAIN, NODATA, dropped or sent to a walled garden |
 
-`ndjson`, `text` and `cdb` are streamed out of OpenSearch straight into storage, so they have no record cap and use constant memory however much matches. The other formats are built in memory and capped at 100,000 records.
+`ndjson`, `text`, `cdb`, `suricata`, `zeek` and `rpz` are streamed out of OpenSearch straight into storage, so they have no record cap and use constant memory however much matches. The other formats are built in memory and capped at 100,000 records.
 
 !!! tip "Splunk lookups"
     The `csv` export has a header row and one indicator per row, so it can be

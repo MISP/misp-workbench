@@ -415,15 +415,19 @@ def _feed_query(
     }
 
 
-def _stream_to_storage(index: str, query: dict, fmt: str, key: str, export=None):
+def _stream_to_storage(
+    index: str, query: dict, fmt: str, key: str, export=None, options=None
+):
     """Stream matching documents in ``fmt`` straight into storage.
 
     Reuses the streaming exporter (point-in-time paging, no record cap), so
     memory stays flat however large the artifact. ``export`` is a prepared
     export to stream instead of ``index`` and ``query`` (profile exports).
+    ``options`` are a detection format's (see detection_formats).
     Returns ``(stored_key, size, record_count, sha256)``.
     """
     from app.repositories import stream_exports
+    from app.services.exports import detection_formats
 
     export = export or stream_exports.PreparedExport(
         index=index,
@@ -433,6 +437,7 @@ def _stream_to_storage(index: str, query: dict, fmt: str, key: str, export=None)
         etag="",
         last_modified=None,
         client=get_opensearch_client(),
+        options=options,
     )
     digest = hashlib.sha256()
     size = 0
@@ -442,10 +447,14 @@ def _stream_to_storage(index: str, query: dict, fmt: str, key: str, export=None)
             data = chunk.encode("utf-8")
             digest.update(data)
             size += len(data)
-            # ndjson, text and cdb are one record per line.
+            # The streamed formats are one record per line, after the
+            # detection formats' header (Zeek's #fields, a zone's SOA and NS).
             records += data.count(b"\n")
             tmp.write(data)
         stored_key = store_export_file(key, tmp)
+    writer = detection_formats.writer(fmt)
+    if writer is not None:
+        records -= writer.header_lines
     return stored_key, size, records, digest.hexdigest()
 
 
@@ -492,6 +501,7 @@ def _run_profile(db: Session, db_export: export_models.Export) -> None:
         # Just released above: the export sends that release.
         gate_checked=True,
     )
+    export.options = db_export.format_options
     stored_key, size, records, checksum = _stream_to_storage(
         None,
         None,
@@ -634,6 +644,7 @@ def _run_streamed(db: Session, db_export: export_models.Export) -> None:
         _feed_query(db_export.query, enforce_warninglist=enforce),
         db_export.format,
         f"export-{db_export.id}.{db_export.format}",
+        options=db_export.format_options,
     )
     db_export.storage_key = stored_key
     db_export.file_size = size
