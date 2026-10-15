@@ -131,6 +131,38 @@ class TestStreamExports(ApiTester):
         ]
 
     @pytest.mark.parametrize("scopes", [["attributes:read"]])
+    def test_detection_formats(self, client: TestClient, auth_token: auth.Token):
+        rules = self._get(
+            client, auth_token, format="suricata", query="type:ip-dst"
+        ).text.splitlines()
+        assert sorted(r.split(" (")[0] for r in rules) == [
+            "alert ip $HOME_NET any -> [198.51.100.7] any",
+            "alert ip $HOME_NET any -> [2001:db8::1] any",
+        ]
+        assert all(f"misp_uuid {ATTR_IP}" in r for r in rules if "198.51" in r)
+
+        zeek = self._get(client, auth_token, format="zeek").text.splitlines()
+        assert zeek[0].startswith("#fields\tindicator\tindicator_type")
+        # The text attribute has no Zeek indicator type.
+        assert sorted(line.split("\t")[0] for line in zeek[1:]) == [
+            "198.51.100.7",
+            "2001:db8::1",
+            "edited.example.com",
+            "gone.example.com",
+        ]
+
+        rpz = self._get(client, auth_token, format="rpz", query="type:domain")
+        assert rpz.headers["content-type"].startswith("text/dns")
+        lines = rpz.text.splitlines()
+        assert lines[1].startswith("@ SOA localhost. hostmaster.localhost. ")
+        assert sorted(lines[3:]) == [
+            "*.edited.example.com CNAME .",
+            "*.gone.example.com CNAME .",
+            "edited.example.com CNAME .",
+            "gone.example.com CNAME .",
+        ]
+
+    @pytest.mark.parametrize("scopes", [["attributes:read"]])
     def test_conditional_requests(self, client: TestClient, auth_token: auth.Token):
         first = self._get(client, auth_token, format="ndjson")
         etag = first.headers["etag"]
@@ -205,6 +237,9 @@ class TestStreamExports(ApiTester):
         )
         assert (
             self._get(client, auth_token, format="cdb", since="1d").status_code == 400
+        )
+        assert (
+            self._get(client, auth_token, format="rpz", since="1d").status_code == 400
         )
 
     @pytest.mark.parametrize("scopes", [["events:read"]])

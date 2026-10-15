@@ -21489,7 +21489,10 @@
               "misp",
               "ndjson",
               "text",
-              "cdb"
+              "cdb",
+              "suricata",
+              "zeek",
+              "rpz"
             ],
             "title": "Format",
             "default": "json"
@@ -21520,6 +21523,16 @@
               }
             ],
             "title": "Profile Id"
+          },
+          "format_options": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FormatOptions"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "id": {
             "type": "integer",
@@ -21724,7 +21737,10 @@
               "misp",
               "ndjson",
               "text",
-              "cdb"
+              "cdb",
+              "suricata",
+              "zeek",
+              "rpz"
             ],
             "title": "Format",
             "default": "json"
@@ -21755,6 +21771,16 @@
               }
             ],
             "title": "Profile Id"
+          },
+          "format_options": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FormatOptions"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "schedule": {
             "anyOf": [
@@ -22725,6 +22751,44 @@
         },
         "type": "object",
         "title": "FeedUpdate"
+      },
+      "FormatOptions": {
+        "properties": {
+          "rule_action": {
+            "type": "string",
+            "enum": [
+              "alert",
+              "drop"
+            ],
+            "title": "Rule Action",
+            "default": "alert"
+          },
+          "rpz_policy": {
+            "type": "string",
+            "enum": [
+              "nxdomain",
+              "nodata",
+              "drop",
+              "redirect"
+            ],
+            "title": "Rpz Policy",
+            "default": "nxdomain"
+          },
+          "rpz_redirect": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rpz Redirect"
+          }
+        },
+        "type": "object",
+        "title": "FormatOptions",
+        "description": "How the detection formats (suricata, zeek, rpz) write their output."
       },
       "Galaxy": {
         "properties": {

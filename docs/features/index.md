@@ -6,6 +6,7 @@
 | [Explore](explore.md) | Lucene queries against OpenSearch for fast indicator lookups |
 | [Hunt](hunts.md) | Hunts are saved searches that run periodically and trigger alerts. |
 | [Exports](exports.md) | Scheduled file exports in JSON, CSV, MISP, STIX 2.1, NDJSON, plain text or Wazuh CDB, including incremental feeds that SIEMs poll for changes |
+| [Detection engine formats](detection-formats.md) | Suricata rules with stable SIDs, Zeek Intel files and DNS RPZ zones, as export formats for scheduled exports, profiles and the streaming endpoints |
 | [External dynamic lists](edl.md) | Plain-text lists firewalls and proxies fetch on a schedule (Palo Alto, Fortinet, Check Point, Cisco, Squid), in each vendor's format, at a URL with a revocable token for that list alone |
 | [Sinks](sinks.md) | Push published indicators to SIEMs and other tools: Splunk HEC, Graylog GELF, syslog/CEF or webhooks, with per-sink filters and delivery status |
 | [Sightings](sightings.md) | Record where indicators were seen or proved benign, in bulk or through MISP's `/sightings/add`, with optional false-positive feedback |

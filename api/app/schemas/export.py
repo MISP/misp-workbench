@@ -4,20 +4,46 @@ from typing import Literal, Optional
 from pydantic import BaseModel, ConfigDict, model_validator
 
 from app.schemas.task import ScheduleTaskSchedule
+from app.services.exports import detection_formats
 
-ExportFormat = Literal["json", "csv", "stix", "misp", "ndjson", "text", "cdb"]
+ExportFormat = Literal[
+    "json", "csv", "stix", "misp", "ndjson", "text", "cdb", "suricata", "zeek", "rpz"
+]
 
 # Streamed straight out of OpenSearch into storage, without the in-memory
 # record cap the other formats need.
-STREAMED_FORMATS = ("ndjson", "text", "cdb")
+STREAMED_FORMATS = ("ndjson", "text", "cdb", *detection_formats.DETECTION_FORMATS)
 # One value per line: only meaningful for attributes.
-ATTRIBUTE_ONLY_FORMATS = ("text", "cdb")
+ATTRIBUTE_ONLY_FORMATS = ("text", "cdb", *detection_formats.DETECTION_FORMATS)
 # Deltas carry deletions as tombstones, which needs a structured record.
 INCREMENTAL_FORMATS = ("ndjson",)
 ExportIndexTarget = Literal["attributes", "events", "indicators"]
 # Indicators are written by the streamed exporter only.
 INDICATOR_FORMATS = STREAMED_FORMATS
 ExportStatus = Literal["queued", "running", "completed", "failed"]
+
+
+class FormatOptions(BaseModel):
+    """How the detection formats (suricata, zeek, rpz) write their output."""
+
+    # Suricata rules: alert, or drop in IPS mode.
+    rule_action: Literal["alert", "drop"] = "alert"
+    # RPZ: what a resolver answers for a listed name or address: NXDOMAIN,
+    # NODATA, no answer at all, or a CNAME to a walled garden.
+    rpz_policy: Literal["nxdomain", "nodata", "drop", "redirect"] = "nxdomain"
+    rpz_redirect: Optional[str] = None
+
+    @model_validator(mode="after")
+    def _check_redirect(self):
+        if self.rpz_policy != "redirect":
+            self.rpz_redirect = None
+            return self
+        self.rpz_redirect = detection_formats.domain(self.rpz_redirect or "")
+        if not self.rpz_redirect:
+            raise ValueError(
+                "a redirect policy needs rpz_redirect: the walled garden's host name"
+            )
+        return self
 
 
 class ExportQueryParams(BaseModel):
@@ -37,6 +63,8 @@ class ExportBase(BaseModel):
     # query; "*" for all of it). Its granularity decides between indicators
     # and attributes, in place of index_target.
     profile_id: Optional[int] = None
+    # Options of the suricata, zeek and rpz formats.
+    format_options: Optional[FormatOptions] = None
 
 
 class ExportCreate(ExportBase):
@@ -47,6 +75,13 @@ class ExportCreate(ExportBase):
     def _require_distribution_for_misp(self):
         if self.format == "misp" and self.distribution is None:
             raise ValueError("distribution is required for MISP-format exports")
+        return self
+
+    @model_validator(mode="after")
+    def _keep_format_options(self):
+        # Only the detection formats have options; theirs default when unset.
+        if self.format not in detection_formats.DETECTION_FORMATS:
+            self.format_options = None
         return self
 
     @model_validator(mode="after")

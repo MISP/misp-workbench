@@ -2,6 +2,7 @@ import json
 import os
 import time
 from datetime import datetime, timezone
+from unittest.mock import patch
 
 import pytest
 from fastapi import status
@@ -139,6 +140,65 @@ class TestExportFeeds(ApiTester):
         )
 
     @pytest.mark.parametrize("scopes", [["exports:read"]])
+    def test_detection_formats(
+        self, client: TestClient, auth_token: auth.Token, db: Session, api_tester_user
+    ):
+        walled = {"rpz_policy": "redirect", "rpz_redirect": "walled.example.org"}
+        rpz = self._run(
+            db,
+            self._export(
+                db,
+                api_tester_user,
+                name="zone",
+                query="type:ip-dst OR type:domain",
+                format="rpz",
+                format_options=walled,
+            ),
+        )
+        # The SOA and NS lines aren't records.
+        assert rpz.record_count == 5
+        response = client.get(
+            f"/exports/{rpz.id}/download",
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+        assert response.status_code == status.HTTP_200_OK
+        assert response.headers["content-type"].startswith("text/dns")
+        assert 'filename="zone.rpz"' in response.headers["content-disposition"]
+        lines = response.text.splitlines()
+        assert lines[1].startswith("@ SOA ")
+        assert sorted(lines[3:]) == [
+            "*.feed.example.com CNAME walled.example.org.",
+            "128.7.zz.db8.2001.rpz-ip CNAME walled.example.org.",
+            "32.1.100.51.198.rpz-ip CNAME walled.example.org.",
+            "32.2.100.51.198.rpz-ip CNAME walled.example.org.",
+            "feed.example.com CNAME walled.example.org.",
+        ]
+
+        rules = self._run(
+            db,
+            self._export(
+                db,
+                api_tester_user,
+                name="rules",
+                format="suricata",
+                format_options={"rule_action": "drop"},
+            ),
+        )
+        assert rules.record_count == 3
+        response = client.get(
+            f"/exports/{rules.id}/download",
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+        assert 'filename="rules.rules"' in response.headers["content-disposition"]
+        assert all(r.startswith("drop ip ") for r in response.text.splitlines())
+
+        zeek = self._run(
+            db, self._export(db, api_tester_user, name="intel", format="zeek")
+        )
+        # The #fields header isn't a record.
+        assert zeek.record_count == 3
+
+    @pytest.mark.parametrize("scopes", [["exports:read"]])
     def test_incremental_feed(
         self, client: TestClient, auth_token: auth.Token, db: Session, api_tester_user
     ):
@@ -238,6 +298,35 @@ class TestExportFeeds(ApiTester):
         assert create(format="csv", incremental=True).status_code == 422
         # Line formats hold attribute values.
         assert create(format="cdb", index_target="events").status_code == 422
+        assert create(format="suricata", index_target="events").status_code == 422
+        # A walled garden needs its host.
+        assert (
+            create(
+                format="rpz",
+                index_target="indicators",
+                format_options={"rpz_policy": "redirect"},
+            ).status_code
+            == 422
+        )
+
+        class _FakeResult:
+            id = "fake-task-id"
+
+        with patch("app.worker.tasks.run_export.delay", return_value=_FakeResult()):
+            created = create(
+                format="rpz",
+                index_target="indicators",
+                format_options={
+                    "rpz_policy": "nodata",
+                    "rpz_redirect": "ignored.example",
+                },
+            )
+        assert created.status_code == 201, created.text
+        assert created.json()["format_options"] == {
+            "rule_action": "alert",
+            "rpz_policy": "nodata",
+            "rpz_redirect": None,
+        }
         # updated_at only exists on attributes.
         assert (
             create(format="ndjson", index_target="events", incremental=True).status_code
