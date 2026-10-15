@@ -35,6 +35,12 @@ const account = computed(() => visibleAccount(scopes.value));
 const current = computed(() => entryOf(route.path));
 const activeCategory = computed(() => current.value?.category?.id ?? null);
 const activeEntry = computed(() => current.value?.entry?.id ?? null);
+// The mobile bar names the page: its menu entry, or the bell's.
+const pageTitle = computed(
+  () =>
+    current.value?.entry?.label ||
+    (route.path.startsWith("/notifications") ? "Notifications" : ""),
+);
 
 // notifications
 const notificationsStore = useNotificationsStore();
@@ -290,7 +296,7 @@ onUnmounted(closeMobileMenu);
 
   <!-- ================= MOBILE ================= -->
   <nav
-    class="navbar border-bottom sticky-top bg-body app-navbar d-flex d-md-none"
+    class="navbar border-bottom sticky-top bg-body app-navbar d-flex d-md-none py-1"
     aria-label="Main"
   >
     <div class="container-fluid gap-2">
@@ -305,7 +311,7 @@ onUnmounted(closeMobileMenu);
         <FontAwesomeIcon :icon="faBars" />
       </button>
       <span class="me-auto small fw-semibold text-truncate">
-        {{ current?.entry?.label || "" }}
+        {{ pageTitle }}
       </span>
       <button
         type="button"
@@ -317,7 +323,7 @@ onUnmounted(closeMobileMenu);
       </button>
       <RouterLink
         to="/notifications"
-        class="btn btn-outline app-touch position-relative"
+        class="btn btn-outline app-touch position-relative me-1"
         :aria-label="notificationsLabel"
       >
         <FontAwesomeIcon :icon="faBell" />

@@ -6,6 +6,7 @@ import {
   ACCOUNT,
   MENU,
   entryOf,
+  guardFor,
   searchablePages,
   visibleAccount,
   visibleMenu,
@@ -23,8 +24,9 @@ const routePaths = [...routerSource.matchAll(/path:\s*"([^"]+)"/g)].map(
 );
 
 // Pages reached from outside the menus: the login form, the empty home page,
-// and notifications, which have the bell.
-const OUTSIDE_MENU = ["/", "/login", "/notifications"];
+// notifications, which have the bell, and the page the router guard sends a
+// page the user can't open to.
+const OUTSIDE_MENU = ["/", "/login", "/notifications", "/forbidden"];
 
 describe("menu definition", () => {
   it("lists every page once", () => {
@@ -135,5 +137,32 @@ describe("searchablePages", () => {
       ["sinks", "Share"],
       ["profile", "Account"],
     ]);
+  });
+});
+
+describe("guardFor", () => {
+  it.each([
+    ["/settings/runtime", "settings:read"],
+    ["/users", "users:read"],
+    ["/users/7", "users:read"],
+    ["/users/update/7", "users:read"],
+    ["/users/me", "users:me"],
+    ["/indicators/review", "attributes:read"],
+    ["/tech-lab/reactor/add", "reactor:read"],
+    ["/admin/audit-logs", "audit_logs:admin"],
+  ])("%s needs %s", (path, scope) => {
+    expect(guardFor(path).scope).toBe(scope);
+  });
+
+  it("leaves pages placed in a section to their own API", () => {
+    // Under Explore for the menu, but an attribute isn't Explore's.
+    expect(guardFor("/attributes/abc")).toBeNull();
+    expect(guardFor("/events/0f3c/graph")).toBeNull();
+  });
+
+  it("leaves pages outside the menus alone", () => {
+    for (const path of ["/", "/login", "/notifications", "/forbidden"]) {
+      expect(guardFor(path)).toBeNull();
+    }
   });
 });

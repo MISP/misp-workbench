@@ -400,6 +400,18 @@ export function entryOf(path, menu = MENU, account = ACCOUNT) {
   return best;
 }
 
+/**
+ * The menu entry whose scope a page needs, or null. Only an entry's own pages
+ * (its route and the ones under it) are its: pages placed in a section for
+ * the menu's sake, like an event under Explore, need scopes of their own,
+ * which their API checks.
+ */
+export function guardFor(path) {
+  const found = entryOf(path);
+  if (!found || !within(path, found.entry.to)) return null;
+  return found.entry;
+}
+
 /** Every page, flat, for the quick switcher. */
 export function searchablePages(scopes) {
   return [

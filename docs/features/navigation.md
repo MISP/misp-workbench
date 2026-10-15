@@ -29,6 +29,12 @@ either. Each page needs the scope its API needs: a read-only analyst sees
 **Hunt** and **Intel**, an administrator sees everything. ***Admin*** →
 ***Roles*** shows which scopes each role grants.
 
+The same scopes guard the pages themselves. A link to a page your role
+doesn't open, such as a bookmark or a link shared by an administrator, shows
+*No access to …* with the scope it needs, instead of a page whose every
+request fails. Event, attribute and object pages are guarded by their own
+API, not by Explore's scope.
+
 ## Quick switcher
 
 <kbd>Ctrl</kbd>+<kbd>K</kbd> (<kbd>⌘</kbd>+<kbd>K</kbd> on a Mac), or **Search or jump to…** in the top bar,
@@ -66,6 +72,7 @@ you are on starts open, and every entry is a full-width target.
 
 The menus, the phone menu and the quick switcher are all built from one file,
 `frontend/src/components/menu/menu.js`. A new page is one entry there: its
-route, icon, one-line description and the scope it needs. Its unit tests
+route, icon, one-line description and the scope it needs, which also guards
+the route. Its unit tests
 check that every route has a place in the menu and that no page appears
 twice.
