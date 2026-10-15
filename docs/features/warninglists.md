@@ -13,7 +13,7 @@ default.
 ## Managing lists
 
 The lists ship with misp-workbench (the `misp-warninglists` submodule).
-Under ***settings*** → ***warninglists***:
+Under ***Intel*** → ***Warninglists***:
 
 - **Update warninglists** loads new lists and new versions of existing ones.
   New lists start enabled, as in MISP. From the command line:
@@ -39,8 +39,8 @@ built-in role has. Updating and enabling or disabling lists needs
 
 The MISP lists are global and generic. Every organisation also has values
 it must never block or alert on in *its* environment: its own ranges and
-domains, VPN egress, partners, critical SaaS. Under ***settings*** →
-***warninglists***, **Your organisation's lists** keeps those.
+domains, VPN egress, partners, critical SaaS. Under ***Intel*** →
+***Warninglists***, **Your organisation's lists** keeps those.
 
 <img src="../../screenshots/warninglists/misp-workbench-3_warninglists_organisation-list.png#only-light" alt="An organisation's own list" style="max-width: 100%; height: auto;">
 <img src="../../screenshots/warninglists/misp-workbench-3_warninglists_organisation-list-dark.png#only-dark" alt="An organisation's own list" style="max-width: 100%; height: auto;">

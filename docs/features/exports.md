@@ -64,7 +64,7 @@ can always fetch the same URL for the latest results.
 
 ## Creating an _Export_
 
-1. Go to ***internals*** → ***exports*** and click the ***+ New Export*** button.
+1. Go to ***Share*** → ***Exports*** and click the ***+ New Export*** button.
 2. Give the export a name, pick the search index and format, and enter the
    Lucene query. New exports default to **Indicators** in NDJSON: each value
    once, with its [consolidated context](indicators.md), which is what

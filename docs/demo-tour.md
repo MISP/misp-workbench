@@ -130,7 +130,7 @@ technique (2).
 
 ## 5. Tech Lab — the part people do not expect
 
-**Go to** `tech-lab` → **transformation servos**.
+**Go to** ***Tech lab*** → ***Transformation servos***.
 
 **What they see:** two tabs — **Custom servos** (4, two enabled) and **System
 pipelines** (6, read-only).
@@ -175,10 +175,10 @@ Use these to answer questions, not as part of the main route.
 
 | Ask | Go to | Point |
 |---|---|---|
-| "Where does data come from?" | `sources` → feeds | Three OSINT feeds are configured. **They are disabled on purpose** — see the warning below |
+| "Where does data come from?" | ***Ingest*** → ***Feeds*** | Three OSINT feeds are configured. **They are disabled on purpose** — see the warning below |
 | "Can it sync with our MISP?" | `sync` → servers | Two connections with tag-based pull/push rules. The hosts cannot resolve by design, so **Pull** fails at DNS — show the configuration, not the sync |
 | "Can I get data out?" | `exports` | Scheduled exports in MISP JSON, CSV, STIX |
-| "Is it auditable?" | `internals` → audit logs | Every write, with actor and IP |
+| "Is it auditable?" | ***Admin*** → ***Audit logs*** | Every write, with actor and IP |
 | "Can analysts annotate?" | Cobalt Strike event → **Analyst Data** | Notes and opinions, with a confidence score |
 | "Does it have an API?" | `/docs` on the API host | The full OpenAPI spec |
 | "Can I drive it from an LLM?" | [MCP server](features/mcp/index.md) | Claude Code talking to the instance |

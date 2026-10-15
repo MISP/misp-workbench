@@ -221,6 +221,9 @@ function onKey(event) {
     return;
   }
   if (typing(event)) return;
+  // Keys in the navigation, a menu or a dialog are theirs: arrows and Enter
+  // move through and open menu entries there.
+  if (event.target?.closest?.("nav, .dropdown-menu, [role='dialog']")) return;
   const item = items.value[cursor.value];
   const actions = {
     j: () =>
