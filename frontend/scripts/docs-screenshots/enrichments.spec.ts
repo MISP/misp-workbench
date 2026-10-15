@@ -219,26 +219,25 @@ async function stubModuleRoutes(page: Page, attributeUuid: string) {
  * last in DOM order.
  */
 function attributesCard(page: Page) {
-  return page.locator(".card:has(.table-responsive-sm)").last();
+  return page.locator('[data-tab-panel="attributes"]');
 }
 
 async function openEnrichModalOnFirstAttribute(page: Page) {
-  await page.goto(`/events/${EVENT_UUIDS.cobaltStrike}`);
+  // The attributes table is behind the event view's Attributes tab.
+  await page.goto(`/events/${EVENT_UUIDS.cobaltStrike}/attributes`);
   const card = attributesCard(page);
   await expect(card.locator("table tbody tr").first()).toBeVisible();
 
-  // Icon-only button — title= drives the accessible name. Each attribute
-  // mounts its own EnrichAttributeModal with id `enrichAttributeModal_{uuid}`,
-  // so target the one matching the first attribute deterministically.
+  // Icon-only button — title= drives the accessible name.
   await page
     .locator(`button[title="Enrich Attribute"]`)
     .first()
     .scrollIntoViewIfNeeded();
   await page.locator(`button[title="Enrich Attribute"]`).first().click();
 
-  const modal = page.locator(
-    `#enrichAttributeModal_${COBALT_FIRST_ATTRIBUTE_UUID}`,
-  );
+  // An attribute row mounts more than one modal element under its
+  // `enrichAttributeModal_{uuid}` id; the one Bootstrap shows is the one.
+  const modal = page.locator(".modal.show");
   await expect(modal).toBeVisible();
   await expect(modal.getByText("enabled modules")).toBeVisible();
   // shodan is the only enabled module in the stub
@@ -268,7 +267,7 @@ test.describe("Enrichments screenshots", () => {
   test("1 — attribute row with enrich action", async ({ page }) => {
     await applyTheme(page);
     await stubModuleRoutes(page, COBALT_FIRST_ATTRIBUTE_UUID);
-    await page.goto(`/events/${EVENT_UUIDS.cobaltStrike}`);
+    await page.goto(`/events/${EVENT_UUIDS.cobaltStrike}/attributes`);
 
     const card = attributesCard(page);
     await expect(card.locator("table tbody tr").first()).toBeVisible();
