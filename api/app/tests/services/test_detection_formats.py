@@ -170,7 +170,8 @@ class TestSuricata:
     def test_sids_are_stable_and_unique(self):
         records = [("domain", f"d{i}.example") for i in range(200)]
         first = write("suricata", records)
-        assert first == write("suricata", list(records))
+        again = write("suricata", list(records))
+        assert first == again
         sids = [line.split("sid:")[1].split(";")[0] for line in first.splitlines()]
         assert len(sids) == len(set(sids)) == 600
         assert all(
@@ -205,7 +206,8 @@ class TestSuricata:
         assert 'ja3.hash; content:"e7d705a3286e19ea42f587b344ee6865";' in rules[0]
 
     def test_unknown_types_write_nothing(self):
-        assert write("suricata", [("text", "hello"), ("md5", "0" * 32)]) == ""
+        out = write("suricata", [("text", "hello"), ("md5", "0" * 32)])
+        assert out == ""
 
 
 class TestZeek:
