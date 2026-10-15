@@ -271,61 +271,63 @@ onUnmounted(() => clearTimeout(pollTimer));
               {{ item.status }}
             </span>
           </td>
-          <td class="text-end">
-            <button
-              v-if="item.status === 'completed'"
-              class="btn btn-outline-primary btn-sm me-1"
-              :disabled="downloadingId === item.id"
-              @click="downloadExport(item)"
-            >
-              {{ downloadingId === item.id ? "…" : "Download" }}
-            </button>
-            <template v-if="canCreate">
+          <td>
+            <div class="export-actions">
               <button
-                class="btn btn-outline-success btn-sm me-1"
-                title="Re-run this export now (overwrites its file)"
-                :disabled="
-                  runningId === item.id ||
-                  item.status === 'queued' ||
-                  item.status === 'running'
-                "
-                @click="runExport(item)"
+                v-if="item.status === 'completed'"
+                class="btn btn-outline-primary btn-sm"
+                :disabled="downloadingId === item.id"
+                @click="downloadExport(item)"
               >
-                {{ runningId === item.id ? "…" : "Run now" }}
+                {{ downloadingId === item.id ? "…" : "Download" }}
               </button>
+              <template v-if="canCreate">
+                <button
+                  class="btn btn-outline-success btn-sm"
+                  title="Re-run this export now (overwrites its file)"
+                  :disabled="
+                    runningId === item.id ||
+                    item.status === 'queued' ||
+                    item.status === 'running'
+                  "
+                  @click="runExport(item)"
+                >
+                  {{ runningId === item.id ? "…" : "Run now" }}
+                </button>
+                <button
+                  v-if="item.schedule"
+                  class="btn btn-outline-secondary btn-sm"
+                  :title="
+                    item.schedule_enabled ? 'Pause schedule' : 'Resume schedule'
+                  "
+                  @click="toggleScheduleEnabled(item)"
+                >
+                  {{ item.schedule_enabled ? "Pause" : "Resume" }}
+                </button>
+                <button
+                  class="btn btn-outline-secondary btn-sm"
+                  :title="item.schedule ? 'Edit schedule' : 'Add schedule'"
+                  @click="scheduleModalItem = item"
+                >
+                  {{ item.schedule ? "Edit schedule" : "Schedule" }}
+                </button>
+                <button
+                  v-if="item.schedule"
+                  class="btn btn-outline-warning btn-sm"
+                  title="Remove schedule"
+                  @click="unschedule(item)"
+                >
+                  Unschedule
+                </button>
+              </template>
               <button
-                v-if="item.schedule"
-                class="btn btn-outline-secondary btn-sm me-1"
-                :title="
-                  item.schedule_enabled ? 'Pause schedule' : 'Resume schedule'
-                "
-                @click="toggleScheduleEnabled(item)"
+                v-if="canDelete"
+                class="btn btn-outline-danger btn-sm"
+                @click="deleteExport(item)"
               >
-                {{ item.schedule_enabled ? "Pause" : "Resume" }}
+                Delete
               </button>
-              <button
-                class="btn btn-outline-secondary btn-sm me-1"
-                :title="item.schedule ? 'Edit schedule' : 'Add schedule'"
-                @click="scheduleModalItem = item"
-              >
-                {{ item.schedule ? "Edit schedule" : "Schedule" }}
-              </button>
-              <button
-                v-if="item.schedule"
-                class="btn btn-outline-warning btn-sm me-1"
-                title="Remove schedule"
-                @click="unschedule(item)"
-              >
-                Unschedule
-              </button>
-            </template>
-            <button
-              v-if="canDelete"
-              class="btn btn-outline-danger btn-sm"
-              @click="deleteExport(item)"
-            >
-              Delete
-            </button>
+            </div>
           </td>
         </tr>
       </tbody>
@@ -339,3 +341,28 @@ onUnmounted(() => clearTimeout(pollTimer));
     @close="scheduleModalItem = null"
   />
 </template>
+
+<style scoped>
+/* Up to six buttons: stacked at equal width on narrow screens, in
+   right-aligned rows on wide ones, always with room between them. */
+.export-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.25rem;
+  width: max-content;
+  margin-left: auto;
+}
+.export-actions .btn {
+  white-space: nowrap;
+}
+@media (min-width: 1200px) {
+  .export-actions {
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    width: auto;
+    max-width: 20rem;
+  }
+}
+</style>
