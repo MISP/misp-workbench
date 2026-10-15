@@ -43,7 +43,7 @@ misp-workbench currently uses **expansion** modules for attribute enrichment.
 
 ## Managing modules
 
-Modules are managed under ***internals*** → ***modules***.
+Modules are managed under ***Tech lab*** → ***Enrichment modules***.
 
 ### Listing modules
 

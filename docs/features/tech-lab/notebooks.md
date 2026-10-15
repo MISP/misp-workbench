@@ -9,7 +9,7 @@ Where **Reactor Scripts** are *push-triggered* automation (something happens →
 
 
 !!! info "Where to find it"
-    The **tech-lab** → **notebooks** view in the UI shows a two-panel layout: a file tree on the left (folders + notebooks, scoped Personal / Global) and a Monaco editor on the right rendering the active notebook as one scrolling document with `# %%` cell delimiters and inline outputs.
+    The **Tech lab** → **Notebooks** view in the UI shows a two-panel layout: a file tree on the left (folders + notebooks, scoped Personal / Global) and a Monaco editor on the right rendering the active notebook as one scrolling document with `# %%` cell delimiters and inline outputs.
 
 ## Concepts
 
@@ -85,7 +85,7 @@ Every `mwlab.enrich(...)` call records an audit row under the notebook owner's i
 
 The sink's filters apply by default. `apply_filters=False` skips its *selection* (IDS-only, types, include tags), but never its *exclusions*: excluded tags such as `tlp:red`, and warninglisted values.
 
-Delivery is queued on the sinks worker, with the usual retries. Its outcome shows on the sink under ***internals*** → ***sinks***. The call returns `{"sink", "mode", "queued", "task_ids"}` right away.
+Delivery is queued on the sinks worker, with the usual retries. Its outcome shows on the sink under ***Share*** → ***Sinks***. The call returns `{"sink", "mode", "queued", "task_ids"}` right away.
 
 Requirements and limits:
 

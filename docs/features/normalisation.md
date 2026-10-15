@@ -79,7 +79,7 @@ points of score by default (`validation_penalty` in the scoring settings).
 
 ## Settings
 
-Under ***internals*** → ***runtime settings*** → ***normalisation***, each
+Under ***Admin*** → ***Runtime settings*** → ***normalisation***, each
 rule can be switched on or off, and normalisation as a whole can be turned
 off. The tracking parameters list takes one name per line; a trailing `*`
 matches a prefix (`utm_*`).

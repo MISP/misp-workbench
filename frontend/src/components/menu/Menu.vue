@@ -1,88 +1,60 @@
 <script setup>
-import { ref, watchEffect, computed } from "vue";
-import { useRouter } from "vue-router";
+import { ref, watch, watchEffect, computed, nextTick, onUnmounted } from "vue";
+import { useRoute } from "vue-router";
 import { storeToRefs } from "pinia";
+// Bootstrap's dropdowns (keyboard included) drive the menus. The same module
+// as everywhere else: a second copy would register a second click handler,
+// and every click would open the menu and close it again.
+import { Dropdown } from "bootstrap";
 import { useAuthStore, useNotificationsStore } from "@/stores";
-import { authHelper } from "@/helpers";
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
 import {
   faBars,
   faBell,
+  faChevronDown,
+  faMagnifyingGlass,
   faMoon,
-  faSun,
   faRightFromBracket,
+  faSun,
   faUser,
-  faShield,
-  faKey,
-  faSlidersH,
+  faXmark,
 } from "@fortawesome/free-solid-svg-icons";
 import AddEventButton from "@/components/events/AddEventButton.vue";
+import QuickSwitcher from "@/components/menu/QuickSwitcher.vue";
+import { visibleMenu, visibleAccount, entryOf } from "@/components/menu/menu";
 
 const authStore = useAuthStore();
-const router = useRouter();
+const route = useRoute();
 const { scopes, decoded_access_token } = storeToRefs(authStore);
 
 const userEmail = computed(() => decoded_access_token.value?.sub || "");
+const menu = computed(() => visibleMenu(scopes.value));
+const account = computed(() => visibleAccount(scopes.value));
 
-const canReadUsers = computed(() =>
-  authHelper.hasScope(scopes.value, "users:read"),
-);
-const canReadOrganisations = computed(() =>
-  authHelper.hasScope(scopes.value, "organisations:read"),
-);
-const canReadTaxonomies = computed(() =>
-  authHelper.hasScope(scopes.value, "taxonomies:read"),
-);
-const canReadServos = computed(() =>
-  authHelper.hasScope(scopes.value, "servos:read"),
-);
-const canReadGalaxies = computed(() =>
-  authHelper.hasScope(scopes.value, "galaxies:read"),
-);
-const canReadCorrelations = computed(() =>
-  authHelper.hasScope(scopes.value, "correlations:read"),
-);
-const canReadTasks = computed(() =>
-  authHelper.hasScope(scopes.value, "tasks:read"),
-);
-const canReadDiagnostics = computed(() =>
-  authHelper.hasScope(scopes.value, "diagnostics:read"),
-);
-const canReadSettings = computed(() =>
-  authHelper.hasScope(scopes.value, "settings:read"),
-);
-const canReadUserSettings = computed(() =>
-  authHelper.hasScope(scopes.value, "user_settings:read"),
-);
-const canReadApiKeys = computed(() =>
-  authHelper.hasScope(scopes.value, "api_keys:read"),
-);
-const canAdminApiKeys = computed(() =>
-  authHelper.hasScope(scopes.value, "api_keys:admin"),
-);
-const canReadWarninglists = computed(() =>
-  authHelper.hasScope(scopes.value, "warninglists:read"),
-);
-const canReadSinks = computed(() =>
-  authHelper.hasScope(scopes.value, "sinks:read"),
-);
-const canReadEdls = computed(() =>
-  authHelper.hasScope(scopes.value, "edls:read"),
-);
-const canReadAlertReceivers = computed(() =>
-  authHelper.hasScope(scopes.value, "alert_receivers:read"),
-);
-const canAdminAuditLogs = computed(() =>
-  authHelper.hasScope(scopes.value, "audit_logs:admin"),
+// Where the current page sits: its category is highlighted, its entry marked.
+const current = computed(() => entryOf(route.path));
+const activeCategory = computed(() => current.value?.category?.id ?? null);
+const activeEntry = computed(() => current.value?.entry?.id ?? null);
+// The mobile bar names the page: its menu entry, or the bell's.
+const pageTitle = computed(
+  () =>
+    current.value?.entry?.label ||
+    (route.path.startsWith("/notifications") ? "Notifications" : ""),
 );
 
 // notifications
 const notificationsStore = useNotificationsStore();
 const { unreadNotifications } = storeToRefs(notificationsStore);
 notificationsStore.getUnreadTotal();
-setInterval(() => {
+const notificationsTimer = setInterval(() => {
   notificationsStore.getUnreadTotal();
 }, 10000);
+onUnmounted(() => clearInterval(notificationsTimer));
+const notificationsLabel = computed(() =>
+  unreadNotifications.value > 0
+    ? `Notifications, ${unreadNotifications.value} unread`
+    : "Notifications",
+);
 
 // theme
 const theme = ref(localStorage.getItem("theme") || "light");
@@ -101,832 +73,534 @@ function switchTheme() {
   setTheme(theme.value === "light" ? "dark" : "light");
 }
 
+// quick switcher
+const switcher = ref(null);
+const isMac =
+  typeof navigator !== "undefined" &&
+  /Mac|iPhone|iPad/.test(navigator.platform);
+
+// mobile menu
 const isMobileMenuOpen = ref(false);
+const openSection = ref(null);
+const closeButton = ref(null);
 
-function createBackdrop() {
-  if (document.querySelector(".vue-offcanvas-backdrop")) return;
-  const b = document.createElement("div");
-  b.className = "vue-offcanvas-backdrop";
-  Object.assign(b.style, {
-    position: "fixed",
-    inset: "0",
-    background: "rgba(0,0,0,0.5)",
-    zIndex: 1040,
-  });
-  b.addEventListener("click", closeMobileMenu);
-  document.body.appendChild(b);
-}
-
-function removeBackdrop() {
-  const b = document.querySelector(".vue-offcanvas-backdrop");
-  if (b) {
-    try {
-      b.removeEventListener("click", closeMobileMenu);
-    } finally {
-      b.remove();
-    }
-  }
-}
-
-function openMobileMenu() {
+async function openMobileMenu() {
+  openSection.value = activeCategory.value;
   isMobileMenuOpen.value = true;
-  document.body.classList.add("offcanvas-open");
-  createBackdrop();
+  document.body.classList.add("overflow-hidden");
+  await nextTick();
+  closeButton.value?.focus();
 }
 
 function closeMobileMenu() {
   isMobileMenuOpen.value = false;
-  removeBackdrop();
-  document.body.classList.remove("offcanvas-open");
-  document.body.style.overflow = "";
-  document.body.style.paddingRight = "";
+  document.body.classList.remove("overflow-hidden");
 }
 
-function navAndClose(path) {
-  closeMobileMenu();
-  router.push(path).catch(() => {});
+function toggleSection(id) {
+  openSection.value = openSection.value === id ? null : id;
 }
+
+// Following a link closes the menus, however it was followed (a key, the
+// quick switcher).
+const desktopNav = ref(null);
+function closeDropdowns() {
+  desktopNav.value
+    ?.querySelectorAll('[data-bs-toggle="dropdown"]')
+    .forEach((toggle) => Dropdown.getInstance(toggle)?.hide());
+}
+function openSwitcher() {
+  closeDropdowns();
+  switcher.value.open();
+}
+watch(
+  () => route.fullPath,
+  () => {
+    closeDropdowns();
+    closeMobileMenu();
+  },
+);
+onUnmounted(closeMobileMenu);
 </script>
 
-<style scoped>
-.offcanvas-body ul,
-.offcanvas-body ul ul {
-  list-style: none;
-  padding-left: 0;
-  margin-left: 0;
-}
-
-.offcanvas-body ul ul {
-  border-left: none !important;
-  padding-left: 1rem;
-}
-
-.list-group-item {
-  border: none !important;
-}
-
-.vue-offcanvas-backdrop {
-  transition: opacity 0.15s linear;
-}
-
-.offcanvas.show {
-  visibility: visible;
-}
-
-.navbar-expand .navbar-nav .nav-link {
-  line-height: 1.5em;
-}
-</style>
-
 <template>
-  <!-- ================= DESKTOP NAV ================= -->
-  <nav v-if="!$isMobile" class="navbar navbar-expand border-bottom py-1">
-    <div class="container-fluid">
-      <div class="navbar-nav fw-light align-items-center">
-        <RouterLink to="/" class="navbar-brand me-3 d-flex align-items-center">
-          <img
-            src="/images/misp-workbench-icon.png"
-            height="26"
-            alt="misp-workbench"
-          />
-        </RouterLink>
-        <RouterLink to="/hunts" class="nav-item nav-link py-1">hunt</RouterLink>
-        <RouterLink to="/explore" class="nav-item nav-link py-1"
-          >explore</RouterLink
-        >
-        <div class="nav-item dropdown">
-          <a
-            class="nav-link dropdown-toggle py-1"
-            href="#"
-            id="techLabDropdown"
-            role="button"
-            data-bs-toggle="dropdown"
-            aria-expanded="false"
-          >
-            tech-lab
-          </a>
-          <ul class="dropdown-menu" aria-labelledby="techLabDropdown">
-            <li>
-              <RouterLink to="/tech-lab/reactor" class="dropdown-item fw-light"
-                >reactor scripts</RouterLink
-              >
-            </li>
-            <li>
-              <RouterLink
-                to="/tech-lab/notebooks"
-                class="dropdown-item fw-light"
-                >notebooks</RouterLink
-              >
-            </li>
-            <li v-if="canReadServos">
-              <RouterLink to="/tech-lab/servos" class="dropdown-item fw-light"
-                >transformation servos</RouterLink
-              >
-            </li>
-          </ul>
-        </div>
-        <div class="nav-item dropdown">
-          <a
-            class="nav-link dropdown-toggle py-1"
-            href="#"
-            id="syncDropdown"
-            role="button"
-            data-bs-toggle="dropdown"
-            aria-expanded="false"
-          >
-            sources
-          </a>
-          <ul class="dropdown-menu" aria-labelledby="syncDropdown">
-            <li>
-              <RouterLink to="/feeds" class="dropdown-item fw-light"
-                >feeds</RouterLink
-              >
-            </li>
-            <li><hr class="dropdown-divider" /></li>
-            <li>
-              <RouterLink to="/servers" class="dropdown-item fw-light"
-                >MISP servers</RouterLink
-              >
-            </li>
-            <li v-if="canReadAlertReceivers">
-              <hr class="dropdown-divider" />
-            </li>
-            <li v-if="canReadAlertReceivers">
-              <RouterLink to="/alert-receivers" class="dropdown-item fw-light"
-                >alert webhooks</RouterLink
-              >
-            </li>
-          </ul>
-        </div>
+  <!-- ================= DESKTOP (from lg) =================
+       Six menus, search, + New Event and the account buttons need about
+       900px: below lg, tablets get the phone bar rather than a bar that
+       wraps or pushes buttons off screen. -->
+  <nav
+    ref="desktopNav"
+    class="navbar navbar-expand border-bottom py-1 app-navbar d-none d-lg-flex"
+    aria-label="Main"
+  >
+    <div class="container-fluid gap-2">
+      <RouterLink
+        to="/"
+        class="navbar-brand me-2 d-flex align-items-center"
+        aria-label="misp-workbench home"
+      >
+        <img
+          src="/images/misp-workbench-icon.png"
+          height="26"
+          alt="misp-workbench"
+        />
+      </RouterLink>
 
-        <div class="nav-item dropdown">
-          <a
-            class="nav-link dropdown-toggle py-1"
-            href="#"
-            id="internalsDropdown"
-            role="button"
+      <ul class="navbar-nav align-items-center gap-1 me-auto">
+        <li
+          v-for="category in menu"
+          :key="category.id"
+          class="nav-item dropdown"
+        >
+          <button
+            :id="`nav-${category.id}`"
+            type="button"
+            class="nav-link app-nav-category dropdown-toggle"
+            :class="{ active: activeCategory === category.id }"
+            :aria-current="activeCategory === category.id ? 'true' : undefined"
             data-bs-toggle="dropdown"
             aria-expanded="false"
           >
-            internals
-          </a>
-          <ul class="dropdown-menu" aria-labelledby="internalsDropdown">
-            <li v-if="canReadUsers">
-              <RouterLink to="/users" class="dropdown-item fw-light"
-                >users</RouterLink
+            <FontAwesomeIcon :icon="category.icon" class="me-1 opacity-75" />
+            {{ category.shortLabel || category.label }}
+          </button>
+          <div
+            class="dropdown-menu app-mega-menu shadow-sm"
+            :class="{ 'app-mega-menu-wide': category.entries.length > 4 }"
+            :aria-labelledby="`nav-${category.id}`"
+          >
+            <div class="app-mega-menu-header">
+              <span class="fw-semibold">{{ category.label }}</span>
+              <span class="text-body-secondary">
+                · {{ category.description }}</span
               >
-            </li>
-            <li v-if="canReadOrganisations">
-              <RouterLink to="/organisations" class="dropdown-item fw-light"
-                >organisations</RouterLink
-              >
-            </li>
-            <li>
-              <RouterLink to="/roles" class="dropdown-item fw-light"
-                >roles</RouterLink
-              >
-            </li>
-            <li><hr class="dropdown-divider" /></li>
-            <li>
-              <RouterLink to="/settings/modules" class="dropdown-item fw-light"
-                >modules</RouterLink
-              >
-            </li>
-            <li><hr class="dropdown-divider" /></li>
-            <li v-if="canReadTaxonomies">
+            </div>
+            <div class="app-mega-menu-grid">
               <RouterLink
-                to="/settings/taxonomies"
-                class="dropdown-item fw-light"
-                >taxonomies</RouterLink
+                v-for="entry in category.entries"
+                :key="entry.id"
+                :to="entry.to"
+                class="dropdown-item app-mega-item"
+                :class="{ active: activeEntry === entry.id }"
+                :aria-current="activeEntry === entry.id ? 'page' : undefined"
               >
-            </li>
-            <li v-if="canReadGalaxies">
-              <RouterLink to="/settings/galaxies" class="dropdown-item fw-light"
-                >galaxies</RouterLink
-              >
-            </li>
-            <li v-if="canReadWarninglists">
-              <RouterLink
-                to="/settings/warninglists"
-                class="dropdown-item fw-light"
-                >warninglists</RouterLink
-              >
-            </li>
-            <li><hr class="dropdown-divider" /></li>
-            <li v-if="canReadCorrelations">
-              <RouterLink to="/correlations" class="dropdown-item fw-light"
-                >correlations</RouterLink
-              >
-            </li>
-            <li>
-              <RouterLink to="/indicators" class="dropdown-item fw-light"
-                >indicators</RouterLink
-              >
-            </li>
-            <li>
-              <RouterLink to="/indicators/review" class="dropdown-item fw-light"
-                >review queue</RouterLink
-              >
-            </li>
-            <li>
-              <RouterLink
-                to="/indicators/sources"
-                class="dropdown-item fw-light"
-                >source quality</RouterLink
-              >
-            </li>
-            <li>
-              <RouterLink
-                to="/detection-profiles"
-                class="dropdown-item fw-light"
-                >detection profiles</RouterLink
-              >
-            </li>
-            <li>
-              <RouterLink to="/exports" class="dropdown-item fw-light"
-                >exports</RouterLink
-              >
-            </li>
-            <li v-if="canReadSinks">
-              <RouterLink to="/sinks" class="dropdown-item fw-light"
-                >sinks</RouterLink
-              >
-            </li>
-            <li v-if="canReadEdls">
-              <RouterLink to="/edls" class="dropdown-item fw-light"
-                >external dynamic lists</RouterLink
-              >
-            </li>
-            <li><hr class="dropdown-divider" /></li>
-            <li v-if="canReadTasks">
-              <RouterLink to="/tasks" class="dropdown-item fw-light"
-                >tasks</RouterLink
-              >
-            </li>
-            <li v-if="canReadDiagnostics">
-              <RouterLink to="/diagnostics" class="dropdown-item fw-light"
-                >diagnostics</RouterLink
-              >
-            </li>
-            <li><hr class="dropdown-divider" /></li>
-            <li v-if="canReadSettings">
-              <RouterLink to="/settings/runtime" class="dropdown-item fw-light"
-                >runtime settings</RouterLink
-              >
-            </li>
-            <li v-if="canReadUserSettings">
-              <RouterLink to="/settings/user" class="dropdown-item fw-light"
-                >user settings</RouterLink
-              >
-            </li>
-            <li v-if="canReadApiKeys">
-              <RouterLink to="/settings/api-keys" class="dropdown-item fw-light"
-                >API keys</RouterLink
-              >
-            </li>
-            <li v-if="canAdminApiKeys">
-              <RouterLink to="/admin/api-keys" class="dropdown-item fw-light"
-                >API keys (admin)</RouterLink
-              >
-            </li>
-            <li v-if="canAdminAuditLogs">
-              <RouterLink to="/admin/audit-logs" class="dropdown-item fw-light"
-                >audit logs</RouterLink
-              >
-            </li>
-          </ul>
-        </div>
-      </div>
+                <span class="app-mega-icon" aria-hidden="true">
+                  <FontAwesomeIcon :icon="entry.icon" fixed-width />
+                </span>
+                <span class="d-flex flex-column">
+                  <span class="app-mega-label">{{ entry.label }}</span>
+                  <span class="app-mega-description">{{
+                    entry.description
+                  }}</span>
+                </span>
+              </RouterLink>
+            </div>
+          </div>
+        </li>
+      </ul>
+
+      <button
+        type="button"
+        class="btn btn-sm app-search-button d-flex align-items-center gap-2"
+        aria-label="Search pages, events and indicators"
+        @click="openSwitcher"
+      >
+        <FontAwesomeIcon :icon="faMagnifyingGlass" class="opacity-75" />
+        <span class="d-none d-xl-inline">Search or jump to…</span>
+        <kbd class="d-none d-xl-inline">{{ isMac ? "⌘" : "Ctrl" }} K</kbd>
+      </button>
 
       <div class="d-flex align-items-center gap-2">
         <AddEventButton />
-        <button class="btn btn-outline btn-sm" @click="switchTheme">
+        <button
+          type="button"
+          class="btn btn-outline btn-sm"
+          :aria-label="
+            theme === 'light' ? 'Switch to dark theme' : 'Switch to light theme'
+          "
+          :title="
+            theme === 'light' ? 'Switch to dark theme' : 'Switch to light theme'
+          "
+          @click="switchTheme"
+        >
           <FontAwesomeIcon :icon="theme === 'light' ? faMoon : faSun" />
         </button>
 
-        <RouterLink to="/notifications">
-          <button class="btn btn-outline btn-sm position-relative">
-            <FontAwesomeIcon :icon="faBell" />
-            <span
-              v-if="unreadNotifications > 0"
-              class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-info"
-              style="font-size: 0.65rem"
-            >
-              {{ unreadNotifications }}
-            </span>
-          </button>
-        </RouterLink>
-
-        <div class="nav-item dropdown">
-          <a
-            class="btn btn-outline btn-sm dropdown-toggle"
-            href="#"
-            id="userProfileDropdown"
-            role="button"
-            data-bs-toggle="dropdown"
-            aria-expanded="false"
-          >
-            <FontAwesomeIcon :icon="faUser" />
-          </a>
-          <ul
-            class="dropdown-menu dropdown-menu-end"
-            aria-labelledby="userProfileDropdown"
-          >
-            <li v-if="userEmail">
-              <span class="dropdown-item-text fw-light small text-muted">{{
-                userEmail
-              }}</span>
-            </li>
-            <li><hr class="dropdown-divider" /></li>
-            <li>
-              <h6 class="dropdown-header">Profile</h6>
-            </li>
-            <li>
-              <RouterLink to="/users/me" class="dropdown-item fw-light">
-                <FontAwesomeIcon :icon="faUser" fixed-width class="me-1" />
-                user profile
-              </RouterLink>
-            </li>
-            <li><hr class="dropdown-divider" /></li>
-            <li>
-              <h6 class="dropdown-header">Security</h6>
-            </li>
-            <li v-if="canReadApiKeys">
-              <RouterLink
-                to="/settings/api-keys"
-                class="dropdown-item fw-light"
-              >
-                <FontAwesomeIcon :icon="faKey" fixed-width class="me-1" />
-                API keys
-              </RouterLink>
-            </li>
-            <li v-if="canAdminApiKeys">
-              <RouterLink to="/admin/api-keys" class="dropdown-item fw-light">
-                <FontAwesomeIcon :icon="faShield" fixed-width class="me-1" />
-                API keys (admin)
-              </RouterLink>
-            </li>
-            <li><hr class="dropdown-divider" /></li>
-            <li>
-              <h6 class="dropdown-header">Preferences</h6>
-            </li>
-            <li v-if="canReadUserSettings">
-              <RouterLink to="/settings/user" class="dropdown-item fw-light">
-                <FontAwesomeIcon :icon="faSlidersH" fixed-width class="me-1" />
-                user settings
-              </RouterLink>
-            </li>
-            <li><hr class="dropdown-divider" /></li>
-            <li>
-              <button
-                type="button"
-                class="dropdown-item fw-light text-danger"
-                @click="authStore.logout()"
-              >
-                <FontAwesomeIcon
-                  :icon="faRightFromBracket"
-                  fixed-width
-                  class="me-1"
-                />
-                sign out
-              </button>
-            </li>
-          </ul>
-        </div>
-      </div>
-    </div>
-  </nav>
-
-  <!-- ================= MOBILE NAV ================= -->
-  <nav v-else class="navbar border-bottom sticky-top bg-body">
-    <div class="container-fluid">
-      <!-- Hamburger -->
-      <button
-        class="btn btn-outline"
-        aria-label="Toggle menu"
-        @click="openMobileMenu"
-      >
-        <FontAwesomeIcon :icon="faBars" />
-      </button>
-
-      <!-- Logo -->
-      <!-- <RouterLink to="/" class="navbar-brand mx-auto">
-        <img
-          src="/images/misp-lite-no-background.png"
-          height="28"
-          :style="{ filter: theme === 'dark' ? 'invert(1)' : 'none' }"
-        />
-      </RouterLink> -->
-
-      <!-- Notifications -->
-      <RouterLink to="/notifications">
-        <button
-          class="btn btn-outline position-relative"
-          aria-label="Notifications"
+        <RouterLink
+          to="/notifications"
+          class="btn btn-outline btn-sm position-relative"
+          :class="{ active: route.path.startsWith('/notifications') }"
+          :aria-label="notificationsLabel"
+          :title="notificationsLabel"
         >
           <FontAwesomeIcon :icon="faBell" />
           <span
             v-if="unreadNotifications > 0"
             class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-info"
             style="font-size: 0.65rem"
+            aria-hidden="true"
           >
             {{ unreadNotifications }}
           </span>
-        </button>
+        </RouterLink>
+
+        <div class="dropdown">
+          <button
+            id="nav-account"
+            type="button"
+            class="btn btn-outline btn-sm dropdown-toggle"
+            :class="{ active: current && !current.category }"
+            data-bs-toggle="dropdown"
+            aria-expanded="false"
+            aria-label="Account"
+          >
+            <FontAwesomeIcon :icon="faUser" />
+          </button>
+          <ul
+            class="dropdown-menu dropdown-menu-end shadow-sm"
+            aria-labelledby="nav-account"
+          >
+            <li v-if="userEmail">
+              <span class="dropdown-item-text small text-body-secondary">{{
+                userEmail
+              }}</span>
+            </li>
+            <li v-if="userEmail"><hr class="dropdown-divider" /></li>
+            <li v-for="entry in account" :key="entry.id">
+              <RouterLink
+                :to="entry.to"
+                class="dropdown-item"
+                :class="{ active: activeEntry === entry.id }"
+              >
+                <FontAwesomeIcon :icon="entry.icon" fixed-width class="me-2" />
+                {{ entry.label }}
+              </RouterLink>
+            </li>
+            <li><hr class="dropdown-divider" /></li>
+            <li>
+              <button
+                type="button"
+                class="dropdown-item text-danger"
+                @click="authStore.logout()"
+              >
+                <FontAwesomeIcon
+                  :icon="faRightFromBracket"
+                  fixed-width
+                  class="me-2"
+                />
+                Sign out
+              </button>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ================= PHONES AND TABLETS ================= -->
+  <nav
+    class="navbar border-bottom sticky-top bg-body app-navbar d-flex d-lg-none py-1"
+    aria-label="Main"
+  >
+    <div class="container-fluid gap-2">
+      <button
+        type="button"
+        class="btn btn-outline app-touch"
+        aria-label="Open menu"
+        aria-controls="mobileMenu"
+        :aria-expanded="isMobileMenuOpen ? 'true' : 'false'"
+        @click="openMobileMenu"
+      >
+        <FontAwesomeIcon :icon="faBars" />
+      </button>
+      <span class="me-auto small fw-semibold text-truncate">
+        {{ pageTitle }}
+      </span>
+      <button
+        type="button"
+        class="btn btn-outline app-touch"
+        aria-label="Search pages, events and indicators"
+        @click="openSwitcher"
+      >
+        <FontAwesomeIcon :icon="faMagnifyingGlass" />
+      </button>
+      <RouterLink
+        to="/notifications"
+        class="btn btn-outline app-touch position-relative me-1"
+        :aria-label="notificationsLabel"
+      >
+        <FontAwesomeIcon :icon="faBell" />
+        <span
+          v-if="unreadNotifications > 0"
+          class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-info"
+          style="font-size: 0.65rem"
+          aria-hidden="true"
+        >
+          {{ unreadNotifications }}
+        </span>
       </RouterLink>
     </div>
   </nav>
 
-  <!-- ================= MOBILE OFFCANVAS ================= -->
   <div
-    :class="['offcanvas offcanvas-start', { show: isMobileMenuOpen }]"
-    tabindex="-1"
+    v-if="isMobileMenuOpen"
+    class="offcanvas-backdrop fade show d-lg-none"
+    @click="closeMobileMenu"
+  ></div>
+  <div
     id="mobileMenu"
+    class="offcanvas offcanvas-start d-lg-none"
+    :class="{ show: isMobileMenuOpen }"
+    tabindex="-1"
+    role="dialog"
+    aria-modal="true"
     aria-labelledby="mobileMenuLabel"
+    :aria-hidden="isMobileMenuOpen ? undefined : 'true'"
+    :inert="!isMobileMenuOpen || undefined"
+    @keydown.esc="closeMobileMenu"
   >
-    <div class="offcanvas-header">
-      <h5 class="offcanvas-title" id="mobileMenuLabel">Menu</h5>
+    <div class="offcanvas-header border-bottom">
+      <h5
+        id="mobileMenuLabel"
+        class="offcanvas-title d-flex align-items-center gap-2"
+      >
+        <img src="/images/misp-workbench-icon.png" height="22" alt="" />
+        Menu
+      </h5>
       <button
+        ref="closeButton"
         type="button"
-        class="btn-close"
-        aria-label="Close"
+        class="btn btn-outline app-touch ms-auto"
+        aria-label="Close menu"
         @click="closeMobileMenu"
-      />
+      >
+        <FontAwesomeIcon :icon="faXmark" />
+      </button>
     </div>
 
     <div class="offcanvas-body p-0">
-      <ul class="list-group list-group-flush">
-        <li>
-          <RouterLink
-            to="/hunts"
-            class="list-group-item list-group-item-action"
-            @click.prevent="navAndClose('/hunts')"
-          >
-            hunt
-          </RouterLink>
-        </li>
-        <li>
-          <RouterLink
-            to="/explore"
-            class="list-group-item list-group-item-action"
-            @click.prevent="navAndClose('/explore')"
-          >
-            explore
-          </RouterLink>
-        </li>
-        <li class="list-group-item">
-          <strong>tech-lab</strong>
-          <ul class="list-group mt-2">
-            <li>
-              <RouterLink
-                to="/tech-lab/reactor"
-                class="list-group-item list-group-item-action ps-4"
-                @click.prevent="navAndClose('/tech-lab/reactor')"
-              >
-                reactor scripts
-              </RouterLink>
-            </li>
-            <li>
-              <RouterLink
-                to="/tech-lab/notebooks"
-                class="list-group-item list-group-item-action ps-4"
-                @click.prevent="navAndClose('/tech-lab/notebooks')"
-              >
-                notebooks
-              </RouterLink>
-            </li>
-            <li v-if="canReadServos">
-              <RouterLink
-                to="/tech-lab/servos"
-                class="list-group-item list-group-item-action ps-4"
-                @click.prevent="navAndClose('/tech-lab/servos')"
-              >
-                transformation servos
-              </RouterLink>
-            </li>
-          </ul>
-        </li>
-        <!-- Sources submenu -->
-        <li class="list-group-item">
-          <strong>sources</strong>
-          <ul class="list-group mt-2">
-            <li>
-              <RouterLink
-                to="/servers"
-                class="list-group-item list-group-item-action ps-4"
-                @click.prevent="navAndClose('/servers')"
-              >
-                servers
-              </RouterLink>
-            </li>
-            <li>
-              <RouterLink
-                to="/feeds"
-                class="list-group-item list-group-item-action ps-4"
-                @click.prevent="navAndClose('/feeds')"
-              >
-                feeds
-              </RouterLink>
-            </li>
-            <li v-if="canReadAlertReceivers">
-              <RouterLink
-                to="/alert-receivers"
-                class="list-group-item list-group-item-action ps-4"
-                @click.prevent="navAndClose('/alert-receivers')"
-              >
-                alert webhooks
-              </RouterLink>
-            </li>
-          </ul>
-        </li>
-
-        <!-- Internals submenu -->
-        <li class="list-group-item">
-          <strong>internals</strong>
-          <ul class="list-group mt-2">
-            <li v-if="canReadUsers">
-              <RouterLink
-                to="/users"
-                class="list-group-item list-group-item-action ps-4"
-                @click.prevent="navAndClose('/users')"
-              >
-                users
-              </RouterLink>
-            </li>
-            <li v-if="canReadOrganisations">
-              <RouterLink
-                to="/organisations"
-                class="list-group-item list-group-item-action ps-4"
-                @click.prevent="navAndClose('/organisations')"
-              >
-                organisations
-              </RouterLink>
-            </li>
-            <li>
-              <RouterLink
-                to="/roles"
-                class="list-group-item list-group-item-action ps-4"
-                @click.prevent="navAndClose('/roles')"
-              >
-                roles
-              </RouterLink>
-            </li>
-            <li>
-              <RouterLink
-                to="/settings/modules"
-                class="list-group-item list-group-item-action ps-4"
-                @click.prevent="navAndClose('/settings/modules')"
-              >
-                modules
-              </RouterLink>
-            </li>
-            <li v-if="canReadTaxonomies">
-              <RouterLink
-                to="/settings/taxonomies"
-                class="list-group-item list-group-item-action ps-4"
-                @click.prevent="navAndClose('/settings/taxonomies')"
-              >
-                taxonomies
-              </RouterLink>
-            </li>
-            <li v-if="canReadWarninglists">
-              <RouterLink
-                to="/settings/warninglists"
-                class="list-group-item list-group-item-action ps-4"
-                @click.prevent="navAndClose('/settings/warninglists')"
-              >
-                warninglists
-              </RouterLink>
-            </li>
-            <li v-if="canReadGalaxies">
-              <RouterLink
-                to="/settings/galaxies"
-                class="list-group-item list-group-item-action ps-4"
-                @click.prevent="navAndClose('/settings/galaxies')"
-              >
-                galaxies
-              </RouterLink>
-            </li>
-            <li v-if="canReadCorrelations">
-              <RouterLink
-                to="/correlations"
-                class="list-group-item list-group-item-action ps-4"
-                @click.prevent="navAndClose('/correlations')"
-              >
-                correlations
-              </RouterLink>
-            </li>
-            <li>
-              <RouterLink
-                to="/indicators"
-                class="list-group-item list-group-item-action ps-4"
-                @click.prevent="navAndClose('/indicators')"
-              >
-                indicators
-              </RouterLink>
-            </li>
-            <li>
-              <RouterLink
-                to="/indicators/review"
-                class="list-group-item list-group-item-action ps-4"
-                @click.prevent="navAndClose('/indicators/review')"
-              >
-                review queue
-              </RouterLink>
-            </li>
-            <li>
-              <RouterLink
-                to="/indicators/sources"
-                class="list-group-item list-group-item-action ps-4"
-                @click.prevent="navAndClose('/indicators/sources')"
-              >
-                source quality
-              </RouterLink>
-            </li>
-            <li>
-              <RouterLink
-                to="/detection-profiles"
-                class="list-group-item list-group-item-action ps-4"
-                @click.prevent="navAndClose('/detection-profiles')"
-              >
-                detection profiles
-              </RouterLink>
-            </li>
-            <li>
-              <RouterLink
-                to="/exports"
-                class="list-group-item list-group-item-action ps-4"
-                @click.prevent="navAndClose('/exports')"
-              >
-                exports
-              </RouterLink>
-            </li>
-            <li v-if="canReadSinks">
-              <RouterLink
-                to="/sinks"
-                class="list-group-item list-group-item-action ps-4"
-                @click.prevent="navAndClose('/sinks')"
-              >
-                sinks
-              </RouterLink>
-            </li>
-            <li v-if="canReadEdls">
-              <RouterLink
-                to="/edls"
-                class="list-group-item list-group-item-action ps-4"
-                @click.prevent="navAndClose('/edls')"
-              >
-                external dynamic lists
-              </RouterLink>
-            </li>
-            <li v-if="canReadTasks">
-              <RouterLink
-                to="/tasks"
-                class="list-group-item list-group-item-action ps-4"
-                @click.prevent="navAndClose('/tasks')"
-              >
-                tasks
-              </RouterLink>
-            </li>
-            <li v-if="canReadDiagnostics">
-              <RouterLink
-                to="/diagnostics"
-                class="list-group-item list-group-item-action ps-4"
-                @click.prevent="navAndClose('/diagnostics')"
-              >
-                diagnostics
-              </RouterLink>
-            </li>
-            <li v-if="canReadSettings">
-              <RouterLink
-                to="/settings/runtime"
-                class="list-group-item list-group-item-action ps-4"
-                @click.prevent="navAndClose('/settings/runtime')"
-              >
-                runtime settings
-              </RouterLink>
-            </li>
-            <li v-if="canReadUserSettings">
-              <RouterLink
-                to="/settings/user"
-                class="list-group-item list-group-item-action ps-4"
-                @click.prevent="navAndClose('/settings/user')"
-              >
-                user settings
-              </RouterLink>
-            </li>
-            <li v-if="canReadApiKeys">
-              <RouterLink
-                to="/settings/api-keys"
-                class="list-group-item list-group-item-action ps-4"
-                @click.prevent="navAndClose('/settings/api-keys')"
-              >
-                API keys
-              </RouterLink>
-            </li>
-            <li v-if="canAdminApiKeys">
-              <RouterLink
-                to="/admin/api-keys"
-                class="list-group-item list-group-item-action ps-4"
-                @click.prevent="navAndClose('/admin/api-keys')"
-              >
-                API keys (admin)
-              </RouterLink>
-            </li>
-            <li v-if="canAdminAuditLogs">
-              <RouterLink
-                to="/admin/audit-logs"
-                class="list-group-item list-group-item-action ps-4"
-                @click.prevent="navAndClose('/admin/audit-logs')"
-              >
-                audit logs
-              </RouterLink>
-            </li>
-          </ul>
-        </li>
-      </ul>
-
-      <ul class="list-group list-group-flush">
-        <li class="list-group-item">
-          <strong>
-            <FontAwesomeIcon :icon="faUser" class="me-2" />
-            <span v-if="userEmail">{{ userEmail }}</span>
-            <span v-else>account</span>
-          </strong>
-          <ul class="list-group mt-2">
-            <li>
-              <small class="text-muted ps-4 d-block">Profile</small>
-            </li>
-            <li>
-              <RouterLink
-                to="/users/me"
-                class="list-group-item list-group-item-action ps-4"
-                @click.prevent="navAndClose('/users/me')"
-              >
-                user profile
-              </RouterLink>
-            </li>
-            <li>
-              <small class="text-muted ps-4 d-block mt-2">Security</small>
-            </li>
-            <li v-if="canReadApiKeys">
-              <RouterLink
-                to="/settings/api-keys"
-                class="list-group-item list-group-item-action ps-4"
-                @click.prevent="navAndClose('/settings/api-keys')"
-              >
-                API keys
-              </RouterLink>
-            </li>
-            <li v-if="canAdminApiKeys">
-              <RouterLink
-                to="/admin/api-keys"
-                class="list-group-item list-group-item-action ps-4"
-                @click.prevent="navAndClose('/admin/api-keys')"
-              >
-                API keys (admin)
-              </RouterLink>
-            </li>
-            <li>
-              <small class="text-muted ps-4 d-block mt-2">Preferences</small>
-            </li>
-            <li v-if="canReadUserSettings">
-              <RouterLink
-                to="/settings/user"
-                class="list-group-item list-group-item-action ps-4"
-                @click.prevent="navAndClose('/settings/user')"
-              >
-                user settings
-              </RouterLink>
-            </li>
-            <li>
-              <button
-                type="button"
-                class="list-group-item list-group-item-action ps-4 text-danger w-100 text-start"
-                @click="authStore.logout()"
-              >
-                <FontAwesomeIcon :icon="faRightFromBracket" class="me-2" />
-                sign out
-              </button>
-            </li>
-          </ul>
-        </li>
-      </ul>
-
-      <hr />
-
-      <div class="px-3 mb-3">
+      <div class="p-3 border-bottom d-flex gap-2">
         <AddEventButton />
       </div>
+      <ul class="list-unstyled mb-0">
+        <li v-for="category in menu" :key="category.id" class="border-bottom">
+          <button
+            :id="`mobile-nav-${category.id}`"
+            type="button"
+            class="btn w-100 text-start d-flex align-items-center gap-2 app-touch app-mobile-section"
+            :class="{ 'text-primary': activeCategory === category.id }"
+            :aria-expanded="openSection === category.id ? 'true' : 'false'"
+            :aria-controls="`mobile-nav-${category.id}-entries`"
+            @click="toggleSection(category.id)"
+          >
+            <FontAwesomeIcon :icon="category.icon" fixed-width />
+            <span class="fw-semibold">{{ category.label }}</span>
+            <FontAwesomeIcon
+              :icon="faChevronDown"
+              class="ms-auto small app-chevron"
+              :class="{ 'app-chevron-open': openSection === category.id }"
+            />
+          </button>
+          <ul
+            v-show="openSection === category.id"
+            :id="`mobile-nav-${category.id}-entries`"
+            class="list-unstyled mb-2"
+            :aria-labelledby="`mobile-nav-${category.id}`"
+          >
+            <li v-for="entry in category.entries" :key="entry.id">
+              <RouterLink
+                :to="entry.to"
+                class="d-flex align-items-start gap-2 px-4 py-2 text-decoration-none app-mobile-entry"
+                :class="{ active: activeEntry === entry.id }"
+                :aria-current="activeEntry === entry.id ? 'page' : undefined"
+              >
+                <FontAwesomeIcon
+                  :icon="entry.icon"
+                  fixed-width
+                  class="mt-1 opacity-75"
+                />
+                <span class="d-flex flex-column">
+                  <span>{{ entry.label }}</span>
+                  <span class="small text-body-secondary">{{
+                    entry.description
+                  }}</span>
+                </span>
+              </RouterLink>
+            </li>
+          </ul>
+        </li>
+      </ul>
 
-      <div class="d-flex justify-content-between align-items-center px-3">
-        <button class="btn btn-outline" @click="switchTheme">
-          <FontAwesomeIcon :icon="theme === 'light' ? faMoon : faSun" />
-          <span class="ms-2">{{
-            theme === "light" ? "Dark Mode" : "Light Mode"
-          }}</span>
-        </button>
+      <div class="p-3">
+        <div v-if="userEmail" class="small text-body-secondary mb-2">
+          {{ userEmail }}
+        </div>
+        <ul class="list-unstyled mb-2">
+          <li v-for="entry in account" :key="entry.id">
+            <RouterLink
+              :to="entry.to"
+              class="d-flex align-items-center gap-2 py-2 text-decoration-none app-mobile-entry app-touch"
+              :class="{ active: activeEntry === entry.id }"
+            >
+              <FontAwesomeIcon :icon="entry.icon" fixed-width />
+              {{ entry.label }}
+            </RouterLink>
+          </li>
+        </ul>
+        <div class="d-flex gap-2">
+          <button
+            type="button"
+            class="btn btn-outline-secondary app-touch flex-fill"
+            @click="switchTheme"
+          >
+            <FontAwesomeIcon
+              :icon="theme === 'light' ? faMoon : faSun"
+              class="me-1"
+            />
+            {{ theme === "light" ? "Dark theme" : "Light theme" }}
+          </button>
+          <button
+            type="button"
+            class="btn btn-outline-danger app-touch flex-fill"
+            @click="authStore.logout()"
+          >
+            <FontAwesomeIcon :icon="faRightFromBracket" class="me-1" />
+            Sign out
+          </button>
+        </div>
       </div>
     </div>
   </div>
+
+  <QuickSwitcher ref="switcher" @opening="closeDropdowns" />
 </template>
+
+<style scoped>
+.app-nav-category {
+  border: 0;
+  background: none;
+  border-radius: 0.375rem;
+  padding: 0.3rem 0.6rem !important;
+  font-size: 0.95rem;
+}
+.app-nav-category:hover,
+.app-nav-category[aria-expanded="true"] {
+  background: var(--bs-tertiary-bg);
+}
+.app-nav-category.active {
+  color: var(--bs-primary) !important;
+  background: var(--bs-primary-bg-subtle);
+}
+.app-nav-category:focus-visible,
+.app-search-button:focus-visible,
+.app-mega-item:focus-visible,
+.app-mobile-section:focus-visible,
+.app-mobile-entry:focus-visible {
+  outline: 2px solid var(--bs-primary);
+  outline-offset: 2px;
+}
+
+.app-mega-menu {
+  width: 22rem;
+  padding: 0.5rem;
+}
+.app-mega-menu-wide {
+  width: 40rem;
+}
+.app-mega-menu-header {
+  font-size: 0.8rem;
+  padding: 0.25rem 0.5rem 0.5rem;
+  border-bottom: 1px solid var(--bs-border-color-translucent);
+  margin-bottom: 0.25rem;
+}
+.app-mega-menu-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.125rem;
+}
+.app-mega-menu-wide .app-mega-menu-grid {
+  grid-template-columns: 1fr 1fr;
+}
+.app-mega-item {
+  display: flex;
+  gap: 0.6rem;
+  align-items: flex-start;
+  white-space: normal;
+  border-radius: 0.375rem;
+  padding: 0.45rem 0.5rem;
+}
+.app-mega-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.375rem;
+  background: var(--bs-tertiary-bg);
+  color: var(--bs-primary);
+}
+.app-mega-label {
+  font-weight: 500;
+  line-height: 1.3;
+}
+.app-mega-description {
+  font-size: 0.78rem;
+  color: var(--bs-secondary-color);
+  line-height: 1.3;
+}
+.app-mega-item.active,
+.app-mega-item:active {
+  background: var(--bs-primary-bg-subtle);
+  color: var(--bs-emphasis-color);
+}
+.app-mega-item.active .app-mega-description,
+.app-mega-item:active .app-mega-description {
+  color: var(--bs-secondary-color);
+}
+
+.app-search-button {
+  border: 1px solid var(--bs-border-color);
+  color: var(--bs-secondary-color);
+  background: var(--bs-body-bg);
+}
+.app-search-button:hover {
+  background: var(--bs-tertiary-bg);
+}
+.app-search-button kbd {
+  font-size: 0.7rem;
+  background: var(--bs-tertiary-bg);
+  color: var(--bs-secondary-color);
+  border: 1px solid var(--bs-border-color);
+}
+
+/* Touch targets at least 44px. */
+.app-touch {
+  min-height: 44px;
+  min-width: 44px;
+}
+.app-mobile-section {
+  padding: 0.5rem 1rem;
+  border-radius: 0;
+}
+.app-chevron {
+  transition: transform 0.15s ease;
+}
+.app-chevron-open {
+  transform: rotate(180deg);
+}
+.app-mobile-entry {
+  color: var(--bs-body-color);
+  min-height: 44px;
+}
+.app-mobile-entry.active {
+  color: var(--bs-primary);
+  background: var(--bs-primary-bg-subtle);
+}
+.offcanvas {
+  visibility: hidden;
+}
+.offcanvas.show {
+  visibility: visible;
+}
+</style>

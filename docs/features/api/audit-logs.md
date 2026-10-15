@@ -59,7 +59,7 @@ When the namespace did not previously exist, the full new value is surfaced unde
 
 ## Viewing audit logs
 
-Users with the `audit_logs:admin` scope can browse the log from ***internals*** → ***audit logs***. The view supports:
+Users with the `audit_logs:admin` scope can browse the log from ***Admin*** → ***Audit logs***. The view supports:
 
 - **Action prefix** — e.g. `api_key.` to scope to all key lifecycle events
 - **Resource type / id** — pin to a specific object (e.g. `api_key` #42)

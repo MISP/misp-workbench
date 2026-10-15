@@ -17,7 +17,7 @@ API keys are the right fit when you need a credential that survives across resta
 
 ## Creating a key
 
-Navigate to ***internals*** → ***API keys*** and click **New API key**.
+Navigate to the account menu → ***My API keys*** and click **New API key**.
 
 | Field | Description |
 |---|---|
@@ -161,7 +161,7 @@ See [Audit logs](./audit-logs.md) for how to browse and filter these entries.
 
 ## Administrative controls (incident response)
 
-Users with the `api_keys:admin` scope can manage any user's keys from ***internals*** → ***API keys (admin)***. This is intended for incident response when a key may be compromised.
+Users with the `api_keys:admin` scope can manage any user's keys from ***Admin*** → ***API keys (admin)***. This is intended for incident response when a key may be compromised.
 
 The admin hold is tracked by a separate `admin_disabled` flag that the owner cannot clear:
 

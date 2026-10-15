@@ -18,7 +18,7 @@ instead of on its next poll.
 The last three are [vendor APIs](#vendor-apis): platforms that take threat intel
 only through their own API.
 
-Sinks are managed under ***internals*** → ***sinks***. Because they send data
+Sinks are managed under ***Share*** → ***Sinks***. Because they send data
 off the instance, they need the `sinks:*` scopes, which only the admin role has
 by default.
 
