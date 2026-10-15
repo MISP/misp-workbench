@@ -23,9 +23,16 @@ const analysisMap = {
 
 <template>
   <div class="card mb-2">
-    <div class="card-header position-relative py-2 px-3 bg-body-secondary">
-      <div class="d-flex align-items-center gap-2">
-        <span class="fw-semibold">
+    <!-- The actions keep their own room, and the uuid and badges wrap
+         beside them rather than run under them on a narrow screen. -->
+    <div
+      class="card-header d-flex align-items-start gap-2 py-2 px-3 bg-body-secondary"
+    >
+      <div
+        class="d-flex align-items-center flex-wrap gap-2 flex-grow-1"
+        style="min-width: 0"
+      >
+        <span class="fw-semibold" style="min-width: 0; max-width: 100%">
           <UUID :uuid="event._source.uuid" :copy="true" />
         </span>
         <span
@@ -42,7 +49,7 @@ const analysisMap = {
         />
       </div>
 
-      <div class="position-absolute bottom-0 end-0 me-2 mb-1">
+      <div class="flex-shrink-0">
         <EventActions :event_uuid="event._source.uuid" />
       </div>
     </div>

@@ -22,7 +22,7 @@ function copyUuidToClipboard() {
   <span class="d-inline-flex align-items-center gap-1 w-100">
     <span
       class="badge bg-light text-dark shadow-sm mb-0 text-truncate"
-      style="max-width: 100%"
+      style="max-width: 100%; min-width: 0"
       >{{ uuid }}</span
     >
     <button
