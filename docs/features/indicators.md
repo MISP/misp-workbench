@@ -188,7 +188,7 @@ Every output can work with indicators instead of raw attributes:
 
 | Output | How |
 |---|---|
-| [Exports](exports.md) | Index target **Indicators**, in `ndjson`, `text` or `cdb`. `ndjson` can be an [incremental feed](exports.md#incremental-feeds), tombstones included |
+| [Exports](exports.md) | Index target **Indicators**, in `ndjson`, `text`, `cdb` or a [detection engine format](detection-formats.md) (`suricata`, `zeek`, `rpz`). `ndjson` can be an [incremental feed](exports.md#incremental-feeds), tombstones included |
 | [Streaming exports](api/streaming-exports.md) | `GET /indicators/export`, same parameters and formats as `/attributes/export` |
 | [Sinks](sinks.md) | **Send consolidated indicators**: one record per value, carrying an `indicator` block (with its `score`). **Minimum score** leaves out low-confidence values |
 | [Bulk lookup](api/lookup.md) | `include_indicators: true` adds each matched value's indicators; `min_score` leaves out low-confidence ones |

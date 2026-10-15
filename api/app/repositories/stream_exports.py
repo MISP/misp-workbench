@@ -38,6 +38,7 @@ from app.repositories.rest_search import (
     csv_line,
     parse_timestamp,
 )
+from app.services.exports import detection_formats
 from app.services.opensearch import get_opensearch_client
 from app.services.redis import get_redis_client
 
@@ -58,7 +59,14 @@ ATTRIBUTES_INDEX = "misp-attributes"
 EVENTS_INDEX = "misp-events"
 INDICATORS_INDEX = "misp-indicators"
 
-ATTRIBUTE_FORMATS = ("json", "ndjson", "csv", "text", "cdb")
+ATTRIBUTE_FORMATS = (
+    "json",
+    "ndjson",
+    "csv",
+    "text",
+    "cdb",
+    *detection_formats.DETECTION_FORMATS,
+)
 EVENT_FORMATS = ("json", "ndjson")
 # Formats that can express a deletion, and so can carry a delta.
 DELTA_FORMATS = ("json", "ndjson", "csv")
@@ -69,6 +77,9 @@ MEDIA_TYPES = {
     "csv": "text/csv",
     "text": "text/plain",
     "cdb": "text/plain",
+    "suricata": "text/plain",
+    "zeek": "text/plain",
+    "rpz": "text/dns",
 }
 
 CSV_COLUMNS = [
@@ -131,6 +142,8 @@ class PreparedExport:
     # A run of a profile: only the indicators in this Redis set (its released
     # members, see profile_gate) are sent.
     released: Optional[str] = None
+    # A detection format's options (see detection_formats).
+    options: Optional[dict] = None
 
     @property
     def media_type(self) -> str:
@@ -578,8 +591,10 @@ def _indicator_csv_row(source: dict) -> list:
 
 
 # One value per line: blocklists and lookup tables, where a value that several
-# attributes (or an indicator's several types) share must appear once.
-LINE_FORMATS = ("text", "cdb")
+# attributes (or an indicator's several types) share must appear once. The
+# detection formats write what a value turns into once too: rules, intel
+# items or zone records.
+LINE_FORMATS = ("text", "cdb", *detection_formats.DETECTION_FORMATS)
 # Value order puts a value's repeats next to each other, so they merge without
 # remembering every value seen. Values past the keyword's ignore_above have no
 # value.keyword: they come last, in uuid order.
@@ -594,7 +609,16 @@ KEYWORD_IGNORE_ABOVE = 256
 MAX_LONG_DIGESTS = 100_000
 
 
-def _line(fmt: str, value: str, types: list) -> Optional[str]:
+def _line(
+    fmt: str,
+    value: str,
+    types: list,
+    sources: Optional[dict] = None,
+    writer: Optional[detection_formats.Writer] = None,
+) -> Optional[str]:
+    if writer is not None:
+        records = [(t, (sources or {}).get(t) or {}) for t in types]
+        return writer.lines(value, records) or None
     if fmt == "text":
         line = _single_line(value)
         return f"{line}\n" if line else None
@@ -603,15 +627,21 @@ def _line(fmt: str, value: str, types: list) -> Optional[str]:
 
 
 def _unique_lines(
-    pages: Iterator[list[dict]], fmt: str, slot: Optional["ExportSlot"]
+    pages: Iterator[list[dict]],
+    fmt: str,
+    slot: Optional["ExportSlot"],
+    writer: Optional[detection_formats.Writer] = None,
 ) -> Iterator[str]:
     """Each value once, read from pages in ``VALUE_ORDER``.
 
     A long value (no value.keyword, so not in value order) is written when
     first seen, with that record's type; later records of it are skipped.
+    A detection format's ``writer`` writes it, with the first record of each
+    of its types as that type's metadata.
     """
     current: Optional[str] = None
     current_types: list = []
+    current_sources: dict = {}
     long_digests: set = set()
 
     for hits in pages:
@@ -630,20 +660,26 @@ def _unique_lines(
                     continue
                 if len(long_digests) < MAX_LONG_DIGESTS:
                     long_digests.add(digest)
-                line = _line(fmt, value, [type_])
+                line = _line(fmt, value, [type_], {type_: hit["_source"]}, writer)
             elif value == current:
                 if type_ not in current_types:
                     current_types.append(type_)
+                    current_sources[type_] = hit["_source"]
                 continue
             else:
-                line = _line(fmt, current, current_types) if current else None
+                line = (
+                    _line(fmt, current, current_types, current_sources, writer)
+                    if current
+                    else None
+                )
                 current, current_types = value, [type_]
+                current_sources = {type_: hit["_source"]}
             if line:
                 out.append(line)
         if out:
             yield "".join(out)
     if current is not None:
-        line = _line(fmt, current, current_types)
+        line = _line(fmt, current, current_types, current_sources, writer)
         if line:
             yield line
 
@@ -835,7 +871,12 @@ def _stream(
         yield from _stream_membership(export, pit_id, slot)
         return
     indicators = export.index == INDICATORS_INDEX
-    source: Any = ["value", "type"] if fmt in ("text", "cdb") else True
+    writer = detection_formats.writer(fmt, export.options, export.export_timestamp)
+    source: Any = True
+    if writer is not None:
+        source = detection_formats.SOURCE_FIELDS
+    elif fmt in LINE_FORMATS:
+        source = ["value", "type"]
     if indicators and source is True:
         source = {"excludes": ["checksum"]}
     columns, row = (
@@ -855,7 +896,9 @@ def _stream(
                 sort=VALUE_ORDER,
             ),
         )
-        yield from _unique_lines(pages, fmt, slot)
+        if writer is not None and writer.header():
+            yield writer.header()
+        yield from _unique_lines(pages, fmt, slot, writer)
         return
 
     pages = _released_pages(
