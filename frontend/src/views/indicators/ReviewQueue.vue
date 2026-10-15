@@ -349,11 +349,12 @@ refresh();
         </div>
       </div>
 
-      <ul class="nav nav-tabs mb-3">
+      <!-- One row on a phone too: it scrolls rather than wraps. -->
+      <ul class="nav nav-tabs flex-nowrap overflow-x-auto overflow-y-hidden">
         <li v-for="t in TABS" :key="t" class="nav-item">
           <a
             href="#"
-            class="nav-link"
+            class="nav-link text-nowrap"
             :class="{ active: tab === t }"
             @click.prevent="tab = t"
             >{{ t }}
@@ -364,368 +365,426 @@ refresh();
         </li>
       </ul>
 
-      <form class="row g-2 align-items-center mb-3" @submit.prevent="apply">
-        <div :class="tab === 'pending' ? 'col-12 col-md-3' : 'col-12 col-md-6'">
-          <input
-            class="form-control font-monospace"
-            v-model="filters.q"
-            :placeholder="
-              tab === 'pending' ? 'value, or a query' : 'part of the value'
-            "
-            aria-label="Search"
-          />
-        </div>
-        <template v-if="tab === 'pending'">
-          <div class="col-6 col-md-2">
-            <select
-              class="form-select"
-              v-model="filters.profile_id"
-              aria-label="Profile"
-              @change="apply"
-            >
-              <option value="">every profile</option>
-              <option
-                v-for="p in summary?.requiring_profiles || []"
-                :key="p.id"
-                :value="p.id"
-              >
-                {{ p.name }}
-              </option>
-            </select>
-          </div>
-          <div class="col-6 col-md-2">
-            <input
-              class="form-control"
-              v-model="filters.type"
-              placeholder="type (ip-dst)"
-              aria-label="Type"
-            />
-          </div>
-          <div class="col-6 col-md-1">
-            <input
-              class="form-control"
-              v-model="filters.source"
-              placeholder="feed:3"
-              aria-label="Source"
-              title="Only indicators from this source (feed:3, server:2, local)"
-            />
-          </div>
-          <div class="col-3 col-md-1">
-            <input
-              class="form-control"
-              type="number"
-              min="0"
-              max="100"
-              v-model.number="filters.min_score"
-              placeholder="min"
-              aria-label="Minimum score"
-            />
-          </div>
-          <div class="col-3 col-md-1">
-            <input
-              class="form-control"
-              type="number"
-              min="0"
-              max="100"
-              v-model.number="filters.max_score"
-              placeholder="max"
-              aria-label="Maximum score"
-            />
-          </div>
-          <div class="col-6 col-md-1">
-            <select
-              class="form-select"
-              v-model="filters.sort"
-              aria-label="Sort"
-              @change="apply"
-            >
-              <option value="score">score</option>
-              <option value="last_seen">last seen</option>
-              <option value="first_seen">first seen</option>
-              <option value="event_count">events</option>
-            </select>
-          </div>
-        </template>
-        <div class="col-6 col-md-1 text-end">
-          <button class="btn btn-outline-primary w-100" type="submit">
-            Filter
-          </button>
-        </div>
-      </form>
-
-      <div
-        v-if="canReview"
-        class="review-actions d-flex flex-wrap align-items-center gap-2 mb-2 p-2 rounded bg-body-tertiary"
-      >
-        <span class="small text-muted me-2">
-          {{
-            selected.size
-              ? `${selected.size} selected`
-              : "Select indicators, or act on the highlighted one:"
-          }}
-        </span>
-        <button
-          v-if="tab !== 'approved'"
-          type="button"
-          class="btn btn-sm btn-success"
-          :disabled="status.deciding || !items.length"
-          title="Approve (a)"
-          @click="approve()"
-        >
-          Approve
-        </button>
-        <button
-          v-if="tab !== 'rejected'"
-          type="button"
-          class="btn btn-sm btn-outline-danger"
-          :disabled="status.deciding || !items.length"
-          title="Reject (r)"
-          @click="startReject()"
-        >
-          Reject…
-        </button>
-        <div v-if="tab !== 'snoozed'" class="btn-group btn-group-sm">
-          <button
-            v-for="days in SNOOZES"
-            :key="days"
-            type="button"
-            class="btn btn-outline-secondary"
-            :disabled="status.deciding || !items.length"
-            :title="
-              days === 7 ? 'Snooze for 7 days (s)' : `Snooze for ${days} days`
-            "
-            @click="snooze(days)"
+      <!-- What the tabs switch, framed so the active tab opens onto it. -->
+      <div class="border border-top-0 rounded-bottom p-3">
+        <form class="row g-2 align-items-center mb-3" @submit.prevent="apply">
+          <div
+            :class="tab === 'pending' ? 'col-12 col-md-3' : 'col-12 col-md-6'"
           >
-            snooze {{ days }}d
-          </button>
-        </div>
-        <button
-          v-if="tab !== 'pending'"
-          type="button"
-          class="btn btn-sm btn-outline-primary"
-          :disabled="status.deciding || !items.length"
-          title="Back to the queue (u)"
-          @click="reopen()"
-        >
-          Reopen
-        </button>
-        <span class="ms-auto small text-muted"> <kbd>?</kbd> shortcuts </span>
-      </div>
-
-      <Spinner v-if="status.loading" />
-      <div v-else-if="status.error" class="alert alert-danger">
-        {{ status.error }}
-      </div>
-      <template v-else>
-        <div class="text-muted small mb-2">
-          {{ page.total.toLocaleString() }}
-          {{ tab === "pending" ? "waiting" : tab }}
-        </div>
-        <div class="table-responsive">
-          <table class="table table-hover align-middle review-table">
-            <thead>
-              <tr>
-                <th v-if="canReview" style="width: 1%">
-                  <input
-                    type="checkbox"
-                    class="form-check-input"
-                    aria-label="Select the page"
-                    :checked="allSelected"
-                    @change="toggleAll"
-                  />
-                </th>
-                <template v-if="tab === 'pending'">
-                  <th>score</th>
-                  <th>value</th>
-                  <th>type</th>
-                  <th>sources</th>
-                  <th>waiting for</th>
-                  <th>last seen</th>
-                </template>
-                <template v-else>
-                  <th>value</th>
-                  <th>type</th>
-                  <th>{{ tab === "snoozed" ? "until" : "reason" }}</th>
-                  <th>by</th>
-                  <th>decided</th>
-                </template>
-              </tr>
-            </thead>
-            <tbody>
-              <template v-for="(item, i) in items" :key="rowId(item)">
-                <tr
-                  :id="`review-row-${i}`"
-                  role="button"
-                  :class="{
-                    'table-active': cursor === i,
-                    'review-cursor': cursor === i,
-                  }"
-                  @click="
-                    cursor = i;
-                    toggleExpanded(item);
-                  "
+            <input
+              class="form-control font-monospace"
+              v-model="filters.q"
+              :placeholder="
+                tab === 'pending' ? 'value, or a query' : 'part of the value'
+              "
+              aria-label="Search"
+            />
+          </div>
+          <template v-if="tab === 'pending'">
+            <div class="col-6 col-md-2">
+              <select
+                class="form-select"
+                v-model="filters.profile_id"
+                aria-label="Profile"
+                @change="apply"
+              >
+                <option value="">every profile</option>
+                <option
+                  v-for="p in summary?.requiring_profiles || []"
+                  :key="p.id"
+                  :value="p.id"
                 >
-                  <td v-if="canReview" @click.stop>
+                  {{ p.name }}
+                </option>
+              </select>
+            </div>
+            <div class="col-6 col-md-2">
+              <input
+                class="form-control"
+                v-model="filters.type"
+                placeholder="type (ip-dst)"
+                aria-label="Type"
+              />
+            </div>
+            <div class="col-6 col-md-1">
+              <input
+                class="form-control"
+                v-model="filters.source"
+                placeholder="feed:3"
+                aria-label="Source"
+                title="Only indicators from this source (feed:3, server:2, local)"
+              />
+            </div>
+            <div class="col-3 col-md-1">
+              <input
+                class="form-control"
+                type="number"
+                min="0"
+                max="100"
+                v-model.number="filters.min_score"
+                placeholder="min"
+                aria-label="Minimum score"
+              />
+            </div>
+            <div class="col-3 col-md-1">
+              <input
+                class="form-control"
+                type="number"
+                min="0"
+                max="100"
+                v-model.number="filters.max_score"
+                placeholder="max"
+                aria-label="Maximum score"
+              />
+            </div>
+            <div class="col-6 col-md-1">
+              <select
+                class="form-select"
+                v-model="filters.sort"
+                aria-label="Sort"
+                @change="apply"
+              >
+                <option value="score">score</option>
+                <option value="last_seen">last seen</option>
+                <option value="first_seen">first seen</option>
+                <option value="event_count">events</option>
+              </select>
+            </div>
+          </template>
+          <div class="col-6 col-md-1 text-end">
+            <button class="btn btn-outline-primary w-100" type="submit">
+              Filter
+            </button>
+          </div>
+        </form>
+
+        <div
+          v-if="canReview"
+          class="review-actions d-flex flex-wrap align-items-center gap-2 mb-2 p-2 rounded bg-body-tertiary"
+        >
+          <span class="small text-muted me-2">
+            {{
+              selected.size
+                ? `${selected.size} selected`
+                : "Select indicators, or act on the highlighted one:"
+            }}
+          </span>
+          <button
+            v-if="tab !== 'approved'"
+            type="button"
+            class="btn btn-sm btn-success"
+            :disabled="status.deciding || !items.length"
+            title="Approve (a)"
+            @click="approve()"
+          >
+            Approve
+          </button>
+          <button
+            v-if="tab !== 'rejected'"
+            type="button"
+            class="btn btn-sm btn-outline-danger"
+            :disabled="status.deciding || !items.length"
+            title="Reject (r)"
+            @click="startReject()"
+          >
+            Reject…
+          </button>
+          <div v-if="tab !== 'snoozed'" class="btn-group btn-group-sm">
+            <button
+              v-for="days in SNOOZES"
+              :key="days"
+              type="button"
+              class="btn btn-outline-secondary"
+              :disabled="status.deciding || !items.length"
+              :title="
+                days === 7 ? 'Snooze for 7 days (s)' : `Snooze for ${days} days`
+              "
+              @click="snooze(days)"
+            >
+              snooze {{ days }}d
+            </button>
+          </div>
+          <button
+            v-if="tab !== 'pending'"
+            type="button"
+            class="btn btn-sm btn-outline-primary"
+            :disabled="status.deciding || !items.length"
+            title="Back to the queue (u)"
+            @click="reopen()"
+          >
+            Reopen
+          </button>
+          <span class="ms-auto small text-muted"> <kbd>?</kbd> shortcuts </span>
+        </div>
+
+        <Spinner v-if="status.loading" />
+        <div v-else-if="status.error" class="alert alert-danger">
+          {{ status.error }}
+        </div>
+        <template v-else>
+          <div class="text-muted small mb-2">
+            {{ page.total.toLocaleString() }}
+            {{ tab === "pending" ? "waiting" : tab }}
+          </div>
+          <div class="table-responsive">
+            <table class="table table-hover align-middle review-table">
+              <thead>
+                <tr>
+                  <th v-if="canReview" style="width: 1%">
                     <input
                       type="checkbox"
                       class="form-check-input"
-                      :aria-label="`Select ${item.value}`"
-                      :checked="selected.has(rowId(item))"
-                      @change="toggleSelected(item)"
+                      aria-label="Select the page"
+                      :checked="allSelected"
+                      @change="toggleAll"
                     />
-                  </td>
+                  </th>
                   <template v-if="tab === 'pending'">
-                    <td>
-                      <ScoreBadge
-                        :score="item.score"
-                        :breakdown="item.score_breakdown"
-                      />
-                    </td>
-                    <td class="font-monospace text-break">
-                      <span
-                        v-for="issue in item.validation_issues || []"
-                        :key="issue"
-                        class="badge text-bg-danger me-1"
-                        >{{ issue }}</span
-                      >
-                      <span
-                        v-if="item.warninglist_hits.length"
-                        class="badge text-bg-warning me-1"
-                        :title="item.warninglist_hits.join(', ')"
-                        >warninglist</span
-                      >
-                      <span
-                        v-if="item.review?.status === 'snoozed'"
-                        class="badge text-bg-light border me-1"
-                        title="Snoozed before; the snooze is over"
-                        >was snoozed</span
-                      >
-                      {{ item.value }}
-                    </td>
-                    <td>{{ item.type }}</td>
-                    <td>
-                      <span
-                        v-for="source in item.sources.slice(0, 3)"
-                        :key="`${source.type}-${source.id}-${source.name}`"
-                        class="badge text-bg-secondary me-1"
-                        >{{ sourceLabel(source) }}</span
-                      >
-                      <span
-                        v-if="item.sources.length > 3"
-                        class="text-muted small"
-                        >+{{ item.sources.length - 3 }}</span
-                      >
-                    </td>
-                    <td>
-                      <span
-                        v-for="p in item.pending_for"
-                        :key="p.id"
-                        class="badge text-bg-info me-1"
-                        >{{ p.name }}</span
-                      >
-                    </td>
-                    <td class="small">
-                      <Timestamp :timestamp="item.last_seen" />
-                    </td>
+                    <th>score</th>
+                    <th>value</th>
+                    <th class="d-none d-md-table-cell">type</th>
+                    <th class="d-none d-xl-table-cell">sources</th>
+                    <th class="d-none d-lg-table-cell">waiting for</th>
+                    <th class="d-none d-lg-table-cell">last seen</th>
                   </template>
                   <template v-else>
-                    <td class="font-monospace text-break">
-                      <span
-                        v-if="item.warninglisted"
-                        class="badge text-bg-warning me-1"
-                        title="Also on the Rejected in review warninglist"
-                        >warninglisted</span
-                      >
-                      {{ item.value }}
-                    </td>
-                    <td>{{ item.type }}</td>
-                    <td class="small">
-                      <Timestamp
-                        v-if="tab === 'snoozed'"
-                        :timestamp="item.snoozed_until"
-                      />
-                      <span v-else class="text-break">{{
-                        item.reason || "—"
-                      }}</span>
-                    </td>
-                    <td class="small">
-                      {{ item.user_email || item.user_organisation || "—" }}
-                    </td>
-                    <td class="small">
-                      <Timestamp :timestamp="item.decided_at" />
-                    </td>
+                    <th>value</th>
+                    <th class="d-none d-md-table-cell">type</th>
+                    <th class="d-none d-md-table-cell">
+                      {{ tab === "snoozed" ? "until" : "reason" }}
+                    </th>
+                    <th class="d-none d-lg-table-cell">by</th>
+                    <th class="d-none d-lg-table-cell">decided</th>
                   </template>
                 </tr>
-                <tr v-if="expanded === rowId(item)">
-                  <td :colspan="columns" class="bg-body-tertiary">
+              </thead>
+              <tbody>
+                <template v-for="(item, i) in items" :key="rowId(item)">
+                  <tr
+                    :id="`review-row-${i}`"
+                    role="button"
+                    :class="{
+                      'table-active': cursor === i,
+                      'review-cursor': cursor === i,
+                    }"
+                    @click="
+                      cursor = i;
+                      toggleExpanded(item);
+                    "
+                  >
+                    <td v-if="canReview" @click.stop>
+                      <input
+                        type="checkbox"
+                        class="form-check-input"
+                        :aria-label="`Select ${item.value}`"
+                        :checked="selected.has(rowId(item))"
+                        @change="toggleSelected(item)"
+                      />
+                    </td>
                     <template v-if="tab === 'pending'">
-                      <IndicatorDetails :indicator="item" />
-                      <hr class="my-2" />
-                      <IndicatorEnrichment :indicator="item" />
-                    </template>
-                    <div class="small mt-2">
-                      <strong>decisions</strong>
-                      <span
-                        v-if="!(history[rowId(item)] || []).length"
-                        class="text-muted ms-2"
-                        >none yet</span
-                      >
-                      <ul class="list-unstyled mb-0">
-                        <li
-                          v-for="(h, j) in history[rowId(item)] || []"
-                          :key="j"
+                      <td>
+                        <ScoreBadge
+                          :score="item.score"
+                          :breakdown="item.score_breakdown"
+                        />
+                      </td>
+                      <td class="review-value">
+                        <span
+                          v-for="issue in item.validation_issues || []"
+                          :key="issue"
+                          class="badge text-bg-danger me-1"
+                          >{{ issue }}</span
                         >
-                          <Timestamp :timestamp="h.at" /> ·
-                          <strong>{{ h.action }}</strong>
-                          by
-                          {{
-                            h.user_email ||
-                            h.user_organisation ||
-                            "someone since removed"
-                          }}
-                          <span v-if="h.reason" class="text-muted"
-                            >— {{ h.reason }}</span
+                        <span
+                          v-if="item.warninglist_hits.length"
+                          class="badge text-bg-warning me-1"
+                          :title="item.warninglist_hits.join(', ')"
+                          >warninglist</span
+                        >
+                        <span
+                          v-if="item.review?.status === 'snoozed'"
+                          class="badge text-bg-light border me-1"
+                          title="Snoozed before; the snooze is over"
+                          >was snoozed</span
+                        >
+                        <span class="font-monospace text-break">{{
+                          item.value
+                        }}</span>
+                        <!-- On a phone, what the hidden columns would say. -->
+                        <div
+                          class="d-lg-none small text-body-secondary d-flex flex-wrap align-items-center column-gap-2 row-gap-1 mt-1"
+                        >
+                          <span class="d-md-none">{{ item.type }}</span>
+                          <span
+                            v-for="p in item.pending_for"
+                            :key="p.id"
+                            class="badge text-bg-info"
+                            >{{ p.name }}</span
+                          >
+                          <span v-if="item.last_seen"
+                            >last seen <Timestamp :timestamp="item.last_seen"
+                          /></span>
+                        </div>
+                      </td>
+                      <td class="d-none d-md-table-cell text-nowrap">
+                        {{ item.type }}
+                      </td>
+                      <td class="d-none d-xl-table-cell">
+                        <span
+                          v-for="source in item.sources.slice(0, 3)"
+                          :key="`${source.type}-${source.id}-${source.name}`"
+                          class="badge text-bg-secondary me-1"
+                          >{{ sourceLabel(source) }}</span
+                        >
+                        <span
+                          v-if="item.sources.length > 3"
+                          class="text-muted small"
+                          >+{{ item.sources.length - 3 }}</span
+                        >
+                      </td>
+                      <td class="d-none d-lg-table-cell">
+                        <span
+                          v-for="p in item.pending_for"
+                          :key="p.id"
+                          class="badge text-bg-info me-1"
+                          >{{ p.name }}</span
+                        >
+                      </td>
+                      <td class="d-none d-lg-table-cell small">
+                        <Timestamp :timestamp="item.last_seen" />
+                      </td>
+                    </template>
+                    <template v-else>
+                      <td class="review-value">
+                        <span
+                          v-if="item.warninglisted"
+                          class="badge text-bg-warning me-1"
+                          title="Also on the Rejected in review warninglist"
+                          >warninglisted</span
+                        >
+                        <span class="font-monospace text-break">{{
+                          item.value
+                        }}</span>
+                        <div
+                          class="d-lg-none small text-body-secondary d-flex flex-wrap column-gap-2 mt-1"
+                        >
+                          <span class="d-md-none">{{ item.type }}</span>
+                          <span v-if="tab === 'snoozed'" class="d-md-none"
+                            >until <Timestamp :timestamp="item.snoozed_until"
+                          /></span>
+                          <span
+                            v-else-if="item.reason"
+                            class="d-md-none text-break"
+                            >{{ item.reason }}</span
                           >
                           <span
-                            v-if="h.warninglisted"
-                            class="badge text-bg-warning ms-1"
-                            >warninglisted</span
+                            >decided <Timestamp :timestamp="item.decided_at" />
+                            <template
+                              v-if="item.user_email || item.user_organisation"
+                              >by
+                              {{
+                                item.user_email || item.user_organisation
+                              }}</template
+                            ></span
                           >
-                        </li>
-                      </ul>
-                      <RouterLink
-                        :to="{
-                          path: '/explore',
-                          query: { q: exploreQuery(item.value) },
-                        }"
-                        class="d-inline-block mt-1"
-                        @click.stop
-                        >find in Explore</RouterLink
-                      >
-                    </div>
+                        </div>
+                      </td>
+                      <td class="d-none d-md-table-cell text-nowrap">
+                        {{ item.type }}
+                      </td>
+                      <td class="d-none d-md-table-cell small">
+                        <Timestamp
+                          v-if="tab === 'snoozed'"
+                          :timestamp="item.snoozed_until"
+                        />
+                        <span v-else class="text-break">{{
+                          item.reason || "—"
+                        }}</span>
+                      </td>
+                      <td class="d-none d-lg-table-cell small">
+                        {{ item.user_email || item.user_organisation || "—" }}
+                      </td>
+                      <td class="d-none d-lg-table-cell small">
+                        <Timestamp :timestamp="item.decided_at" />
+                      </td>
+                    </template>
+                  </tr>
+                  <tr v-if="expanded === rowId(item)">
+                    <!-- max-width: 0: the details fit the row, never widen it. -->
+                    <td
+                      :colspan="columns"
+                      class="bg-body-tertiary"
+                      style="max-width: 0"
+                    >
+                      <template v-if="tab === 'pending'">
+                        <IndicatorDetails :indicator="item" />
+                        <hr class="my-2" />
+                        <IndicatorEnrichment :indicator="item" />
+                      </template>
+                      <div class="small mt-2">
+                        <strong>decisions</strong>
+                        <span
+                          v-if="!(history[rowId(item)] || []).length"
+                          class="text-muted ms-2"
+                          >none yet</span
+                        >
+                        <ul class="list-unstyled mb-0">
+                          <li
+                            v-for="(h, j) in history[rowId(item)] || []"
+                            :key="j"
+                          >
+                            <Timestamp :timestamp="h.at" /> ·
+                            <strong>{{ h.action }}</strong>
+                            by
+                            {{
+                              h.user_email ||
+                              h.user_organisation ||
+                              "someone since removed"
+                            }}
+                            <span v-if="h.reason" class="text-muted"
+                              >— {{ h.reason }}</span
+                            >
+                            <span
+                              v-if="h.warninglisted"
+                              class="badge text-bg-warning ms-1"
+                              >warninglisted</span
+                            >
+                          </li>
+                        </ul>
+                        <RouterLink
+                          :to="{
+                            path: '/explore',
+                            query: { q: exploreQuery(item.value) },
+                          }"
+                          class="d-inline-block mt-1"
+                          @click.stop
+                          >find in Explore</RouterLink
+                        >
+                      </div>
+                    </td>
+                  </tr>
+                </template>
+                <tr v-if="!items.length">
+                  <td :colspan="columns" class="text-center text-muted py-4">
+                    {{
+                      tab === "pending"
+                        ? "Nothing waiting for a review."
+                        : `No ${tab} indicators.`
+                    }}
                   </td>
                 </tr>
-              </template>
-              <tr v-if="!items.length">
-                <td :colspan="columns" class="text-center text-muted py-4">
-                  {{
-                    tab === "pending"
-                      ? "Nothing waiting for a review."
-                      : `No ${tab} indicators.`
-                  }}
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-        <Pagination
-          :currentPage="currentPage"
-          :hasPrevPage="currentPage > 1"
-          :hasNextPage="hasNextPage"
-          @prevPageClick="goTo(-1)"
-          @nextPageClick="goTo(1)"
-        />
-      </template>
+              </tbody>
+            </table>
+          </div>
+          <Pagination
+            :currentPage="currentPage"
+            :hasPrevPage="currentPage > 1"
+            :hasNextPage="hasNextPage"
+            @prevPageClick="goTo(-1)"
+            @nextPageClick="goTo(1)"
+          />
+        </template>
+      </div>
     </div>
 
     <template v-if="rejecting">
@@ -799,6 +858,12 @@ refresh();
 <style scoped>
 .review-cursor > td:first-child {
   box-shadow: inset 3px 0 0 var(--bs-primary);
+}
+/* The value takes the room the shown columns leave and wraps inside it,
+   rather than squeezed a character per line on a phone. */
+.review-value {
+  width: 100%;
+  max-width: 0;
 }
 .review-actions {
   position: sticky;
