@@ -138,7 +138,9 @@ services:
       - garage-meta:/var/lib/garage/meta
       - ./garage.toml:/etc/garage.toml:ro
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3903/health"]
+      # The image ships the garage binary alone (no shell, no curl): ask the
+      # node itself, which fails when it can't reach its own RPC.
+      test: ["CMD", "/garage", "status"]
       interval: 10s
       timeout: 5s
       retries: 5
