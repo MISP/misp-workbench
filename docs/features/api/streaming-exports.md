@@ -9,8 +9,8 @@
 
 | Endpoint | Scope | Formats |
 |---|---|---|
-| `GET /attributes/export` | `attributes:read` | `json`, `ndjson`, `csv`, `text`, `cdb` |
-| `GET /indicators/export` | `attributes:read` | `json`, `ndjson`, `csv`, `text`, `cdb` |
+| `GET /attributes/export` | `attributes:read` | `json`, `ndjson`, `csv`, `text`, `cdb`, `suricata`, `zeek`, `rpz` |
+| `GET /indicators/export` | `attributes:read` | `json`, `ndjson`, `csv`, `text`, `cdb`, `suricata`, `zeek`, `rpz` |
 | `GET /events/export` | `events:read` | `json`, `ndjson` |
 
 For MISP-style filtering (tags, `to_ids`, published, ...) and MISP's response shape, use [restSearch](rest-search.md) instead.
@@ -35,6 +35,7 @@ For MISP-style filtering (tags, `to_ids`, published, ...) and MISP's response sh
 | `csv` | Attributes: `uuid,event_uuid,object_uuid,category,type,value,comment,to_ids,deleted,timestamp,updated_at,tags`. Indicators: `uuid,type,value,to_ids,deleted,first_seen,last_seen,attribute_count,event_count,sources,organisations,tlp,tags,sightings_positive,sightings_false_positive,updated_at` |
 | `text` | One value per line |
 | `cdb` | A [Wazuh CDB list](https://documentation.wazuh.com/current/user-manual/ruleset/cdb-list.html): `value:type` per line, with keys containing `:` (IPv6, URLs) quoted |
+| `suricata`, `zeek`, `rpz` | Suricata rules, a Zeek Intel file and a DNS RPZ zone, with their default options (`alert`, NXDOMAIN); see [Detection engine formats](../detection-formats.md) |
 
 `text` and `cdb` list each value once, however many records share it; in `cdb` a value with several types lists them all (`203.0.113.5:ip-dst,ip-src`; values over 256 characters list the first one found). They skip values that span several lines (`text` attributes); `cdb` also skips values containing `"`.
 
@@ -59,7 +60,7 @@ curl -s -H "Authorization: $API_KEY" \
 
 `since` also accepts an ISO date or a relative age (`30m`, `12h`, `7d`).
 
-`since` needs a format that can express a deletion: `json`, `ndjson` or `csv`. With `text` or `cdb` it returns `400`. Rebuild those lists from a full pull instead.
+`since` needs a format that can express a deletion: `json`, `ndjson` or `csv`. With `text`, `cdb`, `suricata`, `zeek` or `rpz` it returns `400`. Rebuild those lists from a full pull instead.
 
 !!! warning "Deltas don't see hard deletes"
     Force-deleting an event or retention purges remove documents outright, and a delta can't report what no longer exists. Soft-deleting an *event* also doesn't touch its attributes. Pair deltas with a periodic full pull (daily, say) to resynchronise.

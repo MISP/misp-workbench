@@ -26,6 +26,9 @@ DOWNLOAD_META = {
     "ndjson": ("application/x-ndjson", "ndjson"),
     "text": ("text/plain", "txt"),
     "cdb": ("text/plain", "cdb"),
+    "suricata": ("text/plain", "rules"),
+    "zeek": ("text/plain", "intel"),
+    "rpz": ("text/dns", "rpz"),
 }
 
 

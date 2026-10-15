@@ -1,6 +1,7 @@
 <script setup>
 import { ref, reactive, computed } from "vue";
 import { useExportsStore, useToastsStore } from "@/stores";
+import DetectionFormatOptions from "@/components/exports/DetectionFormatOptions.vue";
 import LuceneQuerySyntaxHint from "@/components/misc/LuceneQuerySyntaxHint.vue";
 import ExportScheduleFields from "@/components/exports/ExportScheduleFields.vue";
 
@@ -20,6 +21,11 @@ const exportJob = reactive({
   index_target: props.initialIndexTarget,
   format: "json",
   distribution: null,
+  format_options: {
+    rule_action: "alert",
+    rpz_policy: "nxdomain",
+    rpz_redirect: "",
+  },
 });
 
 const scheduleModel = ref({ schedule: null, schedule_enabled: false });
@@ -45,7 +51,9 @@ const canSubmit = computed(
 
 const isIndicators = computed(() => exportJob.index_target === "indicators");
 // Indicators are only written by the streamed exporter.
-const STREAMED_FORMATS = ["ndjson", "text", "cdb"];
+const STREAMED_FORMATS = ["ndjson", "text", "cdb", "suricata", "zeek", "rpz"];
+// What one value turns into: a line, a rule, an intel item, a zone record.
+const LINE_FORMATS = ["text", "cdb", "suricata", "zeek", "rpz"];
 const stixDisabled = computed(() => exportJob.index_target !== "attributes");
 const recordFormatsDisabled = computed(() => isIndicators.value);
 // One value per line, so events have nothing to put there.
@@ -59,7 +67,7 @@ function onIndexTargetChange() {
   if (stixDisabled.value && exportJob.format === "stix") {
     exportJob.format = "json";
   }
-  if (lineFormatsDisabled.value && ["text", "cdb"].includes(exportJob.format)) {
+  if (lineFormatsDisabled.value && LINE_FORMATS.includes(exportJob.format)) {
     exportJob.format = "json";
   }
 }
@@ -71,6 +79,11 @@ function reset() {
   exportJob.format = "json";
   onIndexTargetChange();
   exportJob.distribution = null;
+  exportJob.format_options = {
+    rule_action: "alert",
+    rpz_policy: "nxdomain",
+    rpz_redirect: "",
+  };
   scheduleModel.value = { schedule: null, schedule_enabled: false };
   apiError.value = null;
 }
@@ -214,11 +227,28 @@ function close() {
               <option value="cdb" :disabled="lineFormatsDisabled">
                 Wazuh CDB list
               </option>
+              <optgroup label="Detection engines">
+                <option value="suricata" :disabled="lineFormatsDisabled">
+                  Suricata rules
+                </option>
+                <option value="zeek" :disabled="lineFormatsDisabled">
+                  Zeek Intel
+                </option>
+                <option value="rpz" :disabled="lineFormatsDisabled">
+                  DNS RPZ zone
+                </option>
+              </optgroup>
             </select>
             <div class="form-text">
               STIX 2.1 groups matching attributes into events and converts them
               via the misp-stix library.
             </div>
+            <DetectionFormatOptions
+              v-model="exportJob.format_options"
+              :format="exportJob.format"
+              id-prefix="modal-export"
+              class="mt-2"
+            />
           </div>
 
           <div v-if="isMisp" class="mb-2">
