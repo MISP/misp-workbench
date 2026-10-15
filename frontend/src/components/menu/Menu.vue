@@ -124,10 +124,13 @@ onUnmounted(closeMobileMenu);
 </script>
 
 <template>
-  <!-- ================= DESKTOP ================= -->
+  <!-- ================= DESKTOP (from lg) =================
+       Six menus, search, + New Event and the account buttons need about
+       900px: below lg, tablets get the phone bar rather than a bar that
+       wraps or pushes buttons off screen. -->
   <nav
     ref="desktopNav"
-    class="navbar navbar-expand border-bottom py-1 app-navbar d-none d-md-flex"
+    class="navbar navbar-expand border-bottom py-1 app-navbar d-none d-lg-flex"
     aria-label="Main"
   >
     <div class="container-fluid gap-2">
@@ -203,8 +206,8 @@ onUnmounted(closeMobileMenu);
         @click="openSwitcher"
       >
         <FontAwesomeIcon :icon="faMagnifyingGlass" class="opacity-75" />
-        <span class="d-none d-lg-inline">Search or jump to…</span>
-        <kbd class="d-none d-lg-inline">{{ isMac ? "⌘" : "Ctrl" }} K</kbd>
+        <span class="d-none d-xl-inline">Search or jump to…</span>
+        <kbd class="d-none d-xl-inline">{{ isMac ? "⌘" : "Ctrl" }} K</kbd>
       </button>
 
       <div class="d-flex align-items-center gap-2">
@@ -294,9 +297,9 @@ onUnmounted(closeMobileMenu);
     </div>
   </nav>
 
-  <!-- ================= MOBILE ================= -->
+  <!-- ================= PHONES AND TABLETS ================= -->
   <nav
-    class="navbar border-bottom sticky-top bg-body app-navbar d-flex d-md-none py-1"
+    class="navbar border-bottom sticky-top bg-body app-navbar d-flex d-lg-none py-1"
     aria-label="Main"
   >
     <div class="container-fluid gap-2">
@@ -341,12 +344,12 @@ onUnmounted(closeMobileMenu);
 
   <div
     v-if="isMobileMenuOpen"
-    class="offcanvas-backdrop fade show d-md-none"
+    class="offcanvas-backdrop fade show d-lg-none"
     @click="closeMobileMenu"
   ></div>
   <div
     id="mobileMenu"
-    class="offcanvas offcanvas-start d-md-none"
+    class="offcanvas offcanvas-start d-lg-none"
     :class="{ show: isMobileMenuOpen }"
     tabindex="-1"
     role="dialog"

@@ -60,9 +60,10 @@ opens the quick switcher:
 | <kbd>Enter</kbd> | an entry | opens the page |
 | <kbd>Esc</kbd> | an open menu, the quick switcher | closes it and returns focus |
 
-## On a phone
+## On a phone or tablet
 
-The ☰ button opens the same menus as sections. The section of the page
+Below 992px wide, the top bar shrinks to ☰, the page's name, search and
+notifications. The ☰ button opens the same menus as sections. The section of the page
 you are on starts open, and every entry is a full-width target.
 
 <img src="../../screenshots/navigation/misp-workbench-3_navigation_mobile.png#only-light" alt="The menu on a phone" style="max-width: 320px; width: 100%; height: auto;">
