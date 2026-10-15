@@ -30,7 +30,12 @@ const TYPE_LABELS = {
   gelf: "GELF",
   syslog: "Syslog/CEF",
   webhook: "Webhook",
+  sentinel: "Microsoft Sentinel",
+  defender: "Microsoft Defender",
+  elastic: "Elastic Security",
 };
+// Vendor API sinks, new and not yet run against every live tenant.
+const BETA_TYPES = ["sentinel", "defender", "elastic"];
 
 const testingId = ref(null);
 const togglingId = ref(null);
@@ -39,6 +44,9 @@ sinksStore.getAll();
 
 function destination(sink) {
   const c = sink.config || {};
+  if (sink.type === "sentinel") return `workspace ${c.workspace_id}`;
+  if (sink.type === "defender") return `tenant ${c.tenant_id} (${c.action})`;
+  if (sink.type === "elastic") return `${c.url} → ${c.index}`;
   if (c.url) return c.url;
   const proto = sink.type === "syslog" ? `/${c.protocol}` : "";
   return `${c.host}:${c.port}${proto}${c.tls ? " (TLS)" : ""}`;
@@ -84,7 +92,13 @@ async function sendTest(sink) {
   try {
     const result = await sinksStore.test(sink.id);
     if (result.ok) {
-      toastsStore.push(`Test message delivered to "${sink.name}".`, "success");
+      // Vendor APIs are checked, not sent a test indicator (it could block).
+      toastsStore.push(
+        BETA_TYPES.includes(sink.type)
+          ? `"${sink.name}" works: its credentials were accepted.`
+          : `Test message delivered to "${sink.name}".`,
+        "success",
+      );
     } else {
       toastsStore.push(`"${sink.name}" test failed: ${result.error}`, "danger");
     }
@@ -150,6 +164,12 @@ async function remove(sink) {
                 <span class="badge bg-light text-dark ms-1">{{
                   TYPE_LABELS[sink.type] || sink.type
                 }}</span>
+                <span
+                  v-if="BETA_TYPES.includes(sink.type)"
+                  class="badge text-bg-warning ms-1"
+                  title="Beta: a new sink type, not yet proven against every live tenant"
+                  >beta</span
+                >
                 <span v-if="!sink.enabled" class="badge bg-secondary ms-1"
                   >disabled</span
                 >

@@ -1,0 +1,4 @@
+{
+  "statusCode": 429,
+  "message": "Rate limit is exceeded. Try again in 7 seconds."
+}

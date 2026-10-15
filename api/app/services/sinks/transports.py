@@ -208,4 +208,9 @@ TRANSPORTS = {
 
 
 def open_transport(sink_type: str, config: dict):
-    return TRANSPORTS[sink_type](config)
+    if sink_type in TRANSPORTS:
+        return TRANSPORTS[sink_type](config)
+    # Vendor APIs (Sentinel, Defender, Elastic) build on this module.
+    from app.services.sinks import vendors
+
+    return vendors.TRANSPORTS[sink_type](config)

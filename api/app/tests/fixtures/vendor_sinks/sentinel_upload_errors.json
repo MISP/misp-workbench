@@ -1,0 +1,10 @@
+{
+  "errors": [
+    {
+      "recordIndex": 1,
+      "errorMessages": [
+        "Error for Property=pattern: Invalid pattern. Actual value: [url:value = 'x']."
+      ]
+    }
+  ]
+}

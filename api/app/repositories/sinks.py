@@ -90,7 +90,23 @@ def create_sink(db: Session, sink: sink_schemas.SinkCreate) -> sink_models.Sink:
 # and how that connection is authenticated. A stored secret is only reused
 # while all of these stay as they were; turning verification off or swapping
 # the CA would expose it as surely as a new host.
-SECRET_BINDING_FIELDS = ("url", "host", "port", "tls", "verify_tls", "ca_cert")
+SECRET_BINDING_FIELDS = (
+    "url",
+    "host",
+    "port",
+    "tls",
+    "verify_tls",
+    "ca_cert",
+    # Vendor APIs: where the client secret goes (the token endpoint), where
+    # the token goes, and whose credentials they are.
+    "login_url",
+    "api_url",
+    "tenant_id",
+    "client_id",
+    "scope",
+    "workspace_id",
+    "username",
+)
 
 
 class SecretRequired(ValueError):
@@ -699,11 +715,18 @@ TEST_RECORD_EVENT = {
 
 
 def send_test(sink: sink_models.Sink) -> sink_schemas.SinkTestResult:
-    """Send one synthetic indicator (192.0.2.1, TEST-NET-1) to the sink."""
+    """Send one synthetic indicator (192.0.2.1, TEST-NET-1) to the sink.
+
+    Vendor APIs are checked instead (credentials and permissions): an
+    indicator sent there could block, and would stay until it expired.
+    """
     record = formatters.build_record(TEST_RECORD_ATTRIBUTE, TEST_RECORD_EVENT)
     transport = open_transport(sink.type, sink.config)
     try:
-        transport.send([record])
+        if hasattr(transport, "check"):
+            transport.check()
+        else:
+            transport.send([record])
     except SinkDeliveryError as error:
         return sink_schemas.SinkTestResult(ok=False, error=str(error))
     finally:

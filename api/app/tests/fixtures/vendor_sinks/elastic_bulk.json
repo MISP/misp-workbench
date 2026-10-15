@@ -1,0 +1,9 @@
+{
+  "took": 12,
+  "errors": true,
+  "items": [
+    {"index": {"_index": "misp-workbench-indicators", "_id": "64a81aa0-85b6-5631-906a-5c5ff99d03f6", "_version": 1, "result": "created", "status": 201}},
+    {"index": {"_index": "misp-workbench-indicators", "_id": "8996e97d-8e7b-5f77-8f93-689c2e8f9abe", "status": 400, "error": {"type": "document_parsing_exception", "reason": "failed to parse field [threat.indicator.ip] of type [ip]"}}},
+    {"delete": {"_index": "misp-workbench-indicators", "_id": "0f4e3c39-5a1c-5f67-9b0e-1d2a3b4c5d6e", "result": "not_found", "status": 404}}
+  ]
+}

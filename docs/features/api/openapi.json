@@ -32402,7 +32402,10 @@
               "splunk_hec",
               "gelf",
               "syslog",
-              "webhook"
+              "webhook",
+              "sentinel",
+              "defender",
+              "elastic"
             ],
             "title": "Type"
           },
@@ -32534,7 +32537,10 @@
               "splunk_hec",
               "gelf",
               "syslog",
-              "webhook"
+              "webhook",
+              "sentinel",
+              "defender",
+              "elastic"
             ],
             "title": "Type"
           },
