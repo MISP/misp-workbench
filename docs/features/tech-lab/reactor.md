@@ -5,7 +5,7 @@ Reactor scripts are user-defined Python functions that run in response to platfo
 Each script declares one or more **triggers** (resource type + action, optionally filtered by tag, organisation, attribute type, or object template). When a matching event happens, the platform queues a run and executes the script's `handle(ctx, payload, trigger)` function inside an isolated sandbox worker.
 
 !!! info "Where to find it"
-    The **tech-lab** → **reactor scripts** view in the UI lists your scripts, lets you create / edit / pause them, run them against sample payloads, and inspect run history with logs.
+    The **Tech lab** → **Reactor scripts** view in the UI lists your scripts, lets you create / edit / pause them, run them against sample payloads, and inspect run history with logs.
 
 ## Concepts
 
@@ -129,7 +129,7 @@ Pass the canonical module name to `enrich` (e.g. `"mmdb_lookup"`, `"whois"`, `"v
 
 The sink's filters apply by default. `apply_filters=False` skips its *selection* (IDS-only, types, include tags), but never its *exclusions*: excluded tags such as `tlp:red`, and warninglisted values.
 
-Delivery is queued on the sinks worker, with the usual retries. Its outcome shows on the sink under ***internals*** → ***sinks***. The call returns `{"sink", "mode", "queued", "task_ids"}` right away.
+Delivery is queued on the sinks worker, with the usual retries. Its outcome shows on the sink under ***Share*** → ***Sinks***. The call returns `{"sink", "mode", "queued", "task_ids"}` right away.
 
 Requirements and limits:
 

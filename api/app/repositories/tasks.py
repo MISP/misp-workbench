@@ -219,7 +219,10 @@ def get_scheduled_tasks():
 
     scheduled_tasks = []
     for key in keys:
-        if key in ["redbeat::lock", "redbeat::beat", "redbeat::schedule"]:
+        # redbeat's own keys (lock, beat, schedule, and statics in newer
+        # versions, a set rather than a hash) use a double colon; entries are
+        # redbeat:<name>. Reading one of its own as an entry fails the list.
+        if key.startswith("redbeat::"):
             continue
 
         task = RedBeatSchedulerEntry.from_key(key, app=celery_app)

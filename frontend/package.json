@@ -15,6 +15,7 @@
     "docs:screenshots:headed": "playwright test --config=scripts/docs-screenshots/playwright.config.ts --headed",
     "docs:screenshots:light": "playwright test --config=scripts/docs-screenshots/playwright.config.ts --project=screenshots-light",
     "docs:screenshots:dark": "playwright test --config=scripts/docs-screenshots/playwright.config.ts --project=screenshots-dark",
+    "docs:screenshots:navigation": "playwright test scripts/docs-screenshots/navigation.spec.ts --config=scripts/docs-screenshots/playwright.config.ts",
     "docs:screenshots:explore": "playwright test scripts/docs-screenshots/explore.spec.ts --config=scripts/docs-screenshots/playwright.config.ts",
     "docs:screenshots:hunts": "playwright test scripts/docs-screenshots/hunts.spec.ts --config=scripts/docs-screenshots/playwright.config.ts",
     "docs:screenshots:exports": "playwright test scripts/docs-screenshots/exports.spec.ts --config=scripts/docs-screenshots/playwright.config.ts",
