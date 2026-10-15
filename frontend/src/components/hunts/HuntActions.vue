@@ -8,6 +8,7 @@ import {
   faPause,
   faTrash,
   faEye,
+  faEllipsisVertical,
 } from "@fortawesome/free-solid-svg-icons";
 import { useHuntsStore, useToastsStore } from "@/stores";
 
@@ -76,10 +77,11 @@ async function deleteHunt() {
 </style>
 
 <template>
+  <!-- Buttons from md up; a menu below, where four buttons don't fit. -->
   <div
-    v-if="!$isMobile"
-    class="btn-toolbar d-flex align-items-center flex-nowrap float-end"
+    class="btn-toolbar d-none d-md-flex align-items-center flex-nowrap justify-content-end"
     role="toolbar"
+    :aria-label="`Actions for ${hunt.name}`"
   >
     <div class="btn-group btn-group-sm me-2" role="group">
       <button
@@ -120,5 +122,53 @@ async function deleteHunt() {
         <FontAwesomeIcon :icon="faTrash" />
       </button>
     </div>
+  </div>
+  <div class="dropdown d-md-none text-end">
+    <button
+      type="button"
+      class="btn btn-outline-secondary btn-sm"
+      data-bs-toggle="dropdown"
+      aria-expanded="false"
+      :aria-label="`Actions for ${hunt.name}`"
+    >
+      <FontAwesomeIcon :icon="faEllipsisVertical" fixed-width />
+    </button>
+    <ul class="dropdown-menu dropdown-menu-end">
+      <li>
+        <RouterLink :to="`/hunts/${hunt.id}`" class="dropdown-item">
+          <FontAwesomeIcon :icon="faEye" fixed-width class="me-2" />View
+        </RouterLink>
+      </li>
+      <li>
+        <RouterLink :to="`/hunts/update/${hunt.id}`" class="dropdown-item">
+          <FontAwesomeIcon :icon="faPen" fixed-width class="me-2" />Edit
+        </RouterLink>
+      </li>
+      <li>
+        <button
+          type="button"
+          class="dropdown-item"
+          :disabled="toggling"
+          @click="toggleStatus"
+        >
+          <FontAwesomeIcon
+            :icon="hunt.status === 'active' ? faPause : faPlay"
+            fixed-width
+            class="me-2"
+          />{{ hunt.status === "active" ? "Pause" : "Activate" }}
+        </button>
+      </li>
+      <li><hr class="dropdown-divider" /></li>
+      <li>
+        <button
+          type="button"
+          class="dropdown-item text-danger"
+          :disabled="deleting"
+          @click="deleteHunt"
+        >
+          <FontAwesomeIcon :icon="faTrash" fixed-width class="me-2" />Delete
+        </button>
+      </li>
+    </ul>
   </div>
 </template>
