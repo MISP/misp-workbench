@@ -33,6 +33,7 @@ nav:
   - Home: index.md
   - Features:
     - Overview: features/index.md
+    - Navigation: features/navigation.md
     - Feeds:
       - Overview: features/feeds/index.md
       - MISP Feeds: features/feeds/misp.md

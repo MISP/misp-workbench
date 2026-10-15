@@ -7,7 +7,7 @@ sends what is approved, and everything else it would send waits for an
 analyst. **Auto-approve** profiles cover the trusted bulk, so the queue holds
 what actually needs a decision.
 
-Under ***internals*** → ***review queue***.
+Under ***Intel*** → ***Review queue***.
 
 <img src="../../screenshots/review-queue/misp-workbench-1_review-queue_pending.png#only-light" alt="The review queue, with an indicator's context" style="max-width: 100%; height: auto;">
 <img src="../../screenshots/review-queue/misp-workbench-1_review-queue_pending-dark.png#only-dark" alt="The review queue, with an indicator's context" style="max-width: 100%; height: auto;">

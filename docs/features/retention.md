@@ -25,7 +25,7 @@ Each purged event UUID is logged
 
 ## Configuration
 
-Retention is configured via **runtime settings** under the `retention` namespace. Navigate to ***Internals*** → ***Runtime Settings*** → ***retention***.
+Retention is configured via **runtime settings** under the `retention` namespace. Navigate to ***Admin*** → ***Runtime settings*** → ***retention***.
 
 <img src="../../screenshots/retention-period/misp-workbench-1_runtime_settings_retention.png#only-light">
 <img src="../../screenshots/retention-period/misp-workbench-1_runtime_settings_retention-dark.png#only-dark">
@@ -84,7 +84,7 @@ POST /tasks/schedule
 
 ### Manual run
 
-Trigger a one-off run from ***Internals*** → ***Tasks*** → ***Scheduled***, or via the API:
+Trigger a one-off run from ***Admin*** → ***Tasks*** → ***Scheduled***, or via the API:
 
 ```
 POST /tasks/scheduled/{task_id}/run
