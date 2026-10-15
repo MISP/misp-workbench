@@ -135,6 +135,12 @@ Every indicator carries the attribute (`uuid`, `type`, `category`, `value`,
 
 ## Vendor APIs
 
+!!! warning "Beta"
+    These three sink types are in beta, and the UI marks them so. They follow
+    each vendor's documented API, and the Elastic sink has been run against
+    Elasticsearch 8. The Microsoft sinks have yet to be run against live
+    tenants. Check what they deliver before relying on them.
+
 These sinks write each value as the platform's own indicator object. A value
 that becomes several objects (`domain|ip`) is written as each of its parts.
 With **Keep in step with the profile**, a value that leaves the profile is

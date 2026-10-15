@@ -221,7 +221,12 @@ async function submit() {
       </div>
 
       <div class="mb-3">
-        <label class="form-label" for="sink-type">Type</label>
+        <label class="form-label" for="sink-type"
+          >Type
+          <span v-if="isVendor" class="badge text-bg-warning ms-1"
+            >beta</span
+          ></label
+        >
         <select
           id="sink-type"
           class="form-select"
@@ -229,9 +234,14 @@ async function submit() {
           :disabled="isEdit"
         >
           <option v-for="t in TYPES" :key="t.value" :value="t.value">
-            {{ t.label }}
+            {{ t.label }}{{ VENDOR_TYPES.includes(t.value) ? " — beta" : "" }}
           </option>
         </select>
+        <div v-if="isVendor" class="form-text">
+          Beta: this sink is new. It follows the vendor's documented API but
+          hasn't been run against every live tenant yet; check what it delivers
+          before relying on it, and report what doesn't work.
+        </div>
       </div>
 
       <!-- ── destination ── -->

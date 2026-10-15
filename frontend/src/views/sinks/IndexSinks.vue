@@ -34,6 +34,8 @@ const TYPE_LABELS = {
   defender: "Microsoft Defender",
   elastic: "Elastic Security",
 };
+// Vendor API sinks, new and not yet run against every live tenant.
+const BETA_TYPES = ["sentinel", "defender", "elastic"];
 
 const testingId = ref(null);
 const togglingId = ref(null);
@@ -156,6 +158,12 @@ async function remove(sink) {
                 <span class="badge bg-light text-dark ms-1">{{
                   TYPE_LABELS[sink.type] || sink.type
                 }}</span>
+                <span
+                  v-if="BETA_TYPES.includes(sink.type)"
+                  class="badge text-bg-warning ms-1"
+                  title="Beta: a new sink type, not yet proven against every live tenant"
+                  >beta</span
+                >
                 <span v-if="!sink.enabled" class="badge bg-secondary ms-1"
                   >disabled</span
                 >
