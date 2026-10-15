@@ -11,6 +11,12 @@ instead of on its next poll.
 | `gelf` | [GELF 1.1](https://go2docs.graylog.org/current/getting_in_log_data/gelf.html) over TCP, optionally TLS | Graylog |
 | `syslog` | CEF in RFC 5424 syslog, UDP or TCP (TLS optional) | Wazuh, ArcSight, QRadar, any syslog collector |
 | `webhook` | JSON `POST`, optionally HMAC-signed | SOAR platforms, custom scripts |
+| `sentinel` | STIX 2.1 indicators through the [upload API](https://learn.microsoft.com/en-us/azure/sentinel/stix-objects-api) | Microsoft Sentinel |
+| `defender` | Custom indicators through the [indicators API](https://learn.microsoft.com/en-us/defender-endpoint/api/import-ti-indicators) | Microsoft Defender for Endpoint |
+| `elastic` | ECS `threat.indicator.*` documents, bulk-indexed | Elastic Security indicator match rules |
+
+The last three are [vendor APIs](#vendor-apis): platforms that take threat intel
+only through their own API.
 
 Sinks are managed under ***internals*** → ***sinks***. Because they send data
 off the instance, they need the `sinks:*` scopes, which only the admin role has
@@ -127,6 +133,94 @@ Every indicator carries the attribute (`uuid`, `type`, `category`, `value`,
   delivery) and, when a secret is set,
   `X-Misp-Workbench-Signature: sha256=<HMAC-SHA256 of the body>`.
 
+## Vendor APIs
+
+These sinks write each value as the platform's own indicator object. A value
+that becomes several objects (`domain|ip`) is written as each of its parts.
+With **Keep in step with the profile**, a value that leaves the profile is
+taken out again:
+
+| Sink | Writes | Batches | A removal |
+|---|---|---|---|
+| `sentinel` | a STIX indicator per value: `[ipv4-addr:value = '…']`, `domain-name`, `url`, `email-addr`, `file:hashes`, `file:name`, `x509-certificate:hashes`. The confidence is the score, the TLP becomes a marking, and the tags become labels | 100 objects a request | expires the indicator (`valid_until` now). It isn't revoked: revoking is permanent in STIX, and the value may come back |
+| `defender` | an indicator per value: `IpAddress`, `DomainName`, `Url`, `FileMd5`, `FileSha1`, `FileSha256`, `CertificateThumbprint` | 500 a call | deletes it. Only indicators carrying the sink's **Application** are looked up and deleted |
+| `elastic` | an ECS document per value in the sink's index: `threat.indicator.ip`, `url.domain`, `url.full`, `email.address`, `file.hash.*`, `file.name` | 500 a request | deletes the document |
+
+Each object's id is derived from the value. Sending a value again updates its
+object rather than adding another, and a removal finds it.
+
+**Score, severity and expiry.** Severity is High from a score of 80, Medium
+from 50, Low from 20, and Informational below. Without a score (an attribute
+sent outside indicator mode), the event's threat level stands in for it. An
+indicator stays valid for **Valid** / **Expires** days (30 by default) after
+its value was last seen, and at least a day from the time it is sent. A value
+nobody reports any more drops out of the platform on its own.
+
+**What they never get.** On these platforms an indicator can block, so the
+same limits as the [detection engine formats](detection-formats.md#what-a-value-may-block)
+apply: no network broader than an IPv4 /16 or IPv6 /48, no loopback,
+multicast or reserved address, and no public suffix such as `co.uk`. Defender
+and Elastic take single addresses only. Defender also needs public addresses:
+a private one would match your own hosts.
+
+**Throttling.** A throttled request (`429`, `503`) waits as long as the API
+asks, up to a minute, at most three times. If it is still throttled, the
+delivery fails and its task retries with backoff. Sentinel allows 100 requests
+a minute, and Defender 30 imports a minute.
+
+**Test** doesn't send these sinks an indicator: there, it could block. It
+checks instead that the credentials work. For Sentinel, Entra ID issues a
+token. For Defender, the token can read indicators. For Elastic, the
+credentials authenticate.
+
+### Microsoft Sentinel
+
+1. Register an app in Microsoft Entra ID and give it a client secret.
+2. Give the app the **Microsoft Sentinel Contributor** role on the workspace.
+3. Create a `sentinel` sink with the tenant ID, client ID, client secret and
+   the workspace ID.
+
+Indicators show in Sentinel's threat intelligence, under the **Source system**
+(`misp-workbench` by default).
+
+### Microsoft Defender for Endpoint
+
+1. Register an app in Microsoft Entra ID and give it a client secret.
+2. Grant it the **WindowsDefenderATP** application permission
+   `Ti.ReadWrite.All`, with admin consent.
+3. Create a `defender` sink and pick the **Action**:
+
+| Action | Defender action | Alert |
+|---|---|---|
+| Audit only | `Audit` | no |
+| Alert (default) | `Audit` | yes |
+| Block and alert | `Block`, or `BlockAndRemediate` for file hashes | yes |
+
+**Device groups** limits the indicators to those groups; empty means every
+device. Defender holds at most 15,000 indicators per tenant, so send it a
+[detection profile](detection-profiles.md) rather than everything. Its token
+is issued for `https://api.securitycenter.microsoft.com`, the resource the
+API still expects.
+
+For sovereign clouds, **Show endpoints** changes the login URL, the API URL and
+the token scope for both Microsoft sinks.
+
+### Elastic Security
+
+1. Create an API key whose role has `create_index`, `index` and `delete` on
+   the index (`misp-workbench-indicators` by default). A username and
+   password also work.
+2. Create an `elastic` sink with the Elasticsearch URL and the key.
+3. In an **Indicator match** rule, add the index to the indicator index
+   patterns, and map event fields to the indicator fields, for example
+   `source.ip` and `destination.ip` to `threat.indicator.ip`.
+
+If the index doesn't exist, the sink creates it with the ECS field types: an
+address is an `ip`, the rest are `keyword`s, and indicator match compares
+like with like. An index that already exists, from a template of your own, is
+left as it is. Don't use a data stream (`logs-*-*`): a removal needs to
+delete documents by id.
+
 ## TLS
 
 HTTP sinks always use the URL's scheme. GELF and TCP syslog can enable TLS.
@@ -135,10 +229,13 @@ endpoint (Splunk HEC ships with one), paste its CA certificate in **CA
 certificate (PEM)** instead of turning verification off. **Verify TLS
 certificate** can be disabled per sink as a last resort.
 
-Secrets (the HEC token, the webhook signing secret) are never returned by the
-API; they read back as `********`. Sending that value back on an update keeps
-the stored secret, but only while the connection settings stay the same: the
-URL (or host and port), TLS, certificate verification and CA certificate.
+Secrets (the HEC token, the webhook signing secret, the Microsoft client
+secret, the Elastic API key or password) are never returned by the API; they
+read back as `********`. Sending that value back on an update keeps the stored
+secret, but only while the connection settings stay the same: the URL (or host
+and port), TLS, certificate verification and CA certificate, and for the
+vendor APIs the login URL, API URL, tenant, client ID, token scope, workspace
+and username.
 Pointing a sink somewhere else, or weakening how its connection is
 authenticated, requires re-entering its secret, so a stored token can't be
 redirected to a host that shouldn't have it.
@@ -155,7 +252,7 @@ Errors report the HTTP status, never the endpoint's response body.
 | `GET` | `/sinks/{id}` | Get a sink | `sinks:read` |
 | `PATCH` | `/sinks/{id}` | Update name, enabled, config or filters (not the type) | `sinks:update` |
 | `DELETE` | `/sinks/{id}` | Delete a sink | `sinks:delete` |
-| `POST` | `/sinks/{id}/test` | Send one test indicator now; returns `{ok, error}` | `sinks:test` |
+| `POST` | `/sinks/{id}/test` | Send one test indicator now (vendor APIs: check the credentials); returns `{ok, error}` | `sinks:test` |
 | `POST` | `/sinks/{id}/deliver/{event_uuid}` | Queue a delivery of one event, published or not (backfill, replay) | `sinks:test` |
 
 ```json

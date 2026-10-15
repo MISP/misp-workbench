@@ -1,3 +1,5 @@
+import re
+import uuid
 from datetime import datetime
 from typing import Literal, Optional
 
@@ -10,7 +12,9 @@ from pydantic import (
     model_validator,
 )
 
-SinkType = Literal["splunk_hec", "gelf", "syslog", "webhook"]
+SinkType = Literal[
+    "splunk_hec", "gelf", "syslog", "webhook", "sentinel", "defender", "elastic"
+]
 
 # What secrets read back as. Sending it back unchanged on update keeps the
 # stored secret, so an edit form can round-trip a sink without knowing it.
@@ -77,17 +81,118 @@ class WebhookConfig(BaseModel):
     _check_url = field_validator("url")(_http_url)
 
 
+# A Microsoft Entra tenant: its id (a GUID) or a domain. Goes into the token
+# URL's path, so nothing else.
+_TENANT = re.compile(r"^[A-Za-z0-9][A-Za-z0-9.-]{0,252}$")
+
+
+class _EntraApp(BaseModel):
+    """An app registration with a client secret, for app-only tokens."""
+
+    tenant_id: str
+    client_id: str = Field(min_length=1, max_length=255)
+    client_secret: str
+    login_url: str = "https://login.microsoftonline.com"
+    verify_tls: bool = True
+    ca_cert: Optional[str] = None
+
+    _check_login_url = field_validator("login_url")(_http_url)
+
+    @field_validator("tenant_id")
+    @classmethod
+    def _check_tenant(cls, value: str) -> str:
+        if not _TENANT.match(value):
+            raise ValueError("must be a tenant id (GUID) or domain")
+        return value
+
+
+class SentinelConfig(_EntraApp):
+    """Microsoft Sentinel's threat intelligence upload API (STIX)."""
+
+    workspace_id: uuid.UUID
+    # Shown as the indicators' source in Sentinel ("Microsoft Sentinel" is
+    # reserved).
+    source_system: str = Field("misp-workbench", min_length=1, max_length=255)
+    # An indicator stays valid this many days after its value was last seen.
+    valid_days: int = Field(30, ge=1, le=365)
+    api_url: str = "https://api.ti.sentinel.azure.com"
+    api_version: str = "2024-02-01-preview"
+    scope: str = "https://management.azure.com/.default"
+
+    _check_api_url = field_validator("api_url")(_http_url)
+
+    @field_validator("source_system")
+    @classmethod
+    def _not_reserved(cls, value: str) -> str:
+        if value.strip().lower() == "microsoft sentinel":
+            raise ValueError("Microsoft Sentinel is reserved")
+        return value
+
+
+class DefenderConfig(_EntraApp):
+    """Microsoft Defender for Endpoint's indicators API."""
+
+    # audit: record only; alert: audit and raise an alert; block: block (and
+    # remediate files) and raise an alert.
+    action: Literal["audit", "alert", "block"] = "alert"
+    # An indicator expires this many days after its value was last seen.
+    expiry_days: int = Field(30, ge=1, le=365)
+    # Marks the indicators this sink creates: removals only ever delete those.
+    application: str = Field("misp-workbench", min_length=1, max_length=100)
+    # Device groups the indicators apply to; empty means all devices.
+    rbac_group_names: list[str] = []
+    api_url: str = "https://api.security.microsoft.com"
+    # The API takes tokens issued for its legacy resource only.
+    scope: str = "https://api.securitycenter.microsoft.com/.default"
+
+    _check_api_url = field_validator("api_url")(_http_url)
+
+
+class ElasticConfig(BaseModel):
+    """ECS threat indicators, bulk-indexed into an index of your own."""
+
+    # The Elasticsearch URL, e.g. https://elastic.example.com:9200
+    url: str
+    index: str = "misp-workbench-indicators"
+    # An API key (the base64 "encoded" form), or a username and password.
+    api_key: Optional[str] = None
+    username: Optional[str] = None
+    password: Optional[str] = None
+    verify_tls: bool = True
+    ca_cert: Optional[str] = None
+
+    _check_url = field_validator("url")(_http_url)
+
+    @field_validator("index")
+    @classmethod
+    def _check_index(cls, value: str) -> str:
+        # Elasticsearch's own rules, and no wildcard or comma that would
+        # write somewhere else.
+        if not re.match(r"^[a-z0-9][a-z0-9._-]{0,254}$", value):
+            raise ValueError(
+                "must be lowercase letters, digits, '.', '_' or '-', "
+                "starting with a letter or digit"
+            )
+        return value
+
+
 CONFIG_MODELS: dict[str, type[BaseModel]] = {
     "splunk_hec": SplunkHecConfig,
     "gelf": GelfConfig,
     "syslog": SyslogConfig,
     "webhook": WebhookConfig,
+    "sentinel": SentinelConfig,
+    "defender": DefenderConfig,
+    "elastic": ElasticConfig,
 }
 
 # Config fields holding credentials, masked on read.
 SECRET_FIELDS: dict[str, tuple[str, ...]] = {
     "splunk_hec": ("token",),
     "webhook": ("secret",),
+    "sentinel": ("client_secret",),
+    "defender": ("client_secret",),
+    "elastic": ("api_key", "password"),
 }
 
 
@@ -136,7 +241,7 @@ def validate_config(sink_type: str, config: dict) -> dict:
     the stored secret merged back in; it must never reach a response.
     """
     try:
-        return CONFIG_MODELS[sink_type].model_validate(config).model_dump()
+        return CONFIG_MODELS[sink_type].model_validate(config).model_dump(mode="json")
     except ValidationError as error:
         problems = "; ".join(
             f"{'.'.join(str(p) for p in e['loc']) or 'config'}: {e['msg']}"

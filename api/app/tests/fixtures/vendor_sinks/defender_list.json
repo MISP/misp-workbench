@@ -1,0 +1,41 @@
+{
+  "@odata.context": "https://api.security.microsoft.com/api/$metadata#Indicators",
+  "value": [
+    {
+      "id": "995",
+      "indicatorValue": "185.220.101.42",
+      "indicatorType": "IpAddress",
+      "action": "Audit",
+      "application": "misp-workbench",
+      "source": "misp-workbench-sink",
+      "sourceType": "AadApp",
+      "title": "C2 report",
+      "creationTimeDateTimeUtc": "2026-10-01T11:15:35.3688259Z",
+      "createdBy": "45097602-1234-5678-1234-9f453233e62c",
+      "expirationTime": "2026-11-01T00:00:00Z",
+      "lastUpdateTime": "2026-10-01T11:15:35.3688259Z",
+      "severity": "High",
+      "description": "MISP ip-dst: 185.220.101.42",
+      "recommendedActions": "",
+      "rbacGroupNames": []
+    },
+    {
+      "id": "996",
+      "indicatorValue": "evil.example",
+      "indicatorType": "DomainName",
+      "action": "Block",
+      "application": "misp-workbench",
+      "source": "misp-workbench-sink",
+      "sourceType": "AadApp",
+      "title": "C2 report",
+      "creationTimeDateTimeUtc": "2026-10-01T11:15:35.3688259Z",
+      "createdBy": "45097602-1234-5678-1234-9f453233e62c",
+      "expirationTime": "2026-11-01T00:00:00Z",
+      "lastUpdateTime": "2026-10-01T11:15:35.3688259Z",
+      "severity": "High",
+      "description": "MISP domain: evil.example",
+      "recommendedActions": "",
+      "rbacGroupNames": []
+    }
+  ]
+}

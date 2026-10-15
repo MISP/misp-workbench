@@ -249,6 +249,52 @@ class TestSinks(ApiTester):
         db.expire_all()
         assert sinks_repository.get_sink(db, sink.id).config["token"] == "n3w"
 
+    @pytest.mark.parametrize("scopes", [["sinks:read", "sinks:create", "sinks:update"]])
+    def test_vendor_secret_is_masked_and_bound(
+        self, client: TestClient, auth_token: auth.Token, db: Session
+    ):
+        config = {
+            "tenant_id": "contoso.onmicrosoft.com",
+            "client_id": "app-id",
+            "client_secret": "s3cret",
+            "action": "block",
+        }
+        created = client.post(
+            "/sinks/",
+            json={"name": "defender", "type": "defender", "config": config},
+            headers=self._headers(auth_token),
+        )
+        assert created.status_code == status.HTTP_201_CREATED, created.text
+        sink = created.json()
+        assert sink["config"]["client_secret"] == sink_schemas.SECRET_MASK
+        assert sink["config"]["api_url"] == "https://api.security.microsoft.com"
+
+        # The token endpoint receives the client secret: moving it, or the
+        # API the token goes to, needs the secret re-entered.
+        for moved in (
+            {"login_url": "https://attacker.example"},
+            {"api_url": "https://attacker.example"},
+            {"tenant_id": "other.onmicrosoft.com"},
+        ):
+            response = client.patch(
+                f"/sinks/{sink['id']}",
+                json={"config": {**sink["config"], **moved}},
+                headers=self._headers(auth_token),
+            )
+            assert response.status_code == 422, moved
+            assert "re-enter client_secret" in response.json()["detail"]
+            assert "s3cret" not in response.text
+
+        kept = client.patch(
+            f"/sinks/{sink['id']}",
+            json={"config": {**sink["config"], "action": "audit"}},
+            headers=self._headers(auth_token),
+        )
+        assert kept.status_code == status.HTTP_200_OK, kept.text
+        db.expire_all()
+        stored = sinks_repository.get_sink(db, sink["id"]).config
+        assert (stored["client_secret"], stored["action"]) == ("s3cret", "audit")
+
     @pytest.mark.parametrize("scopes", [["sinks:create", "sinks:update"]])
     def test_config_validation(
         self, client: TestClient, auth_token: auth.Token, db: Session
@@ -298,6 +344,20 @@ class TestSinks(ApiTester):
         )
         assert ok.json() == {"ok": True, "error": None}
         assert received[0]["attributes"][0]["value"] == "192.0.2.1"
+
+        # A vendor API is checked, never sent an indicator: there it could
+        # block. The receiver answers the check (a GET) with 501.
+        elastic = self._create(
+            db, type="elastic", config={"url": url.rsplit("/", 1)[0]}
+        )
+        checked = client.post(
+            f"/sinks/{elastic.id}/test", headers=self._headers(auth_token)
+        )
+        assert checked.json() == {
+            "ok": False,
+            "error": "Elasticsearch answered HTTP 501",
+        }
+        assert len(received) == 1
 
         down = self._create(db, type="gelf", config={"host": "127.0.0.1", "port": 9})
         failed = client.post(

@@ -1,0 +1,16 @@
+{
+  "value": [
+    {
+      "id": "2841",
+      "indicator": "evil.example",
+      "isFailed": false,
+      "failureReason": null
+    },
+    {
+      "id": null,
+      "indicator": "185.220.101.42",
+      "isFailed": true,
+      "failureReason": "Indicator limit reached for this tenant"
+    }
+  ]
+}

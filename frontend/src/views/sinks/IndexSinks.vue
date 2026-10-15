@@ -30,6 +30,9 @@ const TYPE_LABELS = {
   gelf: "GELF",
   syslog: "Syslog/CEF",
   webhook: "Webhook",
+  sentinel: "Microsoft Sentinel",
+  defender: "Microsoft Defender",
+  elastic: "Elastic Security",
 };
 
 const testingId = ref(null);
@@ -39,6 +42,9 @@ sinksStore.getAll();
 
 function destination(sink) {
   const c = sink.config || {};
+  if (sink.type === "sentinel") return `workspace ${c.workspace_id}`;
+  if (sink.type === "defender") return `tenant ${c.tenant_id} (${c.action})`;
+  if (sink.type === "elastic") return `${c.url} → ${c.index}`;
   if (c.url) return c.url;
   const proto = sink.type === "syslog" ? `/${c.protocol}` : "";
   return `${c.host}:${c.port}${proto}${c.tls ? " (TLS)" : ""}`;

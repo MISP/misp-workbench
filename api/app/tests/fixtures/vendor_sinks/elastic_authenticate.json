@@ -1,0 +1,6 @@
+{
+  "username": "misp-workbench",
+  "roles": ["misp_workbench_writer"],
+  "authentication_type": "api_key",
+  "enabled": true
+}
