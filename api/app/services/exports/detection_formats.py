@@ -14,9 +14,15 @@ are skipped rather than written as lines the engine would refuse to load.
 
 import hashlib
 import ipaddress
+import json
+import logging
+import os
 import re
+from functools import lru_cache
 from typing import Optional
 from urllib.parse import urlsplit
+
+logger = logging.getLogger(__name__)
 
 DETECTION_FORMATS = ("suricata", "zeek", "rpz")
 
@@ -44,6 +50,17 @@ _LABEL = re.compile(r"^(?!-)[a-z0-9_-]{1,63}(?<!-)$")
 _HASH_LENGTHS = {"md5": 32, "sha1": 40, "sha256": 64}
 _HEX = re.compile(r"^[0-9a-fA-F]+$")
 _METADATA_UNSAFE = re.compile(r"[^A-Za-z0-9_.:/@-]+")
+
+# Values come from feeds and other organisations' events, so a value must not
+# be able to block more than an indicator: no network broader than these, no
+# special-purpose address (loopback, which sinkholed domains resolve to, say),
+# and no public suffix (``co.uk``) a domain record would cover all of.
+MIN_PREFIX = {4: 16, 6: 48}
+_ADDRESS = re.compile(r"^[0-9a-fA-F.:]+(/[0-9]{1,3})?$")
+WARNINGLISTS_DIR = "app/submodules/misp-warninglists/lists"
+PUBLIC_SUFFIX_LISTS = ("tlds", "second-level-tlds")
+# Zeek's reader takes these as a header line, an unset field and an empty one.
+_ZEEK_RESERVED = re.compile(r"^(#|-$|\(empty\)$)")
 
 # A composite type's part, by the name it goes by in the composite.
 _PART_TYPES = {"ip": "ip-dst"}
@@ -76,11 +93,53 @@ def domain(value: str) -> Optional[str]:
 
 
 def network(value: str):
-    """An address or a network, or None."""
+    """An address or a network an engine may block, or None.
+
+    Plain notation only: Python also takes a scoped IPv6 address
+    (``fe80::1%<anything>``), whose scope would end up in a rule as is.
+    """
+    value = (value or "").strip()
+    if not _ADDRESS.match(value):
+        return None
     try:
-        return ipaddress.ip_network((value or "").strip(), strict=False)
+        net = ipaddress.ip_network(value, strict=False)
     except ValueError:
         return None
+    if net.prefixlen < MIN_PREFIX[net.version] or any(
+        (
+            net.is_loopback,
+            net.is_unspecified,
+            net.is_multicast,
+            net.is_link_local,
+            net.is_reserved,
+        )
+    ):
+        return None
+    return net
+
+
+@lru_cache(maxsize=1)
+def public_suffixes() -> frozenset:
+    """The TLDs and second-level suffixes of MISP's warninglists."""
+    suffixes: set = set()
+    for name in PUBLIC_SUFFIX_LISTS:
+        path = os.path.join(WARNINGLISTS_DIR, name, "list.json")
+        try:
+            with open(path, encoding="utf-8") as handle:
+                entries = json.load(handle)["list"]
+        except (OSError, ValueError, KeyError):
+            logger.warning("public suffix list %s unavailable", path)
+            continue
+        suffixes.update(str(e).strip(".").lower() for e in entries)
+    return frozenset(suffixes)
+
+
+def target_domain(value: str) -> Optional[str]:
+    """A domain an engine may match: checked, and not a public suffix."""
+    name = domain(value)
+    if name is None or name in public_suffixes():
+        return None
+    return name
 
 
 def _single_line(value: str) -> bool:
@@ -246,7 +305,7 @@ class SuricataWriter(Writer):
                 )
             )
         elif type_ in ("domain", "hostname"):
-            name = domain(value)
+            name = target_domain(value)
             if name is None:
                 return []
             for proto, buffer, header, nocase in (
@@ -333,7 +392,7 @@ class SuricataWriter(Writer):
         if parts_.query:
             target += f"?{parts_.query}"
         net = network(host)
-        name = str(net.network_address) if net is not None else domain(host)
+        name = str(net.network_address) if net is not None else target_domain(host)
         if name is None:
             return None
         return self._rule(
@@ -370,7 +429,11 @@ class ZeekWriter(Writer):
         return "#fields\t" + "\t".join(ZEEK_FIELDS) + "\n"
 
     def _item(self, indicator: str, kind: str, type_: str, source: dict) -> list:
-        if not _single_line(indicator) or not self._first(f"{kind}|{indicator}"):
+        if (
+            not _single_line(indicator)
+            or _ZEEK_RESERVED.match(indicator)
+            or not self._first(f"{kind}|{indicator}")
+        ):
             return []
         desc = [type_]
         if source.get("score") is not None:
@@ -399,7 +462,7 @@ class ZeekWriter(Writer):
                 return self._item(str(net.network_address), "ADDR", type_, source)
             return self._item(str(net), "SUBNET", type_, source)
         if type_ in ("domain", "hostname"):
-            name = domain(value)
+            name = target_domain(value)
             return self._item(name, "DOMAIN", type_, source) if name else []
         if type_ == "url":
             # Zeek's URLs are written without their scheme.
@@ -480,7 +543,7 @@ class RpzWriter(Writer):
             net = network(value)
             return self._record(rpz_ip(net)) if net is not None else []
         if type_ in ("domain", "hostname"):
-            name = domain(value)
+            name = target_domain(value)
             if name is None or len(name) > MAX_RPZ_NAME:
                 return []
             records = self._record(name)

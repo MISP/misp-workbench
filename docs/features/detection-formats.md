@@ -20,6 +20,25 @@ an engine has no use for writes nothing. So does a value the engine couldn't
 load, such as a domain with a space in it, so one bad value can't stop a
 sensor from loading the file.
 
+## What a value may block
+
+Values come from feeds and from other organisations' events, and with `drop`
+rules or an RPZ zone a single value turns into a block. So none of them may
+block more than an indicator:
+
+- networks broader than IPv4 `/16` or IPv6 `/48` are left out;
+- special-purpose addresses are left out: loopback (sinkholed domains resolve
+  to `127.0.0.1`), unspecified (`0.0.0.0`), multicast, link-local and
+  reserved;
+- domains and hostnames on MISP's `tlds` and `second-level-tlds` warninglists
+  (`co.uk`, `github.io`) are left out, since their record would cover every
+  name under them;
+- addresses must be plain notation: a scoped IPv6 address (`fe80::1%eth0`) is
+  left out.
+
+Private addresses (`10.1.2.3`) are kept; leave them out with the RFC 1918
+warninglist or a [detection profile](detection-profiles.md).
+
 Each output was validated with the engine's own parser and replayed against
 traffic or queries: `suricata -T` and a pcap for Suricata, Zeek's Intel
 framework reading the file, and `named-checkzone` plus a resolver using the

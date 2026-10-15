@@ -54,20 +54,63 @@ class TestParts:
         assert formats.domain(value) == expected
 
 
+class TestWhatAValueMayBlock:
+    """Values come from feeds: none may block more than an indicator."""
+
+    @pytest.mark.parametrize(
+        "value",
+        [
+            "0.0.0.0/0",
+            "::/0",
+            "10.0.0.0/8",
+            "2001:db8::/32",
+            "127.0.0.1",
+            "0.0.0.0",
+            "::1",
+            "224.0.0.1",
+            "169.254.1.1",
+            "fe80::1",
+            "240.0.0.1",
+            # Python takes a scope, which would go into the rule as is.
+            'fe80::1%a] any (msg:"x"; sid:1;) #',
+            "2001:db8::1%eth0",
+        ],
+    )
+    def test_addresses(self, value):
+        for fmt in formats.DETECTION_FORMATS:
+            assert body(fmt, [("ip-dst", value)]) == [], fmt
+
+    @pytest.mark.parametrize("value", ["co.uk", "github.io", "COM.AU."])
+    def test_public_suffixes(self, value):
+        for fmt in formats.DETECTION_FORMATS:
+            for type_ in ("domain", "hostname"):
+                assert body(fmt, [(type_, value)]) == [], (fmt, type_)
+        assert body("suricata", [("url", f"http://{value}/x")]) == []
+        assert body("rpz", [("domain", f"evil.{value}")]) != []
+
+    def test_narrow_networks_and_private_addresses_stay(self):
+        assert len(body("rpz", [("ip-dst", "192.168.1.0/24")])) == 1
+        assert len(body("rpz", [("ip-dst", "10.1.2.3")])) == 1
+
+    @pytest.mark.parametrize("value", ["#separator ,", "#fields", "-", "(empty)"])
+    def test_zeek_reserved_values(self, value):
+        assert body("zeek", [("filename", value)]) == []
+
+
 class TestSuricata:
     def test_addresses(self):
         rules = body(
             "suricata",
             [
                 ("ip-dst", "192.0.2.1"),
-                ("ip-src", "10.0.0.0/8"),
+                ("ip-src", "10.20.0.0/16"),
                 ("ip-dst", "2001:db8::1"),
                 ("ip-dst", "not an address"),
             ],
         )
         assert len(rules) == 3
         assert rules[0].startswith("alert ip $HOME_NET any -> [192.0.2.1] any (")
-        assert rules[1].startswith("alert ip [10.0.0.0/8] any -> $HOME_NET any (")
+        assert rules[1].startswith("alert ip [10.20.0.0/16] any -> $HOME_NET any (")
         assert "[2001:db8::1]" in rules[2]
 
     def test_domain_covers_subdomains_and_hostname_itself(self):
@@ -209,7 +252,7 @@ class TestRpz:
                 ("domain", "Evil.com"),
                 ("hostname", "c2.bad.net"),
                 ("ip-dst", "192.0.2.1"),
-                ("ip-src", "10.0.0.0/8"),
+                ("ip-src", "10.20.0.0/16"),
                 ("ip-dst", "2001:db8::1"),
                 ("url", "http://evil.com/x"),
             ],
@@ -222,7 +265,7 @@ class TestRpz:
             "*.evil.com CNAME .",
             "c2.bad.net CNAME .",
             "32.1.2.0.192.rpz-ip CNAME .",
-            "8.0.0.0.10.rpz-ip CNAME .",
+            "16.0.0.20.10.rpz-ip CNAME .",
             "128.1.zz.db8.2001.rpz-ip CNAME .",
         ]
 
