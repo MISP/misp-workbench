@@ -13,6 +13,7 @@ from app.models import tag as tag_models
 from app.models import organisation as org_models
 from app.repositories import tags as tags_repository
 from app.repositories import attributes as attributes_repository
+from app.repositories import correlations as correlations_repository
 from app.repositories import indicators as indicators_repository
 from app.schemas import event as event_schemas
 from app.schemas import user as user_schemas
@@ -639,6 +640,41 @@ def delete_event(db: Session, event_uuid: UUID, force: bool = False) -> None:
 
     # Soft delete: mark deleted=True in OS but keep the document so it remains searchable
     client.update(index="misp-events", id=event_uuid, body={"doc": {"deleted": True}}, refresh=True)
+    mark_event_contents_deleted(event_uuid)
+
+    # Correlations are derived and point at the event from both sides.
+    correlations_repository.delete_event_correlations(event_uuid)
+    # Its indicators drop it at the next sync, not the next hourly rebuild.
+    indicators_repository.mark_event_changed(event_uuid)
+
+
+def mark_event_contents_deleted(event_uuid: str) -> int:
+    """Mark a deleted event's attributes and objects deleted too.
+
+    Searches, exports and outputs leave out deleted attributes and objects;
+    they don't look up whether the event holding them was deleted. Returns
+    how many documents were marked.
+    """
+    client = get_opensearch_client()
+    marked = 0
+    for index in ("misp-attributes", "misp-objects"):
+        response = client.update_by_query(
+            index=index,
+            body={
+                "query": {
+                    "bool": {
+                        "filter": [{"term": {"event_uuid": str(event_uuid)}}],
+                        "must_not": [{"term": {"deleted": True}}],
+                    }
+                },
+                "script": {"source": "ctx._source.deleted = true", "lang": "painless"},
+            },
+            conflicts="proceed",
+            refresh=True,
+            ignore=[404],
+        )
+        marked += response.get("updated", 0)
+    return marked
 
 
 def count_event_attributes(event_uuid: str) -> int:
