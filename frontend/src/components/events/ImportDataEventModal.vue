@@ -6,6 +6,7 @@ import { useEventsStore, useToastsStore } from "@/stores";
 import { storeToRefs } from "pinia";
 import { ATTRIBUTE_CATEGORIES, ATTRIBUTE_TYPES } from "@/helpers/constants";
 import { JA4_PATTERNS } from "@/helpers/ja4";
+import { refang } from "@/helpers/indicators";
 
 const toastsStore = useToastsStore();
 const eventsStore = useEventsStore();
@@ -106,6 +107,11 @@ const DETECTORS = [
     regex: /^https?:\/\/\S+/i,
   },
   {
+    type: "email-src",
+    category: "Payload delivery",
+    regex: /^[^@\s]+@[^@\s]+\.[^@\s]+$/,
+  },
+  {
     type: "domain",
     category: "Network activity",
     regex: /^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/,
@@ -123,8 +129,12 @@ function detectLine(raw) {
   const value = raw.trim();
   if (!value) return null;
 
+  // Reports are pasted defanged (hxxps://evil[.]com). Recognise the value
+  // refanged, but send it as pasted: ingestion refangs it and keeps the
+  // original, which the attribute's "normalised" badge shows.
+  const plain = refang(value);
   for (const d of DETECTORS) {
-    if (d.regex.test(value)) {
+    if (d.regex.test(plain)) {
       return {
         detected: true,
         valid: true,
