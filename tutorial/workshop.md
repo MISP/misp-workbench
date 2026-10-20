@@ -80,7 +80,7 @@ Account menu (top right) → **My API keys** → **New API key**:
 | **Name** | `workshop` |
 | **Scopes** | Click **SIEM integration preset** |
 
-![SIEM preset](../docs/screenshots/api-keys/misp-workbench-1_api-keys_siem-preset.png)
+![SIEM preset](screenshots/workshop/00-api-key-siem-preset.png)
 
 The preset grants `events:read`, `attributes:read`, `exports:read`, `sightings:create` and `warninglists:read`: what a SIEM needs, and all this workshop's API calls need. The key is **shown once**. Keep it in your shell:
 
@@ -141,7 +141,7 @@ Feeds normally fetch from a URL on a schedule. A feed can also be fed from a **f
 
 **1. Pick the format.** Go to **Ingest → Feeds** → **+ Add Feed** and choose the **Freetext Format** card: the paste-site list has one indicator per line.
 
-![Freetext feed](../docs/screenshots/feeds/misp-workbench-1_freetext-feed.png)
+![Freetext feed](screenshots/workshop/01-freetext-feed-upload.png)
 
 **2. Switch the input source to a file.** In **Feed Settings**, set **Input source** to **Upload file**. The **URI** field turns into a **File** dropzone: click *Click to select or drop a file here* and pick `workshop/c2-blocklist.txt`, or drag it in. The **Update interval** and fetch-immediately controls disappear, because an uploaded feed has nothing to fetch on a schedule.
 
@@ -187,13 +187,13 @@ The returned `key` goes in `url` when you `POST /feeds/` with `"input_source": "
 3. Check the summary bar: the **Detected types** badges should show a domain, URLs, an email, a sha256, and IPs. Per-line **type** and **category** dropdowns let you correct a guess.
 4. Click **Import**.
 
-![Batch import](../docs/screenshots/batch-import/misp-workbench_1-batch-import-modal.png)
+![Batch import](screenshots/workshop/02-batch-import.png)
 
 ### Lab 1c — See what normalisation did
 
 Open the event's **Attributes** tab. Values that were defanged carry a **normalised** badge: hover it to see the original.
 
-![Normalised attributes](../docs/screenshots/normalisation/misp-workbench-1_normalisation_attributes.png)
+![Normalised attributes](screenshots/workshop/03-normalised-attributes.png)
 
 Then go to **Hunt → Explore** and run these queries:
 
@@ -236,9 +236,9 @@ Every number is editable in **Admin → Runtime settings → scoring**. Below 30
 
 ### Lab 2a — Read a score
 
-Go to **Intel → Indicators** and search `value:*example-cobalt*`. Click **c2.example-cobalt.net** to open its details.
+Go to **Intel → Indicators** and search `value:*cobalt*`. Click **c2.example-cobalt.net** to open its details.
 
-![Indicator detail](../docs/screenshots/indicators/misp-workbench-2_indicators_detail.png)
+![Indicator detail](screenshots/workshop/04-indicator-detail.png)
 
 Read the score breakdown. The value comes from your event (local, base 70) **and** from the paste-site feed, so it gets a corroboration bonus. Now compare it with **beacon-relay.example-cobalt.net**, which only the feed reported.
 
@@ -255,7 +255,7 @@ Save. The scores update within a minute or so. **beacon-relay** drops, while **c
 
 > **Real life.** **Intel → Source quality** shows, per feed and server, how many of its indicators were ever hit by a sighting, how many were reported false positives, and how many have decayed. Use that evidence, not reputation, to set trust.
 
-![Source quality](../docs/screenshots/indicators/misp-workbench-5_indicators_source-quality.png)
+![Source quality](screenshots/workshop/05-source-quality.png)
 
 ### Lab 2c — Protect your own infrastructure
 
@@ -276,7 +276,7 @@ Open the list and add its entries, one per line (**Import** takes the same `entr
 *.acme-bank.test   # corporate domains
 ```
 
-![Organisation list](../docs/screenshots/warninglists/misp-workbench-3_warninglists_organisation-list.png)
+![Organisation list](screenshots/workshop/06-organisation-warninglist.png)
 
 An organisation list is **private** and only applies to the profiles that attach it, which you do next.
 
@@ -298,13 +298,13 @@ Go to **Share → Detection profiles** → **New**, name it `Perimeter block`, a
 | **Organisation warninglists** | `ACME own infrastructure` | Never your own ranges |
 | **Require approval** | on | A human signs off each value |
 
-![Profile editor](../docs/screenshots/detection-profiles/misp-workbench-2_detection-profiles_editor.png)
+![Profile editor](screenshots/workshop/07-detection-profile-editor.png)
 
 The editor shows a **live match count** and samples as you change rules. Watch `8.8.8.8`, `185.220.101.42`, `10.20.30.40` and `beacon-relay…` fall out. Save.
 
 Open the profile's **Changes** page. It shows what its next run would add and remove, by type, source and reason, with **risk flags**: popular sites, shared hosting or cloud ranges, values from a brand-new source.
 
-![Change preview](../docs/screenshots/detection-profiles/misp-workbench-3_detection-profiles_changes.png)
+![Change preview](screenshots/workshop/08-profile-changes.png)
 
 > **Real life.** For a blocking profile, turn on **Hold large or risky changes** too. A partner who suddenly shares 40,000 values, or a cloud range that slipped into a feed, then waits for approval instead of landing on the firewall at 3 a.m.
 
@@ -312,7 +312,7 @@ Open the profile's **Changes** page. It shows what its next run would add and re
 
 Because the profile **requires approval**, nothing reaches a control yet. Go to **Intel → Review queue** and pick **Perimeter block** in the profile filter.
 
-![Review queue](../docs/screenshots/review-queue/misp-workbench-1_review-queue_pending.png)
+![Review queue](screenshots/workshop/09-review-queue.png)
 
 Each row has its score breakdown, sources, sightings and warninglist hits. Click a row for the full context. Then:
 
@@ -320,7 +320,7 @@ Each row has its score breakdown, sources, sightings and warninglist hits. Click
 2. **Reject…** one value you don't trust, giving a reason (`r`). Tick **Also add to the *Rejected in review* warninglist**, so the rejection applies everywhere, not just to this profile.
 3. **Snooze** another for 7 days (`s`): it comes back to pending then.
 
-![Reject](../docs/screenshots/review-queue/misp-workbench-2_review-queue_reject.png)
+![Reject](screenshots/workshop/10-review-reject.png)
 
 **Check.**
 - The profile now holds only what you approved, and `8.8.8.8` is not among it.
@@ -360,8 +360,9 @@ Go to **Share → External dynamic lists** and create a list:
 | **Detection profile** | `Perimeter block` |
 | **Vendor** | Palo Alto PAN-OS |
 | **Holds** | domains |
-| **Subdomains too** | on |
 | **Rebuilt every (minutes)** | `15` |
+
+Leave **Subdomains too** off: it is greyed out for PAN-OS, which covers subdomains with the list's own setting instead (below).
 
 Open the list. Its preview shows the entries **as served**. Under **Tokens**, create one for the firewall: **Token name** `fw-edge-01`, and in production **Only from** the firewall's management IP. The URL is **shown once**; copy it, then fetch it as the firewall would:
 
@@ -369,7 +370,7 @@ Open the list. Its preview shows the entries **as served**. Under **Tokens**, cr
 curl -s http://localhost:8080/edl/<token>
 ```
 
-You get the domains you approved in Lab 2, one per line. On a real PAN-OS: **Objects → External Dynamic Lists → Add**, type *Domain List*, source the URL, repeat *Five Minute*, **Test Source URL**, then use the list in a security policy and commit.
+You get the domains you approved in Lab 2, one per line. On a real PAN-OS: **Objects → External Dynamic Lists → Add**, type *Domain List*, source the URL, tick **Automatically expand to include subdomains**, repeat *Five Minute*, **Test Source URL**, then use the list in a security policy and commit.
 
 > Each firewall gets its own token, so revoking one doesn't break the others. Every fetch is audited (`edl.fetched`).
 
@@ -386,7 +387,7 @@ Go to **Share → Exports** → **+ New Export**:
 | **Format options** | **Rule action**: `alert` | **Answer**: *Walled garden (CNAME)* → `blocked.acme-bank.test` |
 | **Run on a schedule** | **Hourly** | **Hourly** |
 
-![New export](../docs/screenshots/exports/misp-workbench-1_exports_new-export.png)
+![New export](screenshots/workshop/11-new-export-suricata.png)
 
 Create both and **Download** them when they complete. Look inside:
 
@@ -612,7 +613,7 @@ The vendor report gave you the campaign's infrastructure. Before anyone writes "
 
 Go to **Tech lab → Notebooks**. In the **Personal** section click **+** (New notebook), name it `Retro-hunt: ACME treasury`, and **Create**. Use **Add → Code** for each cell below and **Shift+Enter** to run it. `mwlab` is already bound to your identity.
 
-![Notebooks workspace](../docs/screenshots/tech-lab/notebooks/misp-workbench-1_tech-lab_notebooks.png)
+![Notebooks workspace](screenshots/workshop/12-notebook-retro-hunt.png)
 
 **Cell 1: where does each campaign value appear?**
 
@@ -669,7 +670,7 @@ events = [mwlab.get_event(u) for u in hits["event_uuid"].unique()]
 HTML(render.timeline([e for e in events if e]))
 ```
 
-![Notebook timeline](../docs/screenshots/tech-lab/notebooks/misp-workbench-4_tech-lab_notebooks_timeline.png)
+![Notebook timeline](screenshots/workshop/13-notebook-timeline.png)
 
 **Check.** You can say which campaign values were already known, since when, and from which events. With the seeded data, the Cobalt Strike infrastructure (`c2.example-cobalt.net`) and the Tor exit appear in earlier events too.
 

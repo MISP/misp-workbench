@@ -36,6 +36,7 @@
     "docs:screenshots:normalisation": "playwright test scripts/docs-screenshots/normalisation.spec.ts --config=scripts/docs-screenshots/playwright.config.ts",
     "docs:screenshots:profiles": "playwright test scripts/docs-screenshots/profiles.spec.ts --config=scripts/docs-screenshots/playwright.config.ts",
     "docs:screenshots:api-keys": "playwright test scripts/docs-screenshots/api-keys.spec.ts --config=scripts/docs-screenshots/playwright.config.ts",
+    "workshop:screenshots": "playwright test --config=scripts/workshop-screenshots/playwright.config.ts",
     "build-only": "vite build",
     "type-check": "vue-tsc --noEmit -p tsconfig.vitest.json --composite false",
     "lint": "eslint . --fix"
