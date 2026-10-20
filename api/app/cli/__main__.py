@@ -1486,6 +1486,62 @@ def backfill_ja4(
     )
 
 
+@app.command()
+def backfill_deleted_events(
+    dry_run: bool = typer.Option(
+        False, "--dry-run", help="Report what would change without writing"
+    ),
+):
+    """Mark the attributes and objects of deleted events deleted too.
+
+    Deleting an event used to mark only the event: its attributes kept showing
+    in Explore, restSearch and exports, and its correlations stayed. Deleting
+    one does all of it now; this catches up the events deleted before.
+    """
+    from app.repositories import indicators as indicators_repository
+    from app.services.opensearch import get_opensearch_client
+    from opensearchpy import helpers as opensearch_helpers
+
+    client = get_opensearch_client()
+    events = opensearch_helpers.scan(
+        client=client,
+        index="misp-events",
+        query={"query": {"term": {"deleted": True}}, "_source": False},
+        scroll="5m",
+        size=200,
+    )
+
+    checked = 0
+    marked = 0
+    for event in events:
+        uuid = event["_id"]
+        checked += 1
+        if dry_run:
+            for index in ("misp-attributes", "misp-objects"):
+                marked += client.count(
+                    index=index,
+                    body={
+                        "query": {
+                            "bool": {
+                                "filter": [{"term": {"event_uuid": uuid}}],
+                                "must_not": [{"term": {"deleted": True}}],
+                            }
+                        }
+                    },
+                    ignore=[404],
+                ).get("count", 0)
+            continue
+        found = events_repository.mark_event_contents_deleted(uuid)
+        if found:
+            correlations_repository.delete_event_correlations(uuid)
+            indicators_repository.mark_event_changed(uuid)
+        marked += found
+
+    typer.echo(
+        f"{checked} deleted event(s) checked, {marked} attribute(s) and object(s) "
+        + ("would be marked deleted (dry run)." if dry_run else "marked deleted.")
+    )
+
 
 @app.command()
 def load_warninglists(evaluate: bool = typer.Option(True, help="Re-flag attributes afterwards")):
