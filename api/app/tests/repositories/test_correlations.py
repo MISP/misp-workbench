@@ -627,6 +627,51 @@ class TestBuildChunkCorrelationDocs:
 
         mock_os.msearch.assert_not_called()
 
+    def test_dated_by_the_later_attribute_not_when_computed(self):
+        # Explore's time range, histogram and sort read @timestamp: a
+        # correlation recomputed today between two attributes from last year
+        # still belongs to last year
+        docs = [
+            _attribute(
+                "attr-1",
+                timestamp=1735689600,
+                **{"@timestamp": "2025-01-01T00:00:00"},
+            )
+        ]
+        target = _attribute(
+            "attr-old",
+            event_uuid="event-2",
+            score=2.0,
+            timestamp=1704067200,
+            **{"@timestamp": "2024-01-01T00:00:00"},
+        )
+        mock_os = self._mock_os([[target]])
+
+        with patch(PATCH, return_value=mock_os):
+            correlation_docs = build_chunk_correlation_docs(
+                docs, _settings(), bidirectional=True
+            )
+
+        # both directions carry the later of the two
+        assert {doc["_source"]["@timestamp"] for doc in correlation_docs} == {
+            "2025-01-01T00:00:00"
+        }
+        assert all(
+            doc["_source"]["created_at"] > "2025-01-02" for doc in correlation_docs
+        )
+
+    def test_computed_at_when_neither_attribute_is_dated(self):
+        docs = [_attribute("attr-1")]
+        target = _attribute("attr-old", event_uuid="event-2", score=2.0)
+        mock_os = self._mock_os([[target]])
+
+        with patch(PATCH, return_value=mock_os):
+            (doc,) = build_chunk_correlation_docs(
+                docs, _settings(), bidirectional=False
+            )
+
+        assert doc["_source"]["@timestamp"] == doc["_source"]["created_at"]
+
     def test_failed_sub_search_is_logged_and_skipped(self):
         docs = [_attribute("attr-1")]
         mock_os = MagicMock()
