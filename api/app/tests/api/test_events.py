@@ -148,6 +148,34 @@ class TestEventsResource(ApiTester):
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert data["detail"] == "An event with this info already exists"
 
+    @pytest.mark.parametrize("scopes", [["events:create", "events:delete"]])
+    def test_create_event_info_of_deleted_event(
+        self, client: TestClient, event_1: object, auth_token: auth.Token
+    ):
+        # a deleted event stays indexed as a tombstone, but frees its info
+        response = client.delete(
+            f"/events/{event_1.uuid}",
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+        assert response.status_code == status.HTTP_204_NO_CONTENT
+
+        response = client.post(
+            "/events/",
+            json={
+                "info": event_1.info,
+                "date": "2020-01-01",
+                "analysis": 1,
+                "distribution": 0,
+                "threat_level": 1,
+            },
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+        data = response.json()
+
+        assert response.status_code == status.HTTP_201_CREATED
+        assert data["info"] == event_1.info
+        assert data["uuid"] != str(event_1.uuid)
+
     @pytest.mark.parametrize("scopes", [["events:update"]])
     def test_update_event(
         self,

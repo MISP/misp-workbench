@@ -241,7 +241,17 @@ def get_event_by_info(info: str) -> Optional[event_schemas.Event]:
     client = get_opensearch_client()
     response = client.search(
         index="misp-events",
-        body={"query": {"term": {"info.keyword": info}}, "size": 1},
+        # A deleted event stays in the index as a tombstone; it doesn't
+        # hold on to its info.
+        body={
+            "query": {
+                "bool": {
+                    "filter": [{"term": {"info.keyword": info}}],
+                    "must_not": [{"term": {"deleted": True}}],
+                }
+            },
+            "size": 1,
+        },
     )
     hits = response["hits"]["hits"]
     if not hits:
