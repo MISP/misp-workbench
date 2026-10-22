@@ -63,7 +63,7 @@ curl -s -H "Authorization: $API_KEY" \
 `since` needs a format that can express a deletion: `json`, `ndjson` or `csv`. With `text`, `cdb`, `suricata`, `zeek` or `rpz` it returns `400`. Rebuild those lists from a full pull instead.
 
 !!! warning "Deltas don't see hard deletes"
-    Force-deleting an event or retention purges remove documents outright, and a delta can't report what no longer exists. Soft-deleting an *event* also doesn't touch its attributes. Pair deltas with a periodic full pull (daily, say) to resynchronise.
+    Force-deleting an event or retention purges remove documents outright, and a delta can't report what no longer exists. Pair deltas with a periodic full pull (daily, say) to resynchronise. Soft-deleting an event is fine: it marks the event's attributes deleted too, so the next delta reports them with `"deleted": true`.
 
 Attributes indexed before `updated_at` was introduced have no write stamp until their next write. Full pulls return them; deltas pick them up once they change.
 
