@@ -1,0 +1,5 @@
+# Rendered decks: rebuild them with marp (see README.md).
+*.html
+*.pdf
+*.pptx
+*.png
