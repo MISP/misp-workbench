@@ -109,7 +109,9 @@ or `min_score` in `/lookup` and `/indicators`.
 Scores are computed whenever an indicator is, and the hourly rebuild applies
 decay. A stored score is only rewritten when it moves by 5 points or more, or
 crosses the decayed threshold. Hourly decay doesn't rewrite every indicator,
-so incremental exports carry real changes.
+so incremental exports carry real changes. A rebuild that a change to the
+scoring settings or a source's trust queued is the exception: it writes every
+score that moved, however little.
 
 ### Settings
 
@@ -133,7 +135,10 @@ An indicator is as trustworthy as its most trusted source:
 - **Organisations.** The most favourable organisation modifier applies. An organisation with no modifier counts as 0, so a negative modifier only matters when no other organisation reports the value.
 - **Caps.** A cap holds only when every feed, server or local source reporting the value is capped. Organisation caps are combined separately: a feed capped at 40 stays capped whatever the organisations are, unless another uncapped source reports the value too.
 
-Changing a source's trust re-scores every indicator.
+Changing a source's trust re-scores every indicator: saving it queues a
+rebuild, which reads the new trust when it starts and writes every score that
+moved. Changes saved while that rebuild runs queue another one after it, and a
+rebuild that finds a sync running waits for it rather than giving up.
 
 ### Source quality
 

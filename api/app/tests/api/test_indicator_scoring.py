@@ -443,14 +443,14 @@ class TestIndicatorScoring(ApiTester):
 
         get_redis_client().delete(indicators.REBUILD_QUEUED_KEY)
         try:
-            with patch.object(tasks.rebuild_indicators, "delay") as delay:
+            with patch.object(tasks.rebuild_indicators, "apply_async") as queue:
                 response = client.post(
                     "/settings/runtime/scoring",
                     json={"half_life_days": {"sha256": 30}},
                     headers=headers,
                 )
                 assert response.status_code == status.HTTP_200_OK
-                delay.assert_called_once()
+                queue.assert_called_once_with(kwargs={"requested": True})
         finally:
             runtime_settings_repository.delete_setting(db, "scoring")
             get_redis_client().delete(indicators.REBUILD_QUEUED_KEY)
@@ -473,7 +473,7 @@ class TestIndicatorScoring(ApiTester):
                 name=TRUST_ORG, local=True, created_by=api_tester_user.id
             ),
         )
-        with patch.object(tasks.rebuild_indicators, "delay") as delay:
+        with patch.object(tasks.rebuild_indicators, "apply_async") as queue:
             organisations_repository.update_organisation(
                 db,
                 organisation.id,
@@ -482,7 +482,7 @@ class TestIndicatorScoring(ApiTester):
                 ),
             )
             # Changing a source's trust queues a rescore...
-            delay.assert_called_once()
+            queue.assert_called_once_with(kwargs={"requested": True})
             get_redis_client().delete(indicators.REBUILD_QUEUED_KEY)
             # ...but saving it unchanged doesn't.
             organisations_repository.update_organisation(
@@ -490,7 +490,7 @@ class TestIndicatorScoring(ApiTester):
                 organisation.id,
                 organisation_schemas.OrganisationUpdate(score_modifier=-20),
             )
-            delay.assert_called_once()
+            queue.assert_called_once()
 
         # An impostor with the same name (as a feed can create) gets none of
         # the trust: organisations are identified by id.
@@ -511,3 +511,27 @@ class TestIndicatorScoring(ApiTester):
         assert fresh["score"] == 25
         assert _factors(fresh)["organisation_trust"] == -20
         assert _factors(fresh)["cap"] == -25
+
+        # A trust change smaller than refresh_step: the hourly rebuild, which
+        # only rewrites moves of 5 or more, leaves it; a requested one (what a
+        # trust change queues) writes it.
+        with patch.object(tasks.rebuild_indicators, "apply_async"):
+            organisations_repository.update_organisation(
+                db,
+                organisation.id,
+                organisation_schemas.OrganisationUpdate(
+                    score_modifier=-17, score_cap=None
+                ),
+            )
+            indicators.rebuild(requested=True)
+            assert _indicator(FRESH_IP)["score"] == 53
+            organisations_repository.update_organisation(
+                db,
+                organisation.id,
+                organisation_schemas.OrganisationUpdate(score_modifier=-14),
+            )
+        get_redis_client().delete(indicators.REBUILD_QUEUED_KEY)
+        indicators.rebuild()
+        assert _indicator(FRESH_IP)["score"] == 53
+        indicators.rebuild(requested=True)
+        assert _indicator(FRESH_IP)["score"] == 56

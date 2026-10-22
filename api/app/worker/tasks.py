@@ -1610,11 +1610,23 @@ def sync_indicators():
 
 
 @celery_app.task(ignore_result=True, time_limit=4 * 3600, soft_time_limit=4 * 3600 - 60)
-def rebuild_indicators():
-    """Recompute every indicator; tombstone those without live attributes."""
+def rebuild_indicators(requested: bool = False):
+    """Recompute every indicator; tombstone those without live attributes.
+
+    ``requested`` (by request_rebuild: a source's trust or the scoring settings
+    changed): every changed score is written, and when a sync or another
+    rebuild holds the lock the rebuild is retried shortly, not dropped. The
+    hourly run just skips a turn.
+    """
     from app.repositories import indicators as indicators_repository
 
-    return indicators_repository.rebuild()
+    result = indicators_repository.rebuild(requested=requested)
+    if result is None and requested:
+        rebuild_indicators.apply_async(
+            kwargs={"requested": True},
+            countdown=indicators_repository.REBUILD_RETRY_SECONDS,
+        )
+    return result
 
 
 # ──────────────────────────────────────────────────────────────────────────

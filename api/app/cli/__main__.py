@@ -1587,7 +1587,8 @@ def rebuild_indicators(
     """
     from app.repositories import indicators as indicators_repository
 
-    result = indicators_repository.rebuild(wait_seconds=wait)
+    # Asked for, so it writes every score that moved, as a trust change does.
+    result = indicators_repository.rebuild(wait_seconds=wait, requested=True)
     if result is None:
         typer.echo("Another sync or rebuild is still running.")
         raise typer.Exit(1)
