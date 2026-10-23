@@ -59,6 +59,7 @@ their feed or server sends them again.
 | Attributes written (added, edited, tagged, deleted) | Within seconds: a sync every 15 seconds refreshes the values of attributes written since its last run |
 | Sightings added | At the next sync |
 | An event's own tags, organisation or source changed (an event tagged `tlp:red` makes its indicators red) | At the next sync |
+| An event deleted (its attributes are marked deleted with it) | At the next sync |
 | Hard deletes (retention, force-deleting an event) | At the hourly rebuild |
 
 An indicator is only rewritten when its content changes, so `updated_at`
