@@ -1,0 +1,8 @@
+c2.example-cobalt[.]net
+invoice-portal[.]test
+hxxps://invoice-portal[.]test/download/48812
+billing@invoice-portal[.]test
+hxxp://update-service[.]test/agent/setup.exe
+9f2b8c1d4e5a67380b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f708192a3b4c5d6
+185.220.101[.]42
+10.20.30.40

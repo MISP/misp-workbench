@@ -1,0 +1,8 @@
+# C2 list found on a paste site, 2026-10-14. Unverified.
+c2.example-cobalt[.]net
+beacon-relay.example-cobalt[.]net
+stage.example-cobalt.net
+hxxp://update-service[.]test/agent/setup.exe
+185.220.101[.]42
+185.220.101.42
+8.8.8.8

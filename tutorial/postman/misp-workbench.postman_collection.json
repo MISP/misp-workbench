@@ -1,0 +1,404 @@
+{
+	"info": {
+		"_postman_id": "5d9ab817-d943-4b06-b819-8a97ab98b039",
+		"name": "misp-workbench (workshop)",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "3369179"
+	},
+	"item": [
+		{
+			"name": "auth",
+			"item": [
+				{
+					"name": "login - get token",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"let response = pm.response.json();",
+									"pm.environment.set(\"access_token\", response.access_token);",
+									"pm.environment.set(\"refresh_token\", response.refresh_token);"
+								],
+								"type": "text/javascript",
+								"packages": {},
+								"requests": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "urlencoded",
+							"urlencoded": [
+								{
+									"key": "username",
+									"value": "{{vault:mw-username}}",
+									"type": "text"
+								},
+								{
+									"key": "password",
+									"value": "{{vault:mw-password}}",
+									"type": "text"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/auth/token",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"auth",
+								"token"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "refresh token",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"let response = pm.response.json();",
+									"pm.environment.set(\"access_token\", response.access_token);"
+								],
+								"type": "text/javascript",
+								"packages": {},
+								"requests": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"refresh_token\": \"{{refresh_token}}\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/auth/refresh",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"auth",
+								"refresh"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "logout",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/auth/logout",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"auth",
+								"logout"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "mcp",
+			"item": [
+				{
+					"name": "get mcp config",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/mcp/config",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"mcp",
+								"config"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "users",
+			"item": [
+				{
+					"name": "me",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/users/me",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"users",
+								"me"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "restSearch",
+			"item": [
+				{
+					"name": "get misp iocs (restSearch-compatible)",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"to_ids\": true,\n    \"type\": [\"ip-src\", \"ip-dst\"],\n    \"limit\": 10\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/attributes/restSearch",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"attributes",
+								"restSearch"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "export",
+			"item": [
+				{
+					"name": "export w/warninglists",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/attributes/export?format=text&query=comment:%22warninglist%20demo%22",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"attributes",
+								"export"
+							],
+							"query": [
+								{
+									"key": "format",
+									"value": "text"
+								},
+								{
+									"key": "query",
+									"value": "comment:%22warninglist%20demo%22"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "export wo/warninglists",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/attributes/export?format=text&query=comment:%22warninglist%20demo%22&enforce_warninglist=false",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"attributes",
+								"export"
+							],
+							"query": [
+								{
+									"key": "format",
+									"value": "text"
+								},
+								{
+									"key": "query",
+									"value": "comment:%22warninglist%20demo%22"
+								},
+								{
+									"key": "enforce_warninglist",
+									"value": "false"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "lookup",
+			"item": [
+				{
+					"name": "lookup values",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"values\": [\n        \"8.8.8.8\"\n    ]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/lookup",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"lookup"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "alert-sources",
+			"item": [
+				{
+					"name": "report alert sightings from splunk",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"search_name\": \"Outbound to known C2\",\n    \"result\": {\n        \"_time\": \"1791987222\",\n        \"src_ip\": \"10.9.9.9\",\n        \"dest_ip\": \"185.220.101.42\"\n    }\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/webhooks/alerts/{{alert_webhook_token}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"webhooks",
+								"alerts",
+								"{{alert_webhook_token}}"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "indicators",
+			"item": [
+				{
+					"name": "export indicators cdb",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/indicators/export?format=cdb&profile=SIEM%20alerting",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"indicators",
+								"export"
+							],
+							"query": [
+								{
+									"key": "format",
+									"value": "cdb"
+								},
+								{
+									"key": "profile",
+									"value": "SIEM%20alerting"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"auth": {
+		"type": "bearer",
+		"bearer": [
+			{
+				"key": "token",
+				"value": "{{access_token}}",
+				"type": "string"
+			}
+		]
+	},
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	]
+}

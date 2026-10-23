@@ -1020,23 +1020,6 @@
     }
   },
   {
-    "id": "d3110000-0004-4001-8000-000000000061",
-    "days_ago": 14,
-    "hour": 15,
-    "value": "c2.example-cobalt.net",
-    "attribute_uuid": "d3110000-0002-4001-8000-000000000002",
-    "event_uuid": "d3110000-0001-4001-8000-000000000001",
-    "type": "false-positive",
-    "observer": {
-      "source": "edr",
-      "organisation": "MISP Workbench Docs"
-    },
-    "metadata": {
-      "sensor_type": "network",
-      "confidence": 90
-    }
-  },
-  {
     "id": "d3110000-0004-4001-8000-000000000062",
     "days_ago": 14,
     "hour": 19,
@@ -1272,40 +1255,6 @@
     "metadata": {
       "sensor_type": "email",
       "confidence": 90
-    }
-  },
-  {
-    "id": "d3110000-0004-4001-8000-000000000076",
-    "days_ago": 9,
-    "hour": 8,
-    "value": "c2.example-cobalt.net",
-    "attribute_uuid": "d3110000-0002-4001-8000-000000000002",
-    "event_uuid": "d3110000-0001-4001-8000-000000000001",
-    "type": "false-positive",
-    "observer": {
-      "source": "proxy",
-      "organisation": "CERT-EU"
-    },
-    "metadata": {
-      "sensor_type": "endpoint",
-      "confidence": 80
-    }
-  },
-  {
-    "id": "d3110000-0004-4001-8000-000000000077",
-    "days_ago": 9,
-    "hour": 8,
-    "value": "c2.example-cobalt.net",
-    "attribute_uuid": "d3110000-0002-4001-8000-000000000002",
-    "event_uuid": "d3110000-0001-4001-8000-000000000001",
-    "type": "false-positive",
-    "observer": {
-      "source": "mail-gateway",
-      "organisation": "CIRCL"
-    },
-    "metadata": {
-      "sensor_type": "email",
-      "confidence": 50
     }
   },
   {
@@ -1765,23 +1714,6 @@
     "metadata": {
       "sensor_type": "network",
       "confidence": 100
-    }
-  },
-  {
-    "id": "d3110000-0004-4001-8000-000000000105",
-    "days_ago": 1,
-    "hour": 6,
-    "value": "c2.example-cobalt.net",
-    "attribute_uuid": "d3110000-0002-4001-8000-000000000002",
-    "event_uuid": "d3110000-0001-4001-8000-000000000001",
-    "type": "false-positive",
-    "observer": {
-      "source": "proxy",
-      "organisation": "Partner SOC"
-    },
-    "metadata": {
-      "sensor_type": "network",
-      "confidence": 90
     }
   },
   {
