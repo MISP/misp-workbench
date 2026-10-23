@@ -18,10 +18,11 @@ const props = defineProps({
 
 <template>
   <span
-    class="badge mx-1 tag shadow-sm"
+    class="badge mx-1 tag shadow-sm text-truncate"
     :style="{
       backgroundColor: tagHelper.getBackgroundColor(props.colour),
       color: tagHelper.getContrastColor(props.colour),
+      maxWidth: 'calc(100% - 0.5rem)',
     }"
     :title="props.value"
   >

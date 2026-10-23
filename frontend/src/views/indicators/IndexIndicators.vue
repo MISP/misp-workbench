@@ -7,6 +7,8 @@ import Timestamp from "@/components/misc/Timestamp.vue";
 import Pagination from "@/components/misc/Pagination.vue";
 import ScoreBadge from "@/components/indicators/ScoreBadge.vue";
 import IndicatorDetails from "@/components/indicators/IndicatorDetails.vue";
+import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
+import { faShield } from "@fortawesome/free-solid-svg-icons";
 
 const indicatorsStore = useIndicatorsStore();
 const { page, indicatorsStatus, status } = storeToRefs(indicatorsStore);
@@ -199,10 +201,12 @@ load();
                   <td class="indicator-value">
                     <span
                       v-if="indicator.to_ids"
-                      class="badge text-bg-primary me-1"
+                      class="badge border bg-danger-subtle text-danger border-danger-subtle me-1"
                       title="At least one attribute is flagged for IDS"
-                      >IDS</span
                     >
+                      <FontAwesomeIcon :icon="faShield" />
+                      <span class="visually-hidden">Flagged for IDS</span>
+                    </span>
                     <span
                       v-for="issue in indicator.validation_issues || []"
                       :key="issue"

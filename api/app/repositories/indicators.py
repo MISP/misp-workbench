@@ -101,6 +101,8 @@ MAX_EVENTS_LISTED = 50
 EVENT_CACHE_SIZE = 100_000
 SYNC_OVERLAP_SECONDS = 30
 LOCK_SECONDS = 2 * 3600
+# How soon a requested rebuild tries again while a sync or rebuild runs.
+REBUILD_RETRY_SECONDS = 30
 TOMBSTONE_RETENTION_SECONDS = 30 * 86400
 
 ATTRIBUTE_SOURCE = [
@@ -499,12 +501,21 @@ def build_indicator(
 class _Run:
     """State shared by the batches of one sync or rebuild."""
 
-    def __init__(self):
+    def __init__(self, exact_scores: bool = False):
         self.client = get_opensearch_client()
         self.events = _Events(self.client, _organisation_names())
         self.scoring = scoring.load_config()
+        # A requested rebuild (a source's trust or the scoring settings
+        # changed) writes every score that moved, however little: otherwise a
+        # modifier of -3 would be computed and never stored.
+        self.exact_scores = exact_scores
         self.written = 0
         self.removed = 0
+
+    def score_changed(self, stored: Optional[int], new: Optional[int]) -> bool:
+        if self.exact_scores:
+            return stored != new
+        return scoring.needs_rewrite(stored, new, self.scoring)
 
 
 def refresh_values(values: Iterable[str], run: Optional[_Run] = None) -> dict:
@@ -562,8 +573,8 @@ def _refresh_batch(run: _Run, values: set) -> None:
     actions = []
     for doc_id, doc in docs.items():
         stored = existing.get(doc_id, {})
-        if stored.get("checksum") == doc["checksum"] and not scoring.needs_rewrite(
-            stored.get("score"), doc["score"], run.scoring
+        if stored.get("checksum") == doc["checksum"] and not run.score_changed(
+            stored.get("score"), doc["score"]
         ):
             continue
         actions.append(
@@ -708,19 +719,25 @@ def _lock(redis, wait_seconds: int) -> bool:
         time.sleep(1)
 
 
-def rebuild(wait_seconds: int = 0) -> Optional[dict]:
+def rebuild(wait_seconds: int = 0, requested: bool = False) -> Optional[dict]:
     """Recompute every indicator and tombstone the orphaned ones.
 
     Unchanged indicators aren't rewritten, so a rebuild over a quiet index
-    writes nothing. Returns counts, or None when a sync or rebuild holds the
-    lock for longer than ``wait_seconds``.
+    writes nothing. ``requested``: something changed that every score depends
+    on (see request_rebuild), so every score that moved is written, not only
+    moves of ``refresh_step`` or more. Returns counts, or None when a sync or
+    rebuild holds the lock for longer than ``wait_seconds``.
     """
     redis = get_redis_client()
     if not _lock(redis, wait_seconds):
         return None
+    if requested:
+        # This run reads the settings and every source's trust now: a request
+        # from here on needs a run of its own, so it may queue one.
+        redis.delete(REBUILD_QUEUED_KEY)
     try:
         started = int(time.time())
-        run = _Run()
+        run = _Run(exact_scores=requested)
         client = run.client
         for values in _all_values(client):
             refresh_values(values, run)
@@ -753,7 +770,7 @@ def rebuild(wait_seconds: int = 0) -> Optional[dict]:
         logger.info("indicators rebuilt: %s", result)
         return result
     finally:
-        redis.delete(LOCK_KEY, REBUILD_QUEUED_KEY)
+        redis.delete(LOCK_KEY)
 
 
 def sync() -> Optional[dict]:
@@ -816,11 +833,15 @@ def _event_values(client, event_uuids: list[str]) -> Iterator[list[str]]:
 
 
 def request_rebuild() -> None:
+    """Queue a rebuild for a change every score depends on: a source's trust,
+    the scoring settings. Requests are merged until the queued rebuild starts,
+    since it reads the latest of everything then; one arriving while it runs
+    queues the next, rather than being lost to a run that read too early."""
     from app.worker import tasks
 
     redis = get_redis_client()
     if redis.set(REBUILD_QUEUED_KEY, "1", nx=True, ex=LOCK_SECONDS):
-        tasks.rebuild_indicators.delay()
+        tasks.rebuild_indicators.apply_async(kwargs={"requested": True})
 
 
 def mark_sighted(values: Iterable[str]) -> None:

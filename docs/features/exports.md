@@ -218,9 +218,9 @@ be offline for four days and still catch up from deltas.
 
 !!! warning "What deltas can't see"
     Deltas track attribute writes. Hard deletes (force-deleting an event,
-    retention purges) remove documents outright, and soft-deleting an *event*
-    doesn't touch its attributes. Re-download the full feed periodically to
-    resynchronise. The [streaming exports](api/streaming-exports.md#incremental-pulls)
+    retention purges) remove documents outright. Re-download the full feed
+    periodically to resynchronise. Soft-deleting an event marks its
+    attributes deleted too, so deltas report those. The [streaming exports](api/streaming-exports.md#incremental-pulls)
     API has the same caveat.
 
 To create one, pick the **NDJSON** format, switch on **Incremental feed** and

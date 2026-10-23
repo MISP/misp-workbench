@@ -41,6 +41,8 @@ CORRELATION_SOURCE_FIELDS = [
     "type",
     "value",
     "event_uuid",
+    "timestamp",
+    "@timestamp",
     "disable_correlation",
     "deleted",
     "expanded.ja4",
@@ -316,6 +318,8 @@ def attribute_ref(doc):
         "type": doc["_source"].get("type"),
         "value": doc["_source"].get("value"),
         "event_uuid": doc["_source"].get("event_uuid"),
+        "timestamp": doc["_source"].get("timestamp"),
+        "@timestamp": doc["_source"].get("@timestamp"),
         "ja4_variant": (ja4_of(doc) or {}).get("variant"),
     }
 
@@ -367,8 +371,17 @@ def event_correlation_disabled(event_uuid):
     return bool(doc["_source"].get("disable_correlation", False))
 
 
+def seen_at(source, target, computed_at: str) -> str:
+    """When a correlation appeared in the data: the later of its two
+    attributes' ``@timestamp``, so Explore's time range, histogram and sort
+    read it like the attributes'. ``computed_at`` when neither has one."""
+    later = max((source, target), key=lambda a: a.get("timestamp") or 0)
+    return later.get("@timestamp") or computed_at
+
+
 def build_correlation_doc(source, target, match_type, score):
     """Build the bulk action for a single directed source -> target correlation."""
+    computed_at = datetime.datetime.now(datetime.timezone.utc).isoformat()
     correlation = {
         "_index": "misp-attribute-correlations",
         "_id": f"{source['uuid']}|{target['uuid']}|{match_type}",
@@ -382,7 +395,9 @@ def build_correlation_doc(source, target, match_type, score):
             "target_event_uuid": target["event_uuid"],
             "match_type": match_type,
             "score": score,
-            "@timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+            "@timestamp": seen_at(source, target, computed_at),
+            # When it was computed: correlations are regenerated in bulk.
+            "created_at": computed_at,
         },
     }
 

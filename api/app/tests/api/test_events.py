@@ -906,3 +906,40 @@ class TestEventsResource(ApiTester):
             headers={"Authorization": "Bearer " + auth_token},
         )
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+
+class TestDeleteEventContents(ApiTester):
+    """A deleted event takes its attributes and objects with it."""
+
+    @pytest.mark.parametrize("scopes", [["events:delete"]])
+    def test_delete_event_marks_contents_deleted(
+        self,
+        client: TestClient,
+        event_1: object,
+        attribute_1: object,
+        object_1: object,
+        auth_token: auth.Token,
+    ):
+        from app.repositories import indicators as indicators_repository
+        from app.services.opensearch import get_opensearch_client
+        from app.services.redis import get_redis_client
+
+        response = client.delete(
+            f"/events/{event_1.uuid}",
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+        assert response.status_code == status.HTTP_204_NO_CONTENT
+
+        os_client = get_opensearch_client()
+        for index, uuid in (
+            ("misp-attributes", attribute_1.uuid),
+            ("misp-objects", object_1.uuid),
+        ):
+            # Searches and exports filter on the document's own flag.
+            doc = os_client.get(index=index, id=str(uuid))["_source"]
+            assert doc["deleted"] is True, index
+
+        # Queued for the next indicators sync.
+        assert get_redis_client().sismember(
+            indicators_repository.DIRTY_EVENTS_KEY, str(event_1.uuid)
+        )
