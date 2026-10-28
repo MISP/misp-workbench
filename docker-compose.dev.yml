@@ -83,6 +83,18 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
+  bulk-worker:
+    command:
+      [
+        "sh",
+        "-c",
+        "exec poetry run celery -A app.worker.tasks worker --loglevel=debug --hostname=bulk1@%h --queues=bulk --concurrency=1 --pool=solo",
+      ]
+    volumes:
+      - ./api:/code
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
   reactor-worker:
     command:
       [

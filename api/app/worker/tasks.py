@@ -113,8 +113,6 @@ celery_app.conf.update(
             "schedule": 300.0,
             "options": {"expires": 300},
         },
-        # Flag attributes written since the last run with the warninglists
-        # they hit (a full re-evaluation runs whenever the lists change).
         # Restart ingestion runs whose drain tasks were lost (a worker killed
         # mid-batch), so they don't sit on their slot until they expire.
         "ingest-runs-revive": {
@@ -122,6 +120,8 @@ celery_app.conf.update(
             "schedule": 300.0,
             "options": {"expires": 300},
         },
+        # Flag attributes written since the last run with the warninglists
+        # they hit (a full re-evaluation runs whenever the lists change).
         "warninglists-evaluate-recent": {
             "task": "app.worker.tasks.evaluate_recent_warninglist_hits",
             "schedule": 60.0,
@@ -139,10 +139,13 @@ engine = create_engine(SQLALCHEMY_DATABASE_URL)
 # can't hold up the others:
 # - ``ingest``: feed fetches, server pulls and pushes, and the correlation
 #   and notification follow-ups of bulk ingests (the ``ingest-worker``);
-# - ``maintenance``: periodic jobs and rebuilds (the main ``worker``, which
-#   consumes ``celery,maintenance``).
+# - ``maintenance``: frequent periodic jobs that keep things in step
+#   incrementally (the main ``worker``, which consumes ``celery,maintenance``);
+# - ``bulk``: rebuilds and reloads that walk everything and run for minutes
+#   to hours (the ``bulk-worker``), so they can't delay the jobs above.
 INGEST_QUEUE = "ingest"
 MAINTENANCE_QUEUE = "maintenance"
+BULK_QUEUE = "bulk"
 
 # Attributes handed to a single correlate_attributes task by a bulk ingest.
 CORRELATION_BATCH_SIZE = 500
@@ -1039,7 +1042,7 @@ def servo_backfill(run_id: int):
     return True
 
 
-@celery_app.task(queue=MAINTENANCE_QUEUE)
+@celery_app.task(queue=BULK_QUEUE)
 def generate_correlations():
     logger.info("generate correlations job started")
 
@@ -1089,7 +1092,7 @@ def generate_correlations():
             pass
 
 
-@celery_app.task(queue=MAINTENANCE_QUEUE)
+@celery_app.task(queue=BULK_QUEUE)
 def enforce_retention():
     logger.info("enforce_retention job started")
     with Session(engine) as db:
@@ -1519,7 +1522,7 @@ def delete_indexed_attribute(attribute_uuid: str):
     return True
 
 
-@celery_app.task(queue=MAINTENANCE_QUEUE)
+@celery_app.task(queue=BULK_QUEUE)
 def load_galaxies(user_id: int):
     """Load galaxies from the bundled misp-galaxy submodule into the database.
 
@@ -1551,7 +1554,7 @@ def load_galaxies(user_id: int):
             return False
 
 
-@celery_app.task(queue=MAINTENANCE_QUEUE)
+@celery_app.task(queue=BULK_QUEUE)
 def load_taxonomies():
     logger.info("load_taxonomies job started")
 
@@ -1766,7 +1769,7 @@ def sync_sink_memberships():
     return len(sink_ids)
 
 
-@celery_app.task(queue=MAINTENANCE_QUEUE, ignore_result=True)
+@celery_app.task(queue=BULK_QUEUE, ignore_result=True)
 def evaluate_local_warninglists():
     """Recompute the members of every organisation's list."""
     from app.repositories import local_warninglists
@@ -1887,7 +1890,7 @@ def sync_lookup_cache():
 
 
 @celery_app.task(
-    queue=MAINTENANCE_QUEUE,
+    queue=BULK_QUEUE,
     ignore_result=True,
     time_limit=1800,
     soft_time_limit=1700,
@@ -1918,7 +1921,7 @@ def sync_indicators():
 
 
 @celery_app.task(
-    queue=MAINTENANCE_QUEUE,
+    queue=BULK_QUEUE,
     ignore_result=True,
     time_limit=4 * 3600,
     soft_time_limit=4 * 3600 - 60,
@@ -1947,7 +1950,7 @@ def rebuild_indicators(requested: bool = False):
 # ──────────────────────────────────────────────────────────────────────────
 
 
-@celery_app.task(queue=MAINTENANCE_QUEUE, time_limit=3600, soft_time_limit=3500)
+@celery_app.task(queue=BULK_QUEUE, time_limit=3600, soft_time_limit=3500)
 def load_warninglists():
     """Load the misp-warninglists submodule, then re-flag attributes if needed."""
     from app.repositories import warninglists as warninglists_repository
@@ -1960,7 +1963,7 @@ def load_warninglists():
 
 
 @celery_app.task(
-    queue=MAINTENANCE_QUEUE,
+    queue=BULK_QUEUE,
     time_limit=4 * 3600,
     soft_time_limit=4 * 3600 - 60,
 )

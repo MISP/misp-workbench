@@ -57,7 +57,8 @@ Tasks are spread over queues, each consumed by its own worker, so that one kind 
 
 | Queue | Worker | Work |
 |---|---|---|
-| `celery` (default), `maintenance` | `worker` | User-triggered work; periodic jobs and rebuilds |
+| `celery` (default), `maintenance` | `worker` | User-triggered work; frequent periodic jobs (indicator and lookup cache sync, EDL refreshes, recent warninglist hits, ...) |
+| `bulk` | `bulk-worker` | Rebuilds and reloads that walk everything: correlations, indicators, lookup cache, warninglists, galaxies, taxonomies, retention |
 | `ingest` | `ingest-worker` | Feed fetches, server pulls and pushes, bulk-ingest correlation and notification follow-ups |
 | `sinks` | `sinks-worker` | Deliveries to outbound sinks |
 | `reactor_sandbox` | `reactor-worker` | Reactor scripts |
