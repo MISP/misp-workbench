@@ -13,7 +13,7 @@ Additional rules such a filtering based on _Organisations_, or _Tags_ or _Timest
 ## How it works
 
 1. The worker fetches `<url>/manifest.json` to get the list of event UUIDs.
-2. New or updated events are enqueued as individual fetch tasks.
+2. New or updated events are queued for the feed's [ingestion run](index.md#ingestion-runs), which downloads them a batch at a time.
 3. Each event is downloaded, parsed, and stored including attributes, objects, tags, and galaxies.
 4. The event is indexed in OpenSearch.
 

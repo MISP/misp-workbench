@@ -8,7 +8,9 @@ from app.repositories import feeds as feeds_repository
 from app.repositories import freetext as freetext_repository
 from app.repositories import tasks as tasks_repository
 from app.schemas import feed as feed_schemas
+from app.schemas import ingest_run as ingest_run_schemas
 from app.schemas import user as user_schemas
+from app.services import ingest_runs
 from app.worker import tasks
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Security, UploadFile, status
 from sqlalchemy.orm import Session
@@ -203,7 +205,10 @@ def update_feed(
         get_current_active_user, scopes=["feeds:update"]
     ),
 ) -> feed_schemas.Feed:
-    return feeds_repository.update_feed(db=db, feed_id=feed_id, feed=feed)
+    db_feed = feeds_repository.update_feed(db=db, feed_id=feed_id, feed=feed)
+    if db_feed is not None and not db_feed.enabled:
+        ingest_runs.cancel("feed", feed_id, "the feed was disabled")
+    return db_feed
 
 
 @router.delete("/feeds/{feed_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -215,6 +220,7 @@ def delete_feed(
     ),
 ):
     tasks_repository.delete_scheduled_tasks_for_feed(feed_id)
+    ingest_runs.cancel("feed", feed_id, "the feed was deleted")
     return feeds_repository.delete_feed(db=db, feed_id=feed_id)
 
 
@@ -232,3 +238,24 @@ def fetch_feed(
 
     result = tasks.fetch_feed.delay(feed_id, user.id)
     return {"task": {"id": result.id, "name": "fetch_feed", "status": result.status}}
+
+
+@router.get("/feeds/{feed_id}/run", response_model=ingest_run_schemas.IngestRunStatus)
+def get_feed_run(
+    feed_id: int,
+    user: user_schemas.User = Security(get_current_active_user, scopes=["feeds:read"]),
+):
+    """The feed's fetch in progress (queued or running) and its last finished one."""
+    return ingest_runs.status("feed", feed_id)
+
+
+@router.delete(
+    "/feeds/{feed_id}/run", response_model=ingest_run_schemas.IngestRunStatus
+)
+def cancel_feed_run(
+    feed_id: int,
+    user: user_schemas.User = Security(get_current_active_user, scopes=["feeds:fetch"]),
+):
+    """Cancel the feed's fetch: the events it has yet to ingest are dropped."""
+    ingest_runs.cancel("feed", feed_id, "cancelled by user id=%s" % user.id)
+    return ingest_runs.status("feed", feed_id)

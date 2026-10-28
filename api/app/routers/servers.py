@@ -5,6 +5,8 @@ from app.schemas import server as server_schemas
 from app.schemas import task as task_schemas
 from app.schemas import user as user_schemas
 from app.schemas import event as event_schemas
+from app.schemas import ingest_run as ingest_run_schemas
+from app.services import ingest_runs
 from app.worker import tasks
 from app.settings import Settings
 from fastapi import APIRouter, Depends, HTTPException, Security, status
@@ -111,7 +113,35 @@ def delete_server(
         get_current_active_user, scopes=["servers:delete"]
     ),
 ):
+    ingest_runs.cancel("server", server_id, "the server was deleted")
     return servers_repository.delete_server(db=db, server_id=server_id)
+
+
+@router.get(
+    "/servers/{server_id}/run", response_model=ingest_run_schemas.IngestRunStatus
+)
+def get_server_run(
+    server_id: int,
+    user: user_schemas.User = Security(
+        get_current_active_user, scopes=["servers:read"]
+    ),
+):
+    """The server's pull in progress (queued or running) and its last finished one."""
+    return ingest_runs.status("server", server_id)
+
+
+@router.delete(
+    "/servers/{server_id}/run", response_model=ingest_run_schemas.IngestRunStatus
+)
+def cancel_server_run(
+    server_id: int,
+    user: user_schemas.User = Security(
+        get_current_active_user, scopes=["servers:pull"]
+    ),
+):
+    """Cancel the server's pull: the events it has yet to pull are dropped."""
+    ingest_runs.cancel("server", server_id, "cancelled by user id=%s" % user.id)
+    return ingest_runs.status("server", server_id)
 
 
 @router.post(

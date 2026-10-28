@@ -53,6 +53,18 @@ Celery is used for all long-running operations:
 
 Tasks are scheduled via **RedBeat** (Redis-backed Celery Beat scheduler) and monitored via **Flower** on port 5555.
 
+Tasks are spread over queues, each consumed by its own worker, so that one kind of work can't hold up the others:
+
+| Queue | Worker | Work |
+|---|---|---|
+| `celery` (default), `maintenance` | `worker` | User-triggered work; periodic jobs and rebuilds |
+| `ingest` | `ingest-worker` | Feed fetches, server pulls and pushes, bulk-ingest correlation and notification follow-ups |
+| `sinks` | `sinks-worker` | Deliveries to outbound sinks |
+| `reactor_sandbox` | `reactor-worker` | Reactor scripts |
+| `lab_kernel` | `lab-worker` | Tech Lab notebook kernels |
+
+Feed fetches and server pulls are bounded [ingestion runs](features/feeds/index.md#ingestion-runs).
+
 ### Authentication
 
 JWT-based OAuth2 with scoped tokens. Each endpoint declares required scopes (e.g. `feeds:read`, `feeds:fetch`). Tokens are issued by `POST /auth/token`.

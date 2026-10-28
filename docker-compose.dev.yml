@@ -62,8 +62,22 @@ services:
       [
         "sh",
         "-c",
-        "poetry run python -m debugpy --listen 0.0.0.0:5679 -m celery -A app.worker.tasks worker --loglevel=debug --hostname=worker1@%h --concurrency=1 --pool=solo",
+        "poetry run python -m debugpy --listen 0.0.0.0:5679 -m celery -A app.worker.tasks worker --loglevel=debug --hostname=worker1@%h --queues=celery,maintenance --concurrency=1 --pool=solo",
       ]
+    volumes:
+      - ./api:/code
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  ingest-worker:
+    command:
+      [
+        "sh",
+        "-c",
+        "exec poetry run celery -A app.worker.tasks worker --loglevel=debug --hostname=ingest1@%h --queues=ingest --concurrency=1 --pool=solo",
+      ]
+    # exec: celery, not sh, receives the stop signal and finishes its batch.
+    stop_grace_period: 5m
     volumes:
       - ./api:/code
     extra_hosts:

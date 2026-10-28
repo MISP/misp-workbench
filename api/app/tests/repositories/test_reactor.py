@@ -230,3 +230,28 @@ class TestActiveTriggerGate:
         ):
             # Must not raise.
             assert reactor_repository.refresh_active_triggers_cache(db) == set()
+
+    def test_warm_refreshes_a_cold_cache(self):
+        # Without it a cold cache stays open until the next script CRUD, and
+        # a feed ingest dispatches for every attribute it writes.
+        client = MagicMock()
+        client.exists.return_value = False
+        db = _fake_db_with([])
+        with patch(
+            "app.repositories.reactor.get_redis_client", return_value=client
+        ):
+            reactor_repository.warm_active_triggers_cache(db)
+        client.pipeline.return_value.set.assert_called_once_with(
+            "reactor:active_triggers:populated", "1"
+        )
+
+    def test_warm_leaves_a_populated_cache_alone(self):
+        client = MagicMock()
+        client.exists.return_value = True
+        db = _fake_db_with([])
+        with patch(
+            "app.repositories.reactor.get_redis_client", return_value=client
+        ):
+            reactor_repository.warm_active_triggers_cache(db)
+        db.query.assert_not_called()
+        client.pipeline.assert_not_called()

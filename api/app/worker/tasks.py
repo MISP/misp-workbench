@@ -1,3 +1,4 @@
+import functools
 import logging
 import os
 import smtplib
@@ -8,6 +9,7 @@ from uuid import UUID
 
 from app.database import SQLALCHEMY_DATABASE_URL
 from app.services.opensearch import get_opensearch_client
+from app.services import ingest_runs
 from app.services.redis import get_redis_client
 from app.settings import get_settings
 from app.services.runtime_settings_provider import get_runtime_settings
@@ -31,6 +33,7 @@ from app.services.tech_lab.reactor import runner as reactor_runner
 from app.services.tech_lab.lab import executor as lab_executor
 from app.services.tech_lab.lab import kernel_manager as lab_kernel_manager
 from celery import Celery
+from celery.exceptions import SoftTimeLimitExceeded
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
@@ -50,60 +53,79 @@ celery_app.conf.update(
     task_soft_time_limit=None,
     beat_scheduler="redbeat.RedBeatScheduler",
     redbeat_redis_url=os.environ.get("CELERY_BROKER_URL"),
+    # Every entry expires after its own interval: behind a backlog a stale run
+    # is dropped, the next one is on its way, instead of the runs piling up.
     beat_schedule={
         # Keep the lookup prefilter in step with OpenSearch: add new indicator
         # values every few seconds, rebuild (dropping stale ones) hourly.
         "lookup-cache-sync": {
             "task": "app.worker.tasks.sync_lookup_cache",
             "schedule": 15.0,
+            "options": {"expires": 15},
         },
         "lookup-cache-rebuild": {
             "task": "app.worker.tasks.rebuild_lookup_cache",
             "schedule": 3600.0,
+            "options": {"expires": 3600},
         },
         # Consolidated indicators (one per type + value): refresh what changed
         # every few seconds, walk everything hourly.
         "indicators-sync": {
             "task": "app.worker.tasks.sync_indicators",
             "schedule": 15.0,
+            "options": {"expires": 15},
         },
         "indicators-rebuild": {
             "task": "app.worker.tasks.rebuild_indicators",
             "schedule": 3600.0,
+            "options": {"expires": 3600},
         },
         # Keep membership-synced sinks in step with their profiles.
         "sinks-membership-sync": {
             "task": "app.worker.tasks.sync_sink_memberships",
             "schedule": 300.0,
+            "options": {"expires": 300},
         },
         # Organisations' warninglists: match the indicators written since the
         # last run.
         "local-warninglists-evaluate-recent": {
             "task": "app.worker.tasks.evaluate_recent_local_warninglists",
             "schedule": 60.0,
+            "options": {"expires": 60},
         },
         # Organisations' warninglists: drop expired entries, sync the lists
         # whose source URL is due (daily).
         "local-warninglists-sweep": {
             "task": "app.worker.tasks.sweep_local_warninglists",
             "schedule": 300.0,
+            "options": {"expires": 300},
         },
         # External dynamic lists: rebuild those due (each has its own refresh).
         "edls-refresh": {
             "task": "app.worker.tasks.refresh_edls",
             "schedule": 60.0,
+            "options": {"expires": 60},
         },
         # Look ahead at gated detection profiles: hold (and notify about)
         # changes their next run would hold, before it comes.
         "profile-gates-check": {
             "task": "app.worker.tasks.check_profile_gates",
             "schedule": 300.0,
+            "options": {"expires": 300},
         },
         # Flag attributes written since the last run with the warninglists
         # they hit (a full re-evaluation runs whenever the lists change).
+        # Restart ingestion runs whose drain tasks were lost (a worker killed
+        # mid-batch), so they don't sit on their slot until they expire.
+        "ingest-runs-revive": {
+            "task": "app.worker.tasks.revive_stalled_ingest_runs",
+            "schedule": 300.0,
+            "options": {"expires": 300},
+        },
         "warninglists-evaluate-recent": {
             "task": "app.worker.tasks.evaluate_recent_warninglist_hits",
             "schedule": 60.0,
+            "options": {"expires": 60},
         },
     },
 )
@@ -112,8 +134,23 @@ logger = logging.getLogger(__name__)
 
 engine = create_engine(SQLALCHEMY_DATABASE_URL)
 
+# Queues besides Celery's default one (``celery``: user-triggered work and
+# everything else), each consumed by its own worker so that one kind of work
+# can't hold up the others:
+# - ``ingest``: feed fetches, server pulls and pushes, and the correlation
+#   and notification follow-ups of bulk ingests (the ``ingest-worker``);
+# - ``maintenance``: periodic jobs and rebuilds (the main ``worker``, which
+#   consumes ``celery,maintenance``).
+INGEST_QUEUE = "ingest"
+MAINTENANCE_QUEUE = "maintenance"
+
 # Attributes handed to a single correlate_attributes task by a bulk ingest.
 CORRELATION_BATCH_SIZE = 500
+
+# A drain task ingests ingest_runs.BATCH_SIZE events; this bounds one that hangs.
+DRAIN_SOFT_TIME_LIMIT = 30 * 60
+# Feeds ingested by a single task (CSV, freetext, JSON).
+SINGLE_FEED_SOFT_TIME_LIMIT = 2 * 3600
 
 
 def _reactor_event_payload(os_event, event_uuid: str) -> dict:
@@ -153,33 +190,242 @@ def _reactor_object_payload(os_obj, object_uuid: str, event_uuid: str | None) ->
     return data
 
 
-def _dispatch_if_subscribed(resource_type: str, action: str, payload: dict) -> None:
+def _dispatch_if_subscribed(
+    resource_type: str, action: str, payload: dict, queue: str | None = None
+) -> None:
     """Skip the Celery hop when no active script subscribes to this trigger.
 
     The gate is best-effort (Redis-backed, fail-open). If it returns False we
     can be confident no script is listening; if it returns True we still hand
     off to ``reactor_dispatch`` which does the authoritative DB check.
+
+    ``queue``: where the dispatch goes instead of the default queue; ingest
+    follow-ups pass INGEST_QUEUE, so that a large feed's thousands of
+    dispatches (all of them while the gate's cache is cold) stay off it.
     """
-    if reactor_repository.has_active_subscriber(resource_type, action):
+    if not reactor_repository.has_active_subscriber(resource_type, action):
+        return
+    if queue:
+        reactor_dispatch.apply_async((resource_type, action, payload), queue=queue)
+    else:
         reactor_dispatch.delay(resource_type, action, payload)
 
 
-@celery_app.task
-def server_pull_by_id(server_id: int, user_id: int, technique: str):
-    logger.info("pull server_id=%s job started", server_id)
+def _ingest_settings() -> tuple[int, bool]:
+    """``(max_concurrent_runs, paused)`` from the ``ingest`` runtime settings."""
+    with Session(engine) as db:
+        runtimeSettings = get_runtime_settings(db)
+    return (
+        int(runtimeSettings.get_value("ingest.max_concurrent_runs", 2) or 0),
+        bool(runtimeSettings.get_value("ingest.paused", False)),
+    )
 
+
+def _admit_ingest_run(task, kind: str, source_id: int, user_id: int, args, queued):
+    """Open (or resume waiting for) a source's ingestion run.
+
+    Returns None when the run may go ahead, otherwise the result the task
+    should return: the source is already being ingested, or the run has to
+    wait for a slot (or for ingestion to be resumed) and was queued again.
+    """
+    if queued:
+        # A retry of a run that was waiting: it may have been cancelled since.
+        if not ingest_runs.is_open(kind, source_id):
+            return {
+                "result": "cancelled",
+                "message": "%s id=%s run was cancelled." % (kind, source_id),
+            }
+    elif not ingest_runs.claim(kind, source_id, user_id):
+        logger.info("%s id=%s already has a run, skipped", kind, source_id)
+        return {
+            "result": "skipped",
+            "message": "%s id=%s is already queued or being ingested."
+            % (kind, source_id),
+        }
+
+    max_runs, paused = _ingest_settings()
+    if paused or not ingest_runs.admit(kind, source_id, max_runs):
+        ingest_runs.heartbeat(kind, source_id)
+        task.apply_async(
+            args, {"queued": True}, countdown=ingest_runs.QUEUED_RETRY_SECONDS
+        )
+        return {
+            "result": "queued",
+            "message": "%s id=%s is waiting for %s."
+            % (
+                kind,
+                source_id,
+                "ingestion to be resumed" if paused else "an ingestion slot",
+            ),
+        }
+
+    return None
+
+
+def start_ingest_drainers(kind: str, source_id: int, user_id: int, count: int):
+    """Queue the events of a run and the tasks that ingest them.
+
+    Returns how many events were queued; with none, the run is closed here.
+    """
+    if not count:
+        ingest_runs.finish(kind, source_id)
+        return 0
+
+    drainers = min(ingest_runs.DRAINERS_PER_RUN, -(-count // ingest_runs.BATCH_SIZE))
+    ingest_runs.set_drainers(kind, source_id, drainers)
+    for _ in range(drainers):
+        drain_ingest_run.delay(kind, source_id, user_id)
+    return count
+
+
+def _ingest_source(db, kind: str, source_id: int):
+    """The feed or server a run ingests from, None once gone or disabled."""
+    if kind == "feed":
+        db_feed = feeds_repository.get_feed_by_id(db, feed_id=source_id)
+        return db_feed if db_feed is not None and db_feed.enabled else None
+    return servers_repository.get_server_by_id(db, source_id)
+
+
+def _ingest_event(db, kind: str, event_uuid: str, source, user):
+    if kind == "feed":
+        feeds_repository.process_feed_event(db, event_uuid, source, user)
+        return
+
+    db_event = servers_repository.pull_event_by_uuid(
+        db, event_uuid, source, user, get_settings()
+    )
+    if db_event:
+        notifications_repository.create_event_notifications(
+            db, "created", event=db_event
+        )
+
+
+@celery_app.task(
+    queue=INGEST_QUEUE,
+    soft_time_limit=DRAIN_SOFT_TIME_LIMIT,
+    time_limit=DRAIN_SOFT_TIME_LIMIT + 60,
+)
+def drain_ingest_run(kind: str, source_id: int, user_id: int):
+    """Ingest the next batch of a run's events, then queue the run's next turn.
+
+    A failing event is logged and counted, and the batch goes on: the next
+    fetch tries it again.
+    """
+    if not ingest_runs.is_open(kind, source_id):
+        return {"result": "skipped", "message": "The run is no longer open."}
+
+    _, paused = _ingest_settings()
+    if paused:
+        # Waiting, not stalled: keep the watchdog from reviving it.
+        ingest_runs.record(kind, source_id, 0, 0)
+        drain_ingest_run.apply_async(
+            (kind, source_id, user_id), countdown=ingest_runs.QUEUED_RETRY_SECONDS
+        )
+        return {"result": "queued", "message": "Ingestion is paused."}
+
+    done = failed = 0
+    batch = []
     with Session(engine) as db:
         user = users_repository.get_user_by_id(db, user_id)
-        if user is None:
-            raise Exception("User not found")
+        source = _ingest_source(db, kind, source_id)
+        if user is None or source is None:
+            ingest_runs.cancel(
+                kind, source_id, "the %s was disabled or removed" % kind
+            )
+        else:
+            batch = ingest_runs.take(kind, source_id)
 
-        servers_repository.pull_server_by_id(db, server_id, user, technique)
-        logger.info("pull server_id=%s job finished", server_id)
+        if batch:
+            with attributes_repository.bulk_ingest():
+                for index, event_uuid in enumerate(batch):
+                    try:
+                        _ingest_event(db, kind, event_uuid, source, user)
+                        done += 1
+                    except SoftTimeLimitExceeded:
+                        db.rollback()
+                        failed += 1
+                        ingest_runs.put_back(kind, source_id, batch[index + 1 :])
+                        logger.error(
+                            "%s id=%s event uuid=%s hit the time limit",
+                            kind,
+                            source_id,
+                            event_uuid,
+                        )
+                        break
+                    except Exception:
+                        db.rollback()
+                        failed += 1
+                        logger.exception(
+                            "%s id=%s event uuid=%s failed to ingest",
+                            kind,
+                            source_id,
+                            event_uuid,
+                        )
 
+    ingest_runs.record(kind, source_id, done, failed)
+
+    if batch:
+        drain_ingest_run.delay(kind, source_id, user_id)
+    elif ingest_runs.drainer_done(kind, source_id):
+        ingest_runs.finish(kind, source_id)
+        logger.info("%s id=%s ingestion run finished", kind, source_id)
+
+    return {"result": "success", "ingested": done, "failed": failed}
+
+
+@celery_app.task(queue=MAINTENANCE_QUEUE, ignore_result=True)
+def revive_stalled_ingest_runs():
+    """Restart the drain tasks of runs that stopped progressing (see
+    ingest_runs.stalled_runs), or close those with nothing left."""
+    revived = 0
+    for run in ingest_runs.stalled_runs():
+        kind, source_id = run["kind"], run["source_id"]
+        if run["pending"] and run["user_id"]:
+            logger.warning("%s id=%s run stalled, restarting it", kind, source_id)
+            ingest_runs.record(kind, source_id, 0, 0)  # restarts the clock
+            start_ingest_drainers(kind, source_id, run["user_id"], run["pending"])
+            revived += 1
+        else:
+            logger.warning("%s id=%s run stalled, closing it", kind, source_id)
+            # Every event was taken, but a drain task was lost on the way.
+            ingest_runs.finish(
+                kind,
+                source_id,
+                ingest_runs.FAILED,
+                "a drain task was lost; the next fetch ingests what it missed",
+            )
+    return revived
+
+
+@celery_app.task(bind=True, queue=INGEST_QUEUE)
+def server_pull_by_id(
+    self, server_id: int, user_id: int, technique: str, queued: bool = False
+):
+    logger.info("pull server_id=%s job started", server_id)
+
+    held = _admit_ingest_run(
+        self, "server", server_id, user_id, (server_id, user_id, technique), queued
+    )
+    if held is not None:
+        return held
+
+    try:
+        with Session(engine) as db:
+            user = users_repository.get_user_by_id(db, user_id)
+            if user is None:
+                raise Exception("User not found")
+
+            servers_repository.pull_server_by_id(db, server_id, user, technique)
+    except Exception as error:
+        ingest_runs.finish("server", server_id, ingest_runs.FAILED, str(error))
+        raise
+
+    logger.info("pull server_id=%s job finished", server_id)
     return True
 
 
-@celery_app.task
+# Kept for messages queued before server pulls became runs (drain_ingest_run).
+@celery_app.task(queue=INGEST_QUEUE)
 def pull_event_by_uuid(event_uuid: str, server_id: int, user_id: int):
     logger.info(
         "pull event uuid=%s from server id=%s, job started", event_uuid, server_id
@@ -210,7 +456,7 @@ def pull_event_by_uuid(event_uuid: str, server_id: int, user_id: int):
     return True
 
 
-@celery_app.task
+@celery_app.task(queue=INGEST_QUEUE)
 def server_push_by_id(server_id: int, user_id: int, technique: str):
     logger.info("push server_id=%s job started", server_id)
 
@@ -225,7 +471,7 @@ def server_push_by_id(server_id: int, user_id: int, technique: str):
     return True
 
 
-@celery_app.task
+@celery_app.task(queue=INGEST_QUEUE)
 def push_event_by_uuid(event_uuid: str, server_id: int, user_id: int):
     logger.info(
         "push event uuid=%s to server id=%s, job started", event_uuid, server_id
@@ -393,10 +639,24 @@ def handle_created_object(object_uuid: str, event_uuid: str | None, bulk: bool =
         if os_obj is not None:
             notifications_repository.create_object_notifications(db, "created", object=os_obj)
             _dispatch_if_subscribed(
-                "object", "created", _reactor_object_payload(os_obj, object_uuid, event_uuid)
+                "object",
+                "created",
+                _reactor_object_payload(os_obj, object_uuid, event_uuid),
+                queue=INGEST_QUEUE if bulk else None,
             )
 
     return True
+
+
+def enqueue_created_object(object_uuid: str, event_uuid: str | None, bulk: bool):
+    """Queue handle_created_object; one per object of a bulk ingest goes to
+    the ingest queue with the rest of the ingest's follow-ups."""
+    if bulk:
+        handle_created_object.apply_async(
+            (object_uuid, event_uuid, bulk), queue=INGEST_QUEUE
+        )
+    else:
+        handle_created_object.delay(object_uuid, event_uuid, bulk)
 
 
 @celery_app.task
@@ -462,24 +722,44 @@ def send_email(email: dict):
     return True
 
 
-@celery_app.task
-def fetch_feed(feed_id: int, user_id: int):
+@celery_app.task(bind=True, queue=INGEST_QUEUE)
+def fetch_feed(self, feed_id: int, user_id: int, queued: bool = False):
     logger.info("fetch feed id=%s job started", feed_id)
 
-    with Session(engine) as db:
-        user = users_repository.get_user_by_id(db, user_id)
+    held = _admit_ingest_run(self, "feed", feed_id, user_id, (feed_id, user_id), queued)
+    if held is not None:
+        return held
 
-        feeds_repository.fetch_feed(db, feed_id, user)
+    try:
+        with Session(engine) as db:
+            user = users_repository.get_user_by_id(db, user_id)
+            result = feeds_repository.fetch_feed(db, feed_id, user)
+    except Exception as error:
+        ingest_runs.finish("feed", feed_id, ingest_runs.FAILED, str(error))
+        raise
 
-        logger.info("fetch feed id=%s all event fetch tasks enqueued.", feed_id)
-
-        return {
-            "result": "success",
-            "message": "All feed id=%s events to fetch enqueued." % feed_id,
-        }
+    logger.info("fetch feed id=%s job finished: %s", feed_id, result["message"])
+    return result
 
 
-@celery_app.task
+def _closes_feed_run(task_fn):
+    """Close the feed's run when the single task ingesting it ends."""
+
+    @functools.wraps(task_fn)
+    def wrapper(feed_id: int, user_id: int):
+        try:
+            result = task_fn(feed_id, user_id)
+        except Exception as error:
+            ingest_runs.finish("feed", feed_id, ingest_runs.FAILED, str(error))
+            raise
+        ingest_runs.finish("feed", feed_id)
+        return result
+
+    return wrapper
+
+
+# Kept for messages queued before feed fetches became runs (drain_ingest_run).
+@celery_app.task(queue=INGEST_QUEUE)
 def fetch_feed_event(event_uuid: str, feed_id: int, user_id: int):
     logger.info("fetch feed event uuid=%s job started", event_uuid)
 
@@ -493,7 +773,12 @@ def fetch_feed_event(event_uuid: str, feed_id: int, user_id: int):
     return result
 
 
-@celery_app.task
+@celery_app.task(
+    queue=INGEST_QUEUE,
+    soft_time_limit=SINGLE_FEED_SOFT_TIME_LIMIT,
+    time_limit=SINGLE_FEED_SOFT_TIME_LIMIT + 60,
+)
+@_closes_feed_run
 def fetch_csv_feed(feed_id: int, user_id: int):
     logger.info("fetch csv feed id=%s job started", feed_id)
 
@@ -558,7 +843,12 @@ def fetch_csv_feed(feed_id: int, user_id: int):
     }
 
 
-@celery_app.task
+@celery_app.task(
+    queue=INGEST_QUEUE,
+    soft_time_limit=SINGLE_FEED_SOFT_TIME_LIMIT,
+    time_limit=SINGLE_FEED_SOFT_TIME_LIMIT + 60,
+)
+@_closes_feed_run
 def fetch_freetext_feed(feed_id: int, user_id: int):
     logger.info("fetch freetext feed id=%s job started", feed_id)
 
@@ -620,7 +910,12 @@ def fetch_freetext_feed(feed_id: int, user_id: int):
     }
 
 
-@celery_app.task
+@celery_app.task(
+    queue=INGEST_QUEUE,
+    soft_time_limit=SINGLE_FEED_SOFT_TIME_LIMIT,
+    time_limit=SINGLE_FEED_SOFT_TIME_LIMIT + 60,
+)
+@_closes_feed_run
 def fetch_json_feed(feed_id: int, user_id: int):
     logger.info("fetch json feed id=%s job started", feed_id)
 
@@ -744,7 +1039,7 @@ def servo_backfill(run_id: int):
     return True
 
 
-@celery_app.task
+@celery_app.task(queue=MAINTENANCE_QUEUE)
 def generate_correlations():
     logger.info("generate correlations job started")
 
@@ -794,7 +1089,7 @@ def generate_correlations():
             pass
 
 
-@celery_app.task
+@celery_app.task(queue=MAINTENANCE_QUEUE)
 def enforce_retention():
     logger.info("enforce_retention job started")
     with Session(engine) as db:
@@ -1014,7 +1309,7 @@ def handle_unpublished_event(event_uuid: str):
     return True
 
 
-@celery_app.task
+@celery_app.task(queue=INGEST_QUEUE)
 def handle_created_attributes(items: list):
     """Handle a batch of created attributes: notifications and reactor dispatch.
 
@@ -1047,6 +1342,7 @@ def handle_created_attributes(items: list):
                 _reactor_attribute_payload(
                     os_attr, attribute_uuid, object_uuid, event_uuid
                 ),
+                queue=INGEST_QUEUE,
             )
 
     logger.info("handling %s created attributes job finished", len(items))
@@ -1085,7 +1381,7 @@ def enqueue_deferred_correlations(batch: dict):
     )
 
 
-@celery_app.task
+@celery_app.task(queue=INGEST_QUEUE)
 def correlate_attributes(attribute_uuids: list[str], rebuild: bool = False):
     """Correlate a batch of attributes produced by a bulk ingest."""
     logger.info("correlating %s attributes job started", len(attribute_uuids))
@@ -1223,7 +1519,7 @@ def delete_indexed_attribute(attribute_uuid: str):
     return True
 
 
-@celery_app.task()
+@celery_app.task(queue=MAINTENANCE_QUEUE)
 def load_galaxies(user_id: int):
     """Load galaxies from the bundled misp-galaxy submodule into the database.
 
@@ -1255,7 +1551,7 @@ def load_galaxies(user_id: int):
             return False
 
 
-@celery_app.task()
+@celery_app.task(queue=MAINTENANCE_QUEUE)
 def load_taxonomies():
     logger.info("load_taxonomies job started")
 
@@ -1304,7 +1600,7 @@ def run_hunt(hunt_id: int, **kwargs):
     return True
 
 
-@celery_app.task
+@celery_app.task(queue=MAINTENANCE_QUEUE)
 def run_correlation_hunts():
     """Re-run all active correlation hunts. Called after correlations are regenerated."""
     logger.info("run_correlation_hunts job started")
@@ -1338,6 +1634,8 @@ def reactor_dispatch(resource_type: str, action: str, payload: dict):
     ``reactor_sandbox`` queue served by an isolated worker container.
     """
     with Session(engine) as db:
+        # The gate fell open to get here; close it if it was only cold.
+        reactor_repository.warm_active_triggers_cache(db)
         reactor_repository.dispatch_triggered_scripts(db, resource_type, action, payload)
     return True
 
@@ -1456,7 +1754,7 @@ def _deliver_with_retries(task, sink_id: int, label: str, deliver):
         return sent
 
 
-@celery_app.task(ignore_result=True)
+@celery_app.task(queue=MAINTENANCE_QUEUE, ignore_result=True)
 def sync_sink_memberships():
     """Queue a membership sync of every sink that keeps in step with a profile."""
     from app.repositories import sinks as sinks_repository
@@ -1468,7 +1766,7 @@ def sync_sink_memberships():
     return len(sink_ids)
 
 
-@celery_app.task(ignore_result=True)
+@celery_app.task(queue=MAINTENANCE_QUEUE, ignore_result=True)
 def evaluate_local_warninglists():
     """Recompute the members of every organisation's list."""
     from app.repositories import local_warninglists
@@ -1477,7 +1775,7 @@ def evaluate_local_warninglists():
         return local_warninglists.evaluate_all(db)
 
 
-@celery_app.task(ignore_result=True)
+@celery_app.task(queue=MAINTENANCE_QUEUE, ignore_result=True)
 def evaluate_recent_local_warninglists():
     """Match the indicators written since the last run."""
     from app.repositories import local_warninglists
@@ -1486,7 +1784,7 @@ def evaluate_recent_local_warninglists():
         return local_warninglists.evaluate_recent(db)
 
 
-@celery_app.task(ignore_result=True)
+@celery_app.task(queue=MAINTENANCE_QUEUE, ignore_result=True)
 def sweep_local_warninglists():
     """Expire organisations' warninglist entries and sync due sources."""
     from app.repositories import local_warninglists
@@ -1495,7 +1793,7 @@ def sweep_local_warninglists():
         return local_warninglists.sweep(db)
 
 
-@celery_app.task(ignore_result=True)
+@celery_app.task(queue=MAINTENANCE_QUEUE, ignore_result=True)
 def refresh_edls():
     """Rebuild the external dynamic lists due."""
     from app.repositories import edls
@@ -1516,7 +1814,7 @@ def build_edl(edl_id: int):
             edls.build(db, edl)
 
 
-@celery_app.task(ignore_result=True)
+@celery_app.task(queue=MAINTENANCE_QUEUE, ignore_result=True)
 def check_profile_gates():
     """Look ahead at every detection profile with an approval gate."""
     from app.repositories import profile_gate
@@ -1580,7 +1878,7 @@ def deliver_items_to_sink(
 # ──────────────────────────────────────────────────────────────────────────
 
 
-@celery_app.task(ignore_result=True, expires=15)
+@celery_app.task(queue=MAINTENANCE_QUEUE, ignore_result=True, expires=15)
 def sync_lookup_cache():
     """Add values of indicators written since the last sync to the prefilter."""
     from app.repositories import lookup as lookup_repository
@@ -1588,7 +1886,12 @@ def sync_lookup_cache():
     return lookup_repository.sync_cache()
 
 
-@celery_app.task(ignore_result=True, time_limit=1800, soft_time_limit=1700)
+@celery_app.task(
+    queue=MAINTENANCE_QUEUE,
+    ignore_result=True,
+    time_limit=1800,
+    soft_time_limit=1700,
+)
 def rebuild_lookup_cache():
     """Rebuild the lookup prefilter from OpenSearch, dropping stale values."""
     from app.repositories import lookup as lookup_repository
@@ -1601,7 +1904,12 @@ def rebuild_lookup_cache():
 # ──────────────────────────────────────────────────────────────────────────
 
 
-@celery_app.task(ignore_result=True, expires=15, time_limit=2 * 3600)
+@celery_app.task(
+    queue=MAINTENANCE_QUEUE,
+    ignore_result=True,
+    expires=15,
+    time_limit=2 * 3600,
+)
 def sync_indicators():
     """Refresh the indicators of values written or sighted since the last sync."""
     from app.repositories import indicators as indicators_repository
@@ -1609,7 +1917,12 @@ def sync_indicators():
     return indicators_repository.sync()
 
 
-@celery_app.task(ignore_result=True, time_limit=4 * 3600, soft_time_limit=4 * 3600 - 60)
+@celery_app.task(
+    queue=MAINTENANCE_QUEUE,
+    ignore_result=True,
+    time_limit=4 * 3600,
+    soft_time_limit=4 * 3600 - 60,
+)
 def rebuild_indicators(requested: bool = False):
     """Recompute every indicator; tombstone those without live attributes.
 
@@ -1634,7 +1947,7 @@ def rebuild_indicators(requested: bool = False):
 # ──────────────────────────────────────────────────────────────────────────
 
 
-@celery_app.task(time_limit=3600, soft_time_limit=3500)
+@celery_app.task(queue=MAINTENANCE_QUEUE, time_limit=3600, soft_time_limit=3500)
 def load_warninglists():
     """Load the misp-warninglists submodule, then re-flag attributes if needed."""
     from app.repositories import warninglists as warninglists_repository
@@ -1646,7 +1959,11 @@ def load_warninglists():
     return counts
 
 
-@celery_app.task(time_limit=4 * 3600, soft_time_limit=4 * 3600 - 60)
+@celery_app.task(
+    queue=MAINTENANCE_QUEUE,
+    time_limit=4 * 3600,
+    soft_time_limit=4 * 3600 - 60,
+)
 def evaluate_all_warninglist_hits():
     """Re-evaluate every live attribute against the enabled warninglists."""
     from app.repositories import warninglists as warninglists_repository
@@ -1655,7 +1972,7 @@ def evaluate_all_warninglist_hits():
         return warninglists_repository.evaluate_all(db)
 
 
-@celery_app.task(ignore_result=True, expires=60)
+@celery_app.task(queue=MAINTENANCE_QUEUE, ignore_result=True, expires=60)
 def evaluate_recent_warninglist_hits():
     """Flag attributes written since the last run."""
     from app.repositories import warninglists as warninglists_repository
