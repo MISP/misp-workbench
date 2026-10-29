@@ -76,3 +76,22 @@ class FeedUpdate(FeedBase):
     coverage_by_other_feeds: Optional[float] = None
     score_modifier: Optional[int] = Field(None, ge=-100, le=100)
     score_cap: Optional[int] = Field(None, ge=0, le=100)
+
+
+class FeedEvent(BaseModel):
+    """A local event ingested from a feed."""
+
+    uuid: UUID
+    info: Optional[str] = None
+    date: Optional[str] = None
+    timestamp: Optional[int] = None
+    # When it was first ingested; unknown for events ingested before it was
+    # recorded.
+    created_at: Optional[int] = None
+    attribute_count: Optional[int] = None
+    published: Optional[bool] = None
+
+
+class FeedEvents(BaseModel):
+    total: int
+    events: list[FeedEvent]

@@ -4,6 +4,7 @@ import { RouterLink } from "vue-router";
 import Spinner from "@/components/misc/Spinner.vue";
 import { useFeedsStore } from "@/stores";
 import FeedActions from "@/components/feeds/FeedActions.vue";
+import IngestRunStatus from "@/components/ingest/IngestRunStatus.vue";
 
 const feedsStore = useFeedsStore();
 const { feeds, status } = storeToRefs(feedsStore);
@@ -34,6 +35,7 @@ function toggleEnable(feed) {
           <th scope="col" v-if="!$isMobile">provider</th>
           <th scope="col" v-if="!$isMobile">format</th>
           <th scope="col" v-if="!$isMobile">source</th>
+          <th scope="col" v-if="!$isMobile">fetch</th>
           <th scope="col" class="text-end">enabled</th>
           <th scope="col" class="text-end">actions</th>
         </tr>
@@ -59,6 +61,9 @@ function toggleEnable(feed) {
           <td>{{ feed.provider }}</td>
           <td v-if="!$isMobile">{{ feed.source_format }}</td>
           <td v-if="!$isMobile">{{ feed.input_source }}</td>
+          <td v-if="!$isMobile">
+            <IngestRunStatus kind="feed" :source-id="feed.id" compact />
+          </td>
           <td class="text-end">
             <div class="flex-wrap btn-group me-2" aria-label="Sync Actions">
               <button

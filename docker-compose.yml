@@ -174,7 +174,56 @@ services:
   worker:
     build:
       context: ./api
-    command: poetry run celery -A app.worker.tasks worker --loglevel=info --hostname worker@%h -E --autoscale=4,10
+    # User-triggered work (default ``celery`` queue) and frequent periodic
+    # jobs (``maintenance``).
+    command: poetry run celery -A app.worker.tasks worker --loglevel=info --hostname worker@%h --queues=celery,maintenance -E --autoscale=4,10
+    restart: unless-stopped
+    environment:
+      <<: *default-env
+    depends_on:
+      - api
+      - redis
+      - postgres
+    volumes:
+      - attachments-data:/tmp/attachments
+      - garage-creds:/var/lib/misp-workbench/secrets
+      - oauth-creds:/var/lib/misp-workbench/oauth-creds
+    networks:
+      - backend
+
+  ingest-worker:
+    build:
+      context: ./api
+    # Feed fetches and server pulls (and their correlation follow-ups) on the
+    # dedicated ``ingest`` queue, so a large feed can only take this worker's
+    # slots and never holds up user actions or periodic jobs. How many feeds
+    # ingest at once is the ``ingest.max_concurrent_runs`` runtime setting.
+    command: poetry run celery -A app.worker.tasks worker --loglevel=info --hostname ingest@%h --queues=ingest -E --concurrency=4
+    # A stop lets the batches in progress finish (a few minutes for large
+    # events) instead of killing them; killed ones are revived after a while.
+    stop_grace_period: 5m
+    restart: unless-stopped
+    environment:
+      <<: *default-env
+    depends_on:
+      - api
+      - redis
+      - postgres
+    volumes:
+      - attachments-data:/tmp/attachments
+      - garage-creds:/var/lib/misp-workbench/secrets
+      - oauth-creds:/var/lib/misp-workbench/oauth-creds
+    networks:
+      - backend
+
+  bulk-worker:
+    build:
+      context: ./api
+    # Rebuilds and reloads that walk everything (correlations, indicators,
+    # lookup cache, warninglists, galaxies, taxonomies, retention) on the
+    # ``bulk`` queue, so an hour-long rebuild never delays the frequent
+    # periodic jobs on ``maintenance``.
+    command: poetry run celery -A app.worker.tasks worker --loglevel=info --hostname bulk@%h --queues=bulk -E --concurrency=2
     restart: unless-stopped
     environment:
       <<: *default-env

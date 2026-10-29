@@ -106,14 +106,7 @@ function test() {
     <div class="card-body d-flex flex-column">
       <div class="container-lg">
         <div class="mb-4">
-          <div class="card">
-            <div class="card-header">
-              <h5 class="mb-0">Feed Settings</h5>
-            </div>
-            <div class="card-body">
-              <FeedBaseForm v-model="config" source-format="misp" />
-            </div>
-          </div>
+          <FeedBaseForm v-model="config" source-format="misp" />
         </div>
 
         <div class="mb-4">

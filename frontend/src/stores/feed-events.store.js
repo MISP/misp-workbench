@@ -11,6 +11,9 @@ export const useFeedEventsStore = defineStore("feed-events", {
     size: 20,
     total: 0,
     total_filtered: 0,
+    // Events of the (filtered) manifest ingested from this feed; null when
+    // unknown.
+    ingested: null,
     status: {
       loading: false,
       error: false,
@@ -31,6 +34,7 @@ export const useFeedEventsStore = defineStore("feed-events", {
           this.feed_events = result.events;
           this.total = result.total;
           this.total_filtered = result.total_filtered;
+          this.ingested = result.ingested ?? null;
         })
         .catch((error) => (this.status = { loading: false, error }))
         .finally(() => (this.status.loading = false));

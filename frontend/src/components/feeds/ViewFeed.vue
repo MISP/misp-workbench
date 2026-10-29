@@ -2,6 +2,8 @@
 import FeedActions from "@/components/feeds/FeedActions.vue";
 import SourceQualityCard from "@/components/indicators/SourceQualityCard.vue";
 import ViewFeedMISP from "@/components/feeds/misp/ViewFeedMISP.vue";
+import IngestRunStatus from "@/components/ingest/IngestRunStatus.vue";
+import FeedRecentEvents from "@/components/feeds/FeedRecentEvents.vue";
 import { DISTRIBUTION_LEVEL } from "@/helpers/constants";
 import { computed } from "vue";
 import { router } from "@/router";
@@ -141,6 +143,14 @@ const sourceFormatLabel = computed(() => {
               </div>
             </div>
           </div>
+        </div>
+
+        <div v-if="feed.id" class="mb-4">
+          <IngestRunStatus kind="feed" :source-id="feed.id" />
+        </div>
+
+        <div v-if="feed.id" class="mb-4">
+          <FeedRecentEvents :feed="feed" />
         </div>
 
         <!-- Rules (MISP feeds) -->

@@ -12,6 +12,7 @@ export const useDiagnosticsStore = defineStore({
     storage: null,
     modules: null,
     lab: null,
+    queues: null,
     status: {
       loading: false,
       error: false,
@@ -57,6 +58,12 @@ export const useDiagnosticsStore = defineStore({
         .then((response) => (this.modules = response))
         .catch((error) => (this.status = { error }))
         .finally(() => (this.status = { loading: false }));
+    },
+    async getQueues() {
+      return fetchWrapper
+        .get(`${baseUrl}/queues`)
+        .then((response) => (this.queues = response))
+        .catch((error) => (this.queues = { connected: false, error }));
     },
     async getLab() {
       this.status = { loading: true };

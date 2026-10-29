@@ -11,6 +11,7 @@ from app.schemas import user as user_schemas
 from app.settings import get_settings
 from fastapi import APIRouter, Response, Security
 from sqlalchemy import text
+from sqlalchemy.orm import Session
 
 router = APIRouter()
 
@@ -442,4 +443,75 @@ def get_lab_diagnostics(
         "connected": True,
         "worker": worker_info,
         **snapshot,
+    }
+
+
+# Every queue a worker should consume (see app.worker.tasks), in the order the
+# status page lists them.
+CELERY_QUEUES = (
+    "celery",
+    "maintenance",
+    "bulk",
+    "ingest",
+    "sinks",
+    "reactor_sandbox",
+    "lab_kernel",
+)
+# Kombu's Redis transport keeps messages sent with a priority in sibling lists.
+_PRIORITY_SUFFIXES = ("", "\x06\x163", "\x06\x166", "\x06\x169")
+
+
+@router.get("/diagnostics/queues")
+def get_queues_diagnostics(
+    user: user_schemas.User = Security(get_current_active_user, scopes=["tasks:read"]),
+):
+    """Messages waiting per Celery queue, the workers consuming each one, and
+    the feed fetches and server pulls in progress."""
+    from app.models import feed as feed_models
+    from app.models import server as server_models
+    from app.services import ingest_runs
+    from app.worker.tasks import _ingest_settings, celery_app
+
+    consumers = {}
+    try:
+        active_queues = celery_app.control.inspect(timeout=2).active_queues() or {}
+        for worker_name, queues in active_queues.items():
+            for queue in queues:
+                consumers.setdefault(queue.get("name"), []).append(worker_name)
+    except Exception as e:
+        logger.warning("Failed to inspect celery queues: %s", e)
+
+    try:
+        with celery_app.connection_for_read() as conn:
+            client = conn.default_channel.client
+            queues = [
+                {
+                    "name": name,
+                    "pending": sum(
+                        client.llen(name + suffix) for suffix in _PRIORITY_SUFFIXES
+                    ),
+                    "workers": sorted(consumers.get(name, [])),
+                }
+                for name in CELERY_QUEUES
+            ]
+    except Exception as e:
+        logger.error("Failed to read celery queue lengths: %s", e)
+        return {"connected": False, "error": str(e)}
+
+    runs = ingest_runs.open_runs()
+    models = {"feed": feed_models.Feed, "server": server_models.Server}
+    with Session(engine) as db:
+        for run in runs:
+            source = db.get(models[run["kind"]], run["source_id"])
+            run["name"] = source.name if source is not None else None
+    max_concurrent_runs, paused = _ingest_settings()
+
+    return {
+        "connected": True,
+        "queues": queues,
+        "ingest": {
+            "max_concurrent_runs": max_concurrent_runs,
+            "paused": paused,
+            "runs": runs,
+        },
     }
