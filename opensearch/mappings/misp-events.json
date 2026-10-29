@@ -10,6 +10,9 @@
             "attribute_count": {
                 "type": "long"
             },
+            "created_at": {
+                "type": "long"
+            },
             "date": {
                 "type": "date"
             },

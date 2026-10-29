@@ -332,6 +332,23 @@ class TestObjectHandlerWiring:
         assert args[2]["object_uuid"] == OBJ_UUID
         assert args[2]["event_uuid"] == EVENT_UUID
 
+    def test_objects_of_a_bulk_ingest_are_handled_in_one_task(self):
+        with patch.object(
+            worker_tasks.reactor_dispatch, "apply_async"
+        ) as apply_async, patch.object(
+            worker_tasks.objects_repository,
+            "get_object_from_opensearch",
+            side_effect=lambda uuid: _pydantic_like({"name": "file"}),
+        ), self._patch_notifications():
+            worker_tasks.handle_created_objects(
+                [[OBJ_UUID, EVENT_UUID], [OBJ_UUID, None]]
+            )
+        assert apply_async.call_count == 2
+        args = apply_async.call_args_list[0].args[0]
+        assert args[:2] == ("object", "created")
+        assert args[2]["event_uuid"] == EVENT_UUID
+        assert apply_async.call_args.kwargs["queue"] == worker_tasks.INGEST_QUEUE
+
     def test_handle_updated_object_dispatches(self):
         with patch.object(worker_tasks.reactor_dispatch, "delay") as delay, \
                 self._patch_obj_lookup(), self._patch_notifications():

@@ -3,9 +3,13 @@ import { authHelper } from "@/helpers";
 import { ref, computed, onMounted, onBeforeUnmount } from "vue";
 import { Modal } from "bootstrap";
 import { storeToRefs } from "pinia";
-import { useFeedsStore, useToastsStore, useAuthStore } from "@/stores";
+import {
+  useFeedsStore,
+  useToastsStore,
+  useAuthStore,
+  useIngestRunsStore,
+} from "@/stores";
 import DeleteFeedModal from "@/components/feeds/DeleteFeedModal.vue";
-import PreviewFeedModal from "@/components/feeds/misp/PreviewFeedModal.vue";
 
 const authStore = useAuthStore();
 const { scopes } = storeToRefs(authStore);
@@ -15,11 +19,6 @@ const props = defineProps({
   default_actions: { type: Object, default: () => ({}) },
 });
 const emit = defineEmits(["feed-deleted"]);
-
-const previewOpen = ref(false);
-const previewResult = ref(null);
-const previewError = ref(null);
-const previewing = ref(false);
 
 const actions = computed(() => ({
   read:
@@ -34,11 +33,16 @@ const actions = computed(() => ({
   fetch:
     props.default_actions.fetch ??
     authHelper.hasScope(scopes.value, "feeds:fetch"),
+  // Browse the feed's events (MISP feeds list them in a manifest).
+  explore:
+    props.default_actions.explore ??
+    authHelper.hasScope(scopes.value, "feeds:read"),
 }));
 
 const deleteFeedModal = ref(null);
 const feedsStore = useFeedsStore();
 const toastsStore = useToastsStore();
+const ingestRunsStore = useIngestRunsStore();
 
 onMounted(() => {
   deleteFeedModal.value = new Modal(
@@ -63,29 +67,10 @@ function fetchFeed(feed) {
     .fetch(feed.id)
     .then((response) => {
       toastsStore.push("Feed fetch enqueued. Task ID: " + response.task.id);
+      ingestRunsStore.expect("feed", feed.id);
     })
     .catch((error) => {
       toastsStore.push("Error fetching feed: " + error, "error");
-    });
-}
-
-function previewFeed(feed) {
-  previewResult.value = null;
-  previewError.value = null;
-  previewing.value = true;
-  feedsStore
-    .testMISPFeedConnection(feed)
-    .then((response) => {
-      previewResult.value = response;
-      previewOpen.value = true;
-    })
-    .catch((error) => {
-      previewError.value =
-        typeof error === "string" ? error : "Failed to connect to feed.";
-      previewOpen.value = true;
-    })
-    .finally(() => {
-      previewing.value = false;
     });
 }
 </script>
@@ -100,11 +85,12 @@ function previewFeed(feed) {
   <div>
     <div class="btn-toolbar float-end" role="toolbar">
       <div
-        v-if="actions.fetch"
+        v-if="actions.fetch || actions.explore"
         class="flex-wrap btn-group me-2"
         aria-label="Sync Actions"
       >
         <button
+          v-if="actions.fetch"
           type="button"
           class="btn btn-outline-primary btn-sm"
           data-placement="top"
@@ -114,27 +100,19 @@ function previewFeed(feed) {
         >
           <font-awesome-icon icon="fa-solid fa-download" />
         </button>
-        <button
-          v-if="feed.source_format === 'misp'"
-          type="button"
+        <RouterLink
+          v-if="actions.explore && feed.source_format === 'misp'"
+          :to="`/feeds/explore/${feed.id}`"
           class="btn btn-outline-primary btn-sm"
-          title="Preview feed events"
-          :disabled="previewing"
-          @click="previewFeed(feed)"
+          title="Explore the feed's events"
         >
-          <span
-            v-if="previewing"
-            class="spinner-border spinner-border-sm"
-            role="status"
-            aria-hidden="true"
-          ></span>
-          <font-awesome-icon v-else icon="fa-solid fa-magnifying-glass" />
-        </button>
+          <font-awesome-icon icon="fa-solid fa-magnifying-glass" />
+        </RouterLink>
         <button
-          v-else
+          v-else-if="actions.explore"
           type="button"
           class="btn btn-outline-primary btn-sm"
-          title="Preview (only available for MISP feeds)"
+          title="Only MISP feeds list their events"
           disabled
         >
           <font-awesome-icon icon="fa-solid fa-magnifying-glass" />
@@ -179,12 +157,6 @@ function previewFeed(feed) {
       @feed-deleted="handleFeedDeleted"
       :modal="deleteFeedModal"
       :feed_id="feed.id"
-    />
-    <PreviewFeedModal
-      v-if="previewOpen"
-      :result="previewResult"
-      :error="previewError"
-      @close="previewOpen = false"
     />
   </div>
 </template>

@@ -7,7 +7,7 @@ import { router } from "@/router";
 import { ServerSchema } from "@/schemas/server";
 import OrganisationsSelect from "@/components/organisations/OrganisationsSelect.vue";
 import PullRulesEditor from "@/components/servers/PullRulesEditor.vue";
-import SourceTrustFields from "@/components/indicators/SourceTrustFields.vue";
+import SourceTrustSection from "@/components/indicators/SourceTrustSection.vue";
 import PreviewPullModal from "@/components/servers/PreviewPullModal.vue";
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
 import { faLink } from "@fortawesome/free-solid-svg-icons";
@@ -338,7 +338,8 @@ function cancel() {
             </div>
           </div>
         </div>
-        <SourceTrustFields
+        <SourceTrustSection
+          class="mb-3"
           id-prefix="server"
           v-model:modifier="server.score_modifier"
           v-model:cap="server.score_cap"

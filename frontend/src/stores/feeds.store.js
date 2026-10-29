@@ -96,6 +96,9 @@ export const useFeedsStore = defineStore({
         .post(`${baseUrl}/freetext/preview`, settings)
         .catch((error) => (this.status.error = error));
     },
+    async getRecentEvents(id, limit = 10) {
+      return await fetchWrapper.get(`${baseUrl}/${id}/events?limit=${limit}`);
+    },
     async getDefaults() {
       return await fetchWrapper
         .get(`${baseUrl}/defaults`)

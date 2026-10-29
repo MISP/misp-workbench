@@ -4,6 +4,7 @@ import Spinner from "@/components/misc/Spinner.vue";
 import { useServersStore } from "@/stores";
 import DeleteServerModal from "@/components/servers/DeleteServerModal.vue";
 import ServerSyncActions from "@/components/servers/ServerSyncActions.vue";
+import IngestRunStatus from "@/components/ingest/IngestRunStatus.vue";
 
 const serversStore = useServersStore();
 const { servers, status } = storeToRefs(serversStore);
@@ -65,6 +66,9 @@ function handleServerDeleted() {
             >
               push
             </span>
+            <div v-if="server.pull" class="mt-1">
+              <IngestRunStatus kind="server" :source-id="server.id" compact />
+            </div>
           </td>
 
           <!-- Sync actions: test connection, pull, push, explore -->

@@ -473,9 +473,14 @@ const route = useRoute();
 
 // ?q= searches and ?tab=indicators opens a tab: links (a detection profile's
 // pivot, the quick switcher) land here with them, on this page or another.
+// ?range=all searches without the default time range (a feed's events, say,
+// span years).
 function applyRouteQuery() {
   if (TABS.includes(route.query.tab)) {
     activeTab.value = route.query.tab;
+  }
+  if (route.query.range === "all") {
+    activeTimeRange.value = null;
   }
   const initialQuery = route.query.q;
   if (typeof initialQuery === "string" && initialQuery.length > 0) {
@@ -484,7 +489,10 @@ function applyRouteQuery() {
   }
 }
 onMounted(applyRouteQuery);
-watch(() => [route.query.q, route.query.tab], applyRouteQuery);
+watch(
+  () => [route.query.q, route.query.tab, route.query.range],
+  applyRouteQuery,
+);
 </script>
 
 <style>
@@ -528,6 +536,7 @@ body {
     <div class="col-12 col-md-auto order-2 order-md-3 mt-2 mt-md-0">
       <ExploreTimeRangeFilter
         :model-value="activeTimeRange"
+        :no-default="route.query.range === 'all'"
         @change="
           (r) => {
             activeTimeRange = r;

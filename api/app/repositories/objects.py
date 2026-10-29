@@ -334,7 +334,7 @@ def create_object(
         object_reference.event_uuid = event_uuid
         object_references_repository.create_object_reference(db, object_reference)
 
-    tasks.handle_created_object.delay(
+    tasks.enqueue_created_object(
         object_uuid, event_uuid, attributes_repository.in_bulk_ingest()
     )
 
@@ -401,7 +401,7 @@ def create_object_from_pulled_object(
             db, pulled_object_reference, event_uuid
         )
 
-    tasks.handle_created_object.delay(
+    tasks.enqueue_created_object(
         object_uuid, event_uuid, attributes_repository.in_bulk_ingest()
     )
 

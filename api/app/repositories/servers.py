@@ -11,6 +11,7 @@ from app.repositories import sync as sync_repository
 from app.repositories import events as events_repository
 from app.repositories import sharing_groups as sharing_groups_repository
 from app.schemas import server as server_schemas
+from app.services import ingest_runs
 from app.settings import Settings
 from fastapi import HTTPException, status
 from pymisp import (
@@ -24,6 +25,9 @@ from sqlalchemy.orm import Session
 from app.worker import tasks
 
 logger = logging.getLogger(__name__)
+
+# (connect, read) seconds for requests to a remote MISP server.
+REMOTE_MISP_TIMEOUT = (10, 300)
 
 
 def get_servers(db: Session, skip: int = 0, limit: int = 100):
@@ -83,6 +87,7 @@ def get_remote_misp_connection(server: server_models.Server):
             url=server.url,
             key=server.authkey,
             ssl=verify_cert,
+            timeout=REMOTE_MISP_TIMEOUT,
             http_headers={
                 "User-Agent": "misp-workbench/" + os.environ.get("APP_VERSION", "")
             },
@@ -145,14 +150,18 @@ def pull_server_by_id_full(
     # TODO apply MISP.enableEventBlocklisting / removeBlockedEvents
     # TODO apply MISP.enableOrgBlocklisting / removeBlockedEvents
 
-    # pull each of the events in different tasks
-    for event_uuid in event_uuids:
-        tasks.pull_event_by_uuid.delay(str(event_uuid), server.id, user.id)
+    # The server's run (see services.ingest_runs) pulls them in batches.
+    queued = tasks.start_ingest_drainers(
+        "server",
+        server.id,
+        user.id,
+        ingest_runs.add_events("server", server.id, event_uuids),
+    )
 
-    logger.info("server pull id=%s all event fetch tasks enqueued.", server.id)
+    logger.info("server pull id=%s %s events queued.", server.id, queued)
     return {
         "result": "success",
-        "message": "All server id=%s events to pull enqueued." % server.id,
+        "message": "%s events of server id=%s queued to pull." % (queued, server.id),
     }
 
 

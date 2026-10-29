@@ -109,8 +109,10 @@ The project uses Celery for background tasks. In development the worker is start
 
 ```bash
 # run from the environment where the project's Python dependencies are available
-celery -A api.app.worker.tasks worker --loglevel=info --pool=solo --concurrency=1
+celery -A api.app.worker.tasks worker --loglevel=info --pool=solo --concurrency=1 --queues=celery,maintenance,ingest,bulk
 ```
+
+Tasks are spread over queues so that one kind of work can't hold up the others: `celery` (user-triggered work), `maintenance` (frequent periodic jobs), `bulk` (rebuilds and reloads that walk everything), `ingest` (feed fetches and server pulls), plus `sinks`, `reactor_sandbox` and `lab_kernel`. A worker only consumes the queues it is given with `--queues`, so every queue needs one; docker compose runs a dedicated worker for each group.
 
 ### Testing
 

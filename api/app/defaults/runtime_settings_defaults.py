@@ -23,6 +23,14 @@ DEFAULT_SETTINGS = {
         # cost of a bigger response held in memory.
         "msearchChunkSize": 25,
     },
+    "ingest": {
+        # Feed fetches and server pulls ingesting at the same time; the others
+        # wait their turn as queued. 0 disables the limit.
+        "max_concurrent_runs": 2,
+        # Stop taking events from feeds and servers (runs already started keep
+        # their place and carry on once resumed).
+        "paused": False,
+    },
     "notifications": {
         # Maximum number of notification emails sent per user per hour.
         # Set to 0 to disable the limit.
