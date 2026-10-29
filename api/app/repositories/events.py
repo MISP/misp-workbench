@@ -197,6 +197,8 @@ def search_events(
         "from": from_value,
         "size": size,
         "sort": [{sort_by: {"order": sort_order}}],
+        # The exact total, not "10000+": Explore shows it.
+        "track_total_hits": True,
     }
     response = OpenSearchClient.search(index=index, body=search_body)
 
