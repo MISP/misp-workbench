@@ -6,12 +6,16 @@ import Timestamp from "@/components/misc/Timestamp.vue";
 import ScoreBadge from "@/components/indicators/ScoreBadge.vue";
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
 import { faShield } from "@fortawesome/free-solid-svg-icons";
+import IndicatorDetails from "@/components/indicators/IndicatorDetails.vue";
+import ExpandToggle from "./ExpandToggle.vue";
+import { useCardExpand } from "./useCardExpand";
 
 const props = defineProps({
   indicator: { type: Object, required: true },
 });
 
 const src = computed(() => props.indicator._source);
+const { expanded, onCardClick } = useCardExpand();
 
 function sourceLabel(source) {
   return source.type === "feed" || source.type === "server"
@@ -21,7 +25,11 @@ function sourceLabel(source) {
 </script>
 
 <template>
-  <div class="card mb-2 indicator-card">
+  <div
+    class="card mb-2 indicator-card result-card"
+    :class="{ 'border-primary': expanded }"
+    @click="onCardClick"
+  >
     <div class="card-body py-2">
       <div class="text-muted small d-flex align-items-center gap-2 flex-wrap">
         <ScoreBadge :score="src.score" :breakdown="src.score_breakdown" />
@@ -74,7 +82,21 @@ function sourceLabel(source) {
           class="font-monospace"
           >{{ eventUuid.slice(0, 8) }}</RouterLink
         >
+        <ExpandToggle
+          class="ms-auto"
+          :expanded="expanded"
+          @toggle="expanded = !expanded"
+        />
       </div>
+    </div>
+    <div v-if="expanded" class="card-body border-top">
+      <IndicatorDetails :indicator="src" />
     </div>
   </div>
 </template>
+
+<style scoped>
+.result-card {
+  cursor: pointer;
+}
+</style>
