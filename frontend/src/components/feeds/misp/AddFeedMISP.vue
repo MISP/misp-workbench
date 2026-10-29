@@ -149,7 +149,7 @@ watch(
 </script>
 
 <template>
-  <CollapsibleSection title="MISP Feed Rules" :summary="rulesSummary">
+  <CollapsibleSection title="Filtering rules" :summary="rulesSummary">
     <div>
       <p class="text-muted">
         Define rules to limit which events are fetched from the remote MISP

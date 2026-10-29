@@ -21,11 +21,11 @@ function formatTimestamp(ts) {
 <template>
   <div class="card">
     <div class="card-header">
-      <h5 class="mb-0">MISP Feed Rules</h5>
+      <h5 class="mb-0">Filtering rules</h5>
     </div>
     <div class="card-body">
       <div v-if="!hasRules()" class="text-muted">
-        No rules configured. All events will be fetched.
+        No restrictions: every event in the feed is fetched.
       </div>
       <template v-else>
         <ul class="list-group list-group-flush">

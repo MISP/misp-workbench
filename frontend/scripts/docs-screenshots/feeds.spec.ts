@@ -172,9 +172,9 @@ test.describe("Feeds screenshots", () => {
 
   test("misp 2 — MISP feed rules card", async ({ page }) => {
     await openAddFeed(page, "MISP Format");
-    const rules = page.locator(".card", { hasText: "MISP Feed Rules" }).first();
+    const rules = page.locator(".card", { hasText: "Filtering rules" }).first();
     // Collapsed by default, with a summary of the rules: open it to show them.
-    await rules.getByRole("button", { name: /MISP Feed Rules/ }).click();
+    await rules.getByRole("button", { name: /Filtering rules/ }).click();
     await expect(rules.getByText("Basic", { exact: true })).toBeVisible();
     await capture(rules, FEATURE, "misp-workbench-3_misp-feed-rules");
   });

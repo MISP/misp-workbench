@@ -296,37 +296,46 @@ function handleDistributionLevelUpdated(distributionLevelId) {
                 {{ errors["feed.fixed_event"] }}
               </div>
             </div>
-
-            <div v-if="!isLocal" class="col-md-6">
-              <label class="form-label">Update interval</label>
-              <select class="form-select" v-model="local.schedule">
-                <option value="3600">Hourly</option>
-                <option value="86400">Daily</option>
-                <option value="604800">Weekly</option>
-                <option value="disabled">No automatic updates</option>
-              </select>
-            </div>
-
-            <div v-if="!isLocal" class="col-md-6 d-flex align-items-end">
-              <div class="form-check">
-                <input
-                  class="form-check-input"
-                  type="checkbox"
-                  v-model="local.fetch_on_create"
-                  id="fetchOnCreate"
-                />
-                <label class="form-check-label" for="fetchOnCreate">
-                  Fetch immediately after creation
-                </label>
-              </div>
-            </div>
-
-            <div v-else class="col-12 text-muted small">
-              Uploaded feeds are ingested once when the feed is created. Replace
-              the file on the Update Feed page to re-ingest later.
-            </div>
           </div>
         </Form>
+      </div>
+    </div>
+
+    <div class="card mb-4">
+      <div class="card-header">
+        <h5 class="mb-0">Schedule</h5>
+      </div>
+      <div class="card-body">
+        <div class="row g-3">
+          <div v-if="!isLocal" class="col-md-6">
+            <label class="form-label">Update interval</label>
+            <select class="form-select" v-model="local.schedule">
+              <option value="3600">Hourly</option>
+              <option value="86400">Daily</option>
+              <option value="604800">Weekly</option>
+              <option value="disabled">No automatic updates</option>
+            </select>
+          </div>
+
+          <div v-if="!isLocal" class="col-md-6 d-flex align-items-end">
+            <div class="form-check">
+              <input
+                class="form-check-input"
+                type="checkbox"
+                v-model="local.fetch_on_create"
+                id="fetchOnCreate"
+              />
+              <label class="form-check-label" for="fetchOnCreate">
+                Fetch immediately after creation
+              </label>
+            </div>
+          </div>
+
+          <div v-else class="col-12 text-muted small">
+            Uploaded feeds are ingested once when the feed is created. Replace
+            the file on the Update Feed page to re-ingest later.
+          </div>
+        </div>
       </div>
     </div>
 

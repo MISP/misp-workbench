@@ -23,7 +23,7 @@ Beyond the [common settings](index.md#common-settings), MISP feeds support:
 
 | Field | Description |
 |---|---|
-| **Rules** | Filter events by publication time, tags or organisations (JSON object, same format as MISP feed rules). Collapsed on the form; its header summarises the rules applied, e.g. *Last 30 days* |
+| **Rules** | Filter events by publication time, tags or organisations (JSON object, same format as MISP feed rules). Set under **Filtering rules**, collapsed on the form; its header summarises the rules applied, e.g. *Last 30 days* |
 
 ### Rules format
 
