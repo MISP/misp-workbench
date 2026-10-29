@@ -4,8 +4,13 @@ import Timestamp from "@/components/misc/Timestamp.vue";
 import TagsIndex from "@/components/tags/TagsIndex.vue";
 import EventActions from "../events/EventActions.vue";
 import RetentionBadge from "../events/RetentionBadge.vue";
+import EventResultDetails from "./EventResultDetails.vue";
+import ExpandToggle from "./ExpandToggle.vue";
+import { useCardExpand } from "./useCardExpand";
 
 defineProps(["event", "retentionConfig"]);
+
+const { expanded, onCardClick } = useCardExpand();
 
 const threatLevelMap = {
   1: { label: "high", cls: "bg-danger" },
@@ -22,7 +27,11 @@ const analysisMap = {
 </script>
 
 <template>
-  <div class="card mb-2">
+  <div
+    class="card mb-2 event-card"
+    :class="{ 'border-primary': expanded }"
+    @click="onCardClick"
+  >
     <!-- The actions keep their own room, and the uuid and badges wrap
          beside them rather than run under them on a narrow screen. -->
     <div
@@ -94,11 +103,26 @@ const analysisMap = {
       </p>
     </div>
 
-    <div class="card-footer d-flex justify-content-between text-muted small">
+    <div v-if="expanded" class="card-body border-top">
+      <EventResultDetails :event="event._source" />
+    </div>
+
+    <div class="card-footer d-flex align-items-center gap-2 text-muted small">
       <Timestamp :timestamp="event._source.timestamp" />
-      <span v-if="event._score != null" class="badge text-bg-secondary">
+      <span v-if="event._score != null" class="badge text-bg-secondary ms-auto">
         score: {{ event._score.toFixed(2) }}
       </span>
+      <ExpandToggle
+        :class="{ 'ms-auto': event._score == null }"
+        :expanded="expanded"
+        @toggle="expanded = !expanded"
+      />
     </div>
   </div>
 </template>
+
+<style scoped>
+.event-card {
+  cursor: pointer;
+}
+</style>

@@ -8,6 +8,9 @@ import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
 import { faShield } from "@fortawesome/free-solid-svg-icons";
 import AttributeActions from "@/components/attributes/AttributeActions.vue";
 import UUID from "../misc/UUID.vue";
+import AttributeResultDetails from "./AttributeResultDetails.vue";
+import ExpandToggle from "./ExpandToggle.vue";
+import { useCardExpand } from "./useCardExpand";
 
 const props = defineProps({
   attribute: {
@@ -17,10 +20,15 @@ const props = defineProps({
 });
 
 const src = computed(() => props.attribute._source);
+const { expanded, onCardClick } = useCardExpand();
 </script>
 
 <template>
-  <div class="card mb-2 attribute-card">
+  <div
+    class="card mb-2 attribute-card"
+    :class="{ 'border-primary': expanded }"
+    @click="onCardClick"
+  >
     <div class="card-header position-relative py-2 px-3 bg-body-secondary">
       <div class="d-flex align-items-center gap-2">
         <span class="fw-semibold">
@@ -103,17 +111,30 @@ const src = computed(() => props.attribute._source);
       </div>
     </div>
 
-    <div class="card-footer d-flex justify-content-between text-muted small">
+    <div v-if="expanded" class="card-body border-top">
+      <AttributeResultDetails :attribute="src" />
+    </div>
+
+    <div class="card-footer d-flex align-items-center gap-2 text-muted small">
       <Timestamp :timestamp="src.timestamp" />
-      <span v-if="attribute._score != null" class="badge text-bg-secondary">
+      <span
+        v-if="attribute._score != null"
+        class="badge text-bg-secondary ms-auto"
+      >
         score: {{ attribute._score.toFixed(2) }}
       </span>
+      <ExpandToggle
+        :class="{ 'ms-auto': attribute._score == null }"
+        :expanded="expanded"
+        @toggle="expanded = !expanded"
+      />
     </div>
   </div>
 </template>
 
 <style scoped>
 .attribute-card {
+  cursor: pointer;
   transition: box-shadow 0.15s ease;
 }
 

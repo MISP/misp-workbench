@@ -64,6 +64,10 @@ export const useIndicatorsStore = defineStore({
         return null;
       }
     },
+    /** One indicator, by uuid. */
+    async get(uuid) {
+      return await fetchWrapper.get(`${baseUrl}/${uuid}`);
+    },
     async exploreSearch({ query, page = 1, size = 5, sort = "score" }) {
       this.exploreStatus.loading = true;
       this.exploreStatus.error = false;
