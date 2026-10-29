@@ -116,6 +116,21 @@ def run_id(kind: str, source_id: int) -> Optional[str]:
     return get_redis_client().hget(_key(kind, source_id, "run"), "id")
 
 
+def is_current(kind: str, source_id: int, expected_id: Optional[str]) -> bool:
+    """Whether the source's open run is the one ``expected_id`` names.
+
+    Runs opened before they had ids, and tasks queued before then, match
+    whatever is open: a run under way during an upgrade carries on.
+    """
+    pipe = get_redis_client().pipeline()
+    pipe.exists(_key(kind, source_id, "run"))
+    pipe.hget(_key(kind, source_id, "run"), "id")
+    is_open, current_id = pipe.execute()
+    if not is_open:
+        return False
+    return expected_id is None or current_id is None or current_id == expected_id
+
+
 def admit(kind: str, source_id: int, max_runs: int) -> bool:
     """Take one of the ``max_runs`` ingestion slots (0: no limit).
 

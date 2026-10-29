@@ -23,7 +23,7 @@ Beyond the [common settings](index.md#common-settings), MISP feeds support:
 
 | Field | Description |
 |---|---|
-| **Rules** | Filter events by tags or organisations (JSON object, same format as MISP feed rules) |
+| **Rules** | Filter events by publication time, tags or organisations (JSON object, same format as MISP feed rules). Collapsed on the form; its header summarises the rules applied, e.g. *Last 30 days* |
 
 ### Rules format
 
@@ -45,3 +45,16 @@ Use the **Preview** button on the Add Feed form to verify the URL is reachable a
 
 <img src="../../../screenshots/feeds/misp-workbench-4_misp-feed-preview.png#only-light" style="height: 250px;">
 <img src="../../../screenshots/feeds/misp-workbench-4_misp-feed-preview-dark.png#only-dark" style="height: 250px;">
+
+## Exploring a feed
+
+The magnifying glass on a MISP feed's row (Ingest → Feeds) lists the events in its manifest that match its rules, with a preview of each and a button to fetch one. Each event also shows whether it is already here, linking to the local copy:
+
+| Badge | Meaning |
+|---|---|
+| **ingested** | Ingested from this feed, and up to date |
+| **newer in feed** | Ingested from this feed; the feed has a newer version, which the next fetch picks up |
+| **from \<source\>** | Already here from another feed, a MISP server, or created locally |
+| *not ingested* | Not here |
+
+The summary above the list counts how many of the matching events were ingested from this feed. `GET /feeds/{id}/explore` returns the same: a `local` object per event (`source`, `from_feed`, `timestamp`, `outdated`) and an `ingested` count.

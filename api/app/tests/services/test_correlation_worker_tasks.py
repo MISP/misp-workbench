@@ -114,6 +114,20 @@ class TestEnqueueDeferredCorrelations:
 
         assert [len(call.args[0]) for call in delay.call_args_list] == [2, 2, 1]
 
+    def test_created_objects_are_enqueued_in_chunks(self):
+        batch = {
+            "created": [],
+            "updated": [],
+            "handled": [],
+            "objects": [[f"obj-{n}", EVENT_UUID] for n in range(5)],
+        }
+
+        with patch.object(worker_tasks.handle_created_objects, "delay") as delay, \
+                patch.object(worker_tasks, "CORRELATION_BATCH_SIZE", 2):
+            worker_tasks.enqueue_deferred_correlations(batch)
+
+        assert [len(call.args[0]) for call in delay.call_args_list] == [2, 2, 1]
+
     def test_nothing_collected_enqueues_nothing(self):
         with patch.object(worker_tasks.correlate_attributes, "delay") as delay, \
                 patch.object(worker_tasks.handle_created_attributes, "delay") as handle:

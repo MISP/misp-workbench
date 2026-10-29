@@ -24,6 +24,7 @@ All feed types share a set of base settings:
 | **Fixed Event** | If on, all fetches append to a single event; if off, a new event is created per fetch |
 | **Update interval** | Automatic fetch schedule (hourly / daily / weekly / disabled) — hidden in upload mode |
 | **Fetch immediately** | Enqueue an immediate fetch when the feed is created — hidden in upload mode |
+| **Advanced settings** | A separate, collapsed section: **Authentication** (an auth header sent with every request; network mode only) and indicator scoring (a score modifier and cap for what the feed reports). Its header shows what is set, e.g. *auth header: Authorization · score cap 80* |
 
 ## Default feed list
 
@@ -52,3 +53,11 @@ Each fetch of a feed (and each pull of a MISP server) is an **ingestion run**, i
 The feeds and servers lists show each source's run in progress, or how its last one ended. A feed's or server's page shows the run's progress, with a **Cancel** button, and the last run's outcome and error. `GET /feeds/{id}/run` (and `/servers/{id}/run`) returns the same: the run in progress, with how many events it listed, ingested, failed and has left, and the last finished run. Feed and server requests time out instead of waiting on an unresponsive source.
 
 **Admin → Runtime settings → ingest** sets the limit and pauses ingestion. **Admin → Diagnostics → Queues** shows the messages waiting on each background queue, the workers consuming it (a queue with none is flagged: its tasks never run), and every run in progress or waiting for a slot (`GET /diagnostics/queues`).
+
+## A feed's events
+
+A feed's page lists its 10 most recently ingested events, linking to each, and **See all in Explore** opens Explore on every event from the feed (`source.type:feed AND source.id:<id>`) over all time rather than Explore's default last 30 days. `GET /feeds/{id}/events?limit=10` returns the list and the total.
+
+Events record where they came from (`source`) and when they were first written here (`created_at`, epoch seconds; never changed by updates). Their `timestamp` is the source's own, so it says when an event last changed upstream, not when it arrived. Events ingested before `created_at` was recorded have none, and are listed after those that do.
+
+For MISP feeds, the magnifying glass on the feed's row opens the [feed explorer](misp.md#exploring-a-feed).

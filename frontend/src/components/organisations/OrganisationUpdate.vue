@@ -4,7 +4,7 @@ import { storeToRefs } from "pinia";
 import { useOrganisationsStore } from "@/stores";
 import { router } from "@/router";
 import { OrganisationSchema } from "@/schemas/organisation";
-import SourceTrustFields from "@/components/indicators/SourceTrustFields.vue";
+import SourceTrustSection from "@/components/indicators/SourceTrustSection.vue";
 
 const organisationsStore = useOrganisationsStore();
 const { organisation, status } = storeToRefs(organisationsStore);
@@ -123,7 +123,8 @@ function onSubmit(values, { setErrors }) {
           </Field>
           <div class="invalid-feedback">{{ errors["organisation.local"] }}</div>
         </div>
-        <SourceTrustFields
+        <SourceTrustSection
+          class="mb-3"
           id-prefix="organisation"
           v-model:modifier="organisation.score_modifier"
           v-model:cap="organisation.score_cap"

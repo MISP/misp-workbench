@@ -319,10 +319,9 @@ def drain_ingest_run(
     from tasks queued before runs had ids): once that run is closed, by
     cancelling it say, the task stops, even if the source has a new run.
     """
-    current_run_id = ingest_runs.run_id(kind, source_id)
-    if current_run_id is None or run_id not in (None, current_run_id):
+    if not ingest_runs.is_current(kind, source_id, run_id):
         return {"result": "skipped", "message": "The run is no longer open."}
-    run_id = current_run_id
+    run_id = ingest_runs.run_id(kind, source_id) or run_id
 
     _, paused = _ingest_settings()
     if paused:
@@ -355,7 +354,7 @@ def drain_ingest_run(
                     except SoftTimeLimitExceeded:
                         db.rollback()
                         failed += 1
-                        if ingest_runs.run_id(kind, source_id) == run_id:
+                        if ingest_runs.is_current(kind, source_id, run_id):
                             ingest_runs.put_back(kind, source_id, batch[index + 1 :])
                         logger.error(
                             "%s id=%s event uuid=%s hit the time limit",
@@ -374,7 +373,7 @@ def drain_ingest_run(
                             event_uuid,
                         )
 
-    if ingest_runs.run_id(kind, source_id) != run_id:
+    if not ingest_runs.is_current(kind, source_id, run_id):
         # Closed while this batch was ingested (cancelled, or the source was
         # disabled or removed).
         return {"result": "cancelled", "ingested": done, "failed": failed}
@@ -666,14 +665,44 @@ def handle_created_object(object_uuid: str, event_uuid: str | None, bulk: bool =
 
 
 def enqueue_created_object(object_uuid: str, event_uuid: str | None, bulk: bool):
-    """Queue handle_created_object; one per object of a bulk ingest goes to
-    the ingest queue with the rest of the ingest's follow-ups."""
+    """Follow up on a created object: the objects of a bulk ingest are handled
+    in batches (handle_created_objects) once it is done, others one by one."""
+    if bulk and attributes_repository.defer_created_object(object_uuid, event_uuid):
+        return
     if bulk:
         handle_created_object.apply_async(
             (object_uuid, event_uuid, bulk), queue=INGEST_QUEUE
         )
     else:
         handle_created_object.delay(object_uuid, event_uuid, bulk)
+
+
+@celery_app.task(queue=INGEST_QUEUE)
+def handle_created_objects(items: list):
+    """Handle a batch of objects a bulk ingest created: notifications and
+    reactor dispatch, as handle_created_attributes does for attributes.
+
+    Each item is ``[object_uuid, event_uuid]``.
+    """
+    logger.info("handling %s created objects job started", len(items))
+
+    with Session(engine) as db:
+        for object_uuid, event_uuid in items:
+            os_obj = objects_repository.get_object_from_opensearch(UUID(object_uuid))
+            if os_obj is None:
+                continue
+            notifications_repository.create_object_notifications(
+                db, "created", object=os_obj
+            )
+            _dispatch_if_subscribed(
+                "object",
+                "created",
+                _reactor_object_payload(os_obj, object_uuid, event_uuid),
+                queue=INGEST_QUEUE,
+            )
+
+    logger.info("handling %s created objects job finished", len(items))
+    return True
 
 
 @celery_app.task
@@ -1390,6 +1419,10 @@ def enqueue_deferred_correlations(batch: dict):
         handle_created_attributes.delay(
             handled[start : start + CORRELATION_BATCH_SIZE]
         )
+
+    objects = batch.get("objects") or []
+    for start in range(0, len(objects), CORRELATION_BATCH_SIZE):
+        handle_created_objects.delay(objects[start : start + CORRELATION_BATCH_SIZE])
 
     logger.info(
         "enqueued follow-ups for %s created and %s updated attributes",

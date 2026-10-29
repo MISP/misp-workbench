@@ -333,6 +333,17 @@ class TestDrainIngestRun:
         processed.assert_not_called()
         assert _run()["pending"] == 1
 
+    def test_a_run_opened_before_runs_had_ids_is_still_drained(self):
+        # Under way during the upgrade that added run ids.
+        self._open(["a"])
+        get_redis_client().hdel("ingest:feed:%s:run" % FEED_ID, "id")
+
+        result, processed, next_turn = self._drain()
+
+        assert result["result"] == "success"
+        processed.assert_called_once()
+        next_turn.assert_called_once_with("feed", FEED_ID, USER_ID, None)
+
     def test_a_closed_run_is_not_drained(self):
         result, processed, _ = self._drain()
 
@@ -356,6 +367,22 @@ class TestIngestFollowUps:
             ("o", "e", True), queue=worker_tasks.INGEST_QUEUE
         )
         delay.assert_called_once_with("o", "e", False)
+
+    def test_objects_created_during_an_ingest_wait_for_its_batch(self):
+        from app.repositories import attributes as attributes_repository
+
+        batch = {"created": [], "updated": [], "handled": [], "objects": []}
+        token = attributes_repository._bulk_ingest.set(batch)
+        try:
+            with patch.object(
+                worker_tasks.handle_created_object, "apply_async"
+            ) as apply_async:
+                worker_tasks.enqueue_created_object("o", "e", True)
+        finally:
+            attributes_repository._bulk_ingest.reset(token)
+
+        apply_async.assert_not_called()
+        assert batch["objects"] == [["o", "e"]]
 
     def test_reactor_dispatch_follows_the_queue_it_is_given(self):
         with patch.object(
