@@ -7,6 +7,7 @@ import { faLink } from "@fortawesome/free-solid-svg-icons";
 import { FeedSchema } from "@/schemas/feed";
 import { Form, Field } from "vee-validate";
 import SourceTrustFields from "@/components/indicators/SourceTrustFields.vue";
+import CollapsibleSection from "@/components/misc/CollapsibleSection.vue";
 
 const props = defineProps({
   modelValue: {
@@ -38,6 +39,20 @@ const local = reactive({
 });
 
 const isLocal = computed(() => local.input_source === "local");
+
+// Shown while the advanced settings are collapsed: only what differs from
+// the defaults.
+const advancedSummary = computed(() => {
+  const parts = [];
+  if (local.score_modifier) {
+    const sign = local.score_modifier > 0 ? "+" : "";
+    parts.push(`score modifier ${sign}${local.score_modifier}`);
+  }
+  if (local.score_cap !== null && local.score_cap !== undefined) {
+    parts.push(`score cap ${local.score_cap}`);
+  }
+  return parts.length ? parts.join(" · ") : "Indicator scoring: defaults";
+});
 
 const localFile = computed(() => (local.settings || {}).localFile || {});
 
@@ -330,12 +345,18 @@ function handleDistributionLevelUpdated(distributionLevelId) {
           file on the Update Feed page to re-ingest later.
         </div>
       </div>
-      <SourceTrustFields
+      <CollapsibleSection
         class="mt-3"
-        id-prefix="feed"
-        v-model:modifier="local.score_modifier"
-        v-model:cap="local.score_cap"
-      />
+        title="Advanced settings"
+        :summary="advancedSummary"
+      >
+        <SourceTrustFields
+          class="mb-0"
+          id-prefix="feed"
+          v-model:modifier="local.score_modifier"
+          v-model:cap="local.score_cap"
+        />
+      </CollapsibleSection>
     </Form>
   </div>
 </template>

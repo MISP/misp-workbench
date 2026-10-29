@@ -1,5 +1,6 @@
 <script setup>
-import { ref, reactive, watch, nextTick } from "vue";
+import { ref, reactive, computed, watch, nextTick } from "vue";
+import CollapsibleSection from "@/components/misc/CollapsibleSection.vue";
 import TagsSelect from "@/components/tags/TagsSelect.vue";
 import OrganisationsMultiSelect from "@/components/organisations/OrganisationsMultiSelect.vue";
 
@@ -112,6 +113,30 @@ watch([mode, basic, advancedJson], buildAndEmitRules, {
   immediate: true,
 });
 
+const UNIT_LABELS = { d: "days", w: "weeks", m: "months" };
+
+// What the rules let through, shown while the section is collapsed.
+const rulesSummary = computed(() => {
+  if (mode.value === "advanced") {
+    return advancedJson.value.trim()
+      ? "Custom rules (JSON)"
+      : "None: every event is fetched";
+  }
+  const parts = [];
+  if (basic.timestamp.enabled) {
+    parts.push(
+      `Last ${basic.timestamp.value} ${UNIT_LABELS[basic.timestamp.unit]}`,
+    );
+  }
+  if (basic.tags.enabled && basic.tags.tags.length) {
+    parts.push(`tags: ${basic.tags.tags.join(", ")}`);
+  }
+  if (basic.orgs.enabled && basic.orgs.orgs.length) {
+    parts.push(`organisations: ${basic.orgs.orgs.join(", ")}`);
+  }
+  return parts.length ? parts.join(" · ") : "None: every event is fetched";
+});
+
 /**
  * Re-emit rules when the parent replaces config (e.g. default feed selected).
  * We detect this by watching the URL — it changes on default feed selection
@@ -124,12 +149,8 @@ watch(
 </script>
 
 <template>
-  <div class="card">
-    <div class="card-header">
-      <h5 class="mb-0">MISP Feed Rules</h5>
-    </div>
-
-    <div class="card-body">
+  <CollapsibleSection title="MISP Feed Rules" :summary="rulesSummary">
+    <div>
       <p class="text-muted">
         Define rules to limit which events are fetched from the remote MISP
         instance.
@@ -287,5 +308,5 @@ watch(
         </div>
       </div>
     </div>
-  </div>
+  </CollapsibleSection>
 </template>
