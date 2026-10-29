@@ -60,18 +60,19 @@ def bulk_ingest():
       to ``tasks.correlate_attributes`` once the ingest is done
     - the attribute and object counts are left alone, because the ingest calls
       ``events_repository.sync_event_counts`` at the end instead
-    - the created attributes are handled in batches too, instead of one
-      notification and reactor task per attribute
+    - the created attributes and objects are handled in batches too, instead
+      of one notification and reactor task each
     - documents are indexed without forcing a refresh each time; the index is
       refreshed once on the way out
 
-    Yields a ``{"created": [...], "updated": [...], "handled": [...]}`` batch;
+    Yields a ``{"created": [...], "updated": [...], "handled": [...],
+    "objects": [...]}`` batch;
     attributes that already existed need their stale correlations dropped first,
     freshly created ones do not. On exit the batch is enqueued, including when
     the ingest failed part way through, so whatever did land still gets
     correlated.
     """
-    batch = {"created": [], "updated": [], "handled": []}
+    batch = {"created": [], "updated": [], "handled": [], "objects": []}
     token = _bulk_ingest.set(batch)
 
     try:
@@ -96,6 +97,16 @@ def refresh_attributes_index():
 def in_bulk_ingest() -> bool:
     """Whether the caller is inside a :func:`bulk_ingest` context."""
     return _bulk_ingest.get() is not None
+
+
+def defer_created_object(object_uuid: str, event_uuid: str | None) -> bool:
+    """Leave a created object's follow-ups to the bulk ingest under way, if
+    any; False when there is none to leave them to."""
+    batch = _bulk_ingest.get()
+    if batch is None:
+        return False
+    batch.setdefault("objects", []).append([object_uuid, event_uuid])
+    return True
 
 
 # Correlations attached to one attribute of a page. An attribute can hold far
@@ -575,6 +586,8 @@ def search_attributes(
         "from": from_value,
         "size": size,
         "sort": [{sort_by: {"order": sort_order}}],
+        # The exact total, not "10000+": Explore shows it.
+        "track_total_hits": True,
     }
     response = OpenSearchClient.search(index="misp-attributes", body=search_body)
 

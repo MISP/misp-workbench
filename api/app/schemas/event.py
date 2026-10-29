@@ -38,6 +38,8 @@ class EventBase(BaseModel):
 
 
 class Event(EventBase):
+    # When the event was first written here (see events.create_event).
+    created_at: Optional[int] = None
     attributes: list[Attribute] = []
     objects: list[Object] = []
     sharing_group: Optional[SharingGroup] = None

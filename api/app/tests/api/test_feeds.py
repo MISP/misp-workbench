@@ -245,6 +245,127 @@ def _settings(fmt="array", items_path="", value_field="indicator", type_strategy
     }
 
 
+FROM_FEED_UUIDS = [
+    "6b6f1d1a-1c2e-4f62-9d8f-0a1e7c3b5d01",
+    "6b6f1d1a-1c2e-4f62-9d8f-0a1e7c3b5d02",
+]
+LOCAL_UUID = "6b6f1d1a-1c2e-4f62-9d8f-0a1e7c3b5d03"
+MISSING_UUID = "6b6f1d1a-1c2e-4f62-9d8f-0a1e7c3b5d04"
+
+
+class TestFeedEvents(ApiTester):
+    """Local events ingested from a feed: the feed page's list and the MISP
+    feed explorer's local copies."""
+
+    @pytest.fixture(scope="class")
+    def feed_events(self, db, feed_1, user_1, organisation_1):
+        from datetime import datetime
+
+        from app.repositories import events as events_repository
+        from app.schemas import event as event_schemas
+        from app.services.opensearch import get_opensearch_client
+
+        def create(uuid, source, timestamp):
+            return events_repository.create_event(
+                db,
+                event_schemas.EventCreate(
+                    info="event %s" % uuid[-2:],
+                    user_id=user_1.id,
+                    org_id=organisation_1.id,
+                    orgc_id=organisation_1.id,
+                    date=datetime(2020, 1, 1),
+                    uuid=uuid,
+                    timestamp=timestamp,
+                ),
+                source=source,
+            )
+
+        from_feed = events_repository.event_source("feed", feed_1.id, feed_1.name)
+        for index, uuid in enumerate(FROM_FEED_UUIDS):
+            create(uuid, from_feed, 1600000000 + index)
+        create(LOCAL_UUID, None, 1600000000)
+
+        # The first one was ingested last, though older.
+        client = get_opensearch_client()
+        for uuid, created_at in zip(FROM_FEED_UUIDS, (2000000002, 2000000001)):
+            client.update(
+                index="misp-events",
+                id=uuid,
+                body={"doc": {"created_at": created_at}},
+                refresh=True,
+            )
+
+    @pytest.mark.parametrize("scopes", [["feeds:read"]])
+    def test_recent_events_newest_ingested_first(
+        self, client: TestClient, feed_1, feed_events, auth_token: auth.Token
+    ):
+        response = client.get(
+            f"/feeds/{feed_1.id}/events?limit=1",
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        data = response.json()
+        # The local event is not the feed's.
+        assert data["total"] == 2
+        assert [event["uuid"] for event in data["events"]] == [FROM_FEED_UUIDS[0]]
+        assert data["events"][0]["created_at"] == 2000000002
+
+    @pytest.mark.parametrize("scopes", [["feeds:read"]])
+    def test_recent_events_of_a_missing_feed(
+        self, client: TestClient, auth_token: auth.Token
+    ):
+        response = client.get(
+            "/feeds/999999/events",
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    @pytest.mark.parametrize("scopes", [[]])
+    def test_recent_events_unauthorized(
+        self, client: TestClient, feed_1, auth_token: auth.Token
+    ):
+        response = client.get(
+            f"/feeds/{feed_1.id}/events",
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+    @pytest.mark.parametrize("scopes", [["feeds:read"]])
+    def test_explorer_marks_local_copies(
+        self, client: TestClient, feed_1, feed_events, auth_token: auth.Token
+    ):
+        manifest = {
+            # Newer in the feed than the local copy.
+            FROM_FEED_UUIDS[0]: {"info": "a", "timestamp": "1700000000"},
+            FROM_FEED_UUIDS[1]: {"info": "b", "timestamp": "1600000001"},
+            LOCAL_UUID: {"info": "c", "timestamp": "1600000000"},
+            MISSING_UUID: {"info": "d", "timestamp": "1600000000"},
+        }
+        manifest_response = type(
+            "Response", (), {"status_code": 200, "json": lambda self: manifest}
+        )()
+
+        with patch(
+            "app.repositories.feeds.get_feed_manifest", return_value=manifest_response
+        ):
+            response = client.get(
+                f"/feeds/{feed_1.id}/explore",
+                headers={"Authorization": "Bearer " + auth_token},
+            )
+
+        assert response.status_code == status.HTTP_200_OK
+        data = response.json()
+        assert data["ingested"] == 2
+        local = {event["uuid"]: event["local"] for event in data["events"]}
+        assert local[FROM_FEED_UUIDS[0]]["from_feed"] is True
+        assert local[FROM_FEED_UUIDS[0]]["outdated"] is True
+        assert local[FROM_FEED_UUIDS[1]]["outdated"] is False
+        assert local[LOCAL_UUID]["from_feed"] is False
+        assert local[LOCAL_UUID]["source"]["type"] == "local"
+        assert local[MISSING_UUID] is None
+
+
 class TestJsonFeedPreview(ApiTester):
     @pytest.mark.parametrize("scopes", [_PREVIEW_SCOPE])
     def test_preview_array_feed_fixed_type(self, client: TestClient, auth_token: auth.Token):

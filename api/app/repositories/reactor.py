@@ -75,6 +75,20 @@ def refresh_active_triggers_cache(db: Session) -> set[str]:
     return keys
 
 
+def warm_active_triggers_cache(db: Session) -> None:
+    """Rebuild the cache if it is cold (Redis restarted or flushed).
+
+    Only script CRUD refreshes it otherwise, and while it is cold the gate
+    falls open: every attribute a large feed ingests would queue a dispatch.
+    """
+    try:
+        if get_redis_client().exists(_ACTIVE_TRIGGERS_SENTINEL):
+            return
+    except Exception:  # noqa: BLE001
+        return
+    refresh_active_triggers_cache(db)
+
+
 # ──────────────────────────────────────────────────────────────────────────
 # CRUD
 # ──────────────────────────────────────────────────────────────────────────

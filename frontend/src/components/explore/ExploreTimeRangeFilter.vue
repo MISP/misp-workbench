@@ -12,6 +12,8 @@ import {
 
 const props = defineProps({
   modelValue: { type: Object, default: null },
+  // Start without a time range instead of the default one.
+  noDefault: { type: Boolean, default: false },
 });
 
 const emit = defineEmits(["change"]);
@@ -56,12 +58,14 @@ const unitOptions = [
 
 const DEFAULT_RANGE = { label: "Last 30 days", from: "now-30d", to: "now" };
 
-const currentRange = ref({ mode: "relative", ...DEFAULT_RANGE });
+const currentRange = ref(
+  props.noDefault ? null : { mode: "relative", ...DEFAULT_RANGE },
+);
 
 watch(
   () => props.modelValue,
   (val) => {
-    if (val) currentRange.value = val;
+    currentRange.value = val;
   },
 );
 

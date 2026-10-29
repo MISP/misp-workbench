@@ -3914,6 +3914,104 @@
         ]
       }
     },
+    "/servers/{server_id}/run": {
+      "get": {
+        "tags": [
+          "Servers"
+        ],
+        "summary": "Get Server Run",
+        "description": "The server's pull in progress (queued or running) and its last finished one.",
+        "operationId": "get_server_run_servers__server_id__run_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "servers:read"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "server_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Server Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IngestRunStatus"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Servers"
+        ],
+        "summary": "Cancel Server Run",
+        "description": "Cancel the server's pull: the events it has yet to pull are dropped.",
+        "operationId": "cancel_server_run_servers__server_id__run_delete",
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "servers:pull"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "server_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Server Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IngestRunStatus"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/servers/{server_id}/test-connection": {
       "post": {
         "tags": [
@@ -6759,6 +6857,68 @@
         ]
       }
     },
+    "/feeds/{feed_id}/events": {
+      "get": {
+        "tags": [
+          "Feeds"
+        ],
+        "summary": "Get Feed Events",
+        "description": "The local events ingested from the feed, newest first.",
+        "operationId": "get_feed_events_feeds__feed_id__events_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "feeds:read"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "feed_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Feed Id"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 10,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeedEvents"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/feeds/{feed_id}/explore": {
       "get": {
         "tags": [
@@ -7156,6 +7316,104 @@
             "content": {
               "application/json": {
                 "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/feeds/{feed_id}/run": {
+      "get": {
+        "tags": [
+          "Feeds"
+        ],
+        "summary": "Get Feed Run",
+        "description": "The feed's fetch in progress (queued or running) and its last finished one.",
+        "operationId": "get_feed_run_feeds__feed_id__run_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "feeds:read"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "feed_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Feed Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IngestRunStatus"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Feeds"
+        ],
+        "summary": "Cancel Feed Run",
+        "description": "Cancel the feed's fetch: the events it has yet to ingest are dropped.",
+        "operationId": "cancel_feed_run_feeds__feed_id__run_delete",
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "feeds:fetch"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "feed_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Feed Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IngestRunStatus"
+                }
               }
             }
           },
@@ -10140,6 +10398,33 @@
         "summary": "Get Lab Diagnostics",
         "description": "Lab-worker connectivity and running jupyter kernels.\n\nWorker presence is derived from Celery inspect \u2014 we look for a worker\nsubscribed to the ``lab_kernel`` queue. The kernel registry lives inside\nthe lab-worker process, so we round-trip a short task to fetch a snapshot.",
         "operationId": "get_lab_diagnostics_diagnostics_lab_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "tasks:read"
+            ]
+          }
+        ]
+      }
+    },
+    "/diagnostics/queues": {
+      "get": {
+        "tags": [
+          "Diagnostics"
+        ],
+        "summary": "Get Queues Diagnostics",
+        "description": "Messages waiting per Celery queue, the workers consuming each one, and\nthe feed fetches and server pulls in progress.",
+        "operationId": "get_queues_diagnostics_diagnostics_queues_get",
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -20947,6 +21232,17 @@
             ],
             "title": "Deleted"
           },
+          "created_at": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
           "attributes": {
             "items": {
               "$ref": "#/components/schemas/Attribute"
@@ -22430,6 +22726,108 @@
           "input_source"
         ],
         "title": "FeedCreate"
+      },
+      "FeedEvent": {
+        "properties": {
+          "uuid": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Uuid"
+          },
+          "info": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Info"
+          },
+          "date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date"
+          },
+          "timestamp": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "attribute_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Attribute Count"
+          },
+          "published": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Published"
+          }
+        },
+        "type": "object",
+        "required": [
+          "uuid"
+        ],
+        "title": "FeedEvent",
+        "description": "A local event ingested from a feed."
+      },
+      "FeedEvents": {
+        "properties": {
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/FeedEvent"
+            },
+            "type": "array",
+            "title": "Events"
+          }
+        },
+        "type": "object",
+        "required": [
+          "total",
+          "events"
+        ],
+        "title": "FeedEvents"
       },
       "FeedUpdate": {
         "properties": {
@@ -24335,6 +24733,145 @@
           "pending_sighted_values"
         ],
         "title": "IndicatorsStatus"
+      },
+      "IngestRun": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "queued",
+              "running",
+              "done",
+              "failed",
+              "cancelled"
+            ],
+            "title": "Status"
+          },
+          "user_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Id"
+          },
+          "queued_at": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Queued At"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total",
+            "default": 0
+          },
+          "done": {
+            "type": "integer",
+            "title": "Done",
+            "default": 0
+          },
+          "failed": {
+            "type": "integer",
+            "title": "Failed",
+            "default": 0
+          },
+          "pending": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pending"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "title": "IngestRun",
+        "description": "A feed fetch or server pull, see ``app.services.ingest_runs``."
+      },
+      "IngestRunStatus": {
+        "properties": {
+          "current": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/IngestRun"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "last": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/IngestRun"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "title": "IngestRunStatus"
       },
       "LabExecuteRequest": {
         "properties": {
