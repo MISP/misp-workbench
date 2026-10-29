@@ -17,6 +17,7 @@ from app.schemas import attribute as attribute_schemas
 from app.schemas import event as event_schemas
 from app.services import ingest_runs
 from app.services.attachments import get_attachment
+from app.services.opensearch import get_opensearch_client
 from app.worker import tasks
 from fastapi import HTTPException, UploadFile, status
 from pymisp import MISPEvent
@@ -573,15 +574,128 @@ def explore_misp_feed(db: Session, feed_id: int, page: int = 0, limit: int = 20)
     items = list(filtered_manifest.items())
     page_items = items[page * limit : (page + 1) * limit]
 
-    events = [{"uuid": uuid, **event_data} for uuid, event_data in page_items]
+    local = _local_copies(feed.id, page_items)
+    events = [
+        {"uuid": uuid, **event_data, "local": local.get(uuid)}
+        for uuid, event_data in page_items
+    ]
 
     return {
         "events": events,
         "total": total,
         "total_filtered": total_filtered,
+        "ingested": _count_ingested(feed.id, list(filtered_manifest)),
         "page": page,
         "limit": limit,
     }
+
+
+def get_feed_events(feed_id: int, limit: int = 10) -> dict:
+    """The local events ingested from a feed, the most recently ingested first.
+
+    Events ingested before created_at was recorded come last, newest first.
+    """
+    response = get_opensearch_client().search(
+        index="misp-events",
+        body={
+            "query": {
+                "bool": {
+                    "filter": [
+                        {"term": {"source.type": "feed"}},
+                        {"term": {"source.id": feed_id}},
+                    ],
+                    "must_not": [{"term": {"deleted": True}}],
+                }
+            },
+            "sort": [
+                {"created_at": {"order": "desc", "missing": "_last", "unmapped_type": "long"}},
+                {"timestamp": {"order": "desc"}},
+            ],
+            "size": limit,
+            "track_total_hits": True,
+            "_source": [
+                "uuid",
+                "info",
+                "date",
+                "timestamp",
+                "created_at",
+                "attribute_count",
+                "published",
+            ],
+        },
+    )
+    hits = response["hits"]
+    return {
+        "total": hits["total"]["value"],
+        "events": [hit["_source"] for hit in hits["hits"]],
+    }
+
+
+# Event ids per OpenSearch ids query when counting a manifest's ingested events.
+INGESTED_COUNT_CHUNK = 10000
+
+
+def _from_feed_query(feed_id: int, event_uuids: list) -> dict:
+    return {
+        "bool": {
+            "filter": [
+                {"ids": {"values": event_uuids}},
+                {"term": {"source.type": "feed"}},
+                {"term": {"source.id": feed_id}},
+            ],
+            "must_not": [{"term": {"deleted": True}}],
+        }
+    }
+
+
+def _local_copies(feed_id: int, manifest_items: list) -> dict:
+    """The local copy of each of a manifest page's events, by uuid: where it
+    came from, and whether the feed has a newer version of it."""
+    if not manifest_items:
+        return {}
+    try:
+        response = get_opensearch_client().mget(
+            index="misp-events",
+            body={"ids": [uuid for uuid, _ in manifest_items]},
+            _source_includes=["timestamp", "source", "deleted"],
+        )
+    except Exception as e:
+        logging.warning("Could not look up the local copies of feed events: %s", e)
+        return {}
+
+    remote_timestamps = {
+        uuid: int(event_data.get("timestamp") or 0)
+        for uuid, event_data in manifest_items
+    }
+    local = {}
+    for doc in response.get("docs", []):
+        source = doc.get("_source")
+        if not doc.get("found") or not source or source.get("deleted"):
+            continue
+        origin = source.get("source") or {}
+        local[doc["_id"]] = {
+            "source": origin,
+            "from_feed": origin.get("type") == "feed" and origin.get("id") == feed_id,
+            "timestamp": source.get("timestamp"),
+            "outdated": remote_timestamps[doc["_id"]] > int(source.get("timestamp") or 0),
+        }
+    return local
+
+
+def _count_ingested(feed_id: int, event_uuids: list):
+    """How many of a manifest's events were ingested from this feed (None when
+    OpenSearch can't tell)."""
+    count = 0
+    try:
+        for start in range(0, len(event_uuids), INGESTED_COUNT_CHUNK):
+            chunk = event_uuids[start : start + INGESTED_COUNT_CHUNK]
+            count += get_opensearch_client().count(
+                index="misp-events", body={"query": _from_feed_query(feed_id, chunk)}
+            )["count"]
+    except Exception as e:
+        logging.warning("Could not count the ingested feed events: %s", e)
+        return None
+    return count
 
 
 def explore_misp_feed_event(db: Session, feed_id: int, event_uuid: str):

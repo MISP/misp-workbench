@@ -1,5 +1,5 @@
 <script setup>
-import { useServersStore, useToastsStore } from "@/stores";
+import { useServersStore, useToastsStore, useIngestRunsStore } from "@/stores";
 import {
   faCheck,
   faDownload,
@@ -11,6 +11,7 @@ import {
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
 const serversStore = useServersStore();
 const toastsStore = useToastsStore();
+const ingestRunsStore = useIngestRunsStore();
 
 defineProps(["server"]);
 
@@ -40,6 +41,7 @@ function testServerConnection(server) {
 function pullServer(server) {
   toastsStore.push("Server pull enqueued.");
   serversStore.pull(server.id);
+  ingestRunsStore.expect("server", server.id);
 }
 
 function pushServer(server) {

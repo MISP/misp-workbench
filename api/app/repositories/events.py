@@ -387,6 +387,9 @@ def create_event(
         "attributes": [],
         "objects": [],
         "organisation": org_dict,
+        # When it was first written here (timestamp is the event's own, kept
+        # from wherever it came from); never changed by updates.
+        "created_at": int(time.time()),
         "source": source or event_source("local"),
         "@timestamp": datetime.fromtimestamp(ts).isoformat(),
     }
@@ -433,6 +436,9 @@ def create_event_from_pulled_event(
         "objects": [],
         "organisation": None,
         "sharing_group": None,
+        # When it was first written here (timestamp is the event's own, kept
+        # from wherever it came from); never changed by updates.
+        "created_at": int(time.time()),
         "source": source,
         "@timestamp": datetime.fromtimestamp(ts).isoformat(),
     }
@@ -524,6 +530,9 @@ def create_event_from_fetched_event(
         "objects": [],
         "organisation": None,
         "sharing_group": None,
+        # When it was first written here (timestamp is the event's own, kept
+        # from wherever it came from); never changed by updates.
+        "created_at": int(time.time()),
         "source": event_source("feed", feed.id, feed.name),
         "@timestamp": datetime.fromtimestamp(ts).isoformat(),
     }

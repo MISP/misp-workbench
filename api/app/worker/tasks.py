@@ -276,8 +276,9 @@ def start_ingest_drainers(kind: str, source_id: int, user_id: int, count: int):
 
     drainers = min(ingest_runs.DRAINERS_PER_RUN, -(-count // ingest_runs.BATCH_SIZE))
     ingest_runs.set_drainers(kind, source_id, drainers)
+    run_id = ingest_runs.run_id(kind, source_id)
     for _ in range(drainers):
-        drain_ingest_run.delay(kind, source_id, user_id)
+        drain_ingest_run.delay(kind, source_id, user_id, run_id)
     return count
 
 
@@ -308,21 +309,28 @@ def _ingest_event(db, kind: str, event_uuid: str, source, user):
     soft_time_limit=DRAIN_SOFT_TIME_LIMIT,
     time_limit=DRAIN_SOFT_TIME_LIMIT + 60,
 )
-def drain_ingest_run(kind: str, source_id: int, user_id: int):
+def drain_ingest_run(
+    kind: str, source_id: int, user_id: int, run_id: str | None = None
+):
     """Ingest the next batch of a run's events, then queue the run's next turn.
 
     A failing event is logged and counted, and the batch goes on: the next
-    fetch tries it again.
+    fetch tries it again. ``run_id`` is the run the task was started for (none
+    from tasks queued before runs had ids): once that run is closed, by
+    cancelling it say, the task stops, even if the source has a new run.
     """
-    if not ingest_runs.is_open(kind, source_id):
+    current_run_id = ingest_runs.run_id(kind, source_id)
+    if current_run_id is None or run_id not in (None, current_run_id):
         return {"result": "skipped", "message": "The run is no longer open."}
+    run_id = current_run_id
 
     _, paused = _ingest_settings()
     if paused:
         # Waiting, not stalled: keep the watchdog from reviving it.
         ingest_runs.record(kind, source_id, 0, 0)
         drain_ingest_run.apply_async(
-            (kind, source_id, user_id), countdown=ingest_runs.QUEUED_RETRY_SECONDS
+            (kind, source_id, user_id, run_id),
+            countdown=ingest_runs.QUEUED_RETRY_SECONDS,
         )
         return {"result": "queued", "message": "Ingestion is paused."}
 
@@ -347,7 +355,8 @@ def drain_ingest_run(kind: str, source_id: int, user_id: int):
                     except SoftTimeLimitExceeded:
                         db.rollback()
                         failed += 1
-                        ingest_runs.put_back(kind, source_id, batch[index + 1 :])
+                        if ingest_runs.run_id(kind, source_id) == run_id:
+                            ingest_runs.put_back(kind, source_id, batch[index + 1 :])
                         logger.error(
                             "%s id=%s event uuid=%s hit the time limit",
                             kind,
@@ -365,10 +374,15 @@ def drain_ingest_run(kind: str, source_id: int, user_id: int):
                             event_uuid,
                         )
 
+    if ingest_runs.run_id(kind, source_id) != run_id:
+        # Closed while this batch was ingested (cancelled, or the source was
+        # disabled or removed).
+        return {"result": "cancelled", "ingested": done, "failed": failed}
+
     ingest_runs.record(kind, source_id, done, failed)
 
     if batch:
-        drain_ingest_run.delay(kind, source_id, user_id)
+        drain_ingest_run.delay(kind, source_id, user_id, run_id)
     elif ingest_runs.drainer_done(kind, source_id):
         ingest_runs.finish(kind, source_id)
         logger.info("%s id=%s ingestion run finished", kind, source_id)

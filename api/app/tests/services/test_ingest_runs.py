@@ -113,18 +113,47 @@ class TestIngestRuns:
         assert _last()["status"] == ingest_runs.CANCELLED
         assert _last()["error"] == "the feed was disabled"
 
-    def test_cancelling_an_ingesting_run_leaves_it_to_its_drainers(self):
+    def test_cancelling_an_ingesting_run_closes_it_at_once(self):
+        # Its drain tasks may be far down the queue: it doesn't wait for them.
         ingest_runs.claim("feed", FEED_ID, USER_ID)
+        ingest_runs.admit("feed", FEED_ID, 0)
         ingest_runs.add_events("feed", FEED_ID, ["a", "b"])
-        ingest_runs.set_drainers("feed", FEED_ID, 1)
+        ingest_runs.set_drainers("feed", FEED_ID, 2)
 
-        ingest_runs.cancel("feed", FEED_ID)
+        ingest_runs.cancel("feed", FEED_ID, "cancelled by user id=1")
+
+        assert _run() is None
         assert ingest_runs.take("feed", FEED_ID) == []
-        assert _run() is not None
-
-        assert ingest_runs.drainer_done("feed", FEED_ID)
-        ingest_runs.finish("feed", FEED_ID)
         assert _last()["status"] == ingest_runs.CANCELLED
+        assert _last()["error"] == "cancelled by user id=1"
+        assert ingest_runs.active_runs() == []
+
+    def test_each_run_has_its_own_id(self):
+        ingest_runs.claim("feed", FEED_ID, USER_ID)
+        first = ingest_runs.run_id("feed", FEED_ID)
+        ingest_runs.finish("feed", FEED_ID)
+        assert ingest_runs.run_id("feed", FEED_ID) is None
+
+        ingest_runs.claim("feed", FEED_ID, USER_ID)
+        assert ingest_runs.run_id("feed", FEED_ID) not in (None, first)
+
+    def test_open_runs_include_waiting_ones(self):
+        for feed_id in (FEED_ID, OTHER_FEED_ID):
+            ingest_runs.claim("feed", feed_id, USER_ID)
+        ingest_runs.admit("feed", FEED_ID, 1)
+        ingest_runs.add_events("feed", FEED_ID, ["a", "b"])
+
+        runs = {
+            run["source_id"]: run
+            for run in ingest_runs.open_runs()
+            if run["kind"] == "feed" and run["source_id"] in (FEED_ID, OTHER_FEED_ID)
+        }
+        assert runs[FEED_ID]["status"] == ingest_runs.RUNNING
+        assert runs[FEED_ID]["pending"] == 2
+        assert runs[OTHER_FEED_ID]["status"] == ingest_runs.QUEUED
+
+        ingest_runs.finish("feed", FEED_ID)
+        assert FEED_ID not in [run["source_id"] for run in ingest_runs.open_runs()]
 
 
 def _settings(max_runs=2, paused=False):
@@ -250,7 +279,9 @@ class TestDrainIngestRun:
 
         assert processed.call_count == ingest_runs.BATCH_SIZE
         assert (result["ingested"], result["failed"]) == (ingest_runs.BATCH_SIZE - 1, 1)
-        next_turn.assert_called_once_with("feed", FEED_ID, USER_ID)
+        next_turn.assert_called_once_with(
+            "feed", FEED_ID, USER_ID, ingest_runs.run_id("feed", FEED_ID)
+        )
         assert _run()["pending"] == 1
 
     def test_the_last_turn_closes_the_run(self):
@@ -274,6 +305,33 @@ class TestDrainIngestRun:
         next_turn.assert_not_called()
         assert _run() is None
         assert _last()["status"] == ingest_runs.CANCELLED
+
+    def test_a_run_cancelled_mid_batch_is_left_closed(self):
+        self._open(["a", "b"])
+
+        result, _, next_turn = self._drain(
+            process=lambda db, uuid, feed, user: ingest_runs.cancel("feed", FEED_ID)
+        )
+
+        assert result["result"] == "cancelled"
+        next_turn.assert_not_called()
+        assert _run() is None
+        assert _last()["status"] == ingest_runs.CANCELLED
+
+    def test_a_drain_task_of_an_earlier_run_leaves_the_new_one_alone(self):
+        self._open(["a"])
+        earlier = ingest_runs.run_id("feed", FEED_ID)
+        ingest_runs.cancel("feed", FEED_ID)
+        self._open(["b"])
+
+        with patch.object(
+            worker_tasks.feeds_repository, "process_feed_event"
+        ) as processed:
+            result = worker_tasks.drain_ingest_run("feed", FEED_ID, USER_ID, earlier)
+
+        assert result["result"] == "skipped"
+        processed.assert_not_called()
+        assert _run()["pending"] == 1
 
     def test_a_closed_run_is_not_drained(self):
         result, processed, _ = self._drain()
@@ -337,7 +395,9 @@ class TestReviveStalledRuns:
         with patch.object(worker_tasks.drain_ingest_run, "delay") as delay:
             assert worker_tasks.revive_stalled_ingest_runs() == 1
 
-        delay.assert_called_once_with("feed", FEED_ID, USER_ID)
+        delay.assert_called_once_with(
+            "feed", FEED_ID, USER_ID, ingest_runs.run_id("feed", FEED_ID)
+        )
         assert ingest_runs.stalled_runs() == []
         assert _run()["pending"] == 2
 
@@ -351,19 +411,6 @@ class TestReviveStalledRuns:
         assert _run() is None
         assert _last()["status"] == ingest_runs.FAILED
         assert ingest_runs.active_runs() == []
-
-    def test_a_stalled_cancelled_run_keeps_its_reason(self):
-        # A drainer lost, the run cancelled: nothing would come back to close it.
-        self._running(["a"], 1)
-        ingest_runs.set_drainers("feed", FEED_ID, 2)
-        ingest_runs.cancel("feed", FEED_ID, "cancelled by user id=1")
-        assert _run()["status"] == ingest_runs.CANCELLING
-
-        worker_tasks.revive_stalled_ingest_runs()
-
-        assert _run() is None
-        assert _last()["status"] == ingest_runs.CANCELLED
-        assert _last()["error"] == "cancelled by user id=1"
 
     def test_a_paused_run_is_not_stalled(self):
         self._running(["a"], 1)

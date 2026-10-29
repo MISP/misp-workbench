@@ -111,6 +111,68 @@ class TestDiagnosticsModules(ApiTester):
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
 
+class TestDiagnosticsQueues(ApiTester):
+    @pytest.mark.parametrize("scopes", [["tasks:read"]])
+    def test_get_queues(self, client: TestClient, auth_token: auth.Token):
+        celery_app = MagicMock()
+        celery_app.control.inspect.return_value.active_queues.return_value = {
+            "worker@host": [{"name": "celery"}, {"name": "maintenance"}],
+            "ingest@host": [{"name": "ingest"}],
+        }
+        broker = celery_app.connection_for_read.return_value.__enter__.return_value
+        # Three plain messages on ingest, one sent with a priority.
+        broker.default_channel.client.llen.side_effect = lambda key: {
+            "ingest": 3,
+            "ingest\x06\x163": 1,
+        }.get(key, 0)
+        runs = [
+            {
+                "kind": "feed",
+                "source_id": 990001,
+                "status": "running",
+                "total": 10,
+                "done": 4,
+                "failed": 0,
+                "pending": 6,
+            }
+        ]
+
+        with (
+            patch(PATCH_CELERY, celery_app),
+            patch("app.services.ingest_runs.open_runs", return_value=runs),
+        ):
+            response = client.get(
+                "/diagnostics/queues",
+                headers={"Authorization": "Bearer " + auth_token},
+            )
+
+        assert response.status_code == status.HTTP_200_OK
+        data = response.json()
+        queues = {queue["name"]: queue for queue in data["queues"]}
+        assert queues["ingest"] == {
+            "name": "ingest",
+            "pending": 4,
+            "workers": ["ingest@host"],
+        }
+        assert queues["maintenance"]["workers"] == ["worker@host"]
+        # Nothing consumes it: the status page flags it.
+        assert queues["bulk"]["workers"] == []
+        assert data["ingest"]["max_concurrent_runs"] == 2
+        assert data["ingest"]["paused"] is False
+        # The feed is gone (or never was): listed without a name.
+        assert data["ingest"]["runs"][0]["name"] is None
+        assert data["ingest"]["runs"][0]["pending"] == 6
+
+    @pytest.mark.parametrize("scopes", [[]])
+    def test_get_queues_unauthorized(self, client: TestClient, auth_token: auth.Token):
+        response = client.get(
+            "/diagnostics/queues",
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+
 # ── /health ───────────────────────────────────────────────────────────────────
 
 PATCH_ENGINE = "app.routers.diagnostics.engine"

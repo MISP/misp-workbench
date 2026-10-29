@@ -1,6 +1,7 @@
 <script setup>
 import DeleteServerModal from "@/components/servers/DeleteServerModal.vue";
 import SourceQualityCard from "@/components/indicators/SourceQualityCard.vue";
+import IngestRunStatus from "@/components/ingest/IngestRunStatus.vue";
 
 import { router } from "@/router";
 
@@ -149,6 +150,9 @@ function handleServerDeleted() {
         />
       </div>
     </div>
+  </div>
+  <div v-if="server.id" class="my-3">
+    <IngestRunStatus kind="server" :source-id="server.id" />
   </div>
   <SourceQualityCard kind="server" :source-id="server.id" />
 </template>

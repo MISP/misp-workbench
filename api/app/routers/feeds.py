@@ -12,7 +12,7 @@ from app.schemas import ingest_run as ingest_run_schemas
 from app.schemas import user as user_schemas
 from app.services import ingest_runs
 from app.worker import tasks
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Security, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Security, UploadFile, status
 from sqlalchemy.orm import Session
 
 _DEFAULTS_PATH = Path(__file__).parent.parent / "defaults" / "default-feeds.json"
@@ -118,6 +118,21 @@ def create_feed(
     ),
 ):
     return feeds_repository.create_feed(db=db, feed=feed)
+
+
+@router.get("/feeds/{feed_id}/events", response_model=feed_schemas.FeedEvents)
+def get_feed_events(
+    feed_id: int,
+    limit: int = Query(10, ge=1, le=100),
+    db: Session = Depends(get_db),
+    user: user_schemas.User = Security(
+        get_current_active_user, scopes=["feeds:read"]
+    ),
+):
+    """The local events ingested from the feed, newest first."""
+    if feeds_repository.get_feed_by_id(db, feed_id) is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Feed not found")
+    return feeds_repository.get_feed_events(feed_id, limit=limit)
 
 
 @router.get("/feeds/{feed_id}/explore")

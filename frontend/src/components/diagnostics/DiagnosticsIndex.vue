@@ -2,6 +2,7 @@
 import { ref, onMounted, onUnmounted } from "vue";
 import { useTasksStore, useDiagnosticsStore } from "@/stores";
 import WorkersCard from "@/components/diagnostics/WorkersCard.vue";
+import QueuesCard from "@/components/diagnostics/QueuesCard.vue";
 import OpenSearchCard from "@/components/diagnostics/OpenSearchCard.vue";
 import RedisCard from "@/components/diagnostics/RedisCard.vue";
 import PostgresCard from "@/components/diagnostics/PostgresCard.vue";
@@ -28,6 +29,7 @@ function refresh() {
   diagnosticsStore.getStorage();
   diagnosticsStore.getModules();
   diagnosticsStore.getLab();
+  diagnosticsStore.getQueues();
   lastUpdated.value = new Date();
 }
 
@@ -106,6 +108,7 @@ function formatTime(date) {
         <PostgresCard />
         <StorageCard />
         <MispModulesCard />
+        <QueuesCard />
         <WorkersCard />
         <LabWorkerCard />
       </div>

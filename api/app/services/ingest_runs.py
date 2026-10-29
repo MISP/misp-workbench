@@ -21,6 +21,7 @@ than the source's copy, and fetches them again.
 """
 
 import time
+import uuid
 from typing import Iterable, Optional
 
 from app.services.redis import get_redis_client
@@ -32,7 +33,6 @@ RUNNING = "running"
 DONE = "done"
 FAILED = "failed"
 CANCELLED = "cancelled"
-CANCELLING = "cancelling"
 
 # Events one drain task ingests before handing the run's next turn back to
 # the queue.
@@ -73,9 +73,6 @@ def _decode(run: dict) -> Optional[dict]:
         if field in decoded:
             decoded[field] = int(float(decoded[field]))
     decoded.pop("drainers", None)
-    if decoded.pop("cancelled", None) and decoded.get("status") == RUNNING:
-        # Its drain tasks finish the batches in hand, then close it.
-        decoded["status"] = CANCELLING
     return decoded
 
 
@@ -95,6 +92,9 @@ def claim(kind: str, source_id: int, user_id: int) -> bool:
     redis.hset(
         run,
         mapping={
+            # Drain tasks carry it: one left over from an earlier run of the
+            # source leaves this one alone.
+            "id": uuid.uuid4().hex,
             "user_id": user_id,
             "queued_at": now,
             "updated_at": now,
@@ -109,6 +109,11 @@ def claim(kind: str, source_id: int, user_id: int) -> bool:
 
 def is_open(kind: str, source_id: int) -> bool:
     return bool(get_redis_client().exists(_key(kind, source_id, "run")))
+
+
+def run_id(kind: str, source_id: int) -> Optional[str]:
+    """The id of the source's open run, None without one."""
+    return get_redis_client().hget(_key(kind, source_id, "run"), "id")
 
 
 def admit(kind: str, source_id: int, max_runs: int) -> bool:
@@ -208,16 +213,14 @@ def drainer_done(kind: str, source_id: int) -> bool:
 
 
 def cancel(kind: str, source_id: int, reason: str = "") -> None:
-    """Drop the events a run has yet to ingest; its drain tasks then finish it."""
-    redis = get_redis_client()
-    run = _key(kind, source_id, "run")
-    redis.delete(_key(kind, source_id, "pending"))
-    if redis.exists(run):
-        redis.hset(run, mapping={"cancelled": 1, "error": reason})
-        if int(redis.hget(run, "drainers") or 0) <= 0:
-            # Not ingesting yet (queued, or listing the source's events):
-            # nothing would come back to finish it.
-            finish(kind, source_id)
+    """Close a run, dropping the events it has yet to ingest.
+
+    It closes at once: its drain tasks may wait behind a long queue, and find
+    it gone when their turn comes. A batch being ingested at that moment still
+    completes, uncounted.
+    """
+    if is_open(kind, source_id):
+        finish(kind, source_id, CANCELLED, reason)
 
 
 def finish(kind: str, source_id: int, status: str = DONE, error: str = "") -> None:
@@ -227,11 +230,8 @@ def finish(kind: str, source_id: int, status: str = DONE, error: str = "") -> No
     run = redis.hgetall(run_key)
 
     if run:
-        if run.get("cancelled"):
-            # Keeps the reason it was cancelled for.
-            status, error = CANCELLED, run.get("error") or error
         summary = {
-            **{k: v for k, v in run.items() if k not in ("drainers", "cancelled")},
+            **{k: v for k, v in run.items() if k not in ("drainers", "id")},
             "status": status,
             "finished_at": int(time.time()),
         }
@@ -273,7 +273,7 @@ def stalled_runs(stalled_seconds: int = STALLED_SECONDS) -> list[dict]:
         current = status(run["kind"], run["source_id"])["current"]
         if (
             current is not None
-            and current["status"] in (RUNNING, CANCELLING)
+            and current["status"] == RUNNING
             and now - current.get("updated_at", now) >= stalled_seconds
         ):
             stalled.append(
@@ -284,6 +284,20 @@ def stalled_runs(stalled_seconds: int = STALLED_SECONDS) -> list[dict]:
                 }
             )
     return stalled
+
+
+def open_runs() -> list[dict]:
+    """Every open run, queued ones included, as ``{"kind", "source_id", **run}``."""
+    redis = get_redis_client()
+    runs = []
+    for key in redis.scan_iter(match="ingest:*:*:run", count=500):
+        _, kind, source_id, _ = key.split(":")
+        if kind not in KINDS:
+            continue
+        current = status(kind, int(source_id))["current"]
+        if current is not None:
+            runs.append({"kind": kind, "source_id": int(source_id), **current})
+    return sorted(runs, key=lambda run: (run.get("queued_at") or 0, run["kind"]))
 
 
 def active_runs() -> list[dict]:

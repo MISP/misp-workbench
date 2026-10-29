@@ -13,8 +13,35 @@ const props = defineProps(["feed"]);
 
 const feedEventsStore = useFeedEventsStore();
 const toastsStore = useToastsStore();
-const { feed_events, page, size, total, total_filtered, status } =
+const { feed_events, page, size, total, total_filtered, ingested, status } =
   storeToRefs(feedEventsStore);
+
+// Whether the feed's event is here already, and from where (see
+// explore_misp_feed): ingested from this feed, a newer version waiting in the
+// feed, or the same event from another source.
+function localState(event) {
+  const local = event.local;
+  if (!local) return null;
+  if (!local.from_feed) {
+    return {
+      label: `from ${local.source?.name || local.source?.type || "elsewhere"}`,
+      class: "bg-secondary",
+      title: "Already here from another source",
+    };
+  }
+  if (local.outdated) {
+    return {
+      label: "newer in feed",
+      class: "bg-warning text-dark",
+      title: "Ingested from this feed; the feed has a newer version",
+    };
+  }
+  return {
+    label: "ingested",
+    class: "bg-success",
+    title: "Ingested from this feed",
+  };
+}
 
 feedEventsStore.get_feed_events(props.feed.id);
 
@@ -44,7 +71,10 @@ function handlePrevPage() {
     v-if="!status.loading && total_filtered !== undefined"
     class="mb-2 text-muted small"
   >
-    Showing {{ total_filtered }} events ({{ total }} total in feed)
+    Showing {{ total_filtered }} events ({{ total }} total in feed)<template
+      v-if="ingested !== null"
+      >, {{ ingested }} ingested from this feed</template
+    >
   </div>
   <div class="table-responsive-sm">
     <table class="table table-striped table-hover">
@@ -54,6 +84,7 @@ function handlePrevPage() {
           <th scope="col">info</th>
           <th scope="col">timestamp</th>
           <th scope="col">organisation</th>
+          <th scope="col">local</th>
           <th scope="col" class="d-none d-sm-table-cell">tags</th>
           <th scope="col" width="15%" class="text-end">actions</th>
         </tr>
@@ -68,6 +99,18 @@ function handlePrevPage() {
             <Timestamp :timestamp="event.timestamp" />
           </td>
           <td>{{ event.Orgc?.name }}</td>
+          <td>
+            <RouterLink
+              v-if="localState(event)"
+              :to="`/events/${event.uuid}`"
+              class="badge text-decoration-none"
+              :class="localState(event).class"
+              :title="localState(event).title"
+            >
+              {{ localState(event).label }}
+            </RouterLink>
+            <span v-else class="small text-muted">not ingested</span>
+          </td>
           <td class="d-none d-sm-table-cell">
             <TagsIndex :tags="event.Tag || []" />
           </td>

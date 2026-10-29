@@ -127,6 +127,7 @@ const MATCH_TYPE_OPTIONS = ["term", "cidr", "ja4"];
 const KNOWN_NAMESPACES = [
   "correlations",
   "exports",
+  "ingest",
   "normalisation",
   "notifications",
   "retention",
@@ -680,6 +681,66 @@ async function deleteRetentionSchedule() {
                       <button
                         class="btn btn-primary btn-sm"
                         @click="saveFormNamespace('notifications')"
+                      >
+                        Save
+                      </button>
+                    </div>
+                  </template>
+
+                  <!-- ── ingest form ── -->
+                  <template
+                    v-else-if="
+                      namespace === 'ingest' &&
+                      !jsonMode[namespace] &&
+                      formValues.ingest
+                    "
+                  >
+                    <p class="text-muted small">
+                      Feed fetches and server pulls are ingestion runs, taken in
+                      turns by the ingest worker.
+                    </p>
+                    <div class="row g-3">
+                      <div class="col-md-4">
+                        <label
+                          class="form-label fw-semibold"
+                          for="ingestMaxConcurrentRuns"
+                          >Concurrent runs</label
+                        >
+                        <input
+                          id="ingestMaxConcurrentRuns"
+                          type="number"
+                          min="0"
+                          class="form-control"
+                          v-model.number="formValues.ingest.max_concurrent_runs"
+                        />
+                        <div class="form-text">
+                          Fetches and pulls ingesting at the same time; the
+                          others wait their turn. 0 disables the limit.
+                        </div>
+                      </div>
+                      <div class="col-md-8">
+                        <div class="form-check form-switch mt-md-4">
+                          <input
+                            id="ingestPaused"
+                            class="form-check-input"
+                            type="checkbox"
+                            v-model="formValues.ingest.paused"
+                          />
+                          <label class="form-check-label" for="ingestPaused"
+                            >Pause ingestion</label
+                          >
+                        </div>
+                        <div class="form-text">
+                          Stop taking events from feeds and servers. Runs keep
+                          their place and carry on once resumed.
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="d-flex justify-content-end mt-3">
+                      <button
+                        class="btn btn-primary btn-sm"
+                        @click="saveFormNamespace('ingest')"
                       >
                         Save
                       </button>
