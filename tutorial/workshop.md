@@ -54,6 +54,7 @@ Do this **before** the session: the demo seed takes a few minutes.
    ```bash
    cp .env.dev.dist .env.dev          # set OPENSEARCH_INITIAL_ADMIN_PASSWORD at minimum
    cp frontend/.env.dist frontend/.env
+   git submodule update --init        # skip if you cloned with --recurse-submodules
    docker compose -f docker-compose.yml -f docker-compose.dev.yml --env-file=".env.dev" up --build
    ```
 

@@ -1,0 +1,10 @@
+# The image installs its own dependencies from package-lock.json; a host
+# node_modules copied over them by `COPY . .` would make the build depend on
+# whatever happens to be installed locally.
+node_modules
+submodules/*/node_modules
+dist
+submodules/pivotick/dist
+test-results
+cypress/screenshots
+cypress/videos
