@@ -1,8 +1,33 @@
 import { fileURLToPath, URL } from "node:url";
 
-import { defineConfig } from "vite";
+import { defineConfig, type Plugin } from "vite";
 import vue from "@vitejs/plugin-vue";
 import vueJsx from "@vitejs/plugin-vue-jsx";
+
+// Pivotick's dropdown styles pass a literal colour where a custom property
+// name is expected (`dropdown-item-variant(#00000000, ...)`), so its built
+// stylesheet contains `var(rgba(0, 0, 0, 0))`. Browsers just drop the
+// declaration, but Vite 8 minifies CSS with lightningcss, which rejects it and
+// fails the production build. Unwrap `var(<literal colour>)` to the colour
+// itself until upstream fixes it (still present in pivotick v3.0.0).
+// See https://github.com/MISP/misp-workbench/issues/496
+function fixPivotickCss(): Plugin {
+  return {
+    name: "fix-pivotick-css",
+    enforce: "pre",
+    transform(code, id) {
+      if (!id.split("?")[0].endsWith("/submodules/pivotick/dist/pivotick.css"))
+        return null;
+      return {
+        code: code.replace(
+          /var\(\s*((?:rgba?|hsla?)\([^()]*\)|#[0-9a-fA-F]{3,8})\s*\)/g,
+          "$1",
+        ),
+        map: null,
+      };
+    },
+  };
+}
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -10,7 +35,7 @@ export default defineConfig({
     outDir: "dist",
     emptyOutDir: true,
   },
-  plugins: [vue(), vueJsx()],
+  plugins: [fixPivotickCss(), vue(), vueJsx()],
   resolve: {
     alias: {
       "@": fileURLToPath(new URL("./src", import.meta.url)),
