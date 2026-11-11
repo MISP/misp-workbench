@@ -25524,6 +25524,11 @@
             ],
             "title": "Source Url"
           },
+          "sync_every_minutes": {
+            "type": "integer",
+            "title": "Sync Every Minutes",
+            "default": 1440
+          },
           "synced_at": {
             "anyOf": [
               {
@@ -25546,6 +25551,18 @@
               }
             ],
             "title": "Sync Error"
+          },
+          "next_sync_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Sync At"
           },
           "updated_at": {
             "anyOf": [
@@ -25600,6 +25617,18 @@
               }
             ],
             "title": "Source Url"
+          },
+          "sync_every_minutes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sync Every Minutes",
+            "default": 1440
           },
           "org_id": {
             "anyOf": [
@@ -25668,6 +25697,17 @@
               }
             ],
             "title": "Source Url"
+          },
+          "sync_every_minutes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sync Every Minutes"
           }
         },
         "type": "object",

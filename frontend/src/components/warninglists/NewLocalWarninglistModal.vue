@@ -2,6 +2,7 @@
 import { ref, computed, onMounted } from "vue";
 import { Modal } from "bootstrap";
 import { useLocalWarninglistsStore, useToastsStore } from "@/stores";
+import SyncSchedulePicker from "@/components/warninglists/SyncSchedulePicker.vue";
 
 // Creates an organisation warninglist: kept by hand, or synced from a URL.
 const props = defineProps({
@@ -19,6 +20,8 @@ const name = ref("");
 const description = ref("");
 const kind = ref("manual"); // "manual" | "remote"
 const sourceUrl = ref("");
+const syncEvery = ref(1440);
+const schedulePicker = ref(null);
 // Hosts lists may sync from (an admin's call); null until loaded.
 const sourceHosts = ref(null);
 
@@ -29,7 +32,8 @@ const canSubmit = computed(
   () =>
     !saving.value &&
     name.value.trim() &&
-    (kind.value === "manual" || sourceUrl.value.trim()),
+    (kind.value === "manual" ||
+      (sourceUrl.value.trim() && !schedulePicker.value?.invalid)),
 );
 
 function reset() {
@@ -37,6 +41,7 @@ function reset() {
   description.value = "";
   kind.value = "manual";
   sourceUrl.value = "";
+  syncEvery.value = 1440;
   error.value = null;
 }
 
@@ -47,9 +52,11 @@ onMounted(async () => {
 
 async function submit() {
   if (!canSubmit.value) {
-    error.value = name.value.trim()
-      ? "A remote list needs a URL."
-      : "Name is required.";
+    error.value = !name.value.trim()
+      ? "Name is required."
+      : !sourceUrl.value.trim()
+        ? "A remote list needs a URL."
+        : "Pick a valid sync schedule.";
     return;
   }
   saving.value = true;
@@ -59,6 +66,7 @@ async function submit() {
       name: name.value.trim(),
       description: description.value.trim() || null,
       source_url: kind.value === "remote" ? sourceUrl.value.trim() : null,
+      ...(kind.value === "remote" && { sync_every_minutes: syncEvery.value }),
     });
     if (created.sync_error) {
       toastsStore.push(
@@ -157,8 +165,8 @@ async function submit() {
               <label class="form-check-label" for="nlw-kind-remote">
                 Remote
                 <span class="text-muted small d-block">
-                  Synced from a URL now and daily; the URL's content replaces
-                  the entries on every sync.
+                  Synced from a URL now and on a schedule; the URL's content
+                  replaces the entries on every sync.
                 </span>
               </label>
             </div>
@@ -185,6 +193,18 @@ async function submit() {
                 Allowed hosts: <code>{{ sourceHosts.join(", ") }}</code
                 >.
               </template>
+            </div>
+          </div>
+          <div v-if="kind === 'remote'" class="mb-3 ms-4">
+            <label class="form-label" for="nlw-schedule">Sync</label>
+            <SyncSchedulePicker
+              id="nlw-schedule"
+              ref="schedulePicker"
+              v-model="syncEvery"
+            />
+            <div class="form-text">
+              How often the URL's content changes. "Manual only" syncs when you
+              click <em>Sync now</em> on the list's page.
             </div>
           </div>
           <div v-if="error" class="alert alert-danger small mb-0">

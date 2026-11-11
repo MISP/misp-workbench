@@ -7,3 +7,4 @@ export * from "./local-storage";
 export * from "./cron";
 export * from "./correlations";
 export * from "./bootstrap-theme";
+export * from "./sync-schedule";

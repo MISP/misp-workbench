@@ -522,6 +522,51 @@ class TestDestinations:
         ]
 
 
+class TestSchedule:
+    def _list(self, every=60, failures=0, synced_at=None, **kwargs):
+        return warninglist_models.Warninglist(
+            source_url="https://cmdb.corp.example/r.txt",
+            enabled=True,
+            sync_every_minutes=every,
+            sync_failures=failures,
+            synced_at=synced_at,
+            **kwargs,
+        )
+
+    @pytest.mark.parametrize(
+        "every,failures,delay",
+        [
+            (60, 0, 60),
+            (60, 1, 120),
+            (60, 3, 480),
+            # Backs off to a day at most...
+            (60, 10, 1440),
+            (60, 1000, 1440),
+            (1440, 2, 1440),
+            # ...or the interval itself, when longer.
+            (7 * 1440, 5, 7 * 1440),
+        ],
+    )
+    def test_failing_sources_back_off(self, every, failures, delay):
+        assert self._list(every, failures).sync_delay_minutes == delay
+
+    def test_next_sync(self):
+        synced_at = datetime(2026, 11, 11, 12, tzinfo=timezone.utc)
+        assert self._list(60, synced_at=synced_at).next_sync_at == synced_at + (
+            timedelta(hours=1)
+        )
+        # Never synced: the next sweep does it.
+        assert self._list(60).next_sync_at is None
+        # Manual only, disabled, or without a source: never by the sweep.
+        assert self._list(0, synced_at=synced_at).next_sync_at is None
+        disabled = self._list(60, synced_at=synced_at)
+        disabled.enabled = False
+        assert disabled.next_sync_at is None
+        sourceless = self._list(60, synced_at=synced_at)
+        sourceless.source_url = None
+        assert sourceless.next_sync_at is None
+
+
 class TestListLifecycle(ApiTester):
     @pytest.fixture(scope="class", autouse=True)
     def dataset(self, cleanup):
@@ -690,3 +735,128 @@ class TestListLifecycle(ApiTester):
 
         assert client.delete(url, headers=headers).status_code == 204
         assert local_warninglists.members(list_id) == set()
+
+    @pytest.mark.parametrize("scopes", [MANAGE])
+    def test_sync_schedule(
+        self, client: TestClient, auth_token: auth.Token, db: Session, monkeypatch
+    ):
+        headers = {"Authorization": "Bearer " + auth_token}
+        monkeypatch.setattr(
+            local_warninglists, "allowed_hosts", lambda: ["cmdb.corp.example"]
+        )
+        monkeypatch.setattr(
+            local_warninglists, "_resolve", lambda host, port: {"10.1.2.3"}
+        )
+        fetched = []
+
+        def fake_get(*args, **kwargs):
+            fetched.append(args[0])
+            return FakeResponse(b"10.0.0.0/8\n")
+
+        monkeypatch.setattr("requests.get", fake_get)
+        source = "https://cmdb.corp.example/hourly.txt"
+
+        # Out of range: neither too often nor too seldom.
+        for minutes in (5, 14, 30 * 24 * 60 + 1, -1):
+            refused = client.post(
+                "/local-warninglists",
+                json={
+                    "name": "Hourly",
+                    "source_url": source,
+                    "sync_every_minutes": minutes,
+                },
+                headers=headers,
+            )
+            assert refused.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+
+        # Fetched on creation, next due an hour later.
+        created = client.post(
+            "/local-warninglists",
+            json={"name": "Hourly", "source_url": source, "sync_every_minutes": 60},
+            headers=headers,
+        )
+        assert created.status_code == status.HTTP_201_CREATED, created.text
+        hourly = created.json()
+        url = f"/local-warninglists/{hourly['id']}"
+        assert hourly["sync_every_minutes"] == 60
+        assert fetched == [source]
+        synced_at = datetime.fromisoformat(hourly["synced_at"])
+        next_sync_at = datetime.fromisoformat(hourly["next_sync_at"])
+        assert next_sync_at - synced_at == timedelta(hours=1)
+
+        def sweep_at(minutes_ago):
+            fetched.clear()
+            db.expire_all()
+            db_list = db.get(warninglist_models.Warninglist, hourly["id"])
+            db_list.synced_at = datetime.now(timezone.utc) - timedelta(
+                minutes=minutes_ago
+            )
+            db.commit()
+            local_warninglists.sweep(db)
+            return source in fetched
+
+        # Not due yet; due once the hour is up.
+        assert not sweep_at(30)
+        assert sweep_at(61)
+
+        # A failing source backs off: twice the interval after one failure.
+        monkeypatch.setattr(
+            "requests.get",
+            lambda *a, **k: fetched.append(a[0]) or FakeResponse(b"", status_code=500),
+        )
+        assert sweep_at(61)
+        failing = client.get(url, headers=headers).json()
+        assert failing["sync_error"]
+        assert datetime.fromisoformat(failing["next_sync_at"]) - datetime.fromisoformat(
+            failing["synced_at"]
+        ) == timedelta(hours=2)
+        assert not sweep_at(61)
+        assert sweep_at(121)
+        monkeypatch.setattr("requests.get", fake_get)
+        assert sweep_at(241)
+        recovered = client.get(url, headers=headers).json()
+        assert recovered["sync_error"] is None
+        assert datetime.fromisoformat(
+            recovered["next_sync_at"]
+        ) - datetime.fromisoformat(recovered["synced_at"]) == timedelta(hours=1)
+
+        # Manual: no automatic syncs, but "Sync now" still works.
+        assert (
+            client.patch(url, json={"sync_every_minutes": 15}, headers=headers).json()[
+                "sync_every_minutes"
+            ]
+            == 15
+        )
+        assert (
+            client.patch(
+                url, json={"sync_every_minutes": 4}, headers=headers
+            ).status_code
+            == status.HTTP_422_UNPROCESSABLE_ENTITY
+        )
+        manual = client.patch(
+            url, json={"sync_every_minutes": 0}, headers=headers
+        ).json()
+        assert (manual["sync_every_minutes"], manual["next_sync_at"]) == (0, None)
+        assert not sweep_at(60 * 24 * 365)
+        fetched.clear()
+        client.post(f"{url}/sync", headers=headers)
+        assert fetched == [source]
+
+        # Saving the same source again doesn't reset the last sync; a new one
+        # does.
+        same = client.patch(url, json={"source_url": source}, headers=headers).json()
+        assert same["synced_at"] is not None
+        moved = client.patch(
+            url,
+            json={"source_url": "https://cmdb.corp.example/moved.txt"},
+            headers=headers,
+        ).json()
+        assert moved["synced_at"] is None
+
+        # Lists created without a schedule sync daily.
+        daily = client.post(
+            "/local-warninglists", json={"name": "Daily"}, headers=headers
+        ).json()
+        assert daily["sync_every_minutes"] == 1440
+        client.delete(f"/local-warninglists/{daily['id']}", headers=headers)
+        client.delete(url, headers=headers)

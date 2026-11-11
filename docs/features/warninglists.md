@@ -59,8 +59,13 @@ domains, VPN egress, partners, critical SaaS. Under ***Intel*** →
 - **Sync** from a URL serving such a list (your CMDB's ranges, say): give
   it when creating the list (**+ New list**, choose **Remote**), or later
   on the list's page.
-  It is fetched at once, then daily, each sync replacing what the last one
-  brought. Fetching from inside the network is
+  It is fetched at once, then on the list's schedule — hourly, every 6
+  hours, daily (the default), weekly, every 15 minutes to 30 days, or only
+  when you click **Sync now** — each sync replacing what the last one
+  brought. The list's page shows the last and next sync and the last error;
+  a failing source is retried less and less often (the interval doubling
+  with each failure, up to a day) until it syncs again. Fetching from
+  inside the network is
   the point, so where lists may sync from is an admin's call: only hosts in
   the runtime setting `warninglists.source_hosts` (exact names or
   `*.corp.example`), none by default. A host resolving to a loopback,
