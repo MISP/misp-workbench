@@ -2,7 +2,7 @@
 import { computed } from "vue";
 import { storeToRefs } from "pinia";
 import { useLocalWarninglistsStore, useAuthStore } from "@/stores";
-import { authHelper } from "@/helpers";
+import { authHelper, describeSyncSchedule } from "@/helpers";
 import Timestamp from "@/components/misc/Timestamp.vue";
 import NewLocalWarninglistModal from "@/components/warninglists/NewLocalWarninglistModal.vue";
 
@@ -64,7 +64,11 @@ listsStore.getAll();
               <template v-if="list.source_url">
                 synced
                 <Timestamp v-if="list.synced_at" :timestamp="list.synced_at" />
-                <template v-else>soon</template>
+                <template v-else-if="list.sync_every_minutes">soon</template>
+                <template v-else>never</template>
+                <span class="text-muted">
+                  · {{ describeSyncSchedule(list.sync_every_minutes) }}</span
+                >
                 <span
                   v-if="list.sync_error"
                   class="text-danger"

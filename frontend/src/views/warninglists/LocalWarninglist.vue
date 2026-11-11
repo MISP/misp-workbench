@@ -7,10 +7,11 @@ import {
   useAuthStore,
   useToastsStore,
 } from "@/stores";
-import { authHelper } from "@/helpers";
+import { authHelper, describeSyncSchedule } from "@/helpers";
 import Spinner from "@/components/misc/Spinner.vue";
 import Timestamp from "@/components/misc/Timestamp.vue";
 import Pagination from "@/components/misc/Pagination.vue";
+import SyncSchedulePicker from "@/components/warninglists/SyncSchedulePicker.vue";
 
 // One of your organisation's own warninglists: its entries, import and
 // export, and the URL it syncs from.
@@ -43,6 +44,7 @@ const newEntry = ref({ value: "", comment: "", expires_at: "" });
 const importText = ref("");
 const importReplace = ref(false);
 const busy = ref(false);
+const schedulePicker = ref(null);
 // Hosts lists may sync from (an admin's call).
 const sourceHosts = ref([]);
 listsStore
@@ -72,6 +74,7 @@ async function load() {
       name: list.value.name,
       description: list.value.description || "",
       source_url: list.value.source_url || "",
+      sync_every_minutes: list.value.sync_every_minutes ?? 1440,
       enabled: list.value.enabled,
     };
     await loadEntries();
@@ -98,6 +101,10 @@ async function run(action, done) {
 const reflagging = "attributes are being re-checked";
 
 function saveSettings() {
+  if (schedulePicker.value?.invalid) {
+    toastsStore.push("Pick a valid sync schedule.", "danger");
+    return;
+  }
   run(
     () =>
       listsStore.update(props.id, {
@@ -254,7 +261,7 @@ load();
           </div>
           <div class="col-12 col-md-8">
             <label class="form-label small" for="list-source"
-              >Sync daily from (a plain list, one entry per line)</label
+              >Sync from (a plain list, one entry per line)</label
             >
             <input
               id="list-source"
@@ -275,12 +282,26 @@ load();
               </template>
             </div>
             <div v-if="list.source_url" class="form-text">
+              Syncs {{ describeSyncSchedule(list.sync_every_minutes) }}.
               <template v-if="list.synced_at">
-                Synced <Timestamp :timestamp="list.synced_at" />.
+                Last synced <Timestamp :timestamp="list.synced_at" />.
               </template>
-              <span v-if="list.sync_error" class="text-danger">{{
-                list.sync_error
-              }}</span>
+              <template v-if="list.next_sync_at">
+                Next sync <Timestamp :timestamp="list.next_sync_at" />.
+              </template>
+              <template
+                v-else-if="
+                  list.sync_every_minutes && list.enabled && !list.synced_at
+                "
+              >
+                Next sync within a few minutes.
+              </template>
+              <span v-if="list.sync_error" class="text-danger d-block"
+                >Last sync failed: {{ list.sync_error
+                }}<template v-if="list.next_sync_at">
+                  (retrying later while it keeps failing)</template
+                ></span
+              >
               <button
                 type="button"
                 class="btn btn-link btn-sm p-0 ms-1"
@@ -289,6 +310,14 @@ load();
                 Sync now
               </button>
             </div>
+          </div>
+          <div class="col-12 col-md-4">
+            <label class="form-label small" for="list-schedule">Schedule</label>
+            <SyncSchedulePicker
+              id="list-schedule"
+              ref="schedulePicker"
+              v-model="settings.sync_every_minutes"
+            />
           </div>
           <div class="col-6 col-md-2 d-flex align-items-end">
             <div class="form-check form-switch mb-2">

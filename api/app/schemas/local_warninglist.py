@@ -1,9 +1,30 @@
 from datetime import datetime
-from typing import Literal, Optional
+from typing import Annotated, Literal, Optional
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import AfterValidator, BaseModel, ConfigDict, Field
+
+from app.models.warninglist import (
+    SYNC_EVERY_DEFAULT,
+    SYNC_EVERY_MAX,
+    SYNC_EVERY_MIN,
+)
 
 EntryKind = Literal["value", "cidr", "suffix", "regex"]
+
+
+def _check_sync_every(minutes: Optional[int]) -> int:
+    if not minutes:
+        return 0
+    if not SYNC_EVERY_MIN <= minutes <= SYNC_EVERY_MAX:
+        raise ValueError(
+            f"a list syncs every {SYNC_EVERY_MIN} to {SYNC_EVERY_MAX} minutes "
+            "(30 days), or 0 for manual syncs only"
+        )
+    return minutes
+
+
+# Minutes between syncs from the source URL; 0 (or null): manual only.
+SyncEvery = Annotated[Optional[int], AfterValidator(_check_sync_every)]
 
 
 class LocalWarninglist(BaseModel):
@@ -13,10 +34,14 @@ class LocalWarninglist(BaseModel):
     enabled: bool
     entry_count: int = 0
     org_id: int
-    # A plain list the entries are synced from (daily), and how it went.
+    # A plain list the entries are synced from, how often (minutes, 0 for
+    # manual syncs only), how the last sync went and when the next one is
+    # (later after failures in a row; null when manual or not synced yet).
     source_url: Optional[str] = None
+    sync_every_minutes: int = SYNC_EVERY_DEFAULT
     synced_at: Optional[datetime] = None
     sync_error: Optional[str] = None
+    next_sync_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
     model_config = ConfigDict(from_attributes=True)
 
@@ -25,6 +50,7 @@ class LocalWarninglistCreate(BaseModel):
     name: str = Field(min_length=1, max_length=255)
     description: Optional[str] = Field(None, max_length=2000)
     source_url: Optional[str] = Field(None, max_length=2000)
+    sync_every_minutes: SyncEvery = SYNC_EVERY_DEFAULT
     # Admins only: another organisation's list.
     org_id: Optional[int] = None
 
@@ -34,6 +60,7 @@ class LocalWarninglistUpdate(BaseModel):
     description: Optional[str] = Field(None, max_length=2000)
     enabled: Optional[bool] = None
     source_url: Optional[str] = Field(None, max_length=2000)
+    sync_every_minutes: SyncEvery = None
 
 
 class EntryIn(BaseModel):

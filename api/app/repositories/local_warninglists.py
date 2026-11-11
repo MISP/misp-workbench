@@ -52,7 +52,6 @@ MAX_ENTRIES = 100_000
 MAX_REGEX_LENGTH = 256
 SYNC_MAX_BYTES = 5 * 1024 * 1024
 SYNC_TIMEOUT = (10, 30)
-SYNC_EVERY_SECONDS = 24 * 3600
 BULK_CHUNK = 1000
 LOCAL_TYPE = "local"
 # A regex is matched against this much of a value at most.
@@ -790,9 +789,11 @@ def sync(db: Session, db_list) -> dict:
             replace=True,
         )
         db_list.sync_error = None
+        db_list.sync_failures = 0
     except (requests.RequestException, InvalidEntry) as error:
         db.rollback()
         db_list.sync_error = str(error)[:1000]
+        db_list.sync_failures = (db_list.sync_failures or 0) + 1
         result = {"error": db_list.sync_error}
     db_list.synced_at = datetime.now(timezone.utc)
     db.commit()
@@ -803,7 +804,8 @@ def sync(db: Session, db_list) -> dict:
 
 
 def sweep(db: Session) -> dict:
-    """Drop expired entries, and sync the lists whose source is due."""
+    """Drop expired entries, and sync the lists whose source is due (by
+    their own schedule, backing off from a failing source)."""
     now = datetime.now(timezone.utc)
     expired = (
         db.query(models.WarninglistEntry)
@@ -828,11 +830,10 @@ def sweep(db: Session) -> dict:
         models.Warninglist.type == LOCAL_TYPE,
         models.Warninglist.source_url.isnot(None),
         models.Warninglist.enabled.is_(True),
+        models.Warninglist.sync_every_minutes > 0,
     ):
-        due = db_list.synced_at is None or (
-            (now - db_list.synced_at).total_seconds() >= SYNC_EVERY_SECONDS
-        )
-        if due:
+        next_sync_at = db_list.next_sync_at
+        if next_sync_at is None or next_sync_at <= now:
             sync(db, db_list)
             synced += 1
     return {"expired": len(expired), "synced": synced}
@@ -841,7 +842,14 @@ def sweep(db: Session) -> dict:
 # ── Lists ─────────────────────────────────────────────────────────────────
 
 
-def create_list(db: Session, org_id: int, name: str, description=None, source_url=None):
+def create_list(
+    db: Session,
+    org_id: int,
+    name: str,
+    description=None,
+    source_url=None,
+    sync_every_minutes=models.SYNC_EVERY_DEFAULT,
+):
     db_list = models.Warninglist(
         name=name,
         description=description,
@@ -853,6 +861,7 @@ def create_list(db: Session, org_id: int, name: str, description=None, source_ur
         enabled=True,
         org_id=org_id,
         source_url=check_source_url(source_url),
+        sync_every_minutes=sync_every_minutes,
         updated_at=datetime.now(timezone.utc),
     )
     db.add(db_list)
@@ -864,7 +873,10 @@ def create_list(db: Session, org_id: int, name: str, description=None, source_ur
 def update_list(db: Session, db_list, patch: dict):
     if "source_url" in patch:
         patch["source_url"] = check_source_url(patch["source_url"])
-        db_list.synced_at = None
+        if patch["source_url"] != db_list.source_url:
+            # A new source: synced at the next sweep, its failures forgotten.
+            db_list.synced_at = None
+            db_list.sync_failures = 0
     enabled_before = db_list.enabled
     for key, value in patch.items():
         setattr(db_list, key, value)

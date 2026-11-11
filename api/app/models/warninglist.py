@@ -1,3 +1,5 @@
+from datetime import timedelta
+
 from sqlalchemy import (
     JSON,
     Boolean,
@@ -11,6 +13,16 @@ from sqlalchemy import (
 )
 
 from app.database import Base
+
+# An organisation's list syncs from its source URL every sync_every_minutes:
+# 0 for manual syncs only, or between these. The sweep runs every 5 minutes,
+# which bounds its precision.
+SYNC_EVERY_DEFAULT = 24 * 60
+SYNC_EVERY_MIN = 15
+SYNC_EVERY_MAX = 30 * 24 * 60
+# A failing source is retried later and later (the interval doubling with each
+# failure in a row), but never later than this, or than the interval itself.
+SYNC_BACKOFF_CAP_MINUTES = 24 * 60
 
 
 class Warninglist(Base):
@@ -53,6 +65,36 @@ class Warninglist(Base):
     source_url = Column(Text, nullable=True)
     synced_at = Column(DateTime(timezone=True), nullable=True)
     sync_error = Column(Text, nullable=True)
+    # How often it is synced, in minutes; 0: only when asked ("Sync now").
+    sync_every_minutes = Column(
+        Integer,
+        nullable=False,
+        default=SYNC_EVERY_DEFAULT,
+        server_default=str(SYNC_EVERY_DEFAULT),
+    )
+    # Syncs in a row that failed, to back off from a failing source.
+    sync_failures = Column(Integer, nullable=False, default=0, server_default="0")
+
+    @property
+    def sync_delay_minutes(self):
+        """Minutes from the last sync to the next: the list's interval,
+        doubled for each failure in a row (up to a day, or the interval if
+        longer)."""
+        every = self.sync_every_minutes
+        if not every or not self.sync_failures:
+            return every
+        backed_off = every * 2 ** min(self.sync_failures, 16)
+        return max(every, min(backed_off, SYNC_BACKOFF_CAP_MINUTES))
+
+    @property
+    def next_sync_at(self):
+        """When the sweep syncs it next: None for a list synced by hand only
+        (or not at all), or one never synced yet (the next sweep does)."""
+        if not (self.source_url and self.enabled and self.sync_every_minutes):
+            return None
+        if self.synced_at is None:
+            return None
+        return self.synced_at + timedelta(minutes=self.sync_delay_minutes)
 
 
 class WarninglistEntry(Base):

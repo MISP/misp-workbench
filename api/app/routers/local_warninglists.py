@@ -87,7 +87,12 @@ def create_list(
         org_id = payload.org_id
     try:
         db_list = lists_repository.create_list(
-            db, org_id, payload.name, payload.description, payload.source_url
+            db,
+            org_id,
+            payload.name,
+            payload.description,
+            payload.source_url,
+            payload.sync_every_minutes,
         )
     except IntegrityError:
         db.rollback()
@@ -97,7 +102,7 @@ def create_list(
     except lists_repository.InvalidEntry as error:
         raise _invalid(error)
     _audit(db, request, user, "created", db_list)
-    # Created from a URL: fetch it now rather than at the next daily sync.
+    # Created from a URL: fetch it now rather than at the next sweep.
     if db_list.source_url:
         lists_repository.sync(db, db_list)
         db.refresh(db_list)

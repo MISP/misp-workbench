@@ -94,7 +94,7 @@ celery_app.conf.update(
             "options": {"expires": 60},
         },
         # Organisations' warninglists: drop expired entries, sync the lists
-        # whose source URL is due (daily).
+        # whose source URL is due (each has its own schedule).
         "local-warninglists-sweep": {
             "task": "app.worker.tasks.sweep_local_warninglists",
             "schedule": 300.0,
