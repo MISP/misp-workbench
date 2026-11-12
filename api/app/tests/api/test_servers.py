@@ -245,3 +245,14 @@ class TestServerDestinations(ApiTester):
             server = server_models.Server(url=url, authkey="k" * 40, self_signed=True)
             with pytest.raises(Exception, match="never fetch"):
                 servers_repository.get_remote_misp_connection(server)
+
+    @pytest.mark.parametrize("scopes", [["servers:read"]])
+    def test_sources(self, client: TestClient, auth_token: auth.Token, monkeypatch):
+        monkeypatch.setattr(
+            "app.services.outbound.allowed_hosts", lambda kind: ["misp.partner.example"]
+        )
+        response = client.get(
+            "/servers/sources", headers={"Authorization": "Bearer " + auth_token}
+        )
+        assert response.status_code == status.HTTP_200_OK
+        assert response.json() == {"hosts": ["misp.partner.example"]}

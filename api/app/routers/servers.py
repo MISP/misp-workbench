@@ -6,6 +6,7 @@ from app.schemas import task as task_schemas
 from app.schemas import user as user_schemas
 from app.schemas import event as event_schemas
 from app.schemas import ingest_run as ingest_run_schemas
+from app.schemas import outbound as outbound_schemas
 from app.services import ingest_runs, outbound
 from app.worker import tasks
 from app.settings import Settings
@@ -25,6 +26,17 @@ def get_servers(
     ),
 ):
     return servers_repository.get_servers(db, skip=skip, limit=limit)
+
+
+@router.get("/servers/sources", response_model=outbound_schemas.AllowedHosts)
+def server_sources(
+    user: user_schemas.User = Security(
+        get_current_active_user, scopes=["servers:read"]
+    ),
+):
+    """The hosts MISP servers may connect to (runtime setting
+    servers.source_hosts); empty, any host."""
+    return {"hosts": outbound.allowed_hosts(outbound.SERVERS)}
 
 
 @router.get("/servers/{server_id}", response_model=server_schemas.Server)

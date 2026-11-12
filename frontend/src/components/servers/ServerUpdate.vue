@@ -5,6 +5,8 @@ import { storeToRefs } from "pinia";
 import { useServersStore } from "@/stores";
 import { router } from "@/router";
 import { ServerSchema } from "@/schemas/server";
+import { sourceUrlProblem, useAllowedHosts } from "@/helpers/outbound";
+import { errorMessage } from "@/helpers/error-handler";
 import OrganisationsSelect from "@/components/organisations/OrganisationsSelect.vue";
 import PullRulesEditor from "@/components/servers/PullRulesEditor.vue";
 import SourceTrustSection from "@/components/indicators/SourceTrustSection.vue";
@@ -19,13 +21,19 @@ const pullRules = computed({
   },
 });
 
+// A URL MISP servers may not connect to is flagged as it is typed.
+const allowedHosts = useAllowedHosts("servers");
+const urlProblem = computed(() =>
+  sourceUrlProblem(server.value?.url, allowedHosts.value, "servers"),
+);
+
 function onSubmit(values, { setErrors }) {
   return serversStore
     .update(server.value)
     .then(() => {
       router.push(`/servers/${server.value.id}`);
     })
-    .catch((error) => setErrors({ apiError: error }));
+    .catch((error) => setErrors({ apiError: errorMessage(error) }));
 }
 
 function handleOrganisationUpdated(orgId) {
@@ -83,10 +91,16 @@ function handleRemoteOrgUpdated(orgId) {
             id="server.url"
             name="server.url"
             v-model="server.url"
-            :class="{ 'is-invalid': errors['server.url'] }"
+            :class="{ 'is-invalid': errors['server.url'] || urlProblem }"
           >
           </Field>
-          <div class="invalid-feedback">{{ errors["server.url"] }}</div>
+          <div class="invalid-feedback">
+            {{ errors["server.url"] || urlProblem }}
+          </div>
+          <div v-if="allowedHosts?.length" class="form-text">
+            MISP servers may connect to:
+            <code>{{ allowedHosts.join(", ") }}</code>
+          </div>
         </div>
         <div class="mb-3">
           <label for="server.authkey">authkey</label>
@@ -286,6 +300,7 @@ function handleRemoteOrgUpdated(orgId) {
           type="submit"
           class="btn btn-outline-primary"
           :class="{ disabled: status.updating }"
+          :disabled="!!urlProblem"
         >
           <span v-if="status.updating">
             <span

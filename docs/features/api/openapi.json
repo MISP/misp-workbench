@@ -3671,6 +3671,35 @@
         }
       }
     },
+    "/servers/sources": {
+      "get": {
+        "tags": [
+          "Servers"
+        ],
+        "summary": "Server Sources",
+        "description": "The hosts MISP servers may connect to (runtime setting\nservers.source_hosts); empty, any host.",
+        "operationId": "server_sources_servers_sources_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AllowedHosts"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "servers:read"
+            ]
+          }
+        ]
+      }
+    },
     "/servers/{server_id}": {
       "get": {
         "tags": [
@@ -6652,6 +6681,35 @@
             "content": {
               "application/json": {
                 "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "feeds:read"
+            ]
+          }
+        ]
+      }
+    },
+    "/feeds/sources": {
+      "get": {
+        "tags": [
+          "Feeds"
+        ],
+        "summary": "Feed Sources",
+        "description": "The hosts feeds may fetch from (runtime setting feeds.source_hosts);\nempty, any host. Lets the feed form flag a URL before it is saved.",
+        "operationId": "feed_sources_feeds_sources_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AllowedHosts"
+                }
               }
             }
           }
@@ -18244,6 +18302,20 @@
         },
         "type": "object",
         "title": "AlertReceiverUpdate"
+      },
+      "AllowedHosts": {
+        "properties": {
+          "hosts": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Hosts",
+            "default": []
+          }
+        },
+        "type": "object",
+        "title": "AllowedHosts"
       },
       "AnalysisLevel": {
         "type": "integer",

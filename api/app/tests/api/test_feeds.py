@@ -1122,3 +1122,14 @@ class TestFeedDestinations(ApiTester):
                 "https://example.com/list.txt"
             )
         assert "feeds.source_hosts" in refused.value.detail
+
+    @pytest.mark.parametrize("scopes", [["feeds:read"]])
+    def test_sources(self, client: TestClient, auth_token: auth.Token, monkeypatch):
+        monkeypatch.setattr(
+            "app.services.outbound.allowed_hosts", lambda kind: ["*.abuse.ch"]
+        )
+        response = client.get(
+            "/feeds/sources", headers={"Authorization": "Bearer " + auth_token}
+        )
+        assert response.status_code == status.HTTP_200_OK
+        assert response.json() == {"hosts": ["*.abuse.ch"]}

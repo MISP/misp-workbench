@@ -14,6 +14,7 @@ import AddFeedFreetext from "@/components/feeds/freetext/AddFeedFreetext.vue";
 import TestFreetextFeedModal from "@/components/feeds/freetext/TestFreetextFeedModal.vue";
 import DefaultFeedPicker from "@/components/feeds/DefaultFeedPicker.vue";
 import { errorMessage } from "@/helpers/error-handler";
+import { sourceUrlProblem, useAllowedHosts } from "@/helpers/outbound";
 
 const feedsStore = useFeedsStore();
 const toastsStore = useToastsStore();
@@ -73,8 +74,17 @@ watch(feedType, () => {
   }
 });
 
+const allowedHosts = useAllowedHosts("feeds");
+// A URL feeds may not fetch from is flagged on the field (FeedBaseForm); no
+// preview or save until it is fixed.
+const urlProblem = computed(() =>
+  config.value.input_source === "local"
+    ? null
+    : sourceUrlProblem(config.value.url, allowedHosts.value, "feeds"),
+);
+
 const canSubmit = computed(() => {
-  return config.value.name && config.value.url;
+  return config.value.name && config.value.url && !urlProblem.value;
 });
 
 const isLocal = computed(() => config.value.input_source === "local");

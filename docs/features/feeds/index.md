@@ -46,6 +46,13 @@ an address that would expose what only it can reach:
   *"example.com isn't a host feeds may fetch from; an admin allows hosts in
   the runtime settings (feeds.source_hosts)"*.
 
+The feed and server forms flag a URL as it is typed: one on a host that
+isn't allowed, or on such an address, is marked invalid with the reason,
+the allowed hosts are listed under the field, and Preview and Save wait
+until it is fixed (`GET /feeds/sources`, `GET /servers/sources`). The
+server checks it again on save and on every fetch, including the addresses
+a name resolves to, which the browser can't see.
+
 Private ranges stay reachable: a feed from an internal CMDB is legitimate.
 Downloads time out (10 s to connect, 120 s between reads) and are capped
 at 2 GB, like uploads. [MISP servers](../../configuration.md#outbound-fetches)

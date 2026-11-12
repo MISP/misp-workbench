@@ -9,6 +9,7 @@ import { Form, Field } from "vee-validate";
 import SourceTrustFields from "@/components/indicators/SourceTrustFields.vue";
 import CollapsibleSection from "@/components/misc/CollapsibleSection.vue";
 import { sourceTrustSummary } from "@/helpers/sourceTrust";
+import { sourceUrlProblem, useAllowedHosts } from "@/helpers/outbound";
 
 const props = defineProps({
   modelValue: {
@@ -40,6 +41,15 @@ const local = reactive({
 });
 
 const isLocal = computed(() => local.input_source === "local");
+
+// Flag a URL feeds may not fetch from as it is typed, rather than at preview
+// or save (the API checks it again, and the addresses a name resolves to).
+const allowedHosts = useAllowedHosts("feeds");
+const urlProblem = computed(() =>
+  isLocal.value
+    ? null
+    : sourceUrlProblem(local.url, allowedHosts.value, "feeds"),
+);
 
 const localFile = computed(() => (local.settings || {}).localFile || {});
 
@@ -247,10 +257,16 @@ function handleDistributionLevelUpdated(distributionLevelId) {
                   id="feed.url"
                   name="feed.url"
                   v-model="local.url"
-                  :class="{ 'is-invalid': errors['feed.url'] }"
+                  :class="{ 'is-invalid': errors['feed.url'] || urlProblem }"
                 >
                 </Field>
-                <div class="invalid-feedback">{{ errors["feed.url"] }}</div>
+                <div class="invalid-feedback">
+                  {{ errors["feed.url"] || urlProblem }}
+                </div>
+              </div>
+              <div v-if="allowedHosts?.length" class="form-text mt-n2 mb-2">
+                Feeds may fetch from:
+                <code>{{ allowedHosts.join(", ") }}</code>
               </div>
             </div>
 

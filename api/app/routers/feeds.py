@@ -9,6 +9,7 @@ from app.repositories import freetext as freetext_repository
 from app.repositories import tasks as tasks_repository
 from app.schemas import feed as feed_schemas
 from app.schemas import ingest_run as ingest_run_schemas
+from app.schemas import outbound as outbound_schemas
 from app.schemas import user as user_schemas
 from app.services import ingest_runs, outbound
 from app.worker import tasks
@@ -78,6 +79,17 @@ def get_default_feeds(
             }
         )
     return result
+
+
+@router.get("/feeds/sources", response_model=outbound_schemas.AllowedHosts)
+def feed_sources(
+    user: user_schemas.User = Security(
+        get_current_active_user, scopes=["feeds:read"]
+    ),
+):
+    """The hosts feeds may fetch from (runtime setting feeds.source_hosts);
+    empty, any host. Lets the feed form flag a URL before it is saved."""
+    return {"hosts": outbound.allowed_hosts(outbound.FEEDS)}
 
 
 @router.get("/feeds/{feed_id}", response_model=feed_schemas.Feed)
