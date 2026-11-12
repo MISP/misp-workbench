@@ -106,7 +106,11 @@ const results = computed(() => {
         icon: faBullseye,
         label: `Find indicators matching “${term}”`,
         detail: "Each value once, with its sources and score",
-        to: { path: "/explore", query: { q: term, tab: "indicators" } },
+        // Every indicator of the term, however long ago it was last seen.
+        to: {
+          path: "/explore",
+          query: { q: term, tab: "indicators", range: "all" },
+        },
       });
     }
   }

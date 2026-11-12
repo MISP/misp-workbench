@@ -9,11 +9,16 @@ import {
   faChevronUp,
   faXmark,
 } from "@fortawesome/free-solid-svg-icons";
+import {
+  ALL_TIME_LABEL,
+  QUICK_TIME_RANGES,
+  timeRangeLabel,
+} from "@/helpers/explore-time-range";
 
+// The range is the page's (null: All time): it decides the initial one, from
+// the link that opened it or its default, so this only shows and changes it.
 const props = defineProps({
   modelValue: { type: Object, default: null },
-  // Start without a time range instead of the default one.
-  noDefault: { type: Boolean, default: false },
 });
 
 const emit = defineEmits(["change"]);
@@ -34,18 +39,7 @@ const toInputRef = ref(null);
 let fromPicker = null;
 let toPicker = null;
 
-const quickOptions = [
-  { label: "Last 15 minutes", from: "now-15m", to: "now" },
-  { label: "Last 30 minutes", from: "now-30m", to: "now" },
-  { label: "Last 1 hour", from: "now-1h", to: "now" },
-  { label: "Last 4 hours", from: "now-4h", to: "now" },
-  { label: "Last 12 hours", from: "now-12h", to: "now" },
-  { label: "Last 24 hours", from: "now-24h", to: "now" },
-  { label: "Last 7 days", from: "now-7d", to: "now" },
-  { label: "Last 30 days", from: "now-30d", to: "now" },
-  { label: "Last 90 days", from: "now-90d", to: "now" },
-  { label: "Last 1 year", from: "now-1y", to: "now" },
-];
+const quickOptions = QUICK_TIME_RANGES;
 
 const unitOptions = [
   { label: "minutes", value: "m" },
@@ -56,11 +50,7 @@ const unitOptions = [
   { label: "years", value: "y" },
 ];
 
-const DEFAULT_RANGE = { label: "Last 30 days", from: "now-30d", to: "now" };
-
-const currentRange = ref(
-  props.noDefault ? null : { mode: "relative", ...DEFAULT_RANGE },
-);
+const currentRange = ref(props.modelValue);
 
 watch(
   () => props.modelValue,
@@ -69,17 +59,7 @@ watch(
   },
 );
 
-const displayLabel = computed(() => {
-  if (!currentRange.value) return "Time range";
-  const { mode, label, from, to } = currentRange.value;
-  if (label) return label;
-  if (mode === "absolute") {
-    const f = from ? new Date(from).toLocaleString() : "?";
-    const t = to ? new Date(to).toLocaleString() : "?";
-    return `${f} → ${t}`;
-  }
-  return "Time range";
-});
+const displayLabel = computed(() => timeRangeLabel(currentRange.value));
 
 function apply(range) {
   currentRange.value = range;
@@ -89,6 +69,10 @@ function apply(range) {
 
 function applyQuick(opt) {
   apply({ mode: "relative", label: opt.label, from: opt.from, to: opt.to });
+}
+
+function applyAllTime() {
+  apply(null);
 }
 
 function applyRelativeCustom() {
@@ -168,7 +152,6 @@ function _handleDocumentClick(e) {
 
 onMounted(() => {
   document.addEventListener("click", _handleDocumentClick);
-  emit("change", currentRange.value);
 });
 onUnmounted(() => {
   document.removeEventListener("click", _handleDocumentClick);
@@ -306,6 +289,13 @@ onUnmounted(() => {
               @click="applyQuick(opt)"
             >
               {{ opt.label }}
+            </button>
+            <button
+              class="btn btn-sm text-start"
+              :class="currentRange ? 'btn-outline-secondary' : 'btn-primary'"
+              @click="applyAllTime"
+            >
+              {{ ALL_TIME_LABEL }}
             </button>
           </div>
           <hr class="my-2" />

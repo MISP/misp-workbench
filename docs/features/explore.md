@@ -46,7 +46,24 @@ The time range picker constrains results to a specific window. It appends a `@ti
 <img src="../../screenshots/explore/misp-workbench-4_explore_time-filter-absolute.png#only-light" style="height: 400px;">
 <img src="../../screenshots/explore/misp-workbench-4_explore_time-filter-absolute-dark.png#only-dark" style="height: 400px;">
 
-To remove the time filter, click the × next to the active range label.
+To remove the time filter, choose **All time**, or click the × next to the
+active range label.
+
+Explore opens on the **Last 30 days**, unless the link that opened it says
+otherwise:
+
+| Query string | Time range |
+|---|---|
+| `range=all` | All time |
+| `from=now-90d` (`to` defaults to `now`) | A relative range: `now-<n><unit>`, with the units `m`, `h`, `d`, `w`, `M`, `y` |
+| `from=2026-01-01&to=2026-02-01` | An absolute range, from dates |
+
+Links whose query is complete on its own open on **All time**, so the page
+shows exactly what they select: a [detection profile](detection-profiles.md)'s
+**Explore them** (a profile's query carries its own age rule, if it has one),
+a hunt's **Open in Explore**, the quick switcher's **Find indicators** and an
+attribute's JA4 pivot. Choosing a range afterwards narrows the results as
+usual.
 
 ## Search history
 

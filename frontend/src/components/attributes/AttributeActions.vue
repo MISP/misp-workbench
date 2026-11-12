@@ -60,7 +60,8 @@ const ja4Pivot = computed(() => {
 
   const variant = props.attribute.expanded.ja4.variant;
   return {
-    to: { path: "/explore", query: { q: query } },
+    // All time: the same fingerprint seen months ago is still a match.
+    to: { path: "/explore", query: { q: query, range: "all" } },
     title: `Pivot on this ${variant || "JA4+"} fingerprint`,
   };
 });

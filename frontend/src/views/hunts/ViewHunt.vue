@@ -202,7 +202,8 @@ const exploreLink = computed(() => {
   ) {
     return null;
   }
-  return { path: "/explore", query: { q: hunt.value.query } };
+  // All time, as the hunt runs: it has no time range of its own.
+  return { path: "/explore", query: { q: hunt.value.query, range: "all" } };
 });
 
 async function saveSchedule() {
