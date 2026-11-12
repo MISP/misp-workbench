@@ -85,7 +85,10 @@ few of them.
 
 **Explore** next to a profile, or **Explore them** in the editor, opens its
 indicators in [Explore](explore.md)'s *Indicators* tab, written out as a
-Lucene query you can read, refine and save like any other search:
+Lucene query you can read, refine and save like any other search. It opens
+on **All time**, not Explore's default last 30 days, so it lists what the
+profile counts: an age limit is the profile's own **Last seen within** rule,
+written into the query.
 
 ```text
 deleted:false AND NOT tlp:("tlp:amber+strict" OR "tlp:red") AND score:>=50

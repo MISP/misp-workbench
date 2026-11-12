@@ -19,6 +19,10 @@ import ExploreSearchBar from "./ExploreSearchBar.vue";
 import ExploreSearchHistory from "./ExploreSearchHistory.vue";
 import ExploreResultsSection from "./ExploreResultsSection.vue";
 import ExploreTimeRangeFilter from "./ExploreTimeRangeFilter.vue";
+import {
+  DEFAULT_TIME_RANGE,
+  timeRangeFromQuery,
+} from "@/helpers/explore-time-range";
 import AddHuntModal from "@/components/hunts/AddHuntModal.vue";
 import AddExportModal from "@/components/exports/AddExportModal.vue";
 import EventsPropertiesModal from "@/components/misc/EventsPropertiesModal.vue";
@@ -39,7 +43,13 @@ eventsStore.retentionStatus().then((config) => {
 });
 
 const searchQuery = ref("");
-const activeTimeRange = ref(null);
+const route = useRoute();
+// From the link that opened the page (?range=all, or ?from=&to=), else the
+// last 30 days. null is All time.
+const routeTimeRange = timeRangeFromQuery(route.query);
+const activeTimeRange = ref(
+  routeTimeRange === undefined ? { ...DEFAULT_TIME_RANGE } : routeTimeRange,
+);
 const huntModalOpen = ref(false);
 const exportModalOpen = ref(false);
 const exportModalQuery = ref("");
@@ -469,29 +479,40 @@ function forgetRecentSearch(term) {
   if (idx !== -1) userRecentSearches.value.splice(idx, 1);
 }
 
-const route = useRoute();
-
 // ?q= searches and ?tab=indicators opens a tab: links (a detection profile's
 // pivot, the quick switcher) land here with them, on this page or another.
-// ?range=all searches without the default time range (a feed's events, say,
-// span years).
-function applyRouteQuery() {
+// ?range=all searches all time: a self-contained query (a profile's carries
+// its own age rule, a feed's events span years) mustn't be cut to the last
+// 30 days. ?from=now-90d&to=now (or dates) sets a range.
+function applyRouteQuery({ initial = false } = {}) {
   if (TABS.includes(route.query.tab)) {
     activeTab.value = route.query.tab;
   }
-  if (route.query.range === "all") {
-    activeTimeRange.value = null;
+  const range = timeRangeFromQuery(route.query);
+  if (range !== undefined) {
+    activeTimeRange.value = range;
   }
   const initialQuery = route.query.q;
   if (typeof initialQuery === "string" && initialQuery.length > 0) {
     searchQuery.value = initialQuery;
     search();
+  } else if (initial || range !== undefined) {
+    search();
   }
 }
-onMounted(applyRouteQuery);
+// One search on arrival, with the link's range already applied: searching
+// first with the default range raced the link's search, and whichever
+// answered last was shown.
+onMounted(() => applyRouteQuery({ initial: true }));
 watch(
-  () => [route.query.q, route.query.tab, route.query.range],
-  applyRouteQuery,
+  () => [
+    route.query.q,
+    route.query.tab,
+    route.query.range,
+    route.query.from,
+    route.query.to,
+  ],
+  () => applyRouteQuery(),
 );
 </script>
 
@@ -536,7 +557,6 @@ body {
     <div class="col-12 col-md-auto order-2 order-md-3 mt-2 mt-md-0">
       <ExploreTimeRangeFilter
         :model-value="activeTimeRange"
-        :no-default="route.query.range === 'all'"
         @change="
           (r) => {
             activeTimeRange = r;

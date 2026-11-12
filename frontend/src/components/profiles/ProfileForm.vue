@@ -184,7 +184,11 @@ async function explore() {
         "info",
       );
     }
-    router.push({ path: "/explore", query: { q: query, tab: "indicators" } });
+    // All time: the profile's query carries its own age rule, if it has one.
+    router.push({
+      path: "/explore",
+      query: { q: query, tab: "indicators", range: "all" },
+    });
   } catch (error) {
     apiError.value = error?.message || String(error);
   }
