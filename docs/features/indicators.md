@@ -52,6 +52,26 @@ Sources are recorded on events from this release on. Events created earlier
 count as `local` when created on this instance and `unknown` otherwise, until
 their feed or server sends them again.
 
+## What it is derived from
+
+An indicator shows the result of the merge, not what was merged. **Show
+the attributes, objects and events it is derived from**, in its details,
+draws that as a graph: the indicator, each live attribute holding its value
+(green when flagged for IDS), and the event each one is in. An attribute
+inside an object is drawn through it, so a `domain` reported in a
+`domain-ip` object reads *indicator → attribute → `domain-ip` → event*,
+while one reported on its own goes straight to its event. The objects'
+other attributes (the resolved IP next to that domain) are the context
+that makes an object useful; switch them on to draw them too. Click a node
+to open its event, object or attribute.
+
+The newest 50 events are drawn, and a "+N more events" node counts the
+others. A tombstone has nothing to draw.
+
+The same is served by `GET /indicators/{uuid}/graph` (scope
+`attributes:read`, `max_events` up to 50), resolved live from the attributes
+index: the indicator doesn't keep its attributes' uuids.
+
 ## How they stay current
 
 | What | When |

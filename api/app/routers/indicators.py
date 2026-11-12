@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, Security,
 from fastapi.concurrency import run_in_threadpool
 
 from app.auth.security import get_current_active_user
+from app.repositories import indicator_graph as indicator_graph_repository
 from app.repositories import indicators as indicators_repository
 from app.repositories import source_quality as source_quality_repository
 from app.repositories import stream_exports as stream_exports_repository
@@ -212,3 +213,34 @@ async def get_indicator(
             status_code=status.HTTP_404_NOT_FOUND, detail="Indicator not found"
         )
     return indicator
+
+
+@router.get(
+    "/indicators/{indicator_uuid}/graph",
+    response_model=indicator_schemas.IndicatorGraph,
+)
+async def indicator_graph(
+    indicator_uuid: UUID,
+    max_events: int = Query(
+        indicator_graph_repository.MAX_EVENTS,
+        ge=1,
+        le=indicator_graph_repository.MAX_EVENTS,
+    ),
+    user: user_schemas.User = Security(
+        get_current_active_user, scopes=["attributes:read"]
+    ),
+):
+    """What the indicator is derived from: its live attributes, the objects
+    they sit in and the events holding them, newest events first (at most
+    ``max_events``; ``omitted_events`` says how many more). A tombstoned
+    indicator has an empty graph."""
+    indicator = await run_in_threadpool(
+        indicators_repository.get_indicator, str(indicator_uuid)
+    )
+    if indicator is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Indicator not found"
+        )
+    return await run_in_threadpool(
+        indicator_graph_repository.graph, indicator, max_events
+    )

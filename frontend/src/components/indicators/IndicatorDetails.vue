@@ -2,6 +2,7 @@
 import { ref, watch } from "vue";
 import { storeToRefs } from "pinia";
 import Timestamp from "@/components/misc/Timestamp.vue";
+import IndicatorGraph from "@/components/indicators/IndicatorGraph.vue";
 import { useLocalWarninglistsStore } from "@/stores";
 
 // Everything an indicator carries: how its score was reached, where it comes
@@ -12,9 +13,12 @@ const props = defineProps({ indicator: { type: Object, required: true } });
 const localListsStore = useLocalWarninglistsStore();
 const { byId: localLists } = storeToRefs(localListsStore);
 const yourLists = ref([]);
+// Its graph (attributes, objects, events) is fetched only when asked for.
+const showGraph = ref(false);
 watch(
   () => props.indicator.uuid,
   async (uuid) => {
+    showGraph.value = false;
     yourLists.value = [];
     try {
       await localListsStore.ensureLoaded();
@@ -164,6 +168,26 @@ function sourceLabel(source) {
         class="text-muted"
         >and {{ indicator.event_count - indicator.events.length }} more</span
       >
+    </dd>
+    <dt class="col-sm-2">graph</dt>
+    <dd class="col-sm-10" @click.stop>
+      <button
+        type="button"
+        class="btn btn-link btn-sm p-0"
+        :aria-expanded="showGraph"
+        @click="showGraph = !showGraph"
+      >
+        {{
+          showGraph
+            ? "Hide graph"
+            : "Show the attributes, objects and events it is derived from"
+        }}
+      </button>
+      <IndicatorGraph
+        v-if="showGraph"
+        class="mt-2"
+        :indicator-uuid="indicator.uuid"
+      />
     </dd>
     <dt class="col-sm-2">uuid</dt>
     <dd class="col-sm-10 font-monospace">{{ indicator.uuid }}</dd>
