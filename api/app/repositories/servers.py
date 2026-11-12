@@ -11,7 +11,7 @@ from app.repositories import sync as sync_repository
 from app.repositories import events as events_repository
 from app.repositories import sharing_groups as sharing_groups_repository
 from app.schemas import server as server_schemas
-from app.services import ingest_runs
+from app.services import ingest_runs, outbound
 from app.settings import Settings
 from fastapi import HTTPException, status
 from pymisp import (
@@ -79,19 +79,46 @@ def create_server(db: Session, server: server_schemas.ServerCreate):
     return db_server
 
 
+class _GuardedPyMISP(PyMISP):
+    """PyMISP whose every request goes through the outbound checks.
+
+    PyMISP takes an adapter for https:// only, and sends its first requests
+    (with the server's key) from its constructor. That first request reads
+    ``recommended_pymisp_version``: the http:// adapter is mounted there,
+    before anything is sent.
+    """
+
+    def _guard(self):
+        session = self._PyMISP__session
+        adapter = session.get_adapter("https://")
+        if session.get_adapter("http://") is not adapter:
+            session.mount("http://", adapter)
+
+    @property
+    def recommended_pymisp_version(self):
+        self._guard()
+        return super().recommended_pymisp_version
+
+
 def get_remote_misp_connection(server: server_models.Server):
     verify_cert = not server.self_signed
 
     try:
-        remote_misp = PyMISP(
+        adapter = outbound.GuardedAdapter(outbound.SERVERS)
+        # Before PyMISP connects, so a refused URL never gets the key; the
+        # adapter checks every request (and redirect hop) after that.
+        outbound.check_destination(server.url, outbound.SERVERS, adapter.hosts)
+        remote_misp = _GuardedPyMISP(
             url=server.url,
             key=server.authkey,
             ssl=verify_cert,
             timeout=REMOTE_MISP_TIMEOUT,
+            https_adapter=adapter,
             http_headers={
                 "User-Agent": "misp-workbench/" + os.environ.get("APP_VERSION", "")
             },
         )
+        remote_misp._guard()
         remote_misp_version = remote_misp.misp_instance_version
     except Exception as ex:
         raise Exception("Remote MISP instance not reachable: %s" % ex)

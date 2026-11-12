@@ -114,3 +114,26 @@ The file is written with mode `0600`. It is read at startup by the API, worker, 
 |---|---|---|
 | `MODULES_HOST` | `modules` | MISP modules service host |
 | `MODULES_PORT` | `6666` | MISP modules service port |
+
+## Outbound fetches
+
+Feeds and MISP servers fetch URLs that organisation admins set, so where
+the server may connect to is restricted, in the runtime settings (not
+environment variables):
+
+| Setting | Default | Description |
+|---|---|---|
+| `feeds.source_hosts` | `[]` | Hosts feeds may fetch from: exact names or `*.abuse.ch`. Empty: any host |
+| `servers.source_hosts` | `[]` | Hosts MISP servers may connect to. Empty: any host |
+| `warninglists.source_hosts` | `[]` | Hosts organisations' [warninglists](features/warninglists.md) may sync from. Empty: none |
+
+Whatever they say, no feed, server or list ever reaches a loopback,
+link-local (cloud metadata, `169.254.169.254`), multicast, reserved or
+unspecified address. The address is checked when the host is resolved and
+again on the connection, and every redirect hop is checked like the first
+request. A server's URL is checked before its key is ever sent. Private
+ranges stay reachable: an internal MISP or CMDB is legitimate.
+
+Through an HTTP(S) proxy (`HTTPS_PROXY`), the proxy resolves the host: the
+allowed hosts and the resolve-time check still apply, the connection check
+doesn't.

@@ -26,6 +26,31 @@ All feed types share a set of base settings:
 | **Fetch immediately** | Enqueue an immediate fetch when the feed is created — hidden in upload mode |
 | **Advanced settings** | A separate, collapsed section: **Authentication** (an auth header sent with every request; network mode only) and indicator scoring (a score modifier and cap for what the feed reports). Its header shows what is set, e.g. *auth header: Authorization · score cap 80* |
 
+## Where feeds may fetch from
+
+Organisation admins can create feeds, and a feed's content comes back to
+them (in its preview, and as attributes), so the server never fetches from
+an address that would expose what only it can reach:
+
+- **Never**: loopback (`127.0.0.1`, `::1`, the server itself), link-local
+  (`169.254.169.254`, a cloud's metadata service), multicast, reserved and
+  unspecified addresses. This holds whatever the settings say, for every
+  request: previews, connection tests, manifests and event files, each
+  redirect hop, and a host whose DNS answer changes between the check and
+  the connection.
+- **Allowed hosts**: the runtime setting `feeds.source_hosts`
+  (*Settings → Runtime → feeds*) lists the hosts feeds may fetch from, as
+  exact names or `*.abuse.ch`. Empty (the default), any other host is
+  allowed. Once set, a feed on another host can't be saved, and one saved
+  earlier fails when fetched:
+  *"example.com isn't a host feeds may fetch from; an admin allows hosts in
+  the runtime settings (feeds.source_hosts)"*.
+
+Private ranges stay reachable: a feed from an internal CMDB is legitimate.
+Downloads time out (10 s to connect, 120 s between reads) and are capped
+at 2 GB, like uploads. [MISP servers](../../configuration.md#outbound-fetches)
+follow the same rules, with `servers.source_hosts`.
+
 ## Default feed list
 
 A curated list of well-known public feeds is bundled at `api/app/defaults/default-feeds.json`. When adding a feed, click **Select from defaults** to browse and auto-populate the form.

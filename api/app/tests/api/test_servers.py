@@ -173,3 +173,75 @@ class TestServersResource(ApiTester):
         )
 
         assert response.status_code == status.HTTP_204_NO_CONTENT
+
+
+class TestServerDestinations(ApiTester):
+    """MISP servers connect only to allowed hosts, never to loopback or cloud
+    metadata addresses (app.services.outbound)."""
+
+    def _server(self, url):
+        return {
+            "name": "probe",
+            "url": url,
+            "authkey": "JOvupq7Y96531wkWZBrIgbaxqaZIQqaYs9izZJ0g",
+            "org_id": 1,
+            "remote_org_id": 1,
+            "push": False,
+            "pull": True,
+            "push_sightings": False,
+            "push_galaxy_clusters": False,
+            "pull_galaxy_clusters": False,
+            "publish_without_email": True,
+            "self_signed": True,
+            "internal": True,
+            "unpublish_event": False,
+            "skip_proxy": False,
+            "caching_enabled": False,
+            "priority": 0,
+        }
+
+    @pytest.mark.parametrize("scopes", [["servers:create"]])
+    def test_url_checked_on_save(
+        self,
+        client: TestClient,
+        organisation_1: organisation_models.Organisation,
+        auth_token: auth.Token,
+        monkeypatch,
+    ):
+        headers = {"Authorization": "Bearer " + auth_token}
+        monkeypatch.setattr("app.services.outbound.allowed_hosts", lambda kind: [])
+        metadata = client.post(
+            "/servers/",
+            json={**self._server("http://169.254.169.254/"), "org_id": organisation_1.id},
+            headers=headers,
+        )
+        assert metadata.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+
+        monkeypatch.setattr(
+            "app.services.outbound.allowed_hosts", lambda kind: ["misp.partner.example"]
+        )
+        refused = client.post(
+            "/servers/",
+            json={**self._server("https://other.example/"), "org_id": organisation_1.id},
+            headers=headers,
+        )
+        assert refused.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert "servers.source_hosts" in refused.json()["detail"]
+        allowed = client.post(
+            "/servers/",
+            json={
+                **self._server("https://misp.partner.example/"),
+                "org_id": organisation_1.id,
+            },
+            headers=headers,
+        )
+        assert allowed.status_code == status.HTTP_201_CREATED, allowed.text
+
+    def test_connection_checked_before_the_key_is_sent(self, monkeypatch):
+        from app.repositories import servers as servers_repository
+
+        monkeypatch.setattr("app.services.outbound.allowed_hosts", lambda kind: [])
+        for url in ("http://127.0.0.1:8080", "http://169.254.169.254"):
+            server = server_models.Server(url=url, authkey="k" * 40, self_signed=True)
+            with pytest.raises(Exception, match="never fetch"):
+                servers_repository.get_remote_misp_connection(server)

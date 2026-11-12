@@ -61,6 +61,17 @@ DEFAULT_SETTINGS = {
         # inside the network is the point, so an admin decides where to.
         "source_hosts": [],
     },
+    "feeds": {
+        # Hosts feeds may fetch from: exact names or "*.abuse.ch". Empty: any
+        # host. Either way a feed never reaches loopback, link-local (cloud
+        # metadata), multicast or reserved addresses (app.services.outbound).
+        "source_hosts": [],
+    },
+    "servers": {
+        # Hosts MISP servers may connect to, as for feeds. Empty: any host;
+        # private ranges stay reachable (an internal MISP is legitimate).
+        "source_hosts": [],
+    },
     "sightings": {
         # Turn to_ids off on every attribute holding a value once this many
         # distinct organisations have reported it as a false positive (MISP

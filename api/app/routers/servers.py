@@ -6,7 +6,7 @@ from app.schemas import task as task_schemas
 from app.schemas import user as user_schemas
 from app.schemas import event as event_schemas
 from app.schemas import ingest_run as ingest_run_schemas
-from app.services import ingest_runs
+from app.services import ingest_runs, outbound
 from app.worker import tasks
 from app.settings import Settings
 from fastapi import APIRouter, Depends, HTTPException, Security, status
@@ -78,6 +78,15 @@ def preview_pull(
     return servers_repository.preview_pull_server(request)
 
 
+def _check_server_url(url) -> None:
+    """A server's URL must be one MISP servers may connect to. Its addresses
+    are checked when connecting."""
+    try:
+        outbound.check_url(url, outbound.SERVERS)
+    except outbound.DestinationRefused as error:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(error))
+
+
 @router.post(
     "/servers/",
     response_model=server_schemas.Server,
@@ -90,6 +99,7 @@ def create_server(
         get_current_active_user, scopes=["servers:create"]
     ),
 ):
+    _check_server_url(server.url)
     return servers_repository.create_server(db=db, server=server)
 
 
@@ -102,6 +112,8 @@ def update_server(
         get_current_active_user, scopes=["servers:update"]
     ),
 ):
+    if server.url is not None:
+        _check_server_url(server.url)
     return servers_repository.update_server(db=db, server_id=server_id, server=server)
 
 
@@ -297,6 +309,7 @@ def push_server(
         status=task.status,
         message="push server_id=%s enqueued" % server_id,
     )
+
 
 @router.post("/servers/{server_id}/events/{event_uuid}/push")
 def push_remote_event_by_uuid(
