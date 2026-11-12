@@ -1,8 +1,9 @@
 <script setup>
-import { ref } from "vue";
+import { ref, onMounted, onBeforeUnmount } from "vue";
 import { Modal } from "bootstrap";
 import { useEventsStore } from "@/stores";
 import { storeToRefs } from "pinia";
+import { errorMessage } from "@/helpers/error-handler";
 
 const eventsStore = useEventsStore();
 const { status } = storeToRefs(eventsStore);
@@ -12,12 +13,23 @@ const emit = defineEmits(["event-deleted"]);
 
 const modalEl = ref(null);
 const hardDelete = ref(false);
+const error = ref(null);
 
 defineExpose({
   modalEl,
 });
 
+// Opened again, it doesn't show the last attempt's error.
+function reset() {
+  error.value = null;
+}
+onMounted(() => modalEl.value?.addEventListener("hidden.bs.modal", reset));
+onBeforeUnmount(() =>
+  modalEl.value?.removeEventListener("hidden.bs.modal", reset),
+);
+
 function onSubmit() {
+  error.value = null;
   return eventsStore
     .delete(props.event_uuid, { force: hardDelete.value })
     .then(() => {
@@ -27,7 +39,7 @@ function onSubmit() {
       });
       Modal.getInstance(modalEl.value)?.hide();
     })
-    .catch((error) => (status.error = error));
+    .catch((e) => (error.value = errorMessage(e)));
 }
 </script>
 
@@ -75,8 +87,8 @@ function onSubmit() {
             </div>
           </div>
         </div>
-        <div v-if="status.error" class="w-100 alert alert-danger mt-3 mb-3">
-          {{ status.error }}
+        <div v-if="error" class="alert alert-danger mx-3 mb-0" role="alert">
+          {{ error }}
         </div>
         <div class="modal-footer">
           <button

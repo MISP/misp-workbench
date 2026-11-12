@@ -65,6 +65,19 @@ a hunt's **Open in Explore**, the quick switcher's **Find indicators** and an
 attribute's JA4 pivot. Choosing a range afterwards narrows the results as
 usual.
 
+## Deleted results
+
+**Include deleted** (under the time range) adds soft-deleted events and
+attributes to the results, each marked *deleted*.
+
+Deleting an event from its result card updates the results at once: the
+event leaves the **Events** tab, its attributes the **Attributes** tab and
+its correlations the **Correlations** tab, and the counts and timeline
+follow. Each tab stays on the page it shows, or the last page left if the
+event was the last thing on it. With **Include deleted** on, the event
+stays, marked *deleted*. Indicators drop the event at the next indicator
+sync.
+
 ## Search history
 
 The sidebar panel tracks two lists:
