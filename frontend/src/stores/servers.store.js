@@ -50,11 +50,17 @@ export const useServersStore = defineStore({
     },
     async update(server) {
       this.status = { updating: true };
-      return fetchWrapper
-        .patch(`${baseUrl}/${server.id}`, server)
-        .then((response) => (this.server = response))
-        .catch((error) => (this.error = error))
-        .finally(() => (this.status.updating = false));
+      return (
+        fetchWrapper
+          .patch(`${baseUrl}/${server.id}`, server)
+          .then((response) => (this.server = response))
+          // Rethrown: resolving with it read as a successful save.
+          .catch((error) => {
+            this.error = error;
+            throw error;
+          })
+          .finally(() => (this.status.updating = false))
+      );
     },
     async delete(id) {
       this.status = { loading: true };

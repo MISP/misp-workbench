@@ -9,8 +9,9 @@ from app.repositories import freetext as freetext_repository
 from app.repositories import tasks as tasks_repository
 from app.schemas import feed as feed_schemas
 from app.schemas import ingest_run as ingest_run_schemas
+from app.schemas import outbound as outbound_schemas
 from app.schemas import user as user_schemas
-from app.services import ingest_runs
+from app.services import ingest_runs, outbound
 from app.worker import tasks
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Security, UploadFile, status
 from sqlalchemy.orm import Session
@@ -80,6 +81,17 @@ def get_default_feeds(
     return result
 
 
+@router.get("/feeds/sources", response_model=outbound_schemas.AllowedHosts)
+def feed_sources(
+    user: user_schemas.User = Security(
+        get_current_active_user, scopes=["feeds:read"]
+    ),
+):
+    """The hosts feeds may fetch from (runtime setting feeds.source_hosts);
+    empty, any host. Lets the feed form flag a URL before it is saved."""
+    return {"hosts": outbound.allowed_hosts(outbound.FEEDS)}
+
+
 @router.get("/feeds/{feed_id}", response_model=feed_schemas.Feed)
 def get_feed_by_id(
     feed_id: int,
@@ -105,6 +117,17 @@ def upload_feed_file(
     return feeds_repository.store_feed_upload(file=file, source_format=source_format)
 
 
+def _check_feed_url(url, input_source) -> None:
+    """A network feed's URL must be one feeds may fetch from (a local feed's
+    is a storage key). Its addresses are checked when it is fetched."""
+    if input_source != "network":
+        return
+    try:
+        outbound.check_url(url, outbound.FEEDS)
+    except outbound.DestinationRefused as error:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(error))
+
+
 @router.post(
     "/feeds/",
     response_model=feed_schemas.Feed,
@@ -117,6 +140,7 @@ def create_feed(
         get_current_active_user, scopes=["feeds:create"]
     ),
 ):
+    _check_feed_url(feed.url, feed.input_source)
     return feeds_repository.create_feed(db=db, feed=feed)
 
 
@@ -220,6 +244,12 @@ def update_feed(
         get_current_active_user, scopes=["feeds:update"]
     ),
 ) -> feed_schemas.Feed:
+    current = feeds_repository.get_feed_by_id(db, feed_id)
+    if current is not None and (feed.url is not None or feed.input_source):
+        _check_feed_url(
+            feed.url if feed.url is not None else current.url,
+            feed.input_source or current.input_source,
+        )
     db_feed = feeds_repository.update_feed(db=db, feed_id=feed_id, feed=feed)
     if db_feed is not None and not db_feed.enabled:
         ingest_runs.cancel("feed", feed_id, "the feed was disabled")

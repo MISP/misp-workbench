@@ -42,6 +42,7 @@ from sqlalchemy.orm import Session
 from app.auth.utils import role_has_scope
 from app.models import warninglist as models
 from app.repositories import warninglists
+from app.services import outbound
 from app.services.opensearch import get_opensearch_client
 from app.services.redis import get_redis_client
 
@@ -721,16 +722,10 @@ def check_source_url(url: Optional[str]) -> Optional[str]:
 
 
 def _forbidden(address: str) -> bool:
-    ip = ipaddress.ip_address(address)
-    # Private ranges are fine (a CMDB is on one); these never are: the host
-    # itself, link-local (cloud metadata services), multicast, reserved.
-    return (
-        ip.is_loopback
-        or ip.is_link_local
-        or ip.is_multicast
-        or ip.is_reserved
-        or ip.is_unspecified
-    )
+    # Private ranges are fine (a CMDB is on one); loopback, link-local (cloud
+    # metadata), multicast and reserved never are: the rules feeds and MISP
+    # servers follow too.
+    return outbound.forbidden_address(address)
 
 
 def _resolve(host: str, port: int) -> set[str]:

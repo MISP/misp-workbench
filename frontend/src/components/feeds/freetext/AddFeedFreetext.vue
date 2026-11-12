@@ -1,5 +1,6 @@
 <script setup>
 import { ref, reactive, watch } from "vue";
+import { errorMessage } from "@/helpers/error-handler";
 import { useFeedsStore } from "@/stores";
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
 import { faSpinner } from "@fortawesome/free-solid-svg-icons";
@@ -80,7 +81,7 @@ function loadPreview() {
     .then((response) => {
       previewRows.value = response?.rows ?? [];
     })
-    .catch((error) => (apiError.value = error?.message || String(error)))
+    .catch((error) => (apiError.value = errorMessage(error)))
     .finally(() => (loadingPreview.value = false));
 }
 

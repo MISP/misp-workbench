@@ -5,6 +5,8 @@ import { storeToRefs } from "pinia";
 import { useServersStore } from "@/stores";
 import { router } from "@/router";
 import { ServerSchema } from "@/schemas/server";
+import { sourceUrlProblem, useAllowedHosts } from "@/helpers/outbound";
+import { errorMessage } from "@/helpers/error-handler";
 import OrganisationsSelect from "@/components/organisations/OrganisationsSelect.vue";
 import PullRulesEditor from "@/components/servers/PullRulesEditor.vue";
 import SourceTrustSection from "@/components/indicators/SourceTrustSection.vue";
@@ -36,7 +38,16 @@ const previewResult = ref(null);
 const previewError = ref(null);
 const previewOpen = ref(false);
 
-const canPreview = computed(() => !!server.url && !!server.authkey);
+// A URL MISP servers may not connect to is flagged as it is typed (the API
+// checks it again on save and when connecting).
+const allowedHosts = useAllowedHosts("servers");
+const urlProblem = computed(() =>
+  sourceUrlProblem(server.url, allowedHosts.value, "servers"),
+);
+
+const canPreview = computed(
+  () => !!server.url && !!server.authkey && !urlProblem.value,
+);
 
 function onSubmit(_, { setErrors }) {
   return serversStore
@@ -44,7 +55,7 @@ function onSubmit(_, { setErrors }) {
     .then(() => {
       router.push("/servers");
     })
-    .catch((error) => setErrors({ apiError: error }));
+    .catch((error) => setErrors({ apiError: errorMessage(error) }));
 }
 
 async function preview() {
@@ -119,10 +130,16 @@ function cancel() {
               id="server.url"
               name="server.url"
               v-model="server.url"
-              :class="{ 'is-invalid': errors['server.url'] }"
+              :class="{ 'is-invalid': errors['server.url'] || urlProblem }"
             >
             </Field>
-            <div class="invalid-feedback">{{ errors["server.url"] }}</div>
+            <div class="invalid-feedback">
+              {{ errors["server.url"] || urlProblem }}
+            </div>
+          </div>
+          <div v-if="allowedHosts?.length" class="form-text mt-n2">
+            MISP servers may connect to:
+            <code>{{ allowedHosts.join(", ") }}</code>
           </div>
         </div>
         <div class="mb-3">
@@ -373,7 +390,7 @@ function cancel() {
           <button
             type="submit"
             class="btn btn-primary"
-            :disabled="status.creating"
+            :disabled="status.creating || !!urlProblem"
           >
             <span v-if="status.creating">
               <span

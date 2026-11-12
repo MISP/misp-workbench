@@ -48,8 +48,9 @@ from app.routers import (
 )
 from app.database import SessionLocal
 from app.services.tech_lab.servos import chain as servo_chain
-from app.services import normalisation
-from fastapi import FastAPI
+from app.services import normalisation, outbound
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi_pagination import add_pagination
 
@@ -89,6 +90,15 @@ async def lifespan(app: FastAPI):
 
 # Bootstrap application
 app = FastAPI(title="misp-workbench API", version="0.1.0", lifespan=lifespan)
+
+
+@app.exception_handler(outbound.DestinationRefused)
+@app.exception_handler(outbound.ResponseTooLarge)
+async def outbound_refused(request: Request, error: ValueError):
+    """A fetch the outbound rules refused (a feed or server URL on a host that
+    isn't allowed, or on a forbidden address): the caller's error, said why."""
+    return JSONResponse(status_code=400, content={"detail": str(error)})
+
 
 # Add CORS
 origins = [

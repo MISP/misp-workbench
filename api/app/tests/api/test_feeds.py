@@ -1029,3 +1029,107 @@ class TestLocalFeedRepoHelpers:
         with pytest.raises(HTTPException) as exc:
             feeds_repository.store_feed_upload(_FakeUpload(), "csv")
         assert exc.value.status_code == status.HTTP_400_BAD_REQUEST
+
+
+class TestFeedDestinations(ApiTester):
+    """Feeds fetch only from allowed hosts, never from loopback or cloud
+    metadata addresses (app.services.outbound)."""
+
+    @pytest.mark.parametrize("scopes", [["feeds:preview"]])
+    @pytest.mark.parametrize(
+        "url", ["http://169.254.169.254/latest/meta-data/", "http://127.0.0.1:8080/"]
+    )
+    def test_previews_never_reach_internal_addresses(
+        self, client: TestClient, auth_token: auth.Token, url, monkeypatch
+    ):
+        # Whatever the allowlist says.
+        monkeypatch.setattr("app.services.outbound.allowed_hosts", lambda kind: ["*"])
+        response = client.post(
+            "/feeds/freetext/preview",
+            json={"url": url, "input_source": "network", "settings": {}},
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "never fetch" in response.json()["detail"]
+
+    @pytest.mark.parametrize("scopes", [["feeds:test-connection"]])
+    def test_misp_feed_connection_test(
+        self, client: TestClient, auth_token: auth.Token, monkeypatch
+    ):
+        monkeypatch.setattr("app.services.outbound.allowed_hosts", lambda kind: [])
+        response = client.post(
+            "/feeds/misp/test-connection",
+            json={
+                "name": "probe",
+                "url": "http://169.254.169.254/latest",
+                "provider": "probe",
+                "source_format": "misp",
+                "input_source": "network",
+            },
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "never fetch" in response.json()["detail"]
+
+    @pytest.mark.parametrize("scopes", [["feeds:create", "feeds:update"]])
+    def test_allowlist_on_save(
+        self, client: TestClient, auth_token: auth.Token, monkeypatch
+    ):
+        monkeypatch.setattr(
+            "app.services.outbound.allowed_hosts", lambda kind: ["*.abuse.ch"]
+        )
+        headers = {"Authorization": "Bearer " + auth_token}
+
+        def create(url, input_source="network"):
+            return client.post(
+                "/feeds/",
+                json={
+                    "name": url,
+                    "url": url,
+                    "provider": "test",
+                    "source_format": "freetext",
+                    "input_source": input_source,
+                },
+                headers=headers,
+            )
+
+        allowed = create("https://urlhaus.abuse.ch/downloads/text/")
+        assert allowed.status_code == status.HTTP_201_CREATED, allowed.text
+        refused = create("https://example.com/list.txt")
+        assert refused.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert "feeds.source_hosts" in refused.json()["detail"]
+        # A local feed's url is a storage key, not a destination.
+        assert create("feed-uploads/abc.txt", "local").status_code == 201
+
+        moved = client.patch(
+            f"/feeds/{allowed.json()['id']}",
+            json={"url": "https://example.com/list.txt"},
+            headers=headers,
+        )
+        assert moved.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+
+    def test_allowlist_at_fetch_time(self, monkeypatch):
+        """A feed saved before the allowlist was set is refused when fetched."""
+        from fastapi import HTTPException
+
+        from app.repositories import feeds as feeds_repository
+
+        monkeypatch.setattr(
+            "app.services.outbound.allowed_hosts", lambda kind: ["*.abuse.ch"]
+        )
+        with pytest.raises(HTTPException) as refused:
+            feeds_repository.fetch_csv_content_from_network(
+                "https://example.com/list.txt"
+            )
+        assert "feeds.source_hosts" in refused.value.detail
+
+    @pytest.mark.parametrize("scopes", [["feeds:read"]])
+    def test_sources(self, client: TestClient, auth_token: auth.Token, monkeypatch):
+        monkeypatch.setattr(
+            "app.services.outbound.allowed_hosts", lambda kind: ["*.abuse.ch"]
+        )
+        response = client.get(
+            "/feeds/sources", headers={"Authorization": "Bearer " + auth_token}
+        )
+        assert response.status_code == status.HTTP_200_OK
+        assert response.json() == {"hosts": ["*.abuse.ch"]}

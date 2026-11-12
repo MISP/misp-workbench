@@ -15,7 +15,7 @@ from app.schemas import feed as feed_schemas
 from app.schemas import user as user_schemas
 from app.schemas import attribute as attribute_schemas
 from app.schemas import event as event_schemas
-from app.services import ingest_runs
+from app.services import ingest_runs, outbound
 from app.services.attachments import get_attachment
 from app.services.opensearch import get_opensearch_client
 from app.worker import tasks
@@ -36,6 +36,20 @@ MAX_UPLOAD_BYTES = 2 * 1024 * 1024 * 1024  # 2 GB
 # (connect, read) seconds: a feed that stops answering fails instead of holding
 # a worker. The read timeout is per read, not for the whole download.
 FEED_REQUEST_TIMEOUT = (10, 120)
+# A download is capped like an upload.
+MAX_DOWNLOAD_BYTES = MAX_UPLOAD_BYTES
+
+
+def _download(url: str, headers: dict) -> requests.Response:
+    """A feed URL, fetched within the outbound rules (allowed hosts, no
+    loopback or cloud metadata addresses, redirects checked hop by hop)."""
+    return outbound.get(
+        url,
+        outbound.FEEDS,
+        headers=headers,
+        timeout=FEED_REQUEST_TIMEOUT,
+        max_bytes=MAX_DOWNLOAD_BYTES,
+    )
 
 
 def get_feeds(db: Session, skip: int = 0, limit: int = 100):
@@ -282,9 +296,7 @@ def fetch_feed_event_by_uuid(feed, event_uuid):
         return get_local_misp_event(feed.url, event_uuid)
 
     url = f"{feed.url}/{event_uuid}.json"
-    response = requests.get(
-        url, headers=build_feed_headers(feed), timeout=FEED_REQUEST_TIMEOUT
-    )
+    response = _download(url, build_feed_headers(feed))
     if response.status_code == 200:
         return response.json()
     else:
@@ -376,11 +388,7 @@ def process_feed_event(
 def get_feed_manifest(feed):
     if getattr(feed, "input_source", "network") == "local":
         return _LocalManifestResponse(get_local_misp_manifest(feed.url))
-    return requests.get(
-        f"{feed.url}/manifest.json",
-        headers=build_feed_headers(feed),
-        timeout=FEED_REQUEST_TIMEOUT,
-    )
+    return _download(f"{feed.url}/manifest.json", build_feed_headers(feed))
 
 
 class _LocalManifestResponse:
@@ -988,7 +996,7 @@ def fetch_csv_content_from_network(url: str, extra_headers: dict = None) -> list
     if extra_headers:
         headers.update(extra_headers)
     try:
-        response = requests.get(url, headers=headers, timeout=FEED_REQUEST_TIMEOUT)
+        response = _download(url, headers)
         if response.status_code == 200:
             content = response.content.decode("utf-8")
             lines = content.splitlines()
@@ -1142,7 +1150,7 @@ def fetch_json_content_from_network(url: str, extra_headers: dict = None) -> str
     if extra_headers:
         headers.update(extra_headers)
     try:
-        response = requests.get(url, headers=headers, timeout=FEED_REQUEST_TIMEOUT)
+        response = _download(url, headers)
         if response.status_code == 200:
             return response.content.decode("utf-8")
         else:

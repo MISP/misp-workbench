@@ -13,6 +13,8 @@ import AddFeedJson from "@/components/feeds/json/AddFeedJson.vue";
 import AddFeedFreetext from "@/components/feeds/freetext/AddFeedFreetext.vue";
 import TestFreetextFeedModal from "@/components/feeds/freetext/TestFreetextFeedModal.vue";
 import DefaultFeedPicker from "@/components/feeds/DefaultFeedPicker.vue";
+import { errorMessage } from "@/helpers/error-handler";
+import { sourceUrlProblem, useAllowedHosts } from "@/helpers/outbound";
 
 const feedsStore = useFeedsStore();
 const toastsStore = useToastsStore();
@@ -72,13 +74,23 @@ watch(feedType, () => {
   }
 });
 
+const allowedHosts = useAllowedHosts("feeds");
+// A URL feeds may not fetch from is flagged on the field (FeedBaseForm); no
+// preview or save until it is fixed.
+const urlProblem = computed(() =>
+  config.value.input_source === "local"
+    ? null
+    : sourceUrlProblem(config.value.url, allowedHosts.value, "feeds"),
+);
+
 const canSubmit = computed(() => {
-  return config.value.name && config.value.url;
+  return config.value.name && config.value.url && !urlProblem.value;
 });
 
 const isLocal = computed(() => config.value.input_source === "local");
 
 function submit() {
+  apiError.value = null;
   const feed = {
     ...getFeedFromConfig(),
     rules: config.value.rules,
@@ -129,7 +141,7 @@ function submit() {
       );
       router.push(`/feeds`);
     })
-    .catch((error) => (apiError.value = error?.message || String(error)));
+    .catch((error) => (apiError.value = errorMessage(error)));
 }
 
 function getFeedFromConfig() {
@@ -213,7 +225,7 @@ function testMISPFeed() {
     })
     .catch((error) => {
       previewMISPError.value =
-        typeof error === "string" ? error : "Failed to connect to feed.";
+        errorMessage(error) || "Failed to connect to feed.";
       previewMISPOpen.value = true;
     });
 }
@@ -231,8 +243,10 @@ function testCSVFeed() {
       testCSVFeedResultOpen.value = true;
     })
     .catch((error) => {
-      testCSVFeedResult.success = false;
-      testCSVFeedResult.message = error?.message || String(error);
+      testCSVFeedResult.value = {
+        success: false,
+        message: errorMessage(error),
+      };
       testCSVFeedResultOpen.value = true;
     });
 }
@@ -243,20 +257,16 @@ function testFreetextFeed() {
     settings: config.value.settings,
   };
 
-  return feedsStore.previewFreetextFeed(freetextFeed).then((response) => {
-    if (!response) {
+  return feedsStore
+    .previewFreetextFeed(freetextFeed)
+    .then((response) => (testFreetextFeedResult.value = response))
+    .catch((error) => {
       testFreetextFeedResult.value = {
         success: false,
-        message:
-          feedsStore.status.error?.message ||
-          feedsStore.status.error ||
-          "Preview failed.",
+        message: errorMessage(error) || "Preview failed.",
       };
-    } else {
-      testFreetextFeedResult.value = response;
-    }
-    testFreetextFeedResultOpen.value = true;
-  });
+    })
+    .finally(() => (testFreetextFeedResultOpen.value = true));
 }
 
 function closePreviewMISP() {
