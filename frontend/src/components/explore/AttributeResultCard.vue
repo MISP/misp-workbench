@@ -34,6 +34,12 @@ const { expanded, onCardClick } = useCardExpand();
         <span class="fw-semibold">
           <UUID :uuid="src.uuid" :copy="true" />
         </span>
+        <span
+          v-if="src.deleted"
+          class="badge bg-danger"
+          title="Soft-deleted: shown because deleted results are included"
+          >deleted</span
+        >
       </div>
 
       <div class="position-absolute bottom-0 end-0 me-2 mb-1">
