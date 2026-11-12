@@ -363,3 +363,107 @@ export const SOURCE_QUALITY = {
     }),
   ],
 };
+
+const attr = (
+  n: number,
+  event_uuid: string,
+  type: string,
+  value: string,
+  extra: Record<string, unknown> = {},
+) => ({
+  uuid: `1d1c0000-0002-4002-8000-0000000000${String(n).padStart(2, "0")}`,
+  type,
+  value,
+  category: "Network activity",
+  to_ids: true,
+  comment: null,
+  timestamp: now - n * day,
+  tags: [],
+  event_uuid,
+  object_uuid: null,
+  object_relation: null,
+  ...extra,
+});
+
+const CIRCL_EVENT = "d3110000-0001-4001-8000-000000000001";
+const ACME_EVENT = "a1f30000-0001-4001-8000-000000000001";
+const PARTNER_EVENT = "d3110000-0001-4001-8000-000000000002";
+const DOMAIN_IP = "1d1c0000-0003-4003-8000-000000000001";
+
+/**
+ * GET /indicators/{uuid}/graph for c2.example-cobalt.net: reported on its own
+ * by two events and inside a domain-ip object, next to the IPs it resolved
+ * to, by a third.
+ */
+export const INDICATOR_GRAPH = {
+  indicator: {
+    uuid: INDICATORS[1].uuid,
+    type: "domain",
+    value: "c2.example-cobalt.net",
+    deleted: false,
+  },
+  attributes: [
+    attr(1, CIRCL_EVENT, "domain", "c2.example-cobalt.net", {
+      object_uuid: DOMAIN_IP,
+      object_relation: "domain",
+      tags: ['misp-galaxy:tool="Cobalt Strike"'],
+    }),
+    attr(2, ACME_EVENT, "domain", "c2.example-cobalt.net", {
+      comment: "Beacon C2 seen in proxy logs",
+    }),
+    attr(5, PARTNER_EVENT, "domain", "c2.example-cobalt.net", {
+      category: "External analysis",
+      to_ids: false,
+    }),
+  ],
+  objects: [
+    {
+      uuid: DOMAIN_IP,
+      name: "domain-ip",
+      meta_category: "network",
+      comment: null,
+      event_uuid: CIRCL_EVENT,
+      attributes: [
+        attr(11, CIRCL_EVENT, "ip-dst", "198.51.100.23", {
+          object_uuid: DOMAIN_IP,
+          object_relation: "ip",
+        }),
+        attr(12, CIRCL_EVENT, "ip-dst", "198.51.100.24", {
+          object_uuid: DOMAIN_IP,
+          object_relation: "ip",
+        }),
+      ],
+      attribute_count: 2,
+    },
+  ],
+  events: [
+    {
+      uuid: CIRCL_EVENT,
+      info: "Cobalt Strike team servers",
+      date: "2026-10-09",
+      timestamp: now - day,
+      source: { type: "feed", id: 1, name: "CIRCL OSINT" },
+      org: { id: 2, name: "CIRCL" },
+    },
+    {
+      uuid: ACME_EVENT,
+      info: "Cobalt Strike infrastructure",
+      date: "2026-10-08",
+      timestamp: now - 2 * day,
+      source: { type: "local", id: null, name: "local" },
+      org: { id: 1, name: "ACME SOC" },
+    },
+    {
+      uuid: PARTNER_EVENT,
+      info: "Partner report",
+      date: "2026-10-05",
+      timestamp: now - 5 * day,
+      source: { type: "feed", id: 1, name: "CIRCL OSINT" },
+      org: { id: 2, name: "CIRCL" },
+    },
+  ],
+  attribute_count: 3,
+  event_count: 3,
+  omitted_events: 0,
+  truncated: false,
+};

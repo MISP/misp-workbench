@@ -2,6 +2,7 @@ import { test, expect, Page } from "@playwright/test";
 import { applyTheme, capture, pinForCapture } from "./helpers";
 import { EVENT_UUIDS } from "./fixtures";
 import {
+  INDICATOR_GRAPH,
   INDICATORS_PAGE,
   INDICATORS_STATUS,
   SOURCE_QUALITY,
@@ -137,6 +138,48 @@ test.describe("Indicators screenshots", () => {
       page.locator(".card").first(),
       FEATURE,
       "misp-workbench-5_indicators_source-quality",
+    );
+  });
+
+  test("6 — what an indicator is derived from", async ({ page }) => {
+    await page.route(
+      new RegExp(
+        `:${API_PORT}/indicators/${INDICATOR_GRAPH.indicator.uuid}/graph`,
+      ),
+      (r) => r.fulfill(json(INDICATOR_GRAPH)),
+    );
+    // Narrower than the list's captures: the graph is a small picture, and a
+    // wide canvas leaves it lost in the middle.
+    await page.setViewportSize({ width: 1150, height: 1900 });
+    await page.goto("/indicators");
+    await page.getByText("c2.example-cobalt.net").click();
+    await page.getByRole("button", { name: /derived from/ }).click();
+    await page.getByLabel(/other attributes/).check();
+
+    // A force layout: wait until the nodes stop moving.
+    const nodes = page.locator(".pivotick-canvas .pivotick svg g.pvt-node");
+    // indicator, 3 attributes, the object and its 2 IPs, 3 events
+    await expect(nodes).toHaveCount(10, { timeout: 20_000 });
+    let previous = "";
+    await expect
+      .poll(
+        async () => {
+          const current = await nodes.evaluateAll((els) =>
+            els.map((el) => el.getAttribute("transform")).join("|"),
+          );
+          const settled = current === previous;
+          previous = current;
+          return settled;
+        },
+        { timeout: 20_000, intervals: [500] },
+      )
+      .toBe(true);
+    await pinForCapture(page);
+
+    await capture(
+      page.locator(".indicator-graph"),
+      FEATURE,
+      "misp-workbench-6_indicators_graph",
     );
   });
 });

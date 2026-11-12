@@ -16,7 +16,9 @@ const props = defineProps({
 
 const indicatorsStore = useIndicatorsStore();
 
-const LABEL_LENGTH = 22;
+// Labels are shortened here and drawn whole (textTruncate: false): the
+// library's own truncation keeps a head and a tail, "Cobalt S…se…".
+const LABEL_LENGTH = 28;
 const INDICATOR_COLOR = "#0d6efd";
 const ATTRIBUTE_COLOR = "#20c997";
 const NON_IDS_COLOR = "#adb5bd";
@@ -63,6 +65,12 @@ function truncate(value) {
 }
 
 const label = (node) => truncate(node.getData()?.label);
+// The value is the indicator's: an attribute says how it was reported, as an
+// object's relation or else its category.
+const attributeLabel = (node) => {
+  const attribute = node.getData()?.attribute;
+  return truncate(attribute?.object_relation || attribute?.category);
+};
 
 const nodeStyleMap = {
   indicator: {
@@ -71,18 +79,16 @@ const nodeStyleMap = {
     color: INDICATOR_COLOR,
     text: label,
     textVerticalShift: -1,
+    textTruncate: false,
   },
   attribute: {
     shape: "circle",
     size: 18,
     color: (node) =>
       node.getData()?.attribute?.to_ids ? ATTRIBUTE_COLOR : NON_IDS_COLOR,
-    text: (node) =>
-      truncate(
-        node.getData()?.attribute?.object_relation ||
-          node.getData()?.attribute?.category,
-      ),
+    text: attributeLabel,
     textVerticalShift: -1,
+    textTruncate: false,
   },
   sibling: {
     shape: "circle",
@@ -90,6 +96,7 @@ const nodeStyleMap = {
     color: NON_IDS_COLOR,
     text: label,
     textVerticalShift: -1,
+    textTruncate: false,
   },
   object: {
     shape: "triangle",
@@ -97,6 +104,7 @@ const nodeStyleMap = {
     color: OBJECT_COLOR,
     text: label,
     textVerticalShift: 1,
+    textTruncate: false,
   },
   event: {
     shape: "square",
@@ -104,6 +112,7 @@ const nodeStyleMap = {
     color: EVENT_COLOR,
     text: label,
     textVerticalShift: 1,
+    textTruncate: false,
   },
   more: {
     shape: "square",
@@ -111,6 +120,7 @@ const nodeStyleMap = {
     color: MORE_COLOR,
     text: label,
     textVerticalShift: 1,
+    textTruncate: false,
   },
 };
 
@@ -244,7 +254,10 @@ const caption = computed(() => {
             Show the objects' other attributes ({{ siblingCount }})
           </label>
         </div>
+        <!-- Rebuilt when the context is toggled: nodes added to a settled
+             layout start at the origin and stay stranded there. -->
         <PivotickGraph
+          :key="showSiblings ? 'with-context' : 'without-context'"
           :nodes="data.nodes"
           :edges="data.edges"
           :node-style-map="nodeStyleMap"

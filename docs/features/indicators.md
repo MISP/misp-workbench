@@ -65,6 +65,13 @@ other attributes (the resolved IP next to that domain) are the context
 that makes an object useful; switch them on to draw them too. Click a node
 to open its event, object or attribute.
 
+<img src="../../screenshots/indicators/misp-workbench-6_indicators_graph.png#only-light" alt="An indicator's graph: its attributes, the domain-ip object one sits in, and their events" style="max-width: 100%; height: auto;">
+<img src="../../screenshots/indicators/misp-workbench-6_indicators_graph-dark.png#only-dark" alt="An indicator's graph: its attributes, the domain-ip object one sits in, and their events" style="max-width: 100%; height: auto;">
+
+Here `c2.example-cobalt.net` is reported in three events: on its own in two
+(labelled by category, grey when not flagged for IDS) and, in a third, as
+the `domain` of a `domain-ip` object, with the two IPs it resolved to.
+
 The newest 50 events are drawn, and a "+N more events" node counts the
 others. A tombstone has nothing to draw.
 
