@@ -68,6 +68,14 @@ export const useIndicatorsStore = defineStore({
     async get(uuid) {
       return await fetchWrapper.get(`${baseUrl}/${uuid}`);
     },
+    /**
+     * What an indicator is derived from: its attributes, their objects and
+     * the events holding them (the newest maxEvents).
+     */
+    async graph(uuid, maxEvents = null) {
+      const query = maxEvents ? `?max_events=${maxEvents}` : "";
+      return await fetchWrapper.get(`${baseUrl}/${uuid}/graph${query}`);
+    },
     async exploreSearch({ query, page = 1, size = 5, sort = "score" }) {
       this.exploreStatus.loading = true;
       this.exploreStatus.error = false;

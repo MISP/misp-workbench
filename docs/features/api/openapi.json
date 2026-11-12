@@ -12692,6 +12692,69 @@
         }
       }
     },
+    "/indicators/{indicator_uuid}/graph": {
+      "get": {
+        "tags": [
+          "Indicators"
+        ],
+        "summary": "Indicator Graph",
+        "description": "What the indicator is derived from: its live attributes, the objects\nthey sit in and the events holding them, newest events first (at most\n``max_events``; ``omitted_events`` says how many more). A tombstoned\nindicator has an empty graph.",
+        "operationId": "indicator_graph_indicators__indicator_uuid__graph_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": [
+              "attributes:read"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "indicator_uuid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Indicator Uuid"
+            }
+          },
+          {
+            "name": "max_events",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 50,
+              "minimum": 1,
+              "default": 50,
+              "title": "Max Events"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IndicatorGraph"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/exports/": {
       "get": {
         "tags": [
@@ -23635,6 +23698,335 @@
         "type": "object",
         "title": "GalaxyUpdate"
       },
+      "GraphAttribute": {
+        "properties": {
+          "uuid": {
+            "type": "string",
+            "title": "Uuid"
+          },
+          "type": {
+            "type": "string",
+            "title": "Type"
+          },
+          "value": {
+            "type": "string",
+            "title": "Value"
+          },
+          "category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          },
+          "to_ids": {
+            "type": "boolean",
+            "title": "To Ids",
+            "default": false
+          },
+          "comment": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comment"
+          },
+          "timestamp": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp"
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Tags",
+            "default": []
+          },
+          "event_uuid": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Event Uuid"
+          },
+          "object_uuid": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Object Uuid"
+          },
+          "object_relation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Object Relation"
+          }
+        },
+        "type": "object",
+        "required": [
+          "uuid",
+          "type",
+          "value"
+        ],
+        "title": "GraphAttribute"
+      },
+      "GraphEvent": {
+        "properties": {
+          "uuid": {
+            "type": "string",
+            "title": "Uuid"
+          },
+          "info": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Info"
+          },
+          "date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date"
+          },
+          "timestamp": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GraphSource"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "org": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GraphOrganisation"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "uuid"
+        ],
+        "title": "GraphEvent"
+      },
+      "GraphIndicator": {
+        "properties": {
+          "uuid": {
+            "type": "string",
+            "title": "Uuid"
+          },
+          "type": {
+            "type": "string",
+            "title": "Type"
+          },
+          "value": {
+            "type": "string",
+            "title": "Value"
+          },
+          "deleted": {
+            "type": "boolean",
+            "title": "Deleted",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "uuid",
+          "type",
+          "value"
+        ],
+        "title": "GraphIndicator"
+      },
+      "GraphObject": {
+        "properties": {
+          "uuid": {
+            "type": "string",
+            "title": "Uuid"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "meta_category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Meta Category"
+          },
+          "comment": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comment"
+          },
+          "event_uuid": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Event Uuid"
+          },
+          "attributes": {
+            "items": {
+              "$ref": "#/components/schemas/GraphAttribute"
+            },
+            "type": "array",
+            "title": "Attributes",
+            "default": []
+          },
+          "attribute_count": {
+            "type": "integer",
+            "title": "Attribute Count",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "required": [
+          "uuid"
+        ],
+        "title": "GraphObject"
+      },
+      "GraphOrganisation": {
+        "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "GraphOrganisation"
+      },
+      "GraphSource": {
+        "properties": {
+          "type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Type"
+          },
+          "id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          }
+        },
+        "type": "object",
+        "title": "GraphSource"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -24377,6 +24769,62 @@
         ],
         "title": "Indicator",
         "description": "One type + value, merged from every live attribute carrying it."
+      },
+      "IndicatorGraph": {
+        "properties": {
+          "indicator": {
+            "$ref": "#/components/schemas/GraphIndicator"
+          },
+          "attributes": {
+            "items": {
+              "$ref": "#/components/schemas/GraphAttribute"
+            },
+            "type": "array",
+            "title": "Attributes"
+          },
+          "objects": {
+            "items": {
+              "$ref": "#/components/schemas/GraphObject"
+            },
+            "type": "array",
+            "title": "Objects"
+          },
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/GraphEvent"
+            },
+            "type": "array",
+            "title": "Events"
+          },
+          "attribute_count": {
+            "type": "integer",
+            "title": "Attribute Count"
+          },
+          "event_count": {
+            "type": "integer",
+            "title": "Event Count"
+          },
+          "omitted_events": {
+            "type": "integer",
+            "title": "Omitted Events"
+          },
+          "truncated": {
+            "type": "boolean",
+            "title": "Truncated",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "indicator",
+          "attributes",
+          "objects",
+          "events",
+          "attribute_count",
+          "event_count",
+          "omitted_events"
+        ],
+        "title": "IndicatorGraph"
       },
       "IndicatorKey": {
         "properties": {

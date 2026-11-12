@@ -165,3 +165,73 @@ class IndicatorsStatus(BaseModel):
     tombstones: int
     pending_sighted_values: int
     pending_events: int = 0
+
+
+# ── Graph: what an indicator is derived from ──────────────────────────────
+
+
+class GraphIndicator(BaseModel):
+    uuid: str
+    type: str
+    value: str
+    deleted: bool = False
+
+
+class GraphAttribute(BaseModel):
+    uuid: str
+    type: str
+    value: str
+    category: Optional[str] = None
+    to_ids: bool = False
+    comment: Optional[str] = None
+    timestamp: Optional[int] = None
+    tags: list[str] = []
+    event_uuid: Optional[str] = None
+    # Set when the attribute sits in a (live) object.
+    object_uuid: Optional[str] = None
+    object_relation: Optional[str] = None
+
+
+class GraphObject(BaseModel):
+    uuid: str
+    name: Optional[str] = None
+    meta_category: Optional[str] = None
+    comment: Optional[str] = None
+    event_uuid: Optional[str] = None
+    # Its other attributes (context), the first few of attribute_count.
+    attributes: list[GraphAttribute] = []
+    attribute_count: int = 0
+
+
+class GraphSource(BaseModel):
+    type: Optional[str] = None
+    id: Optional[int] = None
+    name: Optional[str] = None
+
+
+class GraphOrganisation(BaseModel):
+    id: Optional[int] = None
+    name: str
+
+
+class GraphEvent(BaseModel):
+    uuid: str
+    info: Optional[str] = None
+    date: Optional[str] = None
+    timestamp: Optional[int] = None
+    source: Optional[GraphSource] = None
+    org: Optional[GraphOrganisation] = None
+
+
+class IndicatorGraph(BaseModel):
+    indicator: GraphIndicator
+    # The attributes in the drawn events, newest first.
+    attributes: list[GraphAttribute]
+    objects: list[GraphObject]
+    # The newest events holding the value; omitted_events more aren't drawn.
+    events: list[GraphEvent]
+    attribute_count: int
+    event_count: int
+    omitted_events: int
+    # More live attributes than are read for one value: counts are partial.
+    truncated: bool = False

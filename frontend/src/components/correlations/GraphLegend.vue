@@ -5,7 +5,7 @@
  * with, so the two cannot drift apart.
  */
 defineProps({
-  /** `[{ shape, color, label }]` — shape is hexagon, circle, square or dashed. */
+  /** `[{ shape, color, label }]` — shape is hexagon, circle, square, triangle, line or dashed. */
   items: {
     type: Array,
     required: true,
@@ -40,6 +40,11 @@ const HEXAGON_POINTS = "6,0.5 10.8,3.25 10.8,8.75 6,11.5 1.2,8.75 1.2,3.25";
           y="1"
           width="10"
           height="10"
+          :fill="item.color"
+        />
+        <polygon
+          v-else-if="item.shape === 'triangle'"
+          points="6,1 11.5,11 0.5,11"
           :fill="item.color"
         />
         <line
