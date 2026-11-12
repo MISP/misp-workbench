@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed } from "vue";
+import { errorMessage } from "@/helpers/error-handler";
 import { useFeedsStore } from "@/stores";
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
 import {
@@ -114,7 +115,7 @@ async function uploadFile(file) {
       size: response.size,
     });
   } catch (error) {
-    uploadError.value = error?.message || String(error);
+    uploadError.value = errorMessage(error);
   } finally {
     uploading.value = false;
   }

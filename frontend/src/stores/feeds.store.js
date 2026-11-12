@@ -17,6 +17,16 @@ export const useFeedsStore = defineStore({
     },
   }),
   actions: {
+    /**
+     * Records a failed request's error for the views that read
+     * status.error, and rethrows it: a catch that only assigned it resolved
+     * the promise with the error message, which callers then took for the
+     * result (a refused feed was reported as created).
+     */
+    _failed(error) {
+      this.status.error = error;
+      throw error;
+    },
     async getAll() {
       this.status = { loading: true };
       fetchWrapper
@@ -38,7 +48,7 @@ export const useFeedsStore = defineStore({
       return await fetchWrapper
         .post(baseUrl, feed)
         .then((response) => (this.feed = response))
-        .catch((error) => (this.status.error = error))
+        .catch((error) => this._failed(error))
         .finally(() => (this.status.creating = false));
     },
     async update(feed) {
@@ -78,23 +88,23 @@ export const useFeedsStore = defineStore({
       this.status = { updating: true };
       return await fetchWrapper
         .post(`${baseUrl}/misp/test-connection`, feed)
-        .catch((error) => (this.status.error = error))
+        .catch((error) => this._failed(error))
         .finally(() => (this.status.updating = false));
     },
     async previewCsvFeed(settings) {
       return await fetchWrapper
         .post(`${baseUrl}/csv/preview`, settings)
-        .catch((error) => (this.status.error = error));
+        .catch((error) => this._failed(error));
     },
     async previewJsonFeed(settings) {
       return await fetchWrapper
         .post(`${baseUrl}/json/preview`, settings)
-        .catch((error) => (this.status.error = error));
+        .catch((error) => this._failed(error));
     },
     async previewFreetextFeed(settings) {
       return await fetchWrapper
         .post(`${baseUrl}/freetext/preview`, settings)
-        .catch((error) => (this.status.error = error));
+        .catch((error) => this._failed(error));
     },
     async getRecentEvents(id, limit = 10) {
       return await fetchWrapper.get(`${baseUrl}/${id}/events?limit=${limit}`);

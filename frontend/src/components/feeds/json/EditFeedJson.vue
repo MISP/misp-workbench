@@ -1,5 +1,6 @@
 <script setup>
 import { ref } from "vue";
+import { errorMessage } from "@/helpers/error-handler";
 import { storeToRefs } from "pinia";
 import { useFeedsStore, useToastsStore } from "@/stores";
 import { router } from "@/router";
@@ -52,7 +53,7 @@ function submit() {
       );
       router.push(`/feeds/${feed.value.id}`);
     })
-    .catch((error) => (apiError.value = error?.message || String(error)));
+    .catch((error) => (apiError.value = errorMessage(error)));
 }
 
 function cancel() {

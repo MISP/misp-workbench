@@ -1,5 +1,6 @@
 <script setup>
 import { ref, reactive, watch, computed } from "vue";
+import { errorMessage } from "@/helpers/error-handler";
 import CsvPreview from "@/components/feeds/csv/CsvPreview.vue";
 import CsvModeSelector from "@/components/feeds/csv/CsvModeSelector.vue";
 import CsvAttributeMapping from "@/components/feeds/csv/CsvAttributeMapping.vue";
@@ -109,7 +110,7 @@ function previewCsvFeed() {
     .then((response) => {
       csvRows.value = response.rows || [];
     })
-    .catch((error) => (apiError.value = error?.message || String(error)))
+    .catch((error) => (apiError.value = errorMessage(error)))
     .finally(() => {
       loadingPreview.value = false;
     });

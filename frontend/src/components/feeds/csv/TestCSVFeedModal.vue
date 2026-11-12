@@ -54,7 +54,10 @@ function closeModal() {
         </div>
 
         <div class="card-body">
-          <div v-if="testResult.rows?.length" class="table-responsive">
+          <div v-if="testResult?.success === false" class="alert alert-danger">
+            {{ testResult.message || "Preview failed." }}
+          </div>
+          <div v-else-if="testResult?.rows?.length" class="table-responsive">
             <div class="card mb-2">
               <div class="card-body">
                 <CsvPreview

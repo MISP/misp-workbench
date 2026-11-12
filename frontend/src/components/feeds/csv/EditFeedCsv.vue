@@ -6,6 +6,7 @@ import { router } from "@/router";
 import FeedBaseForm from "@/components/feeds/FeedBaseForm.vue";
 import AddFeedCsv from "@/components/feeds/csv/AddFeedCsv.vue";
 import TestCSVFeedModal from "@/components/feeds/csv/TestCSVFeedModal.vue";
+import { errorMessage } from "@/helpers/error-handler";
 
 const feedsStore = useFeedsStore();
 const toastsStore = useToastsStore();
@@ -61,7 +62,7 @@ function submit() {
       );
       router.push(`/feeds/${feed.value.id}`);
     })
-    .catch((error) => (apiError.value = error?.message || String(error)));
+    .catch((error) => (apiError.value = errorMessage(error)));
 }
 
 function cancel() {
@@ -78,8 +79,7 @@ function preview() {
       testResultOpen.value = true;
     })
     .catch((error) => {
-      testResult.success = false;
-      testResult.message = error?.message || String(error);
+      testResult.value = { success: false, message: errorMessage(error) };
       testResultOpen.value = true;
     });
 }
