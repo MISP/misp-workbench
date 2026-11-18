@@ -263,8 +263,9 @@ def capture_tag(db: Session, tag: MISPTag, user: user_models.User) -> tag_models
                 name=tag.name,
                 colour=tag.colour,
                 exportable=tag.exportable,
-                org_id=user.org_id,
-                user_id=user.id,
+                # Tags are shared vocabulary: whoever imports one first doesn't own it.
+                org_id=None,
+                user_id=None,
                 hide_tag=tag.hide_tag,
                 # numerical_value=tag.numerical_value, # TODO: MISPTag has no numerical_value
                 is_galaxy=tag.is_galaxy,

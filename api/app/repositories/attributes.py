@@ -518,8 +518,9 @@ def capture_attribute_tags(
             new_tag = tag_models.Tag(
                 name=tag.name,
                 colour=tag.colour,
-                org_id=user.org_id,
-                user_id=user.id,
+                # Tags are shared vocabulary: whoever imports one first doesn't own it.
+                org_id=None,
+                user_id=None,
                 local_only=False,
             )
             new_tags.append(new_tag)

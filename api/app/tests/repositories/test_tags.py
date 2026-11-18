@@ -3,7 +3,9 @@
 import hashlib
 from unittest.mock import MagicMock, patch
 
+from app.repositories import attributes as attributes_repository
 from app.repositories import tags as tags_repository
+from pymisp import MISPTag
 
 
 class TestDefaultTagColour:
@@ -67,3 +69,48 @@ class TestGetOrCreateTagByName:
         assert passed_schema.is_galaxy is False
         assert passed_schema.is_custom_galaxy is False
         assert passed_schema.local_only is False
+
+
+def _importer():
+    user = MagicMock(id=42, org_id=7)
+    user.role.scopes = ["*"]
+    return user
+
+
+def _incoming_tag(name):
+    tag = MISPTag()
+    tag.from_dict(name=name, colour="#0088cc")
+    return tag
+
+
+class TestImportedTagsAreUnowned:
+    """A tag first seen in an import is shared vocabulary, not the importer's.
+
+    Owning it would tie it to whoever happened to import it first, and
+    deleting that user would take it from everyone else's events and feeds.
+    """
+
+    def test_capture_tag(self):
+        db = MagicMock()
+        with patch.object(
+            tags_repository, "get_tag_by_name", return_value=None
+        ), patch.object(tags_repository, "create_tag") as create_tag:
+            tags_repository.capture_tag(db, _incoming_tag("tlp:amber"), _importer())
+
+        created = create_tag.call_args.kwargs["tag"]
+        assert created.name == "tlp:amber"
+        assert created.org_id is None
+        assert created.user_id is None
+
+    def test_capture_attribute_tags(self):
+        db = MagicMock()
+        db.query.return_value.filter.return_value.all.return_value = []
+
+        attributes_repository.capture_attribute_tags(
+            db, [_incoming_tag('misp-galaxy:threat-actor="Sofacy"')], _importer()
+        )
+
+        (created,) = db.add_all.call_args.args[0]
+        assert created.name == 'misp-galaxy:threat-actor="Sofacy"'
+        assert created.org_id is None
+        assert created.user_id is None
