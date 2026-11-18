@@ -9,6 +9,7 @@ import {
   useCorrelationsStore,
   useUserSettingsStore,
   useIndicatorsStore,
+  useToastsStore,
 } from "@/stores";
 
 import AttributeResultCard from "./AttributeResultCard.vue";
@@ -85,6 +86,12 @@ const INDICATOR_SORT_FIELDS = [
   { value: "first_seen", label: "First seen" },
 ];
 
+// The page each tab shows: a refresh after a delete stays on it.
+const eventsPage = ref(1);
+const attributesPage = ref(1);
+const correlationsPage = ref(1);
+const indicatorsPage = ref(1);
+
 const eventsFilters = ref([]);
 const attributesFilters = ref([]);
 
@@ -105,6 +112,7 @@ const attributesStore = useAttributesStore();
 const correlationsStore = useCorrelationsStore();
 const indicatorsStore = useIndicatorsStore();
 const userSettingsStore = useUserSettingsStore();
+const toastsStore = useToastsStore();
 const { userSettings } = storeToRefs(userSettingsStore);
 
 const {
@@ -182,7 +190,8 @@ function buildIndicatorQuery() {
 }
 
 function searchIndicators(page = 1) {
-  indicatorsStore.exploreSearch({
+  indicatorsPage.value = page;
+  return indicatorsStore.exploreSearch({
     query: buildIndicatorQuery(),
     page,
     size: props.page_size,
@@ -222,34 +231,48 @@ async function searchTimeline(query) {
   timelineLoading.value = false;
 }
 
-function search() {
-  autoFocusPending.value = true;
-  const base = buildQuery();
-  eventsStore.search({
-    page: 1,
+function searchEvents(page = 1) {
+  eventsPage.value = page;
+  return eventsStore.search({
+    page,
     size: props.page_size,
-    query: applyFilters(base, eventsFilters.value),
+    query: applyFilters(buildQuery(), eventsFilters.value),
     sort_by: eventsSortBy.value,
     sort_order: eventsSortOrder.value,
     include_deleted: includeDeleted.value,
   });
-  attributesStore.search({
-    page: 1,
+}
+
+function searchAttributes(page = 1) {
+  attributesPage.value = page;
+  return attributesStore.search({
+    page,
     size: props.page_size,
-    query: applyFilters(base, attributesFilters.value),
+    query: applyFilters(buildQuery(), attributesFilters.value),
     sort_by: attributesSortBy.value,
     sort_order: attributesSortOrder.value,
     include_deleted: includeDeleted.value,
   });
-  correlationsStore.search({
-    page: 1,
+}
+
+function searchCorrelations(page = 1) {
+  correlationsPage.value = page;
+  return correlationsStore.search({
+    page,
     size: props.page_size,
-    query: base,
+    query: buildQuery(),
     sort_by: correlationsSortBy.value,
     sort_order: correlationsSortOrder.value,
   });
+}
+
+function search() {
+  autoFocusPending.value = true;
+  searchEvents();
+  searchAttributes();
+  searchCorrelations();
   searchIndicators();
-  searchTimeline(base);
+  searchTimeline(buildQuery());
 
   if (
     searchQuery.value &&
@@ -315,98 +338,62 @@ watch(
   },
 );
 
-function onEventsPageChange(page) {
-  eventsStore.search({
-    page,
-    size: props.page_size,
-    query: applyFilters(buildQuery(), eventsFilters.value),
-    sort_by: eventsSortBy.value,
-    sort_order: eventsSortOrder.value,
-    include_deleted: includeDeleted.value,
-  });
-}
-
-function onAttributesPageChange(page) {
-  attributesStore.search({
-    page,
-    size: props.page_size,
-    query: applyFilters(buildQuery(), attributesFilters.value),
-    sort_by: attributesSortBy.value,
-    sort_order: attributesSortOrder.value,
-    include_deleted: includeDeleted.value,
-  });
-}
-
 function onEventsSortChange({ sortBy, sortOrder }) {
   eventsSortBy.value = sortBy;
   eventsSortOrder.value = sortOrder;
-  eventsStore.search({
-    page: 1,
-    size: props.page_size,
-    query: applyFilters(buildQuery(), eventsFilters.value),
-    sort_by: sortBy,
-    sort_order: sortOrder,
-    include_deleted: includeDeleted.value,
-  });
+  searchEvents();
 }
 
 function onAttributesSortChange({ sortBy, sortOrder }) {
   attributesSortBy.value = sortBy;
   attributesSortOrder.value = sortOrder;
-  attributesStore.search({
-    page: 1,
-    size: props.page_size,
-    query: applyFilters(buildQuery(), attributesFilters.value),
-    sort_by: sortBy,
-    sort_order: sortOrder,
-    include_deleted: includeDeleted.value,
-  });
-}
-
-function onCorrelationsPageChange(page) {
-  correlationsStore.search({
-    page,
-    size: props.page_size,
-    query: buildQuery(),
-    sort_by: correlationsSortBy.value,
-    sort_order: correlationsSortOrder.value,
-  });
+  searchAttributes();
 }
 
 function onCorrelationsSortChange({ sortBy, sortOrder }) {
   correlationsSortBy.value = sortBy;
   correlationsSortOrder.value = sortOrder;
-  correlationsStore.search({
-    page: 1,
-    size: props.page_size,
-    query: buildQuery(),
-    sort_by: sortBy,
-    sort_order: sortOrder,
-  });
+  searchCorrelations();
 }
 
 function onEventsFilterChange(filters) {
   eventsFilters.value = filters;
-  eventsStore.search({
-    page: 1,
-    size: props.page_size,
-    query: applyFilters(buildQuery(), filters),
-    sort_by: eventsSortBy.value,
-    sort_order: eventsSortOrder.value,
-    include_deleted: includeDeleted.value,
-  });
+  searchEvents();
 }
 
 function onAttributesFilterChange(filters) {
   attributesFilters.value = filters;
-  attributesStore.search({
-    page: 1,
-    size: props.page_size,
-    query: applyFilters(buildQuery(), filters),
-    sort_by: attributesSortBy.value,
-    sort_order: attributesSortOrder.value,
-    include_deleted: includeDeleted.value,
-  });
+  searchAttributes();
+}
+
+/**
+ * Search a tab again on the page it shows; if that page is now past the end
+ * (the deleted event was the last thing on it), on the last one left.
+ */
+async function refreshPage(searchTab, page, docs) {
+  await searchTab(page.value);
+  const total = docs.value?.total ?? 0;
+  if (page.value > 1 && !docs.value?.results?.length && total > 0) {
+    await searchTab(Math.ceil(total / props.page_size));
+  }
+}
+
+/**
+ * After an event is deleted from its card, show the results without it:
+ * the API has already left it (and its attributes, objects and
+ * correlations) out of searches. With deleted results included it stays,
+ * marked deleted. Unlike a new search, the tab and pages are kept.
+ */
+function onEventDeleted({ force } = {}) {
+  toastsStore.push(
+    force ? "Event permanently deleted." : "Event deleted.",
+    "success",
+  );
+  refreshPage(searchEvents, eventsPage, event_docs);
+  refreshPage(searchAttributes, attributesPage, attribute_docs);
+  refreshPage(searchCorrelations, correlationsPage, correlation_docs);
+  refreshPage(searchIndicators, indicatorsPage, indicator_docs);
+  searchTimeline(buildQuery());
 }
 
 async function downloadAllResults(type, format = "json") {
@@ -697,7 +684,8 @@ body {
               :filter-fields="['organisation', 'tags']"
               :visible="activeTab === 'events'"
               :exportable="true"
-              @page-change="onEventsPageChange"
+              :page="eventsPage"
+              @page-change="searchEvents"
               @download="downloadAllResults('events', $event)"
               @save-export="openExportModal('events')"
               @sort-change="onEventsSortChange"
@@ -712,6 +700,7 @@ body {
                 :event="result"
                 :retention-config="retentionConfig"
                 class="mb-2"
+                @event-deleted="onEventDeleted"
               />
             </ExploreResultsSection>
           </div>
@@ -727,7 +716,8 @@ body {
               :filter-fields="['organisation', 'tags', 'type']"
               :visible="activeTab === 'attributes'"
               :exportable="true"
-              @page-change="onAttributesPageChange"
+              :page="attributesPage"
+              @page-change="searchAttributes"
               @download="downloadAllResults('attributes', $event)"
               @save-export="openExportModal('attributes')"
               @sort-change="onAttributesSortChange"
@@ -757,6 +747,7 @@ body {
               :sort-order-toggle="false"
               :filter-fields="[]"
               :visible="activeTab === 'indicators'"
+              :page="indicatorsPage"
               @page-change="searchIndicators"
               @download="downloadAllResults('indicators', $event)"
               @sort-change="onIndicatorsSortChange"
@@ -780,7 +771,8 @@ body {
               :sort-order="correlationsSortOrder"
               :filter-fields="[]"
               :visible="activeTab === 'correlations'"
-              @page-change="onCorrelationsPageChange"
+              :page="correlationsPage"
+              @page-change="searchCorrelations"
               @download="downloadAllResults('correlations', $event)"
               @sort-change="onCorrelationsSortChange"
             >

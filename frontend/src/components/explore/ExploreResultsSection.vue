@@ -19,6 +19,9 @@ const props = defineProps({
   docs: { type: Object, default: null },
   status: { type: Object, required: true },
   pageCount: { type: Number, default: 0 },
+  // The page shown, when the parent tracks it (a new search goes back to 1,
+  // a refresh after a delete may step back one).
+  page: { type: Number, default: undefined },
   sortBy: { type: String, default: "@timestamp" },
   sortOrder: { type: String, default: "desc" },
   filterFields: { type: Array, default: () => ["organisation", "tags"] },
@@ -266,6 +269,7 @@ function onTypesChanged(types) {
       <Paginate
         v-if="pageCount > 1"
         :page-count="pageCount"
+        :model-value="page"
         :click-handler="(page) => emit('page-change', page)"
       />
     </div>

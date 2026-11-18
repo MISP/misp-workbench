@@ -108,7 +108,7 @@ export const useAttributesStore = defineStore({
     },
     async search(params = { query: "", page: 1, size: 10 }) {
       this.status = { loading: true };
-      fetchWrapper
+      return fetchWrapper
         .get(baseUrl + "/search?" + new URLSearchParams(params).toString())
         .then(
           (response) => (
