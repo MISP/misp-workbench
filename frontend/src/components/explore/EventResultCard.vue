@@ -9,6 +9,9 @@ import ExpandToggle from "./ExpandToggle.vue";
 import { useCardExpand } from "./useCardExpand";
 
 defineProps(["event", "retentionConfig"]);
+// Explore searches again: the event leaves the results, or with deleted
+// events included, comes back marked deleted.
+defineEmits(["event-deleted"]);
 
 const { expanded, onCardClick } = useCardExpand();
 
@@ -45,6 +48,12 @@ const analysisMap = {
           <UUID :uuid="event._source.uuid" :copy="true" />
         </span>
         <span
+          v-if="event._source.deleted"
+          class="badge bg-danger"
+          title="Soft-deleted: shown because deleted results are included"
+          >deleted</span
+        >
+        <span
           v-if="!event._source.published"
           class="badge bg-warning text-dark"
           title="Not published"
@@ -59,7 +68,10 @@ const analysisMap = {
       </div>
 
       <div class="flex-shrink-0">
-        <EventActions :event_uuid="event._source.uuid" />
+        <EventActions
+          :event_uuid="event._source.uuid"
+          @event-deleted="$emit('event-deleted', $event)"
+        />
       </div>
     </div>
 

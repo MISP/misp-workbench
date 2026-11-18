@@ -87,12 +87,14 @@ export const useEventsStore = defineStore({
         .then((response) => (this.event = response))
         .finally(() => (this.status = { creating: false }));
     },
+    // Rejects on failure: the caller shows why, rather than going on as if
+    // the event were gone. The error isn't kept in the shared status, which
+    // the event lists display.
     async delete(id, { force = false } = {}) {
       this.status = { deleting: true };
       const url = force ? `${baseUrl}/${id}?force=true` : `${baseUrl}/${id}`;
       return await fetchWrapper
         .delete(url)
-        .catch((error) => (this.status = { error }))
         .finally(() => (this.status = { deleting: false }));
     },
     async tag(id, tag) {
@@ -136,7 +138,7 @@ export const useEventsStore = defineStore({
     },
     async search(params = { query: "", page: 1, size: 10 }) {
       this.status = { loading: true };
-      fetchWrapper
+      return fetchWrapper
         .get(baseUrl + "/search?" + new URLSearchParams(params).toString())
         .then(
           (response) => (
