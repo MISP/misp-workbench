@@ -14,7 +14,9 @@ class Notification(Base):
     __tablename__ = "notifications"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    user_id = Column(
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
     type = Column(String, nullable=False)
     entity_type = Column(String(255))
     entity_uuid = Column(UUID(as_uuid=True), unique=False, nullable=True)

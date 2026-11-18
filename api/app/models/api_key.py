@@ -10,7 +10,9 @@ class ApiKey(Base):
     __tablename__ = "api_keys"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), index=True, nullable=False)
+    user_id = Column(
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False
+    )
     hashed_token = Column(String(64), unique=True, index=True, nullable=False)
     name = Column(String(255), nullable=False)
     comment = Column(String, nullable=True)

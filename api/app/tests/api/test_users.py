@@ -1,10 +1,18 @@
+from datetime import datetime, timezone
+
 import pytest
 from app.auth import auth
+from app.models import api_key as api_key_models
+from app.models import notification as notification_models
 from app.models import organisation as organisation_models
+from app.models import sharing_groups as sharing_groups_models
+from app.models import tag as tag_models
 from app.models import user as user_models
+from app.models import user_setting as user_setting_models
 from app.tests.api_tester import ApiTester
 from fastapi import status
 from fastapi.testclient import TestClient
+from sqlalchemy.orm import Session
 
 
 class TestUsersResource(ApiTester):
@@ -192,3 +200,72 @@ class TestUsersResource(ApiTester):
         )
 
         assert response.status_code == status.HTTP_204_NO_CONTENT
+
+    @pytest.mark.parametrize("scopes", [["users:delete"]])
+    def test_delete_user_with_dependent_rows(
+        self,
+        client: TestClient,
+        db: Session,
+        organisation_1: organisation_models.Organisation,
+        auth_token: auth.Token,
+    ):
+        owner = user_models.User(
+            org_id=organisation_1.id,
+            role_id=1,
+            email="owner@bar.com",
+            hashed_password="secret",
+        )
+        db.add(owner)
+        db.flush()
+        now = datetime.now(timezone.utc)
+        tag = tag_models.Tag(
+            name="created-by-a-deleted-user",
+            colour="#ffffff",
+            org_id=organisation_1.id,
+            user_id=owner.id,
+        )
+        sharing_group = sharing_groups_models.SharingGroup(
+            name="synced by the deleted user",
+            org_id=organisation_1.id,
+            sync_user_id=owner.id,
+            created=now,
+            modified=now,
+        )
+        db.add_all(
+            [
+                tag,
+                sharing_group,
+                user_setting_models.UserSetting(
+                    user_id=owner.id, namespace="owner-delete-test", value={}
+                ),
+                notification_models.Notification(
+                    user_id=owner.id, type="event.created", payload={}, created_at=now
+                ),
+                api_key_models.ApiKey(
+                    user_id=owner.id, hashed_token="0" * 64, name="owner key"
+                ),
+            ]
+        )
+        db.commit()
+        owner_id, tag_id, sharing_group_id = owner.id, tag.id, sharing_group.id
+        db.expunge_all()
+
+        response = client.delete(
+            f"/users/{owner_id}",
+            headers={"Authorization": "Bearer " + auth_token},
+        )
+
+        assert response.status_code == status.HTTP_204_NO_CONTENT
+        assert db.get(user_models.User, owner_id) is None
+        for model in (
+            user_setting_models.UserSetting,
+            notification_models.Notification,
+            api_key_models.ApiKey,
+        ):
+            assert db.query(model).filter_by(user_id=owner_id).count() == 0
+        # Tags are shared vocabulary and a sharing group only names its sync
+        # user: both outlive them.
+        kept_tag = db.get(tag_models.Tag, tag_id)
+        assert kept_tag is not None and kept_tag.user_id is None
+        kept_group = db.get(sharing_groups_models.SharingGroup, sharing_group_id)
+        assert kept_group is not None and kept_group.sync_user_id is None

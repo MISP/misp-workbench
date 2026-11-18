@@ -38,7 +38,7 @@ class Feed(Base):
         default=DistributionLevel.ORGANISATION_ONLY,
     )
     sharing_group_id = Column(Integer, ForeignKey("sharing_groups.id"), nullable=False)
-    tag_id = Column(Integer, ForeignKey("tags.id"), nullable=True)
+    tag_id = Column(Integer, ForeignKey("tags.id", ondelete="SET NULL"), nullable=True)
     default = Column(Boolean, nullable=False, default=False)
     source_format = Column(String, nullable=False)
     fixed_event = Column(Boolean, nullable=False, default=False)
