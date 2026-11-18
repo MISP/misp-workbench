@@ -10,7 +10,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 | Layer | Technology |
 |---|---|
-| Backend | Python 3.9+, FastAPI, SQLAlchemy 2.0, Alembic, Celery 5, Poetry |
+| Backend | Python 3.11+, FastAPI, SQLAlchemy 2.0, Alembic, Celery 5, Poetry |
 | Frontend | Vue 3, Vite, Pinia, TypeScript, Bootstrap 5 |
 | Database | PostgreSQL 16 |
 | Search | OpenSearch 3 |
