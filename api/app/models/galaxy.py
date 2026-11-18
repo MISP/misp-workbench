@@ -123,5 +123,7 @@ class GalaxyClusterRelationTag(Base):
     galaxy_cluster_relation_id = Column(
         Integer, ForeignKey("galaxy_cluster_relations.id"), index=True, nullable=False
     )
-    tag_id = Column(Integer, ForeignKey("tags.id"), index=True, nullable=False)
+    tag_id = Column(
+        Integer, ForeignKey("tags.id", ondelete="CASCADE"), index=True, nullable=False
+    )
     tag = relationship("Tag", lazy="subquery")

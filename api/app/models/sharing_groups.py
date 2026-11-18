@@ -16,7 +16,7 @@ class SharingGroup(Base):
     uuid = Column(UUID(as_uuid=True), unique=True, default=uuid.uuid4)
     organisation_uuid = Column(UUID(as_uuid=True))
     org_id = Column(Integer, ForeignKey("organisations.id"), nullable=False)
-    sync_user_id = Column(Integer, ForeignKey("users.id"))
+    sync_user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"))
     active = Column(Boolean, nullable=False, default=True)
     created = Column(DateTime, nullable=False)
     modified = Column(DateTime, nullable=False)

@@ -10,7 +10,9 @@ class Tag(Base):
     colour = Column(String, nullable=False)
     exportable = Column(Boolean, nullable=False, default=False)
     org_id = Column(Integer, ForeignKey("organisations.id"), nullable=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    user_id = Column(
+        Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
     hide_tag = Column(Boolean, nullable=False, default=False)
     numerical_value = Column(Integer)
     is_galaxy = Column(Boolean, nullable=False, default=False)

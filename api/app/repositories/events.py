@@ -548,8 +548,9 @@ def create_event_from_fetched_event(
             db_tag = tag_models.Tag(
                 name=tag.name,
                 colour=tag.colour,
-                org_id=user.org_id,
-                user_id=user.id,
+                # Tags are shared vocabulary: whoever imports one first doesn't own it.
+                org_id=None,
+                user_id=None,
                 local_only=getattr(tag, "local", False) or False,
             )
             db.add(db_tag)
@@ -613,8 +614,9 @@ def update_event_from_fetched_event(
             db_tag = tag_models.Tag(
                 name=tag.name,
                 colour=tag.colour,
-                org_id=user.org_id,
-                user_id=user.id,
+                # Tags are shared vocabulary: whoever imports one first doesn't own it.
+                org_id=None,
+                user_id=None,
                 local_only=getattr(tag, "local", False) or False,
             )
             db.add(db_tag)
