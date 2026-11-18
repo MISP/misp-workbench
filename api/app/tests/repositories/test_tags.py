@@ -78,8 +78,17 @@ def _importer():
 
 
 def _incoming_tag(name):
+    # Shaped like a tag a remote MISP sends when it is pulled from.
     tag = MISPTag()
-    tag.from_dict(name=name, colour="#0088cc")
+    tag.from_dict(
+        name=name,
+        colour="#0088cc",
+        exportable=True,
+        hide_tag=False,
+        is_galaxy=False,
+        is_custom_galaxy=False,
+        local_only=False,
+    )
     return tag
 
 
